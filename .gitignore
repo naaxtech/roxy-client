@@ -1,0 +1,27 @@
+# Env
+.env
+.env.local
+.env.*.local
+supabase/.env
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native
+ios/
+android/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Node
+node_modules/
+
+# Supabase
+supabase/.branches
+supabase/.temp
