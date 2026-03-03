@@ -16,8 +16,7 @@
       "bundleIdentifier": "com.roxy.app",
       "infoPlist": {
         "NSCameraUsageDescription": "Roxy needs camera access for speed dating video calls and profile photos.",
-        "NSMicrophoneUsageDescription": "Roxy needs microphone access for speed dating video calls.",
-        "NSPhotoLibraryUsageDescription": "Roxy needs photo library access to upload your profile picture."
+        "NSMicrophoneUsageDescription": "Roxy needs microphone access for speed dating video calls."
       }
     },
     "android": {
@@ -26,7 +25,10 @@
         "backgroundColor": "#1a0a2e"
       },
       "package": "com.roxy.app",
-      "permissions": ["CAMERA", "RECORD_AUDIO", "READ_EXTERNAL_STORAGE"]
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -37,7 +39,9 @@
       "expo-notifications",
       [
         "expo-image-picker",
-        { "photosPermission": "Roxy needs access to your photos to set your profile picture." }
+        {
+          "photosPermission": "Roxy needs access to your photos to set your profile picture."
+        }
       ]
     ],
     "experiments": {

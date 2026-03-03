@@ -12,14 +12,14 @@ WLW community + dating + AI wingwoman app.
 
 ## Environment Variables
 
-| Variable | Where to get it |
-|---|---|
-| `EXPO_PUBLIC_SUPABASE_URL` | Supabase dashboard → Project Settings → API |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase dashboard → Project Settings → API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase dashboard → Project Settings → API (keep secret) |
-| `ANTHROPIC_API_KEY` | console.anthropic.com |
-| `DAILY_API_KEY` | dashboard.daily.co |
-| `ONESIGNAL_APP_ID` | app.onesignal.com |
+| Variable | Where | Note |
+|---|---|---|
+| `EXPO_PUBLIC_SUPABASE_URL` | Supabase dashboard → Project Settings → API | Client-safe |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase dashboard → Project Settings → API | Client-safe |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase dashboard → Project Settings → API | **Server-only** — set via `supabase secrets set`, never put in mobile .env |
+| `ANTHROPIC_API_KEY` | console.anthropic.com | **Server-only** — set via `supabase secrets set`, never put in mobile .env |
+| `DAILY_API_KEY` | dashboard.daily.co | **Server-only** — set via `supabase secrets set` |
+| `ONESIGNAL_APP_ID` | app.onesignal.com | Client-safe |
 
 ## Supabase CLI
 

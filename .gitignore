@@ -1,7 +1,7 @@
 # Env
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 supabase/.env
 
 # Expo
