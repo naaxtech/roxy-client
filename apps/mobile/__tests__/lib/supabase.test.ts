@@ -1,9 +1,10 @@
-// Mock the external modules before importing the module under test
 jest.mock('react-native-url-polyfill/auto', () => {});
 jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
+  default: {
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+  },
 }));
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
@@ -18,7 +19,13 @@ jest.mock('@supabase/supabase-js', () => ({
   })),
 }));
 
-import { supabase, callEdgeFunction } from '../../lib/supabase';
+// Set required env vars before importing the module
+process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
+
+// Use require so the module is loaded after env vars are set (import is hoisted)
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { supabase, callEdgeFunction } = require('../../lib/supabase') as typeof import('../../lib/supabase');
 
 describe('supabase client', () => {
   it('exports a supabase client instance with expected shape', () => {
@@ -38,7 +45,7 @@ describe('supabase client', () => {
     expect(result.error).toBeNull();
   });
 
-  it('callEdgeFunction returns error string on failure', async () => {
+  it('callEdgeFunction returns error string on invoke error', async () => {
     (supabase.functions.invoke as jest.Mock).mockResolvedValueOnce({
       data: null,
       error: { message: 'Unauthorized' },
@@ -47,5 +54,15 @@ describe('supabase client', () => {
     const result = await callEdgeFunction('roxy-greeting', {});
     expect(result.data).toBeNull();
     expect(result.error).toBe('Unauthorized');
+  });
+
+  it('callEdgeFunction returns error string when invoke throws (network failure)', async () => {
+    (supabase.functions.invoke as jest.Mock).mockRejectedValueOnce(
+      new Error('Network request failed')
+    );
+
+    const result = await callEdgeFunction('roxy-greeting', {});
+    expect(result.data).toBeNull();
+    expect(result.error).toBe('Network request failed');
   });
 });
