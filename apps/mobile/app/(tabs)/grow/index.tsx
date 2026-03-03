@@ -16,6 +16,8 @@ export default function GrowScreen() {
     callEdgeFunction<{ greeting: string }>('roxy-greeting', {})
       .then(({ data }) => {
         setGreeting(data?.greeting ?? null);
+      })
+      .finally(() => {
         setGreetingLoading(false);
       });
   }, [profile]);
