@@ -1,7 +1,7 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { callClaude } from '../_shared/claude.ts';
-import { logAiCall } from '../_shared/rateLimit.ts';
+import { checkRateLimit, logAiCall } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 
 const SEED_COMMUNITIES = [
@@ -19,12 +19,8 @@ Deno.serve(async (req) => {
   const supabase = getSupabaseClient();
 
   // Rate limit: 1 per user lifetime
-  const { count } = await supabase
-    .from('ai_call_log')
-    .select('id', { count: 'exact' })
-    .eq('user_id', auth.userId)
-    .eq('function_name', 'roxy-onboarding');
-  if ((count ?? 0) > 0) return errorResponse('Already called', 429);
+  const { allowed } = await checkRateLimit({ userId: auth.userId, fnName: 'roxy-onboarding', maxCount: 1, windowType: 'lifetime' });
+  if (!allowed) return errorResponse('Already called', 429);
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -51,7 +47,8 @@ User identity: ${profile?.identity_labels?.join(', ')}`,
   let result = mockResult;
   try { result = JSON.parse(raw); } catch { /* use mock */ }
 
-  await logAiCall({ userId: auth.userId, fnName: 'roxy-onboarding', wasMock: raw === JSON.stringify(mockResult) });
+  const { error: logError } = await logAiCall({ userId: auth.userId, fnName: 'roxy-onboarding', wasMock: raw === JSON.stringify(mockResult) });
+  if (logError) return errorResponse('Failed to record call', 500);
 
   return successResponse(result);
 });

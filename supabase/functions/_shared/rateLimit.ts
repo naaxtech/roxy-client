@@ -32,11 +32,12 @@ export async function logAiCall(params: {
   userId: string;
   fnName: string;
   wasMock: boolean;
-}): Promise<void> {
+}): Promise<{ error: string | null }> {
   const supabase = getSupabaseClient();
-  await supabase.from('ai_call_log').insert({
+  const { error } = await supabase.from('ai_call_log').insert({
     user_id: params.userId,
     function_name: params.fnName,
     was_mock: params.wasMock,
   });
+  return { error: error?.message ?? null };
 }
