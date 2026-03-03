@@ -3,19 +3,19 @@
   "configurations": [
     {
       "name": "Expo Mobile (iOS + Android)",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["expo", "start", "--go"],
+      "runtimeExecutable": "C:/Thinqer/roxy-client/apps/mobile/node_modules/.bin/expo.cmd",
+      "runtimeArgs": ["start", "--go"],
       "port": 8081
     },
     {
       "name": "Expo Web",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["expo", "start", "--web"],
+      "runtimeExecutable": "C:/Program Files/nodejs/node.exe",
+      "runtimeArgs": ["C:/Thinqer/roxy-client/scripts/expo-web.js"],
       "port": 8081
     },
     {
       "name": "Supabase Local",
-      "runtimeExecutable": "npx",
+      "runtimeExecutable": "C:/Program Files/nodejs/npx.cmd",
       "runtimeArgs": ["supabase", "start"],
       "port": 54321
     }
