@@ -1,0 +1,57 @@
+import { handleCors } from '../_shared/cors.ts';
+import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
+import { callClaude } from '../_shared/claude.ts';
+import { logAiCall } from '../_shared/rateLimit.ts';
+import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
+
+const SEED_COMMUNITIES = [
+  'Lesbians of London', 'Bi+ Collective', 'Queer Gamers',
+  'WLW Entrepreneurs', 'Trans & Non-binary Support',
+];
+
+Deno.serve(async (req) => {
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
+
+  const auth = await verifyJWT(req);
+  if (!auth) return errorResponse('Unauthorized', 401);
+
+  const supabase = getSupabaseClient();
+
+  // Rate limit: 1 per user lifetime
+  const { count } = await supabase
+    .from('ai_call_log')
+    .select('id', { count: 'exact' })
+    .eq('user_id', auth.userId)
+    .eq('function_name', 'roxy-onboarding');
+  if ((count ?? 0) > 0) return errorResponse('Already called', 429);
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name, identity_labels, dating_looking_for')
+    .eq('id', auth.userId)
+    .single();
+
+  const mockResult = {
+    community_suggestions: SEED_COMMUNITIES.slice(0, 3),
+    welcome_message: `Welcome to Roxy, ${profile?.display_name ?? 'friend'}! (dev: AI paused)`,
+    first_goal: 'Join your first community and say hello.',
+  };
+
+  const raw = await callClaude({
+    system: `You are Roxy. A new WLW user just joined. Return ONLY a JSON object (no markdown):
+{"community_suggestions":["name1","name2","name3"],"welcome_message":"one warm sentence","first_goal":"one small achievable goal"}
+Available communities: ${SEED_COMMUNITIES.join(', ')}
+User identity: ${profile?.identity_labels?.join(', ')}`,
+    messages: [{ role: 'user', content: `My name is ${profile?.display_name}. Generate my onboarding data.` }],
+    maxTokens: 256,
+    mockResponse: JSON.stringify(mockResult),
+  });
+
+  let result = mockResult;
+  try { result = JSON.parse(raw); } catch { /* use mock */ }
+
+  await logAiCall({ userId: auth.userId, fnName: 'roxy-onboarding', wasMock: raw === JSON.stringify(mockResult) });
+
+  return successResponse(result);
+});
