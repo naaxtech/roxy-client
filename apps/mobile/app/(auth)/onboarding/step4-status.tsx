@@ -27,7 +27,8 @@ export default function Step4Status() {
     if (selected.length === 0) return;
     setLoading(true);
     const isDating = selected.includes('dating');
-    await supabase.from('profiles').update({ is_dating_mode: isDating }).eq('id', user.id);
+    const { error: profileError } = await supabase.from('profiles').update({ is_dating_mode: isDating }).eq('id', user.id);
+    if (profileError) { setLoading(false); Alert.alert('Setup error', 'Could not save your settings. Please try again.'); return; }
     const { error } = await callEdgeFunction('roxy-onboarding', { user_id: user.id });
     setLoading(false);
     if (error) { Alert.alert('Setup error', 'Could not finish setup. Please try again.'); return; }
