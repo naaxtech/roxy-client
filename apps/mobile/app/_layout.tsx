@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
 import { useProfileStore } from '../store/profileStore';
 import { supabase } from '../lib/supabase';
+import { DevPanel } from '../components/dev/DevPanel';
 
 export default function RootLayout() {
   const { user, loading } = useAuth();
@@ -58,6 +59,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <Stack screenOptions={{ headerShown: false }} />
+        {__DEV__ && <DevPanel />}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
