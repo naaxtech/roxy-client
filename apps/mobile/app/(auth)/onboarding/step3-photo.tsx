@@ -24,16 +24,16 @@ export default function Step3Photo() {
   };
 
   const handleNext = async () => {
+    if (!user) return;
     if (uri) {
       setUploading(true);
-      const ext = uri.split('.').pop();
-      const path = `${user!.id}/avatar.${ext}`;
+      const path = `${user.id}/avatar.jpg`;
       const response = await fetch(uri);
       const blob = await response.blob();
       const { error } = await supabase.storage.from('avatars').upload(path, blob, { upsert: true });
       if (!error) {
         const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user!.id);
+        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
       }
       setUploading(false);
     }

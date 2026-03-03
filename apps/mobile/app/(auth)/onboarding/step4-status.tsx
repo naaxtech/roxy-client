@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
@@ -23,12 +23,14 @@ export default function Step4Status() {
     setSelected((p) => p.includes(key) ? p.filter((x) => x !== key) : [...p, key]);
 
   const handleFinish = async () => {
+    if (!user) return;
     if (selected.length === 0) return;
     setLoading(true);
     const isDating = selected.includes('dating');
-    await supabase.from('profiles').update({ is_dating_mode: isDating }).eq('id', user!.id);
-    await callEdgeFunction('roxy-onboarding', { user_id: user!.id });
+    await supabase.from('profiles').update({ is_dating_mode: isDating }).eq('id', user.id);
+    const { error } = await callEdgeFunction('roxy-onboarding', { user_id: user.id });
     setLoading(false);
+    if (error) { Alert.alert('Setup error', 'Could not finish setup. Please try again.'); return; }
     router.replace('/(tabs)/grow');
   };
 

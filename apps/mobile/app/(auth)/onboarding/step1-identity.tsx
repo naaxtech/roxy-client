@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { ChipSelector } from '../../../components/ui/ChipSelector';
-import { IDENTITY_LABELS, PRONOUNS, COLORS } from '../../../lib/constants';
+import { IDENTITY_LABELS, PRONOUNS, COLORS, USERNAME_MAX } from '../../../lib/constants';
 
 export default function Step1Identity() {
   const [username, setUsername] = useState('');
@@ -19,7 +19,7 @@ export default function Step1Identity() {
 
   const checkUsername = async (val: string) => {
     setUsername(val);
-    if (val.length < 3 || !/^[a-z0-9_]+$/i.test(val)) {
+    if (val.length < 3 || val.length > USERNAME_MAX || !/^[a-z0-9_]+$/i.test(val)) {
       setUsernameAvailable(null);
       return;
     }
@@ -32,6 +32,7 @@ export default function Step1Identity() {
   };
 
   const handleNext = async () => {
+    if (!user) return;
     if (!usernameAvailable || !displayName || labels.length === 0) return;
     setLoading(true);
     const { error } = await supabase.from('profiles').upsert({

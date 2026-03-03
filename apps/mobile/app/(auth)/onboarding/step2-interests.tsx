@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
@@ -14,10 +14,12 @@ export default function Step2Interests() {
   const router = useRouter();
 
   const handleNext = async () => {
+    if (!user) return;
     if (interests.length < 1) return;
     setLoading(true);
-    await supabase.from('profiles').update({ dating_looking_for: interests }).eq('id', user!.id);
+    const { error } = await supabase.from('profiles').update({ dating_looking_for: interests }).eq('id', user.id);
     setLoading(false);
+    if (error) { Alert.alert('Error', error.message); return; }
     router.push('/(auth)/onboarding/step3-photo');
   };
 
