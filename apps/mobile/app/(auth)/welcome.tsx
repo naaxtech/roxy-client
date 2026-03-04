@@ -13,20 +13,41 @@ import { COLORS } from '../../lib/constants';
 
 export default function WelcomeScreen() {
   const [showEmail, setShowEmail] = useState(false);
+  const [isSignIn, setIsSignIn] = useState(false);
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signInWithApple, signInWithGoogle } = useAuth();
+  const [resetSent, setResetSent] = useState(false);
+  const { signUp, signInWithPassword, resetPassword, signInWithApple, signInWithGoogle } = useAuth();
 
-  const handleMagicLink = async () => {
-    if (!email.trim()) return;
+  const handleSubmit = async () => {
+    if (!email.trim() || !password.trim()) return;
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters.');
+      return;
+    }
     setLoading(true);
-    const { error } = await signIn(email.trim());
+    const { error } = isSignIn
+      ? await signInWithPassword(email.trim(), password)
+      : await signUp(email.trim(), password);
+    setLoading(false);
+    if (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert('Enter your email', 'Please enter your email address first.');
+      return;
+    }
+    setLoading(true);
+    const { error } = await resetPassword(email.trim());
     setLoading(false);
     if (error) {
       Alert.alert('Error', error.message);
     } else {
-      setSent(true);
+      setResetSent(true);
     }
   };
 
@@ -38,12 +59,15 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={styles.content}>
-        {sent ? (
+        {resetSent ? (
           <>
-            <Text style={styles.sentTitle}>Check your email ✉️</Text>
+            <Text style={styles.sentTitle}>Check your email</Text>
             <Text style={styles.sentBody}>
-              We sent a magic link to {email}
+              We sent a password reset link to {email}
             </Text>
+            <TouchableOpacity onPress={() => setResetSent(false)}>
+              <Text style={styles.emailLink}>Back to sign in</Text>
+            </TouchableOpacity>
           </>
         ) : (
           <>
@@ -74,13 +98,33 @@ export default function WelcomeScreen() {
                   value={email}
                   onChangeText={setEmail}
                 />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor={COLORS.textMuted}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoComplete={isSignIn ? 'password' : 'new-password'}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                {isSignIn && (
+                  <TouchableOpacity onPress={handleForgotPassword}>
+                    <Text style={styles.forgotLink}>Forgot password?</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={[styles.btn, loading && styles.btnDisabled]}
-                  onPress={handleMagicLink}
+                  onPress={handleSubmit}
                   disabled={loading}
                 >
                   <Text style={styles.btnText}>
-                    {loading ? 'Sending...' : 'Send magic link'}
+                    {loading ? 'Please wait...' : isSignIn ? 'Sign In' : 'Sign Up'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setIsSignIn(!isSignIn)}>
+                  <Text style={styles.emailLink}>
+                    {isSignIn ? 'New here? Sign Up' : 'Already have an account? Sign In'}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -116,6 +160,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
     paddingVertical: 8,
+  },
+  forgotLink: {
+    color: COLORS.accent,
+    textAlign: 'right',
+    fontSize: 14,
   },
   input: {
     backgroundColor: COLORS.surface,
