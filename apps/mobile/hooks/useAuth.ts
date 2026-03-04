@@ -7,12 +7,10 @@ export function useAuth() {
     useAuthStore();
 
   useEffect(() => {
-    // Hydrate session from storage on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
 
-    // Keep store in sync with auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -22,11 +20,18 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: 'roxy://auth/callback' },
-    });
+  const signUp = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({ email, password });
+    return { error };
+  };
+
+  const signInWithPassword = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error };
+  };
+
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
     return { error };
   };
 
@@ -55,7 +60,9 @@ export function useAuth() {
     user,
     session,
     loading,
-    signIn,
+    signUp,
+    signInWithPassword,
+    resetPassword,
     signInWithApple,
     signInWithGoogle,
     signOut,
