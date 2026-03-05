@@ -9,7 +9,7 @@ import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { isDailyAvailable } from '../../../../lib/daily';
 import { COLORS } from '../../../../lib/constants';
-import { SpeedDateSession } from '../../../../types';
+import type { SpeedDateSession as SpeedDateSessionData } from '../../../../types';
 
 // Guarded Daily.co import
 let DailyCall: any = null;
@@ -71,7 +71,7 @@ export default function SpeedDateSession() {
   const router = useRouter();
   const { user } = useAuthStore();
 
-  const [session, setSession] = useState<SpeedDateSession | null>(null);
+  const [session, setSession] = useState<SpeedDateSessionData | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [promptIndex, setPromptIndex] = useState(0);
   const [liked, setLiked] = useState(false);
@@ -104,7 +104,7 @@ export default function SpeedDateSession() {
       .eq('id', session_id)
       .single()
       .then(({ data }) => {
-        if (data) setSession(data as SpeedDateSession);
+        if (data) setSession(data as SpeedDateSessionData);
       });
   }, [session_id]);
 
