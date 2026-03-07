@@ -1,0 +1,30 @@
+# Env
+.env
+.env.*
+!.env.example
+supabase/.env
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native
+ios/
+android/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Node
+node_modules/
+
+# Supabase
+supabase/.branches
+supabase/.temp
+
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json
