@@ -1,0 +1,45 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const c=[];process.stdin.resume();process.stdin.setEncoding('utf8');process.stdin.on('data',d=>c.push(d));process.stdin.on('end',()=>{try{const d=JSON.parse(c.join(''));const f=(d.tool_input||{}).file_path||'';if(f.endsWith('.ts')||f.endsWith('.tsx')){const{execSync}=require('child_process');try{const r=execSync('cd /c/Thinqer/roxy-client/apps/mobile && npx jest --ci --passWithNoTests 2>&1',{encoding:'utf8',timeout:60000});const lines=r.split('\\n');const out=lines.filter(l=>/Tests:|Test Suites:|FAIL|PASS/.test(l)).join('\\n');console.log(out||'Tests passed');}catch(e){const out=(e.stdout||'').split('\\n').filter(l=>/FAIL|\\u25cf/.test(l)).slice(0,8).join('\\n');console.log(out||'Tests failed');}}}catch(e){}})\""
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git checkout:*)",
+      "Bash(git status)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(git -C:*)",
+      "Bash(npx jest:*)",
+      "Bash(npx jest --ci:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh api:*)",
+      "Bash(npx expo:*)",
+      "Bash(npx supabase:*)",
+      "Bash(node -e:*)",
+      "Bash(node --version)",
+      "Bash(ls:*)",
+      "Bash(cat:*)"
+    ]
+  }
+}
