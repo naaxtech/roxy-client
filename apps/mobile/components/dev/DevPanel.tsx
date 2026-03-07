@@ -38,6 +38,19 @@ function DevPanelInner() {
     setLoading(false);
   };
 
+  const seedAndGeneratePrompts = async () => {
+    setLoading(true);
+    const { data } = await callEdgeFunction<{ session: { id: string } }>(
+      'dev-control',
+      { action: 'seed_speed_date_session' }
+    );
+    if (data?.session?.id) {
+      await callEdgeFunction('speed-date-prompts', { session_id: data.session.id });
+    }
+    await refresh();
+    setLoading(false);
+  };
+
   return (
     <>
       {/* Floating button */}
@@ -77,7 +90,7 @@ function DevPanelInner() {
             <TouchableOpacity style={styles.actionBtn} onPress={() => action('clear_greeting_cache')}>
               <Text style={styles.actionBtnText}>Clear greeting cache</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnAccent]} onPress={() => action('seed_speed_date_session')}>
+            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnAccent]} onPress={seedAndGeneratePrompts}>
               <Text style={styles.actionBtnText}>Seed test speed date</Text>
             </TouchableOpacity>
 
