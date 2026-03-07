@@ -57,8 +57,9 @@ CREATE POLICY "posts_delete"   ON public.posts FOR DELETE TO authenticated USING
 CREATE POLICY "events_select"  ON public.events FOR SELECT TO authenticated USING (true);
 CREATE POLICY "events_insert"  ON public.events FOR INSERT TO authenticated WITH CHECK (host_id = auth.uid());
 CREATE POLICY "events_update"  ON public.events FOR UPDATE TO authenticated USING (host_id = auth.uid());
+CREATE POLICY "events_delete"  ON public.events FOR DELETE TO authenticated USING (host_id = auth.uid());
 
-CREATE POLICY "ea_select" ON public.event_attendees FOR SELECT TO authenticated USING (user_id = auth.uid());
+CREATE POLICY "ea_select" ON public.event_attendees FOR SELECT TO authenticated USING (true);
 CREATE POLICY "ea_insert" ON public.event_attendees FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
 CREATE POLICY "ea_delete" ON public.event_attendees FOR DELETE TO authenticated USING (user_id = auth.uid());
 
@@ -71,9 +72,9 @@ BEGIN
   ELSIF TG_OP = 'DELETE' THEN
     UPDATE public.events SET attendee_count = GREATEST(0, attendee_count - 1) WHERE id = OLD.event_id;
   END IF;
-  RETURN NULL;
+  RETURN NEW;
 END;
-$$;
+$;
 
 CREATE TRIGGER trg_attendee_count
   AFTER INSERT OR DELETE ON public.event_attendees
