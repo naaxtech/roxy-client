@@ -179,14 +179,13 @@ export default function GrowScreen() {
             <Text style={styles.emptyState}>Complete actions to earn badges! ✨</Text>
           ) : (
             <FlashList
-              data={badges}
+              data={badges.filter((b) => b.badges !== null)}
               numColumns={2}
               estimatedItemSize={100}
               scrollEnabled={false}
               keyExtractor={(item) => item.badge_id}
               renderItem={({ item, index }) => {
                 const badge = item.badges;
-                if (!badge) return null;
                 const earned = item.earned_at !== null;
                 const showProgress = !earned && item.current_value > 0;
                 return (
