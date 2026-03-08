@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlashList } from '@shopify/flash-list';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
@@ -10,6 +11,22 @@ import { COLORS } from '../../../lib/constants';
 
 type CommunityRow = { community_id: string; communities: { id: string; name: string; category: string } | null };
 type FriendshipRow = { id: string; requester_id: string; addressee_id: string; status: string; created_at: string };
+type BadgeProgressRow = {
+  user_id: string;
+  badge_id: string;
+  current_value: number;
+  earned_at: string | null;
+  badges: {
+    id: string;
+    name: string;
+    description: string;
+    emoji: string;
+    category: string;
+    points_value: number;
+    requirement_type: string;
+    requirement_threshold: number;
+  } | null;
+};
 
 function getLevelInfo(points: number): { label: string; emoji: string; nextThreshold: number | null; progress: number } {
   if (points >= 500) return { label: 'Radiant', emoji: '✨', nextThreshold: null, progress: 1 };
@@ -30,6 +47,9 @@ export default function GrowScreen() {
 
   // Zone 3 — People (friendships)
   const [friendships, setFriendships] = useState<FriendshipRow[]>([]);
+
+  // Zone 5 — Badges
+  const [badges, setBadges] = useState<BadgeProgressRow[]>([]);
 
   useEffect(() => {
     if (!profile) return;
@@ -63,6 +83,18 @@ export default function GrowScreen() {
   useEffect(() => {
     loadSocial();
   }, [loadSocial]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from('user_badge_progress')
+      .select('*, badges(*)')
+      .eq('user_id', user.id)
+      .order('earned_at', { ascending: false, nullsFirst: false })
+      .then(({ data }) => {
+        if (data) setBadges(data as BadgeProgressRow[]);
+      });
+  }, [user?.id]);
 
   const points = profile?.gamification_points ?? 0;
   const level = getLevelInfo(points);
@@ -139,6 +171,46 @@ export default function GrowScreen() {
             <Text style={styles.progressHint}>You've reached the highest level! ✨</Text>
           )}
         </View>
+
+        {/* Zone 5 — Badges */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🏆 Badges</Text>
+          {badges.length === 0 ? (
+            <Text style={styles.emptyState}>Complete actions to earn badges! ✨</Text>
+          ) : (
+            <FlashList
+              data={badges}
+              numColumns={2}
+              estimatedItemSize={100}
+              scrollEnabled={false}
+              keyExtractor={(item) => item.badge_id}
+              renderItem={({ item, index }) => {
+                const badge = item.badges;
+                if (!badge) return null;
+                const earned = item.earned_at !== null;
+                const showProgress = !earned && item.current_value > 0;
+                return (
+                  <View style={[
+                    styles.badgeCard,
+                    { marginLeft: index % 2 === 0 ? 0 : 8 },
+                    !earned && styles.badgeCardDim,
+                  ]}>
+                    <Text style={styles.badgeEmoji}>{badge.emoji}</Text>
+                    <Text style={styles.badgeName} numberOfLines={1}>{badge.name}</Text>
+                    <Text style={styles.badgeDesc} numberOfLines={2}>{badge.description}</Text>
+                    {earned ? (
+                      <Text style={styles.badgeEarned}>✓ Earned</Text>
+                    ) : showProgress ? (
+                      <Text style={styles.badgeProgress}>
+                        {item.current_value} / {badge.requirement_threshold}
+                      </Text>
+                    ) : null}
+                  </View>
+                );
+              }}
+            />
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -185,4 +257,17 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: 8, backgroundColor: COLORS.primary, borderRadius: 4 },
   progressHint: { color: COLORS.textMuted, fontSize: 12 },
+  badgeCard: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  badgeCardDim: { opacity: 0.5 },
+  badgeEmoji: { fontSize: 28, marginBottom: 6 },
+  badgeName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
+  badgeDesc: { color: COLORS.textMuted, fontSize: 11, lineHeight: 15 },
+  badgeEarned: { color: COLORS.roxy, fontSize: 11, fontWeight: '600', marginTop: 4 },
+  badgeProgress: { color: COLORS.textMuted, fontSize: 11, marginTop: 4 },
 });
