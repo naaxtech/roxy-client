@@ -33,7 +33,7 @@ function BusinessCard({ biz }: { biz: Business }) {
   );
 }
 
-function ImpactCard({ project, onSupport }: { project: ImpactProject; onSupport: () => void }) {
+function ImpactCard({ project, onSupport, alreadySupported = false }: { project: ImpactProject; onSupport: () => void; alreadySupported?: boolean }) {
   const progress = project.goal_amount
     ? Math.min(project.raised_amount / project.goal_amount, 1)
     : null;
@@ -51,8 +51,12 @@ function ImpactCard({ project, onSupport }: { project: ImpactProject; onSupport:
           <Text style={styles.impactMeta}>{project.supporter_count} supporters</Text>
         </View>
         {project.status === 'active' && (
-          <TouchableOpacity style={styles.supportBtn} onPress={onSupport}>
-            <Text style={styles.supportBtnText}>Support</Text>
+          <TouchableOpacity
+            style={[styles.supportBtn, alreadySupported && styles.supportBtnDone]}
+            onPress={onSupport}
+            disabled={alreadySupported}
+          >
+            <Text style={styles.supportBtnText}>{alreadySupported ? '✓ Supported' : 'Support'}</Text>
           </TouchableOpacity>
         )}
         {project.status === 'completed' && (
@@ -86,6 +90,7 @@ export default function BuildScreen() {
   const [search, setSearch] = useState('');
   const [wlwOnly, setWlwOnly] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [supportedIds, setSupportedIds] = useState<Set<string>>(new Set());
 
   const loadBusinesses = useCallback(async () => {
     const { data } = await supabase
@@ -114,12 +119,14 @@ export default function BuildScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    setSearch('');
     await Promise.all([loadBusinesses(), loadProjects()]);
     setRefreshing(false);
   };
 
   const handleSupport = async (project: ImpactProject) => {
-    if (!user) return;
+    if (!user || supportedIds.has(project.id)) return;
+    setSupportedIds((prev) => new Set([...prev, project.id]));
     incrementSupporter(project.id);
     await supabase
       .from('impact_projects')
@@ -193,7 +200,11 @@ export default function BuildScreen() {
           keyExtractor={(item) => item.id}
           estimatedItemSize={130}
           renderItem={({ item }) => (
-            <ImpactCard project={item} onSupport={() => handleSupport(item)} />
+            <ImpactCard
+              project={item}
+              onSupport={() => handleSupport(item)}
+              alreadySupported={supportedIds.has(item.id)}
+            />
           )}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.roxy} />}
@@ -265,6 +276,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary, borderRadius: 8,
     paddingHorizontal: 12, paddingVertical: 6,
   },
+  supportBtnDone: { backgroundColor: COLORS.success },
   supportBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   completedBadge: {
     backgroundColor: COLORS.success + '20', borderRadius: 8,
