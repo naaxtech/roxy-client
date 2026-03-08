@@ -115,6 +115,20 @@ export default function ConnectScreen() {
         </View>
       </View>
 
+      {/* Roxy Sister banner — always visible */}
+      <TouchableOpacity
+        style={styles.sisterBanner}
+        onPress={() => router.push('/(tabs)/connect/sister-button' as any)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.sisterIcon}>💜</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sisterTitle}>Roxy Sister</Text>
+          <Text style={styles.sisterSub}>A safe space when you need support</Text>
+        </View>
+        <Text style={styles.speedDateArrow}>›</Text>
+      </TouchableOpacity>
+
       {/* Speed Date entry (dating mode only) */}
       {datingMode && (
         <TouchableOpacity
@@ -166,6 +180,15 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, fontWeight: '800', color: COLORS.textPrimary },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   datingLabel: { color: COLORS.textSecondary, fontSize: 14 },
+  sisterBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: COLORS.roxy + '20',
+    borderBottomWidth: 1, borderBottomColor: COLORS.roxy + '60',
+    paddingHorizontal: 20, paddingVertical: 14,
+  },
+  sisterIcon: { fontSize: 28 },
+  sisterTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 15 },
+  sisterSub: { color: COLORS.textSecondary, fontSize: 13 },
   speedDateBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: COLORS.primary + '20',

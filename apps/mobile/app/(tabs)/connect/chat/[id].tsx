@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal, FlatList,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,8 +11,20 @@ import { supabase, callEdgeFunction } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useConnectStore } from '../../../../store/connectStore';
 import { useRealtime } from '../../../../hooks/useRealtime';
+import { useSafetyStore } from '../../../../store/safetyStore';
 import { COLORS } from '../../../../lib/constants';
 import { Message } from '../../../../types';
+
+const REPORT_REASONS: {
+  key: 'harassment' | 'spam' | 'inappropriate' | 'hate_speech' | 'other';
+  label: string;
+}[] = [
+  { key: 'harassment', label: 'Harassment' },
+  { key: 'spam', label: 'Spam' },
+  { key: 'inappropriate', label: 'Inappropriate content' },
+  { key: 'hate_speech', label: 'Hate speech' },
+  { key: 'other', label: 'Other' },
+];
 
 function MessageBubble({
   message,
@@ -49,19 +61,55 @@ export default function ChatScreen() {
   const { id: conversationId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
-  const { clearUnread } = useConnectStore();
+  const { clearUnread, conversations } = useConnectStore();
+  const { blockUser, openReportModal, submitReport } = useSafetyStore();
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
   const [wingwomanLoading, setWingwomanLoading] = useState(false);
+  const [nudgeLoading, setNudgeLoading] = useState(false);
   const [icebreaker, setIcebreaker] = useState<string | null>(null);
   const flashListRef = useRef<FlashList<Message>>(null);
+
+  // Partner info
+  const [partnerId, setPartnerId] = useState<string | null>(null);
+  const [partnerName, setPartnerName] = useState<string>('this person');
+
+  // Menu / report modal state
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [reportVisible, setReportVisible] = useState(false);
+  const [reportReason, setReportReason] = useState<
+    'harassment' | 'spam' | 'inappropriate' | 'hate_speech' | 'other' | null
+  >(null);
+  const [reportDetail, setReportDetail] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   const { messages, isSubscribed, appendMessage } = useRealtime({
     conversationId: conversationId ?? '',
     initialMessages,
   });
+
+  // Derive partner from conversation participants
+  useEffect(() => {
+    if (!conversationId || !user) return;
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (!conv) return;
+    const pid = conv.participant_ids.find((id) => id !== user.id) ?? null;
+    setPartnerId(pid);
+    if (pid) {
+      supabase
+        .from('profiles')
+        .select('display_name, username')
+        .eq('id', pid)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setPartnerName(data.display_name || data.username || 'this person');
+          }
+        });
+    }
+  }, [conversationId, user, conversations]);
 
   // Load initial messages
   useEffect(() => {
@@ -172,6 +220,76 @@ export default function ChatScreen() {
     }
   };
 
+  const handleNudge = async () => {
+    if (!conversationId) return;
+    setNudgeLoading(true);
+
+    const { data, error } = await callEdgeFunction<{ nudge: string }>('roxy-nudge', {
+      conversation_id: conversationId,
+    });
+
+    setNudgeLoading(false);
+
+    if (error) {
+      Alert.alert('Roxy Nudge', "Nudge limit reached for this conversation, but you've got this! 💜");
+      return;
+    }
+
+    if (data?.nudge) {
+      setInputText(data.nudge);
+    }
+  };
+
+  // --- Safety handlers ---
+
+  const handleBlockPress = () => {
+    setMenuVisible(false);
+    Alert.alert(
+      `Block ${partnerName}?`,
+      "They won't be able to message you and you won't see their profile.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            if (!partnerId) return;
+            try {
+              await blockUser(partnerId);
+              router.back();
+            } catch {
+              Alert.alert('Error', 'Could not block user. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleReportPress = () => {
+    setMenuVisible(false);
+    setReportReason(null);
+    setReportDetail('');
+    setReportVisible(true);
+  };
+
+  const handleReportSubmit = async () => {
+    if (!reportReason || !partnerId) return;
+    setReportSubmitting(true);
+    try {
+      openReportModal({ userId: partnerId, contentType: 'message' });
+      await submitReport(reportReason, reportDetail.trim() || undefined);
+      setReportVisible(false);
+      Alert.alert('Report submitted', 'Thank you for keeping our community safe 💜');
+    } catch {
+      Alert.alert('Error', 'Could not submit report. Please try again.');
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
+  // ---
+
   const renderItem = ({ item }: { item: Message }) => {
     const isOwn = item.sender_id === user?.id;
     const isRoxy = item.message_type === 'roxy_suggestion';
@@ -193,9 +311,16 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chat</Text>
-        <View style={styles.statusDot}>
+        <Text style={styles.headerTitle}>{partnerName !== 'this person' ? partnerName : 'Chat'}</Text>
+        <View style={styles.headerRight}>
           <View style={[styles.dot, isSubscribed ? styles.dotConnected : styles.dotDisconnected]} />
+          <TouchableOpacity
+            style={styles.menuBtn}
+            onPress={() => setMenuVisible(true)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.menuBtnText}>•••</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -242,6 +367,18 @@ export default function ChatScreen() {
             )}
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={[styles.nudgeBtn, nudgeLoading && styles.nudgeBtnDisabled]}
+            onPress={handleNudge}
+            disabled={nudgeLoading}
+          >
+            {nudgeLoading ? (
+              <ActivityIndicator size="small" color={COLORS.roxy} />
+            ) : (
+              <Text style={styles.nudgeBtnText}>💜 Nudge</Text>
+            )}
+          </TouchableOpacity>
+
           <TextInput
             style={styles.input}
             placeholder="Say something..."
@@ -261,6 +398,117 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Three-dot action sheet menu */}
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.actionSheet}>
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={handleBlockPress}
+            >
+              <Text style={styles.actionRowIconDanger}>⛔</Text>
+              <Text style={styles.actionRowTextDanger}>Block {partnerName}</Text>
+            </TouchableOpacity>
+            <View style={styles.actionSeparator} />
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={handleReportPress}
+            >
+              <Text style={styles.actionRowIcon}>🚩</Text>
+              <Text style={styles.actionRowText}>Report conversation</Text>
+            </TouchableOpacity>
+            <View style={styles.actionSeparator} />
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => setMenuVisible(false)}
+            >
+              <Text style={[styles.actionRowText, { textAlign: 'center', flex: 1, color: COLORS.textMuted }]}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Report modal */}
+      <Modal
+        visible={reportVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setReportVisible(false)}
+      >
+        <View style={styles.overlay}>
+          <View style={styles.reportCard}>
+            <Text style={styles.reportTitle}>Report</Text>
+            <Text style={styles.reportSubtitle}>What's the issue?</Text>
+
+            <FlatList
+              data={REPORT_REASONS}
+              keyExtractor={(item) => item.key}
+              scrollEnabled={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.reasonRow,
+                    reportReason === item.key && styles.reasonRowSelected,
+                  ]}
+                  onPress={() => setReportReason(item.key)}
+                >
+                  <View style={[
+                    styles.reasonRadio,
+                    reportReason === item.key && styles.reasonRadioSelected,
+                  ]} />
+                  <Text style={styles.reasonLabel}>{item.label}</Text>
+                </TouchableOpacity>
+              )}
+              ItemSeparatorComponent={() => <View style={styles.reasonSeparator} />}
+            />
+
+            <TextInput
+              style={styles.reportDetailInput}
+              placeholder="Add details (optional)"
+              placeholderTextColor={COLORS.textMuted}
+              value={reportDetail}
+              onChangeText={setReportDetail}
+              multiline
+              maxLength={500}
+            />
+
+            <View style={styles.reportActions}>
+              <TouchableOpacity
+                style={styles.reportCancelBtn}
+                onPress={() => setReportVisible(false)}
+              >
+                <Text style={styles.reportCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.reportSubmitBtn,
+                  (!reportReason || !partnerId || reportSubmitting) && styles.reportSubmitBtnDisabled,
+                ]}
+                onPress={handleReportSubmit}
+                disabled={!reportReason || !partnerId || reportSubmitting}
+              >
+                {reportSubmitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.reportSubmitText}>Submit</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -274,10 +522,12 @@ const styles = StyleSheet.create({
   backBtn: { width: 40 },
   backText: { color: COLORS.textPrimary, fontSize: 28, lineHeight: 30 },
   headerTitle: { flex: 1, color: COLORS.textPrimary, fontWeight: '700', fontSize: 17, textAlign: 'center' },
-  statusDot: { width: 40, alignItems: 'flex-end' },
+  headerRight: { width: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   dotConnected: { backgroundColor: COLORS.success },
   dotDisconnected: { backgroundColor: COLORS.textMuted },
+  menuBtn: { padding: 4 },
+  menuBtnText: { color: COLORS.textPrimary, fontSize: 16, letterSpacing: 1 },
   icebreakerBanner: {
     backgroundColor: COLORS.roxy + '20', borderBottomWidth: 1, borderBottomColor: COLORS.roxy + '40',
     padding: 12,
@@ -308,6 +558,14 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   wingwomanIcon: { fontSize: 20 },
+  nudgeBtn: {
+    height: 36, borderRadius: 18, backgroundColor: COLORS.surface,
+    borderWidth: 1, borderColor: COLORS.roxy,
+    paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center',
+    minWidth: 72,
+  },
+  nudgeBtnDisabled: { opacity: 0.5 },
+  nudgeBtnText: { color: COLORS.roxy, fontSize: 13, fontWeight: '600' },
   input: {
     flex: 1, backgroundColor: COLORS.surface, borderRadius: 20,
     paddingHorizontal: 16, paddingVertical: 10,
@@ -319,4 +577,70 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { backgroundColor: COLORS.surface },
   sendBtnText: { color: '#fff', fontSize: 24, lineHeight: 28 },
+
+  // Overlay (shared by both modals)
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+
+  // Action sheet (three-dot menu)
+  actionSheet: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingBottom: 32, paddingTop: 8,
+  },
+  actionRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 24, paddingVertical: 16, gap: 14,
+  },
+  actionRowIcon: { fontSize: 18 },
+  actionRowIconDanger: { fontSize: 18 },
+  actionRowText: { color: COLORS.textPrimary, fontSize: 16 },
+  actionRowTextDanger: { color: COLORS.error, fontSize: 16, fontWeight: '600' },
+  actionSeparator: { height: 1, backgroundColor: COLORS.surfaceLight, marginHorizontal: 16 },
+
+  // Report modal
+  reportCard: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 24, paddingBottom: 40,
+  },
+  reportTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '700', marginBottom: 4 },
+  reportSubtitle: { color: COLORS.textSecondary, fontSize: 14, marginBottom: 16 },
+  reasonRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, paddingHorizontal: 4,
+    borderRadius: 10,
+  },
+  reasonRowSelected: { backgroundColor: COLORS.primary + '20' },
+  reasonRadio: {
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 2, borderColor: COLORS.textMuted,
+  },
+  reasonRadioSelected: { borderColor: COLORS.primary, backgroundColor: COLORS.primary },
+  reasonLabel: { color: COLORS.textPrimary, fontSize: 15 },
+  reasonSeparator: { height: 1, backgroundColor: COLORS.surfaceLight },
+  reportDetailInput: {
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 12, padding: 12,
+    color: COLORS.textPrimary, fontSize: 14,
+    minHeight: 72, marginTop: 16, textAlignVertical: 'top',
+  },
+  reportActions: {
+    flexDirection: 'row', gap: 12, marginTop: 20,
+  },
+  reportCancelBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: 12,
+    backgroundColor: COLORS.surfaceLight,
+    alignItems: 'center',
+  },
+  reportCancelText: { color: COLORS.textSecondary, fontSize: 16, fontWeight: '600' },
+  reportSubmitBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+  },
+  reportSubmitBtnDisabled: { backgroundColor: COLORS.textMuted },
+  reportSubmitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
