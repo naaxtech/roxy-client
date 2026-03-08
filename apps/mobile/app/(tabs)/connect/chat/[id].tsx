@@ -461,10 +461,10 @@ export default function ChatScreen() {
               <TouchableOpacity
                 style={[
                   styles.reportSubmitBtn,
-                  (!reportReason || reportSubmitting) && styles.reportSubmitBtnDisabled,
+                  (!reportReason || !partnerId || reportSubmitting) && styles.reportSubmitBtnDisabled,
                 ]}
                 onPress={handleReportSubmit}
-                disabled={!reportReason || reportSubmitting}
+                disabled={!reportReason || !partnerId || reportSubmitting}
               >
                 {reportSubmitting ? (
                   <ActivityIndicator size="small" color="#fff" />
