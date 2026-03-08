@@ -1,14 +1,35 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { callEdgeFunction } from '../../../lib/supabase';
+import { callEdgeFunction, supabase } from '../../../lib/supabase';
+import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
 import { COLORS } from '../../../lib/constants';
 
+type CommunityRow = { community_id: string; communities: { id: string; name: string; category: string } | null };
+type FriendshipRow = { id: string; requester_id: string; addressee_id: string; status: string; created_at: string };
+
+function getLevelInfo(points: number): { label: string; emoji: string; nextThreshold: number | null; progress: number } {
+  if (points >= 500) return { label: 'Radiant', emoji: '✨', nextThreshold: null, progress: 1 };
+  if (points >= 100) return { label: 'Bloom', emoji: '🌸', nextThreshold: 500, progress: (points - 100) / 400 };
+  return { label: 'Seedling', emoji: '🌱', nextThreshold: 100, progress: points / 100 };
+}
+
 export default function GrowScreen() {
+  const { user } = useAuthStore();
   const { profile } = useProfile();
+
+  // Zone 1 — Roxy greeting
   const [greeting, setGreeting] = useState<string | null>(null);
   const [greetingLoading, setGreetingLoading] = useState(true);
+
+  // Zone 2 — Communities
+  const [communities, setCommunities] = useState<CommunityRow[]>([]);
+
+  // Zone 3 — People (friendships)
+  const [friendships, setFriendships] = useState<FriendshipRow[]>([]);
 
   useEffect(() => {
     if (!profile) return;
@@ -21,6 +42,30 @@ export default function GrowScreen() {
         setGreetingLoading(false);
       });
   }, [profile]);
+
+  const loadSocial = useCallback(async () => {
+    if (!user) return;
+    const [commRes, friendRes] = await Promise.all([
+      supabase
+        .from('community_members')
+        .select('community_id, communities(id, name, category)')
+        .eq('user_id', user.id),
+      supabase
+        .from('friendships')
+        .select('*')
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        .eq('status', 'accepted'),
+    ]);
+    if (commRes.data) setCommunities(commRes.data as CommunityRow[]);
+    if (friendRes.data) setFriendships(friendRes.data as FriendshipRow[]);
+  }, [user]);
+
+  useEffect(() => {
+    loadSocial();
+  }, [loadSocial]);
+
+  const points = profile?.gamification_points ?? 0;
+  const level = getLevelInfo(points);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -36,22 +81,63 @@ export default function GrowScreen() {
           <Text style={styles.greetingLabel}>✨ Your daily message from Roxy</Text>
         </View>
 
-        {/* Zone 2 — Communities placeholder */}
+        {/* Zone 2 — My Communities */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Communities</Text>
-          <Text style={styles.emptyState}>Join your first community in Discover →</Text>
+          <Text style={styles.sectionTitle}>My Communities</Text>
+          {communities.length === 0 ? (
+            <Text style={styles.emptyState}>Join your first community in Discover →</Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+              {communities.map((row) => (
+                <View key={row.community_id} style={styles.chip}>
+                  <Text style={styles.chipText}>{row.communities?.name ?? '—'}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          )}
         </View>
 
-        {/* Zone 3 — People placeholder */}
+        {/* Zone 3 — My People */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your People</Text>
-          <Text style={styles.emptyState}>Add your first connection in Discover →</Text>
+          <Text style={styles.sectionTitle}>My People</Text>
+          {friendships.length === 0 ? (
+            <Text style={styles.emptyState}>Connect with someone in Discover →</Text>
+          ) : (
+            <View style={styles.avatarRow}>
+              {friendships.slice(0, 8).map((f) => (
+                <View key={f.id} style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {f.requester_id === user?.id ? '👤' : '👤'}
+                  </Text>
+                </View>
+              ))}
+              {friendships.length > 8 && (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarCount}>+{friendships.length - 8}</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
-        {/* Zone 4 — Progress placeholder */}
+        {/* Zone 4 — My Journey */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Journey</Text>
-          <Text style={styles.emptyState}>Earn your first badge by posting in a community →</Text>
+          <Text style={styles.sectionTitle}>My Journey</Text>
+          <View style={styles.levelRow}>
+            <Text style={styles.levelEmoji}>{level.emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.levelLabel}>{level.label}</Text>
+              <Text style={styles.levelPoints}>{points} points</Text>
+            </View>
+          </View>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${level.progress * 100}%` as any }]} />
+          </View>
+          {level.nextThreshold !== null ? (
+            <Text style={styles.progressHint}>{level.nextThreshold - points} points to next level</Text>
+          ) : (
+            <Text style={styles.progressHint}>You've reached the highest level! ✨</Text>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -73,6 +159,30 @@ const styles = StyleSheet.create({
   greetingText: { fontSize: 18, color: COLORS.textPrimary, lineHeight: 28, fontWeight: '500' },
   greetingLabel: { color: COLORS.textMuted, fontSize: 12, marginTop: 12 },
   section: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 8 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 10 },
   emptyState: { color: COLORS.textMuted, fontSize: 14 },
+  chipScroll: { marginTop: 4 },
+  chip: {
+    backgroundColor: COLORS.primary + '20', borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 7,
+    marginRight: 8, borderWidth: 1, borderColor: COLORS.primary + '40',
+  },
+  chipText: { color: COLORS.primary, fontWeight: '600', fontSize: 13 },
+  avatarRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  avatar: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
+  },
+  avatarText: { fontSize: 20 },
+  avatarCount: { color: COLORS.textMuted, fontWeight: '700', fontSize: 13 },
+  levelRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  levelEmoji: { fontSize: 32 },
+  levelLabel: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16 },
+  levelPoints: { color: COLORS.textMuted, fontSize: 13 },
+  progressTrack: {
+    height: 8, backgroundColor: COLORS.surfaceLight,
+    borderRadius: 4, overflow: 'hidden', marginBottom: 6,
+  },
+  progressFill: { height: 8, backgroundColor: COLORS.primary, borderRadius: 4 },
+  progressHint: { color: COLORS.textMuted, fontSize: 12 },
 });
