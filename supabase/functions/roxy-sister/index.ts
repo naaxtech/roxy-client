@@ -30,6 +30,8 @@ Deno.serve(async (req) => {
   const { conversation_id, message } = body;
   if (!conversation_id || !message) return errorResponse('conversation_id and message required', 400);
 
+  const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
+
   const { allowed } = await checkRateLimit({
     userId: auth.userId,
     fnName: 'roxy-sister',
@@ -38,8 +40,6 @@ Deno.serve(async (req) => {
     conversationId: conversation_id,
   });
   if (!allowed) return errorResponse('Session limit reached — please connect with a professional', 429);
-
-  const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
   const supabase = getSupabaseClient();
 
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     ? `You are Roxy Sister, a compassionate mental health companion for WLW and queer women. Listen deeply, validate feelings, ask one gentle follow-up question. Never give clinical advice. Be warm and affirming. Max 3 sentences.`
     : `You are Roxy Sister, a compassionate companion. The user may need professional support. Validate their feelings briefly (1 sentence), gently mention that a professional can offer deeper support (1 sentence), and affirm you're here. Max 2 sentences.`;
 
-  const mockResponse = turnNumber <= 6
+  const mockResponse = turnNumber <= 6 && !isCrisis
     ? 'Thank you for sharing that with me — you\'re so brave for reaching out 💜 What feels most heavy for you right now?'
     : 'You deserve real support, and talking to a professional can make such a difference 💜 I\'m here with you.';
 
