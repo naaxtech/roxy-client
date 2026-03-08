@@ -15,7 +15,7 @@ Queer women / WLW social + dating app. Monorepo:
 | Layer | Technology |
 |---|---|
 | Mobile | Expo 51, Expo Router v3, React Native 0.74 |
-| State | Zustand (`authStore`, `profileStore`, `roxyChatStore`, `connectStore`) |
+| State | Zustand (`authStore`, `profileStore`, `roxyChatStore`, `connectStore`, `feedStore`, `buildStore`) |
 | Backend | Supabase (Postgres + Auth + Realtime + Edge Functions) |
 | AI | Claude Haiku (`claude-haiku-4-5-20251001`) via Deno edge functions |
 | Video | `@daily-co/react-native-daily-js` (guarded import — see anti-patterns) |
@@ -28,7 +28,7 @@ Queer women / WLW social + dating app. Monorepo:
 
 ```bash
 # Tests (run from apps/mobile/)
-cd apps/mobile && npx jest --ci --passWithNoTests        # 34 tests expected
+cd apps/mobile && npx jest --ci --passWithNoTests        # 46 tests expected
 
 # Web preview
 preview_start "Expo Web"                                  # via Claude preview tool
@@ -36,6 +36,10 @@ preview_start "Expo Web"                                  # via Claude preview t
 # Database
 npx supabase db push                                      # push migrations to remote
 npx supabase status                                       # check local status
+
+# Secrets (remote edge functions)
+npx supabase secrets set KEY=value --project-ref ptymtdlysqbpxzlgsshp   # requires supabase login
+# Local dev secrets: supabase/functions/.env (gitignored, auto-loaded by supabase functions serve)
 
 # PR
 gh pr create --base main --title "..." --body "..."
@@ -174,6 +178,19 @@ supabase: {
 
 ---
 
+### 7. Daily.co Metro web bundling
+
+`@daily-co/react-native-daily-js` and its transitive deps can't resolve on web. Already fixed in `metro.config.js` via `resolver.resolveRequest`. If adding new native-only packages that crash web bundling:
+
+```js
+// In metro.config.js — add to the platform === 'web' block
+moduleName === 'your-native-only-package'
+```
+
+The `isDailyAvailable()` guard in `lib/daily.ts` ensures stubs never execute at runtime.
+
+---
+
 ## Migrations Completed
 
 | File | Contents |
@@ -182,12 +199,15 @@ supabase: {
 | `002_storage_buckets.sql` | avatars storage bucket + RLS |
 | `003_communities_social.sql` | communities, community_members, friendships |
 | `004_connect_dating.sql` | conversations, messages, speed_date_sessions, matches |
+| `005_content_feed.sql` | posts, events, event_attendees + RLS + seed |
+| `006_build_tab.sql` | businesses, impact_projects + RLS + seed |
 
-**Next migration number: 005**
+**Next migration number: 007**
 
 ## Sessions Completed
 
 | Session | Branch | PR | Status |
 |---|---|---|---|
 | 1 — Foundation | `session-1-foundation` | #1 | Merged |
-| 2 — Connect + Speed Dating | `session-2-connect` | #2 | Open |
+| 2 — Connect + Speed Dating | `session-2-connect` | #2 | Merged |
+| 3 — Discover + Build + Grow | `session-3-discover-build` | #3 | Open |
