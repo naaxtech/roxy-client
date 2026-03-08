@@ -1,6 +1,7 @@
 # Roxy
 
-WLW community + dating + AI wingwoman app.
+WLW community + dating + AI wingwoman app. By WLW, for WLW. 
+Thinqer.
 
 **Stack:** React Native + Expo SDK 51 · Supabase · Anthropic Claude (claude-haiku-4-5-20251001) · Daily.co
 
