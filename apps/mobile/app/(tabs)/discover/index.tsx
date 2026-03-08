@@ -68,12 +68,14 @@ function DatingTeaserCard({ onPress }: { onPress: () => void }) {
   );
 }
 function EventCard({
-  event, isRsvpd, onRsvp,
-}: { event: Event; isRsvpd: boolean; onRsvp: () => void }) {
+  event, isRsvpd, onRsvp, showDateLabel = true,
+}: { event: Event; isRsvpd: boolean; onRsvp: () => void; showDateLabel?: boolean }) {
   return (
     <View style={styles.eventCard}>
       <View style={styles.eventLeft}>
-        <Text style={styles.eventDateLabel}>{eventDateLabel(event.starts_at)}</Text>
+        {showDateLabel && (
+          <Text style={styles.eventDateLabel}>{eventDateLabel(event.starts_at)}</Text>
+        )}
         <Text style={styles.eventTime}>{format(new Date(event.starts_at), 'HH:mm')}</Text>
       </View>
       <View style={styles.eventBody}>
@@ -102,7 +104,7 @@ export default function DiscoverScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { profile } = useProfileStore();
-  const { posts, events, loading, setPosts, setEvents, setLoading, incrementReaction, markRsvpd, rsvpdEventIds } = useFeedStore();
+  const { posts, events, loading, setPosts, setEvents, setLoading, incrementReaction, markRsvpd, unmarkRsvpd, rsvpdEventIds } = useFeedStore();
 
   const [segment, setSegment] = useState<'feed' | 'events'>('feed');
   const [refreshing, setRefreshing] = useState(false);
@@ -152,7 +154,10 @@ export default function DiscoverScreen() {
     const { error } = await supabase
       .from('event_attendees')
       .insert({ event_id: event.id, user_id: user.id });
-    if (error) Alert.alert('Could not RSVP', error.message);
+    if (error) {
+      unmarkRsvpd(event.id);
+      Alert.alert('Could not RSVP', error.message);
+    }
   };
 
   const feedItems = buildFeedItems(posts, profile?.is_dating_mode ?? false);
@@ -201,20 +206,26 @@ export default function DiscoverScreen() {
           data={events}
           keyExtractor={(item) => item.id}
           estimatedItemSize={100}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <EventCard
               event={item}
               isRsvpd={rsvpdEventIds.has(item.id)}
               onRsvp={() => handleRsvp(item)}
+              showDateLabel={
+                index === 0 ||
+                eventDateLabel(item.starts_at) !== eventDateLabel(events[index - 1].starts_at)
+              }
             />
           )}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.roxy} />}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>No upcoming events</Text>
-              <Text style={styles.emptySub}>Events from your communities will appear here.</Text>
-            </View>
+            loading ? null : (
+              <View style={styles.empty}>
+                <Text style={styles.emptyTitle}>No upcoming events</Text>
+                <Text style={styles.emptySub}>Events from your communities will appear here.</Text>
+              </View>
+            )
           }
         />
       )}

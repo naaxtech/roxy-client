@@ -12,6 +12,7 @@ interface FeedState {
   upsertPost: (post: Post) => void;
   incrementReaction: (postId: string, emoji: string) => void;
   markRsvpd: (eventId: string) => void;
+  unmarkRsvpd: (eventId: string) => void;
 }
 
 export const useFeedStore = create<FeedState>((set) => ({
@@ -53,5 +54,10 @@ export const useFeedStore = create<FeedState>((set) => ({
   markRsvpd: (eventId) =>
     set((s) => ({
       rsvpdEventIds: new Set([...s.rsvpdEventIds, eventId]),
+    })),
+
+  unmarkRsvpd: (eventId) =>
+    set((s) => ({
+      rsvpdEventIds: new Set([...s.rsvpdEventIds].filter((id) => id !== eventId)),
     })),
 }));
