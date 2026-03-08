@@ -5,7 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS badges (
   id                    uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  name                  text NOT NULL,
+  name                  text NOT NULL UNIQUE,
   description           text NOT NULL,
   emoji                 text NOT NULL,
   category              text NOT NULL CHECK (category IN ('community','connection','milestone','ally')),
@@ -67,4 +67,4 @@ INSERT INTO badges (name, description, emoji, category, points_value, requiremen
   ('Conversation Starter','Sent your first message',              '💬', 'connection', 10, 'messages',        1),
   ('Speed Dater',         'Completed your first speed date',      '⚡', 'milestone',  50, 'speed_dates',     1),
   ('Community Builder',   'Joined your first community',          '🏳️‍🌈', 'community', 15, 'community_joins', 1)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (name) DO NOTHING;
