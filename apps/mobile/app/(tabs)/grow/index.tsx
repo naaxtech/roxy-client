@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
@@ -107,7 +107,7 @@ export default function GrowScreen() {
               {friendships.slice(0, 8).map((f) => (
                 <View key={f.id} style={styles.avatar}>
                   <Text style={styles.avatarText}>
-                    {f.requester_id === user?.id ? '👤' : '👤'}
+                    {'👤'}
                   </Text>
                 </View>
               ))}
