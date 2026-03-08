@@ -30,8 +30,8 @@ export default function SisterButtonScreen() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionDone, setSessionDone] = useState(false);
-  const [resources, setResources] = useState<any[] | null>(null);
-  const [directory, setDirectory] = useState<any[] | null>(null);
+  const [resources, setResources] = useState<Array<{ name: string; contact: string; type: string }> | null>(null);
+  const [directory, setDirectory] = useState<Array<{ name: string; url: string }> | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
 
@@ -53,25 +53,36 @@ export default function SisterButtonScreen() {
     setLoading(true);
 
     try {
-      const result = await callEdgeFunction('roxy-sister', {
+      const { data, error: fnError } = await callEdgeFunction<{
+        response: string;
+        turn_number: number;
+        is_final_turn: boolean;
+        resources?: Array<{ name: string; contact: string; type: string }>;
+        professional_directory?: Array<{ name: string; url: string }>;
+      }>('roxy-sister', {
         conversation_id: conversationId,
         message: text,
       });
 
-      if (result?.reply) {
-        const assistantMessage: Message = { role: 'assistant', content: result.reply };
+      if (fnError) {
+        Alert.alert('Something went wrong', 'Please try again.');
+        return;
+      }
+
+      if (data?.response) {
+        const assistantMessage: Message = { role: 'assistant', content: data.response };
         setMessages((prev) => [...prev, assistantMessage]);
       }
 
-      if (result?.resources && Array.isArray(result.resources)) {
-        setResources(result.resources);
+      if (data?.resources && Array.isArray(data.resources)) {
+        setResources(data.resources);
       }
 
-      if (result?.professional_directory && Array.isArray(result.professional_directory)) {
-        setDirectory(result.professional_directory);
+      if (data?.professional_directory && Array.isArray(data.professional_directory)) {
+        setDirectory(data.professional_directory);
       }
 
-      if (result?.is_final_turn === true) {
+      if (data?.is_final_turn === true) {
         setSessionDone(true);
       }
     } catch {
@@ -154,7 +165,7 @@ export default function SisterButtonScreen() {
           {resources && resources.length > 0 && (
             <View style={styles.resourcesCard}>
               <Text style={styles.resourcesTitle}>Support Resources</Text>
-              {resources.map((r: any, i: number) => (
+              {resources.map((r, i) => (
                 <View key={i} style={styles.resourceRow}>
                   <Text style={styles.resourceName}>{r.name}</Text>
                   {r.number && <Text style={styles.resourceContact}>{r.number}</Text>}
@@ -166,7 +177,7 @@ export default function SisterButtonScreen() {
                 <>
                   <View style={styles.resourceDivider} />
                   <Text style={styles.resourcesTitle}>Professional Directory</Text>
-                  {directory.map((d: any, i: number) => (
+                  {directory.map((d, i) => (
                     <View key={i} style={styles.resourceRow}>
                       <Text style={styles.resourceName}>{d.name}</Text>
                       {d.url && <Text style={styles.resourceUrl}>{d.url}</Text>}
