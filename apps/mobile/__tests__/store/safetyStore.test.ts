@@ -43,6 +43,7 @@ describe('safetyStore', () => {
     });
 
     expect(result.current.blockedUserIds.length).toBe(1);
+    expect(supabase.rpc).toHaveBeenCalledTimes(1);
   });
 
   it('openReportModal sets target and opens modal', () => {

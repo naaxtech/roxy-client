@@ -27,13 +27,10 @@ export const useSafetyStore = create<SafetyState>((set, get) => ({
   reportTarget: null,
 
   blockUser: async (targetUserId) => {
+    if (get().blockedUserIds.includes(targetUserId)) return;
     const { error } = await supabase.rpc('block_user', { target_id: targetUserId });
     if (error) throw error;
-    set((s) => ({
-      blockedUserIds: s.blockedUserIds.includes(targetUserId)
-        ? s.blockedUserIds
-        : [...s.blockedUserIds, targetUserId],
-    }));
+    set((s) => ({ blockedUserIds: [...s.blockedUserIds, targetUserId] }));
   },
 
   openReportModal: (target) => set({ reportTarget: target, isReportModalOpen: true }),
@@ -43,6 +40,7 @@ export const useSafetyStore = create<SafetyState>((set, get) => ({
   submitReport: async (reason, detail) => {
     const { reportTarget } = get();
     if (!reportTarget) throw new Error('No report target');
+    // Modal stays open on failure so the user can retry
     await callEdgeFunction('submit-report', {
       userId: reportTarget.userId,
       contentType: reportTarget.contentType,
