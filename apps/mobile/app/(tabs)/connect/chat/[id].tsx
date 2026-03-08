@@ -68,6 +68,7 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
   const [wingwomanLoading, setWingwomanLoading] = useState(false);
+  const [nudgeLoading, setNudgeLoading] = useState(false);
   const [icebreaker, setIcebreaker] = useState<string | null>(null);
   const flashListRef = useRef<FlashList<Message>>(null);
 
@@ -219,6 +220,26 @@ export default function ChatScreen() {
     }
   };
 
+  const handleNudge = async () => {
+    if (!conversationId) return;
+    setNudgeLoading(true);
+
+    const { data, error } = await callEdgeFunction<{ nudge: string }>('roxy-nudge', {
+      conversation_id: conversationId,
+    });
+
+    setNudgeLoading(false);
+
+    if (error) {
+      Alert.alert('Roxy Nudge', "Nudge limit reached for this conversation, but you've got this! 💜");
+      return;
+    }
+
+    if (data?.nudge) {
+      setInputText(data.nudge);
+    }
+  };
+
   // --- Safety handlers ---
 
   const handleBlockPress = () => {
@@ -343,6 +364,18 @@ export default function ChatScreen() {
               <ActivityIndicator size="small" color={COLORS.roxy} />
             ) : (
               <Text style={styles.wingwomanIcon}>✨</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.nudgeBtn, nudgeLoading && styles.nudgeBtnDisabled]}
+            onPress={handleNudge}
+            disabled={nudgeLoading}
+          >
+            {nudgeLoading ? (
+              <ActivityIndicator size="small" color={COLORS.roxy} />
+            ) : (
+              <Text style={styles.nudgeBtnText}>💜 Nudge</Text>
             )}
           </TouchableOpacity>
 
@@ -525,6 +558,14 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   wingwomanIcon: { fontSize: 20 },
+  nudgeBtn: {
+    height: 36, borderRadius: 18, backgroundColor: COLORS.surface,
+    borderWidth: 1, borderColor: COLORS.roxy,
+    paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center',
+    minWidth: 72,
+  },
+  nudgeBtnDisabled: { opacity: 0.5 },
+  nudgeBtnText: { color: COLORS.roxy, fontSize: 13, fontWeight: '600' },
   input: {
     flex: 1, backgroundColor: COLORS.surface, borderRadius: 20,
     paddingHorizontal: 16, paddingVertical: 10,
