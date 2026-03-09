@@ -5,10 +5,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '../../../../store/authStore';
-import { useProfileStore } from '../../../../store/profileStore';
-import { supabase, callEdgeFunction } from '../../../../lib/supabase';
-import { COLORS } from '../../../../lib/constants';
+import { useAuthStore } from '../../../store/authStore';
+import { useProfileStore } from '../../../store/profileStore';
+import { supabase, callEdgeFunction } from '../../../lib/supabase';
+import { COLORS } from '../../../lib/constants';
 
 export default function SettingsScreen() {
   const { user } = useAuthStore();

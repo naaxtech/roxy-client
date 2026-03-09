@@ -15,7 +15,7 @@ Queer women / WLW social + dating app. Monorepo:
 | Layer | Technology |
 |---|---|
 | Mobile | Expo 51, Expo Router v3, React Native 0.74 |
-| State | Zustand (`authStore`, `profileStore`, `roxyChatStore`, `connectStore`, `feedStore`, `buildStore`) |
+| State | Zustand (`authStore`, `profileStore` (+`updateProfile`), `roxyChatStore`, `connectStore`, `feedStore`, `buildStore`) |
 | Backend | Supabase (Postgres + Auth + Realtime + Edge Functions) |
 | AI | Claude Haiku (`claude-haiku-4-5-20251001`) via Deno edge functions |
 | Video | `@daily-co/react-native-daily-js` (guarded import — see anti-patterns) |
@@ -28,7 +28,7 @@ Queer women / WLW social + dating app. Monorepo:
 
 ```bash
 # Tests (run from apps/mobile/)
-cd apps/mobile && npx jest --ci --passWithNoTests        # 46 tests expected
+cd apps/mobile && npx jest --ci --passWithNoTests        # 54 tests expected
 
 # Web preview
 preview_start "Expo Web"                                  # via Claude preview tool
@@ -43,6 +43,12 @@ npx supabase secrets set KEY=value --project-ref ptymtdlysqbpxzlgsshp   # requir
 
 # PR
 gh pr create --base main --title "..." --body "..."
+
+# EAS (run from repo root where eas.json lives)
+eas init                                                  # link to Expo project (one-time)
+eas build --profile development --platform ios            # dev build (simulator)
+eas build --profile development --platform android        # dev build (APK)
+eas build --profile production                            # production build
 ```
 
 ---
@@ -53,14 +59,18 @@ All edge functions in `supabase/functions/<name>/index.ts`:
 
 ```ts
 // Shared utilities — always use these, never re-implement
-import { getAuthUser } from '../_shared/auth.ts';
+import { handleCors } from '../_shared/cors.ts';
+import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';  // NOT getAuthUser
 import { checkRateLimit, logAiCall } from '../_shared/rateLimit.ts';
 import { callClaude } from '../_shared/claude.ts';
-import { corsHeaders } from '../_shared/cors.ts';
-import { errorResponse } from '../_shared/errorHandler.ts';
+import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 
-// Dev guard — always check before calling Claude
+// Standard function structure:
+// 1. handleCors → 2. verifyJWT (401) → 3. parse body → 4. DEV_MOCK declaration
+// 5. checkRateLimit → 6. if (DEV_MOCK) return mock → 7. getSupabaseClient() → 8. logic
 const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
+// DEV_MOCK must be declared BEFORE any DB calls (checkRateLimit is a DB call)
+// if (DEV_MOCK) return goes AFTER checkRateLimit (rate limiting runs in dev too)
 ```
 
 - **AI model:** `claude-haiku-4-5-20251001`
@@ -210,4 +220,6 @@ The `isDailyAvailable()` guard in `lib/daily.ts` ensures stubs never execute at 
 |---|---|---|---|
 | 1 — Foundation | `session-1-foundation` | #1 | Merged |
 | 2 — Connect + Speed Dating | `session-2-connect` | #2 | Merged |
-| 3 — Discover + Build + Grow | `session-3-discover-build` | #3 | Open |
+| 3 — Discover + Build + Grow | `session-3-discover-build` | #3 | Merged |
+| 4 — AI Safety + Gamification | `session-4-ai-safety` | #4 | Merged |
+| 5 — Profile, Settings, GDPR, EAS, CI | `session-5-deploy` | #5 | Open PR |

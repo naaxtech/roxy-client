@@ -6,10 +6,10 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '../../../../store/authStore';
-import { useProfileStore } from '../../../../store/profileStore';
-import { supabase } from '../../../../lib/supabase';
-import { COLORS, PRONOUNS, IDENTITY_LABELS } from '../../../../lib/constants';
+import { useAuthStore } from '../../../store/authStore';
+import { useProfileStore } from '../../../store/profileStore';
+import { supabase } from '../../../lib/supabase';
+import { COLORS, PRONOUNS, IDENTITY_LABELS } from '../../../lib/constants';
 
 const getLevel = (pts: number): string => {
   if (pts >= 500) return 'Radiant ✨';
