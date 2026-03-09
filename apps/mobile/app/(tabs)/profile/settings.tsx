@@ -43,7 +43,7 @@ export default function SettingsScreen() {
   };
 
   const handleExportData = async () => {
-    const { error } = await callEdgeFunction('gdpr-export', {});
+    const { data, error } = await callEdgeFunction('gdpr-export', {});
     if (error) {
       Alert.alert('Error', error ?? 'Could not export data. Please try again.');
     } else {
