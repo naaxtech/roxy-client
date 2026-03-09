@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, Image,
   ScrollView, StyleSheet, Alert, ActivityIndicator,
@@ -9,10 +9,7 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../../store/authStore';
 import { useProfileStore } from '../../../../store/profileStore';
 import { supabase } from '../../../../lib/supabase';
-import { COLORS } from '../../../../lib/constants';
-
-const PRONOUN_PRESETS = ['she/her', 'they/them', 'she/they', 'any/all', 'ask me'];
-const IDENTITY_PRESETS = ['lesbian', 'bisexual', 'queer', 'pansexual', 'asexual', 'questioning'];
+import { COLORS, PRONOUNS, IDENTITY_LABELS } from '../../../../lib/constants';
 
 const getLevel = (pts: number): string => {
   if (pts >= 500) return 'Radiant ✨';
@@ -26,6 +23,10 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [localBio, setLocalBio] = useState(profile?.bio ?? '');
   const [avatarUploading, setAvatarUploading] = useState(false);
+
+  useEffect(() => {
+    setLocalBio(profile?.bio ?? '');
+  }, [profile?.bio]);
 
   if (!user || !profile) {
     return (
@@ -122,7 +123,13 @@ export default function ProfileScreen() {
             placeholderTextColor={COLORS.textMuted}
             value={localBio}
             onChangeText={setLocalBio}
-            onBlur={() => updateProfile({ bio: localBio })}
+            onBlur={async () => {
+              try {
+                await updateProfile({ bio: localBio });
+              } catch {
+                Alert.alert('Error', 'Could not save bio. Please try again.');
+              }
+            }}
             numberOfLines={3}
           />
         </View>
@@ -131,7 +138,7 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.label}>Pronouns</Text>
           <View style={styles.chipRow}>
-            {PRONOUN_PRESETS.map((pronoun) => {
+            {PRONOUNS.map((pronoun) => {
               const selected = (profile.pronouns ?? []).includes(pronoun);
               return (
                 <TouchableOpacity
@@ -152,7 +159,7 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.label}>Identity</Text>
           <View style={styles.chipRow}>
-            {IDENTITY_PRESETS.map((label) => {
+            {IDENTITY_LABELS.map((label) => {
               const selected = (profile.identity_labels ?? []).includes(label);
               return (
                 <TouchableOpacity
