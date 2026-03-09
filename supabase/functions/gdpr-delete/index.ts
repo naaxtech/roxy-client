@@ -1,7 +1,6 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
@@ -31,11 +30,8 @@ Deno.serve(async (req) => {
     .eq('id', auth.userId);
   if (profileError) return errorResponse(profileError.message, 500);
 
-  // Hard delete auth user (requires service role key)
-  const adminUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const adminClient = createClient(adminUrl, serviceKey);
-  const { error: authError } = await adminClient.auth.admin.deleteUser(auth.userId);
+  // Hard delete auth user — supabase is already a service-role client
+  const { error: authError } = await supabase.auth.admin.deleteUser(auth.userId);
   if (authError) return errorResponse(authError.message, 500);
 
   return successResponse({ ok: true });
