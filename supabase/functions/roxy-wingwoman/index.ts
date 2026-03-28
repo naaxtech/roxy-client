@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
         content: `Recent conversation:\n${historyText}\n\nThey just typed: "${current_message}"\n\nSuggest a reply.`,
       },
     ],
-    maxTokens: 64,
+    maxTokens: 200,
     mockResponse: mockSuggestion,
   });
 

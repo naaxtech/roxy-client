@@ -140,7 +140,7 @@ export interface Badge {
   id: string;
   name: string;
   description: string | null;
-  icon_url: string | null;
+  emoji: string;
   category: 'community' | 'connection' | 'milestone' | 'ally';
   points_value: number;
   requirement_type: string;

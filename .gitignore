@@ -28,3 +28,6 @@ supabase/.temp
 
 # Claude Code local settings (machine-specific)
 .claude/settings.local.json
+
+# MCP config (contains secrets)
+.mcp.json

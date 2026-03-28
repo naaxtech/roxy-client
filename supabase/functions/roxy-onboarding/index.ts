@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
 Available communities: ${SEED_COMMUNITIES.join(', ')}
 User identity: ${profile?.identity_labels?.join(', ')}`,
     messages: [{ role: 'user', content: `My name is ${profile?.display_name}. Generate my onboarding data.` }],
-    maxTokens: 256,
+    maxTokens: 300,
     mockResponse: JSON.stringify(mockResult),
   });
 

@@ -17,7 +17,7 @@ Queer women / WLW social + dating app. Monorepo:
 | Mobile | Expo 51, Expo Router v3, React Native 0.74 |
 | State | Zustand (`authStore`, `profileStore` (+`updateProfile`), `roxyChatStore`, `connectStore`, `feedStore`, `buildStore`) |
 | Backend | Supabase (Postgres + Auth + Realtime + Edge Functions) |
-| AI | Claude Haiku (`claude-haiku-4-5-20251001`) via Deno edge functions |
+| AI | Claude Sonnet (`claude-sonnet-4-6`) via Deno edge functions |
 | Video | `@daily-co/react-native-daily-js` (guarded import — see anti-patterns) |
 | Lists | `@shopify/flash-list` |
 | Dates | `date-fns` |

@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
   const greeting = await callClaude({
     system: `You are Roxy, an AI wingwoman for a WLW community platform. Write one warm, personal greeting card message for ${name}. Max 2 sentences. Tone: warm, witty, queer-affirming. Never say "good morning" or "good evening". Never be generic. The user identifies as: ${labels}.`,
     messages: [{ role: 'user', content: 'Generate my greeting.' }],
-    maxTokens: 128,
+    maxTokens: 80,
     mockResponse,
   });
 

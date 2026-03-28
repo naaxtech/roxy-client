@@ -21,9 +21,10 @@ Deno.serve(async (req) => {
     userId: auth.userId,
     fnName: 'roxy-nudge',
     maxCount: 3,
-    windowType: 'lifetime',
+    windowType: 'conversation',
+    conversationId: conversation_id,
   });
-  if (!allowed) return errorResponse('Nudge limit reached — you have 3 nudges lifetime', 429);
+  if (!allowed) return errorResponse('Nudge limit reached — 3 nudges per conversation', 429);
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
@@ -56,7 +57,7 @@ Deno.serve(async (req) => {
   const nudge = await callClaude({
     system: `You are Roxy, a warm and encouraging WLW wingwoman. The user wants a gentle nudge to re-engage with someone they've been chatting with. Write one encouraging sentence (max 18 words) that feels personal and warm, ending with a 💜 emoji. Never be pushy.`,
     messages: [{ role: 'user', content: context ? `Recent messages:\n${context}\n\nGenerate nudge.` : 'Generate nudge.' }],
-    maxTokens: 64,
+    maxTokens: 120,
     mockResponse: MOCK_NUDGE,
   });
 

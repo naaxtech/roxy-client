@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
   const response = await callClaude({
     system: systemPrompt,
     messages: [{ role: 'user', content: message }],
-    maxTokens: 128,
+    maxTokens: 200,
     mockResponse,
   });
 
