@@ -15,7 +15,12 @@ jest.mock('@expo/vector-icons', () => ({
 import { RoxyCompanionButton } from '../../components/ui/RoxyCompanionButton';
 
 beforeEach(() => {
+  jest.useFakeTimers();
   mockPush.mockClear();
+});
+
+afterEach(() => {
+  jest.useRealTimers();
 });
 
 describe('RoxyCompanionButton', () => {
