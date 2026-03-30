@@ -1,5 +1,6 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
+import { checkRateLimit } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 
 Deno.serve(async (req) => {
@@ -10,6 +11,12 @@ Deno.serve(async (req) => {
   if (!auth) return errorResponse('Unauthorized', 401);
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
+
+  const rateLimitResult = await checkRateLimit({ userId: auth.userId, fnName: 'gdpr-delete', windowType: 'daily', maxCount: 3 });
+  if (!rateLimitResult.allowed) {
+    return errorResponse('Rate limit exceeded', 429);
+  }
+
   if (DEV_MOCK) return successResponse({ ok: true, mock: true, scheduled_deletion: '30 days' });
 
   const supabase = getSupabaseClient();
