@@ -1,10 +1,13 @@
 import { View } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../lib/constants';
 import { RoxyCompanionButton } from '../../components/ui/RoxyCompanionButton';
 
 export default function TabLayout() {
+  const pathname = usePathname();
+  const showFab = !pathname.includes('roxy-chat');
+
   return (
     <View style={{ flex: 1 }}>
       <Tabs
@@ -58,7 +61,7 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
-      <RoxyCompanionButton />
+      <RoxyCompanionButton visible={showFab} />
     </View>
   );
 }

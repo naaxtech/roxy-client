@@ -1,10 +1,14 @@
 import React, { useRef, useEffect } from 'react';
-import { TouchableOpacity, StyleSheet, Alert, Animated } from 'react-native';
+import { TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { COLORS } from '../../lib/constants';
 
-export function RoxyCompanionButton() {
+interface Props {
+  visible?: boolean;
+}
+
+export function RoxyCompanionButton({ visible = true }: Props) {
   const router = useRouter();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
@@ -16,17 +20,20 @@ export function RoxyCompanionButton() {
     ]).start();
   }, []);
 
+  if (!visible) return null;
+
   const handlePress = () => {
-    Alert.alert('Roxy', undefined, [
-      { text: '🤖 Chat with Roxy', onPress: () => router.push('/(tabs)/grow/roxy-chat' as any) },
-      { text: '💜 I need support', onPress: () => router.push('/(tabs)/connect/sister-button' as any) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    router.push('/(tabs)/grow/roxy-chat' as any);
   };
 
   return (
     <Animated.View style={{ opacity, transform: [{ translateY }] }}>
-      <TouchableOpacity style={styles.button} onPress={handlePress} activeOpacity={0.85}>
+      <TouchableOpacity
+        testID="fab-button"
+        style={styles.button}
+        onPress={handlePress}
+        activeOpacity={0.85}
+      >
         <Ionicons name="sparkles" size={22} color="#FFFFFF" />
       </TouchableOpacity>
     </Animated.View>
