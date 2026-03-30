@@ -1,0 +1,135 @@
+import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
+import { supabase } from '../../../lib/supabase';
+import { useAuthStore } from '../../../store/authStore';
+import { COLORS } from '../../../lib/constants';
+
+type BadgeProgressRow = {
+  user_id: string;
+  badge_id: string;
+  current_value: number;
+  earned_at: string | null;
+  badges: {
+    id: string;
+    name: string;
+    description: string;
+    emoji: string;
+    category: string;
+    points_value: number;
+    requirement_type: string;
+    requirement_threshold: number;
+  } | null;
+};
+
+export default function BadgesScreen() {
+  const { user } = useAuthStore();
+  const router = useRouter();
+  const [badges, setBadges] = useState<BadgeProgressRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from('user_badge_progress')
+      .select('*, badges(*)')
+      .eq('user_id', user.id)
+      .order('earned_at', { ascending: false, nullsFirst: false })
+      .then(({ data }) => {
+        if (data) setBadges(data as BadgeProgressRow[]);
+        setLoading(false);
+      });
+  }, [user?.id]);
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Text style={styles.backIcon}>‹</Text>
+          <Text style={styles.backLabel}>Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Badges 🏆</Text>
+        <View style={styles.backBtn} />
+      </View>
+
+      {loading ? (
+        <View style={styles.centreWrap}>
+          <Text style={styles.mutedText}>Loading…</Text>
+        </View>
+      ) : badges.length === 0 ? (
+        <View style={styles.centreWrap}>
+          <Text style={styles.emptyIcon}>🏅</Text>
+          <Text style={styles.emptyTitle}>No badges yet</Text>
+          <Text style={styles.emptySub}>Complete actions to earn badges!</Text>
+        </View>
+      ) : (
+        <FlashList
+          data={badges.filter((b) => b.badges !== null)}
+          numColumns={2}
+          estimatedItemSize={100}
+          keyExtractor={(item) => item.badge_id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item, index }) => {
+            const badge = item.badges!;
+            const earned = item.earned_at !== null;
+            const showProgress = !earned && item.current_value > 0;
+            return (
+              <View style={[
+                styles.badgeCard,
+                index % 2 === 1 && styles.badgeCardRight,
+                !earned && styles.badgeCardDim,
+              ]}>
+                <Text style={styles.badgeEmoji}>{badge.emoji}</Text>
+                <Text style={styles.badgeName} numberOfLines={1}>{badge.name}</Text>
+                <Text style={styles.badgeDesc} numberOfLines={2}>{badge.description}</Text>
+                {earned ? (
+                  <Text style={styles.badgeEarned}>✓ Earned</Text>
+                ) : showProgress ? (
+                  <Text style={styles.badgeProgress}>
+                    {item.current_value} / {badge.requirement_threshold}
+                  </Text>
+                ) : null}
+              </View>
+            );
+          }}
+        />
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
+  },
+  backBtn: { width: 60, flexDirection: 'row', alignItems: 'center' },
+  backIcon: { fontSize: 32, color: COLORS.textPrimary, lineHeight: 36 },
+  backLabel: { fontSize: 15, color: COLORS.textPrimary, marginLeft: 2 },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
+  centreWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  mutedText: { color: COLORS.textMuted, fontSize: 15 },
+  emptyIcon: { fontSize: 48 },
+  emptyTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '700' },
+  emptySub: { color: COLORS.textMuted, fontSize: 14 },
+  listContent: { padding: 16 },
+  badgeCard: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  badgeCardRight: { marginLeft: 8 },
+  badgeCardDim: { opacity: 0.5 },
+  badgeEmoji: { fontSize: 28, marginBottom: 6 },
+  badgeName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
+  badgeDesc: { color: COLORS.textMuted, fontSize: 11, lineHeight: 15 },
+  badgeEarned: { color: COLORS.roxy, fontSize: 11, fontWeight: '600', marginTop: 4 },
+  badgeProgress: { color: COLORS.textMuted, fontSize: 11, marginTop: 4 },
+});
