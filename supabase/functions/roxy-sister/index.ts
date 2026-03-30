@@ -43,15 +43,6 @@ Deno.serve(async (req) => {
 
   const supabase = getSupabaseClient();
 
-  // Verify caller is a participant
-  const { data: conv } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('id', conversation_id)
-    .contains('participant_ids', [auth.userId])
-    .maybeSingle();
-  if (!conv) return errorResponse('Forbidden', 403);
-
   // Server-authoritative turn number (count logged calls for this conversation)
   const { count } = await supabase
     .from('ai_call_log')
