@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
@@ -37,30 +38,20 @@ function getLevelInfo(points: number): { label: string; emoji: string; nextThres
 export default function GrowScreen() {
   const { user } = useAuthStore();
   const { profile } = useProfile();
+  const router = useRouter();
 
-  // Zone 1 — Roxy greeting
   const [greeting, setGreeting] = useState<string | null>(null);
   const [greetingLoading, setGreetingLoading] = useState(true);
-
-  // Zone 2 — Communities
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
-
-  // Zone 3 — People (friendships)
   const [friendships, setFriendships] = useState<FriendshipRow[]>([]);
-
-  // Zone 5 — Badges
   const [badges, setBadges] = useState<BadgeProgressRow[]>([]);
 
   useEffect(() => {
     if (!profile) return;
     setGreetingLoading(true);
     callEdgeFunction<{ greeting: string }>('roxy-greeting', {})
-      .then(({ data }) => {
-        setGreeting(data?.greeting ?? null);
-      })
-      .finally(() => {
-        setGreetingLoading(false);
-      });
+      .then(({ data }) => setGreeting(data?.greeting ?? null))
+      .finally(() => setGreetingLoading(false));
   }, [profile]);
 
   const loadSocial = useCallback(async () => {
@@ -80,9 +71,7 @@ export default function GrowScreen() {
     if (friendRes.data) setFriendships(friendRes.data as FriendshipRow[]);
   }, [user]);
 
-  useEffect(() => {
-    loadSocial();
-  }, [loadSocial]);
+  useEffect(() => { loadSocial(); }, [loadSocial]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -91,17 +80,28 @@ export default function GrowScreen() {
       .select('*, badges(*)')
       .eq('user_id', user.id)
       .order('earned_at', { ascending: false, nullsFirst: false })
-      .then(({ data }) => {
-        if (data) setBadges(data as BadgeProgressRow[]);
-      });
+      .then(({ data }) => { if (data) setBadges(data as BadgeProgressRow[]); });
   }, [user?.id]);
 
   const points = profile?.gamification_points ?? 0;
   const level = getLevelInfo(points);
+  const earnedCount = badges.filter((b) => b.earned_at !== null).length;
+  const inProgressCount = badges.filter((b) => b.earned_at === null && b.current_value > 0).length;
+  const avatarInitial = profile?.display_name?.[0]?.toUpperCase() ?? '?';
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
+
+        {/* Mini header */}
+        <View style={styles.miniHeader}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarInitial}>{avatarInitial}</Text>
+          </View>
+          <Text style={styles.screenTitle}>Grow</Text>
+          <View style={styles.avatarCircle} />
+        </View>
+
         {/* Zone 1 — Roxy Greeting Card */}
         <View style={styles.greetingCard}>
           <View style={styles.roxyDot} />
@@ -114,8 +114,15 @@ export default function GrowScreen() {
         </View>
 
         {/* Zone 2 — My Communities */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My Communities</Text>
+        <TouchableOpacity
+          style={styles.section}
+          onPress={() => router.push('/(tabs)/discover' as any)}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.sectionTitle}>
+            My Communities{' '}
+            <Text style={styles.sectionHint}>tap to browse →</Text>
+          </Text>
           {communities.length === 0 ? (
             <Text style={styles.emptyState}>Join your first community in Discover →</Text>
           ) : (
@@ -125,9 +132,12 @@ export default function GrowScreen() {
                   <Text style={styles.chipText}>{row.communities?.name ?? '—'}</Text>
                 </View>
               ))}
+              <View style={[styles.chip, styles.chipJoin]}>
+                <Text style={styles.chipJoinText}>+ Join more</Text>
+              </View>
             </ScrollView>
           )}
-        </View>
+        </TouchableOpacity>
 
         {/* Zone 3 — My People */}
         <View style={styles.section}>
@@ -138,9 +148,7 @@ export default function GrowScreen() {
             <View style={styles.avatarRow}>
               {friendships.slice(0, 8).map((f) => (
                 <View key={f.id} style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {'👤'}
-                  </Text>
+                  <Text style={styles.avatarText}>{'👤'}</Text>
                 </View>
               ))}
               {friendships.length > 8 && (
@@ -153,7 +161,7 @@ export default function GrowScreen() {
         </View>
 
         {/* Zone 4 — My Journey */}
-        <View style={styles.section}>
+        <TouchableOpacity style={styles.section} activeOpacity={0.75}>
           <Text style={styles.sectionTitle}>My Journey</Text>
           <View style={styles.levelRow}>
             <Text style={styles.levelEmoji}>{level.emoji}</Text>
@@ -170,46 +178,39 @@ export default function GrowScreen() {
           ) : (
             <Text style={styles.progressHint}>You've reached the highest level! ✨</Text>
           )}
-        </View>
+        </TouchableOpacity>
 
-        {/* Zone 5 — Badges */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🏆 Badges</Text>
+        {/* Zone 5 — Badges preview */}
+        <TouchableOpacity
+          style={styles.section}
+          onPress={() => router.push('/(tabs)/grow/badges' as any)}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.sectionTitle}>
+            🏆 Badges{' '}
+            <Text style={styles.sectionHint}>tap to see all →</Text>
+          </Text>
           {badges.length === 0 ? (
             <Text style={styles.emptyState}>Complete actions to earn badges! ✨</Text>
           ) : (
-            <FlashList
-              data={badges.filter((b) => b.badges !== null)}
-              numColumns={2}
-              estimatedItemSize={100}
-              scrollEnabled={false}
-              keyExtractor={(item) => item.badge_id}
-              renderItem={({ item, index }) => {
-                const badge = item.badges;
-                const earned = item.earned_at !== null;
-                const showProgress = !earned && item.current_value > 0;
-                return (
-                  <View style={[
-                    styles.badgeCard,
-                    { marginLeft: index % 2 === 0 ? 0 : 8 },
-                    !earned && styles.badgeCardDim,
-                  ]}>
-                    <Text style={styles.badgeEmoji}>{badge.emoji}</Text>
-                    <Text style={styles.badgeName} numberOfLines={1}>{badge.name}</Text>
-                    <Text style={styles.badgeDesc} numberOfLines={2}>{badge.description}</Text>
-                    {earned ? (
-                      <Text style={styles.badgeEarned}>✓ Earned</Text>
-                    ) : showProgress ? (
-                      <Text style={styles.badgeProgress}>
-                        {item.current_value} / {badge.requirement_threshold}
-                      </Text>
-                    ) : null}
-                  </View>
-                );
-              }}
-            />
+            <>
+              <View style={styles.badgePreviewRow}>
+                {badges.slice(0, 4).map((b) => (
+                  <Text
+                    key={b.badge_id}
+                    style={[styles.badgePreviewEmoji, b.earned_at === null && styles.badgePreviewDim]}
+                  >
+                    {b.badges?.emoji ?? '🏅'}
+                  </Text>
+                ))}
+              </View>
+              <Text style={styles.badgePreviewSummary}>
+                {earnedCount} earned · {inProgressCount} in progress
+              </Text>
+            </>
           )}
-        </View>
+        </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -218,6 +219,23 @@ export default function GrowScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { padding: 16, gap: 16 },
+
+  miniHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    marginBottom: 4,
+  },
+  avatarCircle: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: COLORS.primary + '30',
+    borderWidth: 2, borderColor: COLORS.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarInitial: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
+  screenTitle: { color: COLORS.textPrimary, fontSize: 22, fontWeight: '800' },
+
   greetingCard: {
     backgroundColor: COLORS.surface, borderRadius: 24, padding: 24,
     minHeight: 180, justifyContent: 'center',
@@ -229,9 +247,12 @@ const styles = StyleSheet.create({
   },
   greetingText: { fontSize: 18, color: COLORS.textPrimary, lineHeight: 28, fontWeight: '500' },
   greetingLabel: { color: COLORS.textMuted, fontSize: 12, marginTop: 12 },
+
   section: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 16 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 10 },
+  sectionHint: { color: COLORS.textMuted, fontSize: 11, fontWeight: '400' },
   emptyState: { color: COLORS.textMuted, fontSize: 14 },
+
   chipScroll: { marginTop: 4 },
   chip: {
     backgroundColor: COLORS.primary + '20', borderRadius: 20,
@@ -239,6 +260,9 @@ const styles = StyleSheet.create({
     marginRight: 8, borderWidth: 1, borderColor: COLORS.primary + '40',
   },
   chipText: { color: COLORS.primary, fontWeight: '600', fontSize: 13 },
+  chipJoin: { backgroundColor: COLORS.roxy + '20', borderColor: COLORS.roxy + '60' },
+  chipJoinText: { color: COLORS.roxy, fontWeight: '600', fontSize: 13 },
+
   avatarRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   avatar: {
     width: 44, height: 44, borderRadius: 22,
@@ -246,6 +270,7 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 20 },
   avatarCount: { color: COLORS.textMuted, fontWeight: '700', fontSize: 13 },
+
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   levelEmoji: { fontSize: 32 },
   levelLabel: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16 },
@@ -256,17 +281,9 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: 8, backgroundColor: COLORS.primary, borderRadius: 4 },
   progressHint: { color: COLORS.textMuted, fontSize: 12 },
-  badgeCard: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-  },
-  badgeCardDim: { opacity: 0.5 },
-  badgeEmoji: { fontSize: 28, marginBottom: 6 },
-  badgeName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
-  badgeDesc: { color: COLORS.textMuted, fontSize: 11, lineHeight: 15 },
-  badgeEarned: { color: COLORS.roxy, fontSize: 11, fontWeight: '600', marginTop: 4 },
-  badgeProgress: { color: COLORS.textMuted, fontSize: 11, marginTop: 4 },
+
+  badgePreviewRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
+  badgePreviewEmoji: { fontSize: 26 },
+  badgePreviewDim: { opacity: 0.3 },
+  badgePreviewSummary: { color: COLORS.textMuted, fontSize: 12 },
 });
