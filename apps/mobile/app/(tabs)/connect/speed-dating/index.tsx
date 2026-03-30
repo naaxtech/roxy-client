@@ -120,6 +120,28 @@ export default function SpeedDatingLobby() {
     setRefreshing(false);
   }, [loadSessions]);
 
+  const handleHost = async () => {
+    if (!user) return;
+    const scheduledAt = new Date(Date.now() + 60 * 1000); // 1 minute from now
+    const { data, error } = await supabase
+      .from('speed_date_sessions')
+      .insert({
+        scheduled_at: scheduledAt.toISOString(),
+        duration_seconds: 300,
+        participant_ids: [],
+        status: 'scheduled',
+        prompts: [],
+      })
+      .select('id')
+      .single();
+
+    if (error || !data?.id) {
+      Alert.alert('Error', 'Could not create session.');
+      return;
+    }
+    await loadSessions();
+  };
+
   const handleJoin = async (sessionId: string) => {
     if (!user) return;
     setJoining(sessionId);
@@ -191,8 +213,11 @@ export default function SpeedDatingLobby() {
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No sessions scheduled</Text>
               <Text style={styles.emptySubtitle}>
-                Check back soon, or use the dev panel to seed a test session.
+                Be the first — host a session and wait for someone to join.
               </Text>
+              <TouchableOpacity style={styles.hostBtn} onPress={handleHost}>
+                <Text style={styles.hostBtnText}>⚡ Host a Speed Date</Text>
+              </TouchableOpacity>
             </View>
           }
         />
@@ -241,4 +266,9 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32, gap: 8 },
   emptyTitle: { color: COLORS.textPrimary, fontSize: 17, fontWeight: '700' },
   emptySubtitle: { color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  hostBtn: {
+    marginTop: 8, backgroundColor: COLORS.primary, borderRadius: 12,
+    paddingHorizontal: 28, paddingVertical: 14,
+  },
+  hostBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

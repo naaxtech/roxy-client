@@ -44,11 +44,11 @@ npx supabase secrets set KEY=value --project-ref ptymtdlysqbpxzlgsshp   # requir
 # PR
 gh pr create --base main --title "..." --body "..."
 
-# EAS (run from repo root where eas.json lives)
-eas init                                                  # link to Expo project (one-time)
-eas build --profile development --platform ios            # dev build (simulator)
-eas build --profile development --platform android        # dev build (APK)
-eas build --profile production                            # production build
+# EAS (run from apps/mobile/ where eas.json lives)
+cd apps/mobile && eas init                                # link to Expo project (one-time)
+cd apps/mobile && eas build --profile development --platform ios     # dev build (simulator)
+cd apps/mobile && eas build --profile development --platform android # dev build (APK)
+cd apps/mobile && eas build --profile production                     # production build
 ```
 
 ---
@@ -211,8 +211,12 @@ The `isDailyAvailable()` guard in `lib/daily.ts` ensures stubs never execute at 
 | `004_connect_dating.sql` | conversations, messages, speed_date_sessions, matches |
 | `005_content_feed.sql` | posts, events, event_attendees + RLS + seed |
 | `006_build_tab.sql` | businesses, impact_projects + RLS + seed |
+| `007_gamification.sql` | badges, user_badges, gamification points |
+| `008_safety.sql` | reports, blocks, content moderation |
+| `009_speed_date_host.sql` | RLS policy — authenticated users can insert speed_date_sessions |
+| `010_increment_reaction.sql` | increment_reaction SQL function |
 
-**Next migration number: 007**
+**Next migration number: 011**
 
 ## Sessions Completed
 
@@ -222,4 +226,5 @@ The `isDailyAvailable()` guard in `lib/daily.ts` ensures stubs never execute at 
 | 2 — Connect + Speed Dating | `session-2-connect` | #2 | Merged |
 | 3 — Discover + Build + Grow | `session-3-discover-build` | #3 | Merged |
 | 4 — AI Safety + Gamification | `session-4-ai-safety` | #4 | Merged |
-| 5 — Profile, Settings, GDPR, EAS, CI | `session-5-deploy` | #5 | Open PR |
+| 5 — Profile, Settings, GDPR, EAS, CI | `session-5-deploy` | #5 | Merged |
+| 6 — Polish: Roxy Chat, host flow, tab layouts, dev seed | `session-6-polish` | — | In Progress |
