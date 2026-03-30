@@ -29,6 +29,7 @@ export default function BadgesScreen() {
   const router = useRouter();
   const [badges, setBadges] = useState<BadgeProgressRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -37,7 +38,12 @@ export default function BadgesScreen() {
       .select('*, badges(*)')
       .eq('user_id', user.id)
       .order('earned_at', { ascending: false, nullsFirst: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          setFetchError('Failed to load badges');
+          setLoading(false);
+          return;
+        }
         if (data) setBadges(data as BadgeProgressRow[]);
         setLoading(false);
       });
@@ -59,6 +65,10 @@ export default function BadgesScreen() {
         <View style={styles.centreWrap}>
           <ActivityIndicator size="large" color={COLORS.roxy} />
         </View>
+      ) : fetchError ? (
+        <View style={styles.centreWrap}>
+          <Text style={styles.emptySub}>{fetchError}</Text>
+        </View>
       ) : badges.length === 0 ? (
         <View style={styles.centreWrap}>
           <Text style={styles.emptyIcon}>🏅</Text>
@@ -75,7 +85,6 @@ export default function BadgesScreen() {
           renderItem={({ item, index }) => {
             const badge = item.badges!;
             const earned = item.earned_at !== null;
-            const showProgress = !earned && item.current_value > 0;
             return (
               <View style={[
                 styles.badgeCard,
@@ -114,7 +123,6 @@ const styles = StyleSheet.create({
   backLabel: { fontSize: 15, color: COLORS.textPrimary, marginLeft: 2 },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
   centreWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  mutedText: { color: COLORS.textMuted, fontSize: 15 },
   emptyIcon: { fontSize: 48 },
   emptyTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '700' },
   emptySub: { color: COLORS.textMuted, fontSize: 14 },

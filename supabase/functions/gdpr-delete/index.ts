@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     .from('profiles')
     .update({
       display_name: 'Deleted User',
-      username: `deleted_${auth.userId.slice(0, 8)}`,
+      username: `deleted_${auth.userId}`,
       bio: null,
       avatar_url: null,
       pronouns: [],
