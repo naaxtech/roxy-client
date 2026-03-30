@@ -61,13 +61,14 @@ export default function RoxyChatScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Text style={styles.backIcon}>‹</Text>
+            <Text style={styles.backLabel}>Back</Text>
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Roxy ✨</Text>
@@ -149,7 +150,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
-  backBtn: { width: 40, alignItems: 'center' },
+  backBtn: { width: 60, flexDirection: 'row', alignItems: 'center' },
+  backLabel: { fontSize: 15, color: COLORS.textPrimary, marginLeft: 2 },
   backIcon: { fontSize: 32, color: COLORS.textPrimary, lineHeight: 36 },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
