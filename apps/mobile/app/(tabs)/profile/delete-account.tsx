@@ -25,15 +25,17 @@ export default function DeleteAccountScreen() {
     if (!confirmed || loading) return;
     setLoading(true);
     try {
-      const { error } = await callEdgeFunction('gdpr-delete', {});
-      if (error) throw new Error(error);
-      await supabase.auth.signOut();
-      useAuthStore.getState().signOut();
-      router.replace('/(auth)/login' as any);
-    } catch (e: any) {
+      await callEdgeFunction('gdpr-delete', {});
+    } catch (e: unknown) {
       setLoading(false);
-      Alert.alert('Error', e?.message ?? 'Could not delete account. Please try again.');
+      const message = e instanceof Error ? e.message : 'Could not delete account. Please try again.';
+      Alert.alert('Error', message);
+      return;
     }
+    // GDPR delete succeeded — best-effort sign out, always redirect
+    try { await supabase.auth.signOut(); } catch {}
+    useAuthStore.getState().signOut();
+    router.replace('/(auth)/login' as any);
   };
 
   return (
@@ -65,6 +67,7 @@ export default function DeleteAccountScreen() {
           </Text>
           <TextInput
             testID="delete-input"
+            accessibilityLabel="Type DELETE to confirm"
             style={styles.input}
             value={input}
             onChangeText={setInput}
