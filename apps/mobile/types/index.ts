@@ -180,6 +180,7 @@ export interface ImpactProject {
   raised_amount: number;
   supporter_count: number;
   status: 'active' | 'completed' | 'paused';
+  website_url: string | null;
   created_at: string;
 }
 
