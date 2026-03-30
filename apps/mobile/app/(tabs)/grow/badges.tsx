@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
@@ -57,7 +57,7 @@ export default function BadgesScreen() {
 
       {loading ? (
         <View style={styles.centreWrap}>
-          <Text style={styles.mutedText}>Loading…</Text>
+          <ActivityIndicator size="large" color={COLORS.roxy} />
         </View>
       ) : badges.length === 0 ? (
         <View style={styles.centreWrap}>
@@ -87,11 +87,12 @@ export default function BadgesScreen() {
                 <Text style={styles.badgeDesc} numberOfLines={2}>{badge.description}</Text>
                 {earned ? (
                   <Text style={styles.badgeEarned}>✓ Earned</Text>
-                ) : showProgress ? (
-                  <Text style={styles.badgeProgress}>
-                    {item.current_value} / {badge.requirement_threshold}
-                  </Text>
                 ) : null}
+                {!earned && item.current_value > 0 && (
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${Math.min((item.current_value / badge.requirement_threshold) * 100, 100)}%` }]} />
+                  </View>
+                )}
               </View>
             );
           }}
@@ -131,5 +132,16 @@ const styles = StyleSheet.create({
   badgeName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
   badgeDesc: { color: COLORS.textMuted, fontSize: 11, lineHeight: 15 },
   badgeEarned: { color: COLORS.roxy, fontSize: 11, fontWeight: '600', marginTop: 4 },
-  badgeProgress: { color: COLORS.textMuted, fontSize: 11, marginTop: 4 },
+  progressBarBg: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 2,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: 4,
+    backgroundColor: COLORS.roxy,
+    borderRadius: 2,
+  },
 });
