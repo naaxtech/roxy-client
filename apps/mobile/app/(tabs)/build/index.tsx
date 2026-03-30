@@ -11,6 +11,10 @@ import { useBuildStore } from '../../../store/buildStore';
 import { COLORS } from '../../../lib/constants';
 import { Business, ImpactProject } from '../../../types';
 
+const categoryEmoji: Record<string, string> = {
+  mutual_aid: '🤝', visibility: '🏳️‍🌈', education: '📚', safety: '🛡️',
+};
+
 function BusinessCard({ biz }: { biz: Business }) {
   const handleVisit = () => {
     if (biz.website_url) Linking.openURL(biz.website_url).catch(() => {});
@@ -37,10 +41,6 @@ function ImpactCard({ project, onOpenDetail, alreadySupported = false }: { proje
   const progress = project.goal_amount
     ? Math.min(project.raised_amount / project.goal_amount, 1)
     : null;
-
-  const categoryEmoji: Record<string, string> = {
-    mutual_aid: '🤝', visibility: '🏳️‍🌈', education: '📚', safety: '🛡️',
-  };
 
   return (
     <View style={styles.impactCard}>
@@ -93,83 +93,78 @@ function ImpactDetailModal({
   onSupport: () => void;
   onClose: () => void;
 }) {
-  if (!project) return null;
-
-  const categoryEmoji: Record<string, string> = {
-    mutual_aid: '🤝', visibility: '🏳️‍🌈', education: '📚', safety: '🛡️',
-  };
-  const emoji = categoryEmoji[project.category] ?? '✨';
-
   const handleWebsite = () => {
-    if (project.website_url) Linking.openURL(project.website_url).catch(() => {});
+    if (project?.website_url) Linking.openURL(project.website_url).catch(() => {});
   };
 
   const handleShare = () => {
-    Share.share({ message: `Check out ${project.title} on Roxy!` }).catch(() => {});
+    Share.share({ message: `Check out ${project?.title} on Roxy!` }).catch(() => {});
   };
 
   return (
     <Modal
       testID="impact-detail-modal"
-      visible={!!project}
+      visible={project !== null}
       animationType="slide"
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalCard}>
-          {/* Close button */}
-          <TouchableOpacity
-            testID="modal-close-btn"
-            style={styles.modalCloseBtn}
-            onPress={onClose}
-          >
-            <Text style={styles.modalCloseBtnText}>✕</Text>
-          </TouchableOpacity>
+      {project && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            {/* Close button */}
+            <TouchableOpacity
+              testID="modal-close-btn"
+              style={styles.modalCloseBtn}
+              onPress={onClose}
+            >
+              <Text style={styles.modalCloseBtnText}>✕</Text>
+            </TouchableOpacity>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Header */}
-            <Text style={styles.modalEmoji}>{emoji}</Text>
-            <Text style={styles.modalTitle}>{project.title}</Text>
-            <Text style={styles.modalMeta}>{project.supporter_count} supporters</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Header */}
+              <Text style={styles.modalEmoji}>{categoryEmoji[project.category] ?? '✨'}</Text>
+              <Text style={styles.modalTitle}>{project.title}</Text>
+              <Text style={styles.modalMeta}>{project.supporter_count} supporters</Text>
 
-            {/* Full description */}
-            {project.description ? (
-              <Text style={styles.modalDesc}>{project.description}</Text>
-            ) : null}
+              {/* Full description */}
+              {project.description ? (
+                <Text style={styles.modalDesc}>{project.description}</Text>
+              ) : null}
 
-            {/* Website link */}
-            {project.website_url ? (
-              <TouchableOpacity style={styles.modalWebsiteBtn} onPress={handleWebsite}>
-                <Text style={styles.modalWebsiteBtnText}>Visit website →</Text>
+              {/* Website link */}
+              {project.website_url ? (
+                <TouchableOpacity style={styles.modalWebsiteBtn} onPress={handleWebsite}>
+                  <Text style={styles.modalWebsiteBtnText}>Visit website →</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              {/* Share button */}
+              <TouchableOpacity
+                testID="modal-share-btn"
+                style={styles.modalShareBtn}
+                onPress={handleShare}
+              >
+                <Text style={styles.modalShareBtnText}>Share</Text>
               </TouchableOpacity>
-            ) : null}
 
-            {/* Share button */}
-            <TouchableOpacity
-              testID="modal-share-btn"
-              style={styles.modalShareBtn}
-              onPress={handleShare}
-            >
-              <Text style={styles.modalShareBtnText}>Share</Text>
-            </TouchableOpacity>
+              {/* Support CTA */}
+              <TouchableOpacity
+                testID="modal-support-cta"
+                style={[styles.modalCtaBtn, alreadySupported && styles.modalCtaBtnDone]}
+                onPress={onSupport}
+                disabled={alreadySupported}
+              >
+                <Text style={styles.modalCtaBtnText}>
+                  {alreadySupported ? '✓ Supported' : "I'll support this project 💜"}
+                </Text>
+              </TouchableOpacity>
 
-            {/* Support CTA */}
-            <TouchableOpacity
-              testID="modal-support-cta"
-              style={[styles.modalCtaBtn, alreadySupported && styles.modalCtaBtnDone]}
-              onPress={onSupport}
-              disabled={alreadySupported}
-            >
-              <Text style={styles.modalCtaBtnText}>
-                {alreadySupported ? '✓ Supported' : "I'll support this project 💜"}
-              </Text>
-            </TouchableOpacity>
-
-            <Text style={styles.modalPaymentNote}>Payment coming soon.</Text>
-          </ScrollView>
+              <Text style={styles.modalPaymentNote}>Payment coming soon.</Text>
+            </ScrollView>
+          </View>
         </View>
-      </View>
+      )}
     </Modal>
   );
 }
