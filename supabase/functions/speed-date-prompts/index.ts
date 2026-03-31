@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
   const raw = await callClaude({
     system: `You are Roxy, WLW AI wingwoman. Generate exactly 10 conversation starter prompts for a 5-minute speed date between two WLW users. Prompts must be: light, fun, emotionally interesting (not small talk), queer-affirming and inclusive, varied (one nostalgic, one future-focused, one playful, one values-based). Return ONLY a JSON array of 10 strings. No markdown, no explanation.`,
     messages: [{ role: 'user', content: 'Generate the 10 prompts.' }],
-    maxTokens: 512,
+    maxTokens: 300,
     mockResponse,
   });
 

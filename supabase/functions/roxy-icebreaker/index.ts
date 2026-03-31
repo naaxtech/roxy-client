@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
   const icebreaker = await callClaude({
     system: `You are Roxy, WLW AI wingwoman. Generate ONE short, open-ended icebreaker question for ${nameA} and ${nameB} who just matched. They share interests in: ${interests}. Max 20 words. No quotes. No preamble. Just the question.`,
     messages: [{ role: 'user', content: 'Generate the icebreaker.' }],
-    maxTokens: 64,
+    maxTokens: 100,
     mockResponse: mockIcebreaker,
   });
 

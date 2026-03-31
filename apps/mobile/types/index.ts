@@ -140,7 +140,7 @@ export interface Badge {
   id: string;
   name: string;
   description: string | null;
-  icon_url: string | null;
+  emoji: string;
   category: 'community' | 'connection' | 'milestone' | 'ally';
   points_value: number;
   requirement_type: string;
@@ -180,6 +180,7 @@ export interface ImpactProject {
   raised_amount: number;
   supporter_count: number;
   status: 'active' | 'completed' | 'paused';
+  website_url: string | null;
   created_at: string;
 }
 

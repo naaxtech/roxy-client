@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  TextInput, RefreshControl, Linking,
+  TextInput, RefreshControl, Linking, Modal, Share, ScrollView,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,10 @@ import { useAuthStore } from '../../../store/authStore';
 import { useBuildStore } from '../../../store/buildStore';
 import { COLORS } from '../../../lib/constants';
 import { Business, ImpactProject } from '../../../types';
+
+const categoryEmoji: Record<string, string> = {
+  mutual_aid: '🤝', visibility: '🏳️‍🌈', education: '📚', safety: '🛡️',
+};
 
 function BusinessCard({ biz }: { biz: Business }) {
   const handleVisit = () => {
@@ -33,14 +37,10 @@ function BusinessCard({ biz }: { biz: Business }) {
   );
 }
 
-function ImpactCard({ project, onSupport, alreadySupported = false }: { project: ImpactProject; onSupport: () => void; alreadySupported?: boolean }) {
+function ImpactCard({ project, onOpenDetail, alreadySupported = false }: { project: ImpactProject; onOpenDetail: () => void; alreadySupported?: boolean }) {
   const progress = project.goal_amount
     ? Math.min(project.raised_amount / project.goal_amount, 1)
     : null;
-
-  const categoryEmoji: Record<string, string> = {
-    mutual_aid: '🤝', visibility: '🏳️‍🌈', education: '📚', safety: '🛡️',
-  };
 
   return (
     <View style={styles.impactCard}>
@@ -53,7 +53,7 @@ function ImpactCard({ project, onSupport, alreadySupported = false }: { project:
         {project.status === 'active' && (
           <TouchableOpacity
             style={[styles.supportBtn, alreadySupported && styles.supportBtnDone]}
-            onPress={onSupport}
+            onPress={onOpenDetail}
             disabled={alreadySupported}
           >
             <Text style={styles.supportBtnText}>{alreadySupported ? '✓ Supported' : 'Support'}</Text>
@@ -82,6 +82,93 @@ function ImpactCard({ project, onSupport, alreadySupported = false }: { project:
   );
 }
 
+function ImpactDetailModal({
+  project,
+  alreadySupported,
+  onSupport,
+  onClose,
+}: {
+  project: ImpactProject | null;
+  alreadySupported: boolean;
+  onSupport: () => void;
+  onClose: () => void;
+}) {
+  const handleWebsite = () => {
+    if (project?.website_url) Linking.openURL(project.website_url).catch(() => {});
+  };
+
+  const handleShare = () => {
+    Share.share({ message: `Check out ${project?.title} on Roxy!` }).catch(() => {});
+  };
+
+  return (
+    <Modal
+      testID="impact-detail-modal"
+      visible={project !== null}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      {project && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            {/* Close button */}
+            <TouchableOpacity
+              testID="modal-close-btn"
+              style={styles.modalCloseBtn}
+              onPress={onClose}
+            >
+              <Text style={styles.modalCloseBtnText}>✕</Text>
+            </TouchableOpacity>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Header */}
+              <Text style={styles.modalEmoji}>{categoryEmoji[project.category] ?? '✨'}</Text>
+              <Text style={styles.modalTitle}>{project.title}</Text>
+              <Text style={styles.modalMeta}>{project.supporter_count} supporters</Text>
+
+              {/* Full description */}
+              {project.description ? (
+                <Text style={styles.modalDesc}>{project.description}</Text>
+              ) : null}
+
+              {/* Website link */}
+              {project.website_url ? (
+                <TouchableOpacity style={styles.modalWebsiteBtn} onPress={handleWebsite}>
+                  <Text style={styles.modalWebsiteBtnText}>Visit website →</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              {/* Share button */}
+              <TouchableOpacity
+                testID="modal-share-btn"
+                style={styles.modalShareBtn}
+                onPress={handleShare}
+              >
+                <Text style={styles.modalShareBtnText}>Share</Text>
+              </TouchableOpacity>
+
+              {/* Support CTA */}
+              <TouchableOpacity
+                testID="modal-support-cta"
+                style={[styles.modalCtaBtn, alreadySupported && styles.modalCtaBtnDone]}
+                onPress={onSupport}
+                disabled={alreadySupported}
+              >
+                <Text style={styles.modalCtaBtnText}>
+                  {alreadySupported ? '✓ Supported' : "I'll support this project 💜"}
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={styles.modalPaymentNote}>Payment coming soon.</Text>
+            </ScrollView>
+          </View>
+        </View>
+      )}
+    </Modal>
+  );
+}
+
 export default function BuildScreen() {
   const { user } = useAuthStore();
   const { businesses, impactProjects, loading, setBusinesses, setImpactProjects, setLoading, incrementSupporter } = useBuildStore();
@@ -91,6 +178,7 @@ export default function BuildScreen() {
   const [wlwOnly, setWlwOnly] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [supportedIds, setSupportedIds] = useState<Set<string>>(new Set());
+  const [selectedProject, setSelectedProject] = useState<ImpactProject | null>(null);
 
   const loadBusinesses = useCallback(async () => {
     const { data } = await supabase
@@ -124,14 +212,15 @@ export default function BuildScreen() {
     setRefreshing(false);
   };
 
-  const handleSupport = async (project: ImpactProject) => {
-    if (!user || supportedIds.has(project.id)) return;
-    setSupportedIds((prev) => new Set([...prev, project.id]));
-    incrementSupporter(project.id);
+  const handleSupport = async (projectId: string) => {
+    const project = impactProjects.find((p) => p.id === projectId);
+    if (!user || !project || supportedIds.has(projectId)) return;
+    setSupportedIds((prev) => new Set([...prev, projectId]));
+    incrementSupporter(projectId);
     await supabase
       .from('impact_projects')
       .update({ supporter_count: project.supporter_count + 1 })
-      .eq('id', project.id)
+      .eq('id', projectId)
       .catch(() => {});
   };
 
@@ -147,6 +236,7 @@ export default function BuildScreen() {
         {(['businesses', 'impact'] as const).map((s) => (
           <TouchableOpacity
             key={s}
+            testID={`segment-${s}`}
             style={[styles.segmentBtn, segment === s && styles.segmentBtnActive]}
             onPress={() => setSegment(s)}
           >
@@ -202,7 +292,7 @@ export default function BuildScreen() {
           renderItem={({ item }) => (
             <ImpactCard
               project={item}
-              onSupport={() => handleSupport(item)}
+              onOpenDetail={() => setSelectedProject(item)}
               alreadySupported={supportedIds.has(item.id)}
             />
           )}
@@ -218,6 +308,13 @@ export default function BuildScreen() {
           }
         />
       )}
+
+      <ImpactDetailModal
+        project={selectedProject}
+        alreadySupported={selectedProject ? supportedIds.has(selectedProject.id) : false}
+        onSupport={() => selectedProject && handleSupport(selectedProject.id)}
+        onClose={() => setSelectedProject(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -292,4 +389,92 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 60, gap: 8 },
   emptyTitle: { color: COLORS.textPrimary, fontSize: 17, fontWeight: '700' },
   emptySub: { color: COLORS.textMuted, fontSize: 14, textAlign: 'center' },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+    maxHeight: '85%',
+  },
+  modalCloseBtn: {
+    alignSelf: 'flex-end',
+    padding: 8,
+    marginBottom: 8,
+  },
+  modalCloseBtnText: {
+    color: COLORS.textMuted,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalEmoji: {
+    fontSize: 48,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    color: COLORS.textPrimary,
+    fontWeight: '700',
+    fontSize: 22,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  modalMeta: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  modalDesc: {
+    color: COLORS.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  modalWebsiteBtn: {
+    marginBottom: 12,
+  },
+  modalWebsiteBtnText: {
+    color: COLORS.primary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  modalShareBtn: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalShareBtnText: {
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  modalCtaBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalCtaBtnDone: {
+    backgroundColor: COLORS.success,
+  },
+  modalCtaBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  modalPaymentNote: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    textAlign: 'center',
+  },
 });

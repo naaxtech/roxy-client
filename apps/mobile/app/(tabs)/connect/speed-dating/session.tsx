@@ -80,6 +80,7 @@ export default function SpeedDateSession() {
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasEnded = useRef(false);
+  const likedRef = useRef(false);
 
   // Draggable overlay position
   const overlayPos = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
@@ -169,11 +170,11 @@ export default function SpeedDateSession() {
       pathname: '/(tabs)/connect/speed-dating/result',
       params: {
         session_id: session_id ?? '',
-        liked: liked ? '1' : '0',
+        liked: likedRef.current ? '1' : '0',
         partner_id: partnerId ?? '',
       },
     });
-  }, [session, liked, callObject, session_id, router, user]);
+  }, [session, callObject, session_id, router, user]);
 
   const handleLeave = () => {
     Alert.alert('Leave session?', 'Are you sure you want to leave early?', [
@@ -252,7 +253,12 @@ export default function SpeedDateSession() {
         <View style={styles.bottomBar}>
           <TouchableOpacity
             style={[styles.likeBtn, liked && styles.likeBtnActive]}
-            onPress={() => setLiked((v) => !v)}
+            onPress={() => {
+              setLiked((v) => {
+                likedRef.current = !v;
+                return !v;
+              });
+            }}
           >
             <Text style={styles.likeIcon}>{liked ? '❤️' : '🤍'}</Text>
             <Text style={[styles.likeText, liked && styles.likeTextActive]}>

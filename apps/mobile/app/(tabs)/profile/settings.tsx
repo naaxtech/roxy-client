@@ -52,41 +52,7 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete account',
-      'This will permanently delete your account and all your data. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Continue',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Are you absolutely sure?',
-              'Your account will be deleted immediately.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete my account',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      const { error } = await callEdgeFunction('gdpr-delete', {});
-                      if (error) throw new Error(error);
-                      await supabase.auth.signOut();
-                      useAuthStore.getState().signOut();
-                      router.replace('/(auth)/login');
-                    } catch (e: any) {
-                      Alert.alert('Error', e?.message ?? 'Could not delete account. Please try again.');
-                    }
-                  },
-                },
-              ]
-            );
-          },
-        },
-      ]
-    );
+    router.push('/(tabs)/profile/delete-account' as any);
   };
 
   return (

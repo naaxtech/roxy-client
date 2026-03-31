@@ -26,8 +26,8 @@
       },
       "package": "com.roxy.app",
       "permissions": [
-        "CAMERA",
-        "RECORD_AUDIO"
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -48,10 +48,13 @@
       "typedRoutes": true
     },
     "scheme": "roxy",
-    "owner": "thinqer",
+    "owner": "thinqerhq",
     "extra": {
+      "router": {
+        "origin": false
+      },
       "eas": {
-        "projectId": ""
+        "projectId": "7fb8811a-3752-44dc-9535-c7118d08a338"
       }
     }
   }
