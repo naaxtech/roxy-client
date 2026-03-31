@@ -227,4 +227,5 @@ The `isDailyAvailable()` guard in `lib/daily.ts` ensures stubs never execute at 
 | 3 — Discover + Build + Grow | `session-3-discover-build` | #3 | Merged |
 | 4 — AI Safety + Gamification | `session-4-ai-safety` | #4 | Merged |
 | 5 — Profile, Settings, GDPR, EAS, CI | `session-5-deploy` | #5 | Merged |
-| 6 — Polish: Roxy Chat, host flow, tab layouts, dev seed | `session-6-polish` | — | In Progress |
+| 6 — Polish: Roxy Chat, host flow, tab layouts, dev seed | `session-6-polish` | #7 | Merged |
+| 7 — UX Fixes: FAB, keyboard, Grow screen, badges, delete account, org modal | `session-6-polish` | #7 | Merged |
