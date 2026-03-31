@@ -66,7 +66,7 @@ export default function GrowScreen() {
         .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
         .eq('status', 'accepted'),
     ]);
-    if (commRes.data) setCommunities(commRes.data as CommunityRow[]);
+    if (commRes.data) setCommunities(commRes.data as unknown as CommunityRow[]);
     if (friendRes.data) setFriendships(friendRes.data as FriendshipRow[]);
   }, [user]);
 

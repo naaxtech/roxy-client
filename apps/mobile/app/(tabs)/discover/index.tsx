@@ -1,291 +1,382 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  RefreshControl, Alert,
+  View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Animated,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { format, isToday, isTomorrow, isThisWeek } from 'date-fns';
+import { format } from 'date-fns';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
-import { useProfileStore } from '../../../store/profileStore';
-import { useFeedStore } from '../../../store/feedStore';
+import { useCommunityStore, Community } from '../../../store/communityStore';
 import { COLORS } from '../../../lib/constants';
-import { Post, Event } from '../../../types';
 
-const REACTIONS = ['🌸', '💜', '🔥', '✊'] as const;
+type SubTab = 'communities' | 'events' | 'games';
 
-function buildFeedItems(posts: Post[], isDating: boolean): (Post | { id: string; _type: 'teaser' })[] {
-  const items: (Post | { id: string; _type: 'teaser' })[] = [];
-  posts.forEach((p, i) => {
-    items.push(p);
-    if (isDating && (i + 1) % 8 === 0) {
-      items.push({ id: `teaser-${i}`, _type: 'teaser' });
-    }
-  });
-  return items;
-}
+type EventRow = {
+  id: string; title: string; starts_at: string; location: string | null; community_id: string;
+  communities: { name: string } | null;
+};
 
-function eventDateLabel(startsAt: string): string {
-  const d = new Date(startsAt);
-  if (isToday(d)) return 'Today';
-  if (isTomorrow(d)) return 'Tomorrow';
-  if (isThisWeek(d)) return format(d, 'EEEE');
-  return format(d, 'EEE, MMM d');
-}
-
-function PostCard({ post, onReact }: { post: Post; onReact: (emoji: string) => void }) {
-  return (
-    <View style={styles.postCard}>
-      <View style={styles.postHeader}>
-        <View style={styles.postAvatar} />
-        <View style={styles.postMeta}>
-          <Text style={styles.postAuthor}>Community Member</Text>
-          <Text style={styles.postTime}>{format(new Date(post.created_at), 'MMM d')}</Text>
-        </View>
-      </View>
-      <Text style={styles.postContent}>{post.content}</Text>
-      <View style={styles.reactionBar}>
-        {REACTIONS.map((emoji) => (
-          <TouchableOpacity key={emoji} style={styles.reactionBtn} onPress={() => onReact(emoji)}>
-            <Text style={styles.reactionEmoji}>{emoji}</Text>
-            <Text style={styles.reactionCount}>{post.reaction_counts[emoji] ?? 0}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function DatingTeaserCard({ onPress }: { onPress: () => void }) {
-  return (
-    <TouchableOpacity style={styles.teaserCard} onPress={onPress} activeOpacity={0.8}>
-      <Text style={styles.teaserEmoji}>⚡</Text>
-      <Text style={styles.teaserTitle}>Speed Dating is open</Text>
-      <Text style={styles.teaserSub}>5-minute connections. Meet someone new today.</Text>
-    </TouchableOpacity>
-  );
-}
-function EventCard({
-  event, isRsvpd, onRsvp, showDateLabel = true,
-}: { event: Event; isRsvpd: boolean; onRsvp: () => void; showDateLabel?: boolean }) {
-  return (
-    <View style={styles.eventCard}>
-      <View style={styles.eventLeft}>
-        {showDateLabel && (
-          <Text style={styles.eventDateLabel}>{eventDateLabel(event.starts_at)}</Text>
-        )}
-        <Text style={styles.eventTime}>{format(new Date(event.starts_at), 'HH:mm')}</Text>
-      </View>
-      <View style={styles.eventBody}>
-        <Text style={styles.eventTitle} numberOfLines={2}>{event.title}</Text>
-        {event.description ? (
-          <Text style={styles.eventDesc} numberOfLines={1}>{event.description}</Text>
-        ) : null}
-        <Text style={styles.eventMeta}>
-          {event.event_type === 'online' ? '🌐 Online' : '📍 ' + (event.location_text ?? 'In person')}
-          {' · '}{event.attendee_count} going
-        </Text>
-      </View>
-      <TouchableOpacity
-        style={[styles.rsvpBtn, isRsvpd && styles.rsvpBtnActive]}
-        onPress={onRsvp}
-      >
-        <Text style={[styles.rsvpBtnText, isRsvpd && styles.rsvpBtnTextActive]}>
-          {isRsvpd ? '✓ Going' : 'RSVP'}
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
+function getCommunityLevel(n: number): { label: string; emoji: string } {
+  if (n >= 100) return { label: 'Radiant', emoji: '✨' };
+  if (n >= 20) return { label: 'Thriving', emoji: '🌸' };
+  if (n >= 5) return { label: 'Growing', emoji: '🌿' };
+  return { label: 'Seedling', emoji: '🌱' };
 }
 
 export default function DiscoverScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { profile } = useProfileStore();
-  const { posts, events, loading, setPosts, setEvents, setLoading, incrementReaction, markRsvpd, unmarkRsvpd, rsvpdEventIds } = useFeedStore();
+  const { allCommunities, joinedIds, fetchAll, fetchJoined, joinCommunity, leaveCommunity } = useCommunityStore();
 
-  const [segment, setSegment] = useState<'feed' | 'events'>('feed');
-  const [refreshing, setRefreshing] = useState(false);
+  const [subTab, setSubTab] = useState<SubTab>('communities');
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const loadFeed = useCallback(async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('posts')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(40);
-    setPosts((data as Post[]) ?? []);
-  }, [user, setPosts]);
-
-  const loadEvents = useCallback(async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('events')
-      .select('*')
-      .gte('starts_at', new Date().toISOString())
-      .order('starts_at', { ascending: true })
-      .limit(20);
-    setEvents((data as Event[]) ?? []);
-  }, [user, setEvents]);
+  const switchTab = (tab: SubTab) => {
+    fadeAnim.setValue(0);
+    setSubTab(tab);
+    Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+  };
+  const [search, setSearch] = useState('');
+  const [events, setEvents] = useState<EventRow[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [interestedIds, setInterestedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    setLoading(true);
-    Promise.all([loadFeed(), loadEvents()]).finally(() => setLoading(false));
-  }, [loadFeed, loadEvents, setLoading]);
+    fetchAll();
+    if (user?.id) fetchJoined(user.id);
+  }, [user?.id]);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([loadFeed(), loadEvents()]);
-    setRefreshing(false);
-  };
+  const loadEvents = useCallback(async () => {
+    setLoadingEvents(true);
+    const now = new Date().toISOString();
+    const { data } = await supabase
+      .from('events')
+      .select('*, communities(name)')
+      .gte('starts_at', now)
+      .order('starts_at')
+      .limit(50);
+    if (data) setEvents(data as EventRow[]);
+    setLoadingEvents(false);
+  }, []);
 
-  const handleReact = async (postId: string, emoji: string) => {
-    incrementReaction(postId, emoji);
-    await supabase.rpc('increment_reaction', { p_post_id: postId, p_emoji: emoji }).catch(() => {});
-  };
-
-  const handleRsvp = async (event: Event) => {
+  const loadInterested = useCallback(async () => {
     if (!user) return;
-    const isRsvpd = rsvpdEventIds.has(event.id);
-    if (isRsvpd) return;
-    markRsvpd(event.id);
-    const { error } = await supabase
+    const { data } = await supabase
       .from('event_attendees')
-      .insert({ event_id: event.id, user_id: user.id });
-    if (error) {
-      unmarkRsvpd(event.id);
-      Alert.alert('Could not RSVP', error.message);
+      .select('event_id')
+      .eq('user_id', user.id)
+      .eq('status', 'interested');
+    if (data) setInterestedIds(new Set(data.map((r: any) => r.event_id)));
+  }, [user]);
+
+  useEffect(() => {
+    if (subTab === 'events') { loadEvents(); loadInterested(); }
+  }, [subTab, loadEvents, loadInterested]);
+
+  const toggleInterested = async (eventId: string) => {
+    if (!user) return;
+    if (interestedIds.has(eventId)) {
+      await supabase.from('event_attendees').delete().eq('event_id', eventId).eq('user_id', user.id).eq('status', 'interested');
+      setInterestedIds((prev) => { const n = new Set(prev); n.delete(eventId); return n; });
+    } else {
+      await supabase.from('event_attendees').insert({ event_id: eventId, user_id: user.id, status: 'interested' });
+      setInterestedIds((prev) => new Set([...prev, eventId]));
     }
   };
 
-  const feedItems = buildFeedItems(posts, profile?.is_dating_mode ?? false);
+  const handleJoinLeave = async (community: Community) => {
+    if (!user) return;
+    if (joinedIds.has(community.id)) {
+      await leaveCommunity(community.id, user.id);
+    } else {
+      await joinCommunity(community.id, user.id);
+    }
+  };
+
+  const filteredCommunities = search
+    ? allCommunities.filter(
+        (c) =>
+          c.name.toLowerCase().includes(search.toLowerCase()) ||
+          (c.description ?? '').toLowerCase().includes(search.toLowerCase())
+      )
+    : allCommunities;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.segmentRow}>
-        {(['feed', 'events'] as const).map((s) => (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Discover</Text>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search communities, events..."
+          placeholderTextColor={COLORS.textMuted}
+          value={search}
+          onChangeText={setSearch}
+          returnKeyType="search"
+        />
+      </View>
+
+      {/* Sub-tabs */}
+      <View style={styles.subTabRow}>
+        {(['communities', 'events', 'games'] as SubTab[]).map((tab) => (
           <TouchableOpacity
-            key={s}
-            style={[styles.segmentBtn, segment === s && styles.segmentBtnActive]}
-            onPress={() => setSegment(s)}
+            key={tab}
+            style={[styles.subTab, subTab === tab && styles.subTabActive]}
+            onPress={() => switchTab(tab)}
           >
-            <Text style={[styles.segmentText, segment === s && styles.segmentTextActive]}>
-              {s === 'feed' ? 'Feed' : 'Events'}
+            <Text style={[styles.subTabText, subTab === tab && styles.subTabTextActive]}>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {segment === 'feed' ? (
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+      {/* Communities */}
+      {subTab === 'communities' && (
         <FlashList
-          data={feedItems}
+          data={filteredCommunities}
           keyExtractor={(item) => item.id}
-          estimatedItemSize={160}
+          estimatedItemSize={90}
+          contentContainerStyle={{ paddingVertical: 8 }}
           renderItem={({ item }) => {
-            if ('_type' in item && item._type === 'teaser') {
-              return <DatingTeaserCard onPress={() => router.push('/(tabs)/connect/speed-dating')} />;
-            }
-            const post = item as Post;
-            return <PostCard post={post} onReact={(emoji) => handleReact(post.id, emoji)} />;
+            const lvl = getCommunityLevel(item.member_count);
+            const isJoined = joinedIds.has(item.id);
+            return (
+              <TouchableOpacity
+                style={styles.communityCard}
+                onPress={() => router.push(`/(tabs)/discover/community/${item.id}` as any)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.communityAvatar}>
+                  <Text style={{ fontSize: 24 }}>{lvl.emoji}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.communityNameRow}>
+                    <Text style={styles.communityName} numberOfLines={1}>{item.name}</Text>
+                    <View style={styles.levelBadge}>
+                      <Text style={styles.levelBadgeText}>{lvl.emoji} {lvl.label}</Text>
+                    </View>
+                  </View>
+                  {item.description ? (
+                    <Text style={styles.communityDesc} numberOfLines={1}>{item.description}</Text>
+                  ) : null}
+                  <View style={styles.communityMeta}>
+                    <Text style={styles.communityMetaText}>
+                      {item.is_private ? '🔒 Private' : '🌐 Public'} · {item.member_count} members
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.joinBtn, isJoined && styles.joinBtnJoined]}
+                  onPress={() => handleJoinLeave(item)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.joinBtnText, isJoined && styles.joinBtnTextJoined]}>
+                    {isJoined ? 'Joined' : 'Join'}
+                  </Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            );
           }}
-          contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.roxy} />}
           ListEmptyComponent={
-            loading ? null : (
-              <View style={styles.empty}>
-                <Text style={styles.emptyTitle}>No posts yet</Text>
-                <Text style={styles.emptySub}>Join communities to see their posts here.</Text>
-              </View>
-            )
-          }
-        />
-      ) : (
-        <FlashList
-          data={events}
-          keyExtractor={(item) => item.id}
-          estimatedItemSize={100}
-          renderItem={({ item, index }) => (
-            <EventCard
-              event={item}
-              isRsvpd={rsvpdEventIds.has(item.id)}
-              onRsvp={() => handleRsvp(item)}
-              showDateLabel={
-                index === 0 ||
-                eventDateLabel(item.starts_at) !== eventDateLabel(events[index - 1].starts_at)
-              }
-            />
-          )}
-          contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.roxy} />}
-          ListEmptyComponent={
-            loading ? null : (
-              <View style={styles.empty}>
-                <Text style={styles.emptyTitle}>No upcoming events</Text>
-                <Text style={styles.emptySub}>Events from your communities will appear here.</Text>
-              </View>
-            )
+            <View style={styles.emptyCenter}>
+              <Text style={styles.emptyIcon}>🔍</Text>
+              <Text style={styles.emptyTitle}>No communities found</Text>
+            </View>
           }
         />
       )}
+
+      {/* Events */}
+      {subTab === 'events' && (
+        loadingEvents ? (
+          <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 48 }} />
+        ) : (
+          <FlashList
+            data={events}
+            keyExtractor={(item) => item.id}
+            estimatedItemSize={100}
+            onRefresh={() => { loadEvents(); loadInterested(); }}
+            refreshing={loadingEvents}
+            contentContainerStyle={{ paddingVertical: 8 }}
+            renderItem={({ item }) => {
+              const interested = interestedIds.has(item.id);
+              return (
+                <View style={styles.eventCard}>
+                  <View style={styles.dateChip}>
+                    <Text style={styles.dateDay}>{format(new Date(item.starts_at), 'dd')}</Text>
+                    <Text style={styles.dateMonth}>{format(new Date(item.starts_at), 'MMM')}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.eventTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.eventCommunity}>{item.communities?.name ?? '—'}</Text>
+                    {item.location && <Text style={styles.eventLocation} numberOfLines={1}>📍 {item.location}</Text>}
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.interestedBtn, interested && styles.interestedBtnActive]}
+                    onPress={() => toggleInterested(item.id)}
+                  >
+                    <Text style={[styles.interestedBtnText, interested && styles.interestedBtnTextActive]}>
+                      {interested ? 'Interested ✓' : 'Interested'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            }}
+            ListEmptyComponent={
+              <View style={styles.emptyCenter}>
+                <Text style={styles.emptyIcon}>🗓️</Text>
+                <Text style={styles.emptyTitle}>No upcoming events</Text>
+              </View>
+            }
+          />
+        )
+      )}
+
+      {/* Games */}
+      {subTab === 'games' && (
+        <View style={styles.gamesContainer}>
+          {/* Speed Dating card */}
+          <View style={styles.gameCard}>
+            <Text style={styles.gameEmoji}>⚡</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.gameTitle}>Speed Dating</Text>
+              <Text style={styles.gameDesc}>5-minute video speed dates. Match with someone new.</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.playBtn}
+              onPress={() => router.push('/(tabs)/connect/speed-dating' as any)}
+            >
+              <Text style={styles.playBtnText}>Play Now</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Community Icebreakers */}
+          <View style={styles.gameCard}>
+            <Text style={styles.gameEmoji}>🎯</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.gameTitle}>Community Icebreakers</Text>
+              <Text style={styles.gameDesc}>Play get-to-know-you games inside your communities.</Text>
+              <Text style={styles.gameAvailable}>Available in communities</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.browseBtn}
+              onPress={() => switchTab('communities')}
+            >
+              <Text style={styles.browseBtnText}>Browse</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      </Animated.View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  segmentRow: {
-    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-    paddingHorizontal: 16, gap: 4,
+  header: {
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, gap: 10,
+    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
-  segmentBtn: { paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  segmentBtnActive: { borderBottomColor: COLORS.primary },
-  segmentText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 15 },
-  segmentTextActive: { color: COLORS.textPrimary },
-  listContent: { padding: 16 },
-  postCard: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 16, marginBottom: 12 },
-  postHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
-  postAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.primary + '40' },
-  postMeta: { flex: 1 },
-  postAuthor: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  postTime: { color: COLORS.textMuted, fontSize: 12 },
-  postContent: { color: COLORS.textSecondary, fontSize: 15, lineHeight: 22 },
-  reactionBar: { flexDirection: 'row', marginTop: 12, gap: 8 },
-  reactionBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: COLORS.surfaceLight, borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 5,
+  headerTitle: { fontSize: 22, fontWeight: '800', color: COLORS.textPrimary },
+  searchInput: {
+    backgroundColor: COLORS.surface, borderRadius: 20,
+    paddingHorizontal: 16, paddingVertical: 9,
+    color: COLORS.textPrimary, fontSize: 14,
   },
-  reactionEmoji: { fontSize: 16 },
-  reactionCount: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
-  teaserCard: {
-    backgroundColor: COLORS.primary + '20', borderRadius: 16, padding: 16,
-    marginBottom: 12, alignItems: 'center', gap: 6,
-    borderWidth: 1, borderColor: COLORS.primary + '50',
+
+  // Sub-tabs
+  subTabRow: {
+    flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8,
+    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
-  teaserEmoji: { fontSize: 28 },
-  teaserTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16 },
-  teaserSub: { color: COLORS.textSecondary, fontSize: 13, textAlign: 'center' },
+  subTab: {
+    flex: 1, paddingVertical: 8, borderRadius: 20,
+    alignItems: 'center', backgroundColor: COLORS.surface,
+  },
+  subTabActive: { backgroundColor: COLORS.roxy },
+  subTabText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
+  subTabTextActive: { color: '#fff' },
+
+  // Community cards
+  communityCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: COLORS.surface, marginHorizontal: 16, marginBottom: 10,
+    borderRadius: 16, padding: 14,
+  },
+  communityAvatar: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
+  },
+  communityNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' },
+  communityName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
+  levelBadge: {
+    backgroundColor: COLORS.secondary + '20', borderRadius: 10,
+    paddingHorizontal: 7, paddingVertical: 2,
+  },
+  levelBadgeText: { color: COLORS.secondary, fontSize: 10, fontWeight: '700' },
+  communityDesc: { color: COLORS.textMuted, fontSize: 12, marginBottom: 4 },
+  communityMeta: { flexDirection: 'row', gap: 8 },
+  communityMetaText: { color: COLORS.textMuted, fontSize: 11 },
+  joinBtn: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    borderWidth: 1, borderColor: COLORS.roxy,
+  },
+  joinBtnJoined: { backgroundColor: COLORS.roxy, borderColor: COLORS.roxy },
+  joinBtnText: { color: COLORS.roxy, fontWeight: '700', fontSize: 12 },
+  joinBtnTextJoined: { color: '#fff' },
+
+  // Events
   eventCard: {
-    backgroundColor: COLORS.surface, borderRadius: 14, padding: 14,
-    marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: COLORS.surface, marginHorizontal: 16, marginBottom: 10,
+    borderRadius: 16, padding: 14,
   },
-  eventLeft: { alignItems: 'center', minWidth: 52 },
-  eventDateLabel: { color: COLORS.primary, fontWeight: '700', fontSize: 12 },
-  eventTime: { color: COLORS.textMuted, fontSize: 12 },
-  eventBody: { flex: 1, gap: 2 },
-  eventTitle: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  eventDesc: { color: COLORS.textMuted, fontSize: 12 },
-  eventMeta: { color: COLORS.textMuted, fontSize: 11 },
-  rsvpBtn: {
-    backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary,
-    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7,
+  dateChip: {
+    width: 44, alignItems: 'center', backgroundColor: COLORS.primary + '20',
+    borderRadius: 10, paddingVertical: 6,
   },
-  rsvpBtnActive: { backgroundColor: COLORS.primary },
-  rsvpBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 13 },
-  rsvpBtnTextActive: { color: '#fff' },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 8 },
-  emptyTitle: { color: COLORS.textPrimary, fontSize: 17, fontWeight: '700' },
-  emptySub: { color: COLORS.textMuted, fontSize: 14, textAlign: 'center' },
+  dateDay: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 16 },
+  dateMonth: { color: COLORS.textMuted, fontSize: 11 },
+  eventTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 2 },
+  eventCommunity: { color: COLORS.textMuted, fontSize: 12, marginBottom: 2 },
+  eventLocation: { color: COLORS.textSecondary, fontSize: 12 },
+  interestedBtn: {
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16,
+    borderWidth: 1, borderColor: COLORS.secondary,
+  },
+  interestedBtnActive: { backgroundColor: COLORS.secondary, borderColor: COLORS.secondary },
+  interestedBtnText: { color: COLORS.secondary, fontWeight: '700', fontSize: 11 },
+  interestedBtnTextActive: { color: '#fff' },
+
+  // Games
+  gamesContainer: { padding: 16, gap: 16 },
+  gameCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: COLORS.surface, borderRadius: 16, padding: 16,
+  },
+  gameEmoji: { fontSize: 32 },
+  gameTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 15, marginBottom: 4 },
+  gameDesc: { color: COLORS.textMuted, fontSize: 13, lineHeight: 18 },
+  gameAvailable: { color: COLORS.secondary, fontSize: 11, fontWeight: '600', marginTop: 4 },
+  playBtn: {
+    backgroundColor: COLORS.roxy, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 8,
+  },
+  playBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  browseBtn: {
+    backgroundColor: COLORS.surface, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: COLORS.secondary,
+  },
+  browseBtnText: { color: COLORS.secondary, fontWeight: '700', fontSize: 13 },
+
+  // Empty
+  emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12, marginTop: 40 },
+  emptyIcon: { fontSize: 48 },
+  emptyTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center' },
 });
