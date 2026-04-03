@@ -47,7 +47,7 @@ export default function PostDetailScreen() {
       .select('id, content, created_at, comment_count, profiles(display_name, avatar_url)')
       .eq('id', postId)
       .single();
-    if (data) setPost(data as PostRow);
+    if (data) setPost(data as unknown as PostRow);
   }, [postId]);
 
   const loadComments = useCallback(async () => {

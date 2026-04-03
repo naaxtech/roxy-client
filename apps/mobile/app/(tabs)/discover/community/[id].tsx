@@ -77,7 +77,7 @@ export default function CommunityDetailScreen() {
       .eq('community_id', id)
       .order('created_at', { ascending: false })
       .limit(30);
-    if (data) setPosts(data as PostRow[]);
+    if (data) setPosts(data as unknown as PostRow[]);
   }, [id]);
 
   const loadEvents = useCallback(async () => {

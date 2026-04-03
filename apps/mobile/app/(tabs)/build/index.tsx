@@ -221,7 +221,7 @@ export default function BuildScreen() {
       .from('impact_projects')
       .update({ supporter_count: project.supporter_count + 1 })
       .eq('id', projectId)
-      .catch(() => {});
+      .then(() => {});
   };
 
   const filteredBiz = businesses.filter((b) => {
