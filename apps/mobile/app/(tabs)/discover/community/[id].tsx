@@ -17,6 +17,7 @@ type SubTab = 'posts' | 'events' | 'games';
 
 type PostRow = {
   id: string; content: string; created_at: string; author_id: string;
+  comment_count: number;
   profiles: { display_name: string; avatar_url: string | null } | null;
 };
 
@@ -72,7 +73,7 @@ export default function CommunityDetailScreen() {
     if (!id) return;
     const { data } = await supabase
       .from('posts')
-      .select('*, profiles(display_name, avatar_url)')
+      .select('id, content, created_at, author_id, comment_count, profiles(display_name, avatar_url)')
       .eq('community_id', id)
       .order('created_at', { ascending: false })
       .limit(30);
@@ -259,7 +260,15 @@ export default function CommunityDetailScreen() {
               </View>
             ) : (
               posts.map((post) => (
-                <View key={post.id} style={styles.postCard}>
+                <TouchableOpacity
+                  key={post.id}
+                  style={styles.postCard}
+                  activeOpacity={0.85}
+                  onPress={() => router.push({
+                    pathname: '/(tabs)/discover/community/post/[postId]',
+                    params: { postId: post.id },
+                  } as any)}
+                >
                   <View style={styles.postAuthorRow}>
                     <View style={styles.postAvatar}>
                       <Text style={{ fontSize: 14 }}>👤</Text>
@@ -270,7 +279,11 @@ export default function CommunityDetailScreen() {
                     </View>
                   </View>
                   <Text style={styles.postContent}>{post.content}</Text>
-                </View>
+                  <View style={styles.postFooter}>
+                    <Ionicons name="chatbubble-outline" size={13} color={COLORS.textMuted} />
+                    <Text style={styles.commentCount}>{post.comment_count ?? 0}</Text>
+                  </View>
+                </TouchableOpacity>
               ))
             )}
             {/* Spacer for FAB */}
@@ -472,6 +485,8 @@ const styles = StyleSheet.create({
   postAuthorName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
   postTime: { color: COLORS.textMuted, fontSize: 12 },
   postContent: { color: COLORS.textPrimary, fontSize: 15, lineHeight: 22 },
+  postFooter: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+  commentCount: { color: COLORS.textMuted, fontSize: 12 },
 
   // Events
   eventCard: {
