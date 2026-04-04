@@ -35,7 +35,7 @@ export default function SettingsScreen() {
           onPress: async () => {
             await supabase.auth.signOut();
             useAuthStore.getState().signOut();
-            router.replace('/(auth)/login' as any);
+            router.replace('/(auth)/welcome');
           },
         },
       ]

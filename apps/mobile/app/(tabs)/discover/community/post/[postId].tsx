@@ -69,7 +69,7 @@ export default function PostDetailScreen() {
   }, [loadPost, loadComments]);
 
   const handleSubmit = async () => {
-    if (!draft.trim() || !user || !postId) return;
+    if (!draft.trim() || !user || !postId || submitting) return;
     setSubmitting(true);
     try {
       const { data, error } = await supabase
@@ -90,6 +90,8 @@ export default function PostDetailScreen() {
     }
   };
 
+  const userInitial = user?.email?.[0]?.toUpperCase() ?? '?';
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -108,8 +110,6 @@ export default function PostDetailScreen() {
       </SafeAreaView>
     );
   }
-
-  const remaining = MAX_CHARS - draft.length;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -136,9 +136,11 @@ export default function PostDetailScreen() {
               <View style={styles.postCard}>
                 <View style={styles.authorRow}>
                   <View style={styles.avatar}>
-                    <Text style={{ fontSize: 14 }}>👤</Text>
+                    <Text style={styles.avatarText}>
+                      {post.profiles?.display_name?.[0]?.toUpperCase() ?? '?'}
+                    </Text>
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.authorName}>{post.profiles?.display_name ?? 'Anonymous'}</Text>
                     <Text style={styles.postTime}>{format(new Date(post.created_at), 'dd MMM · HH:mm')}</Text>
                   </View>
@@ -149,7 +151,6 @@ export default function PostDetailScreen() {
                 </Text>
               </View>
 
-              {/* Divider */}
               <View style={styles.divider} />
 
               {comments.length === 0 && (
@@ -161,24 +162,29 @@ export default function PostDetailScreen() {
             </View>
           }
           renderItem={({ item }) => (
-            <View style={styles.commentRow} key={item.id}>
+            <View style={styles.commentRow}>
               <View style={styles.commentAvatar}>
-                <Text style={{ fontSize: 12 }}>👤</Text>
+                <Text style={styles.commentAvatarText}>
+                  {item.profiles?.display_name?.[0]?.toUpperCase() ?? '?'}
+                </Text>
               </View>
-              <View style={styles.commentBubble}>
-                <View style={styles.commentMeta}>
-                  <Text style={styles.commentAuthor}>{item.profiles?.display_name ?? 'Anonymous'}</Text>
-                  <Text style={styles.commentTime}>{format(new Date(item.created_at), 'dd MMM · HH:mm')}</Text>
-                </View>
-                <Text style={styles.commentContent}>{item.content}</Text>
+              <View style={styles.commentBody}>
+                <Text style={styles.commentText}>
+                  <Text style={styles.commentAuthor}>{item.profiles?.display_name ?? 'Anonymous'} </Text>
+                  {item.content}
+                </Text>
+                <Text style={styles.commentTime}>{format(new Date(item.created_at), 'dd MMM · HH:mm')}</Text>
               </View>
             </View>
           )}
           contentContainerStyle={{ paddingBottom: 16 }}
         />
 
-        {/* Composer */}
+        {/* Instagram-style composer */}
         <View style={styles.composer}>
+          <View style={styles.composerAvatar}>
+            <Text style={styles.composerAvatarText}>{userInitial}</Text>
+          </View>
           <TextInput
             style={styles.composerInput}
             placeholder="Add a comment…"
@@ -188,20 +194,15 @@ export default function PostDetailScreen() {
             multiline
             maxLength={MAX_CHARS}
           />
-          <TouchableOpacity
-            style={[styles.sendBtn, (!draft.trim() || submitting) && styles.sendBtnDisabled]}
-            onPress={handleSubmit}
-            disabled={!draft.trim() || submitting}
-          >
-            {submitting
-              ? <ActivityIndicator size="small" color="#fff" />
-              : <Ionicons name="send" size={18} color="#fff" />
-            }
-          </TouchableOpacity>
+          {draft.trim().length > 0 && (
+            <TouchableOpacity onPress={handleSubmit} disabled={submitting}>
+              {submitting
+                ? <ActivityIndicator size="small" color={COLORS.roxy} />
+                : <Text style={styles.postBtn}>Post</Text>
+              }
+            </TouchableOpacity>
+          )}
         </View>
-        {draft.length > MAX_CHARS - 80 && (
-          <Text style={styles.charWarn}>{remaining} left</Text>
-        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -220,12 +221,13 @@ const styles = StyleSheet.create({
   headerTitle: { color: COLORS.textPrimary, fontSize: 17, fontWeight: '700' },
 
   // Post
-  postCard: { backgroundColor: COLORS.surface, padding: 16, marginBottom: 0 },
+  postCard: { backgroundColor: COLORS.surface, padding: 14, marginBottom: 0 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   avatar: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
   },
+  avatarText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 14 },
   authorName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
   postTime: { color: COLORS.textMuted, fontSize: 12 },
   postContent: { color: COLORS.textPrimary, fontSize: 16, lineHeight: 24, marginBottom: 12 },
@@ -238,7 +240,7 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 36 },
   emptyText: { color: COLORS.textMuted, fontSize: 14 },
 
-  // Comments
+  // Comments — Instagram flat style
   commentRow: {
     flexDirection: 'row', gap: 10,
     paddingHorizontal: 16, paddingVertical: 8,
@@ -246,40 +248,32 @@ const styles = StyleSheet.create({
   commentAvatar: {
     width: 30, height: 30, borderRadius: 15,
     backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
-    marginTop: 2,
+    marginTop: 2, flexShrink: 0,
   },
-  commentBubble: {
-    flex: 1, backgroundColor: COLORS.surface,
-    borderRadius: 14, padding: 10,
-  },
-  commentMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  commentAuthor: { color: COLORS.roxy, fontWeight: '700', fontSize: 13 },
-  commentTime: { color: COLORS.textMuted, fontSize: 11 },
-  commentContent: { color: COLORS.textPrimary, fontSize: 14, lineHeight: 20 },
+  commentAvatarText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 12 },
+  commentBody: { flex: 1 },
+  commentText: { color: COLORS.textPrimary, fontSize: 14, lineHeight: 20 },
+  commentAuthor: { fontWeight: '700', color: COLORS.textPrimary },
+  commentTime: { color: COLORS.textMuted, fontSize: 11, marginTop: 3 },
 
-  // Composer
+  // Composer — Instagram style
   composer: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 12, paddingVertical: 10,
     borderTopWidth: 1, borderTopColor: COLORS.surface,
     backgroundColor: COLORS.background,
   },
+  composerAvatar: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: COLORS.primary + '40',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  composerAvatarText: { color: COLORS.primary, fontWeight: '700', fontSize: 12 },
   composerInput: {
-    flex: 1, color: COLORS.textPrimary, fontSize: 15, lineHeight: 22,
-    backgroundColor: COLORS.surface, borderRadius: 20,
-    paddingHorizontal: 16, paddingVertical: 10,
-    maxHeight: 100,
+    flex: 1, color: COLORS.textPrimary, fontSize: 14,
+    maxHeight: 80, paddingVertical: 4,
   },
-  sendBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  sendBtnDisabled: { opacity: 0.4 },
-  charWarn: {
-    color: COLORS.primary, fontSize: 11,
-    paddingHorizontal: 20, paddingBottom: 4, textAlign: 'right',
-  },
+  postBtn: { color: COLORS.roxy, fontWeight: '700', fontSize: 14 },
 
   errorText: { color: COLORS.textMuted, textAlign: 'center', marginTop: 48, fontSize: 16 },
 });

@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  ScrollView, Alert, Modal,
+  ScrollView, Alert, Modal, Dimensions, Share,
 } from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { format } from 'date-fns';
@@ -13,7 +13,11 @@ import { useAuthStore } from '../../../../store/authStore';
 import { useCommunityStore, Community } from '../../../../store/communityStore';
 import { COLORS } from '../../../../lib/constants';
 
+
 type SubTab = 'posts' | 'events' | 'games';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const TABS: SubTab[] = ['posts', 'events', 'games'];
 
 type PostRow = {
   id: string; content: string; created_at: string; author_id: string;
@@ -52,6 +56,7 @@ export default function CommunityDetailScreen() {
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [membersModalVisible, setMembersModalVisible] = useState(false);
   const [friendships, setFriendships] = useState<Set<string>>(new Set());
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   // Load community data
   useEffect(() => {
@@ -127,23 +132,44 @@ export default function CommunityDetailScreen() {
     }
   }, [id, user]);
 
+  // Load all tab content upfront so swiping is instant
   useEffect(() => {
-    if (subTab === 'posts') loadPosts();
-    if (subTab === 'events') { loadEvents(); loadRsvps(); }
-  }, [subTab, loadPosts, loadEvents, loadRsvps]);
+    loadPosts();
+    loadEvents();
+    loadRsvps();
+  }, [loadPosts, loadEvents, loadRsvps]);
+
+  const pagerRef = useRef<ScrollView>(null);
+
+  const handleTabPress = (tab: SubTab) => {
+    const index = TABS.indexOf(tab);
+    setSubTab(tab);
+    pagerRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
+  };
 
   const isJoined = id ? joinedIds.has(id) : false;
 
+  const toggleLike = (postId: string) => {
+    setLikedIds((prev) => {
+      const n = new Set(prev);
+      n.has(postId) ? n.delete(postId) : n.add(postId);
+      return n;
+    });
+  };
+
   const handleJoinLeave = async () => {
     if (!user || !id) return;
-    if (isJoined) {
-      await leaveCommunity(id, user.id);
-    } else {
-      await joinCommunity(id, user.id);
+    try {
+      if (isJoined) {
+        await leaveCommunity(id, user.id);
+      } else {
+        await joinCommunity(id, user.id);
+      }
+      await fetchJoined(user.id);
+      await fetchAll();
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Could not update membership');
     }
-    // Refresh store
-    await fetchJoined(user.id);
-    await fetchAll();
   };
 
   const toggleRsvp = async (eventId: string) => {
@@ -196,7 +222,7 @@ export default function CommunityDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      {/* Cover */}
+      {/* Fixed header: cover + info + tabs */}
       <View style={styles.cover}>
         <View style={styles.coverGradient}>
           <Text style={styles.coverEmoji}>{level.emoji}</Text>
@@ -206,72 +232,75 @@ export default function CommunityDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scroll} stickyHeaderIndices={[1]}>
-        {/* Info card */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Text style={styles.communityName}>{community.name}</Text>
-            <View style={styles.levelBadge}>
-              <Text style={styles.levelBadgeText}>{level.emoji} {level.label}</Text>
-            </View>
+      <View style={styles.infoCard}>
+        <View style={styles.infoRow}>
+          <Text style={styles.communityName}>{community.name}</Text>
+          <View style={styles.levelBadge}>
+            <Text style={styles.levelBadgeText}>{level.emoji} {level.label}</Text>
           </View>
-          <TouchableOpacity onPress={openMembersModal} style={styles.membersRow}>
-            <Text style={styles.membersText}>{community.member_count} members</Text>
-            <View style={[styles.privacyPill, community.is_private && styles.privacyPillPrivate]}>
-              <Text style={styles.privacyPillText}>{community.is_private ? '🔒 Private' : '🌐 Public'}</Text>
-            </View>
-          </TouchableOpacity>
-          {community.description ? (
-            <Text style={styles.communityDesc}>{community.description}</Text>
-          ) : null}
+        </View>
+        <TouchableOpacity onPress={openMembersModal} style={styles.membersRow}>
+          <Text style={styles.membersText}>{community.member_count} members</Text>
+          <View style={[styles.privacyPill, community.is_private && styles.privacyPillPrivate]}>
+            <Text style={styles.privacyPillText}>{community.is_private ? '🔒 Private' : '🌐 Public'}</Text>
+          </View>
+        </TouchableOpacity>
+        {community.description ? (
+          <Text style={styles.communityDesc}>{community.description}</Text>
+        ) : null}
+        <TouchableOpacity
+          style={[styles.joinBtn, isJoined && styles.joinBtnJoined]}
+          onPress={handleJoinLeave}
+        >
+          <Text style={[styles.joinBtnText, isJoined && styles.joinBtnTextJoined]}>
+            {isJoined ? 'Leave Community' : 'Join Community'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Tab bar */}
+      <View style={styles.subTabRow}>
+        {TABS.map((tab) => (
           <TouchableOpacity
-            style={[styles.joinBtn, isJoined && styles.joinBtnJoined]}
-            onPress={handleJoinLeave}
+            key={tab}
+            style={[styles.subTab, subTab === tab && styles.subTabActive]}
+            onPress={() => handleTabPress(tab)}
           >
-            <Text style={[styles.joinBtnText, isJoined && styles.joinBtnTextJoined]}>
-              {isJoined ? 'Leave Community' : 'Join Community'}
+            <Text style={[styles.subTabText, subTab === tab && styles.subTabTextActive]}>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </Text>
           </TouchableOpacity>
-        </View>
+        ))}
+      </View>
 
-        {/* Sub-tabs (sticky) */}
-        <View style={styles.subTabRow}>
-          {(['posts', 'events', 'games'] as SubTab[]).map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.subTab, subTab === tab && styles.subTabActive]}
-              onPress={() => setSubTab(tab)}
-            >
-              <Text style={[styles.subTabText, subTab === tab && styles.subTabTextActive]}>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Posts tab */}
-        {subTab === 'posts' && (
-          <View style={{ paddingTop: 8 }}>
-            {posts.length === 0 ? (
-              <View style={styles.emptyCenter}>
-                <Text style={styles.emptyIcon}>📝</Text>
-                <Text style={styles.emptyTitle}>No posts yet</Text>
-                <Text style={styles.emptySub}>Be the first to post!</Text>
-              </View>
-            ) : (
-              posts.map((post) => (
-                <TouchableOpacity
-                  key={post.id}
-                  style={styles.postCard}
-                  activeOpacity={0.85}
-                  onPress={() => router.push({
-                    pathname: '/(tabs)/discover/community/post/[postId]',
-                    params: { postId: post.id },
-                  } as any)}
-                >
+      {/* Horizontal pager */}
+      <ScrollView
+        ref={pagerRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        style={{ flex: 1 }}
+        onMomentumScrollEnd={(e) => {
+          const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          setSubTab(TABS[index]);
+        }}
+      >
+        {/* Page 0 — Posts */}
+        <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 80 }}>
+          {posts.length === 0 ? (
+            <View style={styles.emptyCenter}>
+              <Text style={styles.emptyIcon}>📝</Text>
+              <Text style={styles.emptyTitle}>No posts yet</Text>
+              <Text style={styles.emptySub}>Be the first to post!</Text>
+            </View>
+          ) : (
+            posts.map((post) => (
+              <View key={post.id} style={styles.postCard}>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/(tabs)/discover/community/post/${post.id}` as any)}>
                   <View style={styles.postAuthorRow}>
                     <View style={styles.postAvatar}>
-                      <Text style={{ fontSize: 14 }}>👤</Text>
+                      <Text style={styles.postAvatarText}>{post.profiles?.display_name?.[0]?.toUpperCase() ?? '?'}</Text>
                     </View>
                     <View>
                       <Text style={styles.postAuthorName}>{post.profiles?.display_name ?? 'Anonymous'}</Text>
@@ -279,80 +308,84 @@ export default function CommunityDetailScreen() {
                     </View>
                   </View>
                   <Text style={styles.postContent}>{post.content}</Text>
-                  <View style={styles.postFooter}>
-                    <Ionicons name="chatbubble-outline" size={13} color={COLORS.textMuted} />
-                    <Text style={styles.commentCount}>{post.comment_count ?? 0}</Text>
-                  </View>
                 </TouchableOpacity>
-              ))
-            )}
-            {/* Spacer for FAB */}
-            <View style={{ height: 80 }} />
-          </View>
-        )}
-
-        {/* Events tab */}
-        {subTab === 'events' && (
-          <View style={{ paddingTop: 8 }}>
-            {events.length === 0 ? (
-              <View style={styles.emptyCenter}>
-                <Text style={styles.emptyIcon}>🗓️</Text>
-                <Text style={styles.emptyTitle}>No upcoming events</Text>
+                <View style={styles.postFooter}>
+                  <TouchableOpacity style={styles.footerBtn} onPress={() => toggleLike(post.id)}>
+                    <Text style={[styles.footerHeart, likedIds.has(post.id) && styles.footerHeartLiked]}>
+                      {likedIds.has(post.id) ? '♥' : '♡'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.footerBtn} onPress={() => router.push(`/(tabs)/discover/community/post/${post.id}` as any)}>
+                    <Ionicons name="chatbubble-outline" size={13} color={COLORS.textMuted} />
+                    <Text style={styles.footerCount}>{post.comment_count ?? 0}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.footerBtn} onPress={() => Share.share({ message: post.content })}>
+                    <Ionicons name="share-outline" size={13} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                </View>
               </View>
-            ) : (
-              events.map((event) => {
-                const going = rsvpIds.has(event.id);
-                return (
-                  <View key={event.id} style={styles.eventCard}>
-                    <View style={styles.dateChip}>
-                      <Text style={styles.dateDay}>{format(new Date(event.starts_at), 'dd')}</Text>
-                      <Text style={styles.dateMonth}>{format(new Date(event.starts_at), 'MMM')}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
-                      {event.location && <Text style={styles.eventLocation} numberOfLines={1}>📍 {event.location}</Text>}
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.rsvpBtn, going && styles.rsvpBtnGoing]}
-                      onPress={() => toggleRsvp(event.id)}
-                    >
-                      <Text style={[styles.rsvpBtnText, going && styles.rsvpBtnTextGoing]}>
-                        {going ? 'Going ✓' : 'RSVP'}
-                      </Text>
-                    </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+
+        {/* Page 1 — Events */}
+        <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}>
+          {events.length === 0 ? (
+            <View style={styles.emptyCenter}>
+              <Text style={styles.emptyIcon}>🗓️</Text>
+              <Text style={styles.emptyTitle}>No upcoming events</Text>
+            </View>
+          ) : (
+            events.map((event) => {
+              const going = rsvpIds.has(event.id);
+              return (
+                <View key={event.id} style={styles.eventCard}>
+                  <View style={styles.dateChip}>
+                    <Text style={styles.dateDay}>{format(new Date(event.starts_at), 'dd')}</Text>
+                    <Text style={styles.dateMonth}>{format(new Date(event.starts_at), 'MMM')}</Text>
                   </View>
-                );
-              })
-            )}
-          </View>
-        )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
+                    {event.location && <Text style={styles.eventLocation} numberOfLines={1}>📍 {event.location}</Text>}
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.rsvpBtn, going && styles.rsvpBtnGoing]}
+                    onPress={() => toggleRsvp(event.id)}
+                  >
+                    <Text style={[styles.rsvpBtnText, going && styles.rsvpBtnTextGoing]}>
+                      {going ? 'Going ✓' : 'RSVP'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
 
-        {/* Games tab */}
-        {subTab === 'games' && (
-          <View style={styles.gamesContainer}>
-            <TouchableOpacity
-              style={styles.gameCard}
-              onPress={() => router.push('/(tabs)/connect/speed-dating' as any)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.gameEmoji}>⚡</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.gameTitle}>Speed Dating</Text>
-                <Text style={styles.gameDesc}>5-minute video speed dates. Match with someone new.</Text>
-              </View>
-              <View style={styles.playBtn}>
-                <Text style={styles.playBtnText}>Play Now</Text>
-              </View>
-            </TouchableOpacity>
-            <View style={styles.gameCard}>
-              <Text style={styles.gameEmoji}>🎯</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.gameTitle}>Icebreakers</Text>
-                <Text style={styles.gameDesc}>More community games coming soon! 💜</Text>
-              </View>
+        {/* Page 2 — Games */}
+        <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={styles.gamesContainer}>
+          <TouchableOpacity
+            style={styles.gameCard}
+            onPress={() => router.push('/(tabs)/connect/speed-dating' as any)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.gameEmoji}>⚡</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.gameTitle}>Speed Dating</Text>
+              <Text style={styles.gameDesc}>5-minute video speed dates. Match with someone new.</Text>
+            </View>
+            <View style={styles.playBtn}>
+              <Text style={styles.playBtnText}>Play Now</Text>
+            </View>
+          </TouchableOpacity>
+          <View style={styles.gameCard}>
+            <Text style={styles.gameEmoji}>🎯</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.gameTitle}>Icebreakers</Text>
+              <Text style={styles.gameDesc}>More community games coming soon! 💜</Text>
             </View>
           </View>
-        )}
+        </ScrollView>
       </ScrollView>
 
       {/* FAB — create post (posts tab only) */}
@@ -413,21 +446,21 @@ export default function CommunityDetailScreen() {
           </View>
         </View>
       </Modal>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { flex: 1 },
 
   // Cover
-  cover: { height: 200, position: 'relative' },
+  cover: { height: 140, position: 'relative' },
   coverGradient: {
-    height: 200, backgroundColor: COLORS.secondary + '60',
+    height: 140, backgroundColor: COLORS.secondary + '60',
     alignItems: 'center', justifyContent: 'center',
   },
-  coverEmoji: { fontSize: 64 },
+  coverEmoji: { fontSize: 48 },
   backBtn: {
     position: 'absolute', top: 50, left: 16,
     width: 38, height: 38, borderRadius: 19,
@@ -436,94 +469,99 @@ const styles = StyleSheet.create({
   },
 
   // Info card
-  infoCard: { backgroundColor: COLORS.surface, padding: 20, gap: 10 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  communityName: { color: COLORS.textPrimary, fontSize: 22, fontWeight: '800', flex: 1 },
+  infoCard: { backgroundColor: COLORS.surface, padding: 14, gap: 6 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  communityName: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800', flex: 1 },
   levelBadge: {
-    backgroundColor: COLORS.secondary + '20', borderRadius: 12,
-    paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: COLORS.secondary + '20', borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 2,
   },
-  levelBadgeText: { color: COLORS.secondary, fontWeight: '700', fontSize: 12 },
-  membersRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  membersText: { color: COLORS.roxy, fontWeight: '600', fontSize: 14, textDecorationLine: 'underline' },
+  levelBadgeText: { color: COLORS.secondary, fontWeight: '700', fontSize: 11 },
+  membersRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  membersText: { color: COLORS.roxy, fontWeight: '600', fontSize: 13, textDecorationLine: 'underline' },
   privacyPill: {
-    backgroundColor: COLORS.primary + '20', borderRadius: 10,
-    paddingHorizontal: 8, paddingVertical: 3,
+    backgroundColor: COLORS.primary + '20', borderRadius: 8,
+    paddingHorizontal: 7, paddingVertical: 2,
   },
   privacyPillPrivate: { backgroundColor: COLORS.textMuted + '20' },
   privacyPillText: { color: COLORS.textMuted, fontSize: 11 },
-  communityDesc: { color: COLORS.textSecondary, fontSize: 14, lineHeight: 20 },
+  communityDesc: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 18 },
   joinBtn: {
-    backgroundColor: COLORS.roxy, borderRadius: 16,
-    paddingVertical: 12, alignItems: 'center',
+    backgroundColor: COLORS.roxy, borderRadius: 12,
+    paddingVertical: 8, alignItems: 'center',
   },
   joinBtnJoined: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.textMuted + '60' },
-  joinBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  joinBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   joinBtnTextJoined: { color: COLORS.textMuted },
 
   // Sub-tabs
   subTabRow: {
-    flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8,
+    flexDirection: 'row',
     backgroundColor: COLORS.background,
     borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
   subTab: {
-    flex: 1, paddingVertical: 8, borderRadius: 20,
-    alignItems: 'center', backgroundColor: COLORS.surface,
+    flex: 1, paddingVertical: 13,
+    alignItems: 'center',
+    borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
-  subTabActive: { backgroundColor: COLORS.roxy },
+  subTabActive: { borderBottomColor: COLORS.roxy },
   subTabText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
-  subTabTextActive: { color: '#fff' },
+  subTabTextActive: { color: COLORS.roxy, fontWeight: '700' },
 
   // Posts
-  postCard: { backgroundColor: COLORS.surface, marginHorizontal: 16, marginBottom: 10, borderRadius: 16, padding: 16 },
-  postAuthorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  postCard: { backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8, borderRadius: 12, padding: 10 },
+  postAuthorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   postAvatar: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 28, height: 28, borderRadius: 14,
     backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
   },
-  postAuthorName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
-  postTime: { color: COLORS.textMuted, fontSize: 12 },
-  postContent: { color: COLORS.textPrimary, fontSize: 15, lineHeight: 22 },
-  postFooter: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
-  commentCount: { color: COLORS.textMuted, fontSize: 12 },
+  postAvatarText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 11 },
+  postAuthorName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13 },
+  postTime: { color: COLORS.textMuted, fontSize: 11 },
+  postContent: { color: COLORS.textPrimary, fontSize: 14, lineHeight: 20 },
+  postFooter: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 8 },
+  footerBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  footerHeart: { color: COLORS.textMuted, fontSize: 16 },
+  footerHeartLiked: { color: COLORS.roxy },
+  footerCount: { color: COLORS.textMuted, fontSize: 12 },
 
   // Events
   eventCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: COLORS.surface, marginHorizontal: 16, marginBottom: 10,
-    borderRadius: 16, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8,
+    borderRadius: 12, padding: 10,
   },
   dateChip: {
-    width: 44, alignItems: 'center', backgroundColor: COLORS.primary + '20',
-    borderRadius: 10, paddingVertical: 6,
+    width: 36, alignItems: 'center', backgroundColor: COLORS.primary + '20',
+    borderRadius: 8, paddingVertical: 4,
   },
-  dateDay: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 16 },
-  dateMonth: { color: COLORS.textMuted, fontSize: 11 },
-  eventTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 2 },
-  eventLocation: { color: COLORS.textSecondary, fontSize: 12 },
+  dateDay: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 14 },
+  dateMonth: { color: COLORS.textMuted, fontSize: 10 },
+  eventTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
+  eventLocation: { color: COLORS.textSecondary, fontSize: 11 },
   rsvpBtn: {
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
     borderWidth: 1, borderColor: COLORS.primary,
   },
   rsvpBtnGoing: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  rsvpBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 12 },
+  rsvpBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 11 },
   rsvpBtnTextGoing: { color: '#fff' },
 
   // Games
-  gamesContainer: { padding: 16, gap: 16 },
+  gamesContainer: { padding: 12, gap: 8 },
   gameCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: COLORS.surface, borderRadius: 16, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.surface, borderRadius: 12, padding: 12,
   },
-  gameEmoji: { fontSize: 32 },
-  gameTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 15, marginBottom: 4 },
-  gameDesc: { color: COLORS.textMuted, fontSize: 13, lineHeight: 18 },
+  gameEmoji: { fontSize: 24 },
+  gameTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 2 },
+  gameDesc: { color: COLORS.textMuted, fontSize: 12, lineHeight: 16 },
   playBtn: {
-    backgroundColor: COLORS.roxy, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: COLORS.roxy, borderRadius: 16,
+    paddingHorizontal: 12, paddingVertical: 6,
   },
-  playBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  playBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
 
   // FAB
   fab: {

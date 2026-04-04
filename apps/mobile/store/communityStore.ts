@@ -32,7 +32,10 @@ export const useCommunityStore = create<CommunityStore>((set, get) => ({
   },
 
   joinCommunity: async (communityId, userId) => {
-    await supabase.from('community_members').insert({ community_id: communityId, user_id: userId, role: 'member' });
+    const { error } = await supabase
+      .from('community_members')
+      .upsert({ community_id: communityId, user_id: userId, role: 'member' }, { onConflict: 'community_id,user_id', ignoreDuplicates: true });
+    if (error) throw error;
     const { joinedIds, joinedCommunities, allCommunities } = get();
     const community = allCommunities.find((c) => c.id === communityId);
     const newIds = new Set(joinedIds); newIds.add(communityId);
@@ -40,7 +43,12 @@ export const useCommunityStore = create<CommunityStore>((set, get) => ({
   },
 
   leaveCommunity: async (communityId, userId) => {
-    await supabase.from('community_members').delete().eq('community_id', communityId).eq('user_id', userId);
+    const { error } = await supabase
+      .from('community_members')
+      .delete()
+      .eq('community_id', communityId)
+      .eq('user_id', userId);
+    if (error) throw error;
     const { joinedIds, joinedCommunities } = get();
     const newIds = new Set(joinedIds); newIds.delete(communityId);
     set({ joinedIds: newIds, joinedCommunities: joinedCommunities.filter((c) => c.id !== communityId) });

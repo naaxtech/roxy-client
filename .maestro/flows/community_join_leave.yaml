@@ -1,0 +1,62 @@
+# Maestro flow: Join and leave a community
+# Tests the join/leave RLS policies and local state update.
+# Run: maestro test .maestro/flows/community_join_leave.yaml
+#
+# Prerequisites:
+#   - Dev build running on emulator/device (com.roxy.app)
+#   - User signed in (run login flow first if needed)
+
+appId: com.roxy.app
+---
+# Navigate to Discover tab
+- tapOn:
+    text: "Discover"
+
+# Communities sub-tab should be default active — assert visible
+- assertVisible:
+    text: "Communities"
+
+# Find "Queer Gamers" community (seeded in 003_communities_social.sql)
+- scrollUntilVisible:
+    element:
+      text: "Queer Gamers"
+    direction: DOWN
+    timeout: 5000
+
+# Tap join — the button is next to "Queer Gamers"
+- tapOn:
+    text: "Join"
+    index: 0
+
+# Wait for state update and verify button changed
+- assertVisible:
+    text: "Joined"
+    timeout: 3000
+
+# Tap the card to open community detail
+- tapOn:
+    text: "Queer Gamers"
+
+# Verify detail screen loaded
+- assertVisible:
+    text: "Join Community"
+    timeout: 3000
+
+# Go back
+- tapOn:
+    id: "arrow-back-outline"
+
+# Now leave the community from the list
+- scrollUntilVisible:
+    element:
+      text: "Queer Gamers"
+    direction: DOWN
+    timeout: 5000
+
+- tapOn:
+    text: "Joined"
+
+# Verify reverted to Join
+- assertVisible:
+    text: "Join"
+    timeout: 3000

@@ -14,11 +14,12 @@ import { useCommunityStore } from '../../../store/communityStore';
 import { COLORS } from '../../../lib/constants';
 import { Conversation } from '../../../types';
 
+
 type SubTab = 'feed' | 'events' | 'chats';
 
 type PostRow = {
   id: string; content: string; created_at: string; community_id: string;
-  author_id: string;
+  author_id: string; comment_count: number;
   profiles: { display_name: string; avatar_url: string | null } | null;
   communities: { name: string } | null;
 };
@@ -106,7 +107,7 @@ export default function ConnectScreen() {
     setLoadingFeed(true);
     const { data } = await supabase
       .from('posts')
-      .select('*, profiles(display_name, avatar_url), communities(name)')
+      .select('*, comment_count, profiles(display_name, avatar_url), communities(name)')
       .in('community_id', ids)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -222,25 +223,33 @@ export default function ConnectScreen() {
             refreshing={loadingFeed}
             contentContainerStyle={{ paddingVertical: 8 }}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.postCard}
-                onPress={() => router.push(`/(tabs)/discover/community/${item.community_id}` as any)}
-                activeOpacity={0.8}
-              >
+              <View style={styles.postCard}>
                 <View style={styles.postHeader}>
-                  <View style={styles.communityPill}>
-                    <Text style={styles.communityPillText}>{item.communities?.name ?? '—'}</Text>
-                  </View>
+                  <TouchableOpacity
+                    onPress={() => router.push(`/(tabs)/discover/community/${item.community_id}` as any)}
+                  >
+                    <View style={styles.communityPill}>
+                      <Text style={styles.communityPillText}>{item.communities?.name ?? '—'}</Text>
+                    </View>
+                  </TouchableOpacity>
                   <Text style={styles.postTime}>{format(new Date(item.created_at), 'dd MMM')}</Text>
                 </View>
-                <Text style={styles.postAuthor}>{item.profiles?.display_name ?? 'Anonymous'}</Text>
-                <Text style={styles.postContent} numberOfLines={4}>{item.content}</Text>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/(tabs)/discover/community/post/${item.id}` as any)}>
+                  <Text style={styles.postAuthor}>{item.profiles?.display_name ?? 'Anonymous'}</Text>
+                  <Text style={styles.postContent} numberOfLines={4}>{item.content}</Text>
+                </TouchableOpacity>
                 <View style={styles.reactionRow}>
                   {['🌸', '💜', '🔥', '✊'].map((emoji) => (
                     <Text key={emoji} style={styles.reactionEmoji}>{emoji}</Text>
                   ))}
+                  <TouchableOpacity
+                    style={styles.commentBtn}
+                    onPress={() => router.push(`/(tabs)/discover/community/post/${item.id}` as any)}
+                  >
+                    <Text style={styles.commentBtnText}>💬 {item.comment_count ?? 0}</Text>
+                  </TouchableOpacity>
                 </View>
-              </TouchableOpacity>
+              </View>
             )}
             ListEmptyComponent={
               <View style={styles.emptyCenter}>
@@ -366,6 +375,7 @@ export default function ConnectScreen() {
         </View>
       )}
       </Animated.View>
+
     </SafeAreaView>
   );
 }
@@ -373,93 +383,96 @@ export default function ConnectScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: {
-    paddingHorizontal: 20, paddingVertical: 12,
+    paddingHorizontal: 16, paddingVertical: 8,
     borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: COLORS.textPrimary },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
 
-  // Sub-tabs
+  // Sub-tabs — underline style
   subTabRow: {
-    flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8,
+    flexDirection: 'row',
     borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
   subTab: {
-    flex: 1, paddingVertical: 8, borderRadius: 20,
-    alignItems: 'center', backgroundColor: COLORS.surface,
+    flex: 1, paddingVertical: 10,
+    alignItems: 'center',
+    borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
-  subTabActive: { backgroundColor: COLORS.roxy },
+  subTabActive: { borderBottomColor: COLORS.roxy },
   subTabText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
-  subTabTextActive: { color: '#fff' },
+  subTabTextActive: { color: COLORS.roxy, fontWeight: '700' },
 
   // Feed posts
   postCard: {
-    backgroundColor: COLORS.surface, marginHorizontal: 16, marginBottom: 12,
-    borderRadius: 16, padding: 16,
+    backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8,
+    borderRadius: 12, padding: 10,
   },
-  postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   communityPill: {
-    backgroundColor: COLORS.primary + '30', borderRadius: 12,
-    paddingHorizontal: 10, paddingVertical: 3,
+    backgroundColor: COLORS.primary + '30', borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 2,
   },
   communityPillText: { color: COLORS.primary, fontSize: 11, fontWeight: '700' },
-  postTime: { color: COLORS.textMuted, fontSize: 12 },
-  postAuthor: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 6 },
-  postContent: { color: COLORS.textPrimary, fontSize: 15, lineHeight: 22 },
-  reactionRow: { flexDirection: 'row', gap: 12, marginTop: 10 },
-  reactionEmoji: { fontSize: 18, color: COLORS.textMuted },
+  postTime: { color: COLORS.textMuted, fontSize: 11 },
+  postAuthor: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 4 },
+  postContent: { color: COLORS.textPrimary, fontSize: 14, lineHeight: 20 },
+  reactionRow: { flexDirection: 'row', gap: 10, marginTop: 8, alignItems: 'center' },
+  reactionEmoji: { fontSize: 16, color: COLORS.textMuted },
+  commentBtn: { marginLeft: 'auto' as any },
+  commentBtnText: { color: COLORS.textMuted, fontSize: 13 },
 
   // Events
   eventCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: COLORS.surface, marginHorizontal: 16, marginBottom: 10,
-    borderRadius: 16, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8,
+    borderRadius: 12, padding: 10,
   },
   dateChip: {
-    width: 44, alignItems: 'center', backgroundColor: COLORS.primary + '20',
-    borderRadius: 10, paddingVertical: 6,
+    width: 36, alignItems: 'center', backgroundColor: COLORS.primary + '20',
+    borderRadius: 8, paddingVertical: 4,
   },
-  dateDay: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 16 },
-  dateMonth: { color: COLORS.textMuted, fontSize: 11 },
-  eventTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 2 },
-  eventCommunity: { color: COLORS.textMuted, fontSize: 12, marginBottom: 2 },
-  eventLocation: { color: COLORS.textSecondary, fontSize: 12 },
+  dateDay: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 14 },
+  dateMonth: { color: COLORS.textMuted, fontSize: 10 },
+  eventTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
+  eventCommunity: { color: COLORS.textMuted, fontSize: 11, marginBottom: 2 },
+  eventLocation: { color: COLORS.textSecondary, fontSize: 11 },
   rsvpBtn: {
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
     borderWidth: 1, borderColor: COLORS.primary,
   },
   rsvpBtnGoing: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  rsvpBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 12 },
+  rsvpBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 11 },
   rsvpBtnTextGoing: { color: '#fff' },
 
   // Chats
   datingToggleRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 10,
+    paddingHorizontal: 16, paddingVertical: 8,
     borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
-  datingLabel: { color: COLORS.textSecondary, fontSize: 15 },
+  datingLabel: { color: COLORS.textSecondary, fontSize: 13 },
   speedDateBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: COLORS.primary + '20',
     borderBottomWidth: 1, borderBottomColor: COLORS.primary + '40',
-    paddingHorizontal: 20, paddingVertical: 14,
+    paddingHorizontal: 16, paddingVertical: 10,
   },
-  speedDateIcon: { fontSize: 28 },
-  speedDateTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 15 },
-  speedDateSub: { color: COLORS.textSecondary, fontSize: 13 },
-  speedDateArrow: { color: COLORS.textMuted, fontSize: 24 },
+  speedDateIcon: { fontSize: 22 },
+  speedDateTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
+  speedDateSub: { color: COLORS.textSecondary, fontSize: 12 },
+  speedDateArrow: { color: COLORS.textMuted, fontSize: 20 },
   row: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10,
     borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
   avatar: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', marginRight: 12,
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', marginRight: 10,
   },
-  avatarText: { fontSize: 20 },
+  avatarText: { fontSize: 16 },
   rowContent: { flex: 1, marginRight: 8 },
-  rowName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 15 },
-  rowSub: { color: COLORS.textMuted, fontSize: 13, marginTop: 2 },
+  rowName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
+  rowSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 1 },
   rowRight: { alignItems: 'flex-end', gap: 4 },
   rowTime: { color: COLORS.textMuted, fontSize: 12 },
   unreadBadge: {

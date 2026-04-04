@@ -1,0 +1,59 @@
+# Maestro flow: Open a community post and add a comment
+# Tests: post detail navigation, comment submission, comment display.
+# Run: maestro test .maestro/flows/community_post_comments.yaml
+#
+# Prerequisites:
+#   - User must be a member of at least one community with posts
+#   - Run community_join_leave flow first if no communities joined yet
+
+appId: com.roxy.app
+---
+# Navigate to Connect tab — Feed shows posts from joined communities
+- tapOn:
+    text: "Connect"
+
+- tapOn:
+    text: "Feed"
+
+# Wait for feed to load
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Tap the post card body to open post detail
+- tapOn:
+    text: "💬"
+    index: 0
+
+# Verify PostDetailScreen opened
+- assertVisible:
+    text: "Post"
+    timeout: 3000
+
+# Verify composer is present
+- assertVisible:
+    text: "Add a comment…"
+
+# Type a comment
+- tapOn:
+    text: "Add a comment…"
+
+- inputText: "Testing Maestro 💜"
+
+# "Post" button should now be visible (only shows when draft has text)
+- assertVisible:
+    text: "Post"
+
+- tapOn:
+    text: "Post"
+
+# Wait for submission
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Comment should appear in the list
+- assertVisible:
+    text: "Testing Maestro 💜"
+    timeout: 5000
+
+# Go back
+- back

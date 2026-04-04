@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Animated,
+  View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Animated, Alert,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -88,10 +88,14 @@ export default function DiscoverScreen() {
 
   const handleJoinLeave = async (community: Community) => {
     if (!user) return;
-    if (joinedIds.has(community.id)) {
-      await leaveCommunity(community.id, user.id);
-    } else {
-      await joinCommunity(community.id, user.id);
+    try {
+      if (joinedIds.has(community.id)) {
+        await leaveCommunity(community.id, user.id);
+      } else {
+        await joinCommunity(community.id, user.id);
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Could not update membership');
     }
   };
 
@@ -279,74 +283,75 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: {
-    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, gap: 10,
+    paddingHorizontal: 14, paddingTop: 8, paddingBottom: 6, gap: 8,
     borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: COLORS.textPrimary },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
   searchInput: {
-    backgroundColor: COLORS.surface, borderRadius: 20,
-    paddingHorizontal: 16, paddingVertical: 9,
-    color: COLORS.textPrimary, fontSize: 14,
+    backgroundColor: COLORS.surface, borderRadius: 16,
+    paddingHorizontal: 14, paddingVertical: 7,
+    color: COLORS.textPrimary, fontSize: 13,
   },
 
-  // Sub-tabs
+  // Sub-tabs — underline style
   subTabRow: {
-    flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8,
+    flexDirection: 'row',
     borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
   subTab: {
-    flex: 1, paddingVertical: 8, borderRadius: 20,
-    alignItems: 'center', backgroundColor: COLORS.surface,
+    flex: 1, paddingVertical: 10,
+    alignItems: 'center',
+    borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
-  subTabActive: { backgroundColor: COLORS.roxy },
+  subTabActive: { borderBottomColor: COLORS.roxy },
   subTabText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
-  subTabTextActive: { color: '#fff' },
+  subTabTextActive: { color: COLORS.roxy, fontWeight: '700' },
 
   // Community cards
   communityCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: COLORS.surface, marginHorizontal: 16, marginBottom: 10,
-    borderRadius: 16, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8,
+    borderRadius: 12, padding: 10,
   },
   communityAvatar: {
-    width: 48, height: 48, borderRadius: 24,
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
   },
   communityNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' },
-  communityName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
+  communityName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13 },
   levelBadge: {
-    backgroundColor: COLORS.secondary + '20', borderRadius: 10,
-    paddingHorizontal: 7, paddingVertical: 2,
+    backgroundColor: COLORS.secondary + '20', borderRadius: 8,
+    paddingHorizontal: 6, paddingVertical: 2,
   },
   levelBadgeText: { color: COLORS.secondary, fontSize: 10, fontWeight: '700' },
-  communityDesc: { color: COLORS.textMuted, fontSize: 12, marginBottom: 4 },
+  communityDesc: { color: COLORS.textMuted, fontSize: 11, marginBottom: 3 },
   communityMeta: { flexDirection: 'row', gap: 8 },
   communityMetaText: { color: COLORS.textMuted, fontSize: 11 },
   joinBtn: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
     borderWidth: 1, borderColor: COLORS.roxy,
   },
   joinBtnJoined: { backgroundColor: COLORS.roxy, borderColor: COLORS.roxy },
-  joinBtnText: { color: COLORS.roxy, fontWeight: '700', fontSize: 12 },
+  joinBtnText: { color: COLORS.roxy, fontWeight: '700', fontSize: 11 },
   joinBtnTextJoined: { color: '#fff' },
 
   // Events
   eventCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: COLORS.surface, marginHorizontal: 16, marginBottom: 10,
-    borderRadius: 16, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8,
+    borderRadius: 12, padding: 10,
   },
   dateChip: {
-    width: 44, alignItems: 'center', backgroundColor: COLORS.primary + '20',
-    borderRadius: 10, paddingVertical: 6,
+    width: 36, alignItems: 'center', backgroundColor: COLORS.primary + '20',
+    borderRadius: 8, paddingVertical: 4,
   },
-  dateDay: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 16 },
-  dateMonth: { color: COLORS.textMuted, fontSize: 11 },
-  eventTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 2 },
-  eventCommunity: { color: COLORS.textMuted, fontSize: 12, marginBottom: 2 },
-  eventLocation: { color: COLORS.textSecondary, fontSize: 12 },
+  dateDay: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 14 },
+  dateMonth: { color: COLORS.textMuted, fontSize: 10 },
+  eventTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
+  eventCommunity: { color: COLORS.textMuted, fontSize: 11, marginBottom: 2 },
+  eventLocation: { color: COLORS.textSecondary, fontSize: 11 },
   interestedBtn: {
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12,
     borderWidth: 1, borderColor: COLORS.secondary,
   },
   interestedBtnActive: { backgroundColor: COLORS.secondary, borderColor: COLORS.secondary },
@@ -354,26 +359,26 @@ const styles = StyleSheet.create({
   interestedBtnTextActive: { color: '#fff' },
 
   // Games
-  gamesContainer: { padding: 16, gap: 16 },
+  gamesContainer: { padding: 12, gap: 8 },
   gameCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: COLORS.surface, borderRadius: 16, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.surface, borderRadius: 12, padding: 12,
   },
-  gameEmoji: { fontSize: 32 },
-  gameTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 15, marginBottom: 4 },
-  gameDesc: { color: COLORS.textMuted, fontSize: 13, lineHeight: 18 },
-  gameAvailable: { color: COLORS.secondary, fontSize: 11, fontWeight: '600', marginTop: 4 },
+  gameEmoji: { fontSize: 24 },
+  gameTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 2 },
+  gameDesc: { color: COLORS.textMuted, fontSize: 12, lineHeight: 16 },
+  gameAvailable: { color: COLORS.secondary, fontSize: 11, fontWeight: '600', marginTop: 3 },
   playBtn: {
-    backgroundColor: COLORS.roxy, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: COLORS.roxy, borderRadius: 16,
+    paddingHorizontal: 12, paddingVertical: 6,
   },
-  playBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  playBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
   browseBtn: {
-    backgroundColor: COLORS.surface, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: COLORS.surface, borderRadius: 16,
+    paddingHorizontal: 12, paddingVertical: 6,
     borderWidth: 1, borderColor: COLORS.secondary,
   },
-  browseBtnText: { color: COLORS.secondary, fontWeight: '700', fontSize: 13 },
+  browseBtnText: { color: COLORS.secondary, fontWeight: '700', fontSize: 12 },
 
   // Empty
   emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12, marginTop: 40 },

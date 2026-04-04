@@ -86,8 +86,8 @@ describe('PostDetailScreen', () => {
   it('renders existing comments', async () => {
     const { getByText } = render(<PostDetailScreen />);
     await waitFor(() => {
-      expect(getByText('Great post!')).toBeTruthy();
-      expect(getByText('Totally agree 💜')).toBeTruthy();
+      expect(getByText(/Great post!/)).toBeTruthy();
+      expect(getByText(/Totally agree 💜/)).toBeTruthy();
     });
   });
 

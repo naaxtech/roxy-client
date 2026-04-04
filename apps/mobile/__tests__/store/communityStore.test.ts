@@ -67,7 +67,7 @@ describe('communityStore', () => {
     useCommunityStore.setState({ allCommunities: [community], joinedCommunities: [], joinedIds: new Set() });
 
     supabase.from.mockReturnValue({
-      insert: jest.fn().mockResolvedValue({ error: null }),
+      upsert: jest.fn().mockResolvedValue({ error: null }),
     });
 
     const { result } = renderHook(() => useCommunityStore());
