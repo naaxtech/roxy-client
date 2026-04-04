@@ -119,6 +119,14 @@ export interface Post {
   updated_at: string;
 }
 
+export interface Comment {
+  id: string;
+  post_id: string;
+  author_id: string;
+  content: string;
+  created_at: string;
+}
+
 export interface Event {
   id: string;
   community_id: string | null;

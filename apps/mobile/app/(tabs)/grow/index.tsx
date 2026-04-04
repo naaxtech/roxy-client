@@ -66,7 +66,7 @@ export default function GrowScreen() {
         .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
         .eq('status', 'accepted'),
     ]);
-    if (commRes.data) setCommunities(commRes.data as CommunityRow[]);
+    if (commRes.data) setCommunities(commRes.data as unknown as CommunityRow[]);
     if (friendRes.data) setFriendships(friendRes.data as FriendshipRow[]);
   }, [user]);
 
@@ -217,72 +217,72 @@ export default function GrowScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { padding: 16, gap: 16 },
+  scroll: { padding: 12, gap: 10 },
 
   miniHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 4,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   avatarCircle: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 30, height: 30, borderRadius: 15,
     backgroundColor: COLORS.primary + '30',
     borderWidth: 2, borderColor: COLORS.primary,
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarInitial: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
-  screenTitle: { color: COLORS.textPrimary, fontSize: 22, fontWeight: '800' },
+  avatarInitial: { color: COLORS.primary, fontWeight: '700', fontSize: 13 },
+  screenTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800' },
 
   greetingCard: {
-    backgroundColor: COLORS.surface, borderRadius: 24, padding: 24,
-    minHeight: 180, justifyContent: 'center',
+    backgroundColor: COLORS.surface, borderRadius: 16, padding: 14,
+    minHeight: 100, justifyContent: 'center',
     borderWidth: 1, borderColor: COLORS.primary + '40',
   },
   roxyDot: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: COLORS.roxy, marginBottom: 12,
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: COLORS.roxy, marginBottom: 8,
   },
-  greetingText: { fontSize: 18, color: COLORS.textPrimary, lineHeight: 28, fontWeight: '500' },
-  greetingLabel: { color: COLORS.textMuted, fontSize: 12, marginTop: 12 },
+  greetingText: { fontSize: 15, color: COLORS.textPrimary, lineHeight: 22, fontWeight: '500' },
+  greetingLabel: { color: COLORS.textMuted, fontSize: 11, marginTop: 6 },
 
-  section: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 10 },
+  section: { backgroundColor: COLORS.surface, borderRadius: 12, padding: 12 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 6 },
   sectionHint: { color: COLORS.textMuted, fontSize: 11, fontWeight: '400' },
-  emptyState: { color: COLORS.textMuted, fontSize: 14 },
+  emptyState: { color: COLORS.textMuted, fontSize: 13 },
 
   chipScroll: { marginTop: 4 },
   chip: {
-    backgroundColor: COLORS.primary + '20', borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 7,
-    marginRight: 8, borderWidth: 1, borderColor: COLORS.primary + '40',
+    backgroundColor: COLORS.primary + '20', borderRadius: 16,
+    paddingHorizontal: 10, paddingVertical: 5,
+    marginRight: 6, borderWidth: 1, borderColor: COLORS.primary + '40',
   },
-  chipText: { color: COLORS.primary, fontWeight: '600', fontSize: 13 },
+  chipText: { color: COLORS.primary, fontWeight: '600', fontSize: 12 },
   chipJoin: { backgroundColor: COLORS.roxy + '20', borderColor: COLORS.roxy + '60' },
-  chipJoinText: { color: COLORS.roxy, fontWeight: '600', fontSize: 13 },
+  chipJoinText: { color: COLORS.roxy, fontWeight: '600', fontSize: 12 },
 
-  avatarRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  avatarRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   avatar: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 36, height: 36, borderRadius: 18,
     backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { fontSize: 20 },
-  avatarCount: { color: COLORS.textMuted, fontWeight: '700', fontSize: 13 },
+  avatarText: { fontSize: 16 },
+  avatarCount: { color: COLORS.textMuted, fontWeight: '700', fontSize: 12 },
 
-  levelRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  levelEmoji: { fontSize: 32 },
-  levelLabel: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16 },
-  levelPoints: { color: COLORS.textMuted, fontSize: 13 },
+  levelRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  levelEmoji: { fontSize: 22 },
+  levelLabel: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
+  levelPoints: { color: COLORS.textMuted, fontSize: 12 },
   progressTrack: {
-    height: 8, backgroundColor: COLORS.surfaceLight,
-    borderRadius: 4, overflow: 'hidden', marginBottom: 6,
+    height: 4, backgroundColor: COLORS.surfaceLight,
+    borderRadius: 2, overflow: 'hidden', marginBottom: 4,
   },
-  progressFill: { height: 8, backgroundColor: COLORS.primary, borderRadius: 4 },
-  progressHint: { color: COLORS.textMuted, fontSize: 12 },
+  progressFill: { height: 4, backgroundColor: COLORS.primary, borderRadius: 2 },
+  progressHint: { color: COLORS.textMuted, fontSize: 11 },
 
-  badgePreviewRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
-  badgePreviewEmoji: { fontSize: 26 },
+  badgePreviewRow: { flexDirection: 'row', gap: 6, marginBottom: 4 },
+  badgePreviewEmoji: { fontSize: 20 },
   badgePreviewDim: { opacity: 0.3 },
-  badgePreviewSummary: { color: COLORS.textMuted, fontSize: 12 },
+  badgePreviewSummary: { color: COLORS.textMuted, fontSize: 11 },
 });

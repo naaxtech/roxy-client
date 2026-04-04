@@ -30,8 +30,8 @@ export default function SisterButtonScreen() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionDone, setSessionDone] = useState(false);
-  const [resources, setResources] = useState<Array<{ name: string; contact: string; type: string }> | null>(null);
-  const [directory, setDirectory] = useState<Array<{ name: string; url: string }> | null>(null);
+  const [resources, setResources] = useState<Array<{ name: string; number?: string; instruction?: string; contact?: string; type?: string }> | null>(null);
+  const [directory, setDirectory] = useState<Array<{ name: string; url?: string; description?: string }> | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
 

@@ -17,6 +17,7 @@ jest.mock('../../lib/supabase', () => ({
       update: jest.fn(() => ({
         eq: jest.fn(() => ({
           catch: jest.fn(),
+          then: jest.fn(),
         })),
       })),
     })),

@@ -35,7 +35,7 @@ export default function DeleteAccountScreen() {
     // GDPR delete succeeded — best-effort sign out, always redirect
     try { await supabase.auth.signOut(); } catch {}
     useAuthStore.getState().signOut();
-    router.replace('/(auth)/login' as any);
+    router.replace('/(auth)/welcome');
   };
 
   return (
