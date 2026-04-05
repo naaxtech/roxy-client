@@ -108,7 +108,8 @@ export default function SpeedDateSession() {
       .single()
       .then(({ data }) => {
         if (data) setSession(data as SpeedDateSessionData);
-      });
+      })
+      .catch(() => {});
   }, [session_id]);
 
   // Start timer when session loads

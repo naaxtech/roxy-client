@@ -7,17 +7,19 @@ export function useAuth() {
     useAuthStore();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => data?.subscription?.unsubscribe();
   }, []);
 
   const signUp = async (email: string, password: string) => {

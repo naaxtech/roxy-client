@@ -108,7 +108,8 @@ export default function ChatScreen() {
           if (data) {
             setPartnerName(data.display_name || data.username || 'this person');
           }
-        });
+        })
+        .catch(() => {});
     }
   }, [conversationId, user, conversations]);
 
@@ -117,30 +118,36 @@ export default function ChatScreen() {
     if (!conversationId) return;
     (async () => {
       setLoadingInitial(true);
-      const { data } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true })
-        .limit(100);
-      if (data) setInitialMessages(data as Message[]);
-
-      // Load icebreaker (first roxy_suggestion message)
-      const icebreakerMsg = data?.find((m) => m.message_type === 'roxy_suggestion');
-      if (icebreakerMsg) setIcebreaker(icebreakerMsg.content);
-
-      // Mark messages as read
-      if (user) {
-        await supabase
+      try {
+        const { data, error } = await supabase
           .from('messages')
-          .update({ is_read: true })
+          .select('*')
           .eq('conversation_id', conversationId)
-          .neq('sender_id', user.id)
-          .eq('is_read', false);
-        clearUnread(conversationId);
-      }
+          .order('created_at', { ascending: true })
+          .limit(100);
 
-      setLoadingInitial(false);
+        if (error) throw error;
+
+        if (data) {
+          setInitialMessages(data as Message[]);
+          const icebreakerMsg = data.find((m) => m.message_type === 'roxy_suggestion');
+          if (icebreakerMsg) setIcebreaker(icebreakerMsg.content);
+        }
+
+        if (user && data) {
+          await supabase
+            .from('messages')
+            .update({ is_read: true })
+            .eq('conversation_id', conversationId)
+            .neq('sender_id', user.id)
+            .eq('is_read', false);
+          clearUnread(conversationId);
+        }
+      } catch {
+        // non-critical — messages will load via realtime subscription
+      } finally {
+        setLoadingInitial(false);
+      }
     })();
   }, [conversationId, user]);
 
@@ -187,61 +194,66 @@ export default function ChatScreen() {
   const handleWingwoman = async () => {
     if (!conversationId) return;
     setWingwomanLoading(true);
+    try {
+      const history = messages
+        .filter((m) => m.message_type === 'text' && m.content)
+        .slice(-6)
+        .map((m) => ({
+          sender: m.sender_id === user?.id ? 'Me' : 'Them',
+          content: m.content ?? '',
+        }));
 
-    // Build history from last 6 text messages
-    const history = messages
-      .filter((m) => m.message_type === 'text' && m.content)
-      .slice(-6)
-      .map((m) => ({
-        sender: m.sender_id === user?.id ? 'Me' : 'Them',
-        content: m.content ?? '',
-      }));
-
-    const { data, error } = await callEdgeFunction<{ suggestion: string }>('roxy-wingwoman', {
-      conversation_id: conversationId,
-      message_history: history,
-      current_message: inputText || 'I want to keep the conversation going',
-    });
-
-    setWingwomanLoading(false);
-
-    if (error) {
-      Alert.alert('Wingwoman unavailable', error);
-      return;
-    }
-
-    if (data?.suggestion) {
-      const suggestionMsg: Message = {
-        id: `roxy-${Date.now()}`,
+      const { data, error } = await callEdgeFunction<{ suggestion: string }>('roxy-wingwoman', {
         conversation_id: conversationId,
-        sender_id: null,
-        content: data.suggestion,
-        media_url: null,
-        message_type: 'roxy_suggestion',
-        is_read: true,
-        created_at: new Date().toISOString(),
-      };
-      appendMessage(suggestionMsg);
+        message_history: history,
+        current_message: inputText || 'I want to keep the conversation going',
+      });
+
+      if (error) {
+        Alert.alert('Wingwoman unavailable', error);
+        return;
+      }
+
+      if (data?.suggestion) {
+        const suggestionMsg: Message = {
+          id: `roxy-${Date.now()}`,
+          conversation_id: conversationId,
+          sender_id: null,
+          content: data.suggestion,
+          media_url: null,
+          message_type: 'roxy_suggestion',
+          is_read: true,
+          created_at: new Date().toISOString(),
+        };
+        appendMessage(suggestionMsg);
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to get suggestion. Please try again.');
+    } finally {
+      setWingwomanLoading(false);
     }
   };
 
   const handleNudge = async () => {
     if (!conversationId) return;
     setNudgeLoading(true);
+    try {
+      const { data, error } = await callEdgeFunction<{ nudge: string }>('roxy-nudge', {
+        conversation_id: conversationId,
+      });
 
-    const { data, error } = await callEdgeFunction<{ nudge: string }>('roxy-nudge', {
-      conversation_id: conversationId,
-    });
+      if (error) {
+        Alert.alert('Roxy Nudge', "Nudge limit reached for this conversation, but you've got this! 💜");
+        return;
+      }
 
-    setNudgeLoading(false);
-
-    if (error) {
-      Alert.alert('Roxy Nudge', "Nudge limit reached for this conversation, but you've got this! 💜");
-      return;
-    }
-
-    if (data?.nudge) {
-      setInputText(data.nudge);
+      if (data?.nudge) {
+        setInputText(data.nudge);
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to get nudge. Please try again.');
+    } finally {
+      setNudgeLoading(false);
     }
   };
 

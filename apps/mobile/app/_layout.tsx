@@ -51,14 +51,16 @@ export default function RootLayout() {
         .select('*')
         .eq('id', user.id)
         .maybeSingle()
-        .then(({ data }) => {
+        .then(({ data, error }) => {
+          if (error) { logError(error, 'layout_profile_fetch'); return; }
           if (!data) {
             router.replace('/(auth)/onboarding/step1-identity');
           } else {
             setProfile(data);
             router.replace('/(tabs)/grow');
           }
-        });
+        })
+        .catch((e) => logError(e, 'layout_profile_fetch'));
       return;
     }
 
@@ -69,10 +71,12 @@ export default function RootLayout() {
         .select('*')
         .eq('id', user.id)
         .maybeSingle()
-        .then(({ data }) => {
+        .then(({ data, error }) => {
+          if (error) { logError(error, 'layout_profile_reload'); return; }
           if (data) setProfile(data);
           else router.replace('/(auth)/onboarding/step1-identity');
-        });
+        })
+        .catch((e) => logError(e, 'layout_profile_reload'));
     }
   }, [user, loading, segments]);
 

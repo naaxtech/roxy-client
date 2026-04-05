@@ -41,13 +41,15 @@ export default function PeopleScreen() {
   const handleFriendTap = async (item: FriendshipRow) => {
     if (!user) return;
     try {
-      const { data } = await supabase
+      const { data, error: searchError } = await supabase
         .from('conversations')
         .select('id')
         .contains('participant_ids', [user.id, item.profile.id])
         .eq('conversation_type', 'direct')
         .limit(1)
         .maybeSingle();
+
+      if (searchError) throw searchError;
 
       if (data) {
         Analytics.dmOpened(data.id);

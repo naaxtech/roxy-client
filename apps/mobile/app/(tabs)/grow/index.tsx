@@ -58,6 +58,7 @@ export default function GrowScreen() {
         setGreeting(data?.greeting ?? null);
         if (data?.greeting) Analytics.roxyGreetingViewed();
       })
+      .catch(() => {})
       .finally(() => setGreetingLoading(false));
   }, [profile]);
 
@@ -79,7 +80,8 @@ export default function GrowScreen() {
       .select('*, badges(*)')
       .eq('user_id', user.id)
       .order('earned_at', { ascending: false, nullsFirst: false })
-      .then(({ data }) => { if (data) setBadges(data as BadgeProgressRow[]); });
+      .then(({ data }) => { if (data) setBadges(data as BadgeProgressRow[]); })
+      .catch(() => {});
   }, [user?.id]);
 
   const points = profile?.gamification_points ?? 0;
