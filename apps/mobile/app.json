@@ -50,10 +50,14 @@
         {
           "android": {
             "minSdkVersion": 24
+          },
+          "ios": {
+            "useFrameworks": "static"
           }
         }
       ],
       "@react-native-firebase/app",
+      "@react-native-firebase/analytics",
       "@react-native-firebase/crashlytics"
     ],
     "experiments": {
