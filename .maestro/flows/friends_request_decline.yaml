@@ -1,0 +1,24 @@
+# Test: Decline a pending friend request from the Requests tab.
+# Prerequisites: Another account must have sent a friend request to this user.
+appId: com.roxy.app
+---
+- tapOn:
+    text: "Grow"
+- tapOn:
+    text: "My People"
+- assertVisible:
+    text: "My People"
+    timeout: 3000
+- tapOn:
+    text: "Requests"
+- assertVisible:
+    text: "Decline"
+    timeout: 3000
+- tapOn:
+    text: "Decline"
+    index: 0
+- waitForAnimationToEnd:
+    timeout: 2000
+# Row should be gone
+- assertNotVisible:
+    text: "Decline"

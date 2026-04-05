@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { callEdgeFunction } from '../../../lib/supabase';
 import { COLORS } from '../../../lib/constants';
+import { Analytics } from '../../../lib/analytics';
 
 type Message = { role: 'user' | 'roxy'; content: string };
 
@@ -21,6 +22,10 @@ export default function RoxyChatScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   const conversationId = `roxy-${user?.id ?? 'anon'}`;
+
+  useEffect(() => {
+    Analytics.roxyChatOpened();
+  }, []);
 
   useEffect(() => {
     if (messages.length > 0) {

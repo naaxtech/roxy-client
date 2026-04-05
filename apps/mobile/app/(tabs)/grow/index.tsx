@@ -7,10 +7,11 @@ import { useRouter } from 'expo-router';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
+import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
 import { COLORS } from '../../../lib/constants';
+import { Analytics } from '../../../lib/analytics';
 
 type CommunityRow = { community_id: string; communities: { id: string; name: string; category: string } | null };
-type FriendshipRow = { id: string; requester_id: string; addressee_id: string; status: string; created_at: string };
 type BadgeProgressRow = {
   user_id: string;
   badge_id: string;
@@ -38,36 +39,35 @@ export default function GrowScreen() {
   const { user } = useAuthStore();
   const { profile } = useProfile();
   const router = useRouter();
+  const { friends, fetchAll } = useFriendStore();
+
+  useEffect(() => {
+    if (user?.id) fetchAll(user.id);
+  }, [user?.id]);
 
   const [greeting, setGreeting] = useState<string | null>(null);
   const [greetingLoading, setGreetingLoading] = useState(true);
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
-  const [friendships, setFriendships] = useState<FriendshipRow[]>([]);
   const [badges, setBadges] = useState<BadgeProgressRow[]>([]);
 
   useEffect(() => {
     if (!profile) return;
     setGreetingLoading(true);
     callEdgeFunction<{ greeting: string }>('roxy-greeting', {})
-      .then(({ data }) => setGreeting(data?.greeting ?? null))
+      .then(({ data }) => {
+        setGreeting(data?.greeting ?? null);
+        if (data?.greeting) Analytics.roxyGreetingViewed();
+      })
       .finally(() => setGreetingLoading(false));
   }, [profile]);
 
   const loadSocial = useCallback(async () => {
     if (!user) return;
-    const [commRes, friendRes] = await Promise.all([
-      supabase
-        .from('community_members')
-        .select('community_id, communities(id, name, category)')
-        .eq('user_id', user.id),
-      supabase
-        .from('friendships')
-        .select('*')
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-        .eq('status', 'accepted'),
-    ]);
-    if (commRes.data) setCommunities(commRes.data as unknown as CommunityRow[]);
-    if (friendRes.data) setFriendships(friendRes.data as FriendshipRow[]);
+    const { data } = await supabase
+      .from('community_members')
+      .select('community_id, communities(id, name, category)')
+      .eq('user_id', user.id);
+    if (data) setCommunities(data as unknown as CommunityRow[]);
   }, [user]);
 
   useEffect(() => { loadSocial(); }, [loadSocial]);
@@ -139,25 +139,39 @@ export default function GrowScreen() {
         </TouchableOpacity>
 
         {/* Zone 3 — My People */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My People</Text>
-          {friendships.length === 0 ? (
+        <TouchableOpacity
+          style={styles.section}
+          onPress={() => router.push('/(tabs)/grow/people' as any)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.sectionTitle}>
+            My People{' '}
+            <Text style={styles.sectionHint}>tap to manage →</Text>
+          </Text>
+          {friends.length === 0 ? (
             <Text style={styles.emptyState}>Connect with someone in Discover →</Text>
           ) : (
             <View style={styles.avatarRow}>
-              {friendships.slice(0, 8).map((f) => (
-                <View key={f.id} style={styles.avatar}>
-                  <Text style={styles.avatarText}>{'👤'}</Text>
+              {sortByPresence(friends).slice(0, 5).map((f) => (
+                <View key={f.id} style={styles.avatarWrap}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>
+                      {f.profile.display_name?.[0]?.toUpperCase() ?? '?'}
+                    </Text>
+                  </View>
+                  {isOnline(f.profile.last_seen_at) && (
+                    <View style={styles.onlineDot} />
+                  )}
                 </View>
               ))}
-              {friendships.length > 8 && (
+              {friends.length > 5 && (
                 <View style={styles.avatar}>
-                  <Text style={styles.avatarCount}>+{friendships.length - 8}</Text>
+                  <Text style={styles.avatarCount}>+{friends.length - 5}</Text>
                 </View>
               )}
             </View>
           )}
-        </View>
+        </TouchableOpacity>
 
         {/* Zone 4 — My Journey */}
         <TouchableOpacity style={styles.section} activeOpacity={0.75}>
@@ -263,12 +277,20 @@ const styles = StyleSheet.create({
   chipJoinText: { color: COLORS.roxy, fontWeight: '600', fontSize: 12 },
 
   avatarRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  avatarWrap: { position: 'relative' },
   avatar: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.primary + '30',
+    alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { fontSize: 16 },
+  avatarText: { color: COLORS.primary, fontWeight: '700', fontSize: 13 },
   avatarCount: { color: COLORS.textMuted, fontWeight: '700', fontSize: 12 },
+  onlineDot: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 9, height: 9, borderRadius: 5,
+    backgroundColor: COLORS.success,
+    borderWidth: 1.5, borderColor: COLORS.surface,
+  },
 
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   levelEmoji: { fontSize: 22 },

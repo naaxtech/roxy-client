@@ -10,6 +10,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { supabase } from '../../../lib/supabase';
 import { COLORS, PRONOUNS, IDENTITY_LABELS } from '../../../lib/constants';
+import { logError } from '../../../lib/errorLogger';
 
 const getLevel = (pts: number): string => {
   if (pts >= 500) return 'Radiant ✨';
@@ -57,6 +58,7 @@ export default function ProfileScreen() {
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
       await updateProfile({ avatar_url: data.publicUrl });
     } catch (e: any) {
+      logError(e, 'handleAvatarPress');
       Alert.alert('Upload failed', e?.message ?? 'Unknown error');
     } finally {
       setAvatarUploading(false);
@@ -69,7 +71,7 @@ export default function ProfileScreen() {
       ? current.filter((p) => p !== pronoun)
       : [...current, pronoun];
     try { await updateProfile({ pronouns: updated }); }
-    catch { Alert.alert('Error', 'Could not save pronouns'); }
+    catch (e) { logError(e, 'togglePronoun'); Alert.alert('Error', 'Could not save pronouns'); }
   };
 
   const toggleIdentity = async (label: string) => {
@@ -78,7 +80,7 @@ export default function ProfileScreen() {
       ? current.filter((l) => l !== label)
       : [...current, label];
     try { await updateProfile({ identity_labels: updated }); }
-    catch { Alert.alert('Error', 'Could not save identity labels'); }
+    catch (e) { logError(e, 'toggleIdentity'); Alert.alert('Error', 'Could not save identity labels'); }
   };
 
   const points = profile.gamification_points ?? 0;
@@ -126,7 +128,8 @@ export default function ProfileScreen() {
             onBlur={async () => {
               try {
                 await updateProfile({ bio: localBio });
-              } catch {
+              } catch (e) {
+                logError(e, 'saveBio');
                 Alert.alert('Error', 'Could not save bio. Please try again.');
               }
             }}

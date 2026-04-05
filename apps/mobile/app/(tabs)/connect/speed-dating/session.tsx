@@ -9,6 +9,8 @@ import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { isDailyAvailable } from '../../../../lib/daily';
 import { COLORS } from '../../../../lib/constants';
+import { logError } from '../../../../lib/errorLogger';
+import { Analytics } from '../../../../lib/analytics';
 import type { SpeedDateSession as SpeedDateSessionData } from '../../../../types';
 
 // Guarded Daily.co import
@@ -134,6 +136,7 @@ export default function SpeedDateSession() {
     try {
       call = DailyCall.createCallObject();
       call.join({ url: room_url });
+      Analytics.speedDateJoined();
 
       call.on('participant-joined', (evt: any) => {
         if (!evt.participant.local) {
@@ -144,6 +147,7 @@ export default function SpeedDateSession() {
 
       setCallObject(call);
     } catch (e) {
+      logError(e, 'speedDateSession_dailyJoin');
       console.warn('[SpeedDate] Daily.co join failed:', e);
     }
 

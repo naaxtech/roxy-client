@@ -9,6 +9,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { COLORS } from '../../../../lib/constants';
+import { logError } from '../../../../lib/errorLogger';
+import { Analytics } from '../../../../lib/analytics';
 
 const MAX_CHARS = 500;
 
@@ -31,9 +33,11 @@ export default function CreatePostScreen() {
       if (error) {
         Alert.alert('Error', error.message);
       } else {
+        Analytics.postCreated(communityId);
         router.back();
       }
     } catch (e: any) {
+      logError(e, 'handlePost');
       Alert.alert('Error', e?.message ?? 'Could not create post');
     } finally {
       setSubmitting(false);

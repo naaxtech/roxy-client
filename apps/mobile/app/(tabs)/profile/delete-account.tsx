@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { COLORS } from '../../../lib/constants';
+import { logError } from '../../../lib/errorLogger';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function DeleteAccountScreen() {
     try {
       await callEdgeFunction('gdpr-delete', {});
     } catch (e: unknown) {
+      logError(e, 'handleDelete');
       setLoading(false);
       const message = e instanceof Error ? e.message : 'Could not delete account. Please try again.';
       Alert.alert('Error', message);

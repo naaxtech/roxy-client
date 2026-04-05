@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  ScrollView, Alert, Modal, Dimensions, Share,
+  ScrollView, Alert, Dimensions, Share,
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,6 +12,8 @@ import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useCommunityStore, Community } from '../../../../store/communityStore';
 import { COLORS } from '../../../../lib/constants';
+import { logError } from '../../../../lib/errorLogger';
+import { Analytics } from '../../../../lib/analytics';
 
 
 type SubTab = 'posts' | 'events' | 'games';
@@ -28,10 +30,6 @@ type PostRow = {
 type EventRow = {
   id: string; title: string; starts_at: string; location: string | null;
   description: string | null;
-};
-
-type MemberRow = {
-  profiles: { id: string; display_name: string; avatar_url: string | null; username: string } | null;
 };
 
 function getCommunityLevel(n: number): { label: string; emoji: string } {
@@ -53,10 +51,12 @@ export default function CommunityDetailScreen() {
   const [posts, setPosts] = useState<PostRow[]>([]);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
-  const [members, setMembers] = useState<MemberRow[]>([]);
-  const [membersModalVisible, setMembersModalVisible] = useState(false);
-  const [friendships, setFriendships] = useState<Set<string>>(new Set());
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+
+  // Track screen view once per navigation
+  useEffect(() => {
+    if (id) Analytics.communityViewed(id);
+  }, [id]);
 
   // Load community data
   useEffect(() => {
@@ -106,32 +106,6 @@ export default function CommunityDetailScreen() {
     if (data) setRsvpIds(new Set(data.map((r: any) => r.event_id)));
   }, [user]);
 
-  const loadMembers = useCallback(async () => {
-    if (!id) return;
-    const { data } = await supabase
-      .from('community_members')
-      .select('profiles(id, display_name, avatar_url, username)')
-      .eq('community_id', id)
-      .limit(50);
-    if (data) setMembers(data as unknown as MemberRow[]);
-
-    // Also load existing friendships
-    if (user) {
-      const { data: friendData } = await supabase
-        .from('friendships')
-        .select('requester_id, addressee_id')
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
-      if (friendData) {
-        const friendSet = new Set<string>();
-        friendData.forEach((f: any) => {
-          if (f.requester_id !== user.id) friendSet.add(f.requester_id);
-          if (f.addressee_id !== user.id) friendSet.add(f.addressee_id);
-        });
-        setFriendships(friendSet);
-      }
-    }
-  }, [id, user]);
-
   // Load all tab content upfront so swiping is instant
   useEffect(() => {
     loadPosts();
@@ -164,10 +138,12 @@ export default function CommunityDetailScreen() {
         await leaveCommunity(id, user.id);
       } else {
         await joinCommunity(id, user.id);
+        Analytics.communityJoined(id);
       }
       await fetchJoined(user.id);
       await fetchAll();
     } catch (e: any) {
+      logError(e, 'handleJoinLeave');
       Alert.alert('Error', e?.message ?? 'Could not update membership');
     }
   };
@@ -183,21 +159,6 @@ export default function CommunityDetailScreen() {
     }
   };
 
-  const sendFriendRequest = async (targetId: string) => {
-    if (!user) return;
-    try {
-      await supabase.from('friendships').insert({ requester_id: user.id, addressee_id: targetId, status: 'pending' });
-      setFriendships((prev) => new Set([...prev, targetId]));
-      Alert.alert('Friend request sent! 💜');
-    } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'Could not send friend request');
-    }
-  };
-
-  const openMembersModal = () => {
-    loadMembers();
-    setMembersModalVisible(true);
-  };
 
   if (loading) {
     return (
@@ -239,7 +200,10 @@ export default function CommunityDetailScreen() {
             <Text style={styles.levelBadgeText}>{level.emoji} {level.label}</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={openMembersModal} style={styles.membersRow}>
+        <TouchableOpacity
+          onPress={() => router.push(`/(tabs)/discover/community/members/${id}` as any)}
+          style={styles.membersRow}
+        >
           <Text style={styles.membersText}>{community.member_count} members</Text>
           <View style={[styles.privacyPill, community.is_private && styles.privacyPillPrivate]}>
             <Text style={styles.privacyPillText}>{community.is_private ? '🔒 Private' : '🌐 Public'}</Text>
@@ -398,55 +362,6 @@ export default function CommunityDetailScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Members Modal */}
-      <Modal
-        visible={membersModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setMembersModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Members</Text>
-              <TouchableOpacity onPress={() => setMembersModalVisible(false)}>
-                <Ionicons name="close" size={22} color={COLORS.textPrimary} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView>
-              {members.map((m, i) => {
-                const p = m.profiles;
-                if (!p) return null;
-                const isSelf = p.id === user?.id;
-                const alreadyFriend = friendships.has(p.id);
-                return (
-                  <View key={p.id ?? i} style={styles.memberRow}>
-                    <View style={styles.memberAvatar}>
-                      <Text style={{ fontSize: 16 }}>👤</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.memberName}>{p.display_name}</Text>
-                      <Text style={styles.memberUsername}>@{p.username}</Text>
-                    </View>
-                    {!isSelf && !alreadyFriend && (
-                      <TouchableOpacity
-                        style={styles.addFriendBtn}
-                        onPress={() => sendFriendRequest(p.id)}
-                      >
-                        <Text style={styles.addFriendBtnText}>Add Friend</Text>
-                      </TouchableOpacity>
-                    )}
-                    {alreadyFriend && (
-                      <Text style={styles.friendLabel}>Friends 💜</Text>
-                    )}
-                  </View>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
     </SafeAreaView>
   );
 }
@@ -572,31 +487,6 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 6, elevation: 8,
   },
-
-  // Members modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalSheet: {
-    backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 20, maxHeight: '70%',
-  },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '700' },
-  memberRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceLight,
-  },
-  memberAvatar: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
-  },
-  memberName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  memberUsername: { color: COLORS.textMuted, fontSize: 12 },
-  addFriendBtn: {
-    backgroundColor: COLORS.roxy, borderRadius: 16,
-    paddingHorizontal: 12, paddingVertical: 6,
-  },
-  addFriendBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  friendLabel: { color: COLORS.roxy, fontSize: 12, fontWeight: '600' },
 
   // Error / empty
   errorText: { color: COLORS.textMuted, textAlign: 'center', marginTop: 48, fontSize: 16 },

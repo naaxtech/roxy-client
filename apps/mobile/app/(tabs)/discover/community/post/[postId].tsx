@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { supabase } from '../../../../../lib/supabase';
 import { useAuthStore } from '../../../../../store/authStore';
 import { COLORS } from '../../../../../lib/constants';
+import { Analytics } from '../../../../../lib/analytics';
 import type { Comment } from '../../../../../types';
 
 const MAX_CHARS = 500;
@@ -65,6 +66,7 @@ export default function PostDetailScreen() {
     (async () => {
       await Promise.all([loadPost(), loadComments()]);
       setLoading(false);
+      if (postId) Analytics.postViewed(postId);
     })();
   }, [loadPost, loadComments]);
 
@@ -83,6 +85,7 @@ export default function PostDetailScreen() {
         setComments((prev) => [...prev, data as CommentRow]);
         setPost((prev) => prev ? { ...prev, comment_count: prev.comment_count + 1 } : prev);
         setDraft('');
+        Analytics.commentCreated(postId);
         setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
       }
     } finally {

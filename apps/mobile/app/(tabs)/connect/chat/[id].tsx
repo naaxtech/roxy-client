@@ -13,6 +13,7 @@ import { useConnectStore } from '../../../../store/connectStore';
 import { useRealtime } from '../../../../hooks/useRealtime';
 import { useSafetyStore } from '../../../../store/safetyStore';
 import { COLORS } from '../../../../lib/constants';
+import { Analytics } from '../../../../lib/analytics';
 import { Message } from '../../../../types';
 
 const REPORT_REASONS: {
@@ -175,7 +176,11 @@ export default function ChatScreen() {
       message_type: type,
     });
 
-    if (error) Alert.alert('Error', 'Failed to send message. Please try again.');
+    if (error) {
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+    } else {
+      Analytics.messageSent(conversationId ?? '');
+    }
     setSending(false);
   };
 

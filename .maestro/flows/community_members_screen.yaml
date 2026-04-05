@@ -1,0 +1,29 @@
+# Test: Navigate to full-screen members page from community detail.
+appId: com.roxy.app
+---
+- tapOn:
+    text: "Discover"
+- scrollUntilVisible:
+    element:
+      text: "Queer Gamers"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    text: "Queer Gamers"
+- tapOn:
+    text: "members"
+- assertVisible:
+    text: "Members"
+    timeout: 3000
+- assertNotVisible:
+    text: "Members"
+    index: 1
+# Verify it's a stack screen (back button present, not a modal)
+- assertVisible:
+    text: "Add Friend"
+    timeout: 3000
+- back
+# Back to community detail
+- assertVisible:
+    text: "Posts"
+    timeout: 2000

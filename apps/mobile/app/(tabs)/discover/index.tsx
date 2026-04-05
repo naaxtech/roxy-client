@@ -10,6 +10,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useCommunityStore, Community } from '../../../store/communityStore';
 import { COLORS } from '../../../lib/constants';
+import { logError } from '../../../lib/errorLogger';
 
 type SubTab = 'communities' | 'events' | 'games';
 
@@ -95,6 +96,7 @@ export default function DiscoverScreen() {
         await joinCommunity(community.id, user.id);
       }
     } catch (e: any) {
+      logError(e, 'handleJoinLeave');
       Alert.alert('Error', e?.message ?? 'Could not update membership');
     }
   };

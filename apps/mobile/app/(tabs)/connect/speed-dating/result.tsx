@@ -8,6 +8,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase, callEdgeFunction } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { COLORS } from '../../../../lib/constants';
+import { logError } from '../../../../lib/errorLogger';
+import { Analytics } from '../../../../lib/analytics';
 
 export default function SpeedDateResult() {
   const { session_id, liked: likedParam, partner_id } = useLocalSearchParams<{
@@ -23,6 +25,10 @@ export default function SpeedDateResult() {
   const [matchCreated, setMatchCreated] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Analytics.speedDateCompleted();
+  }, []);
 
   // Pulse animation for the match card
   const scaleAnim = useRef(new Animated.Value(0.6)).current;
@@ -96,6 +102,7 @@ export default function SpeedDateResult() {
         setConversationId(convId);
         setMatchCreated(true);
       } catch (e: any) {
+        logError(e, 'speedDateResult_createMatch');
         setError(e?.message ?? 'Something went wrong.');
       } finally {
         setProcessing(false);

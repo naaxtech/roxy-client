@@ -229,3 +229,7 @@ The `isDailyAvailable()` guard in `lib/daily.ts` ensures stubs never execute at 
 | 5 — Profile, Settings, GDPR, EAS, CI | `session-5-deploy` | #5 | Merged |
 | 6 — Polish: Roxy Chat, host flow, tab layouts, dev seed | `session-6-polish` | #7 | Merged |
 | 7 — UX Fixes: FAB, keyboard, Grow screen, badges, delete account, org modal | `session-6-polish` | #7 | Merged |
+| 8 — Community feed: post cards tappable, post detail screen, flat comments + composer | `session-8-community` | #8 | Merged |
+| 9 — Friends system: friendStore, People screen (Friends/Requests/Sent tabs), Grow badge, full-screen community members | `session-9-friends` | #9 | Open |
+| 10 — Presence + tap-to-chat: online dots, sortByPresence, rate-capped heartbeat, tap friend → DM | `session-9-friends` | #9 | Open |
+| 11 — Firebase Analytics + Crashlytics: screen tracking, global error handler, ErrorBoundary, logError in all catch blocks, named events for all key product actions | `session-11-firebase` | #10 | Open |
