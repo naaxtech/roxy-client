@@ -6,6 +6,9 @@ import {
   TextInput,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
@@ -58,7 +61,10 @@ export default function WelcomeScreen() {
         <Text style={styles.tagline}>Your community. Your story.</Text>
       </View>
 
-      <View style={styles.content}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         {resetSent ? (
           <>
             <Text style={styles.sentTitle}>Check your email</Text>
@@ -135,7 +141,8 @@ export default function WelcomeScreen() {
             </Text>
           </>
         )}
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

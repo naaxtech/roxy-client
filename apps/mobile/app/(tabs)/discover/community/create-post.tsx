@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -67,24 +67,30 @@ export default function CreatePostScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Input */}
-      <TextInput
-        style={styles.input}
-        multiline
-        placeholder="What's on your mind?"
-        placeholderTextColor={COLORS.textMuted}
-        value={content}
-        onChangeText={(t) => setContent(t.slice(0, MAX_CHARS))}
-        autoFocus
-        textAlignVertical="top"
-      />
+      {/* Input + footer — lift above keyboard */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <TextInput
+          style={styles.input}
+          multiline
+          placeholder="What's on your mind?"
+          placeholderTextColor={COLORS.textMuted}
+          value={content}
+          onChangeText={(t) => setContent(t.slice(0, MAX_CHARS))}
+          autoFocus
+          textAlignVertical="top"
+        />
 
-      {/* Character counter */}
-      <View style={styles.footer}>
-        <Text style={[styles.charCount, remaining < 50 && styles.charCountWarn]}>
-          {remaining} characters remaining
-        </Text>
-      </View>
+        {/* Character counter */}
+        <View style={styles.footer}>
+          <Text style={[styles.charCount, remaining < 50 && styles.charCountWarn]}>
+            {remaining} characters remaining
+          </Text>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

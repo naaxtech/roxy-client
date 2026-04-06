@@ -99,17 +99,17 @@ export default function ChatScreen() {
     const pid = conv.participant_ids.find((id) => id !== user.id) ?? null;
     setPartnerId(pid);
     if (pid) {
-      supabase
-        .from('profiles')
-        .select('display_name, username')
-        .eq('id', pid)
-        .single()
-        .then(({ data }) => {
-          if (data) {
-            setPartnerName(data.display_name || data.username || 'this person');
-          }
-        })
-        .catch(() => {});
+      void Promise.resolve(
+        supabase
+          .from('profiles')
+          .select('display_name, username')
+          .eq('id', pid)
+          .single()
+      ).then(({ data }) => {
+        if (data) {
+          setPartnerName(data.display_name || data.username || 'this person');
+        }
+      }).catch(() => {});
     }
   }, [conversationId, user, conversations]);
 
@@ -349,28 +349,29 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Messages */}
-      {loadingInitial ? (
-        <ActivityIndicator color={COLORS.roxy} style={{ flex: 1 }} />
-      ) : (
-        <FlashList
-          ref={flashListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          estimatedItemSize={60}
-          contentContainerStyle={styles.messageList}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>Send your first message!</Text>
-          }
-        />
-      )}
-
-      {/* Input bar */}
+      {/* Messages + Input bar — both inside KAV so list shrinks when keyboard opens */}
       <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
+        {loadingInitial ? (
+          <ActivityIndicator color={COLORS.roxy} style={{ flex: 1 }} />
+        ) : (
+          <FlashList
+            ref={flashListRef}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            estimatedItemSize={60}
+            contentContainerStyle={styles.messageList}
+            style={{ flex: 1 }}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>Send your first message!</Text>
+            }
+          />
+        )}
+
         <View style={styles.inputBar}>
           <TouchableOpacity
             style={styles.wingwomanBtn}

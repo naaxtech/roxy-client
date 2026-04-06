@@ -75,13 +75,9 @@ export default function GrowScreen() {
 
   useEffect(() => {
     if (!user?.id) return;
-    supabase
-      .from('user_badge_progress')
-      .select('*, badges(*)')
-      .eq('user_id', user.id)
-      .order('earned_at', { ascending: false, nullsFirst: false })
-      .then(({ data }) => { if (data) setBadges(data as BadgeProgressRow[]); })
-      .catch(() => {});
+    void Promise.resolve(
+      supabase.from('user_badge_progress').select('*, badges(*)').eq('user_id', user.id).order('earned_at', { ascending: false, nullsFirst: false })
+    ).then(({ data }) => { if (data) setBadges(data as BadgeProgressRow[]); }).catch(() => {});
   }, [user?.id]);
 
   const points = profile?.gamification_points ?? 0;

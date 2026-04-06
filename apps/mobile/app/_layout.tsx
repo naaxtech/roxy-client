@@ -46,37 +46,29 @@ export default function RootLayout() {
 
     if (user && inAuth) {
       // User just signed in — check if onboarding is complete
-      supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle()
-        .then(({ data, error }) => {
-          if (error) { logError(error, 'layout_profile_fetch'); return; }
-          if (!data) {
-            router.replace('/(auth)/onboarding/step1-identity');
-          } else {
-            setProfile(data);
-            router.replace('/(tabs)/grow');
-          }
-        })
-        .catch((e) => logError(e, 'layout_profile_fetch'));
+      void Promise.resolve(
+        supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+      ).then(({ data, error }) => {
+        if (error) { logError(error, 'layout_profile_fetch'); return; }
+        if (!data) {
+          router.replace('/(auth)/onboarding/step1-identity');
+        } else {
+          setProfile(data);
+          router.replace('/(tabs)/grow');
+        }
+      }).catch((e: unknown) => logError(e, 'layout_profile_fetch'));
       return;
     }
 
     if (user && !inAuth && !profile) {
       // Already in tabs but profile not loaded — fetch it
-      supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle()
-        .then(({ data, error }) => {
-          if (error) { logError(error, 'layout_profile_reload'); return; }
-          if (data) setProfile(data);
-          else router.replace('/(auth)/onboarding/step1-identity');
-        })
-        .catch((e) => logError(e, 'layout_profile_reload'));
+      void Promise.resolve(
+        supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+      ).then(({ data, error }) => {
+        if (error) { logError(error, 'layout_profile_reload'); return; }
+        if (data) setProfile(data);
+        else router.replace('/(auth)/onboarding/step1-identity');
+      }).catch((e: unknown) => logError(e, 'layout_profile_reload'));
     }
   }, [user, loading, segments]);
 

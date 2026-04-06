@@ -126,19 +126,30 @@ export default function PeopleScreen() {
                 </View>
               }
               renderItem={({ item }) => (
-                <TouchableOpacity style={styles.row} onPress={() => handleFriendTap(item)} activeOpacity={0.75}>
-                  <View style={styles.avatarWrap}>
+                <View style={styles.row}>
+                  <TouchableOpacity
+                    style={styles.avatarWrap}
+                    onPress={() => router.push(`/(tabs)/profile/${item.profile.id}` as any)}
+                  >
                     <AvatarCircle name={item.profile.display_name} />
                     {isOnline(item.profile.last_seen_at) && <View style={styles.onlineDot} />}
-                  </View>
-                  <View style={styles.rowInfo}>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.rowInfo}
+                    onPress={() => router.push(`/(tabs)/profile/${item.profile.id}` as any)}
+                  >
                     <Text style={styles.rowName}>{item.profile.display_name}</Text>
                     <Text style={styles.rowSub}>@{item.profile.username}</Text>
-                  </View>
-                  <TouchableOpacity style={styles.mutedBtn} onPress={() => confirmUnfriend(item)}>
-                    <Text style={styles.mutedBtnText}>Remove</Text>
                   </TouchableOpacity>
-                </TouchableOpacity>
+                  <View style={styles.actionBtns}>
+                    <TouchableOpacity style={styles.messageBtn} onPress={() => handleFriendTap(item)}>
+                      <Text style={styles.messageBtnText}>Message</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.mutedBtn} onPress={() => confirmUnfriend(item)}>
+                      <Text style={styles.mutedBtnText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               )}
             />
           )}
@@ -269,6 +280,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 6,
   },
   acceptBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  messageBtn: {
+    backgroundColor: COLORS.roxy, borderRadius: 16,
+    paddingHorizontal: 12, paddingVertical: 6,
+  },
+  messageBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
   mutedBtn: {
     borderWidth: 1, borderColor: COLORS.textMuted + '60', borderRadius: 16,
     paddingHorizontal: 12, paddingVertical: 6,

@@ -27,6 +27,7 @@ const makeProject = (id: string): ImpactProject => ({
   raised_amount: 0,
   supporter_count: 0,
   status: "active",
+  website_url: null,
   created_at: "2026-01-01T00:00:00Z",
 });
 

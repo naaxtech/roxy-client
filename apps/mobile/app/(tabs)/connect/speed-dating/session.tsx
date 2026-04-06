@@ -101,15 +101,11 @@ export default function SpeedDateSession() {
   // Load session (prompts)
   useEffect(() => {
     if (!session_id) return;
-    supabase
-      .from('speed_date_sessions')
-      .select('*')
-      .eq('id', session_id)
-      .single()
-      .then(({ data }) => {
-        if (data) setSession(data as SpeedDateSessionData);
-      })
-      .catch(() => {});
+    void Promise.resolve(
+      supabase.from('speed_date_sessions').select('*').eq('id', session_id).single()
+    ).then(({ data }) => {
+      if (data) setSession(data as SpeedDateSessionData);
+    }).catch(() => {});
   }, [session_id]);
 
   // Start timer when session loads
