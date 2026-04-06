@@ -5,11 +5,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { callEdgeFunction } from '../../../../lib/supabase';
-import { DailyProvider } from '../../../../lib/video';
-import { useVideoCall } from '../../../../hooks/useVideoCall';
-import { COLORS } from '../../../../lib/constants';
-import { logError } from '../../../../lib/errorLogger';
+import { callEdgeFunction } from '../../../lib/supabase';
+import { DailyProvider } from '../../../lib/video';
+import { useVideoCall } from '../../../hooks/useVideoCall';
+import { COLORS } from '../../../lib/constants';
+import { logError } from '../../../lib/errorLogger';
 
 export default function CommunityRoomSession() {
   const { room_id } = useLocalSearchParams<{ room_id: string }>();
