@@ -201,7 +201,7 @@ export default function CommunityDetailScreen() {
           </View>
         </View>
         <TouchableOpacity
-          onPress={() => router.push(`/(tabs)/discover/community/members/${id}` as any)}
+          onPress={() => router.push(`/community/members/${id}` as any)}
           style={styles.membersRow}
         >
           <Text style={styles.membersText}>{community.member_count} members</Text>
@@ -261,7 +261,7 @@ export default function CommunityDetailScreen() {
           ) : (
             posts.map((post) => (
               <View key={post.id} style={styles.postCard}>
-                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/(tabs)/discover/community/post/${post.id}` as any)}>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/community/post/${post.id}` as any)}>
                   <View style={styles.postAuthorRow}>
                     <View style={styles.postAvatar}>
                       <Text style={styles.postAvatarText}>{post.profiles?.display_name?.[0]?.toUpperCase() ?? '?'}</Text>
@@ -279,7 +279,7 @@ export default function CommunityDetailScreen() {
                       {likedIds.has(post.id) ? '♥' : '♡'}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.footerBtn} onPress={() => router.push(`/(tabs)/discover/community/post/${post.id}` as any)}>
+                  <TouchableOpacity style={styles.footerBtn} onPress={() => router.push(`/community/post/${post.id}` as any)}>
                     <Ionicons name="chatbubble-outline" size={13} color={COLORS.textMuted} />
                     <Text style={styles.footerCount}>{post.comment_count ?? 0}</Text>
                   </TouchableOpacity>
@@ -330,7 +330,7 @@ export default function CommunityDetailScreen() {
         <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={styles.gamesContainer}>
           <TouchableOpacity
             style={styles.gameCard}
-            onPress={() => router.push('/(tabs)/connect/speed-dating' as any)}
+            onPress={() => router.push('/speed-dating' as any)}
             activeOpacity={0.8}
           >
             <Text style={styles.gameEmoji}>⚡</Text>
@@ -356,7 +356,7 @@ export default function CommunityDetailScreen() {
       {subTab === 'posts' && isJoined && (
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => router.push({ pathname: '/(tabs)/discover/community/create-post', params: { communityId: id } } as any)}
+          onPress={() => router.push({ pathname: '/community/create-post', params: { communityId: id } } as any)}
         >
           <Ionicons name="add" size={28} color="#fff" />
         </TouchableOpacity>

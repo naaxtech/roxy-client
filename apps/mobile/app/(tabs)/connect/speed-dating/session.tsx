@@ -168,13 +168,13 @@ export default function SpeedDateSession() {
     }
 
     router.replace({
-      pathname: '/(tabs)/connect/speed-dating/result',
+      pathname: '/speed-dating/result',
       params: {
         session_id: session_id ?? '',
         liked: likedRef.current ? '1' : '0',
         partner_id: partnerId ?? '',
       },
-    });
+    } as any);
   }, [session, callObject, session_id, router, user]);
 
   const handleLeave = () => {

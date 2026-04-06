@@ -254,7 +254,7 @@ export default function DiscoverScreen() {
             </View>
             <TouchableOpacity
               style={styles.playBtn}
-              onPress={() => router.push('/(tabs)/connect/speed-dating' as any)}
+              onPress={() => router.push('/speed-dating' as any)}
             >
               <Text style={styles.playBtnText}>Play Now</Text>
             </TouchableOpacity>

@@ -112,12 +112,12 @@ export default function SpeedDateResult() {
 
   const handleChat = () => {
     if (conversationId) {
-      router.replace(`/(tabs)/connect/chat/${conversationId}`);
+      router.replace(`/chat/${conversationId}` as any);
     }
   };
 
   const handleExplore = () => {
-    router.replace('/(tabs)/connect/speed-dating');
+    router.replace('/speed-dating' as any);
   };
 
   return (

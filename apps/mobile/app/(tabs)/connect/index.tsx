@@ -226,7 +226,7 @@ export default function ConnectScreen() {
               <View style={styles.postCard}>
                 <View style={styles.postHeader}>
                   <TouchableOpacity
-                    onPress={() => router.push(`/(tabs)/discover/community/${item.community_id}` as any)}
+                    onPress={() => router.push(`/community/${item.community_id}` as any)}
                   >
                     <View style={styles.communityPill}>
                       <Text style={styles.communityPillText}>{item.communities?.name ?? '—'}</Text>
@@ -234,7 +234,7 @@ export default function ConnectScreen() {
                   </TouchableOpacity>
                   <Text style={styles.postTime}>{format(new Date(item.created_at), 'dd MMM')}</Text>
                 </View>
-                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/(tabs)/discover/community/post/${item.id}` as any)}>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/community/post/${item.id}` as any)}>
                   <Text style={styles.postAuthor}>{item.profiles?.display_name ?? 'Anonymous'}</Text>
                   <Text style={styles.postContent} numberOfLines={4}>{item.content}</Text>
                 </TouchableOpacity>
@@ -244,7 +244,7 @@ export default function ConnectScreen() {
                   ))}
                   <TouchableOpacity
                     style={styles.commentBtn}
-                    onPress={() => router.push(`/(tabs)/discover/community/post/${item.id}` as any)}
+                    onPress={() => router.push(`/community/post/${item.id}` as any)}
                   >
                     <Text style={styles.commentBtnText}>💬 {item.comment_count ?? 0}</Text>
                   </TouchableOpacity>
@@ -335,7 +335,7 @@ export default function ConnectScreen() {
           {datingMode && (
             <TouchableOpacity
               style={styles.speedDateBanner}
-              onPress={() => router.push('/(tabs)/connect/speed-dating' as any)}
+              onPress={() => router.push('/speed-dating' as any)}
               activeOpacity={0.8}
             >
               <Text style={styles.speedDateIcon}>⚡</Text>
@@ -364,7 +364,7 @@ export default function ConnectScreen() {
                   item={item}
                   currentUserId={user?.id ?? ''}
                   unreadCount={unreadCounts[item.id] ?? 0}
-                  onPress={() => router.push(`/(tabs)/connect/chat/${item.id}` as any)}
+                  onPress={() => router.push(`/chat/${item.id}` as any)}
                 />
               )}
               estimatedItemSize={72}

@@ -161,12 +161,12 @@ export default function SpeedDatingLobby() {
     }
 
     router.push({
-      pathname: '/(tabs)/connect/speed-dating/session',
+      pathname: '/speed-dating/session',
       params: {
         session_id: data.session_id,
         room_url: data.room_url,
       },
-    });
+    } as any);
   };
 
   return (

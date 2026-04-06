@@ -53,7 +53,7 @@ export default function PeopleScreen() {
 
       if (data) {
         Analytics.dmOpened(data.id);
-        router.push(`/(tabs)/connect/chat/${data.id}` as any);
+        router.push(`/chat/${data.id}` as any);
         return;
       }
 
@@ -65,7 +65,7 @@ export default function PeopleScreen() {
 
       if (error) throw error;
       Analytics.dmCreated();
-      router.push(`/(tabs)/connect/chat/${created.id}` as any);
+      router.push(`/chat/${created.id}` as any);
     } catch (e: any) {
       logError(e, 'handleFriendTap');
       Alert.alert('Error', e?.message);
@@ -129,14 +129,14 @@ export default function PeopleScreen() {
                 <View style={styles.row}>
                   <TouchableOpacity
                     style={styles.avatarWrap}
-                    onPress={() => router.push(`/(tabs)/profile/${item.profile.id}` as any)}
+                    onPress={() => router.push(`/user/${item.profile.id}` as any)}
                   >
                     <AvatarCircle name={item.profile.display_name} />
                     {isOnline(item.profile.last_seen_at) && <View style={styles.onlineDot} />}
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.rowInfo}
-                    onPress={() => router.push(`/(tabs)/profile/${item.profile.id}` as any)}
+                    onPress={() => router.push(`/user/${item.profile.id}` as any)}
                   >
                     <Text style={styles.rowName}>{item.profile.display_name}</Text>
                     <Text style={styles.rowSub}>@{item.profile.username}</Text>
