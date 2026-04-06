@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { format, isToday, isYesterday } from 'date-fns';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
@@ -14,6 +15,12 @@ import { Analytics } from '../../../lib/analytics';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
 
 type CommunityRow = { community_id: string; communities: { id: string; name: string; category: string } | null };
+type DirectChatPreview = {
+  id: string;
+  partnerName: string;
+  last_message_at: string | null;
+};
+
 type BadgeProgressRow = {
   user_id: string;
   badge_id: string;
@@ -88,6 +95,37 @@ export default function GrowScreen() {
   const inProgressCount = badges.filter((b) => b.earned_at === null && b.current_value > 0).length;
   const earnedBadges = badges.filter((b) => b.earned_at !== null).slice(0, 3);
 
+  const [chatPreviews, setChatPreviews] = useState<DirectChatPreview[]>([]);
+  const [chatTotal, setChatTotal] = useState(0);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      const { data: convs } = await supabase
+        .from('conversations')
+        .select('id, participant_ids, last_message_at')
+        .contains('participant_ids', [user.id])
+        .eq('conversation_type', 'direct')
+        .order('last_message_at', { ascending: false, nullsFirst: false })
+        .limit(10);
+      if (!convs || convs.length === 0) return;
+      setChatTotal(convs.length);
+      const top3 = convs.slice(0, 3) as { id: string; participant_ids: string[]; last_message_at: string | null }[];
+      const partnerIds = top3.map((c) => c.participant_ids.find((id) => id !== user.id) ?? null).filter(Boolean) as string[];
+      if (partnerIds.length === 0) return;
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', partnerIds);
+      const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p.display_name]));
+      setChatPreviews(top3.map((c) => ({
+        id: c.id,
+        partnerName: profileMap.get(c.participant_ids.find((id) => id !== user.id) ?? '') ?? 'Unknown',
+        last_message_at: c.last_message_at,
+      })));
+    })();
+  }, [user?.id]);
+
   const avatarUrl = profile?.avatar_url ?? null;
   const avatarInitial = profile?.display_name?.[0]?.toUpperCase() ?? '?';
   const handle = profile?.username ? `@${profile.username}` : profile?.display_name ?? '';
@@ -101,7 +139,7 @@ export default function GrowScreen() {
           {/* Left — avatar + handle + badges */}
           <TouchableOpacity
             style={styles.headerLeft}
-            onPress={() => router.push('/profile' as any)}
+            onPress={() => router.push('/(tabs)/profile' as any)}
             activeOpacity={0.75}
           >
             <View style={[
@@ -153,6 +191,40 @@ export default function GrowScreen() {
           )}
           <Text style={styles.greetingLabel}>✨ Your daily message from Roxy</Text>
         </View>
+
+        {/* My Chats */}
+        {chatTotal > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>My Chats</Text>
+            {chatPreviews.map((chat) => (
+              <TouchableOpacity
+                key={chat.id}
+                style={styles.chatPreviewRow}
+                onPress={() => router.push(`/chat/${chat.id}` as any)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.chatPreviewAvatar}>
+                  <Text style={styles.chatPreviewAvatarText}>{chat.partnerName[0]?.toUpperCase() ?? '?'}</Text>
+                </View>
+                <Text style={styles.chatPreviewName} numberOfLines={1}>{chat.partnerName}</Text>
+                <Text style={styles.chatPreviewTime}>
+                  {chat.last_message_at
+                    ? isToday(new Date(chat.last_message_at)) ? format(new Date(chat.last_message_at), 'HH:mm')
+                    : isYesterday(new Date(chat.last_message_at)) ? 'Yesterday'
+                    : format(new Date(chat.last_message_at), 'dd MMM')
+                    : ''}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/grow/chats' as any)}
+              style={styles.chatViewAll}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.chatViewAllText}>View all {chatTotal} chats →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Zone 2 — My Communities */}
         <TouchableOpacity
@@ -363,4 +435,20 @@ const styles = StyleSheet.create({
   badgePreviewEmoji: { fontSize: 20 },
   badgePreviewDim: { opacity: 0.3 },
   badgePreviewSummary: { color: COLORS.textMuted, fontSize: 11 },
+
+  chatPreviewRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 6,
+    borderBottomWidth: 1, borderBottomColor: COLORS.surfaceLight,
+  },
+  chatPreviewAvatar: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: COLORS.primary + '30',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  chatPreviewAvatarText: { color: COLORS.primary, fontWeight: '700', fontSize: 12 },
+  chatPreviewName: { flex: 1, color: COLORS.textPrimary, fontSize: 13, fontWeight: '600' },
+  chatPreviewTime: { color: COLORS.textMuted, fontSize: 11, flexShrink: 0 },
+  chatViewAll: { paddingTop: 8 },
+  chatViewAllText: { color: COLORS.roxy, fontSize: 13, fontWeight: '600' },
 });

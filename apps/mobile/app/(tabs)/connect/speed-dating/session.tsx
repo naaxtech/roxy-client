@@ -7,20 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
-import { isDailyAvailable } from '../../../../lib/daily';
 import { COLORS } from '../../../../lib/constants';
 import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
 import type { SpeedDateSession as SpeedDateSessionData } from '../../../../types';
 
-// Guarded Daily.co import
-let DailyCall: any = null;
-let DailyMediaView: any = null;
-try {
-  const mod = require('@daily-co/react-native-daily-js');
-  DailyCall = mod.default ?? mod;
-  DailyMediaView = mod.DailyMediaView ?? null;
-} catch {}
+import { DailyProvider } from '../../../../lib/video';
+import { useVideoCall } from '../../../../hooks/useVideoCall';
 
 const TIMER_COLORS = { green: '#10B981', yellow: '#F59E0B', red: '#EF4444' };
 
@@ -77,8 +70,8 @@ export default function SpeedDateSession() {
   const [elapsed, setElapsed] = useState(0);
   const [promptIndex, setPromptIndex] = useState(0);
   const [liked, setLiked] = useState(false);
-  const [callObject, setCallObject] = useState<any>(null);
-  const [remoteSessionId, setRemoteSessionId] = useState<string | null>(null);
+  const [provider] = useState(() => new DailyProvider());
+  const { state: callState, remoteParticipant } = useVideoCall(provider);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasEnded = useRef(false);
@@ -126,33 +119,17 @@ export default function SpeedDateSession() {
     };
   }, [session]);
 
-  // Daily.co call setup
+  // Join via provider
   useEffect(() => {
-    if (!isDailyAvailable() || !room_url || !DailyCall) return;
-    let call: any = null;
-    try {
-      call = DailyCall.createCallObject();
-      call.join({ url: room_url });
+    if (!provider.isAvailable || !room_url) return;
+    provider.join({ roomUrl: room_url }).then(() => {
       Analytics.speedDateJoined();
-
-      call.on('participant-joined', (evt: any) => {
-        if (!evt.participant.local) {
-          setRemoteSessionId(evt.participant.session_id);
-        }
-      });
-      call.on('participant-left', () => setRemoteSessionId(null));
-
-      setCallObject(call);
-    } catch (e) {
-      logError(e, 'speedDateSession_dailyJoin');
-      console.warn('[SpeedDate] Daily.co join failed:', e);
-    }
-
+    }).catch((e: any) => {
+      logError(e, 'speedDateSession_join');
+    });
     return () => {
-      if (call) {
-        call.leave().catch(() => {});
-        call.destroy().catch(() => {});
-      }
+      provider.leave().catch(() => {});
+      provider.destroy();
     };
   }, [room_url]);
 
@@ -162,10 +139,7 @@ export default function SpeedDateSession() {
     // Determine partner_id from session participant_ids
     const partnerId = session?.participant_ids.find((id) => id !== user?.id) ?? null;
 
-    // Leave Daily call
-    if (callObject) {
-      callObject.leave().catch(() => {});
-    }
+    provider.leave().catch(() => {});
 
     router.replace({
       pathname: '/speed-dating/result',
@@ -175,7 +149,7 @@ export default function SpeedDateSession() {
         partner_id: partnerId ?? '',
       },
     } as any);
-  }, [session, callObject, session_id, router, user]);
+  }, [session, provider, session_id, router, user]);
 
   const handleLeave = () => {
     Alert.alert('Leave session?', 'Are you sure you want to leave early?', [
@@ -204,17 +178,10 @@ export default function SpeedDateSession() {
 
       {/* Remote video (full screen behind overlay) */}
       <View style={styles.remoteVideo}>
-        {isDailyAvailable() && DailyMediaView && remoteSessionId ? (
-          <DailyMediaView
-            sessionId={remoteSessionId}
-            videoTrackState={callObject?.participants()?.[remoteSessionId]?.videoTrack ?? null}
-            audioTrackState={callObject?.participants()?.[remoteSessionId]?.audioTrack ?? null}
-            style={StyleSheet.absoluteFill}
-            mirror={false}
-          />
-        ) : (
-          <VideoPlaceholder label="Waiting for match…" />
-        )}
+        {remoteParticipant
+          ? (provider.renderRemoteVideo(remoteParticipant, StyleSheet.absoluteFill) ?? <VideoPlaceholder label="Waiting for match…" />)
+          : <VideoPlaceholder label="Waiting for match…" />
+        }
       </View>
 
       {/* Draggable Roxy prompt overlay */}
@@ -236,17 +203,7 @@ export default function SpeedDateSession() {
 
       {/* Self-view PiP */}
       <View style={styles.selfPip}>
-        {isDailyAvailable() && DailyMediaView && callObject ? (
-          <DailyMediaView
-            sessionId="local"
-            videoTrackState={callObject?.participants()?.local?.videoTrack ?? null}
-            audioTrackState={null}
-            style={StyleSheet.absoluteFill}
-            mirror={true}
-          />
-        ) : (
-          <VideoPlaceholder label="You" />
-        )}
+        {provider.renderLocalVideo(StyleSheet.absoluteFill) ?? <VideoPlaceholder label="You" />}
       </View>
 
       {/* Bottom controls */}
