@@ -354,6 +354,40 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+# Disable gateway-level JWT verification for all functions.
+# Supabase's gateway verify_jwt=true is incompatible with ES256 asymmetric
+# signing keys. Functions handle JWT verification themselves via auth.getClaims().
+[functions.dev-control]
+verify_jwt = false
+[functions.gdpr-export]
+verify_jwt = false
+[functions.gdpr-delete]
+verify_jwt = false
+[functions.submit-report]
+verify_jwt = false
+[functions.roxy-chat]
+verify_jwt = false
+[functions.roxy-greeting]
+verify_jwt = false
+[functions.roxy-icebreaker]
+verify_jwt = false
+[functions.roxy-nudge]
+verify_jwt = false
+[functions.roxy-onboarding]
+verify_jwt = false
+[functions.roxy-sister]
+verify_jwt = false
+[functions.roxy-wingwoman]
+verify_jwt = false
+[functions.speed-date-prompts]
+verify_jwt = false
+[functions.join-speed-date-session]
+verify_jwt = false
+[functions.join-community-room]
+verify_jwt = false
+[functions.livekit-token]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
