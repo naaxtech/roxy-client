@@ -113,13 +113,19 @@ export default function MembersScreen() {
           const state = isSelf ? 'self' : getFriendshipState(item.id);
           return (
             <View style={styles.row}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{item.display_name?.[0]?.toUpperCase() ?? '?'}</Text>
-              </View>
-              <View style={styles.rowInfo}>
-                <Text style={styles.rowName}>{item.display_name}</Text>
-                <Text style={styles.rowSub}>@{item.username}</Text>
-              </View>
+              <TouchableOpacity
+                style={styles.rowLeft}
+                onPress={() => !isSelf && router.push(`/user/${item.id}` as any)}
+                activeOpacity={isSelf ? 1 : 0.7}
+              >
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{item.display_name?.[0]?.toUpperCase() ?? '?'}</Text>
+                </View>
+                <View style={styles.rowInfo}>
+                  <Text style={styles.rowName}>{item.display_name}</Text>
+                  <Text style={styles.rowSub}>@{item.username}</Text>
+                </View>
+              </TouchableOpacity>
               {state === 'none' && (
                 <TouchableOpacity style={styles.addBtn} onPress={() => handleAddFriend(item.id)}>
                   <Text style={styles.addBtnText}>Add Friend</Text>
@@ -167,6 +173,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   avatarText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 14 },
+  rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   rowInfo: { flex: 1 },
   rowName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
   rowSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 1 },

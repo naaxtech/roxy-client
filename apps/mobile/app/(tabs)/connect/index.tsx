@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Switch, ActivityIndicator, Animated,
+  View, Text, StyleSheet, TouchableOpacity, Switch, ActivityIndicator, Animated, ScrollView,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { format, isToday, isYesterday } from 'date-fns';
+import { format } from 'date-fns';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
-import { useConnectStore } from '../../../store/connectStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { COLORS } from '../../../lib/constants';
-import { Conversation } from '../../../types';
+import { GAME_ROUTES } from '../../../lib/games';
 
 
-type SubTab = 'feed' | 'events' | 'chats';
+type SubTab = 'feed' | 'events' | 'rooms';
 
 type PostRow = {
   id: string; content: string; created_at: string; community_id: string;
@@ -29,54 +28,27 @@ type EventRow = {
   communities: { name: string } | null;
 };
 
-function formatLastMessage(ts: string | null): string {
-  if (!ts) return '';
-  const d = new Date(ts);
-  if (isToday(d)) return format(d, 'HH:mm');
-  if (isYesterday(d)) return 'Yesterday';
-  return format(d, 'dd MMM');
-}
+type GameRow = {
+  id: string; slug: string; name: string; description: string | null;
+  emoji: string; is_active: boolean;
+};
+
+type CommunityRoomRow = {
+  id: string; name: string; room_type: 'video' | 'audio';
+  community_id: string;
+  communities: { name: string } | null;
+  is_active: boolean;
+};
 
 function formatEventDate(ts: string): string {
   const d = new Date(ts);
   return format(d, 'dd MMM · HH:mm');
 }
 
-function ConversationRow({
-  item, currentUserId, unreadCount, onPress,
-}: { item: Conversation; currentUserId: string; unreadCount: number; onPress: () => void }) {
-  return (
-    <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
-          {item.conversation_type === 'speed_date' ? '⚡' : item.conversation_type === 'sister' ? '💜' : '💬'}
-        </Text>
-      </View>
-      <View style={styles.rowContent}>
-        <Text style={styles.rowName} numberOfLines={1}>
-          {item.conversation_type === 'speed_date' ? 'Speed Date Match' : item.conversation_type === 'sister' ? 'Sister Chat' : 'Direct Message'}
-        </Text>
-        <Text style={styles.rowSub} numberOfLines={1}>
-          {formatLastMessage(item.last_message_at) || 'Tap to open'}
-        </Text>
-      </View>
-      <View style={styles.rowRight}>
-        <Text style={styles.rowTime}>{formatLastMessage(item.last_message_at)}</Text>
-        {unreadCount > 0 && (
-          <View style={styles.unreadBadge}>
-            <Text style={styles.unreadText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
-}
-
 export default function ConnectScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { profile, setProfile } = useProfileStore();
-  const { conversations, setConversations, unreadCounts } = useConnectStore();
   const { joinedIds, fetchJoined } = useCommunityStore();
 
   const [subTab, setSubTab] = useState<SubTab>('feed');
@@ -87,13 +59,17 @@ export default function ConnectScreen() {
     setSubTab(tab);
     Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
   };
+
   const [posts, setPosts] = useState<PostRow[]>([]);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
   const [loadingFeed, setLoadingFeed] = useState(false);
   const [loadingEvents, setLoadingEvents] = useState(false);
-  const [loadingChats, setLoadingChats] = useState(true);
   const [datingMode, setDatingMode] = useState(profile?.is_dating_mode ?? false);
+
+  const [games, setGames] = useState<GameRow[]>([]);
+  const [rooms, setRooms] = useState<CommunityRoomRow[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
 
   // Ensure communities are loaded
   useEffect(() => {
@@ -132,18 +108,20 @@ export default function ConnectScreen() {
     setLoadingEvents(false);
   }, [joinedIds]);
 
-  // Load conversations
-  const loadConversations = useCallback(async () => {
-    if (!user) return;
-    setLoadingChats(true);
-    const { data } = await supabase
-      .from('conversations')
-      .select('*')
-      .contains('participant_ids', [user.id])
-      .order('last_message_at', { ascending: false, nullsFirst: false });
-    if (data) setConversations(data as Conversation[]);
-    setLoadingChats(false);
-  }, [user]);
+  // Load games and community rooms
+  const loadRooms = useCallback(async () => {
+    setLoadingRooms(true);
+    const [{ data: gamesData }, { data: roomsData }] = await Promise.all([
+      supabase.from('games').select('*').eq('is_active', true).order('name'),
+      supabase.from('community_rooms')
+        .select('id, name, room_type, community_id, communities(name), is_active')
+        .eq('is_active', true)
+        .order('name'),
+    ]);
+    if (gamesData) setGames(gamesData as GameRow[]);
+    if (roomsData) setRooms(roomsData as unknown as CommunityRoomRow[]);
+    setLoadingRooms(false);
+  }, []);
 
   // Load RSVPs
   const loadRsvps = useCallback(async () => {
@@ -157,7 +135,7 @@ export default function ConnectScreen() {
 
   useEffect(() => { if (subTab === 'feed') loadFeed(); }, [subTab, loadFeed]);
   useEffect(() => { if (subTab === 'events') { loadEvents(); loadRsvps(); } }, [subTab, loadEvents, loadRsvps]);
-  useEffect(() => { if (subTab === 'chats') loadConversations(); }, [subTab, loadConversations]);
+  useEffect(() => { if (subTab === 'rooms') loadRooms(); }, [subTab, loadRooms]);
 
   const toggleRsvp = async (eventId: string) => {
     if (!user) return;
@@ -188,7 +166,7 @@ export default function ConnectScreen() {
 
       {/* Sub-tabs */}
       <View style={styles.subTabRow}>
-        {(['feed', 'events', 'chats'] as SubTab[]).map((tab) => (
+        {(['feed', 'events', 'rooms'] as SubTab[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.subTab, subTab === tab && styles.subTabActive]}
@@ -234,8 +212,13 @@ export default function ConnectScreen() {
                   </TouchableOpacity>
                   <Text style={styles.postTime}>{format(new Date(item.created_at), 'dd MMM')}</Text>
                 </View>
-                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/community/post/${item.id}` as any)}>
+                <TouchableOpacity
+                  onPress={() => router.push(`/user/${item.author_id}` as any)}
+                  hitSlop={{ top: 4, bottom: 4, left: 0, right: 40 }}
+                >
                   <Text style={styles.postAuthor}>{item.profiles?.display_name ?? 'Anonymous'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/community/post/${item.id}` as any)}>
                   <Text style={styles.postContent} numberOfLines={4}>{item.content}</Text>
                 </TouchableOpacity>
                 <View style={styles.reactionRow}>
@@ -317,10 +300,10 @@ export default function ConnectScreen() {
         )
       )}
 
-      {/* Chats */}
-      {subTab === 'chats' && (
-        <View style={{ flex: 1 }}>
-          {/* Dating toggle */}
+      {/* Rooms */}
+      {subTab === 'rooms' && (
+        <ScrollView contentContainerStyle={{ paddingVertical: 8 }}>
+          {/* Dating mode + Speed Dating banner */}
           <View style={styles.datingToggleRow}>
             <Text style={styles.datingLabel}>Dating Mode</Text>
             <Switch
@@ -330,8 +313,6 @@ export default function ConnectScreen() {
               thumbColor={COLORS.textPrimary}
             />
           </View>
-
-          {/* Speed date banner */}
           {datingMode && (
             <TouchableOpacity
               style={styles.speedDateBanner}
@@ -347,32 +328,60 @@ export default function ConnectScreen() {
             </TouchableOpacity>
           )}
 
-          {loadingChats ? (
-            <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 48 }} />
-          ) : conversations.length === 0 ? (
-            <View style={styles.emptyCenter}>
-              <Text style={styles.emptyIcon}>💬</Text>
-              <Text style={styles.emptyTitle}>No conversations yet</Text>
-              <Text style={styles.emptySub}>Match with someone in Speed Dating or connect in your communities.</Text>
-            </View>
-          ) : (
-            <FlashList
-              data={conversations}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <ConversationRow
-                  item={item}
-                  currentUserId={user?.id ?? ''}
-                  unreadCount={unreadCounts[item.id] ?? 0}
-                  onPress={() => router.push(`/chat/${item.id}` as any)}
-                />
-              )}
-              estimatedItemSize={72}
-              onRefresh={loadConversations}
-              refreshing={loadingChats}
-            />
-          )}
-        </View>
+          {/* Games */}
+          <View style={styles.roomSection}>
+            <Text style={styles.roomSectionTitle}>🎮 Games</Text>
+            {loadingRooms ? (
+              <ActivityIndicator color={COLORS.roxy} style={{ marginVertical: 16 }} />
+            ) : games.length === 0 ? (
+              <Text style={styles.roomEmpty}>No games available</Text>
+            ) : (
+              games.map((game) => (
+                <TouchableOpacity
+                  key={game.id}
+                  style={styles.gameCard}
+                  onPress={() => GAME_ROUTES[game.slug] && router.push(GAME_ROUTES[game.slug] as any)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.gameEmoji}>{game.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.gameName}>{game.name}</Text>
+                    {game.description && <Text style={styles.gameDesc} numberOfLines={1}>{game.description}</Text>}
+                  </View>
+                  <Text style={styles.gameArrow}>›</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+
+          {/* Community Rooms */}
+          <View style={styles.roomSection}>
+            <Text style={styles.roomSectionTitle}>📹 Community Rooms</Text>
+            {loadingRooms ? (
+              <ActivityIndicator color={COLORS.roxy} style={{ marginVertical: 16 }} />
+            ) : rooms.length === 0 ? (
+              <Text style={styles.roomEmpty}>No rooms active right now</Text>
+            ) : (
+              rooms.map((room) => (
+                <TouchableOpacity
+                  key={room.id}
+                  style={styles.roomCard}
+                  onPress={() => router.push(`/(tabs)/connect/community-room-session?room_id=${room.id}` as any)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.roomTypeIcon}>{room.room_type === 'video' ? '🎥' : '🎙️'}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.roomName}>{room.name}</Text>
+                    {room.communities?.name && (
+                      <Text style={styles.roomCommunity}>{room.communities.name}</Text>
+                    )}
+                  </View>
+                  <Text style={styles.roomArrow}>›</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        </ScrollView>
       )}
       </Animated.View>
 
@@ -444,7 +453,7 @@ const styles = StyleSheet.create({
   rsvpBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 11 },
   rsvpBtnTextGoing: { color: '#fff' },
 
-  // Chats
+  // Rooms (dating toggle + speed date banner carried over)
   datingToggleRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 8,
@@ -461,25 +470,28 @@ const styles = StyleSheet.create({
   speedDateTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
   speedDateSub: { color: COLORS.textSecondary, fontSize: 12 },
   speedDateArrow: { color: COLORS.textMuted, fontSize: 20 },
-  row: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
+
+  // Games + Community Rooms
+  roomSection: { paddingHorizontal: 12, marginBottom: 8, marginTop: 8 },
+  roomSectionTitle: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 15, marginBottom: 8 },
+  roomEmpty: { color: COLORS.textMuted, fontSize: 13, paddingVertical: 8 },
+  gameCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.surface, borderRadius: 12, padding: 12, marginBottom: 6,
   },
-  avatar: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', marginRight: 10,
+  gameEmoji: { fontSize: 24 },
+  gameName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
+  gameDesc: { color: COLORS.textMuted, fontSize: 12, marginTop: 1 },
+  gameArrow: { color: COLORS.textMuted, fontSize: 20 },
+  roomCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.surface, borderRadius: 12, padding: 12, marginBottom: 6,
+    borderWidth: 1, borderColor: COLORS.primary + '30',
   },
-  avatarText: { fontSize: 16 },
-  rowContent: { flex: 1, marginRight: 8 },
-  rowName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  rowSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 1 },
-  rowRight: { alignItems: 'flex-end', gap: 4 },
-  rowTime: { color: COLORS.textMuted, fontSize: 12 },
-  unreadBadge: {
-    backgroundColor: COLORS.primary, borderRadius: 10,
-    paddingHorizontal: 7, paddingVertical: 2, minWidth: 20, alignItems: 'center',
-  },
-  unreadText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  roomTypeIcon: { fontSize: 20 },
+  roomName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
+  roomCommunity: { color: COLORS.textMuted, fontSize: 12, marginTop: 1 },
+  roomArrow: { color: COLORS.textMuted, fontSize: 20 },
 
   // Empty states
   emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12 },

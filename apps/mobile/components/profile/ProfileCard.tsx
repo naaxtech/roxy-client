@@ -19,9 +19,13 @@ interface ProfileCardProps {
   onEdit?: () => void;
   onSettings?: () => void;
   onBack?: () => void;
+  friendshipState?: 'none' | 'sent' | 'received' | 'friends';
+  onAddFriend?: () => void;
+  onAcceptFriend?: () => void;
+  onMessage?: () => void;
 }
 
-export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack }: ProfileCardProps) {
+export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack, friendshipState, onAddFriend, onAcceptFriend, onMessage }: ProfileCardProps) {
   const points = profile.gamification_points ?? 0;
   const level = getLevelInfo(points);
   const initials = (profile.display_name ?? '?').charAt(0).toUpperCase();
@@ -92,11 +96,45 @@ export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack
         <Text style={styles.levelText}>{level.emoji} {level.label} · {points} pts</Text>
       </View>
 
-      {/* Edit button */}
+      {/* Edit button (own profile) */}
       {isOwn && onEdit && (
         <TouchableOpacity style={styles.editBtn} onPress={onEdit}>
           <Text style={styles.editBtnText}>Edit Profile</Text>
         </TouchableOpacity>
+      )}
+
+      {/* Actions (other user's profile) */}
+      {!isOwn && (
+        <View style={styles.actionRow}>
+          {onMessage && (
+            <TouchableOpacity style={styles.messageBtn} onPress={onMessage}>
+              <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+              <Text style={styles.messageBtnText}>Message</Text>
+            </TouchableOpacity>
+          )}
+          {friendshipState === 'none' && onAddFriend && (
+            <TouchableOpacity style={styles.addFriendBtn} onPress={onAddFriend}>
+              <Ionicons name="person-add-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.addFriendBtnText}>Add Friend</Text>
+            </TouchableOpacity>
+          )}
+          {friendshipState === 'sent' && (
+            <View style={styles.requestedChip}>
+              <Text style={styles.requestedText}>Requested</Text>
+            </View>
+          )}
+          {friendshipState === 'received' && onAcceptFriend && (
+            <TouchableOpacity style={styles.addFriendBtn} onPress={onAcceptFriend}>
+              <Ionicons name="checkmark-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.addFriendBtnText}>Accept Request</Text>
+            </TouchableOpacity>
+          )}
+          {friendshipState === 'friends' && (
+            <View style={styles.friendsChip}>
+              <Text style={styles.friendsChipText}>Friends 💜</Text>
+            </View>
+          )}
+        </View>
       )}
     </ScrollView>
   );
@@ -152,4 +190,27 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   editBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+
+  actionRow: { flexDirection: 'row', gap: 10, width: '100%', marginTop: 4 },
+  messageBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: COLORS.primary, borderRadius: 14, paddingVertical: 13,
+  },
+  messageBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  addFriendBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: COLORS.primary + '20', borderRadius: 14, paddingVertical: 13,
+    borderWidth: 1, borderColor: COLORS.primary + '60',
+  },
+  addFriendBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
+  requestedChip: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.surface, borderRadius: 14, paddingVertical: 13,
+  },
+  requestedText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 15 },
+  friendsChip: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.primary + '15', borderRadius: 14, paddingVertical: 13,
+  },
+  friendsChipText: { color: COLORS.primary, fontWeight: '600', fontSize: 15 },
 });

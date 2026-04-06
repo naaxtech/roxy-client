@@ -261,16 +261,20 @@ export default function CommunityDetailScreen() {
           ) : (
             posts.map((post) => (
               <View key={post.id} style={styles.postCard}>
-                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/community/post/${post.id}` as any)}>
-                  <View style={styles.postAuthorRow}>
-                    <View style={styles.postAvatar}>
-                      <Text style={styles.postAvatarText}>{post.profiles?.display_name?.[0]?.toUpperCase() ?? '?'}</Text>
-                    </View>
-                    <View>
-                      <Text style={styles.postAuthorName}>{post.profiles?.display_name ?? 'Anonymous'}</Text>
-                      <Text style={styles.postTime}>{format(new Date(post.created_at), 'dd MMM · HH:mm')}</Text>
-                    </View>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.postAuthorRow}
+                  onPress={() => router.push(`/user/${post.author_id}` as any)}
+                >
+                  <View style={styles.postAvatar}>
+                    <Text style={styles.postAvatarText}>{post.profiles?.display_name?.[0]?.toUpperCase() ?? '?'}</Text>
                   </View>
+                  <View>
+                    <Text style={styles.postAuthorName}>{post.profiles?.display_name ?? 'Anonymous'}</Text>
+                    <Text style={styles.postTime}>{format(new Date(post.created_at), 'dd MMM · HH:mm')}</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/community/post/${post.id}` as any)}>
                   <Text style={styles.postContent}>{post.content}</Text>
                 </TouchableOpacity>
                 <View style={styles.postFooter}>
