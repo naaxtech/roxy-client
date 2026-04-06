@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
 import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
 import { COLORS } from '../../../lib/constants';
 import { Analytics } from '../../../lib/analytics';
+import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
 
 type CommunityRow = { community_id: string; communities: { id: string; name: string; category: string } | null };
 type BadgeProgressRow = {
@@ -84,19 +86,61 @@ export default function GrowScreen() {
   const level = getLevelInfo(points);
   const earnedCount = badges.filter((b) => b.earned_at !== null).length;
   const inProgressCount = badges.filter((b) => b.earned_at === null && b.current_value > 0).length;
+  const earnedBadges = badges.filter((b) => b.earned_at !== null).slice(0, 3);
+
+  const avatarUrl = profile?.avatar_url ?? null;
   const avatarInitial = profile?.display_name?.[0]?.toUpperCase() ?? '?';
+  const handle = profile?.username ? `@${profile.username}` : profile?.display_name ?? '';
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
 
-        {/* Mini header */}
-        <View style={styles.miniHeader}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitial}>{avatarInitial}</Text>
-          </View>
+        {/* Header */}
+        <View style={styles.header}>
+          {/* Left — avatar + handle + badges */}
+          <TouchableOpacity
+            style={styles.headerLeft}
+            onPress={() => router.push('/profile' as any)}
+            activeOpacity={0.75}
+          >
+            <View style={[
+              styles.headerAvatar,
+              isPresetAvatar(avatarUrl) && { backgroundColor: presetColor(avatarUrl!) },
+            ]}>
+              {avatarUrl && !isPresetAvatar(avatarUrl) ? (
+                <Image source={{ uri: avatarUrl }} style={styles.headerAvatarImg} />
+              ) : (
+                <Text style={styles.headerAvatarText}>
+                  {isPresetAvatar(avatarUrl) ? presetEmoji(avatarUrl!) : avatarInitial}
+                </Text>
+              )}
+            </View>
+            <View style={styles.headerAvatarMeta}>
+              <Text style={styles.headerHandle} numberOfLines={1}>{handle}</Text>
+              {earnedBadges.length > 0 && (
+                <View style={styles.headerBadgeRow}>
+                  {earnedBadges.map((b) => (
+                    <Text key={b.badge_id} style={styles.headerBadgeEmoji}>
+                      {b.badges?.emoji ?? '🏅'}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+
+          {/* Center — title */}
           <Text style={styles.screenTitle}>Grow</Text>
-          <View style={styles.avatarCircle} />
+
+          {/* Right — settings */}
+          <TouchableOpacity
+            style={styles.headerRight}
+            onPress={() => router.push('/profile/settings' as any)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="ellipsis-vertical" size={22} color={COLORS.textPrimary} />
+          </TouchableOpacity>
         </View>
 
         {/* Zone 1 — Roxy Greeting Card */}
@@ -231,21 +275,35 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { padding: 12, gap: 10 },
 
-  miniHeader: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 4,
-    marginBottom: 2,
+    marginBottom: 4,
+    minHeight: 48,
   },
-  avatarCircle: {
-    width: 30, height: 30, borderRadius: 15,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  headerAvatar: {
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: COLORS.primary + '30',
     borderWidth: 2, borderColor: COLORS.primary,
     alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
   },
-  avatarInitial: { color: COLORS.primary, fontWeight: '700', fontSize: 13 },
-  screenTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800' },
+  headerAvatarImg: { width: 38, height: 38, borderRadius: 19 },
+  headerAvatarText: { fontSize: 16 },
+  headerAvatarMeta: { flexDirection: 'column', gap: 1 },
+  headerHandle: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '600', maxWidth: 90 },
+  headerBadgeRow: { flexDirection: 'row', gap: 1 },
+  headerBadgeEmoji: { fontSize: 9 },
+  screenTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800', position: 'absolute', left: 0, right: 0, textAlign: 'center' },
+  headerRight: { width: 36, alignItems: 'flex-end', justifyContent: 'center' },
 
   greetingCard: {
     backgroundColor: COLORS.surface, borderRadius: 16, padding: 14,
