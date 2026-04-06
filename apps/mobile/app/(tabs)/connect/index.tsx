@@ -234,8 +234,13 @@ export default function ConnectScreen() {
                   </TouchableOpacity>
                   <Text style={styles.postTime}>{format(new Date(item.created_at), 'dd MMM')}</Text>
                 </View>
-                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/community/post/${item.id}` as any)}>
+                <TouchableOpacity
+                  onPress={() => router.push(`/user/${item.author_id}` as any)}
+                  hitSlop={{ top: 4, bottom: 4, left: 0, right: 40 }}
+                >
                   <Text style={styles.postAuthor}>{item.profiles?.display_name ?? 'Anonymous'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/community/post/${item.id}` as any)}>
                   <Text style={styles.postContent} numberOfLines={4}>{item.content}</Text>
                 </TouchableOpacity>
                 <View style={styles.reactionRow}>

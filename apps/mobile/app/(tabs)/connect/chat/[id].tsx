@@ -328,7 +328,12 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{partnerName !== 'this person' ? partnerName : 'Chat'}</Text>
+        <TouchableOpacity
+          onPress={() => partnerId && router.push(`/user/${partnerId}` as any)}
+          disabled={!partnerId}
+        >
+          <Text style={styles.headerTitle}>{partnerName !== 'this person' ? partnerName : 'Chat'}</Text>
+        </TouchableOpacity>
         <View style={styles.headerRight}>
           <View style={[styles.dot, isSubscribed ? styles.dotConnected : styles.dotDisconnected]} />
           <TouchableOpacity

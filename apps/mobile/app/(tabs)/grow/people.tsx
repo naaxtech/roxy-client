@@ -166,11 +166,17 @@ export default function PeopleScreen() {
               }
               renderItem={({ item }) => (
                 <View style={styles.row}>
-                  <AvatarCircle name={item.profile.display_name} />
-                  <View style={styles.rowInfo}>
-                    <Text style={styles.rowName}>{item.profile.display_name}</Text>
-                    <Text style={styles.rowSub}>@{item.profile.username}</Text>
-                  </View>
+                  <TouchableOpacity
+                    style={styles.rowLeft}
+                    onPress={() => router.push(`/user/${item.profile.id}` as any)}
+                    activeOpacity={0.7}
+                  >
+                    <AvatarCircle name={item.profile.display_name} />
+                    <View style={styles.rowInfo}>
+                      <Text style={styles.rowName}>{item.profile.display_name}</Text>
+                      <Text style={styles.rowSub}>@{item.profile.username}</Text>
+                    </View>
+                  </TouchableOpacity>
                   <View style={styles.actionBtns}>
                     <TouchableOpacity
                       style={styles.acceptBtn}
@@ -208,11 +214,17 @@ export default function PeopleScreen() {
               }
               renderItem={({ item }) => (
                 <View style={styles.row}>
-                  <AvatarCircle name={item.profile.display_name} />
-                  <View style={styles.rowInfo}>
-                    <Text style={styles.rowName}>{item.profile.display_name}</Text>
-                    <Text style={styles.rowSub}>@{item.profile.username}</Text>
-                  </View>
+                  <TouchableOpacity
+                    style={styles.rowLeft}
+                    onPress={() => router.push(`/user/${item.profile.id}` as any)}
+                    activeOpacity={0.7}
+                  >
+                    <AvatarCircle name={item.profile.display_name} />
+                    <View style={styles.rowInfo}>
+                      <Text style={styles.rowName}>{item.profile.display_name}</Text>
+                      <Text style={styles.rowSub}>@{item.profile.username}</Text>
+                    </View>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.mutedBtn}
                     onPress={async () => {
@@ -271,6 +283,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.success,
     borderWidth: 1.5, borderColor: COLORS.background,
   },
+  rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   rowInfo: { flex: 1 },
   rowName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
   rowSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 1 },
