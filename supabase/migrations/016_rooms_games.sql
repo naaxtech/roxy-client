@@ -22,7 +22,11 @@ INSERT INTO games (slug, name, description, emoji, is_active, min_players, max_p
 VALUES ('speed_dating', 'Speed Dating', 'Meet someone new in 5 minutes', '⚡', true, 2, 2)
 ON CONFLICT (slug) DO NOTHING;
 
--- 2. community_rooms table
+-- 2. Feature flag columns on profiles (must exist before community_rooms policy references them)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS can_create_room boolean NOT NULL DEFAULT false;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS can_submit_game boolean NOT NULL DEFAULT false;
+
+-- 3. community_rooms table
 CREATE TABLE IF NOT EXISTS community_rooms (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   community_id uuid NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
@@ -52,6 +56,3 @@ CREATE POLICY "community_rooms_insert" ON community_rooms FOR INSERT
       AND p.can_create_room = true
   ));
 
--- 3. Feature flag columns on profiles
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS can_create_room boolean NOT NULL DEFAULT false;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS can_submit_game boolean NOT NULL DEFAULT false;
