@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  Modal, ScrollView, ActivityIndicator,
+  Modal, ScrollView, ActivityIndicator, Animated,
 } from 'react-native';
 import { COLORS } from '../../lib/constants';
 import { PRESET_AVATARS, PRESET_COLORS } from '../../lib/avatars';
@@ -20,11 +20,26 @@ export function AvatarPickerSheet({
   visible, onClose, onSelectPreset, onUploadPhoto, uploading,
 }: AvatarPickerSheetProps) {
   const [tab, setTab] = useState<Tab>('photo');
+  const slideAnim = useRef(new Animated.Value(300)).current;
+
+  useEffect(() => {
+    if (visible) {
+      slideAnim.setValue(300);
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        bounciness: 4,
+        speed: 14,
+      }).start();
+    }
+  }, [visible]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      {/* Backdrop appears instantly */}
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.sheet}>
+      {/* Only the sheet slides up */}
+      <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
         <View style={styles.handle} />
 
         <View style={styles.tabs}>
@@ -65,7 +80,7 @@ export function AvatarPickerSheet({
             ))}
           </ScrollView>
         )}
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
