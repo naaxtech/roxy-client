@@ -12,6 +12,8 @@ import { useProfileStore } from '../../../store/profileStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { COLORS } from '../../../lib/constants';
 import { GAME_ROUTES } from '../../../lib/games';
+import { useCommunityFilterStore } from '../../../store/communityFilterStore';
+import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
 
 
 type SubTab = 'feed' | 'events' | 'rooms';
@@ -49,7 +51,8 @@ export default function ConnectScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { profile, setProfile } = useProfileStore();
-  const { joinedIds, fetchJoined } = useCommunityStore();
+  const { joinedIds, joinedCommunities, fetchJoined } = useCommunityStore();
+  const { selectedCommunityId } = useCommunityFilterStore();
 
   const [subTab, setSubTab] = useState<SubTab>('feed');
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -81,15 +84,20 @@ export default function ConnectScreen() {
     const ids = Array.from(joinedIds);
     if (ids.length === 0) { setPosts([]); return; }
     setLoadingFeed(true);
-    const { data } = await supabase
+    let query = supabase
       .from('posts')
       .select('*, comment_count, profiles(display_name, avatar_url), communities(name)')
-      .in('community_id', ids)
       .order('created_at', { ascending: false })
       .limit(50);
+    if (selectedCommunityId) {
+      query = query.eq('community_id', selectedCommunityId);
+    } else {
+      query = query.in('community_id', ids);
+    }
+    const { data } = await query;
     if (data) setPosts(data as PostRow[]);
     setLoadingFeed(false);
-  }, [joinedIds]);
+  }, [joinedIds, selectedCommunityId]);
 
   // Load upcoming events from joined communities
   const loadEvents = useCallback(async () => {
@@ -97,31 +105,41 @@ export default function ConnectScreen() {
     if (ids.length === 0) { setEvents([]); return; }
     setLoadingEvents(true);
     const now = new Date().toISOString();
-    const { data } = await supabase
+    let query = supabase
       .from('events')
       .select('*, communities(name)')
-      .in('community_id', ids)
       .gte('starts_at', now)
       .order('starts_at')
       .limit(20);
+    if (selectedCommunityId) {
+      query = query.eq('community_id', selectedCommunityId);
+    } else {
+      query = query.in('community_id', ids);
+    }
+    const { data } = await query;
     if (data) setEvents(data as EventRow[]);
     setLoadingEvents(false);
-  }, [joinedIds]);
+  }, [joinedIds, selectedCommunityId]);
 
   // Load games and community rooms
   const loadRooms = useCallback(async () => {
     setLoadingRooms(true);
+    let roomsQuery = supabase
+      .from('community_rooms')
+      .select('id, name, room_type, community_id, communities(name), is_active')
+      .eq('is_active', true)
+      .order('name');
+    if (selectedCommunityId) {
+      roomsQuery = roomsQuery.eq('community_id', selectedCommunityId);
+    }
     const [{ data: gamesData }, { data: roomsData }] = await Promise.all([
       supabase.from('games').select('*').eq('is_active', true).order('name'),
-      supabase.from('community_rooms')
-        .select('id, name, room_type, community_id, communities(name), is_active')
-        .eq('is_active', true)
-        .order('name'),
+      roomsQuery,
     ]);
     if (gamesData) setGames(gamesData as GameRow[]);
     if (roomsData) setRooms(roomsData as unknown as CommunityRoomRow[]);
     setLoadingRooms(false);
-  }, []);
+  }, [selectedCommunityId]);
 
   // Load RSVPs
   const loadRsvps = useCallback(async () => {
@@ -162,6 +180,7 @@ export default function ConnectScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Connect</Text>
+        <CommunityContextSwitcher communities={joinedCommunities} />
       </View>
 
       {/* Sub-tabs */}
@@ -392,6 +411,9 @@ export default function ConnectScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 8,
     borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },

@@ -10,6 +10,9 @@ import { useAuthStore } from '../../../store/authStore';
 import { useBuildStore } from '../../../store/buildStore';
 import { COLORS } from '../../../lib/constants';
 import { Business, ImpactProject } from '../../../types';
+import { useCommunityFilterStore } from '../../../store/communityFilterStore';
+import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
+import { useCommunityStore } from '../../../store/communityStore';
 
 const categoryEmoji: Record<string, string> = {
   mutual_aid: '🤝', visibility: '🏳️‍🌈', education: '📚', safety: '🛡️',
@@ -172,6 +175,8 @@ function ImpactDetailModal({
 export default function BuildScreen() {
   const { user } = useAuthStore();
   const { businesses, impactProjects, loading, setBusinesses, setImpactProjects, setLoading, incrementSupporter } = useBuildStore();
+  const { selectedCommunityId } = useCommunityFilterStore();
+  const { joinedCommunities } = useCommunityStore();
 
   const [segment, setSegment] = useState<'businesses' | 'impact'>('businesses');
   const [search, setSearch] = useState('');
@@ -181,24 +186,58 @@ export default function BuildScreen() {
   const [selectedProject, setSelectedProject] = useState<ImpactProject | null>(null);
 
   const loadBusinesses = useCallback(async () => {
-    const { data } = await supabase
-      .from('businesses')
-      .select('*')
-      .order('is_verified', { ascending: false })
-      .order('name')
-      .limit(50);
-    setBusinesses((data as Business[]) ?? []);
-  }, [setBusinesses]);
+    if (selectedCommunityId) {
+      const { data: members } = await supabase
+        .from('community_members')
+        .select('user_id')
+        .eq('community_id', selectedCommunityId);
+      const memberIds = (members ?? []).map((m: any) => m.user_id);
+      if (memberIds.length === 0) { setBusinesses([]); return; }
+      const { data } = await supabase
+        .from('businesses')
+        .select('*')
+        .in('owner_id', memberIds)
+        .order('is_verified', { ascending: false })
+        .order('name')
+        .limit(50);
+      setBusinesses((data as Business[]) ?? []);
+    } else {
+      const { data } = await supabase
+        .from('businesses')
+        .select('*')
+        .order('is_verified', { ascending: false })
+        .order('name')
+        .limit(50);
+      setBusinesses((data as Business[]) ?? []);
+    }
+  }, [setBusinesses, selectedCommunityId]);
 
   const loadProjects = useCallback(async () => {
-    const { data } = await supabase
-      .from('impact_projects')
-      .select('*')
-      .order('status')
-      .order('created_at', { ascending: false })
-      .limit(30);
-    setImpactProjects((data as ImpactProject[]) ?? []);
-  }, [setImpactProjects]);
+    if (selectedCommunityId) {
+      const { data: members } = await supabase
+        .from('community_members')
+        .select('user_id')
+        .eq('community_id', selectedCommunityId);
+      const memberIds = (members ?? []).map((m: any) => m.user_id);
+      if (memberIds.length === 0) { setImpactProjects([]); return; }
+      const { data } = await supabase
+        .from('impact_projects')
+        .select('*')
+        .in('creator_id', memberIds)
+        .order('status')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      setImpactProjects((data as ImpactProject[]) ?? []);
+    } else {
+      const { data } = await supabase
+        .from('impact_projects')
+        .select('*')
+        .order('status')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      setImpactProjects((data as ImpactProject[]) ?? []);
+    }
+  }, [setImpactProjects, selectedCommunityId]);
 
   useEffect(() => {
     setLoading(true);
@@ -232,6 +271,12 @@ export default function BuildScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Build</Text>
+        <CommunityContextSwitcher communities={joinedCommunities} />
+      </View>
+
       <View style={styles.segmentRow}>
         {(['businesses', 'impact'] as const).map((s) => (
           <TouchableOpacity
@@ -321,6 +366,16 @@ export default function BuildScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.surface,
+  },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
   segmentRow: {
     flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.surface,
     paddingHorizontal: 16, gap: 4,

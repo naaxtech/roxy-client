@@ -11,6 +11,8 @@ import { useAuthStore } from '../../../store/authStore';
 import { useCommunityStore, Community } from '../../../store/communityStore';
 import { COLORS } from '../../../lib/constants';
 import { logError } from '../../../lib/errorLogger';
+import { useCommunityFilterStore } from '../../../store/communityFilterStore';
+import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
 
 type SubTab = 'communities' | 'events' | 'games';
 
@@ -29,7 +31,8 @@ function getCommunityLevel(n: number): { label: string; emoji: string } {
 export default function DiscoverScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { allCommunities, joinedIds, fetchAll, fetchJoined, joinCommunity, leaveCommunity } = useCommunityStore();
+  const { allCommunities, joinedIds, joinedCommunities, fetchAll, fetchJoined, joinCommunity, leaveCommunity } = useCommunityStore();
+  const { selectedCommunityId } = useCommunityFilterStore();
 
   const [subTab, setSubTab] = useState<SubTab>('communities');
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -52,15 +55,19 @@ export default function DiscoverScreen() {
   const loadEvents = useCallback(async () => {
     setLoadingEvents(true);
     const now = new Date().toISOString();
-    const { data } = await supabase
+    let query = supabase
       .from('events')
       .select('*, communities(name)')
       .gte('starts_at', now)
       .order('starts_at')
       .limit(50);
+    if (selectedCommunityId) {
+      query = query.eq('community_id', selectedCommunityId);
+    }
+    const { data } = await query;
     if (data) setEvents(data as EventRow[]);
     setLoadingEvents(false);
-  }, []);
+  }, [selectedCommunityId]);
 
   const loadInterested = useCallback(async () => {
     if (!user) return;
@@ -113,7 +120,10 @@ export default function DiscoverScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Discover</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.headerTitle}>Discover</Text>
+          <CommunityContextSwitcher communities={joinedCommunities} />
+        </View>
         <TextInput
           style={styles.searchInput}
           placeholder="Search communities, events..."
@@ -287,6 +297,12 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 14, paddingTop: 8, paddingBottom: 6, gap: 8,
     borderBottomWidth: 1, borderBottomColor: COLORS.surface,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
   searchInput: {
