@@ -156,6 +156,7 @@ export default function DiscoverScreen() {
           data={filteredCommunities}
           keyExtractor={(item) => item.id}
           estimatedItemSize={90}
+          extraData={joinedIds}
           contentContainerStyle={{ paddingVertical: 8 }}
           renderItem={({ item }) => {
             const lvl = getCommunityLevel(item.member_count);

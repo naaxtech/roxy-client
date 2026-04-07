@@ -32,25 +32,58 @@ export const useCommunityStore = create<CommunityStore>((set, get) => ({
   },
 
   joinCommunity: async (communityId, userId) => {
+    // Optimistic update — button reflects instantly, no wait for network
+    const { joinedIds, joinedCommunities, allCommunities } = get();
+    const community = allCommunities.find((c) => c.id === communityId);
+    const optimisticIds = new Set(joinedIds);
+    optimisticIds.add(communityId);
+    set({
+      joinedIds: optimisticIds,
+      joinedCommunities: community ? [...joinedCommunities, community] : joinedCommunities,
+    });
+
     const { error } = await supabase
       .from('community_members')
       .upsert({ community_id: communityId, user_id: userId, role: 'member' }, { onConflict: 'community_id,user_id', ignoreDuplicates: true });
-    if (error) throw error;
-    const { joinedIds, joinedCommunities, allCommunities } = get();
-    const community = allCommunities.find((c) => c.id === communityId);
-    const newIds = new Set(joinedIds); newIds.add(communityId);
-    set({ joinedIds: newIds, joinedCommunities: community ? [...joinedCommunities, community] : joinedCommunities });
+
+    if (error) {
+      // Revert on failure
+      const revertIds = new Set(get().joinedIds);
+      revertIds.delete(communityId);
+      set({
+        joinedIds: revertIds,
+        joinedCommunities: get().joinedCommunities.filter((c) => c.id !== communityId),
+      });
+      throw error;
+    }
   },
 
   leaveCommunity: async (communityId, userId) => {
+    // Optimistic update — button reflects instantly
+    const { joinedIds, joinedCommunities } = get();
+    const optimisticIds = new Set(joinedIds);
+    optimisticIds.delete(communityId);
+    set({
+      joinedIds: optimisticIds,
+      joinedCommunities: joinedCommunities.filter((c) => c.id !== communityId),
+    });
+
     const { error } = await supabase
       .from('community_members')
       .delete()
       .eq('community_id', communityId)
       .eq('user_id', userId);
-    if (error) throw error;
-    const { joinedIds, joinedCommunities } = get();
-    const newIds = new Set(joinedIds); newIds.delete(communityId);
-    set({ joinedIds: newIds, joinedCommunities: joinedCommunities.filter((c) => c.id !== communityId) });
+
+    if (error) {
+      // Revert on failure
+      const revertIds = new Set(get().joinedIds);
+      revertIds.add(communityId);
+      const community = get().allCommunities.find((c) => c.id === communityId);
+      set({
+        joinedIds: revertIds,
+        joinedCommunities: community ? [...get().joinedCommunities, community] : get().joinedCommunities,
+      });
+      throw error;
+    }
   },
 }));
