@@ -21,6 +21,17 @@ type DirectChatPreview = {
   last_message_at: string | null;
 };
 
+type TicketRow = {
+  ticket_code: string;
+  events: {
+    id: string;
+    title: string;
+    starts_at: string;
+    location_text: string | null;
+    communities: { name: string } | null;
+  } | null;
+};
+
 type BadgeProgressRow = {
   user_id: string;
   badge_id: string;
@@ -95,6 +106,8 @@ export default function GrowScreen() {
   const inProgressCount = badges.filter((b) => b.earned_at === null && b.current_value > 0).length;
   const earnedBadges = badges.filter((b) => b.earned_at !== null).slice(0, 3);
 
+  const [tickets, setTickets] = useState<TicketRow[]>([]);
+
   const [chatPreviews, setChatPreviews] = useState<DirectChatPreview[]>([]);
   const [chatTotal, setChatTotal] = useState(0);
 
@@ -123,6 +136,24 @@ export default function GrowScreen() {
         partnerName: profileMap.get(c.participant_ids.find((id) => id !== user.id) ?? '') ?? 'Unknown',
         last_message_at: c.last_message_at,
       })));
+    })();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const now = new Date().toISOString();
+    (async () => {
+      const { data } = await supabase
+        .from('event_attendees')
+        .select('ticket_code, events!inner(id, title, starts_at, location_text, communities(name))')
+        .eq('user_id', user.id)
+        .eq('status', 'going')
+        .order('events.starts_at', { ascending: true })
+        .limit(20);
+      const upcoming = ((data ?? []) as TicketRow[])
+        .filter((r) => r.events && r.events.starts_at >= now)
+        .slice(0, 5);
+      setTickets(upcoming);
     })();
   }, [user?.id]);
 
@@ -340,6 +371,37 @@ export default function GrowScreen() {
           )}
         </TouchableOpacity>
 
+        {/* My Tickets */}
+        {tickets.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.ticketSectionHeader}>
+              <Text style={styles.sectionTitle}>My Tickets</Text>
+              <Text style={styles.ticketCount}>({tickets.length})</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+              {tickets.map((t) => (
+                <TouchableOpacity
+                  key={t.ticket_code}
+                  style={styles.ticketChip}
+                  onPress={() => t.events && router.push(`/event/${t.events.id}` as any)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.ticketChipGoing}>🌸 Going</Text>
+                  <Text style={styles.ticketChipTitle} numberOfLines={2}>
+                    {t.events?.title ?? '—'}
+                  </Text>
+                  <Text style={styles.ticketChipDate}>
+                    {t.events ? format(new Date(t.events.starts_at), 'EEE d MMM') : ''}
+                  </Text>
+                  <Text style={styles.ticketChipTime}>
+                    {t.events ? format(new Date(t.events.starts_at), 'h:mm a') : ''}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -454,4 +516,23 @@ const styles = StyleSheet.create({
   chatPreviewTime: { color: COLORS.textMuted, fontSize: 11, flexShrink: 0 },
   chatViewAll: { paddingTop: 8 },
   chatViewAllText: { color: COLORS.roxy, fontSize: 13, fontWeight: '600' },
+
+  ticketSectionHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6,
+  },
+  ticketCount: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
+  ticketChip: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 12,
+    marginRight: 10,
+    width: 130,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '40',
+    gap: 3,
+  },
+  ticketChipGoing: { color: COLORS.roxy, fontSize: 11, fontWeight: '700' },
+  ticketChipTitle: { color: COLORS.textPrimary, fontSize: 13, fontWeight: '700', lineHeight: 17 },
+  ticketChipDate: { color: COLORS.textSecondary, fontSize: 11, marginTop: 4 },
+  ticketChipTime: { color: COLORS.textMuted, fontSize: 11 },
 });
