@@ -17,8 +17,9 @@ import { CommunityContextSwitcher } from '../../../components/CommunityContextSw
 type SubTab = 'communities' | 'events' | 'games';
 
 type EventRow = {
-  id: string; title: string; starts_at: string; location: string | null; community_id: string;
-  communities: { name: string } | null;
+  id: string; title: string; starts_at: string; ends_at: string | null;
+  location_text: string | null; community_id: string;
+  is_paid: boolean; communities: { name: string } | null;
 };
 
 function getCommunityLevel(n: number): { label: string; emoji: string } {
@@ -58,6 +59,7 @@ export default function DiscoverScreen() {
     let query = supabase
       .from('events')
       .select('*, communities(name)')
+      .eq('is_private', false)
       .gte('starts_at', now)
       .order('starts_at')
       .limit(50);
@@ -223,15 +225,24 @@ export default function DiscoverScreen() {
               const interested = interestedIds.has(item.id);
               return (
                 <View style={styles.eventCard}>
-                  <View style={styles.dateChip}>
-                    <Text style={styles.dateDay}>{format(new Date(item.starts_at), 'dd')}</Text>
-                    <Text style={styles.dateMonth}>{format(new Date(item.starts_at), 'MMM')}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.eventTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.eventCommunity}>{item.communities?.name ?? '—'}</Text>
-                    {item.location && <Text style={styles.eventLocation} numberOfLines={1}>📍 {item.location}</Text>}
-                  </View>
+                  <TouchableOpacity
+                    style={styles.eventCardBody}
+                    onPress={() => router.push(`/event/${item.id}` as any)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.dateChip}>
+                      <Text style={styles.dateDay}>{format(new Date(item.starts_at), 'dd')}</Text>
+                      <Text style={styles.dateMonth}>{format(new Date(item.starts_at), 'MMM')}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.eventTitle} numberOfLines={1}>{item.title}</Text>
+                      <Text style={styles.eventCommunity}>{item.communities?.name ?? '—'}</Text>
+                      {item.location_text
+                        ? <Text style={styles.eventLocation} numberOfLines={1}>📍 {item.location_text}</Text>
+                        : null
+                      }
+                    </View>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.interestedBtn, interested && styles.interestedBtnActive]}
                     onPress={() => toggleInterested(item.id)}
@@ -359,6 +370,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8,
     borderRadius: 12, padding: 10,
+  },
+  eventCardBody: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1,
   },
   dateChip: {
     width: 36, alignItems: 'center', backgroundColor: COLORS.primary + '20',
