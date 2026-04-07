@@ -70,12 +70,14 @@ export default function SpeedDateSession() {
   const [elapsed, setElapsed] = useState(0);
   const [promptIndex, setPromptIndex] = useState(0);
   const [liked, setLiked] = useState(false);
+  const [partnerLeft, setPartnerLeft] = useState(false);
   const [provider] = useState(() => new DailyProvider());
   const { state: callState, remoteParticipant } = useVideoCall(provider);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasEnded = useRef(false);
   const likedRef = useRef(false);
+  const partnerHasJoined = useRef(false);
 
   // Draggable overlay position
   const overlayPos = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
@@ -118,6 +120,19 @@ export default function SpeedDateSession() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [session]);
+
+  // Detect when partner leaves mid-session
+  useEffect(() => {
+    if (remoteParticipant) {
+      partnerHasJoined.current = true;
+    } else if (partnerHasJoined.current && !hasEnded.current) {
+      hasEnded.current = true;
+      setPartnerLeft(true);
+      // Navigate to result after showing the cue
+      const t = setTimeout(() => handleEnd(), 3500);
+      return () => clearTimeout(t);
+    }
+  }, [remoteParticipant]);
 
   // Join via provider
   useEffect(() => {
@@ -206,6 +221,15 @@ export default function SpeedDateSession() {
         {provider.renderLocalVideo(StyleSheet.absoluteFill) ?? <VideoPlaceholder label="You" />}
       </View>
 
+      {/* Partner-left overlay */}
+      {partnerLeft && (
+        <View style={styles.partnerLeftOverlay}>
+          <Text style={styles.partnerLeftEmoji}>👋</Text>
+          <Text style={styles.partnerLeftTitle}>Your match has left</Text>
+          <Text style={styles.partnerLeftSub}>Taking you back to the lobby…</Text>
+        </View>
+      )}
+
       {/* Bottom controls */}
       <SafeAreaView edges={['bottom']} style={styles.bottomSafe}>
         <View style={styles.bottomBar}>
@@ -280,4 +304,13 @@ const styles = StyleSheet.create({
   likeIcon: { fontSize: 22 },
   likeText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 16 },
   likeTextActive: { color: COLORS.primary },
+  partnerLeftOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.82)',
+    alignItems: 'center', justifyContent: 'center', gap: 12,
+    zIndex: 30,
+  },
+  partnerLeftEmoji: { fontSize: 52 },
+  partnerLeftTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  partnerLeftSub: { color: COLORS.textMuted, fontSize: 15 },
 });

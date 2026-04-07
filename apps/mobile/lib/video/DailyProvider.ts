@@ -82,8 +82,8 @@ export class DailyProvider implements VideoCallProvider {
     const p = participant.trackInfo as any;
     return React.createElement(DailyMediaView, {
       sessionId: participant.id,
-      videoTrackState: p?.videoTrack ?? null,
-      audioTrackState: p?.audioTrack ?? null,
+      videoTrackState: p?.tracks?.video ?? null,
+      audioTrackState: p?.tracks?.audio ?? null,
       style,
       mirror: false,
     });
@@ -94,7 +94,7 @@ export class DailyProvider implements VideoCallProvider {
     const local = this._call.participants()?.local;
     return React.createElement(DailyMediaView, {
       sessionId: 'local',
-      videoTrackState: local?.videoTrack ?? null,
+      videoTrackState: local?.tracks?.video ?? null,
       audioTrackState: null,
       style,
       mirror: true,

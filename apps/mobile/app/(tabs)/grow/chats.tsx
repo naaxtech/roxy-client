@@ -8,21 +8,20 @@ import { useRouter } from 'expo-router';
 import { format, isToday, isYesterday } from 'date-fns';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
+import { useConnectStore } from '../../../store/connectStore';
 import { COLORS } from '../../../lib/constants';
+import { Conversation } from '../../../types';
 
-type ConvRow = {
+type PartnerProfile = { id: string; display_name: string; username: string };
+
+type ChatItem = {
   id: string;
   participant_ids: string[];
   last_message_at: string | null;
+  partner: PartnerProfile | null;
+  lastMessagePreview: string;
+  unreadCount: number;
 };
-
-type PartnerProfile = {
-  id: string;
-  display_name: string;
-  username: string;
-};
-
-type ChatItem = ConvRow & { partner: PartnerProfile | null };
 
 function formatTime(ts: string | null): string {
   if (!ts) return '';
@@ -35,15 +34,18 @@ function formatTime(ts: string | null): string {
 export default function ChatsScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { setConversations, unreadCounts, clearUnread } = useConnectStore();
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+
+    // 1. Fetch conversations
     const { data: convs } = await supabase
       .from('conversations')
-      .select('id, participant_ids, last_message_at')
+      .select('id, participant_ids, last_message_at, conversation_type, roxy_nudge_count, roxy_wingwoman_count_today, last_roxy_call_date, created_at')
       .contains('participant_ids', [user.id])
       .eq('conversation_type', 'direct')
       .order('last_message_at', { ascending: false, nullsFirst: false });
@@ -54,9 +56,17 @@ export default function ChatsScreen() {
       return;
     }
 
-    const partnerIds = [...new Set((convs as ConvRow[]).flatMap((c) =>
-      c.participant_ids.filter((id) => id !== user.id)
-    ))];
+    // Warm the connectStore so chat/[id].tsx can resolve partner names from cache
+    setConversations(convs as Conversation[]);
+
+    const convIds = (convs as { id: string }[]).map((c) => c.id);
+
+    // 2. Resolve partner display names in one query
+    const partnerIds = [...new Set(
+      (convs as { participant_ids: string[] }[]).flatMap((c) =>
+        c.participant_ids.filter((id) => id !== user.id)
+      )
+    )];
 
     const { data: profiles } = await supabase
       .from('profiles')
@@ -65,14 +75,76 @@ export default function ChatsScreen() {
 
     const profileMap = new Map((profiles ?? []).map((p: PartnerProfile) => [p.id, p]));
 
-    setChats((convs as ConvRow[]).map((c) => {
+    // 3. Fetch last message per conversation (Supabase returns rows DESC by
+    //    created_at; first occurrence per conversation_id = most recent)
+    const { data: recentMsgs } = await supabase
+      .from('messages')
+      .select('conversation_id, content, message_type, sender_id')
+      .in('conversation_id', convIds)
+      .order('created_at', { ascending: false });
+
+    const lastMsgMap = new Map<string, string>();
+    for (const msg of recentMsgs ?? []) {
+      if (lastMsgMap.has(msg.conversation_id)) continue;
+      if (msg.message_type === 'roxy_suggestion') {
+        lastMsgMap.set(msg.conversation_id, '✨ Roxy suggestion');
+      } else {
+        const isOwn = msg.sender_id === user.id;
+        lastMsgMap.set(
+          msg.conversation_id,
+          isOwn ? `You: ${msg.content ?? ''}` : (msg.content ?? '')
+        );
+      }
+    }
+
+    // 4. Fetch unread counts from DB (messages not yet read, not sent by self)
+    const { data: unreadRows } = await supabase
+      .from('messages')
+      .select('conversation_id')
+      .in('conversation_id', convIds)
+      .eq('is_read', false)
+      .neq('sender_id', user.id);
+
+    const dbUnreadMap: Record<string, number> = {};
+    for (const { conversation_id } of unreadRows ?? []) {
+      dbUnreadMap[conversation_id] = (dbUnreadMap[conversation_id] ?? 0) + 1;
+    }
+
+    // Merge DB counts into connectStore (DB is authoritative on load)
+    const { incrementUnread } = useConnectStore.getState();
+    for (const [convId, count] of Object.entries(dbUnreadMap)) {
+      // Only seed if the store doesn't already have a higher count
+      // (could have incremented from Realtime since app started)
+      const storeCount = useConnectStore.getState().unreadCounts[convId] ?? 0;
+      const delta = count - storeCount;
+      for (let i = 0; i < delta; i++) incrementUnread(convId);
+    }
+
+    // 5. Build final chat items
+    const items: ChatItem[] = (convs as { id: string; participant_ids: string[]; last_message_at: string | null }[]).map((c) => {
       const partnerId = c.participant_ids.find((id) => id !== user.id) ?? null;
-      return { ...c, partner: partnerId ? (profileMap.get(partnerId) ?? null) : null };
-    }));
+      return {
+        id: c.id,
+        participant_ids: c.participant_ids,
+        last_message_at: c.last_message_at,
+        partner: partnerId ? (profileMap.get(partnerId) ?? null) : null,
+        lastMessagePreview: lastMsgMap.get(c.id) ?? 'No messages yet',
+        unreadCount: dbUnreadMap[c.id] ?? 0,
+      };
+    });
+
+    setChats(items);
     setLoading(false);
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleOpen = (item: ChatItem) => {
+    clearUnread(item.id);
+    router.push(`/chat/${item.id}` as any);
+  };
+
+  const liveUnread = (id: string) => unreadCounts[id] ?? 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -80,7 +152,7 @@ export default function ChatsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Chats</Text>
+        <Text style={styles.headerTitle}>Messages</Text>
       </View>
 
       {loading ? (
@@ -94,31 +166,61 @@ export default function ChatsScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>No chats yet. Connect with friends to start chatting! 💜</Text>
+              <Text style={styles.emptyIcon}>💬</Text>
+              <Text style={styles.emptyTitle}>No messages yet</Text>
+              <Text style={styles.emptyText}>
+                Connect with someone in Discover to start chatting 💜
+              </Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.row}
-              onPress={() => router.push(`/chat/${item.id}` as any)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {item.partner?.display_name?.[0]?.toUpperCase() ?? '?'}
-                </Text>
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={styles.rowName} numberOfLines={1}>
-                  {item.partner?.display_name ?? 'Unknown'}
-                </Text>
-                <Text style={styles.rowSub} numberOfLines={1}>
-                  @{item.partner?.username ?? '—'}
-                </Text>
-              </View>
-              <Text style={styles.rowTime}>{formatTime(item.last_message_at)}</Text>
-            </TouchableOpacity>
-          )}
+          renderItem={({ item }) => {
+            const unread = liveUnread(item.id);
+            const hasUnread = unread > 0;
+            return (
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => handleOpen(item)}
+                activeOpacity={0.7}
+              >
+                {/* Avatar */}
+                <View style={[styles.avatar, hasUnread && styles.avatarUnread]}>
+                  <Text style={styles.avatarText}>
+                    {item.partner?.display_name?.[0]?.toUpperCase() ?? '?'}
+                  </Text>
+                </View>
+
+                {/* Name + preview */}
+                <View style={styles.rowContent}>
+                  <View style={styles.rowTop}>
+                    <Text
+                      style={[styles.rowName, hasUnread && styles.rowNameUnread]}
+                      numberOfLines={1}
+                    >
+                      {item.partner?.display_name ?? 'Unknown'}
+                    </Text>
+                    <Text style={[styles.rowTime, hasUnread && styles.rowTimeUnread]}>
+                      {formatTime(item.last_message_at)}
+                    </Text>
+                  </View>
+                  <View style={styles.rowBottom}>
+                    <Text
+                      style={[styles.rowPreview, hasUnread && styles.rowPreviewUnread]}
+                      numberOfLines={1}
+                    >
+                      {item.lastMessagePreview}
+                    </Text>
+                    {hasUnread && (
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>
+                          {unread > 99 ? '99+' : unread}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
     </SafeAreaView>
@@ -127,31 +229,55 @@ export default function ChatsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
   backBtn: { padding: 4 },
-  headerTitle: { color: COLORS.textPrimary, fontSize: 17, fontWeight: '700' },
+  headerTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '800' },
+
+  // Rows
   row: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
   avatar: {
-    width: 42, height: 42, borderRadius: 21,
+    width: 46, height: 46, borderRadius: 23,
     backgroundColor: COLORS.primary + '30',
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  avatarText: { color: COLORS.primary, fontWeight: '700', fontSize: 16 },
-  rowContent: { flex: 1 },
-  rowName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  rowSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 1 },
-  rowTime: { color: COLORS.textMuted, fontSize: 12, flexShrink: 0 },
+  avatarUnread: { backgroundColor: COLORS.primary + '50' },
+  avatarText: { color: COLORS.primary, fontWeight: '700', fontSize: 18 },
+
+  rowContent: { flex: 1, gap: 3 },
+  rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rowName: { color: COLORS.textSecondary, fontWeight: '500', fontSize: 15, flex: 1 },
+  rowNameUnread: { color: COLORS.textPrimary, fontWeight: '700' },
+  rowTime: { color: COLORS.textMuted, fontSize: 12, flexShrink: 0, marginLeft: 8 },
+  rowTimeUnread: { color: COLORS.primary, fontWeight: '600' },
+
+  rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rowPreview: { color: COLORS.textMuted, fontSize: 13, flex: 1 },
+  rowPreviewUnread: { color: COLORS.textSecondary, fontWeight: '500' },
+
+  // Unread badge (like WhatsApp green dot)
+  badge: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 10, minWidth: 20, height: 20,
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 5, marginLeft: 8, flexShrink: 0,
+  },
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+
+  // Empty state
   empty: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    padding: 32, paddingTop: 80,
+    padding: 32, paddingTop: 80, gap: 8,
   },
+  emptyIcon: { fontSize: 48 },
+  emptyTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '700' },
   emptyText: { color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
 });

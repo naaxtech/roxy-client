@@ -11,6 +11,8 @@ interface UseRealtimeReturn {
   messages: Message[];
   isSubscribed: boolean;
   appendMessage: (msg: Message) => void;
+  /** Replace a temp ID (optimistic) with the real DB UUID after insert confirms. */
+  replaceMessageId: (tempId: string, realId: string) => void;
 }
 
 export function useRealtime({
@@ -23,11 +25,25 @@ export function useRealtime({
 
   const appendMessage = (msg: Message) => {
     setMessages((prev) => {
-      // Deduplicate by id
       if (prev.some((m) => m.id === msg.id)) return prev;
       return [...prev, msg];
     });
   };
+
+  /**
+   * After a successful insert, swap the optimistic temp ID for the real UUID.
+   * When Realtime then delivers the INSERT event, the dedup check (by ID) will
+   * find the real ID already present and silently discard it — no double message.
+   */
+  const replaceMessageId = (tempId: string, realId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === tempId ? { ...m, id: realId } : m))
+    );
+  };
+
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [conversationId]);
 
   useEffect(() => {
     const channel = supabase
@@ -56,5 +72,5 @@ export function useRealtime({
     };
   }, [conversationId]);
 
-  return { messages, isSubscribed, appendMessage };
+  return { messages, isSubscribed, appendMessage, replaceMessageId };
 }

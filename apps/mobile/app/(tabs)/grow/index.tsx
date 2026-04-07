@@ -168,8 +168,10 @@ export default function GrowScreen() {
             </View>
           </TouchableOpacity>
 
-          {/* Center — title */}
-          <Text style={styles.screenTitle}>Grow</Text>
+          {/* Center — title (pointerEvents none so it doesn't eat avatar/settings taps) */}
+          <View pointerEvents="none" style={styles.screenTitleWrap}>
+            <Text style={styles.screenTitle}>Grow</Text>
+          </View>
 
           {/* Right — settings */}
           <TouchableOpacity
@@ -374,7 +376,8 @@ const styles = StyleSheet.create({
   headerHandle: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '600', maxWidth: 90 },
   headerBadgeRow: { flexDirection: 'row', gap: 1 },
   headerBadgeEmoji: { fontSize: 9 },
-  screenTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800', position: 'absolute', left: 0, right: 0, textAlign: 'center' },
+  screenTitleWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  screenTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' },
   headerRight: { width: 36, alignItems: 'flex-end', justifyContent: 'center' },
 
   greetingCard: {

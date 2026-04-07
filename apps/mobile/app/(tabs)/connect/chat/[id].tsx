@@ -62,7 +62,7 @@ export default function ChatScreen() {
   const { id: conversationId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
-  const { clearUnread, conversations } = useConnectStore();
+  const { clearUnread, conversations, setActiveConversation } = useConnectStore();
   const { blockUser, openReportModal, submitReport } = useSafetyStore();
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
@@ -86,30 +86,45 @@ export default function ChatScreen() {
   const [reportDetail, setReportDetail] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
 
-  const { messages, isSubscribed, appendMessage } = useRealtime({
+  const { messages, isSubscribed, appendMessage, replaceMessageId } = useRealtime({
     conversationId: conversationId ?? '',
     initialMessages,
   });
 
+  // Mark this conversation as active so global listener skips unread counting
+  useEffect(() => {
+    setActiveConversation(conversationId ?? null);
+    return () => setActiveConversation(null);
+  }, [conversationId]);
+
   // Derive partner from conversation participants
   useEffect(() => {
     if (!conversationId || !user) return;
+
+    const resolvePartner = async (participantIds: string[]) => {
+      const pid = participantIds.find((id) => id !== user.id) ?? null;
+      setPartnerId(pid);
+      if (!pid) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name, username')
+        .eq('id', pid)
+        .single();
+      if (data) setPartnerName(data.display_name || data.username || 'this person');
+    };
+
     const conv = conversations.find((c) => c.id === conversationId);
-    if (!conv) return;
-    const pid = conv.participant_ids.find((id) => id !== user.id) ?? null;
-    setPartnerId(pid);
-    if (pid) {
-      void Promise.resolve(
-        supabase
-          .from('profiles')
-          .select('display_name, username')
-          .eq('id', pid)
-          .single()
-      ).then(({ data }) => {
-        if (data) {
-          setPartnerName(data.display_name || data.username || 'this person');
-        }
-      }).catch(() => {});
+    if (conv) {
+      void resolvePartner(conv.participant_ids);
+    } else {
+      // Conversation not in store (e.g. navigated from Grow) — fetch directly
+      void supabase
+        .from('conversations')
+        .select('participant_ids')
+        .eq('id', conversationId)
+        .single()
+        .then(({ data }) => { if (data) void resolvePartner(data.participant_ids); })
+        .catch(() => {});
     }
   }, [conversationId, user, conversations]);
 
@@ -176,16 +191,24 @@ export default function ChatScreen() {
     appendMessage(optimisticMsg);
     setInputText('');
 
-    const { error } = await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      sender_id: user.id,
-      content: content.trim(),
-      message_type: type,
-    });
+    // Select the real UUID so we can reconcile the optimistic temp ID.
+    // Once replaced, Realtime's dedup (by ID) will silently discard the
+    // duplicate INSERT event — no double message.
+    const { data: inserted, error } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        content: content.trim(),
+        message_type: type,
+      })
+      .select('id')
+      .single();
 
     if (error) {
       Alert.alert('Error', 'Failed to send message. Please try again.');
     } else {
+      if (inserted?.id) replaceMessageId(optimisticMsg.id, inserted.id);
       Analytics.messageSent(conversationId ?? '');
     }
     setSending(false);
