@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal, TextInput, FlatList,
+  Animated,
 } from 'react-native';
 import { useCommunityFilterStore } from '../store/communityFilterStore';
 import { COLORS } from '../lib/constants';
@@ -15,6 +16,20 @@ export function CommunityContextSwitcher({ communities }: Props) {
   const { selectedCommunityId, setSelectedCommunity } = useCommunityFilterStore();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const slideAnim = useRef(new Animated.Value(300)).current; // starts off-screen below
+
+  // Slide the sheet up when the modal opens
+  useEffect(() => {
+    if (open) {
+      slideAnim.setValue(300);
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        bounciness: 4,
+        speed: 14,
+      }).start();
+    }
+  }, [open]);
 
   const selected = communities.find((c) => c.id === selectedCommunityId);
   const rawLabel = selected ? selected.name : 'All';
@@ -47,16 +62,20 @@ export function CommunityContextSwitcher({ communities }: Props) {
 
       <Modal
         visible={open}
-        animationType="slide"
+        animationType="none"
         transparent
         onRequestClose={() => { setOpen(false); setSearch(''); }}
       >
+        {/* Overlay appears instantly — only the sheet slides up */}
         <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}
           onPress={() => { setOpen(false); setSearch(''); }}
         >
-          <View style={styles.sheet} onStartShouldSetResponder={() => true}>
+          <Animated.View
+            style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}
+            onStartShouldSetResponder={() => true}
+          >
             <View style={styles.handle} />
             <Text style={styles.sheetTitle}>View a Community</Text>
             <TextInput
@@ -91,7 +110,7 @@ export function CommunityContextSwitcher({ communities }: Props) {
                 <Text style={styles.emptyText}>No communities match</Text>
               }
             />
-          </View>
+          </Animated.View>
         </TouchableOpacity>
       </Modal>
     </>
