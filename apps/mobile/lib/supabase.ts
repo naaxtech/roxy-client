@@ -27,6 +27,11 @@ export const callEdgeFunction = async <T>(
   try {
     const { data, error } = await supabase.functions.invoke(name, { body });
     if (error) return { data: null, error: error.message };
+    // Unwrap { success, data, error } envelope used by successResponse/errorResponse
+    if (data && typeof data === 'object' && 'success' in data) {
+      if (!data.success) return { data: null, error: (data as any).error ?? 'Request failed' };
+      return { data: (data as any).data as T, error: null };
+    }
     return { data: data as T, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';

@@ -60,7 +60,7 @@ export default function GrowScreen() {
   const [badges, setBadges] = useState<BadgeProgressRow[]>([]);
 
   useEffect(() => {
-    if (!profile) return;
+    if (!profile?.id) return;
     setGreetingLoading(true);
     callEdgeFunction<{ greeting: string }>('roxy-greeting', {})
       .then(({ data }) => {
@@ -69,7 +69,7 @@ export default function GrowScreen() {
       })
       .catch(() => {})
       .finally(() => setGreetingLoading(false));
-  }, [profile]);
+  }, [profile?.id]);
 
   const loadSocial = useCallback(async () => {
     if (!user) return;
