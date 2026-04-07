@@ -26,8 +26,9 @@ type PostRow = {
 };
 
 type EventRow = {
-  id: string; title: string; starts_at: string; location: string | null; community_id: string;
-  communities: { name: string } | null;
+  id: string; title: string; starts_at: string; ends_at: string | null;
+  location_text: string | null; community_id: string;
+  is_paid: boolean; communities: { name: string } | null;
 };
 
 type GameRow = {
@@ -157,12 +158,26 @@ export default function ConnectScreen() {
 
   const toggleRsvp = async (eventId: string) => {
     if (!user) return;
-    if (rsvpIds.has(eventId)) {
-      await supabase.from('event_attendees').delete().eq('event_id', eventId).eq('user_id', user.id);
+    const wasGoing = rsvpIds.has(eventId);
+
+    // Optimistic update — UI reflects instantly
+    if (wasGoing) {
       setRsvpIds((prev) => { const n = new Set(prev); n.delete(eventId); return n; });
     } else {
-      await supabase.from('event_attendees').insert({ event_id: eventId, user_id: user.id, status: 'going' });
       setRsvpIds((prev) => new Set([...prev, eventId]));
+    }
+
+    const { error } = wasGoing
+      ? await supabase.from('event_attendees').delete().eq('event_id', eventId).eq('user_id', user.id)
+      : await supabase.from('event_attendees').insert({ event_id: eventId, user_id: user.id, status: 'going' });
+
+    if (error) {
+      // Revert on failure
+      if (wasGoing) {
+        setRsvpIds((prev) => new Set([...prev, eventId]));
+      } else {
+        setRsvpIds((prev) => { const n = new Set(prev); n.delete(eventId); return n; });
+      }
     }
   };
 
@@ -281,6 +296,7 @@ export default function ConnectScreen() {
             data={events}
             keyExtractor={(item) => item.id}
             estimatedItemSize={100}
+            extraData={rsvpIds}
             onRefresh={() => { loadEvents(); loadRsvps(); }}
             refreshing={loadingEvents}
             contentContainerStyle={{ paddingVertical: 8 }}
@@ -288,15 +304,26 @@ export default function ConnectScreen() {
               const going = rsvpIds.has(item.id);
               return (
                 <View style={styles.eventCard}>
-                  <View style={styles.dateChip}>
-                    <Text style={styles.dateDay}>{format(new Date(item.starts_at), 'dd')}</Text>
-                    <Text style={styles.dateMonth}>{format(new Date(item.starts_at), 'MMM')}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.eventTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.eventCommunity}>{item.communities?.name ?? '—'}</Text>
-                    {item.location && <Text style={styles.eventLocation} numberOfLines={1}>📍 {item.location}</Text>}
-                  </View>
+                  {/* Tappable body → event detail */}
+                  <TouchableOpacity
+                    style={styles.eventCardBody}
+                    onPress={() => router.push(`/event/${item.id}` as any)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.dateChip}>
+                      <Text style={styles.dateDay}>{format(new Date(item.starts_at), 'dd')}</Text>
+                      <Text style={styles.dateMonth}>{format(new Date(item.starts_at), 'MMM')}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.eventTitle} numberOfLines={1}>{item.title}</Text>
+                      <Text style={styles.eventCommunity}>{item.communities?.name ?? '—'}</Text>
+                      {item.location_text
+                        ? <Text style={styles.eventLocation} numberOfLines={1}>📍 {item.location_text}</Text>
+                        : null
+                      }
+                    </View>
+                  </TouchableOpacity>
+                  {/* RSVP button stays separate — does not trigger card tap */}
                   <TouchableOpacity
                     style={[styles.rsvpBtn, going && styles.rsvpBtnGoing]}
                     onPress={() => toggleRsvp(item.id)}
@@ -467,6 +494,9 @@ const styles = StyleSheet.create({
   eventTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
   eventCommunity: { color: COLORS.textMuted, fontSize: 11, marginBottom: 2 },
   eventLocation: { color: COLORS.textSecondary, fontSize: 11 },
+  eventCardBody: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1,
+  },
   rsvpBtn: {
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
     borderWidth: 1, borderColor: COLORS.primary,
