@@ -26,6 +26,9 @@ export async function POST() {
     },
   });
 
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+  const json = await res.json();
+  if (!json.success) {
+    return NextResponse.json({ error: json.error ?? 'Failed to create onboarding link' }, { status: res.status });
+  }
+  return NextResponse.json(json.data);
 }
