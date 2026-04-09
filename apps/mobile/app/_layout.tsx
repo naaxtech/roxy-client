@@ -10,7 +10,7 @@ import { useProfileStore } from '../store/profileStore';
 import { supabase } from '../lib/supabase';
 import { DevPanel } from '../components/dev/DevPanel';
 import { Analytics } from '../lib/analytics';
-import { logError, setCrashlyticsUser } from '../lib/errorLogger';
+import { logError, logBreadcrumb, setCrashlyticsUser } from '../lib/errorLogger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
 
@@ -50,13 +50,19 @@ function AppNavigator() {
 
   useEffect(() => {
     if (loading) return;
+    // segments is [] on the very first render before Expo Router initialises.
+    // Acting on empty segments means inAuth/inOnboarding are both false —
+    // triggering the profile-fetch block and redirecting mid-onboarding users
+    // back to step1 on every navigation. Wait until the stack is ready.
+    if (!segments.length) return;
 
     const inAuth = segments[0] === '(auth)';
     // Guard: while stepping through onboarding do NOT re-run the profile check.
     // Each router.push changes segments, which re-fires this effect. Without the
     // guard the effect would see the newly-created partial profile and redirect
     // back to step1 — causing the flicker + ejection bug.
-    const inOnboarding = segments[1] === 'onboarding';
+    // Use .some() rather than segments[1] to be robust against index shifts.
+    const inOnboarding = segments.some((s) => s === 'onboarding');
 
     if (!user && !inAuth) {
       router.replace('/(auth)/welcome');
@@ -68,7 +74,7 @@ function AppNavigator() {
       // router.replace() calls (the other root cause of the flicker).
       if (fetchingForUserRef.current === user.id) return;
       fetchingForUserRef.current = user.id;
-      void supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+      void Promise.resolve(supabase.from('profiles').select('*').eq('id', user.id).maybeSingle())
         .then(({ data, error }) => {
           fetchingForUserRef.current = null;
           if (error) { logError(error, 'layout_profile_fetch'); return; }
@@ -86,15 +92,21 @@ function AppNavigator() {
       return;
     }
 
-    if (user && !inAuth && !profile) {
+    // Also fire when profile is in store but onboarding was never completed —
+    // prevents a partially-onboarded user from accessing the dashboard.
+    if (user && !inAuth && (!profile || !profile.onboarding_completed)) {
       if (fetchingForUserRef.current === user.id) return;
       fetchingForUserRef.current = user.id;
-      void supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+      void Promise.resolve(supabase.from('profiles').select('*').eq('id', user.id).maybeSingle())
         .then(({ data, error }) => {
           fetchingForUserRef.current = null;
           if (error) { logError(error, 'layout_profile_reload'); return; }
-          if (data) setProfile(data);
-          else router.replace('/(auth)/onboarding/step1-identity');
+          if (data?.onboarding_completed) {
+            setProfile(data);
+          } else {
+            logBreadcrumb('layout_redirect_incomplete_onboarding', { has_profile: String(!!data) });
+            router.replace('/(auth)/onboarding/step1-identity');
+          }
         }).catch((e: unknown) => {
           fetchingForUserRef.current = null;
           logError(e, 'layout_profile_reload');

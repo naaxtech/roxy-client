@@ -16,6 +16,7 @@ const baseProfile: Profile = {
   avatar_url: null,
   pronouns: ['she/her'],
   identity_labels: ['lesbian'],
+  onboarding_completed: true,
   is_dating_mode: false,
   dating_looking_for: [],
   age_min_pref: 18,
