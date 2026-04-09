@@ -150,7 +150,7 @@ export default function GrowScreen() {
         .eq('status', 'going')
         .order('events.starts_at', { ascending: true })
         .limit(20);
-      const upcoming = ((data ?? []) as TicketRow[])
+      const upcoming = ((data ?? []) as unknown as TicketRow[])
         .filter((r) => r.events && r.events.starts_at >= now)
         .slice(0, 5);
       setTickets(upcoming);

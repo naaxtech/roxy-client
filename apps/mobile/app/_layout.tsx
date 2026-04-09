@@ -2,6 +2,9 @@ import { useEffect } from 'react';
 import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StripeProvider } from '@stripe/stripe-react-native';
+import { PostHogProvider, usePostHog } from 'posthog-react-native';
+import { posthog } from '../lib/posthog';
 import { useAuth } from '../hooks/useAuth';
 import { useProfileStore } from '../store/profileStore';
 import { supabase } from '../lib/supabase';
@@ -10,15 +13,18 @@ import { Analytics } from '../lib/analytics';
 import { logError, setCrashlyticsUser } from '../lib/errorLogger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
-export default function RootLayout() {
+
+function AppNavigator() {
   const { user, loading } = useAuth();
   const { profile, setProfile } = useProfileStore();
   const router = useRouter();
   const segments = useSegments();
   const pathname = usePathname();
+  const posthog = usePostHog();
 
   useEffect(() => {
     Analytics.screenView(pathname);
+    posthog?.screen(pathname);
   }, [pathname]);
 
   useEffect(() => {
@@ -32,6 +38,11 @@ export default function RootLayout() {
   useEffect(() => {
     Analytics.setUser(user?.id ?? null);
     setCrashlyticsUser(user?.id ?? null);
+    if (user?.id) {
+      posthog?.identify(user.id);
+    } else {
+      posthog?.reset();
+    }
   }, [user?.id]);
 
   useEffect(() => {
@@ -73,13 +84,27 @@ export default function RootLayout() {
   }, [user, loading, segments]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ErrorBoundary>
-          <Stack screenOptions={{ headerShown: false }} />
-        </ErrorBoundary>
-        {__DEV__ && <DevPanel />}
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <StripeProvider
+      publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}
+      merchantIdentifier="merchant.app.roxy"
+      urlScheme="roxy"
+    >
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <ErrorBoundary>
+            <Stack screenOptions={{ headerShown: false }} />
+          </ErrorBoundary>
+          {__DEV__ && <DevPanel />}
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </StripeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <PostHogProvider client={posthog}>
+      <AppNavigator />
+    </PostHogProvider>
   );
 }

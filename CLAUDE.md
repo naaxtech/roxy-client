@@ -4,6 +4,7 @@
 
 Queer women / WLW social + dating app. Monorepo:
 - `apps/mobile/` — Expo 51, Expo Router v3, React Native 0.74, TypeScript strict
+- `apps/studio/` — Next.js 16 (Turbopack), shadcn/ui, Supabase SSR — host dashboard at roxy-studio.vercel.app
 - `supabase/` — Postgres migrations + Deno edge functions
 
 **Branch convention:** `session-N-<slug>` → PR to `main`
@@ -215,8 +216,9 @@ The `isDailyAvailable()` guard in `lib/daily.ts` ensures stubs never execute at 
 | `008_safety.sql` | reports, blocks, content moderation |
 | `009_speed_date_host.sql` | RLS policy — authenticated users can insert speed_date_sessions |
 | `010_increment_reaction.sql` | increment_reaction SQL function |
+| `021_payments.sql` | fee_tiers, host_stripe_accounts, platform_settings, payment_logs, events price_cents/currency |
 
-**Next migration number: 011**
+**Next migration number: 022**
 
 ## Sessions Completed
 
@@ -233,3 +235,4 @@ The `isDailyAvailable()` guard in `lib/daily.ts` ensures stubs never execute at 
 | 9 — Friends system: friendStore, People screen (Friends/Requests/Sent tabs), Grow badge, full-screen community members | `session-9-friends` | #9 | Open |
 | 10 — Presence + tap-to-chat: online dots, sortByPresence, rate-capped heartbeat, tap friend → DM | `session-9-friends` | #9 | Open |
 | 11 — Firebase Analytics + Crashlytics: screen tracking, global error handler, ErrorBoundary, logError in all catch blocks, named events for all key product actions | `session-11-firebase` | #10 | Open |
+| 12 — Community Studio + Stripe: apps/studio (Next.js 16), Stripe Connect Express onboarding, stripe-connect-onboard + stripe-webhooks edge functions, all dashboard pages, deployed to roxy-studio.vercel.app | `session-12-stripe-studio` | #11 | Open |

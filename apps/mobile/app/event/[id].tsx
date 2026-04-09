@@ -7,11 +7,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { format } from 'date-fns';
+import { useStripe } from '@stripe/stripe-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { COLORS } from '../../lib/constants';
 import { TicketCard } from '../../components/TicketCard';
+import { TicketConfirmation } from '../../components/TicketConfirmation';
 import { formatDuration, openCalendar } from '../../lib/eventUtils';
+import { purchaseTicket } from '../../lib/stripe';
 
 type EventDetail = {
   id: string;
@@ -25,6 +28,7 @@ type EventDetail = {
   attendee_count: number;
   is_paid: boolean;
   is_private: boolean;
+  price_cents: number | null;
   community_id: string | null;
   communities: { id: string; name: string } | null;
 };
@@ -39,13 +43,18 @@ export default function EventDetailScreen() {
   const [notFound, setNotFound] = useState(false);
   const [ticketCode, setTicketCode] = useState<string | null>(null);
   const [rsvping, setRsvping] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [purchaseResult, setPurchaseResult] = useState<{ ticketCode: string | null } | null>(null);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const ticketAnim = useRef(new Animated.Value(0)).current;
+
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const fetchEvent = useCallback(async () => {
     if (!id) return;
     const { data, error } = await supabase
       .from('events')
-      .select('*, communities(id, name)')
+      .select('*, price_cents, communities(id, name)')
       .eq('id', id)
       .single();
     if (error || !data) { setNotFound(true); setLoading(false); return; }
@@ -87,6 +96,19 @@ export default function EventDetailScreen() {
       .single();
     setRsvping(false);
     if (!error && data?.ticket_code) animateTicketIn(data.ticket_code);
+  };
+
+  const handleBuyTicket = async () => {
+    if (!event || !user) return;
+    setPurchasing(true);
+    setPurchaseError(null);
+    const result = await purchaseTicket(event.id, initPaymentSheet, presentPaymentSheet, user.id);
+    setPurchasing(false);
+    if (result.success) {
+      setPurchaseResult({ ticketCode: result.ticketCode ?? null });
+    } else if (!result.cancelled) {
+      setPurchaseError(result.error ?? 'Payment failed. Please try again.');
+    }
   };
 
   const handleCancel = async () => {
@@ -201,7 +223,31 @@ export default function EventDetailScreen() {
           </Animated.View>
         ) : null}
 
-        {going ? (
+        {purchaseResult ? (
+          <TicketConfirmation
+            event={event}
+            ticketCode={purchaseResult.ticketCode}
+            onViewTickets={() => router.push('/(tabs)/grow')}
+          />
+        ) : event.is_paid ? (
+          <View>
+            <TouchableOpacity
+              style={[styles.rsvpBtn, purchasing && styles.rsvpBtnDisabled]}
+              onPress={handleBuyTicket}
+              disabled={purchasing}
+            >
+              {purchasing
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={styles.rsvpBtnText}>
+                    {`Buy Ticket — $${((event.price_cents ?? 0) / 100).toFixed(2)}`}
+                  </Text>
+              }
+            </TouchableOpacity>
+            {purchaseError && (
+              <Text style={styles.errorText}>{purchaseError}</Text>
+            )}
+          </View>
+        ) : going ? (
           <View style={styles.rsvpRow}>
             <View style={styles.goingPill}>
               <Text style={styles.goingPillText}>You're going ✓</Text>
@@ -284,6 +330,7 @@ const styles = StyleSheet.create({
   },
   rsvpBtnDisabled: { opacity: 0.6 },
   rsvpBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  errorText: { color: COLORS.error, fontSize: 13, marginTop: 8, textAlign: 'center' },
 
   notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   notFoundText: { color: COLORS.textSecondary, fontSize: 15 },

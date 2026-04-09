@@ -17,7 +17,8 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSCameraUsageDescription": "Roxy needs camera access for speed dating video calls and profile photos.",
-        "NSMicrophoneUsageDescription": "Roxy needs microphone access for speed dating video calls."
+        "NSMicrophoneUsageDescription": "Roxy needs microphone access for speed dating video calls.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -59,7 +60,8 @@
         }
       ],
       "@react-native-firebase/app",
-      "@react-native-firebase/crashlytics"
+      "@react-native-firebase/crashlytics",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

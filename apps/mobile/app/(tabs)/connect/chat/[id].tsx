@@ -118,13 +118,16 @@ export default function ChatScreen() {
       void resolvePartner(conv.participant_ids);
     } else {
       // Conversation not in store (e.g. navigated from Grow) — fetch directly
-      void supabase
-        .from('conversations')
-        .select('participant_ids')
-        .eq('id', conversationId)
-        .single()
-        .then(({ data }) => { if (data) void resolvePartner(data.participant_ids); })
-        .catch(() => {});
+      void (async () => {
+        try {
+          const { data } = await supabase
+            .from('conversations')
+            .select('participant_ids')
+            .eq('id', conversationId)
+            .single();
+          if (data) void resolvePartner(data.participant_ids);
+        } catch {}
+      })();
     }
   }, [conversationId, user, conversations]);
 

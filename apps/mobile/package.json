@@ -19,6 +19,7 @@
     "@react-native-firebase/app": "^20.0.0",
     "@react-native-firebase/crashlytics": "^20.0.0",
     "@shopify/flash-list": "1.6.4",
+    "@stripe/stripe-react-native": "0.37.2",
     "@supabase/supabase-js": "^2.43.0",
     "date-fns": "^3.6.0",
     "expo": "~51.0.0",
@@ -70,7 +71,8 @@
   "jest": {
     "preset": "jest-expo",
     "moduleNameMapper": {
-      "^@react-native-firebase/(.*)$": "<rootDir>/__mocks__/@react-native-firebase/$1.js"
+      "^@react-native-firebase/(.*)$": "<rootDir>/__mocks__/@react-native-firebase/$1.js",
+      "^posthog-react-native$": "<rootDir>/__mocks__/posthog-react-native.js"
     },
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|@daily-co/.*|@shopify/.*)"

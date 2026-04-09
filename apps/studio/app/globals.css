@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Roxy brand — dark purple/pink theme */
+    --background: 268 64% 11%;
+    --foreground: 0 0% 100%;
+    --card: 264 49% 21%;
+    --card-foreground: 0 0% 100%;
+    --popover: 264 49% 21%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 330 73% 70%;
+    --primary-foreground: 268 64% 11%;
+    --secondary: 258 89% 66%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 263 37% 27%;
+    --muted-foreground: 270 21% 77%;
+    --accent: 323 86% 70%;
+    --accent-foreground: 268 64% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 263 37% 27%;
+    --input: 263 37% 27%;
+    --ring: 330 73% 70%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
