@@ -6,6 +6,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { callEdgeFunction } from '../../../lib/supabase';
 import { COLORS } from '../../../lib/constants';
+import { logError, logBreadcrumb } from '../../../lib/errorLogger';
 
 const GOALS = [
   { key: 'community', label: 'COMMUNITY', sub: 'Find your people, build connections' },
@@ -25,13 +26,24 @@ export default function Step4Status() {
   const handleFinish = async () => {
     if (!user) return;
     if (selected.length === 0) return;
+    logBreadcrumb('onboarding_step4_submit', { goals: selected.join(',') });
     setLoading(true);
     const isDating = selected.includes('dating');
-    const { error: profileError } = await supabase.from('profiles').update({ is_dating_mode: isDating }).eq('id', user.id);
-    if (profileError) { setLoading(false); Alert.alert('Setup error', 'Could not save your settings. Please try again.'); return; }
+    const { error: profileError } = await supabase.from('profiles').update({ is_dating_mode: isDating, onboarding_completed: true }).eq('id', user.id);
+    if (profileError) {
+      logError(profileError, 'onboarding_step4_profile_update');
+      setLoading(false);
+      Alert.alert('Setup error', 'Could not save your settings. Please try again.');
+      return;
+    }
     const { error } = await callEdgeFunction('roxy-onboarding', { user_id: user.id });
     setLoading(false);
-    if (error) { Alert.alert('Setup error', 'Could not finish setup. Please try again.'); return; }
+    if (error) {
+      logError(new Error(String(error)), 'onboarding_step4_edge_function');
+      Alert.alert('Setup error', 'Could not finish setup. Please try again.');
+      return;
+    }
+    logBreadcrumb('onboarding_complete', { user_id: user.id });
     router.replace('/(tabs)/grow');
   };
 

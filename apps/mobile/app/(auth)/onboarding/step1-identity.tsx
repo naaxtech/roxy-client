@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
+import { logError, logBreadcrumb } from '../../../lib/errorLogger';
 import { ChipSelector } from '../../../components/ui/ChipSelector';
 import { IDENTITY_LABELS, PRONOUNS, COLORS, USERNAME_MAX } from '../../../lib/constants';
 
@@ -34,6 +35,7 @@ export default function Step1Identity() {
   const handleNext = async () => {
     if (!user) return;
     if (!usernameAvailable || !displayName || labels.length === 0) return;
+    logBreadcrumb('onboarding_step1_submit', { username: username.toLowerCase(), label_count: String(labels.length) });
     setLoading(true);
     const { error } = await supabase.from('profiles').upsert({
       id: user!.id,
@@ -43,7 +45,12 @@ export default function Step1Identity() {
       pronouns,
     });
     setLoading(false);
-    if (error) { Alert.alert('Error', error.message); return; }
+    if (error) {
+      logError(error, 'onboarding_step1_upsert');
+      Alert.alert('Error', 'Could not save your identity. Please try again.');
+      return;
+    }
+    logBreadcrumb('onboarding_step1_complete');
     router.push('/(auth)/onboarding/step2-interests');
   };
 
@@ -82,13 +89,18 @@ export default function Step1Identity() {
         <Text style={[styles.label, { marginTop: 16 }]}>Pronouns</Text>
         <ChipSelector options={PRONOUNS} selected={pronouns} onToggle={(v) => setPronouns((p) => p.includes(v) ? p.filter((x) => x !== v) : [...p, v])} />
 
-        <TouchableOpacity
-          style={[styles.btn, loading && styles.btnDisabled]}
-          onPress={handleNext}
-          disabled={loading}
-        >
-          <Text style={styles.btnText}>{loading ? 'Saving...' : 'Next →'}</Text>
-        </TouchableOpacity>
+        {(() => {
+          const canProceed = usernameAvailable === true && displayName.trim().length > 0 && labels.length > 0;
+          return (
+            <TouchableOpacity
+              style={[styles.btn, (!canProceed || loading) && styles.btnDisabled]}
+              onPress={handleNext}
+              disabled={!canProceed || loading}
+            >
+              <Text style={styles.btnText}>{loading ? 'Saving...' : 'Next →'}</Text>
+            </TouchableOpacity>
+          );
+        })()}
       </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

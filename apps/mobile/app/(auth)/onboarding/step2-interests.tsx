@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
+import { logError, logBreadcrumb } from '../../../lib/errorLogger';
 import { ChipSelector } from '../../../components/ui/ChipSelector';
 import { INTERESTS, COLORS } from '../../../lib/constants';
 
@@ -16,10 +17,16 @@ export default function Step2Interests() {
   const handleNext = async () => {
     if (!user) return;
     if (interests.length < 1) return;
+    logBreadcrumb('onboarding_step2_submit', { interest_count: String(interests.length) });
     setLoading(true);
     const { error } = await supabase.from('profiles').update({ dating_looking_for: interests }).eq('id', user.id);
     setLoading(false);
-    if (error) { Alert.alert('Error', error.message); return; }
+    if (error) {
+      logError(error, 'onboarding_step2_update');
+      Alert.alert('Error', 'Could not save your interests. Please try again.');
+      return;
+    }
+    logBreadcrumb('onboarding_step2_complete');
     router.push('/(auth)/onboarding/step3-photo');
   };
 
@@ -31,7 +38,11 @@ export default function Step2Interests() {
         <Text style={styles.sub}>Pick up to 8</Text>
         <ChipSelector options={INTERESTS} selected={interests} max={8}
           onToggle={(v) => setInterests((p) => p.includes(v) ? p.filter((x) => x !== v) : [...p, v])} />
-        <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={handleNext} disabled={loading}>
+        <TouchableOpacity
+          style={[styles.btn, (loading || interests.length < 1) && styles.btnDisabled]}
+          onPress={handleNext}
+          disabled={loading || interests.length < 1}
+        >
           <Text style={styles.btnText}>{loading ? 'Saving...' : 'Next →'}</Text>
         </TouchableOpacity>
       </ScrollView>

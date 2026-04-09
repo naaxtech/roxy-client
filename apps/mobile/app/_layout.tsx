@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -21,6 +21,9 @@ function AppNavigator() {
   const segments = useSegments();
   const pathname = usePathname();
   const posthog = usePostHog();
+  // Tracks which user ID has a profile fetch in flight — prevents concurrent
+  // fetches that would issue conflicting router.replace() calls (flicker).
+  const fetchingForUserRef = useRef<string | null>(null);
 
   useEffect(() => {
     Analytics.screenView(pathname);
@@ -49,39 +52,57 @@ function AppNavigator() {
     if (loading) return;
 
     const inAuth = segments[0] === '(auth)';
+    // Guard: while stepping through onboarding do NOT re-run the profile check.
+    // Each router.push changes segments, which re-fires this effect. Without the
+    // guard the effect would see the newly-created partial profile and redirect
+    // back to step1 — causing the flicker + ejection bug.
+    const inOnboarding = segments[1] === 'onboarding';
 
     if (!user && !inAuth) {
       router.replace('/(auth)/welcome');
       return;
     }
 
-    if (user && inAuth) {
-      // User just signed in — check if onboarding is complete
-      void Promise.resolve(
-        supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
-      ).then(({ data, error }) => {
-        if (error) { logError(error, 'layout_profile_fetch'); return; }
-        if (!data) {
-          router.replace('/(auth)/onboarding/step1-identity');
-        } else {
-          setProfile(data);
-          router.replace('/(tabs)/grow');
-        }
-      }).catch((e: unknown) => logError(e, 'layout_profile_fetch'));
+    if (user && inAuth && !inOnboarding) {
+      // Prevent concurrent fetches for the same user from issuing conflicting
+      // router.replace() calls (the other root cause of the flicker).
+      if (fetchingForUserRef.current === user.id) return;
+      fetchingForUserRef.current = user.id;
+      void supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+        .then(({ data, error }) => {
+          fetchingForUserRef.current = null;
+          if (error) { logError(error, 'layout_profile_fetch'); return; }
+          // Route to tabs only when onboarding is fully complete.
+          if (!data || !data.onboarding_completed) {
+            router.replace('/(auth)/onboarding/step1-identity');
+          } else {
+            setProfile(data);
+            router.replace('/(tabs)/grow');
+          }
+        }).catch((e: unknown) => {
+          fetchingForUserRef.current = null;
+          logError(e, 'layout_profile_fetch');
+        });
       return;
     }
 
     if (user && !inAuth && !profile) {
-      // Already in tabs but profile not loaded — fetch it
-      void Promise.resolve(
-        supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
-      ).then(({ data, error }) => {
-        if (error) { logError(error, 'layout_profile_reload'); return; }
-        if (data) setProfile(data);
-        else router.replace('/(auth)/onboarding/step1-identity');
-      }).catch((e: unknown) => logError(e, 'layout_profile_reload'));
+      if (fetchingForUserRef.current === user.id) return;
+      fetchingForUserRef.current = user.id;
+      void supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+        .then(({ data, error }) => {
+          fetchingForUserRef.current = null;
+          if (error) { logError(error, 'layout_profile_reload'); return; }
+          if (data) setProfile(data);
+          else router.replace('/(auth)/onboarding/step1-identity');
+        }).catch((e: unknown) => {
+          fetchingForUserRef.current = null;
+          logError(e, 'layout_profile_reload');
+        });
     }
-  }, [user, loading, segments]);
+  // user?.id (not user) — prevents re-firing on TOKEN_REFRESHED events where
+  // Supabase creates a new user object reference with the same ID.
+  }, [user?.id, loading, segments]);
 
   const STRIPE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 

@@ -2,6 +2,7 @@ export interface Profile {
   id: string;
   username: string;
   display_name: string;
+  onboarding_completed: boolean;
   bio: string | null;
   avatar_url: string | null;
   pronouns: string[];

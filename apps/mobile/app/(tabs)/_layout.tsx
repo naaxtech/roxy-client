@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { View } from 'react-native';
-import { Tabs, usePathname } from 'expo-router';
+import { Tabs, usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../lib/constants';
 import { RoxyCompanionButton } from '../../components/ui/RoxyCompanionButton';
 import { useFriendStore } from '../../store/friendStore';
 import { useConnectStore } from '../../store/connectStore';
 import { useAuthStore } from '../../store/authStore';
+import { useProfileStore } from '../../store/profileStore';
 import { supabase } from '../../lib/supabase';
 
 export default function TabLayout() {
@@ -14,6 +15,16 @@ export default function TabLayout() {
   const showFab = !pathname.includes('roxy-chat');
   const pendingCount = useFriendStore((s) => s.pendingCount);
   const { user } = useAuthStore();
+  const profile = useProfileStore((s) => s.profile);
+  const router = useRouter();
+
+  // Secondary guard: if a user somehow reaches tabs without completing onboarding,
+  // redirect them back. The root layout is the primary guard; this is the fallback.
+  useEffect(() => {
+    if (profile !== null && !profile.onboarding_completed) {
+      router.replace('/(auth)/onboarding/step1-identity');
+    }
+  }, [profile?.onboarding_completed]);
 
   const unreadCounts = useConnectStore((s) => s.unreadCounts);
   const totalUnread = Object.values(unreadCounts).reduce((sum, n) => sum + n, 0);

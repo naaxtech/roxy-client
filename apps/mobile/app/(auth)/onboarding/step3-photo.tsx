@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
+import { logError, logBreadcrumb } from '../../../lib/errorLogger';
 import { COLORS } from '../../../lib/constants';
 
 export default function Step3Photo() {
@@ -26,17 +27,26 @@ export default function Step3Photo() {
   const handleNext = async () => {
     if (!user) return;
     if (uri) {
+      logBreadcrumb('onboarding_step3_upload_start');
       setUploading(true);
-      const path = `${user.id}/avatar.jpg`;
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const { error } = await supabase.storage.from('avatars').upload(path, blob, { upsert: true });
-      if (!error) {
-        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+      try {
+        const path = `${user.id}/avatar.jpg`;
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(path, blob, { upsert: true });
+        if (uploadError) {
+          logError(uploadError, 'onboarding_step3_avatar_upload');
+        } else {
+          const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+          const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+          if (updateError) logError(updateError, 'onboarding_step3_avatar_url_update');
+        }
+      } catch (e) {
+        logError(e, 'onboarding_step3_upload_exception');
       }
       setUploading(false);
     }
+    logBreadcrumb('onboarding_step3_complete', { has_photo: String(!!uri) });
     router.push('/(auth)/onboarding/step4-status');
   };
 
