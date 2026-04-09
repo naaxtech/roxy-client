@@ -3,13 +3,14 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function POST() {
   const supabase = await createClient();
-  const { data: claimsData } = await supabase.auth.getClaims();
 
-  if (!claimsData?.claims) {
+  // getUser() verifies the JWT with Supabase Auth server — reliable in Route Handlers
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Get session for the access token to pass to the edge function
+  // getSession() reads access token from cookie storage — safe after getUser() confirms auth
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData?.session?.access_token;
 
