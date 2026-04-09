@@ -11,7 +11,7 @@ export function StripeBannerClient({ initialStatus }: { initialStatus: StripeSta
     if (data.onboarding_url) {
       window.location.href = data.onboarding_url;
     } else {
-      alert('Failed to start Stripe setup. Please try again.');
+      alert(`Stripe setup failed: ${data.error ?? 'Unknown error'}`);
     }
   };
 

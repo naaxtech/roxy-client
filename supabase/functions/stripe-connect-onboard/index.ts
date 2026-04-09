@@ -18,27 +18,38 @@ Deno.serve(async (req) => {
     return successResponse({ onboarding_url: 'https://connect.stripe.com/setup/e/mock' });
   }
 
-  const supabase = getSupabaseClient();
-  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
-
-  const STUDIO_URL = Deno.env.get('STUDIO_URL') ?? 'https://studio.roxy.app';
-
   try {
+    console.log('[onboard] stage: init');
+    const supabase = getSupabaseClient();
+
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!stripeKey) return errorResponse('STRIPE_SECRET_KEY not set', 500);
+    console.log('[onboard] stage: stripe key present, prefix:', stripeKey.slice(0, 7));
+
+    const stripe = new Stripe(stripeKey, { apiVersion: '2024-11-20' as any });
+    const STUDIO_URL = Deno.env.get('STUDIO_URL') ?? 'https://roxy-studio.vercel.app';
+    console.log('[onboard] stage: STUDIO_URL =', STUDIO_URL);
+
     // Check for existing Stripe account
-    const { data: existing } = await supabase
+    console.log('[onboard] stage: checking existing account');
+    const { data: existing, error: dbError } = await supabase
       .from('host_stripe_accounts')
       .select('stripe_account_id')
       .eq('user_id', userId)
       .maybeSingle();
 
+    if (dbError) return errorResponse(`DB error: ${dbError.message}`, 500);
+
     let stripeAccountId: string;
 
     if (existing?.stripe_account_id) {
       stripeAccountId = existing.stripe_account_id;
+      console.log('[onboard] stage: reusing account', stripeAccountId);
     } else {
-      // Create new Stripe Express account
+      console.log('[onboard] stage: creating express account');
       const account = await stripe.accounts.create({ type: 'express' });
       stripeAccountId = account.id;
+      console.log('[onboard] stage: created account', stripeAccountId);
 
       await supabase.from('host_stripe_accounts').insert({
         user_id: userId,
@@ -47,7 +58,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create account link for onboarding/resuming
+    console.log('[onboard] stage: creating account link');
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,
       refresh_url: `${STUDIO_URL}/settings?stripe=refresh`,
@@ -55,9 +66,13 @@ Deno.serve(async (req) => {
       type: 'account_onboarding',
     });
 
+    console.log('[onboard] stage: success, url length:', accountLink.url?.length);
     return successResponse({ onboarding_url: accountLink.url });
   } catch (err) {
-    console.error('stripe-connect-onboard error:', err);
-    return errorResponse('Failed to create Stripe onboarding link', 500);
+    const message = err instanceof Error ? err.message : String(err);
+    const stripeCode = (err as any)?.code ?? null;
+    const stripeType = (err as any)?.type ?? null;
+    console.error('[onboard] error:', { message, stripeCode, stripeType });
+    return errorResponse(`Stripe error [${stripeType ?? 'unknown'}/${stripeCode ?? 'none'}]: ${message}`, 500);
   }
 });
