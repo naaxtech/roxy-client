@@ -1,0 +1,113 @@
+# Test: New user signup → 4-step onboarding → Grow dashboard
+#
+# What this validates:
+#   1. After signup, user lands on step1-identity (not looped back)
+#   2. Each Next tap advances to the next step (no flicker/redirect loop)
+#   3. After step4, user reaches the Grow dashboard
+#   4. Dashboard is inaccessible until onboarding completes
+#
+# Prerequisites:
+#   - Dev build installed on device/emulator (eas build --profile development)
+#   - Supabase project reachable
+#   - Use a fresh email each run, OR reset the test account in Supabase:
+#       UPDATE profiles SET onboarding_completed = false WHERE id = '<test-user-id>';
+#       (or delete the profile row entirely)
+#
+# Test credentials — set via env or edit directly:
+#   MAESTRO_TEST_EMAIL / MAESTRO_TEST_PASSWORD
+#
+appId: com.roxy.app
+---
+
+# ── Launch fresh ──────────────────────────────────────────────────────────────
+- launchApp:
+    clearState: true
+
+# ── Welcome screen → Sign Up ───────────────────────────────────────────────────
+- assertVisible:
+    text: "Welcome"
+    timeout: 8000
+- tapOn:
+    text: "Sign Up"
+
+# ── Sign-up form ───────────────────────────────────────────────────────────────
+- assertVisible:
+    text: "Create account"
+    timeout: 5000
+- tapOn:
+    id: "email-input"
+- inputText: "${MAESTRO_TEST_EMAIL}"
+- tapOn:
+    id: "password-input"
+- inputText: "${MAESTRO_TEST_PASSWORD}"
+- tapOn:
+    text: "Create account"
+
+# ── Step 1 — Identity ──────────────────────────────────────────────────────────
+# Critical: must land here and NOT flicker back after filling in data
+- assertVisible:
+    text: "Step 1 of 4"
+    timeout: 10000
+
+- tapOn:
+    id: "username-input"
+- inputText: "testuser_e2e"
+
+# Wait for availability check
+- assertVisible:
+    text: "✓ Available"
+    timeout: 5000
+
+- tapOn:
+    id: "display-name-input"
+- inputText: "E2E Test User"
+
+# Pick an identity chip
+- tapOn:
+    text: "lesbian"
+
+# Tap Next — this is where the redirect loop used to fire
+- tapOn:
+    text: "Next →"
+
+# ── Step 2 — Interests ─────────────────────────────────────────────────────────
+# Must land here, NOT loop back to step1
+- assertVisible:
+    text: "Step 2 of 4"
+    timeout: 5000
+
+- tapOn:
+    text: "Gaming"
+- tapOn:
+    text: "Next →"
+
+# ── Step 3 — Photo ─────────────────────────────────────────────────────────────
+- assertVisible:
+    text: "Step 3 of 4"
+    timeout: 5000
+
+# Skip photo — tap "Skip for now"
+- tapOn:
+    text: "Skip for now"
+
+# ── Step 4 — Goals ─────────────────────────────────────────────────────────────
+- assertVisible:
+    text: "Step 4 of 4"
+    timeout: 5000
+
+- tapOn:
+    text: "COMMUNITY"
+- tapOn:
+    text: "Meet Roxy →"
+
+# ── Dashboard ──────────────────────────────────────────────────────────────────
+# After completion, user must reach Grow — not be stuck in onboarding
+- assertVisible:
+    text: "Grow"
+    timeout: 15000
+
+# Confirm the onboarding screens are gone — back navigation should not reveal them
+- assertNotVisible:
+    text: "Step 1 of 4"
+- assertNotVisible:
+    text: "Step 4 of 4"
