@@ -90,6 +90,33 @@ const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
 ---
 
+## Brainstorming Standards Checklist
+
+Every spec produced during brainstorming **must** explicitly address these three areas before implementation begins. If any are missing, add them before writing the plan.
+
+### 1. Industry & Enterprise Standards
+- Loading states on all async operations (disabled buttons, spinners, skeletons)
+- Error boundaries / fallback UI for unexpected server errors
+- Optimistic UI with rollback for write operations
+- Accessibility: all inputs labeled, icon buttons have `aria-label`, keyboard-navigable
+- No PII or internal IDs in client-visible error messages
+
+### 2. OWASP Security
+- **A01 Broken Access Control:** RLS enabled on all new tables; user identity from server session (JWT), never from client input
+- **A03 Injection:** All DB access via parameterized queries (Supabase SDK or edge function — no raw SQL interpolation)
+- **A05 Misconfiguration:** Confirm RLS is explicitly enabled; no table publicly writable by default
+- **A07 Auth Failures:** Server-side session guard before any data fetch; logout clears session
+- **Input validation:** Length limits + format rules enforced at both client AND DB (CHECK constraints in migration)
+- No PII leaked in error responses or logs
+
+### 3. Testing Strategy
+Every feature spec must list:
+- **Unit tests:** per component/function — happy path, error path, edge cases
+- **Integration tests:** end-to-end flows (auth redirect, data save/load, RLS enforcement)
+- **Migration tests:** verify RLS policies allow/deny correct roles; CHECK constraints reject bad data
+
+---
+
 ## Anti-Patterns — Read Before Every Session
 
 ### 1. Bash subagents cannot write files

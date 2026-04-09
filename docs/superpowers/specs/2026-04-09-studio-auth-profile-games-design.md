@@ -224,7 +224,73 @@ VALUES (
 
 ---
 
-## 9. Out of Scope (this session)
+## 9. OWASP Security
+
+| OWASP Top 10 | How addressed |
+|---|---|
+| A01 Broken Access Control | RLS enabled on all new tables. Profile update uses `userId` from server session (JWT), never from client input. `community_games_manage` policy enforces admin-only writes. |
+| A03 Injection | All DB access via Supabase SDK parameterized queries — no raw SQL in application code. |
+| A04 Insecure Design | `submitted_by` in `games` table nullable — only official games in seed, no user-submitted games yet. Marketplace submission deferred. |
+| A05 Security Misconfiguration | RLS explicitly enabled on `games` and `community_games`. No table is publicly writable. |
+| A07 Auth Failures | Dashboard layout server-side session check — unauthenticated requests redirect to `/auth/login` before any data is fetched. Logout clears Supabase session cookie. |
+
+**Input validation** — enforced at both client (immediate feedback) and DB (CHECK constraints in migration 023):
+
+| Field | Rule |
+|---|---|
+| `display_name` | max 100 chars |
+| `username` | max 30 chars, `/^[a-z0-9_]+$/i` — alphanumeric + underscore only |
+| `bio` | max 500 chars |
+
+Username uniqueness: if taken, return generic "Username already taken" — do not leak whether the account exists.
+
+No PII (user IDs, emails) in client-visible error messages.
+
+---
+
+## 10. Enterprise Standards
+
+- **Loading states:** All form submit buttons disabled + show spinner while async in flight.
+- **Skeleton loading:** Profile page and Games page use `<Suspense>` with a skeleton placeholder — no layout shift.
+- **Error boundaries:** `error.tsx` files co-located with `/profile` and `/games` routes to catch unexpected server errors gracefully.
+- **Optimistic UI:** `GamesToggleClient` updates state immediately on toggle, rolls back on Supabase error.
+- **Accessibility:** All `<Input>` fields have associated `<Label>` (htmlFor). Avatar circle has `aria-label`. Dropdown menu items keyboard-navigable (shadcn handles this).
+- **No sensitive data in logs:** Error logging strips email and user IDs before sending to console/PostHog.
+
+---
+
+## 11. Testing
+
+### Unit tests (`apps/studio/__tests__/`)
+
+| Test file | What it covers |
+|---|---|
+| `components/UserMenu.test.tsx` | Renders initials avatar when no avatarUrl; opens dropdown on click; logout calls `signOut` + redirects |
+| `components/ProfileForm.test.tsx` | Renders all fields pre-filled; save button disabled during submit; shows "Profile saved" on success; shows error message on failure; rejects username with invalid chars client-side |
+| `components/GamesToggleClient.test.tsx` | Optimistic toggle on click; rolls back state on Supabase error |
+
+### Integration tests
+
+| Scenario | Verification |
+|---|---|
+| Unauthenticated visit to `/dashboard` | Redirected to `/auth/login` (middleware + layout guard) |
+| Profile save with valid data | `profiles` row updated, success message shown |
+| Profile save with username > 30 chars | Client validation blocks submit |
+| Games toggle activate | Row inserted in `community_games` |
+| Games toggle deactivate | Row deleted from `community_games` |
+| Non-admin attempts to toggle game | RLS rejects insert, error shown |
+
+### Migration tests
+
+| Test | Pass condition |
+|---|---|
+| `games_read` policy | Authenticated user can SELECT from `games` |
+| `community_games_manage` policy | Admin can INSERT/DELETE their community's games; non-admin cannot |
+| CHECK constraints | `username` with spaces or special chars rejected at DB level |
+
+---
+
+## 12. Out of Scope (this session)
 
 - Avatar upload
 - Game submission form (future marketplace)
