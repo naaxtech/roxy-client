@@ -83,25 +83,38 @@ function AppNavigator() {
     }
   }, [user, loading, segments]);
 
+  const STRIPE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
+
+  const inner = (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ErrorBoundary>
+          <Stack screenOptions={{ headerShown: false }} />
+        </ErrorBoundary>
+        {__DEV__ && <DevPanel />}
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+
+  // StripeProvider crashes with an empty publishableKey — skip it when key is missing.
+  // Add EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY to eas.json to enable payment features in builds.
+  if (!STRIPE_KEY) return inner;
+
   return (
     <StripeProvider
-      publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}
+      publishableKey={STRIPE_KEY}
       merchantIdentifier="merchant.app.roxy"
       urlScheme="roxy"
     >
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <ErrorBoundary>
-            <Stack screenOptions={{ headerShown: false }} />
-          </ErrorBoundary>
-          {__DEV__ && <DevPanel />}
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
+      {inner}
     </StripeProvider>
   );
 }
 
 export default function RootLayout() {
+  // posthog is null when EXPO_PUBLIC_POSTHOG_API_KEY is missing from the build env.
+  // PostHogProvider requires a non-null client, so skip the wrapper when unavailable.
+  if (!posthog) return <AppNavigator />;
   return (
     <PostHogProvider client={posthog}>
       <AppNavigator />

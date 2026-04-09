@@ -6,7 +6,7 @@ function safe(fn: () => Promise<void>): void {
 }
 
 function ph(event: string, props?: Record<string, unknown>): void {
-  try { posthog.capture(event, props as Parameters<typeof posthog.capture>[1]); } catch {}
+  try { posthog?.capture(event, props as Parameters<typeof posthog.capture>[1]); } catch {}
 }
 
 export const Analytics = {
