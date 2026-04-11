@@ -80,9 +80,10 @@ Deno.serve(async (req) => {
     });
   }
 
-  const supabase = getSupabaseClient();
   const dailyApiKey = Deno.env.get('DAILY_API_KEY');
   if (!dailyApiKey) return errorResponse('DAILY_API_KEY not configured', 503);
+
+  const supabase = getSupabaseClient();
 
   // Fetch room
   const { data: room, error: roomError } = await supabase
@@ -125,6 +126,11 @@ Deno.serve(async (req) => {
       .eq('user_id', auth.userId)
       .single(),
   ]);
+
+  // Block non-members from joining
+  if (!memberRes.data && auth.userId !== room.created_by) {
+    return errorResponse('You are not a member of this community', 403);
+  }
 
   const displayName = profileRes.data?.display_name ?? 'Guest';
   const role = memberRes.data?.role ?? 'member';
