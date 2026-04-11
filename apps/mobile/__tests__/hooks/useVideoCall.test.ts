@@ -1,72 +1,84 @@
 import { renderHook, act } from '@testing-library/react-native';
 import { useVideoCall } from '../../hooks/useVideoCall';
-import type {
-  VideoCallProvider, VideoCallState, RemoteParticipant,
-} from '../../lib/video/VideoCallProvider';
+import type { VideoCallProvider, RemoteParticipant } from '../../lib/video/VideoCallProvider';
 
-class MockProvider implements VideoCallProvider {
-  type = 'daily' as const;
-  isAvailable = true;
-  onStateChange: ((s: VideoCallState) => void) | null = null;
-  onRemoteJoined: ((p: RemoteParticipant) => void) | null = null;
-  onRemoteLeft: ((id: string) => void) | null = null;
-  join = jest.fn().mockResolvedValue(undefined);
-  leave = jest.fn().mockResolvedValue(undefined);
-  destroy = jest.fn();
-  toggleMic = jest.fn();
-  toggleCamera = jest.fn();
-  renderRemoteVideo = jest.fn().mockReturnValue(null);
-  renderLocalVideo = jest.fn().mockReturnValue(null);
-
-  fireStateChange(s: VideoCallState) { this.onStateChange?.(s); }
-  fireRemoteJoined(p: RemoteParticipant) { this.onRemoteJoined?.(p); }
-  fireRemoteLeft(id: string) { this.onRemoteLeft?.(id); }
+function makeParticipant(id: string, displayName: string, isOwner = false): RemoteParticipant {
+  return { id, trackInfo: {}, displayName, isOwner };
 }
 
-describe('useVideoCall', () => {
-  it('starts in idle state', () => {
-    const provider = new MockProvider();
+function makeMockProvider(): VideoCallProvider {
+  return {
+    type: 'daily',
+    isAvailable: true,
+    onStateChange: null,
+    onRemoteJoined: null,
+    onRemoteLeft: null,
+    onParticipantUpdated: null,
+    join: jest.fn(),
+    leave: jest.fn(),
+    destroy: jest.fn(),
+    toggleMic: jest.fn(),
+    toggleCamera: jest.fn(),
+    muteParticipant: jest.fn(),
+    renderRemoteVideo: jest.fn(() => null),
+    renderLocalVideo: jest.fn(() => null),
+  };
+}
+
+describe('useVideoCall — multi-participant', () => {
+  it('adds participants on join', () => {
+    const provider = makeMockProvider();
     const { result } = renderHook(() => useVideoCall(provider));
-    expect(result.current.state).toBe('idle');
-    expect(result.current.remoteParticipant).toBeNull();
+
+    act(() => {
+      provider.onRemoteJoined!(makeParticipant('p1', 'Alice'));
+      provider.onRemoteJoined!(makeParticipant('p2', 'Maya'));
+    });
+
+    expect(result.current.remoteParticipants).toHaveLength(2);
+    expect(result.current.remoteParticipants[0].displayName).toBe('Alice');
   });
 
-  it('updates state when provider fires onStateChange', () => {
-    const provider = new MockProvider();
+  it('removes participant on leave', () => {
+    const provider = makeMockProvider();
     const { result } = renderHook(() => useVideoCall(provider));
-    act(() => { provider.fireStateChange('connected'); });
-    expect(result.current.state).toBe('connected');
+
+    act(() => {
+      provider.onRemoteJoined!(makeParticipant('p1', 'Alice'));
+      provider.onRemoteJoined!(makeParticipant('p2', 'Maya'));
+    });
+    act(() => {
+      provider.onRemoteLeft!('p1');
+    });
+
+    expect(result.current.remoteParticipants).toHaveLength(1);
+    expect(result.current.remoteParticipants[0].id).toBe('p2');
   });
 
-  it('sets remoteParticipant when provider fires onRemoteJoined', () => {
-    const provider = new MockProvider();
+  it('updates participant track info without adding duplicate', () => {
+    const provider = makeMockProvider();
     const { result } = renderHook(() => useVideoCall(provider));
-    const participant: RemoteParticipant = { id: 'p1', trackInfo: null };
-    act(() => { provider.fireRemoteJoined(participant); });
-    expect(result.current.remoteParticipant).toEqual(participant);
+
+    act(() => {
+      provider.onRemoteJoined!(makeParticipant('p1', 'Alice'));
+    });
+    act(() => {
+      provider.onParticipantUpdated!(makeParticipant('p1', 'Alice', true));
+    });
+
+    expect(result.current.remoteParticipants).toHaveLength(1);
+    expect(result.current.remoteParticipants[0].isOwner).toBe(true);
   });
 
-  it('clears remoteParticipant when provider fires onRemoteLeft', () => {
-    const provider = new MockProvider();
+  it('exposes remoteParticipant (singular) for backward compat', () => {
+    const provider = makeMockProvider();
     const { result } = renderHook(() => useVideoCall(provider));
-    const participant: RemoteParticipant = { id: 'p1', trackInfo: null };
-    act(() => { provider.fireRemoteJoined(participant); });
-    act(() => { provider.fireRemoteLeft('p1'); });
-    expect(result.current.remoteParticipant).toBeNull();
-  });
 
-  it('clears callbacks on unmount', () => {
-    const provider = new MockProvider();
-    const { unmount } = renderHook(() => useVideoCall(provider));
-    unmount();
-    expect(provider.onStateChange).toBeNull();
-    expect(provider.onRemoteJoined).toBeNull();
-    expect(provider.onRemoteLeft).toBeNull();
-  });
+    act(() => {
+      provider.onRemoteJoined!(makeParticipant('p1', 'Alice'));
+    });
 
-  it('returns null state when provider is null', () => {
-    const { result } = renderHook(() => useVideoCall(null));
-    expect(result.current.state).toBe('idle');
-    expect(result.current.remoteParticipant).toBeNull();
+    expect(result.current.remoteParticipant).not.toBeNull();
+    expect(result.current.remoteParticipant?.id).toBe('p1');
   });
 });

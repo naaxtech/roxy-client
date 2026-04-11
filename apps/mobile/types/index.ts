@@ -8,6 +8,7 @@ export interface Profile {
   pronouns: string[];
   identity_labels: string[];
   is_dating_mode: boolean;
+  interests: string[];
   dating_looking_for: string[];
   age_min_pref: number;
   age_max_pref: number;
@@ -154,6 +155,21 @@ export interface Badge {
   points_value: number;
   requirement_type: string;
   requirement_threshold: number;
+  created_at: string;
+}
+
+export interface CommunityRoom {
+  id: string;
+  community_id: string;
+  name: string;
+  description: string | null;
+  room_type: 'video' | 'audio';
+  status: 'live' | 'scheduled' | 'closed';
+  scheduled_at: string | null;
+  daily_room_url: string | null;
+  daily_room_name: string | null;
+  is_active: boolean;
+  created_by: string | null;
   created_at: string;
 }
 

@@ -3,19 +3,41 @@ import type { VideoCallProvider, VideoCallState, RemoteParticipant } from '../li
 
 export function useVideoCall(provider: VideoCallProvider | null) {
   const [state, setState] = useState<VideoCallState>('idle');
-  const [remoteParticipant, setRemoteParticipant] = useState<RemoteParticipant | null>(null);
+  const [remoteParticipants, setRemoteParticipants] = useState<RemoteParticipant[]>([]);
 
   useEffect(() => {
     if (!provider) return;
+
     provider.onStateChange = setState;
-    provider.onRemoteJoined = setRemoteParticipant;
-    provider.onRemoteLeft = () => setRemoteParticipant(null);
+
+    provider.onRemoteJoined = (participant) => {
+      setRemoteParticipants((prev) =>
+        prev.some((p) => p.id === participant.id) ? prev : [...prev, participant]
+      );
+    };
+
+    provider.onRemoteLeft = (participantId) => {
+      setRemoteParticipants((prev) => prev.filter((p) => p.id !== participantId));
+    };
+
+    provider.onParticipantUpdated = (participant) => {
+      setRemoteParticipants((prev) =>
+        prev.map((p) => (p.id === participant.id ? participant : p))
+      );
+    };
+
     return () => {
       provider.onStateChange = null;
       provider.onRemoteJoined = null;
       provider.onRemoteLeft = null;
+      provider.onParticipantUpdated = null;
     };
   }, [provider]);
 
-  return { state, remoteParticipant };
+  return {
+    state,
+    remoteParticipants,
+    // Backward compat for Speed Dating (single remote participant)
+    remoteParticipant: remoteParticipants[0] ?? null,
+  };
 }
