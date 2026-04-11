@@ -14,12 +14,13 @@ import { useCommunityStore, Community } from '../../../../store/communityStore';
 import { COLORS } from '../../../../lib/constants';
 import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
+import { CommunityRoomCard } from '../../../../components/community/CommunityRoomCard';
+import { CommunityRoom } from '../../../../types';
 
-
-type SubTab = 'posts' | 'events' | 'games';
+type SubTab = 'posts' | 'events' | 'games' | 'rooms';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const TABS: SubTab[] = ['posts', 'events', 'games'];
+const TABS: SubTab[] = ['posts', 'events', 'games', 'rooms'];
 
 type PostRow = {
   id: string; content: string; created_at: string; author_id: string;
@@ -52,6 +53,8 @@ export default function CommunityDetailScreen() {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [rooms, setRooms] = useState<(CommunityRoom & { creator_display_name: string | null })[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
 
   // Track screen view once per navigation
   useEffect(() => {
@@ -97,6 +100,25 @@ export default function CommunityDetailScreen() {
     if (data) setEvents(data as EventRow[]);
   }, [id]);
 
+  const loadRooms = useCallback(async () => {
+    if (!id) return;
+    setLoadingRooms(true);
+    const { data } = await supabase
+      .from('community_rooms')
+      .select('*, profiles!created_by(display_name)')
+      .eq('community_id', id)
+      .neq('status', 'closed')
+      .eq('is_active', true)
+      .order('name');
+    if (data) {
+      setRooms(data.map((r: any) => ({
+        ...r,
+        creator_display_name: r.profiles?.display_name ?? null,
+      })));
+    }
+    setLoadingRooms(false);
+  }, [id]);
+
   const loadRsvps = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
@@ -111,7 +133,8 @@ export default function CommunityDetailScreen() {
     loadPosts();
     loadEvents();
     loadRsvps();
-  }, [loadPosts, loadEvents, loadRsvps]);
+    loadRooms();
+  }, [loadPosts, loadEvents, loadRsvps, loadRooms]);
 
   const pagerRef = useRef<ScrollView>(null);
 
@@ -126,7 +149,7 @@ export default function CommunityDetailScreen() {
   const toggleLike = (postId: string) => {
     setLikedIds((prev) => {
       const n = new Set(prev);
-      n.has(postId) ? n.delete(postId) : n.add(postId);
+      if (n.has(postId)) { n.delete(postId); } else { n.add(postId); }
       return n;
     });
   };
@@ -353,6 +376,35 @@ export default function CommunityDetailScreen() {
               <Text style={styles.gameDesc}>More community games coming soon! 💜</Text>
             </View>
           </View>
+        </ScrollView>
+
+        {/* Page 3 — Rooms */}
+        <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ padding: 12, paddingBottom: 80 }}>
+          {loadingRooms ? (
+            <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 40 }} />
+          ) : rooms.length === 0 ? (
+            <View style={styles.emptyCenter}>
+              <Text style={styles.emptyIcon}>📡</Text>
+              <Text style={styles.emptyTitle}>No rooms open right now</Text>
+              <Text style={styles.emptySub}>Check back later for live rooms</Text>
+            </View>
+          ) : (
+            rooms.map((room) => (
+              <CommunityRoomCard
+                key={room.id}
+                id={room.id}
+                name={room.name}
+                description={room.description}
+                room_type={room.room_type}
+                status={room.status}
+                scheduled_at={room.scheduled_at}
+                community_name={null}
+                creator_display_name={room.creator_display_name}
+                hideCommunityTag={true}
+                onPress={() => router.push(`/(tabs)/connect/community-room-session?room_id=${room.id}` as any)}
+              />
+            ))
+          )}
         </ScrollView>
       </ScrollView>
 

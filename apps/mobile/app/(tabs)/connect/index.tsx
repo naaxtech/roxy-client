@@ -14,6 +14,7 @@ import { COLORS } from '../../../lib/constants';
 import { GAME_ROUTES } from '../../../lib/games';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
+import { CommunityRoomCard } from '../../../components/community/CommunityRoomCard';
 
 
 type SubTab = 'feed' | 'events' | 'rooms';
@@ -37,16 +38,13 @@ type GameRow = {
 };
 
 type CommunityRoomRow = {
-  id: string; name: string; room_type: 'video' | 'audio';
-  community_id: string;
+  id: string; name: string; description: string | null;
+  room_type: 'video' | 'audio'; status: 'live' | 'scheduled' | 'closed';
+  scheduled_at: string | null; community_id: string;
   communities: { name: string } | null;
-  is_active: boolean;
+  creator_display_name: string | null; is_active: boolean;
 };
 
-function formatEventDate(ts: string): string {
-  const d = new Date(ts);
-  return format(d, 'dd MMM · HH:mm');
-}
 
 export default function ConnectScreen() {
   const router = useRouter();
@@ -78,7 +76,7 @@ export default function ConnectScreen() {
   // Ensure communities are loaded
   useEffect(() => {
     if (user?.id) fetchJoined(user.id);
-  }, [user?.id]);
+  }, [user?.id, fetchJoined]);
 
   // Load feed posts from joined communities
   const loadFeed = useCallback(async () => {
@@ -127,7 +125,8 @@ export default function ConnectScreen() {
     setLoadingRooms(true);
     let roomsQuery = supabase
       .from('community_rooms')
-      .select('id, name, room_type, community_id, communities(name), is_active')
+      .select('id, name, description, room_type, status, scheduled_at, community_id, communities(name), profiles!created_by(display_name), is_active')
+      .neq('status', 'closed')
       .eq('is_active', true)
       .order('name');
     if (selectedCommunityId) {
@@ -138,7 +137,10 @@ export default function ConnectScreen() {
       roomsQuery,
     ]);
     if (gamesData) setGames(gamesData as GameRow[]);
-    if (roomsData) setRooms(roomsData as unknown as CommunityRoomRow[]);
+    if (roomsData) setRooms(roomsData.map((r: any) => ({
+      ...r,
+      creator_display_name: r.profiles?.display_name ?? null,
+    })) as CommunityRoomRow[]);
     setLoadingRooms(false);
   }, [selectedCommunityId]);
 
@@ -409,21 +411,18 @@ export default function ConnectScreen() {
               <Text style={styles.roomEmpty}>No rooms active right now</Text>
             ) : (
               rooms.map((room) => (
-                <TouchableOpacity
+                <CommunityRoomCard
                   key={room.id}
-                  style={styles.roomCard}
+                  id={room.id}
+                  name={room.name}
+                  description={room.description}
+                  room_type={room.room_type}
+                  status={room.status}
+                  scheduled_at={room.scheduled_at}
+                  community_name={room.communities?.name ?? null}
+                  creator_display_name={room.creator_display_name}
                   onPress={() => router.push(`/(tabs)/connect/community-room-session?room_id=${room.id}` as any)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.roomTypeIcon}>{room.room_type === 'video' ? '🎥' : '🎙️'}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.roomName}>{room.name}</Text>
-                    {room.communities?.name && (
-                      <Text style={styles.roomCommunity}>{room.communities.name}</Text>
-                    )}
-                  </View>
-                  <Text style={styles.roomArrow}>›</Text>
-                </TouchableOpacity>
+                />
               ))
             )}
           </View>
@@ -535,16 +534,6 @@ const styles = StyleSheet.create({
   gameName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
   gameDesc: { color: COLORS.textMuted, fontSize: 12, marginTop: 1 },
   gameArrow: { color: COLORS.textMuted, fontSize: 20 },
-  roomCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: COLORS.surface, borderRadius: 12, padding: 12, marginBottom: 6,
-    borderWidth: 1, borderColor: COLORS.primary + '30',
-  },
-  roomTypeIcon: { fontSize: 20 },
-  roomName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
-  roomCommunity: { color: COLORS.textMuted, fontSize: 12, marginTop: 1 },
-  roomArrow: { color: COLORS.textMuted, fontSize: 20 },
-
   // Empty states
   emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12 },
   emptyIcon: { fontSize: 48 },
