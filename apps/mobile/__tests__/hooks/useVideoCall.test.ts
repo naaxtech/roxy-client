@@ -14,6 +14,7 @@ function makeMockProvider(): VideoCallProvider {
     onRemoteJoined: null,
     onRemoteLeft: null,
     onParticipantUpdated: null,
+    onLocalUpdated: null,
     join: jest.fn(),
     leave: jest.fn(),
     destroy: jest.fn(),

@@ -4,6 +4,7 @@ import type { VideoCallProvider, VideoCallState, RemoteParticipant } from '../li
 export function useVideoCall(provider: VideoCallProvider | null) {
   const [state, setState] = useState<VideoCallState>('idle');
   const [remoteParticipants, setRemoteParticipants] = useState<RemoteParticipant[]>([]);
+  const [localVideoVersion, setLocalVideoVersion] = useState(0);
 
   useEffect(() => {
     if (!provider) return;
@@ -26,17 +27,23 @@ export function useVideoCall(provider: VideoCallProvider | null) {
       );
     };
 
+    provider.onLocalUpdated = () => {
+      setLocalVideoVersion((v) => v + 1);
+    };
+
     return () => {
       provider.onStateChange = null;
       provider.onRemoteJoined = null;
       provider.onRemoteLeft = null;
       provider.onParticipantUpdated = null;
+      provider.onLocalUpdated = null;
     };
   }, [provider]);
 
   return {
     state,
     remoteParticipants,
+    localVideoVersion,
     // Backward compat for Speed Dating (single remote participant)
     remoteParticipant: remoteParticipants[0] ?? null,
   };

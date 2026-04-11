@@ -92,7 +92,7 @@ export default function CommunityRoomSession() {
   const router = useRouter();
 
   const [provider] = useState(() => new DailyProvider());
-  const { state, remoteParticipants } = useVideoCall(provider);
+  const { state, remoteParticipants, localVideoVersion } = useVideoCall(provider);
 
   const [micOn, setMicOn] = useState(false); // starts muted
   const [camOn, setCamOn] = useState(true);
@@ -242,7 +242,7 @@ export default function CommunityRoomSession() {
 
       {/* ── Self PiP (video rooms only) ────────────────────────────────── */}
       {isVideo && (
-        <View style={styles.selfPip}>
+        <View key={localVideoVersion} style={styles.selfPip}>
           {provider.renderLocalVideo(StyleSheet.absoluteFillObject) ?? (
             <View style={[StyleSheet.absoluteFillObject, styles.pipPlaceholder]}>
               <Text style={styles.pipIcon}>👤</Text>

@@ -27,6 +27,7 @@ export class DailyProvider implements VideoCallProvider {
   onRemoteJoined: ((participant: RemoteParticipant) => void) | null = null;
   onRemoteLeft: ((participantId: string) => void) | null = null;
   onParticipantUpdated: ((participant: RemoteParticipant) => void) | null = null;
+  onLocalUpdated: (() => void) | null = null;
 
   private _call: any = null;
 
@@ -52,7 +53,9 @@ export class DailyProvider implements VideoCallProvider {
       });
 
       this._call.on('participant-updated', (evt: any) => {
-        if (!evt.participant.local) {
+        if (evt.participant.local) {
+          this.onLocalUpdated?.();
+        } else {
           this.onParticipantUpdated?.(makeRemoteParticipant(evt.participant));
         }
       });
@@ -101,11 +104,12 @@ export class DailyProvider implements VideoCallProvider {
     if (!DailyMediaView) return null;
     const p = participant.trackInfo as any;
     return React.createElement(DailyMediaView, {
-      sessionId: participant.id,
-      videoTrackState: p?.tracks?.video ?? null,
-      audioTrackState: p?.tracks?.audio ?? null,
-      style,
+      videoTrack: p?.tracks?.video?.persistentTrack ?? null,
+      audioTrack: p?.tracks?.audio?.persistentTrack ?? null,
       mirror: false,
+      zOrder: 0,
+      objectFit: 'cover',
+      style,
     });
   }
 
@@ -113,11 +117,12 @@ export class DailyProvider implements VideoCallProvider {
     if (!DailyMediaView || !this._call) return null;
     const local = this._call.participants()?.local;
     return React.createElement(DailyMediaView, {
-      sessionId: 'local',
-      videoTrackState: local?.tracks?.video ?? null,
-      audioTrackState: null,
-      style,
+      videoTrack: local?.tracks?.video?.persistentTrack ?? null,
+      audioTrack: null,
       mirror: true,
+      zOrder: 1,
+      objectFit: 'cover',
+      style,
     });
   }
 }

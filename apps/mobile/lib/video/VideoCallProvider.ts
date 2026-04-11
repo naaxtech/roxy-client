@@ -23,6 +23,8 @@ export interface VideoCallProvider {
   onRemoteLeft: ((participantId: string) => void) | null;
   /** Fired when a remote participant's track state updates (e.g. video becomes active) */
   onParticipantUpdated: ((participant: RemoteParticipant) => void) | null;
+  /** Fired when the local participant updates (e.g. local camera becomes active) */
+  onLocalUpdated: (() => void) | null;
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
   join(params: { roomUrl: string; token?: string; startAudioOff?: boolean }): Promise<void>;

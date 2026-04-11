@@ -13,6 +13,7 @@ export class LiveKitProvider implements VideoCallProvider {
   onRemoteJoined: ((participant: RemoteParticipant) => void) | null = null;
   onRemoteLeft: ((participantId: string) => void) | null = null;
   onParticipantUpdated: ((participant: RemoteParticipant) => void) | null = null;
+  onLocalUpdated: (() => void) | null = null;
 
   async join(_params: { roomUrl: string; token?: string; startAudioOff?: boolean }): Promise<void> {
     throw new Error('LiveKitProvider not yet implemented');
