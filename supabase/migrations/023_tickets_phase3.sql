@@ -60,9 +60,13 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
 );
 
 -- Named FK with ON DELETE SET NULL (allows staff accounts to be removed without orphaning logs)
-ALTER TABLE public.audit_log
-  ADD CONSTRAINT audit_log_staff_fk FOREIGN KEY (staff_id)
-    REFERENCES public.profiles(id) ON DELETE SET NULL;
+-- Guarded: Postgres has no IF NOT EXISTS for FK constraints; EXCEPTION handler makes it idempotent
+DO $$ BEGIN
+  ALTER TABLE public.audit_log
+    ADD CONSTRAINT audit_log_staff_fk FOREIGN KEY (staff_id)
+      REFERENCES public.profiles(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
