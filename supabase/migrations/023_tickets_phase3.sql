@@ -71,9 +71,15 @@ END $$;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "audit_log_staff_read" ON public.audit_log;
+-- All staff can read all audit entries (full trail); non-staff see nothing
 CREATE POLICY "audit_log_staff_read" ON public.audit_log
   FOR SELECT TO authenticated
-  USING (staff_id = auth.uid());
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND is_staff = true
+    )
+  );
 
 -- 6. RLS: hosts read all attendees for their events
 DROP POLICY IF EXISTS "host_read_attendees" ON public.event_attendees;
@@ -88,6 +94,9 @@ CREATE POLICY "host_read_attendees" ON public.event_attendees
   );
 
 -- 7. RLS: hosts update is_checked_in on their own event attendees
+-- NOTE: RLS cannot restrict which columns are updated — column restriction (is_checked_in,
+-- checked_in_at only) MUST be enforced in the check-in edge function. Never expose a
+-- freeform attendee UPDATE endpoint to host-facing clients (OWASP A01).
 DROP POLICY IF EXISTS "host_checkin_attendees" ON public.event_attendees;
 CREATE POLICY "host_checkin_attendees" ON public.event_attendees
   FOR UPDATE TO authenticated
@@ -102,6 +111,7 @@ CREATE POLICY "host_checkin_attendees" ON public.event_attendees
 
 -- 8. Indexes for new columns added in this migration
 CREATE INDEX IF NOT EXISTS idx_events_status ON public.events(status);
+CREATE INDEX IF NOT EXISTS idx_events_cancelled_by ON public.events(cancelled_by);
 CREATE INDEX IF NOT EXISTS idx_payment_logs_needs_refund ON public.payment_logs(needs_refund) WHERE needs_refund = true;
 CREATE INDEX IF NOT EXISTS idx_audit_log_target ON public.audit_log(target_type, target_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_staff_id ON public.audit_log(staff_id);
@@ -125,6 +135,7 @@ BEGIN
           AND is_paid = true
           AND ends_at IS NOT NULL
           AND ends_at < now()
+          AND payout_blocked = false
       $cron$
     );
   END IF;
