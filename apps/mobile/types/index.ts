@@ -143,7 +143,23 @@ export interface Event {
   max_attendees: number | null;
   attendee_count: number;
   cover_image_url: string | null;
+  is_paid: boolean;
+  is_private: boolean;
+  price_cents: number | null;
+  currency: string;
+  status: 'active' | 'cancelled' | 'completed';
+  payout_delay_days: number | null;
   created_at: string;
+}
+
+export interface EventAttendee {
+  event_id: string;
+  user_id: string;
+  status: 'going' | 'interested' | 'maybe';
+  ticket_code: string;
+  rsvp_at: string;
+  is_checked_in: boolean;
+  checked_in_at: string | null;
 }
 
 export interface Badge {
