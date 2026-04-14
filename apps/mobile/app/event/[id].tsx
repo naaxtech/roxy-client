@@ -14,7 +14,7 @@ import { COLORS } from '../../lib/constants';
 import { TicketCard } from '../../components/TicketCard';
 import { TicketConfirmation } from '../../components/TicketConfirmation';
 import { formatDuration, openCalendar } from '../../lib/eventUtils';
-import { purchaseTicket } from '../../lib/stripe';
+import { purchaseTicket, subscribeToTicket } from '../../lib/stripe';
 
 type EventDetail = {
   id: string;
@@ -26,9 +26,11 @@ type EventDetail = {
   location_text: string | null;
   location_url: string | null;
   attendee_count: number;
+  max_attendees: number | null;
   is_paid: boolean;
   is_private: boolean;
   price_cents: number | null;
+  status: 'active' | 'cancelled' | 'completed';
   community_id: string | null;
   communities: { id: string; name: string } | null;
 };
@@ -47,6 +49,8 @@ export default function EventDetailScreen() {
   const [purchaseResult, setPurchaseResult] = useState<{ ticketCode: string | null } | null>(null);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const ticketAnim = useRef(new Animated.Value(0)).current;
+  const ticketSubscriptionUnsubRef = useRef<(() => void) | null>(null);
+  const eventChannelRef = useRef<any>(null);
 
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
@@ -74,12 +78,41 @@ export default function EventDetailScreen() {
       setTicketCode(data.ticket_code);
       ticketAnim.setValue(1);
     }
+  // ticketAnim is a stable Animated.Value ref — safe to omit
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user]);
 
   useEffect(() => {
     fetchEvent();
     fetchRsvp();
   }, [fetchEvent, fetchRsvp]);
+
+  // Realtime: update event status when host/staff cancels or event auto-completes
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`event-status:${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'events', filter: `id=eq.${id}` },
+        (payload) => {
+          if (payload.new?.status) {
+            setEvent((prev) => prev ? { ...prev, status: payload.new.status } : prev);
+          }
+        },
+      )
+      .subscribe();
+    eventChannelRef.current = channel;
+    return () => { supabase.removeChannel(channel); };
+  }, [id]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      ticketSubscriptionUnsubRef.current?.();
+      if (eventChannelRef.current) supabase.removeChannel(eventChannelRef.current);
+    };
+  }, []);
 
   const animateTicketIn = (code: string) => {
     setTicketCode(code);
@@ -100,14 +133,37 @@ export default function EventDetailScreen() {
 
   const handleBuyTicket = async () => {
     if (!event || !user) return;
+    // Sold out check
+    if (event.max_attendees !== null && event.attendee_count >= event.max_attendees) {
+      setPurchaseError('This event is sold out.');
+      return;
+    }
     setPurchasing(true);
     setPurchaseError(null);
+
+    // Subscribe to ticket delivery BEFORE presenting payment sheet
+    ticketSubscriptionUnsubRef.current = subscribeToTicket(event.id, user.id, (code) => {
+      animateTicketIn(code);
+    });
+
     const result = await purchaseTicket(event.id, initPaymentSheet, presentPaymentSheet, user.id);
     setPurchasing(false);
+
     if (result.success) {
-      setPurchaseResult({ ticketCode: result.ticketCode ?? null });
+      // Show confirmation immediately — ticket arrives via Realtime
+      setPurchaseResult({ ticketCode: null });
+    } else if (result.soldOut) {
+      ticketSubscriptionUnsubRef.current?.();
+      ticketSubscriptionUnsubRef.current = null;
+      setPurchaseError('Sorry, this event just sold out.');
     } else if (!result.cancelled) {
+      ticketSubscriptionUnsubRef.current?.();
+      ticketSubscriptionUnsubRef.current = null;
       setPurchaseError(result.error ?? 'Payment failed. Please try again.');
+    } else {
+      // Cancelled — clean up subscription
+      ticketSubscriptionUnsubRef.current?.();
+      ticketSubscriptionUnsubRef.current = null;
     }
   };
 
@@ -151,6 +207,7 @@ export default function EventDetailScreen() {
 
   const duration = formatDuration(event.starts_at, event.ends_at);
   const going = ticketCode !== null;
+  const isSoldOut = event.max_attendees !== null && event.attendee_count >= event.max_attendees;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -198,6 +255,20 @@ export default function EventDetailScreen() {
           </View>
         ) : null}
 
+        {/* Cancelled banner */}
+        {event.status === 'cancelled' && (
+          <View style={styles.cancelledBanner}>
+            <Text style={styles.cancelledBannerText}>
+              ❌ This event was cancelled.
+            </Text>
+            {ticketCode && (
+              <Text style={styles.cancelledBannerSub}>
+                Your refund will appear in 5–10 business days.
+              </Text>
+            )}
+          </View>
+        )}
+
         {going ? (
           <Animated.View style={{ opacity: ticketAnim }}>
             <View style={styles.divider} />
@@ -207,56 +278,57 @@ export default function EventDetailScreen() {
               locationText={event.location_text}
               communityName={event.communities?.name ?? null}
               ticketCode={ticketCode!}
+              status={event.status === 'cancelled' ? 'cancelled' : 'active'}
             />
-            <TouchableOpacity
-              style={styles.calendarBtn}
-              onPress={() => openCalendar({
-                title: event.title,
-                startsAt: event.starts_at,
-                endsAt: event.ends_at,
-                locationText: event.location_text,
-                communityName: event.communities?.name ?? null,
-              })}
-            >
-              <Text style={styles.calendarBtnText}>+ Add to Calendar</Text>
-            </TouchableOpacity>
+            {event.status !== 'cancelled' && (
+              <TouchableOpacity
+                style={styles.calendarBtn}
+                onPress={() => openCalendar({
+                  title: event.title,
+                  startsAt: event.starts_at,
+                  endsAt: event.ends_at,
+                  locationText: event.location_text,
+                  communityName: event.communities?.name ?? null,
+                })}
+              >
+                <Text style={styles.calendarBtnText}>+ Add to Calendar</Text>
+              </TouchableOpacity>
+            )}
           </Animated.View>
         ) : null}
 
-        {purchaseResult ? (
-          <TicketConfirmation
-            event={event}
-            ticketCode={purchaseResult.ticketCode}
-            onViewTickets={() => router.push('/(tabs)/grow')}
-          />
-        ) : event.is_paid ? (
+        {/* Buy ticket / sold out / RSVP area — only shown when event is active and not going */}
+        {event.status === 'active' && !going && event.is_paid && (
           <View>
-            <TouchableOpacity
-              style={[styles.rsvpBtn, purchasing && styles.rsvpBtnDisabled]}
-              onPress={handleBuyTicket}
-              disabled={purchasing}
-            >
-              {purchasing
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.rsvpBtnText}>
-                    {`Buy Ticket — $${((event.price_cents ?? 0) / 100).toFixed(2)}`}
-                  </Text>
-              }
-            </TouchableOpacity>
-            {purchaseError && (
-              <Text style={styles.errorText}>{purchaseError}</Text>
+            {isSoldOut ? (
+              <View style={styles.soldOutBtn}>
+                <Text style={styles.soldOutText}>Sold Out</Text>
+              </View>
+            ) : purchaseResult ? (
+              <TicketConfirmation
+                event={event}
+                ticketCode={purchaseResult.ticketCode}
+                onViewTickets={() => router.push('/(tabs)/grow/tickets' as any)}
+              />
+            ) : (
+              <TouchableOpacity
+                style={[styles.rsvpBtn, purchasing && styles.rsvpBtnDisabled]}
+                onPress={handleBuyTicket}
+                disabled={purchasing}
+              >
+                {purchasing
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.rsvpBtnText}>
+                      {`Buy Ticket — $${((event.price_cents ?? 0) / 100).toFixed(2)}`}
+                    </Text>
+                }
+              </TouchableOpacity>
             )}
+            {purchaseError && <Text style={styles.errorText}>{purchaseError}</Text>}
           </View>
-        ) : going ? (
-          <View style={styles.rsvpRow}>
-            <View style={styles.goingPill}>
-              <Text style={styles.goingPillText}>You're going ✓</Text>
-            </View>
-            <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
+        )}
+
+        {event.status === 'active' && !going && !event.is_paid && (
           <TouchableOpacity
             style={[styles.rsvpBtn, rsvping && styles.rsvpBtnDisabled]}
             onPress={handleRsvp}
@@ -267,6 +339,17 @@ export default function EventDetailScreen() {
               : <Text style={styles.rsvpBtnText}>RSVP — It's Free</Text>
             }
           </TouchableOpacity>
+        )}
+
+        {event.status === 'active' && going && !event.is_paid && (
+          <View style={styles.rsvpRow}>
+            <View style={styles.goingPill}>
+              <Text style={styles.goingPillText}>You're going ✓</Text>
+            </View>
+            <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -301,6 +384,24 @@ const styles = StyleSheet.create({
     height: 1, backgroundColor: COLORS.surface,
     marginVertical: 20,
   },
+
+  cancelledBanner: {
+    backgroundColor: COLORS.error + '15',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 16,
+    borderWidth: 1,
+    borderColor: COLORS.error + '40',
+  },
+  cancelledBannerText: { color: COLORS.error, fontWeight: '700', fontSize: 15, textAlign: 'center' },
+  cancelledBannerSub: { color: COLORS.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 4 },
+
+  soldOutBtn: {
+    marginTop: 24, borderRadius: 14, paddingVertical: 16,
+    alignItems: 'center', backgroundColor: COLORS.surface,
+    borderWidth: 1, borderColor: COLORS.textMuted + '40',
+  },
+  soldOutText: { color: COLORS.textMuted, fontWeight: '700', fontSize: 16 },
 
   calendarBtn: {
     marginTop: 12, alignSelf: 'center',
