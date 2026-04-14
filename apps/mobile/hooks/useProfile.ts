@@ -15,7 +15,7 @@ export function useProfile() {
       .eq('id', user.id)
       .single()
       .then(({ data }) => { if (data) setProfile(data); });
-  }, [user, profile]);
+  }, [user, profile, setProfile]);
 
   return { profile };
 }

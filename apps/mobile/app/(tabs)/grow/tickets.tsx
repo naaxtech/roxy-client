@@ -187,7 +187,7 @@ export default function MyTicketsScreen() {
           data={listData}
           renderItem={renderItem}
           estimatedItemSize={80}
-          keyExtractor={(item, i) => item.type === 'divider' ? 'divider' : item.data.event_id}
+          keyExtractor={(item, _i) => item.type === 'divider' ? 'divider' : item.data.event_id}
           contentContainerStyle={styles.list}
           onEndReached={() => { if (hasMore && !loading) fetchTickets(); }}
           onEndReachedThreshold={0.4}

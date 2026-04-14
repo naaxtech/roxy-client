@@ -1,5 +1,4 @@
 import { getAuthContext, proxyToEdge } from '@/lib/staff-auth';
-import { NextResponse } from 'next/server';
 
 // Returns a Stripe Express dashboard login link for the authenticated host
 export async function POST() {

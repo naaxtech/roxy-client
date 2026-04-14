@@ -21,7 +21,7 @@ export async function purchaseTicket(
   eventId: string,
   initPaymentSheet: ReturnType<typeof useStripe>['initPaymentSheet'],
   presentPaymentSheet: ReturnType<typeof useStripe>['presentPaymentSheet'],
-  userId: string,
+  _userId: string,
 ): Promise<PurchaseTicketResult> {
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!UUID_RE.test(eventId)) {

@@ -26,7 +26,7 @@ type RoomInfo = {
 
 // ─── Video tile for a single participant ────────────────────────────────────
 function VideoTile({
-  participant, provider, isHost, onLongPress,
+  participant, provider, isHost: _isHost, onLongPress,
 }: {
   participant: RemoteParticipant;
   provider: DailyProvider;

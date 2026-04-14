@@ -42,7 +42,8 @@ export function useRealtime({
   };
 
   useEffect(() => {
-    setMessages(initialMessages);
+    setMessages(initialMessages); // reset messages when conversation changes; initialMessages is stable per mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
 
   useEffect(() => {
