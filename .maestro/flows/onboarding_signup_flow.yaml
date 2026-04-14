@@ -71,6 +71,8 @@ appId: com.roxy.app
     text: "Next →"
 
 # ── Step 2 — Interests ─────────────────────────────────────────────────────────
+# Critical: useSegments() emits transient ['(auth)'] during Stack push animation.
+# Fixed by: router.replace (not push) + pathname.includes('/onboarding') guard.
 # Must land here, NOT loop back to step1
 - assertVisible:
     text: "Step 2 of 4"

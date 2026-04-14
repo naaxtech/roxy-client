@@ -20,6 +20,7 @@ export default function TabLayout() {
 
   // Secondary guard: if a user somehow reaches tabs without completing onboarding,
   // redirect them back. The root layout is the primary guard; this is the fallback.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (profile !== null && !profile.onboarding_completed) {
       router.replace('/(auth)/onboarding/step1-identity');

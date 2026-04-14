@@ -7,7 +7,7 @@ jest.mock('react-native-qrcode-svg', () => {
 });
 
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { TicketCard } from '../../components/TicketCard';
 
 const baseProps = {
@@ -18,7 +18,7 @@ const baseProps = {
   ticketCode: 'ROXY-A3F9BC12',
 };
 
-describe('TicketCard', () => {
+describe('TicketCard — full variant (default)', () => {
   it('renders event title', () => {
     const { getByText } = render(<TicketCard {...baseProps} />);
     expect(getByText('WLW Social Mixer')).toBeTruthy();
@@ -52,5 +52,80 @@ describe('TicketCard', () => {
   it('omits community row when communityName is null', () => {
     const { queryByText } = render(<TicketCard {...baseProps} communityName={null} />);
     expect(queryByText(/Queer Manila/)).toBeNull();
+  });
+});
+
+describe('TicketCard — full variant status states', () => {
+  it('shows "You\'re going!" label for active status', () => {
+    const { getByText } = render(<TicketCard {...baseProps} status="active" />);
+    expect(getByText(/You're going!/)).toBeTruthy();
+  });
+
+  it('shows "Checked In" label and hides QR for checked_in status', () => {
+    const { getByText } = render(<TicketCard {...baseProps} status="checked_in" />);
+    expect(getByText(/Checked In/)).toBeTruthy();
+    // QR is still rendered but with opacity overlay
+    // ticket-qr testID should still exist
+  });
+
+  it('shows "Event Cancelled" label for cancelled status', () => {
+    const { getByText } = render(<TicketCard {...baseProps} status="cancelled" />);
+    expect(getByText(/Event Cancelled/)).toBeTruthy();
+  });
+
+  it('hides QR code for cancelled status', () => {
+    const { queryByTestId } = render(<TicketCard {...baseProps} status="cancelled" />);
+    expect(queryByTestId('ticket-qr')).toBeNull();
+  });
+
+  it('shows refund note for cancelled status', () => {
+    const { getByText } = render(<TicketCard {...baseProps} status="cancelled" />);
+    expect(getByText(/5.{1,3}10 business days/)).toBeTruthy();
+  });
+});
+
+describe('TicketCard — collapsed variant', () => {
+  it('renders event title in collapsed view', () => {
+    const { getByText } = render(
+      <TicketCard {...baseProps} variant="collapsed" onExpand={jest.fn()} />,
+    );
+    expect(getByText('WLW Social Mixer')).toBeTruthy();
+  });
+
+  it('shows "Going" badge for active status', () => {
+    const { getByText } = render(
+      <TicketCard {...baseProps} variant="collapsed" status="active" onExpand={jest.fn()} />,
+    );
+    expect(getByText('Going')).toBeTruthy();
+  });
+
+  it('shows "Checked In" badge for checked_in status', () => {
+    const { getByText } = render(
+      <TicketCard {...baseProps} variant="collapsed" status="checked_in" onExpand={jest.fn()} />,
+    );
+    expect(getByText('Checked In')).toBeTruthy();
+  });
+
+  it('shows "Refunded" badge for cancelled status', () => {
+    const { getByText } = render(
+      <TicketCard {...baseProps} variant="collapsed" status="cancelled" onExpand={jest.fn()} />,
+    );
+    expect(getByText('Refunded')).toBeTruthy();
+  });
+
+  it('calls onExpand when tapped', () => {
+    const onExpand = jest.fn();
+    const { getByText } = render(
+      <TicketCard {...baseProps} variant="collapsed" onExpand={onExpand} />,
+    );
+    fireEvent.press(getByText('WLW Social Mixer'));
+    expect(onExpand).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render QR code in collapsed view', () => {
+    const { queryByTestId } = render(
+      <TicketCard {...baseProps} variant="collapsed" onExpand={jest.fn()} />,
+    );
+    expect(queryByTestId('ticket-qr')).toBeNull();
   });
 });

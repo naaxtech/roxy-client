@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, identity_labels, dating_looking_for')
+    .select('display_name, identity_labels, interests')
     .eq('id', auth.userId)
     .single();
 
@@ -38,7 +38,8 @@ Deno.serve(async (req) => {
     system: `You are Roxy. A new WLW user just joined. Return ONLY a JSON object (no markdown):
 {"community_suggestions":["name1","name2","name3"],"welcome_message":"one warm sentence","first_goal":"one small achievable goal"}
 Available communities: ${SEED_COMMUNITIES.join(', ')}
-User identity: ${profile?.identity_labels?.join(', ')}`,
+User identity: ${profile?.identity_labels?.join(', ')}
+User interests: ${profile?.interests?.join(', ') ?? 'not set'}`,
     messages: [{ role: 'user', content: `My name is ${profile?.display_name}. Generate my onboarding data.` }],
     maxTokens: 300,
     mockResponse: JSON.stringify(mockResult),

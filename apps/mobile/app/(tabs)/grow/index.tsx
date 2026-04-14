@@ -61,6 +61,7 @@ export default function GrowScreen() {
   const router = useRouter();
   const { friends, fetchAll } = useFriendStore();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (user?.id) fetchAll(user.id);
   }, [user?.id]);

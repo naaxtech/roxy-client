@@ -25,6 +25,7 @@ function AppNavigator() {
   // fetches that would issue conflicting router.replace() calls (flicker).
   const fetchingForUserRef = useRef<string | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     Analytics.screenView(pathname);
     posthog?.screen(pathname);
@@ -38,6 +39,7 @@ function AppNavigator() {
     });
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     Analytics.setUser(user?.id ?? null);
     setCrashlyticsUser(user?.id ?? null);
@@ -48,6 +50,7 @@ function AppNavigator() {
     }
   }, [user?.id]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (loading) return;
     // segments is [] on the very first render before Expo Router initialises.
@@ -58,11 +61,12 @@ function AppNavigator() {
 
     const inAuth = segments[0] === '(auth)';
     // Guard: while stepping through onboarding do NOT re-run the profile check.
-    // Each router.push changes segments, which re-fires this effect. Without the
-    // guard the effect would see the newly-created partial profile and redirect
-    // back to step1 — causing the flicker + ejection bug.
-    // Use .some() rather than segments[1] to be robust against index shifts.
-    const inOnboarding = segments.some((s) => s === 'onboarding');
+    // useSegments() emits transient intermediate values during Stack push animations
+    // (e.g. ['(auth)'] briefly before the child segment resolves). usePathname()
+    // is computed differently and stays stable during transitions — use BOTH so
+    // a transient segments state cannot incorrectly set inOnboarding=false.
+    const inOnboarding =
+      segments.some((s) => s === 'onboarding') || pathname.includes('/onboarding');
 
     if (!user && !inAuth) {
       router.replace('/(auth)/welcome');
@@ -114,7 +118,9 @@ function AppNavigator() {
     }
   // user?.id (not user) — prevents re-firing on TOKEN_REFRESHED events where
   // Supabase creates a new user object reference with the same ID.
-  }, [user?.id, loading, segments]);
+  // pathname added alongside segments: pathname is stable during Stack push
+  // animations whereas segments can transiently drop child routes mid-transition.
+  }, [user?.id, loading, segments, pathname]);
 
   const STRIPE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 

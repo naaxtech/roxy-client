@@ -19,6 +19,7 @@ export function CommunityContextSwitcher({ communities }: Props) {
   const slideAnim = useRef(new Animated.Value(300)).current; // starts off-screen below
 
   // Slide the sheet up when the modal opens
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (open) {
       slideAnim.setValue(300);

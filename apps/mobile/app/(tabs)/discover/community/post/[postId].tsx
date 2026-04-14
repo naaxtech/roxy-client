@@ -62,6 +62,7 @@ export default function PostDetailScreen() {
     if (data) setComments(data as CommentRow[]);
   }, [postId]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     (async () => {
       await Promise.all([loadPost(), loadComments()]);

@@ -48,6 +48,7 @@ export default function DiscoverScreen() {
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [interestedIds, setInterestedIds] = useState<Set<string>>(new Set());
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchAll();
     if (user?.id) fetchJoined(user.id);

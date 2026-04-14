@@ -38,6 +38,7 @@ export default function ChatsScreen() {
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);

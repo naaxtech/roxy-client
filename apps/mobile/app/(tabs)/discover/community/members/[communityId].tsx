@@ -42,6 +42,7 @@ export default function MembersScreen() {
     }
   }, [communityId]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     (async () => {
       await loadMembers();

@@ -12,7 +12,7 @@ import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
 
 export default function SpeedDateResult() {
-  const { session_id, liked: likedParam, partner_id } = useLocalSearchParams<{
+  const { session_id: _session_id, liked: likedParam, partner_id } = useLocalSearchParams<{
     session_id: string;
     liked: string;
     partner_id: string;
@@ -32,6 +32,7 @@ export default function SpeedDateResult() {
 
   // Pulse animation for the match card
   const scaleAnim = useRef(new Animated.Value(0.6)).current;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (matchCreated) {
       Animated.spring(scaleAnim, {

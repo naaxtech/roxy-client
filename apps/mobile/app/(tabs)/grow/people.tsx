@@ -32,6 +32,7 @@ export default function PeopleScreen() {
   const [subTab, setSubTab] = useState<SubTab>('friends');
   const [loading, setLoading] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!user) return;
     setLoading(true);

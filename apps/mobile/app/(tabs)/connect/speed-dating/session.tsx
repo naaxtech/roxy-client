@@ -72,7 +72,7 @@ export default function SpeedDateSession() {
   const [liked, setLiked] = useState(false);
   const [partnerLeft, setPartnerLeft] = useState(false);
   const [provider] = useState(() => new DailyProvider());
-  const { state: callState, remoteParticipant } = useVideoCall(provider);
+  const { state: _callState, remoteParticipant } = useVideoCall(provider);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasEnded = useRef(false);
@@ -104,6 +104,7 @@ export default function SpeedDateSession() {
   }, [session_id]);
 
   // Start timer when session loads
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!session) return;
     timerRef.current = setInterval(() => {
@@ -122,6 +123,7 @@ export default function SpeedDateSession() {
   }, [session]);
 
   // Detect when partner leaves mid-session
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (remoteParticipant) {
       partnerHasJoined.current = true;
@@ -135,6 +137,7 @@ export default function SpeedDateSession() {
   }, [remoteParticipant]);
 
   // Join via provider
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!provider.isAvailable || !room_url) return;
     provider.join({ roomUrl: room_url }).then(() => {

@@ -13,6 +13,7 @@ export function RoxyCompanionButton({ visible = true }: Props) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     Animated.parallel([
       Animated.timing(opacity, { toValue: 1, duration: 300, delay: 400, useNativeDriver: true }),

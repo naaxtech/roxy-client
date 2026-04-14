@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
@@ -51,7 +51,7 @@ export default function Step1Identity() {
       return;
     }
     logBreadcrumb('onboarding_step1_complete');
-    router.push('/(auth)/onboarding/step2-interests');
+    router.replace('/(auth)/onboarding/step2-interests');
   };
 
   const usernameHint = username.length < 3 ? '' : usernameAvailable === true ? '✓ Available' : usernameAvailable === false ? '✗ Taken' : '';

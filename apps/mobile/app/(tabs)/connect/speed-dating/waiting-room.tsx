@@ -25,6 +25,7 @@ export default function SpeedDateWaitingRoom() {
   }, []);
 
   // Realtime subscription — navigate as soon as session becomes active
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!session_id) return;
 

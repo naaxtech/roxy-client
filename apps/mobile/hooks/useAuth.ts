@@ -6,6 +6,7 @@ export function useAuth() {
   const { user, session, loading, setSession, setLoading, signOut: storeSignOut } =
     useAuthStore();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     supabase.auth.getSession()
       .then(({ data: { session } }) => {

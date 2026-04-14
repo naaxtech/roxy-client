@@ -47,7 +47,7 @@ export default function Step3Photo() {
       setUploading(false);
     }
     logBreadcrumb('onboarding_step3_complete', { has_photo: String(!!uri) });
-    router.push('/(auth)/onboarding/step4-status');
+    router.replace('/(auth)/onboarding/step4-status');
   };
 
   return (

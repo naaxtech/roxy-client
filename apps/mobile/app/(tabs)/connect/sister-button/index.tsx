@@ -30,8 +30,8 @@ export default function SisterButtonScreen() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionDone, setSessionDone] = useState(false);
-  const [resources, setResources] = useState<Array<{ name: string; number?: string; instruction?: string; contact?: string; type?: string }> | null>(null);
-  const [directory, setDirectory] = useState<Array<{ name: string; url?: string; description?: string }> | null>(null);
+  const [resources, setResources] = useState<{ name: string; number?: string; instruction?: string; contact?: string; type?: string }[] | null>(null);
+  const [directory, setDirectory] = useState<{ name: string; url?: string; description?: string }[] | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
 
@@ -57,8 +57,8 @@ export default function SisterButtonScreen() {
         response: string;
         turn_number: number;
         is_final_turn: boolean;
-        resources?: Array<{ name: string; contact: string; type: string }>;
-        professional_directory?: Array<{ name: string; url: string }>;
+        resources?: { name: string; contact: string; type: string }[];
+        professional_directory?: { name: string; url: string }[];
       }>('roxy-sister', {
         conversation_id: conversationId,
         message: text,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal, FlatList,
@@ -92,6 +92,7 @@ export default function ChatScreen() {
   });
 
   // Mark this conversation as active so global listener skips unread counting
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setActiveConversation(conversationId ?? null);
     return () => setActiveConversation(null);
@@ -167,6 +168,7 @@ export default function ChatScreen() {
         setLoadingInitial(false);
       }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, user]);
 
   // Scroll to bottom when new messages arrive

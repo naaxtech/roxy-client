@@ -18,6 +18,7 @@ const baseProfile: Profile = {
   identity_labels: ['lesbian'],
   onboarding_completed: true,
   is_dating_mode: false,
+  interests: [],
   dating_looking_for: [],
   age_min_pref: 18,
   age_max_pref: 35,

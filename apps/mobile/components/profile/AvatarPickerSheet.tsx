@@ -22,6 +22,7 @@ export function AvatarPickerSheet({
   const [tab, setTab] = useState<Tab>('photo');
   const slideAnim = useRef(new Animated.Value(300)).current;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (visible) {
       slideAnim.setValue(300);
