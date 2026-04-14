@@ -38,11 +38,14 @@ Deno.serve(async (req) => {
   // Load event
   const { data: event, error: eventErr } = await supabase
     .from('events')
-    .select('id, title, is_paid, price_cents, currency, max_attendees, community_id, host_id, is_private')
+    .select('id, title, is_paid, price_cents, currency, max_attendees, community_id, host_id, is_private, status')
     .eq('id', event_id)
     .maybeSingle();
 
   if (eventErr || !event) return errorResponse('Event not found', 404);
+  if ((event as any).status && (event as any).status !== 'active') {
+    return errorResponse('This event is no longer active', 400);
+  }
   if (!event.is_paid || !event.price_cents) return errorResponse('Event is not a paid event', 400);
   if (event.price_cents < 50) return errorResponse('Price below Stripe minimum ($0.50)', 400);
 
@@ -77,16 +80,15 @@ Deno.serve(async (req) => {
   const feeCents = Math.round(event.price_cents * feePercent / 100);
   const hostPayoutCents = event.price_cents - feeCents;
 
-  // Create PaymentIntent — idempotency key prevents duplicates on retry
+  // Platform-holds model: charge lands on Roxy's platform account.
+  // Transfer to host is created separately by release-payout after event completes + delay.
+  // No on_behalf_of / transfer_data — fees tracked in payment_logs only.
   const pi = await stripe.paymentIntents.create(
     {
       amount: event.price_cents,
       currency: event.currency ?? 'usd',
       automatic_payment_methods: { enabled: true },
-      application_fee_amount: feeCents,
-      on_behalf_of: hostAccount.stripe_account_id,
-      transfer_data: { destination: hostAccount.stripe_account_id },
-      metadata: { event_id, host_id: event.host_id },
+      metadata: { event_id, host_id: event.host_id, user_id: user.id },
     },
     { idempotencyKey: `${event_id}:${user.id}` },
   );

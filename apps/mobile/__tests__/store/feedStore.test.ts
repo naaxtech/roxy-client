@@ -32,6 +32,12 @@ const makeEvent = (id: string): Event => ({
   max_attendees: null,
   attendee_count: 0,
   cover_image_url: null,
+  is_paid: false,
+  is_private: false,
+  price_cents: null,
+  currency: 'usd',
+  status: 'active',
+  payout_delay_days: null,
   created_at: '2026-01-01T00:00:00Z',
 });
 

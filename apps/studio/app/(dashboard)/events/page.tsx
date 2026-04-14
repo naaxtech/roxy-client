@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
 import { CreateEventForm } from './CreateEventForm';
@@ -22,7 +23,7 @@ export default async function EventsPage() {
 
   const { data: events } = await supabase
     .from('events')
-    .select('id, title, starts_at, is_paid, price_cents, communities(name)')
+    .select('id, title, starts_at, is_paid, price_cents, status, communities(name)')
     .in('community_id', communityIds.length ? communityIds : ['none'])
     .order('starts_at', { ascending: false })
     .limit(50);
@@ -61,22 +62,31 @@ export default async function EventsPage() {
         ) : (
           <ul className="space-y-2">
             {(events ?? []).map((ev: any) => (
-              <li key={ev.id} className="border rounded-lg p-4 flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{ev.title}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(ev.starts_at).toLocaleDateString('en-US', {
-                      weekday: 'short', day: 'numeric', month: 'short',
-                      hour: 'numeric', minute: '2-digit',
-                    })}{' '}
-                    · {ev.communities?.name}
-                  </p>
-                </div>
-                <Badge variant={ev.is_paid ? 'default' : 'secondary'}>
-                  {ev.is_paid
-                    ? `$${((ev.price_cents ?? 0) / 100).toFixed(2)}`
-                    : 'Free'}
-                </Badge>
+              <li key={ev.id}>
+                <Link
+                  href={`/events/${ev.id}`}
+                  className="border rounded-lg p-4 flex items-center justify-between hover:bg-accent transition-colors block"
+                >
+                  <div>
+                    <p className="font-medium">{ev.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(ev.starts_at).toLocaleDateString('en-US', {
+                        weekday: 'short', day: 'numeric', month: 'short',
+                        hour: 'numeric', minute: '2-digit',
+                      })}{' '}
+                      · {(ev.communities as any)?.name}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {ev.status === 'cancelled' && <Badge variant="destructive">Cancelled</Badge>}
+                    {ev.status === 'completed' && <Badge variant="secondary">Completed</Badge>}
+                    <Badge variant={ev.is_paid ? 'default' : 'secondary'}>
+                      {ev.is_paid
+                        ? `$${((ev.price_cents ?? 0) / 100).toFixed(2)}`
+                        : 'Free'}
+                    </Badge>
+                  </div>
+                </Link>
               </li>
             ))}
           </ul>

@@ -44,6 +44,6 @@ describe('TicketConfirmation', () => {
         onViewTickets={() => {}}
       />
     );
-    expect(getByText(/arriving shortly/i)).toBeTruthy();
+    expect(getByText(/on its way/i)).toBeTruthy();
   });
 });

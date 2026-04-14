@@ -14,9 +14,17 @@ export default async function DashboardLayout({
     redirect('/auth/login');
   }
 
+  const userId = data.claims.sub as string;
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_staff')
+    .eq('id', userId)
+    .single();
+  const isStaff = profile?.is_staff === true;
+
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
+      <Sidebar isStaff={isStaff} />
       <main className="flex-1 p-8 overflow-auto">{children}</main>
     </div>
   );

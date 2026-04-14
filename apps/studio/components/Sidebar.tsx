@@ -14,8 +14,11 @@ const navItems = [
   { href: '/settings',  label: 'Settings' },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isStaff = false }: { isStaff?: boolean }) {
   const pathname = usePathname();
+  const items = isStaff
+    ? [...navItems, { href: '/staff', label: '⚡ Staff' }]
+    : navItems;
 
   return (
     <aside className="w-56 min-h-screen border-r border-border bg-card flex flex-col">
@@ -24,7 +27,7 @@ export function Sidebar() {
         <p className="text-xs text-muted-foreground mt-0.5">Host dashboard</p>
       </div>
       <nav className="flex-1 p-4 space-y-1">
-        {navItems.map(({ href, label }) => (
+        {items.map(({ href, label }) => (
           <Link
             key={href}
             href={href}
