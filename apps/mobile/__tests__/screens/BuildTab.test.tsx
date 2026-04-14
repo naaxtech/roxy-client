@@ -6,20 +6,16 @@ import { Linking, Share } from 'react-native';
 jest.mock('../../lib/supabase', () => ({
   supabase: {
     from: jest.fn(() => ({
-      select: jest.fn(() => ({
-        order: jest.fn(() => ({
-          order: jest.fn(() => ({
-            limit: jest.fn().mockResolvedValue({ data: [], error: null }),
-          })),
-          limit: jest.fn().mockResolvedValue({ data: [], error: null }),
-        })),
-      })),
-      update: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          catch: jest.fn(),
-          then: jest.fn(),
-        })),
-      })),
+      select: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+      match: jest.fn().mockResolvedValue({ data: null, error: null }),
     })),
   },
 }));
@@ -31,6 +27,7 @@ jest.mock('../../store/authStore', () => ({
 
 // Mock build store
 const mockIncrementSupporter = jest.fn();
+const mockSupportProject = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('../../store/buildStore', () => ({
   useBuildStore: jest.fn(() => ({
@@ -51,10 +48,20 @@ jest.mock('../../store/buildStore', () => ({
       },
     ],
     loading: false,
+    bookmarkedBusinessIds: new Set(),
+    supportedProjectIds: new Set(),
+    searchChips: [],
     setBusinesses: jest.fn(),
     setImpactProjects: jest.fn(),
     setLoading: jest.fn(),
     incrementSupporter: mockIncrementSupporter,
+    addSearchChip: jest.fn(),
+    removeSearchChip: jest.fn(),
+    loadBookmarks: jest.fn().mockResolvedValue(undefined),
+    loadSupports: jest.fn().mockResolvedValue(undefined),
+    toggleBookmark: jest.fn().mockResolvedValue(undefined),
+    supportProject: mockSupportProject,
+    loadBusinesses: jest.fn().mockResolvedValue(undefined),
   })),
 }));
 
@@ -107,14 +114,14 @@ describe('BuildScreen — ImpactDetailModal', () => {
     expect(queryByTestId('impact-detail-modal')).toBeNull();
   });
 
-  it('pressing Support button on ImpactCard opens the detail modal', async () => {
+  it('pressing ImpactCard opens the detail modal', async () => {
     const { getByText, queryByTestId } = render(<BuildScreen />);
 
     // Switch to impact segment
     fireEvent.press(getByText('Impact'));
 
-    // Press the Support button on the card — now opens modal
-    fireEvent.press(getByText('Support'));
+    // Press the card title to open modal
+    fireEvent.press(getByText('Trans Youth Mutual Aid'));
 
     await waitFor(() => {
       expect(queryByTestId('impact-detail-modal')).toBeTruthy();
@@ -124,9 +131,9 @@ describe('BuildScreen — ImpactDetailModal', () => {
   it('pressing the close button dismisses the modal', async () => {
     const { getByText, getByTestId, queryByTestId } = render(<BuildScreen />);
 
-    // Open modal
+    // Open modal by pressing card title
     fireEvent.press(getByText('Impact'));
-    fireEvent.press(getByText('Support'));
+    fireEvent.press(getByText('Trans Youth Mutual Aid'));
 
     await waitFor(() => {
       expect(queryByTestId('impact-detail-modal')).toBeTruthy();
@@ -144,7 +151,7 @@ describe('BuildScreen — ImpactDetailModal', () => {
     const { getByText, queryByTestId } = render(<BuildScreen />);
 
     fireEvent.press(getByText('Impact'));
-    fireEvent.press(getByText('Support'));
+    fireEvent.press(getByText('Trans Youth Mutual Aid'));
 
     await waitFor(() => {
       expect(queryByTestId('impact-detail-modal')).toBeTruthy();
@@ -159,7 +166,7 @@ describe('BuildScreen — ImpactDetailModal', () => {
     const { getByText, getByTestId, queryByTestId } = render(<BuildScreen />);
 
     fireEvent.press(getByText('Impact'));
-    fireEvent.press(getByText('Support'));
+    fireEvent.press(getByText('Trans Youth Mutual Aid'));
 
     await waitFor(() => {
       expect(queryByTestId('impact-detail-modal')).toBeTruthy();
@@ -172,11 +179,11 @@ describe('BuildScreen — ImpactDetailModal', () => {
     );
   });
 
-  it('pressing the CTA in the modal calls handleSupport and shows Supported state', async () => {
+  it('pressing the CTA in the modal calls supportProject', async () => {
     const { getByText, getByTestId, queryByTestId } = render(<BuildScreen />);
 
     fireEvent.press(getByText('Impact'));
-    fireEvent.press(getByText('Support'));
+    fireEvent.press(getByText('Trans Youth Mutual Aid'));
 
     await waitFor(() => {
       expect(queryByTestId('impact-detail-modal')).toBeTruthy();
@@ -185,14 +192,10 @@ describe('BuildScreen — ImpactDetailModal', () => {
     // Press the CTA inside the modal
     fireEvent.press(getByTestId('modal-support-cta'));
 
-    expect(mockIncrementSupporter).toHaveBeenCalledWith('proj-1');
+    expect(mockSupportProject).toHaveBeenCalledWith('proj-1', 'user-1');
 
-    // Modal stays open, CTA button itself now shows ✓ Supported
     await waitFor(() => {
       expect(queryByTestId('impact-detail-modal')).toBeTruthy();
-      // The modal's CTA button text should have changed
-      const ctaBtn = getByTestId('modal-support-cta');
-      expect(ctaBtn).toHaveTextContent('✓ Supported');
     });
   });
 });

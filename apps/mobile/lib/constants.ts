@@ -60,3 +60,4 @@ export const ROXY_SISTER_MAX_TURNS = 10;
 export const ROXY_WINGWOMAN_DAILY_LIMIT = 5;
 export const ROXY_NUDGE_LIFETIME_LIMIT = 3;
 export const PRESENCE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+export const REGISTER_BUSINESS_URL = 'https://roxy.app/register-business';

@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../lib/constants';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../lib/avatars';
 import { BadgeRow } from './BadgeRow';
-import type { Profile } from '../../types';
+import type { Profile, Business } from '../../types';
 import type { EarnedBadge } from './BadgeRow';
 
 function getLevelInfo(points: number): { label: string; emoji: string } {
@@ -23,9 +23,11 @@ interface ProfileCardProps {
   onAddFriend?: () => void;
   onAcceptFriend?: () => void;
   onMessage?: () => void;
+  savedBusinesses?: Business[];
+  onOpenBusiness?: (business: Business) => void;
 }
 
-export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack, friendshipState, onAddFriend, onAcceptFriend, onMessage }: ProfileCardProps) {
+export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack, friendshipState, onAddFriend, onAcceptFriend, onMessage, savedBusinesses, onOpenBusiness }: ProfileCardProps) {
   const points = profile.gamification_points ?? 0;
   const level = getLevelInfo(points);
   const initials = (profile.display_name ?? '?').charAt(0).toUpperCase();
@@ -101,6 +103,36 @@ export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack
         <TouchableOpacity style={styles.editBtn} onPress={onEdit}>
           <Text style={styles.editBtnText}>Edit Profile</Text>
         </TouchableOpacity>
+      )}
+
+      {/* Saved Businesses (own profile only) */}
+      {isOwn && savedBusinesses && (
+        <View style={savedStyles.section}>
+          <Text style={savedStyles.sectionTitle}>💜 Saved Businesses</Text>
+          {savedBusinesses.length === 0 ? (
+            <Text style={savedStyles.empty}>No saved businesses yet</Text>
+          ) : (
+            savedBusinesses.map((biz) => (
+              <TouchableOpacity
+                key={biz.id}
+                style={savedStyles.bizRow}
+                onPress={() => onOpenBusiness?.(biz)}
+                activeOpacity={0.8}
+              >
+                <View style={savedStyles.bizInitial}>
+                  <Text style={savedStyles.bizInitialText}>{biz.name[0].toUpperCase()}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={savedStyles.bizName}>{biz.name}</Text>
+                  {biz.category && (
+                    <Text style={savedStyles.bizCategory}>{biz.category}</Text>
+                  )}
+                </View>
+                <Text style={savedStyles.chevron}>›</Text>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
       )}
 
       {/* Actions (other user's profile) */}
@@ -213,4 +245,24 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary + '15', borderRadius: 14, paddingVertical: 13,
   },
   friendsChipText: { color: COLORS.primary, fontWeight: '600', fontSize: 15 },
+});
+
+const savedStyles = StyleSheet.create({
+  section: { paddingHorizontal: 0, paddingTop: 16, paddingBottom: 8, width: '100%' },
+  sectionTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16, marginBottom: 12 },
+  empty: { color: COLORS.textMuted, fontSize: 14 },
+  bizRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: COLORS.surface, borderRadius: 12,
+    padding: 12, marginBottom: 8, gap: 12,
+  },
+  bizInitial: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: COLORS.primary + '30',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  bizInitialText: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
+  bizName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
+  bizCategory: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
+  chevron: { color: COLORS.textMuted, fontSize: 20 },
 });

@@ -211,6 +211,14 @@ export interface Business {
   created_at: string;
 }
 
+export interface BusinessPhoto {
+  id: string;
+  business_id: string;
+  url: string;
+  sort_order: number;
+  created_at: string;
+}
+
 export interface ImpactProject {
   id: string;
   creator_id: string;

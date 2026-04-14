@@ -1,52 +1,58 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  TextInput, RefreshControl, Linking, Modal, Share, ScrollView,
+  RefreshControl, Linking, Share, Modal, ScrollView,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useBuildStore } from '../../../store/buildStore';
-import { COLORS } from '../../../lib/constants';
-import { Business, ImpactProject } from '../../../types';
+import { COLORS, REGISTER_BUSINESS_URL } from '../../../lib/constants';
+import { Business, BusinessPhoto, ImpactProject } from '../../../types';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
 import { useCommunityStore } from '../../../store/communityStore';
+import { ChipSearchBar } from '../../../components/build/ChipSearchBar';
+import { BusinessDetailSheet } from '../../../components/build/BusinessDetailSheet';
 
 const categoryEmoji: Record<string, string> = {
   mutual_aid: '🤝', visibility: '🏳️‍🌈', education: '📚', safety: '🛡️',
 };
 
-function BusinessCard({ biz }: { biz: Business }) {
-  const handleVisit = () => {
-    if (biz.website_url) Linking.openURL(biz.website_url).catch(() => {});
-  };
+function BusinessCard({ biz, onPress }: { biz: Business; onPress: () => void }) {
   return (
-    <View style={styles.bizCard}>
+    <TouchableOpacity style={styles.bizCard} onPress={onPress} activeOpacity={0.85}>
       <View style={styles.bizLogo}>
         <Text style={styles.bizLogoText}>{biz.name[0]}</Text>
       </View>
       <Text style={styles.bizName} numberOfLines={1}>{biz.name}</Text>
       {biz.is_wlw_owned && <Text style={styles.wlwBadge}>💜 WLW</Text>}
       {biz.location_city && <Text style={styles.bizCity}>{biz.location_city}</Text>}
-      {biz.description && <Text style={styles.bizDesc} numberOfLines={2}>{biz.description}</Text>}
-      {biz.website_url && (
-        <TouchableOpacity style={styles.visitBtn} onPress={handleVisit}>
-          <Text style={styles.visitBtnText}>Visit →</Text>
-        </TouchableOpacity>
+      {biz.description && (
+        <Text style={styles.bizDesc} numberOfLines={2}>{biz.description}</Text>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 
-function ImpactCard({ project, onOpenDetail, alreadySupported = false }: { project: ImpactProject; onOpenDetail: () => void; alreadySupported?: boolean }) {
+function ImpactCard({
+  project,
+  alreadySupported,
+  onSupport,
+  onOpenDetail,
+}: {
+  project: ImpactProject;
+  alreadySupported: boolean;
+  onSupport: () => void;
+  onOpenDetail: () => void;
+}) {
   const progress = project.goal_amount
     ? Math.min(project.raised_amount / project.goal_amount, 1)
     : null;
 
   return (
-    <View style={styles.impactCard}>
+    <TouchableOpacity style={styles.impactCard} onPress={onOpenDetail} activeOpacity={0.85}>
       <View style={styles.impactHeader}>
         <Text style={styles.impactEmoji}>{categoryEmoji[project.category] ?? '✨'}</Text>
         <View style={{ flex: 1 }}>
@@ -56,10 +62,12 @@ function ImpactCard({ project, onOpenDetail, alreadySupported = false }: { proje
         {project.status === 'active' && (
           <TouchableOpacity
             style={[styles.supportBtn, alreadySupported && styles.supportBtnDone]}
-            onPress={onOpenDetail}
+            onPress={(e) => { e?.stopPropagation?.(); onSupport(); }}
             disabled={alreadySupported}
           >
-            <Text style={styles.supportBtnText}>{alreadySupported ? '✓ Supported' : 'Support'}</Text>
+            <Text style={styles.supportBtnText}>
+              {alreadySupported ? '✓ Supported' : 'Support'}
+            </Text>
           </TouchableOpacity>
         )}
         {project.status === 'completed' && (
@@ -81,11 +89,11 @@ function ImpactCard({ project, onOpenDetail, alreadySupported = false }: { proje
           £{project.raised_amount.toLocaleString()} of £{project.goal_amount.toLocaleString()} raised
         </Text>
       ) : null}
-    </View>
+    </TouchableOpacity>
   );
 }
 
-function ImpactDetailModal({
+function ImpactDetailSheet({
   project,
   alreadySupported,
   onSupport,
@@ -99,7 +107,6 @@ function ImpactDetailModal({
   const handleWebsite = () => {
     if (project?.website_url) Linking.openURL(project.website_url).catch(() => {});
   };
-
   const handleShare = () => {
     Share.share({ message: `Check out ${project?.title} on Roxy!` }).catch(() => {});
   };
@@ -115,7 +122,6 @@ function ImpactDetailModal({
       {project && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            {/* Close button */}
             <TouchableOpacity
               testID="modal-close-btn"
               style={styles.modalCloseBtn}
@@ -123,26 +129,18 @@ function ImpactDetailModal({
             >
               <Text style={styles.modalCloseBtnText}>✕</Text>
             </TouchableOpacity>
-
             <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Header */}
               <Text style={styles.modalEmoji}>{categoryEmoji[project.category] ?? '✨'}</Text>
               <Text style={styles.modalTitle}>{project.title}</Text>
               <Text style={styles.modalMeta}>{project.supporter_count} supporters</Text>
-
-              {/* Full description */}
               {project.description ? (
                 <Text style={styles.modalDesc}>{project.description}</Text>
               ) : null}
-
-              {/* Website link */}
               {project.website_url ? (
                 <TouchableOpacity style={styles.modalWebsiteBtn} onPress={handleWebsite}>
                   <Text style={styles.modalWebsiteBtnText}>Visit website →</Text>
                 </TouchableOpacity>
               ) : null}
-
-              {/* Share button */}
               <TouchableOpacity
                 testID="modal-share-btn"
                 style={styles.modalShareBtn}
@@ -150,8 +148,6 @@ function ImpactDetailModal({
               >
                 <Text style={styles.modalShareBtnText}>Share</Text>
               </TouchableOpacity>
-
-              {/* Support CTA */}
               <TouchableOpacity
                 testID="modal-support-cta"
                 style={[styles.modalCtaBtn, alreadySupported && styles.modalCtaBtnDone]}
@@ -162,8 +158,6 @@ function ImpactDetailModal({
                   {alreadySupported ? '✓ Supported' : "I'll support this project 💜"}
                 </Text>
               </TouchableOpacity>
-
-              <Text style={styles.modalPaymentNote}>Payment coming soon.</Text>
             </ScrollView>
           </View>
         </View>
@@ -174,104 +168,112 @@ function ImpactDetailModal({
 
 export default function BuildScreen() {
   const { user } = useAuthStore();
-  const { businesses, impactProjects, loading, setBusinesses, setImpactProjects, setLoading, incrementSupporter } = useBuildStore();
+  const {
+    businesses, impactProjects, loading,
+    setImpactProjects, setLoading,
+    bookmarkedBusinessIds, supportedProjectIds,
+    searchChips, addSearchChip, removeSearchChip,
+    loadBookmarks, loadSupports, toggleBookmark, supportProject, loadBusinesses,
+  } = useBuildStore();
   const { selectedCommunityId } = useCommunityFilterStore();
   const { joinedCommunities } = useCommunityStore();
 
   const [segment, setSegment] = useState<'businesses' | 'impact'>('businesses');
-  const [search, setSearch] = useState('');
+  const [bizView, setBizView] = useState<'all' | 'saved'>('all');
   const [wlwOnly, setWlwOnly] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [supportedIds, setSupportedIds] = useState<Set<string>>(new Set());
   const [selectedProject, setSelectedProject] = useState<ImpactProject | null>(null);
+  const [selectedBiz, setSelectedBiz] = useState<Business | null>(null);
+  const [bizPhotos, setBizPhotos] = useState<BusinessPhoto[]>([]);
 
-  const loadBusinesses = useCallback(async () => {
-    if (selectedCommunityId) {
-      const { data: members } = await supabase
-        .from('community_members')
-        .select('user_id')
-        .eq('community_id', selectedCommunityId);
-      const memberIds = (members ?? []).map((m: any) => m.user_id);
-      if (memberIds.length === 0) { setBusinesses([]); return; }
-      const { data } = await supabase
-        .from('businesses')
-        .select('*')
-        .in('owner_id', memberIds)
-        .order('is_verified', { ascending: false })
-        .order('name')
-        .limit(50);
-      setBusinesses((data as Business[]) ?? []);
-    } else {
-      const { data } = await supabase
-        .from('businesses')
-        .select('*')
-        .order('is_verified', { ascending: false })
-        .order('name')
-        .limit(50);
-      setBusinesses((data as Business[]) ?? []);
-    }
-  }, [setBusinesses, selectedCommunityId]);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const getCommunityMemberIds = useCallback(async (): Promise<string[] | undefined> => {
+    if (!selectedCommunityId) return undefined;
+    const { data: members } = await supabase
+      .from('community_members')
+      .select('user_id')
+      .eq('community_id', selectedCommunityId);
+    return (members ?? []).map((m: any) => m.user_id);
+  }, [selectedCommunityId]);
+
+  const fetchBusinesses = useCallback(async (chips: string[], wlw: boolean) => {
+    const memberIds = await getCommunityMemberIds();
+    await loadBusinesses(chips, wlw, memberIds);
+  }, [getCommunityMemberIds, loadBusinesses]);
+
+  const triggerBizLoad = useCallback((chips: string[], wlw: boolean) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchBusinesses(chips, wlw), 300);
+  }, [fetchBusinesses]);
 
   const loadProjects = useCallback(async () => {
-    if (selectedCommunityId) {
-      const { data: members } = await supabase
-        .from('community_members')
-        .select('user_id')
-        .eq('community_id', selectedCommunityId);
-      const memberIds = (members ?? []).map((m: any) => m.user_id);
-      if (memberIds.length === 0) { setImpactProjects([]); return; }
-      const { data } = await supabase
-        .from('impact_projects')
-        .select('*')
-        .in('creator_id', memberIds)
-        .order('status')
-        .order('created_at', { ascending: false })
-        .limit(30);
-      setImpactProjects((data as ImpactProject[]) ?? []);
-    } else {
-      const { data } = await supabase
-        .from('impact_projects')
-        .select('*')
-        .order('status')
-        .order('created_at', { ascending: false })
-        .limit(30);
-      setImpactProjects((data as ImpactProject[]) ?? []);
-    }
-  }, [setImpactProjects, selectedCommunityId]);
+    const memberIds = await getCommunityMemberIds();
+    let query = supabase.from('impact_projects').select('*');
+    if (memberIds && memberIds.length > 0) query = query.in('creator_id', memberIds);
+    const { data } = await query.order('status').order('created_at', { ascending: false }).limit(30);
+    setImpactProjects((data as ImpactProject[]) ?? []);
+  }, [getCommunityMemberIds, setImpactProjects]);
 
   useEffect(() => {
+    if (!user?.id) return;
     setLoading(true);
-    Promise.all([loadBusinesses(), loadProjects()]).finally(() => setLoading(false));
-  }, [loadBusinesses, loadProjects, setLoading]);
+    Promise.all([
+      fetchBusinesses(searchChips, wlwOnly),
+      loadProjects(),
+      loadBookmarks(user.id),
+      loadSupports(user.id),
+    ]).finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCommunityId]);
+
+  useEffect(() => {
+    triggerBizLoad(searchChips, wlwOnly);
+  }, [searchChips, wlwOnly, triggerBizLoad]);
 
   const handleRefresh = async () => {
+    if (!user?.id) return;
     setRefreshing(true);
-    setSearch('');
-    await Promise.all([loadBusinesses(), loadProjects()]);
+    await Promise.all([
+      fetchBusinesses(searchChips, wlwOnly),
+      loadProjects(),
+      loadBookmarks(user.id),
+      loadSupports(user.id),
+    ]);
     setRefreshing(false);
   };
 
   const handleSupport = async (projectId: string) => {
-    const project = impactProjects.find((p) => p.id === projectId);
-    if (!user || !project || supportedIds.has(projectId)) return;
-    setSupportedIds((prev) => new Set([...prev, projectId]));
-    incrementSupporter(projectId);
-    await supabase
-      .from('impact_projects')
-      .update({ supporter_count: project.supporter_count + 1 })
-      .eq('id', projectId)
-      .then(() => {});
+    if (!user?.id) return;
+    await supportProject(projectId, user.id);
   };
 
-  const filteredBiz = businesses.filter((b) => {
-    if (wlwOnly && !b.is_wlw_owned) return false;
-    if (search && !b.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const handleOpenBiz = async (biz: Business) => {
+    setSelectedBiz(biz);
+    const { data } = await supabase
+      .from('business_photos')
+      .select('*')
+      .eq('business_id', biz.id)
+      .order('sort_order');
+    setBizPhotos((data as BusinessPhoto[]) ?? []);
+  };
+
+  const displayedBiz = bizView === 'saved'
+    ? businesses.filter((b) => bookmarkedBusinessIds.has(b.id))
+    : businesses;
+
+  const RegisterFooter = () => (
+    <TouchableOpacity
+      style={styles.registerFooter}
+      onPress={() => Linking.openURL(REGISTER_BUSINESS_URL).catch(() => {})}
+    >
+      <Text style={styles.registerFooterText}>Want your business listed here?</Text>
+      <Text style={styles.registerFooterLink}>→ Register your business</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Build</Text>
         <CommunityContextSwitcher communities={joinedCommunities} />
@@ -294,13 +296,25 @@ export default function BuildScreen() {
 
       {segment === 'businesses' && (
         <>
-          <View style={styles.filterRow}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search businesses…"
-              placeholderTextColor={COLORS.textMuted}
-              value={search}
-              onChangeText={setSearch}
+          <View style={styles.bizViewToggle}>
+            {(['all', 'saved'] as const).map((v) => (
+              <TouchableOpacity
+                key={v}
+                style={[styles.bizViewBtn, bizView === v && styles.bizViewBtnActive]}
+                onPress={() => setBizView(v)}
+              >
+                <Text style={[styles.bizViewText, bizView === v && styles.bizViewTextActive]}>
+                  {v === 'all' ? 'All' : '💜 Saved'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.filterWrapper}>
+            <ChipSearchBar
+              chips={searchChips}
+              onAddChip={addSearchChip}
+              onRemoveChip={removeSearchChip}
             />
             <TouchableOpacity
               style={[styles.wlwToggle, wlwOnly && styles.wlwToggleActive]}
@@ -309,19 +323,25 @@ export default function BuildScreen() {
               <Text style={styles.wlwToggleText}>💜 WLW only</Text>
             </TouchableOpacity>
           </View>
+
           <FlashList
-            data={filteredBiz}
+            data={displayedBiz}
             keyExtractor={(item) => item.id}
             numColumns={2}
             estimatedItemSize={180}
-            renderItem={({ item }) => <BusinessCard biz={item} />}
+            renderItem={({ item }) => (
+              <BusinessCard biz={item} onPress={() => handleOpenBiz(item)} />
+            )}
             contentContainerStyle={styles.gridContent}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.roxy} />}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.roxy} />
+            }
+            ListFooterComponent={<RegisterFooter />}
             ListEmptyComponent={
               loading ? null : (
                 <View style={styles.empty}>
-                  <Text style={styles.emptyTitle}>No businesses yet</Text>
-                  <Text style={styles.emptySub}>Be the first to list your business.</Text>
+                  <Text style={styles.emptyTitle}>No businesses found</Text>
+                  <Text style={styles.emptySubtitle}>Try different search terms</Text>
                 </View>
               )
             }
@@ -337,26 +357,36 @@ export default function BuildScreen() {
           renderItem={({ item }) => (
             <ImpactCard
               project={item}
+              alreadySupported={supportedProjectIds.has(item.id)}
+              onSupport={() => handleSupport(item.id)}
               onOpenDetail={() => setSelectedProject(item)}
-              alreadySupported={supportedIds.has(item.id)}
             />
           )}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.roxy} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.roxy} />
+          }
           ListEmptyComponent={
             loading ? null : (
               <View style={styles.empty}>
                 <Text style={styles.emptyTitle}>No projects yet</Text>
-                <Text style={styles.emptySub}>Start an impact project for the community.</Text>
               </View>
             )
           }
         />
       )}
 
-      <ImpactDetailModal
+      <BusinessDetailSheet
+        business={selectedBiz}
+        photos={bizPhotos}
+        isBookmarked={selectedBiz ? bookmarkedBusinessIds.has(selectedBiz.id) : false}
+        onBookmarkToggle={() => selectedBiz && user?.id && toggleBookmark(selectedBiz.id, user.id)}
+        onClose={() => { setSelectedBiz(null); setBizPhotos([]); }}
+      />
+
+      <ImpactDetailSheet
         project={selectedProject}
-        alreadySupported={selectedProject ? supportedIds.has(selectedProject.id) : false}
+        alreadySupported={selectedProject ? supportedProjectIds.has(selectedProject.id) : false}
         onSupport={() => selectedProject && handleSupport(selectedProject.id)}
         onClose={() => setSelectedProject(null)}
       />
@@ -367,13 +397,9 @@ export default function BuildScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.surface,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
   },
   headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
   segmentRow: {
@@ -384,16 +410,22 @@ const styles = StyleSheet.create({
   segmentBtnActive: { borderBottomColor: COLORS.primary },
   segmentText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 15 },
   segmentTextActive: { color: COLORS.textPrimary },
-  filterRow: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 8 },
-  searchInput: {
-    flex: 1, backgroundColor: COLORS.surface, borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 8,
-    color: COLORS.textPrimary, fontSize: 14,
+  bizViewToggle: {
+    flexDirection: 'row', paddingHorizontal: 12, paddingTop: 8, gap: 8,
   },
+  bizViewBtn: {
+    paddingHorizontal: 14, paddingVertical: 6,
+    borderRadius: 20, backgroundColor: COLORS.surface,
+  },
+  bizViewBtnActive: { backgroundColor: COLORS.primary + '25', borderWidth: 1, borderColor: COLORS.primary },
+  bizViewText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
+  bizViewTextActive: { color: COLORS.primary },
+  filterWrapper: { paddingBottom: 8 },
   wlwToggle: {
+    marginHorizontal: 12, marginTop: 6,
     backgroundColor: COLORS.surface, borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 8,
-    borderWidth: 1, borderColor: 'transparent',
+    borderWidth: 1, borderColor: 'transparent', alignSelf: 'flex-start',
   },
   wlwToggleActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '20' },
   wlwToggleText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' },
@@ -413,11 +445,8 @@ const styles = StyleSheet.create({
   wlwBadge: { color: COLORS.secondary, fontSize: 11, fontWeight: '600' },
   bizCity: { color: COLORS.textMuted, fontSize: 11 },
   bizDesc: { color: COLORS.textSecondary, fontSize: 12, lineHeight: 16 },
-  visitBtn: { marginTop: 4 },
-  visitBtnText: { color: COLORS.primary, fontSize: 12, fontWeight: '700' },
   impactCard: {
-    backgroundColor: COLORS.surface, borderRadius: 14, padding: 14,
-    marginBottom: 10, gap: 8,
+    backgroundColor: COLORS.surface, borderRadius: 14, padding: 14, marginBottom: 10, gap: 8,
   },
   impactHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   impactEmoji: { fontSize: 22 },
@@ -425,111 +454,47 @@ const styles = StyleSheet.create({
   impactMeta: { color: COLORS.textMuted, fontSize: 12 },
   impactDesc: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 18 },
   supportBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: COLORS.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
   },
   supportBtnDone: { backgroundColor: COLORS.success },
   supportBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   completedBadge: {
-    backgroundColor: COLORS.success + '20', borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 6,
+    backgroundColor: COLORS.success + '20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
   },
   completedText: { color: COLORS.success, fontWeight: '700', fontSize: 12 },
-  progressTrack: {
-    height: 6, backgroundColor: COLORS.surfaceLight,
-    borderRadius: 3, overflow: 'hidden',
-  },
+  progressTrack: { height: 6, backgroundColor: COLORS.surfaceLight, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: 6, backgroundColor: COLORS.primary, borderRadius: 3 },
   progressLabel: { color: COLORS.textMuted, fontSize: 11 },
   empty: { alignItems: 'center', paddingTop: 60, gap: 8 },
   emptyTitle: { color: COLORS.textPrimary, fontSize: 17, fontWeight: '700' },
-  emptySub: { color: COLORS.textMuted, fontSize: 14, textAlign: 'center' },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
+  emptySubtitle: { color: COLORS.textMuted, fontSize: 14 },
+  registerFooter: {
+    alignItems: 'center', paddingVertical: 24, paddingHorizontal: 16, gap: 4,
   },
+  registerFooterText: { color: COLORS.textMuted, fontSize: 13 },
+  registerFooterLink: { color: COLORS.primary, fontSize: 14, fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modalCard: {
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-    maxHeight: '85%',
+    backgroundColor: COLORS.background, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 40, maxHeight: '85%',
   },
-  modalCloseBtn: {
-    alignSelf: 'flex-end',
-    padding: 8,
-    marginBottom: 8,
-  },
-  modalCloseBtnText: {
-    color: COLORS.textMuted,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  modalEmoji: {
-    fontSize: 48,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  modalTitle: {
-    color: COLORS.textPrimary,
-    fontWeight: '700',
-    fontSize: 22,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  modalMeta: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  modalDesc: {
-    color: COLORS.textSecondary,
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  modalWebsiteBtn: {
-    marginBottom: 12,
-  },
-  modalWebsiteBtnText: {
-    color: COLORS.primary,
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  modalCloseBtn: { alignSelf: 'flex-end', padding: 8, marginBottom: 8 },
+  modalCloseBtnText: { color: COLORS.textMuted, fontSize: 18, fontWeight: '700' },
+  modalEmoji: { fontSize: 48, textAlign: 'center', marginBottom: 8 },
+  modalTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 22, textAlign: 'center', marginBottom: 4 },
+  modalMeta: { color: COLORS.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 16 },
+  modalDesc: { color: COLORS.textSecondary, fontSize: 15, lineHeight: 22, marginBottom: 20 },
+  modalWebsiteBtn: { marginBottom: 12 },
+  modalWebsiteBtnText: { color: COLORS.primary, fontSize: 15, fontWeight: '700' },
   modalShareBtn: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginBottom: 12,
+    backgroundColor: COLORS.surface, borderRadius: 12, paddingVertical: 12,
+    alignItems: 'center', marginBottom: 12,
   },
-  modalShareBtnText: {
-    color: COLORS.textPrimary,
-    fontWeight: '600',
-    fontSize: 15,
-  },
+  modalShareBtnText: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 15 },
   modalCtaBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 12,
+    backgroundColor: COLORS.primary, borderRadius: 14, paddingVertical: 16,
+    alignItems: 'center', marginBottom: 12,
   },
-  modalCtaBtnDone: {
-    backgroundColor: COLORS.success,
-  },
-  modalCtaBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  modalPaymentNote: {
-    color: COLORS.textMuted,
-    fontSize: 12,
-    textAlign: 'center',
-  },
+  modalCtaBtnDone: { backgroundColor: COLORS.success },
+  modalCtaBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });
