@@ -11,7 +11,7 @@ interface Event {
 
 interface Props {
   event: Event;
-  ticketCode: string | null;
+  ticketCode?: string | null;
   onViewTickets: () => void;
 }
 
@@ -39,12 +39,13 @@ export function TicketConfirmation({ event, ticketCode, onViewTickets }: Props) 
         </>
       ) : (
         <Text style={styles.pending}>
-          Payment received — your ticket is arriving shortly.
+          Payment confirmed — your ticket is on its way.{'\n'}
+          It will appear in My Tickets shortly.
         </Text>
       )}
 
       <TouchableOpacity style={styles.btn} onPress={onViewTickets}>
-        <Text style={styles.btnText}>View in My Tickets</Text>
+        <Text style={styles.btnText}>View My Tickets</Text>
       </TouchableOpacity>
     </View>
   );
@@ -57,7 +58,7 @@ const styles = StyleSheet.create({
   meta: { fontSize: 14, color: COLORS.textSecondary, marginTop: 4 },
   qrContainer: { marginTop: 20, padding: 16, backgroundColor: COLORS.surface, borderRadius: 12 },
   ticketCode: { fontFamily: 'monospace', fontSize: 13, color: COLORS.textMuted, marginTop: 8, letterSpacing: 1 },
-  pending: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', marginTop: 20, lineHeight: 20 },
+  pending: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', marginTop: 20, lineHeight: 22 },
   btn: { marginTop: 24, backgroundColor: COLORS.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
   btnText: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 15 },
 });
