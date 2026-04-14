@@ -131,11 +131,11 @@ BEGIN
     );
     PERFORM cron.schedule(
       'purge-expired-carts', '0 3 * * *',
-      $$DELETE FROM public.carts WHERE expires_at < now()$$
+      $q$DELETE FROM public.carts WHERE expires_at < now()$q$
     );
     PERFORM cron.schedule(
       'cleanup-email-queue', '0 4 * * *',
-      $$DELETE FROM public.email_queue WHERE status = 'sent' AND created_at < now() - interval '90 days'$$
+      $q$DELETE FROM public.email_queue WHERE status = 'sent' AND created_at < now() - interval '90 days'$q$
     );
   END IF;
 END $$;
