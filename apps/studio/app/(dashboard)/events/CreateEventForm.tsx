@@ -27,6 +27,7 @@ export function CreateEventForm({ communities, stripeConnected, onCreated }: Cre
   const [locationText, setLocationText] = useState('');
   const [isPaid, setIsPaid] = useState(false);
   const [priceDollars, setPriceDollars] = useState('');
+  const [payoutDelayDays, setPayoutDelayDays] = useState('7');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +61,7 @@ export function CreateEventForm({ communities, stripeConnected, onCreated }: Cre
       is_paid: isPaid,
       price_cents,
       currency: 'usd',
+      payout_delay_days: isPaid ? parseInt(payoutDelayDays, 10) : null,
     });
 
     setLoading(false);
@@ -67,7 +69,7 @@ export function CreateEventForm({ communities, stripeConnected, onCreated }: Cre
       setError(insertError.message);
     } else {
       setTitle(''); setStartsAt(''); setEndsAt(''); setLocationText('');
-      setIsPaid(false); setPriceDollars('');
+      setIsPaid(false); setPriceDollars(''); setPayoutDelayDays('7');
       onCreated();
     }
   };
@@ -148,18 +150,34 @@ export function CreateEventForm({ communities, stripeConnected, onCreated }: Cre
       </div>
 
       {isPaid && (
-        <div className="space-y-1.5">
-          <Label htmlFor="price">Price (USD, max ${MAX_PRICE_DOLLARS})</Label>
-          <Input
-            id="price"
-            type="number"
-            min="0.50"
-            max={MAX_PRICE_DOLLARS}
-            step="0.01"
-            value={priceDollars}
-            onChange={e => setPriceDollars(e.target.value)}
-            placeholder="e.g. 10.00"
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="price">Price (USD, max ${MAX_PRICE_DOLLARS})</Label>
+            <Input
+              id="price"
+              type="number"
+              min="0.50"
+              max={MAX_PRICE_DOLLARS}
+              step="0.01"
+              value={priceDollars}
+              onChange={e => setPriceDollars(e.target.value)}
+              placeholder="e.g. 10.00"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="payoutDelay">Payout delay (days)</Label>
+            <select
+              id="payoutDelay"
+              className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+              value={payoutDelayDays}
+              onChange={e => setPayoutDelayDays(e.target.value)}
+            >
+              <option value="3">3 days</option>
+              <option value="7">7 days</option>
+              <option value="14">14 days</option>
+              <option value="30">30 days</option>
+            </select>
+          </div>
         </div>
       )}
 
