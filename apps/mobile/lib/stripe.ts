@@ -13,6 +13,7 @@ export interface PurchaseTicketResult {
   success: boolean;
   ticketCode?: string | null;
   cancelled?: boolean;
+  soldOut?: boolean;
   error?: string;
 }
 
@@ -28,16 +29,20 @@ export async function purchaseTicket(
   }
 
   let clientSecret: string;
-  let publishableKey: string;
 
   try {
     const { data, error } = await callEdgeFunction<{ client_secret: string; publishable_key: string }>(
       'create-payment-intent',
       { event_id: eventId },
     );
-    if (error || !data) throw new Error(error ?? 'No payment data returned');
+    if (error || !data) {
+      // Check for sold_out error from edge function
+      if (error === 'sold_out' || error?.includes('sold_out')) {
+        return { success: false, soldOut: true };
+      }
+      throw new Error(error ?? 'No payment data returned');
+    }
     clientSecret = data.client_secret;
-    publishableKey = data.publishable_key;
   } catch (err) {
     logError(sanitizePaymentError(err), 'purchaseTicket:createPaymentIntent');
     return { success: false, error: 'Could not initialise payment. Please try again.' };
@@ -65,36 +70,34 @@ export async function purchaseTicket(
     return { success: false, error: presentError.message };
   }
 
-  // Wait for webhook to create ticket via Supabase Realtime
-  const ticketCode = await waitForTicket(eventId, userId);
-  return { success: true, ticketCode };
+  // Payment confirmed — return immediately. Caller subscribes to Realtime for ticket delivery.
+  return { success: true, ticketCode: null };
 }
 
-async function waitForTicket(eventId: string, userId: string): Promise<string | null> {
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      supabase.removeChannel(channel);
-      resolve(null);
-    }, 30_000);
+// Subscribes to event_attendees INSERT for this user/event.
+// Returns an unsubscribe function — MUST be called on component unmount.
+export function subscribeToTicket(
+  eventId: string,
+  userId: string,
+  onTicket: (ticketCode: string) => void,
+): () => void {
+  const channel = supabase
+    .channel(`ticket:${eventId}:${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'event_attendees',
+        filter: `event_id=eq.${eventId}`,
+      },
+      (payload) => {
+        if (payload.new?.user_id === userId && payload.new?.ticket_code) {
+          onTicket(payload.new.ticket_code);
+        }
+      },
+    )
+    .subscribe();
 
-    const channel = supabase
-      .channel(`ticket:${eventId}:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'event_attendees',
-          filter: `event_id=eq.${eventId}`,
-        },
-        (payload) => {
-          if (payload.new?.user_id === userId) {
-            clearTimeout(timeout);
-            supabase.removeChannel(channel);
-            resolve(payload.new.ticket_code ?? null);
-          }
-        },
-      )
-      .subscribe();
-  });
+  return () => { supabase.removeChannel(channel); };
 }
