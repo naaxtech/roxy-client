@@ -105,39 +105,37 @@ CREATE INDEX idx_recon_unresolved          ON public.reconciliation_alerts(creat
                                            WHERE resolved_at IS NULL;
 CREATE INDEX idx_email_delivery_queue      ON public.email_delivery_events(email_queue_id);
 
--- pg_cron jobs (requires pg_cron extension enabled in Supabase project)
-SELECT cron.schedule(
-  'process-email-queue',
-  '* * * * *',
-  format(
-    $$SELECT net.http_post(url:='%s/process-email-queue',
-      headers:='{"Content-Type":"application/json","Authorization":"Bearer %s"}'::jsonb,
-      body:='{}'::jsonb)$$,
-    current_setting('app.edge_base_url'),
-    current_setting('app.service_role_key')
-  )
-);
-
-SELECT cron.schedule(
-  'daily-reconciliation',
-  '0 2 * * *',
-  format(
-    $$SELECT net.http_post(url:='%s/reconcile-orders',
-      headers:='{"Content-Type":"application/json","Authorization":"Bearer %s"}'::jsonb,
-      body:='{}'::jsonb)$$,
-    current_setting('app.edge_base_url'),
-    current_setting('app.service_role_key')
-  )
-);
-
-SELECT cron.schedule(
-  'purge-expired-carts',
-  '0 3 * * *',
-  $$DELETE FROM public.carts WHERE expires_at < now()$$
-);
-
-SELECT cron.schedule(
-  'cleanup-email-queue',
-  '0 4 * * *',
-  $$DELETE FROM public.email_queue WHERE status = 'sent' AND created_at < now() - interval '90 days'$$
-);
+-- pg_cron jobs (only registered if pg_cron extension is enabled in the Supabase project)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'cron') THEN
+    PERFORM cron.schedule(
+      'process-email-queue', '* * * * *',
+      format(
+        $cmd$SELECT net.http_post(url:='%s/process-email-queue',
+          headers:='{"Content-Type":"application/json","Authorization":"Bearer %s"}'::jsonb,
+          body:='{}'::jsonb)$cmd$,
+        current_setting('app.edge_base_url', true),
+        current_setting('app.service_role_key', true)
+      )
+    );
+    PERFORM cron.schedule(
+      'daily-reconciliation', '0 2 * * *',
+      format(
+        $cmd$SELECT net.http_post(url:='%s/reconcile-orders',
+          headers:='{"Content-Type":"application/json","Authorization":"Bearer %s"}'::jsonb,
+          body:='{}'::jsonb)$cmd$,
+        current_setting('app.edge_base_url', true),
+        current_setting('app.service_role_key', true)
+      )
+    );
+    PERFORM cron.schedule(
+      'purge-expired-carts', '0 3 * * *',
+      $$DELETE FROM public.carts WHERE expires_at < now()$$
+    );
+    PERFORM cron.schedule(
+      'cleanup-email-queue', '0 4 * * *',
+      $$DELETE FROM public.email_queue WHERE status = 'sent' AND created_at < now() - interval '90 days'$$
+    );
+  END IF;
+END $$;
