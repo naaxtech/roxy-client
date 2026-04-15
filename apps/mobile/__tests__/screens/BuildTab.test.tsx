@@ -2,6 +2,24 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Linking, Share } from 'react-native';
 
+// Mock marketplaceStore (BusinessDetailSheet now imports it)
+jest.mock('../../store/marketplaceStore', () => ({
+  useMarketplaceStore: jest.fn(() => ({
+    productsByBusiness: {},
+    loadingProducts: {},
+    fetchProducts: jest.fn(),
+    addToCart: jest.fn(),
+    getCartCount: jest.fn(() => 0),
+    cartItems: {},
+    removeFromCart: jest.fn(),
+    updateQuantity: jest.fn(),
+    getCartTotal: jest.fn(() => 0),
+    checkoutLoading: false,
+    createOrder: jest.fn().mockResolvedValue(null),
+    clearCart: jest.fn(),
+  })),
+}));
+
 // Mock supabase
 jest.mock('../../lib/supabase', () => ({
   supabase: {

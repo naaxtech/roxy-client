@@ -3,6 +3,24 @@ import { render, fireEvent } from '@testing-library/react-native';
 import { BusinessDetailSheet } from '../../../components/build/BusinessDetailSheet';
 import { Business, BusinessPhoto } from '../../../types';
 
+// Mock marketplaceStore — avoids supabase native module chain
+jest.mock('../../../store/marketplaceStore', () => ({
+  useMarketplaceStore: jest.fn(() => ({
+    productsByBusiness: {},
+    loadingProducts: {},
+    fetchProducts: jest.fn(),
+    addToCart: jest.fn(),
+    getCartCount: jest.fn(() => 0),
+    cartItems: {},
+    removeFromCart: jest.fn(),
+    updateQuantity: jest.fn(),
+    getCartTotal: jest.fn(() => 0),
+    checkoutLoading: false,
+    createOrder: jest.fn().mockResolvedValue(null),
+    clearCart: jest.fn(),
+  })),
+}));
+
 const makeBusiness = (overrides: Partial<Business> = {}): Business => ({
   id: 'b1',
   owner_id: 'user-1',
@@ -55,16 +73,17 @@ describe('BusinessDetailSheet', () => {
     expect(getByText('📍 London')).toBeTruthy();
   });
 
-  it('does not render gallery when photos is empty', () => {
+  it('does not render gallery when on About tab (default)', () => {
     const { queryByTestId } = render(
       <BusinessDetailSheet
         business={makeBusiness()}
-        photos={[]}
+        photos={[_makePhoto('p1')]}
         isBookmarked={false}
         onBookmarkToggle={jest.fn()}
         onClose={jest.fn()}
       />
     );
+    // Gallery is behind Photos tab — not visible on default About tab
     expect(queryByTestId('photo-gallery')).toBeNull();
   });
 
@@ -120,5 +139,20 @@ describe('BusinessDetailSheet', () => {
       />
     );
     expect(getByTestId('bookmark-btn').props.accessibilityLabel).toBe('Add bookmark');
+  });
+
+  it('renders tab bar with About, Products, Photos tabs', () => {
+    const { getByText } = render(
+      <BusinessDetailSheet
+        business={makeBusiness()}
+        photos={[]}
+        isBookmarked={false}
+        onBookmarkToggle={jest.fn()}
+        onClose={jest.fn()}
+      />
+    );
+    expect(getByText('About')).toBeTruthy();
+    expect(getByText('Products')).toBeTruthy();
+    expect(getByText('Photos')).toBeTruthy();
   });
 });

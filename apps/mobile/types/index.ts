@@ -208,6 +208,8 @@ export interface Business {
   logo_url: string | null;
   is_verified: boolean;
   is_wlw_owned: boolean;
+  can_sell?: boolean;
+  stripe_account_id?: string | null;
   created_at: string;
 }
 
