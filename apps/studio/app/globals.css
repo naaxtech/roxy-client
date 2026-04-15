@@ -46,51 +46,51 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted));
+    background: hsl(263, 37%, 27%);
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.5);
+    background: hsl(270, 21%, 50%);
   }
 }
 
 @layer utilities {
   .glow-primary {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.15);
+    box-shadow: 0 0 20px rgba(232, 121, 166, 0.15);
   }
   .glow-primary-sm {
-    box-shadow: 0 0 10px hsl(var(--primary) / 0.2);
+    box-shadow: 0 0 10px rgba(232, 121, 166, 0.2);
   }
   .gradient-card {
-    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(264 49% 25%) 100%);
+    background: linear-gradient(135deg, hsl(264, 49%, 21%) 0%, hsl(264, 49%, 25%) 100%);
   }
   .gradient-pink {
-    background: linear-gradient(135deg, hsl(330 73% 70% / 0.15) 0%, hsl(323 86% 70% / 0.05) 100%);
+    background: linear-gradient(135deg, rgba(232, 121, 166, 0.12) 0%, rgba(232, 121, 166, 0.04) 100%);
   }
   .gradient-purple {
-    background: linear-gradient(135deg, hsl(258 89% 66% / 0.15) 0%, hsl(258 89% 66% / 0.05) 100%);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(139, 92, 246, 0.04) 100%);
   }
   .gradient-green {
-    background: linear-gradient(135deg, hsl(142 71% 45% / 0.15) 0%, hsl(142 71% 45% / 0.05) 100%);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(16, 185, 129, 0.04) 100%);
   }
   .gradient-amber {
-    background: linear-gradient(135deg, hsl(38 92% 50% / 0.15) 0%, hsl(38 92% 50% / 0.05) 100%);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.04) 100%);
   }
   .text-gradient {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+    background: linear-gradient(135deg, #E879A6, #8B5CF6);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
   .sidebar-item-active {
-    background: linear-gradient(90deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.05));
-    border-left: 2px solid hsl(var(--primary));
+    background: linear-gradient(90deg, rgba(232, 121, 166, 0.18), rgba(232, 121, 166, 0.04));
+    border-left: 2px solid #E879A6;
   }
   .card-hover {
-    @apply transition-all duration-200;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
   .card-hover:hover {
-    @apply -translate-y-0.5;
-    box-shadow: 0 8px 30px hsl(var(--primary) / 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(232, 121, 166, 0.1);
   }
 }
