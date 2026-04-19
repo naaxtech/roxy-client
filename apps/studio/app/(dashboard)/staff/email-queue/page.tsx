@@ -18,7 +18,7 @@ export default async function StaffEmailQueuePage() {
 
   const { data: deadLetters } = await supabase
     .from('email_queue')
-    .select('id, to_address, subject, template_name, attempts, last_error, created_at, scheduled_at')
+    .select('id, email_type, recipient_type, retry_count, last_error, created_at, payload')
     .eq('status', 'dead_letter')
     .order('created_at', { ascending: false })
     .limit(100);
@@ -42,10 +42,9 @@ export default async function StaffEmailQueuePage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="border-b">
-                <th className="text-left px-4 py-2.5 font-medium">To</th>
-                <th className="text-left px-4 py-2.5 font-medium">Subject</th>
-                <th className="text-left px-4 py-2.5 font-medium">Template</th>
-                <th className="text-center px-4 py-2.5 font-medium">Attempts</th>
+                <th className="text-left px-4 py-2.5 font-medium">Type</th>
+                <th className="text-left px-4 py-2.5 font-medium">Recipient</th>
+                <th className="text-center px-4 py-2.5 font-medium">Retries</th>
                 <th className="text-left px-4 py-2.5 font-medium">Last Error</th>
                 <th className="text-left px-4 py-2.5 font-medium">Created</th>
                 <th className="text-right px-4 py-2.5 font-medium">Action</th>
@@ -54,19 +53,21 @@ export default async function StaffEmailQueuePage() {
             <tbody className="divide-y">
               {emails.map(email => (
                 <tr key={email.id} className="hover:bg-muted/30 align-top">
-                  <td className="px-4 py-3 font-mono text-xs max-w-[180px] truncate">
-                    {email.to_address}
-                  </td>
-                  <td className="px-4 py-3 max-w-[160px] truncate text-muted-foreground">
-                    {email.subject ?? '—'}
-                  </td>
                   <td className="px-4 py-3">
                     <Badge variant="secondary" className="text-xs">
-                      {email.template_name ?? 'unknown'}
+                      {email.email_type}
                     </Badge>
                   </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                    {email.recipient_type}
+                    {(email.payload as any)?.business_name && (
+                      <span className="ml-1 text-foreground">
+                        — {(email.payload as any).business_name}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-center tabular-nums text-muted-foreground">
-                    {email.attempts ?? 0}
+                    {email.retry_count ?? 0}
                   </td>
                   <td className="px-4 py-3 max-w-[200px]">
                     <p className="text-xs text-destructive line-clamp-2">

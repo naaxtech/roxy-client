@@ -140,6 +140,41 @@ export default function ChatsScreen() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Realtime: listen for new incoming messages to update unread counts live
+  useEffect(() => {
+    if (!user || chats.length === 0) return;
+
+    const convIds = chats.map((c) => c.id);
+
+    const channel = supabase
+      .channel('chats-unread-listener')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload) => {
+          const msg = payload.new as { conversation_id: string; sender_id: string; content?: string };
+          if (!convIds.includes(msg.conversation_id)) return;
+          if (msg.sender_id === user.id) return;
+          if (useConnectStore.getState().activeConversationId === msg.conversation_id) return;
+          useConnectStore.getState().incrementUnread(msg.conversation_id);
+          setChats((prev) =>
+            prev.map((c) =>
+              c.id === msg.conversation_id
+                ? { ...c, lastMessagePreview: msg.content ?? '' }
+                : c
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, chats.length]);
+
   const handleOpen = (item: ChatItem) => {
     clearUnread(item.id);
     router.push(`/chat/${item.id}` as any);

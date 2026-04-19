@@ -34,6 +34,7 @@ export default function ProfileScreen() {
   const router = useRouter();
 
   const [badges, setBadges] = useState<EarnedBadge[]>([]);
+  const [badgeLoadError, setBadgeLoadError] = useState(false);
   const [savedBusinesses, setSavedBusinesses] = useState<Business[]>([]);
   const [selectedBiz, setSelectedBiz] = useState<Business | null>(null);
   const [bizPhotos, setBizPhotos] = useState<BusinessPhoto[]>([]);
@@ -51,6 +52,7 @@ export default function ProfileScreen() {
         if (data) setBadges(data as EarnedBadge[]);
       } catch (e: any) {
         logError(e, 'profileScreen_fetchBadges');
+        setBadgeLoadError(true);
       }
     })();
 
@@ -109,6 +111,12 @@ export default function ProfileScreen() {
           onEdit={() => router.push('/(tabs)/profile/edit' as any)}
           onSettings={() => router.push('/(tabs)/profile/settings' as any)}
         />
+
+        {badgeLoadError ? (
+          <Text style={styles.badgeError}>Could not load badges</Text>
+        ) : badges.length === 0 ? (
+          <Text style={styles.noBadges}>No badges yet — keep engaging!</Text>
+        ) : null}
 
         {/* My Orders section */}
         <View style={styles.ordersSection}>
@@ -251,4 +259,6 @@ const styles = StyleSheet.create({
   orderRowTotal: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
   statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   statusText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  badgeError: { color: COLORS.error, fontSize: 13, textAlign: 'center', paddingHorizontal: 16, paddingTop: 4 },
+  noBadges: { color: COLORS.textMuted, fontSize: 13, textAlign: 'center', paddingHorizontal: 16, paddingTop: 4 },
 });

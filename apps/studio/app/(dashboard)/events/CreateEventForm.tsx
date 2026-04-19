@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ interface CreateEventFormProps {
 const MAX_PRICE_DOLLARS = 50;
 
 export function CreateEventForm({ communities, stripeConnected, onCreated }: CreateEventFormProps) {
+  const router = useRouter();
   const [title, setTitle] = useState('');
   const [communityId, setCommunityId] = useState(communities[0]?.id ?? '');
   const [startsAt, setStartsAt] = useState('');
@@ -30,6 +32,7 @@ export function CreateEventForm({ communities, stripeConnected, onCreated }: Cre
   const [payoutDelayDays, setPayoutDelayDays] = useState('7');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +73,9 @@ export function CreateEventForm({ communities, stripeConnected, onCreated }: Cre
     } else {
       setTitle(''); setStartsAt(''); setEndsAt(''); setLocationText('');
       setIsPaid(false); setPriceDollars(''); setPayoutDelayDays('7');
+      setSuccessMsg('Event created successfully!');
+      setTimeout(() => setSuccessMsg(null), 4000);
+      router.refresh();
       onCreated();
     }
   };
@@ -79,6 +85,11 @@ export function CreateEventForm({ communities, stripeConnected, onCreated }: Cre
       <h2 className="text-lg font-semibold">Create Event</h2>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {successMsg && (
+        <p className="text-sm text-green-600 font-medium bg-green-50 border border-green-200 rounded-md px-3 py-2">
+          ✓ {successMsg}
+        </p>
+      )}
 
       <div className="space-y-1.5">
         <Label htmlFor="title">Title</Label>

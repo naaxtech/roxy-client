@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const specificEventId: string | undefined = body.event_id;
 
-  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
+  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
   const supabase = getSupabaseClient();
 
   // Load platform default delay

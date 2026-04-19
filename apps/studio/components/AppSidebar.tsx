@@ -5,10 +5,11 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Calendar, Video, Gamepad2, Users, Wallet,
   ShoppingBag, Package, ShoppingCart, DollarSign, Settings,
-  Shield, CheckSquare, Mail, RefreshCw, AlertTriangle,
+  Shield, CheckSquare, Mail, RefreshCw, AlertTriangle, Building2,
   ChevronRight, LogOut, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { signOutAction } from '@/app/auth/signout-action';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -31,11 +32,12 @@ const sellerNav = [
 ];
 
 const staffNav = [
-  { href: '/staff',                label: 'Overview',          icon: Shield },
-  { href: '/staff/products',       label: 'Product Approval',  icon: CheckSquare },
-  { href: '/staff/email-queue',    label: 'Email Queue',       icon: Mail },
-  { href: '/staff/reconciliation', label: 'Reconciliation',    icon: RefreshCw },
-  { href: '/staff/disputes',       label: 'Disputes',          icon: AlertTriangle },
+  { href: '/staff',                label: 'Overview',           icon: Shield },
+  { href: '/staff/businesses',     label: 'Business Approvals', icon: Building2 },
+  { href: '/staff/products',       label: 'Product Approval',   icon: CheckSquare },
+  { href: '/staff/email-queue',    label: 'Email Queue',        icon: Mail },
+  { href: '/staff/reconciliation', label: 'Reconciliation',     icon: RefreshCw },
+  { href: '/staff/disputes',       label: 'Disputes',           icon: AlertTriangle },
 ];
 
 interface NavItemProps {
@@ -154,7 +156,7 @@ export function AppSidebar({ isStaff = false, userEmail, userInitials = 'R' }: A
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <form action="/auth/signout" method="post">
+                <form action={signOutAction}>
                   <button type="submit" className="rounded p-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors">
                     <LogOut className="h-3.5 w-3.5" />
                   </button>

@@ -4,7 +4,7 @@ import { getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 import Stripe from 'npm:stripe@14';
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
 const webhookSecret = Deno.env.get('STRIPE_PRODUCT_WEBHOOK_SECRET')!;
 
 Deno.serve(async (req) => {

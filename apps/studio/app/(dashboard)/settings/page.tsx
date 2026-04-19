@@ -1,5 +1,8 @@
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { Badge } from '@/components/ui/badge';
 import { StripeBannerClient } from './StripeBannerClient';
+import { CreateBusinessForm } from './CreateBusinessForm';
 
 type StripeStatus = 'not_started' | 'incomplete' | 'complete' | 'restricted';
 
@@ -15,11 +18,21 @@ export default async function SettingsPage({
 
   if (!userId) return null;
 
-  const { data: stripeAccount } = await supabase
-    .from('host_stripe_accounts')
-    .select('stripe_account_id, onboarding_complete')
-    .eq('user_id', userId)
-    .maybeSingle();
+  const [
+    { data: stripeAccount },
+    { data: business },
+  ] = await Promise.all([
+    supabase
+      .from('host_stripe_accounts')
+      .select('stripe_account_id, onboarding_complete')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    supabase
+      .from('businesses')
+      .select('id, name, category, location_city, is_verified, business_rejection_reason, created_at')
+      .eq('owner_id', userId)
+      .maybeSingle(),
+  ]);
 
   let stripeStatus: StripeStatus = 'not_started';
   if (stripeAccount?.onboarding_complete) stripeStatus = 'complete';
@@ -39,8 +52,71 @@ export default async function SettingsPage({
         </div>
       )}
 
+      {/* Business profile */}
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Payments</h2>
+        <h2 className="text-lg font-semibold">Business Profile</h2>
+
+        {business ? (
+          <div className="rounded-lg border p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold">{business.name}</p>
+                {business.category && (
+                  <p className="text-sm text-muted-foreground">{business.category}</p>
+                )}
+                {business.location_city && (
+                  <p className="text-xs text-muted-foreground">{business.location_city}</p>
+                )}
+              </div>
+              {business.is_verified ? (
+                <Badge className="bg-green-100 text-green-800 border-green-200 shrink-0">
+                  Approved
+                </Badge>
+              ) : business.business_rejection_reason ? (
+                <Badge variant="destructive" className="shrink-0">Rejected</Badge>
+              ) : (
+                <Badge variant="secondary" className="shrink-0">Pending review</Badge>
+              )}
+            </div>
+
+            {business.business_rejection_reason && (
+              <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <p className="font-medium">Application rejected</p>
+                <p className="mt-0.5 text-xs">{business.business_rejection_reason}</p>
+              </div>
+            )}
+
+            {!business.is_verified && !business.business_rejection_reason && (
+              <p className="text-xs text-muted-foreground">
+                Under review by the Roxy team. You&apos;ll receive an email once approved.
+              </p>
+            )}
+
+            {business.is_verified && (
+              <p className="text-xs text-muted-foreground">
+                Your business is approved.{' '}
+                <Link href="/stripe-onboarding" className="text-primary underline-offset-2 hover:underline">
+                  Connect Stripe to start selling →
+                </Link>
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-lg border p-6 space-y-4">
+            <div>
+              <p className="text-sm font-medium">Register your business</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Submit your business for review. Once approved by the Roxy team, you can list products and connect Stripe for payments.
+              </p>
+            </div>
+            <CreateBusinessForm />
+          </div>
+        )}
+      </section>
+
+      {/* Event payments (host_stripe_accounts) */}
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Event Payments</h2>
         <StripeBannerClient initialStatus={stripeStatus} />
       </section>
 

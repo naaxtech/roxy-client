@@ -190,11 +190,16 @@ export default function BuildScreen() {
 
   const getCommunityMemberIds = useCallback(async (): Promise<string[] | undefined> => {
     if (!selectedCommunityId) return undefined;
-    const { data: members } = await supabase
-      .from('community_members')
-      .select('user_id')
-      .eq('community_id', selectedCommunityId);
-    return (members ?? []).map((m: any) => m.user_id);
+    try {
+      const { data: members, error } = await supabase
+        .from('community_members')
+        .select('user_id')
+        .eq('community_id', selectedCommunityId);
+      if (error) return undefined;
+      return (members ?? []).map((m: any) => m.user_id);
+    } catch {
+      return undefined;
+    }
   }, [selectedCommunityId]);
 
   const fetchBusinesses = useCallback(async (chips: string[], wlw: boolean) => {
@@ -206,6 +211,13 @@ export default function BuildScreen() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchBusinesses(chips, wlw), 300);
   }, [fetchBusinesses]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const loadProjects = useCallback(async () => {
     const memberIds = await getCommunityMemberIds();

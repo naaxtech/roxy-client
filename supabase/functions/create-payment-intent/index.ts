@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
   }
 
   const supabase = getSupabaseClient();
-  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
+  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
   const publishableKey = Deno.env.get('STRIPE_PUBLISHABLE_KEY')!;
 
   // Load event

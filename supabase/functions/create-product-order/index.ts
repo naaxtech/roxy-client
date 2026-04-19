@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
   const supabase = getSupabaseClient();
   const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
   if (!stripeKey) return errorResponse('STRIPE_SECRET_KEY not set', 500);
-  const stripe = new Stripe(stripeKey, { apiVersion: '2024-11-20' as any });
+  const stripe = new Stripe(stripeKey, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
 
   // 1. Load cart + items + products + variants
   const { data: cart, error: cartErr } = await supabase

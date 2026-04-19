@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
   }
 
   const supabase = getSupabaseClient();
-  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
+  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
 
   const { data: account } = await supabase
     .from('host_stripe_accounts')

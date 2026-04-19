@@ -20,11 +20,23 @@ export default async function OrdersPage() {
   }
 
   const supabase = await createClient();
-  const { data: ordersData } = await supabase.functions.invoke('get-orders-business', {
-    body: { business_id: business.id },
-  });
-
-  const orders = Array.isArray(ordersData) ? ordersData : (ordersData?.orders ?? []);
+  let orders: any[] = [];
+  try {
+    const { data: ordersData, error: fnError } = await supabase.functions.invoke('get-orders-business', {
+      body: { business_id: business.id },
+    });
+    if (fnError) throw fnError;
+    orders = Array.isArray(ordersData) ? ordersData : (ordersData?.orders ?? []);
+  } catch {
+    return (
+      <div className="max-w-5xl space-y-6">
+        <h1 className="text-2xl font-bold">Orders</h1>
+        <p className="text-destructive text-sm">
+          Failed to load orders. Please refresh the page or contact support if this continues.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl space-y-6">
