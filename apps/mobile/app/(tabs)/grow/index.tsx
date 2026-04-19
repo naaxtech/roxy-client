@@ -70,6 +70,7 @@ export default function GrowScreen() {
   const [greetingLoading, setGreetingLoading] = useState(true);
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
   const [badges, setBadges] = useState<BadgeProgressRow[]>([]);
+  const [socialError, setSocialError] = useState(false);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -85,11 +86,16 @@ export default function GrowScreen() {
 
   const loadSocial = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from('community_members')
-      .select('community_id, communities(id, name, category)')
-      .eq('user_id', user.id);
-    if (data) setCommunities(data as unknown as CommunityRow[]);
+    try {
+      const { data, error } = await supabase
+        .from('community_members')
+        .select('community_id, communities(id, name, category)')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      if (data) setCommunities(data as unknown as CommunityRow[]);
+    } catch {
+      setSocialError(true);
+    }
   }, [user]);
 
   useEffect(() => { loadSocial(); }, [loadSocial]);
@@ -257,6 +263,12 @@ export default function GrowScreen() {
             >
               <Text style={styles.chatViewAllText}>View all {chatTotal} chats →</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {socialError && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorBannerText}>Could not load communities. Pull to refresh.</Text>
           </View>
         )}
 
@@ -536,4 +548,12 @@ const styles = StyleSheet.create({
   ticketChipTitle: { color: COLORS.textPrimary, fontSize: 13, fontWeight: '700', lineHeight: 17 },
   ticketChipDate: { color: COLORS.textSecondary, fontSize: 11, marginTop: 4 },
   ticketChipTime: { color: COLORS.textMuted, fontSize: 11 },
+  errorBanner: {
+    backgroundColor: COLORS.error + '20',
+    padding: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 8,
+  },
+  errorBannerText: { color: COLORS.error, fontSize: 13, textAlign: 'center' },
 });

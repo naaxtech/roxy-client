@@ -153,7 +153,7 @@ export const useBuildStore = create<BuildState>((set, get) => ({
   },
 
   loadBusinesses: async (chips, wlwOnly, communityMemberIds) => {
-    let query = supabase.from('businesses').select('*');
+    let query = supabase.from('businesses').select('*').eq('is_verified', true);
 
     if (communityMemberIds && communityMemberIds.length > 0) {
       query = query.in('owner_id', communityMemberIds);

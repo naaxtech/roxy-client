@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
   const supabase = getSupabaseClient();
   const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
   if (!stripeKey) return errorResponse('STRIPE_SECRET_KEY not set', 500);
-  const stripe = new Stripe(stripeKey, { apiVersion: '2024-11-20' as any });
+  const stripe = new Stripe(stripeKey, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
   const STUDIO_URL = Deno.env.get('STUDIO_URL') ?? 'https://roxy-studio.vercel.app';
 
   // Verify business ownership
@@ -52,7 +52,13 @@ Deno.serve(async (req) => {
   let stripeAccountId = business.stripe_account_id;
 
   if (!stripeAccountId) {
-    const account = await stripe.accounts.create({ type: 'express' });
+    const account = await stripe.accounts.create({
+      type: 'express',
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+    });
     stripeAccountId = account.id;
     await supabase
       .from('businesses')

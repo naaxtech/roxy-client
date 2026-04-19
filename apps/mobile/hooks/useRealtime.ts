@@ -11,8 +11,8 @@ interface UseRealtimeReturn {
   messages: Message[];
   isSubscribed: boolean;
   appendMessage: (msg: Message) => void;
-  /** Replace a temp ID (optimistic) with the real DB UUID after insert confirms. */
   replaceMessageId: (tempId: string, realId: string) => void;
+  removeMessage: (id: string) => void;
 }
 
 export function useRealtime({
@@ -23,6 +23,12 @@ export function useRealtime({
   const [isSubscribed, setIsSubscribed] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
+  // Sync messages whenever the parent loads/reloads them (dep on reference, not conversationId)
+  useEffect(() => {
+    setMessages(initialMessages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMessages]);
+
   const appendMessage = (msg: Message) => {
     setMessages((prev) => {
       if (prev.some((m) => m.id === msg.id)) return prev;
@@ -30,21 +36,15 @@ export function useRealtime({
     });
   };
 
-  /**
-   * After a successful insert, swap the optimistic temp ID for the real UUID.
-   * When Realtime then delivers the INSERT event, the dedup check (by ID) will
-   * find the real ID already present and silently discard it — no double message.
-   */
   const replaceMessageId = (tempId: string, realId: string) => {
     setMessages((prev) =>
       prev.map((m) => (m.id === tempId ? { ...m, id: realId } : m))
     );
   };
 
-  useEffect(() => {
-    setMessages(initialMessages); // reset messages when conversation changes; initialMessages is stable per mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId]);
+  const removeMessage = (id: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+  };
 
   useEffect(() => {
     const channel = supabase
@@ -61,6 +61,24 @@ export function useRealtime({
           appendMessage(payload.new as Message);
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          // Flip is_read so ✓ → ✓✓ updates in realtime when partner reads
+          const updated = payload.new as Message;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === updated.id ? { ...m, is_read: updated.is_read } : m
+            )
+          );
+        }
+      )
       .subscribe((status) => {
         setIsSubscribed(status === 'SUBSCRIBED');
       });
@@ -73,5 +91,5 @@ export function useRealtime({
     };
   }, [conversationId]);
 
-  return { messages, isSubscribed, appendMessage, replaceMessageId };
+  return { messages, isSubscribed, appendMessage, replaceMessageId, removeMessage };
 }

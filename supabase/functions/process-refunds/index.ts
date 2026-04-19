@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
     return errorResponse('Forbidden', 403);
   }
 
-  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
+  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
   const supabase = getSupabaseClient();
 
   // Fetch up to 50 rows needing refund that haven't been processed yet

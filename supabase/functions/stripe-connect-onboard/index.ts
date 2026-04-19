@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     if (!stripeKey) return errorResponse('STRIPE_SECRET_KEY not set', 500);
     console.log('[onboard] stage: stripe key present, prefix:', stripeKey.slice(0, 7));
 
-    const stripe = new Stripe(stripeKey, { apiVersion: '2024-11-20' as any });
+    const stripe = new Stripe(stripeKey, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
     const STUDIO_URL = Deno.env.get('STUDIO_URL') ?? 'https://roxy-studio.vercel.app';
     console.log('[onboard] stage: STUDIO_URL =', STUDIO_URL);
 
@@ -47,7 +47,13 @@ Deno.serve(async (req) => {
       console.log('[onboard] stage: reusing account', stripeAccountId);
     } else {
       console.log('[onboard] stage: creating express account');
-      const account = await stripe.accounts.create({ type: 'express' });
+      const account = await stripe.accounts.create({
+        type: 'express',
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+      });
       stripeAccountId = account.id;
       console.log('[onboard] stage: created account', stripeAccountId);
 

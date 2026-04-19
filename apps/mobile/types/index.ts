@@ -83,6 +83,15 @@ export interface Message {
   message_type: 'text' | 'image' | 'voice' | 'roxy_suggestion';
   is_read: boolean;
   created_at: string;
+  reactions?: MessageReaction[];
+}
+
+export interface MessageReaction {
+  id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
 }
 
 export interface SpeedDateSession {

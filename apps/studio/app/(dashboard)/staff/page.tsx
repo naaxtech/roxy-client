@@ -50,7 +50,7 @@ export default async function StaffPage() {
   // Recent audit log
   const { data: auditLog } = await supabase
     .from('audit_log')
-    .select('id, event_id, action, notes, created_at, events(title)')
+    .select('id, action, target_type, target_id, metadata, created_at')
     .order('created_at', { ascending: false })
     .limit(15);
 
@@ -169,9 +169,8 @@ export default async function StaffPage() {
               <li key={entry.id} className="p-3 text-sm flex items-start justify-between gap-3">
                 <div>
                   <span className="font-mono font-medium">{entry.action}</span>
-                  {entry.notes && <span className="text-muted-foreground ml-2">— {entry.notes}</span>}
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {(entry.events as any)?.title ?? entry.event_id}
+                    {entry.target_type} · {entry.target_id?.slice(0, 8)}
                   </p>
                 </div>
                 <time className="text-xs text-muted-foreground shrink-0">

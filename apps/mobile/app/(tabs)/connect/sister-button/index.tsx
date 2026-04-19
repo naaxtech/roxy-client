@@ -195,6 +195,18 @@ export default function SisterButtonScreen() {
               <Text style={styles.sessionDoneText}>
                 {'Your session is complete 💜\nPlease reach out to a professional for ongoing support.'}
               </Text>
+              <TouchableOpacity
+                style={styles.restartBtn}
+                onPress={() => {
+                  setMessages([]);
+                  setInput('');
+                  setSessionDone(false);
+                  setResources(null);
+                  setDirectory(null);
+                }}
+              >
+                <Text style={styles.restartBtnText}>Start new session</Text>
+              </TouchableOpacity>
             </View>
           )}
         </ScrollView>
@@ -414,4 +426,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
+  restartBtn: {
+    marginTop: 16,
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  restartBtnText: { color: COLORS.primary, fontWeight: '600', fontSize: 15 },
 });

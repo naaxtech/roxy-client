@@ -17,6 +17,9 @@ Deno.serve(async (req) => {
   const { conversation_id } = body;
   if (!conversation_id) return errorResponse('conversation_id required', 400);
 
+  // DEV_MOCK must be declared before any DB calls (anti-pattern #11)
+  const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
+
   const { allowed } = await checkRateLimit({
     userId: auth.userId,
     fnName: 'roxy-nudge',
@@ -26,11 +29,10 @@ Deno.serve(async (req) => {
   });
   if (!allowed) return errorResponse('Nudge limit reached — 3 nudges per conversation', 429);
 
-  const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
+  if (DEV_MOCK) return successResponse({ nudge: MOCK_NUDGE });
 
   const supabase = getSupabaseClient();
 
-  // Verify caller is a participant in this conversation
   const { data: conv } = await supabase
     .from('conversations')
     .select('id')
@@ -39,7 +41,6 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!conv) return errorResponse('Forbidden', 403);
 
-  // Fetch last 3 messages for context
   const { data: recentMessages } = await supabase
     .from('messages')
     .select('sender_id, content')
@@ -54,14 +55,24 @@ Deno.serve(async (req) => {
     )
     .join('\n');
 
-  const nudge = await callClaude({
-    system: `You are Roxy, a warm and encouraging WLW wingwoman. The user wants a gentle nudge to re-engage with someone they've been chatting with. Write one encouraging sentence (max 18 words) that feels personal and warm, ending with a 💜 emoji. Never be pushy.`,
-    messages: [{ role: 'user', content: context ? `Recent messages:\n${context}\n\nGenerate nudge.` : 'Generate nudge.' }],
-    maxTokens: 120,
-    mockResponse: MOCK_NUDGE,
-  });
+  let nudge: string;
+  try {
+    nudge = await callClaude({
+      system: `You are Roxy, a warm and encouraging WLW wingwoman. The user wants a gentle nudge to re-engage with someone they've been chatting with. Write one encouraging sentence (max 18 words) that feels personal and warm, ending with a 💜 emoji. Never be pushy.`,
+      messages: [{ role: 'user', content: context ? `Recent messages:\n${context}\n\nGenerate nudge.` : 'Generate nudge.' }],
+      maxTokens: 120,
+      mockResponse: MOCK_NUDGE,
+    });
+  } catch {
+    return errorResponse('AI temporarily unavailable, please try again', 503);
+  }
 
-  await logAiCall({ userId: auth.userId, fnName: 'roxy-nudge', wasMock: DEV_MOCK, conversationId: conversation_id });
+  await logAiCall({
+    userId: auth.userId,
+    fnName: 'roxy-nudge',
+    wasMock: false,
+    conversationId: conversation_id,
+  }).catch(() => {});
 
   return successResponse({ nudge });
 });

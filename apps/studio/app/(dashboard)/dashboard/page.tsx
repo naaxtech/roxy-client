@@ -65,13 +65,16 @@ export default async function DashboardPage() {
     { data: stripeAccount },
     { data: memberRows },
     { data: profile },
+    { data: ownedBusiness },
   ] = await Promise.all([
     supabase.from('host_stripe_accounts').select('stripe_account_id, onboarding_complete').eq('user_id', userId).maybeSingle(),
     supabase.from('community_members').select('communities(id, name)').eq('user_id', userId).eq('role', 'admin'),
     supabase.from('profiles').select('display_name').eq('id', userId).single(),
+    supabase.from('businesses').select('id').eq('owner_id', userId).maybeSingle(),
   ]);
 
   const communityIds = (memberRows ?? []).map((r: any) => r.communities?.id).filter(Boolean);
+  const businessId = ownedBusiness?.id ?? null;
 
   const [
     { count: upcomingCount },
@@ -83,17 +86,21 @@ export default async function DashboardPage() {
       .select('id', { count: 'exact', head: true })
       .in('community_id', communityIds.length ? communityIds : ['none'])
       .gte('starts_at', new Date().toISOString()),
-    supabase
-      .from('orders')
-      .select('id', { count: 'exact', head: true })
-      .eq('business_id', userId)
-      .in('status', ['paid', 'shipped', 'delivered']),
-    supabase
-      .from('orders')
-      .select('id, status, total_cents, created_at')
-      .eq('business_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(5),
+    businessId
+      ? supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('business_id', businessId)
+          .in('status', ['paid', 'shipped', 'delivered'])
+      : Promise.resolve({ count: 0, data: null, error: null }),
+    businessId
+      ? supabase
+          .from('orders')
+          .select('id, status, total_cents, created_at')
+          .eq('business_id', businessId)
+          .order('created_at', { ascending: false })
+          .limit(5)
+      : Promise.resolve({ data: [], count: null, error: null }),
   ]);
 
   const stripeIncomplete = stripeAccount && !stripeAccount.onboarding_complete;

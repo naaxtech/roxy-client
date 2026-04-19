@@ -62,7 +62,28 @@ function renderTemplate(emailType: string, payload: Record<string, unknown>): { 
         html: `<h2>Dispute Alert</h2>
                <p>A dispute has been opened for order #${payload.order_short_id}.</p>
                <p>Response due: ${payload.response_due_by}</p>
-               <p><a href="https://roxy-studio.vercel.app/orders">View in Studio</a></p>`,
+               <p><a href="https://roxycommunity.netlify.app/orders">View in Studio</a></p>`,
+      };
+    case 'business_approved':
+      return {
+        subject: `Congratulations! Your Roxy business profile is active`,
+        html: `<h2>Welcome to Roxy Marketplace, ${payload.display_name}! 🎉</h2>
+               <p>Your business <strong>${payload.business_name}</strong> has been approved and your Roxy business profile is now active.</p>
+               <p>You can now log into <a href="https://roxycommunity.netlify.app">Roxy Studio</a> to:</p>
+               <ul>
+                 <li>Add and manage your products</li>
+                 <li>Connect Stripe to receive payments</li>
+                 <li>Track orders and payouts</li>
+               </ul>
+               <p>Welcome to the community! 💜</p>`,
+      };
+    case 'business_rejected':
+      return {
+        subject: `Update on your Roxy business application`,
+        html: `<h2>Hi ${payload.display_name},</h2>
+               <p>Thank you for applying to sell on Roxy. Unfortunately, we're unable to approve <strong>${payload.business_name}</strong> at this time.</p>
+               <p><strong>Reason:</strong> ${payload.rejection_reason}</p>
+               <p>If you believe this is an error or would like to reapply, please reach out to our team.</p>`,
       };
     default:
       throw new Error(`Unknown email type: ${emailType}`);

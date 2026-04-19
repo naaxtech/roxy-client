@@ -102,15 +102,18 @@ export function BusinessDetailSheet({
                   <Text style={styles.city}>📍 {business.location_city}</Text>
                 )}
               </View>
-              <TouchableOpacity
-                testID="bookmark-btn"
-                onPress={onBookmarkToggle}
-                accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
-                hitSlop={12}
-              >
-                <Text style={styles.bookmarkIcon}>{isBookmarked ? '💜' : '🤍'}</Text>
-              </TouchableOpacity>
             </View>
+
+            {/* Bookmark button — absolute top-right, left of close */}
+            <TouchableOpacity
+              testID="bookmark-btn"
+              style={styles.bookmarkBtn}
+              onPress={onBookmarkToggle}
+              accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+              hitSlop={12}
+            >
+              <Text style={styles.bookmarkIcon}>{isBookmarked ? '💜' : '🤍'}</Text>
+            </TouchableOpacity>
 
             {/* Tab bar */}
             <View style={styles.tabBar}>
@@ -281,7 +284,8 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingHorizontal: 20,
+    paddingLeft: 20,
+    paddingRight: 88,
     paddingBottom: 16,
     gap: 12,
   },
@@ -299,6 +303,12 @@ const styles = StyleSheet.create({
   name: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 17 },
   verifiedBadge: { color: COLORS.primary, fontSize: 12, fontWeight: '600' },
   city: { color: COLORS.textMuted, fontSize: 12 },
+  bookmarkBtn: {
+    position: 'absolute',
+    top: 16,
+    right: 52,
+    padding: 8,
+  },
   bookmarkIcon: { fontSize: 22 },
   tabBar: {
     flexDirection: 'row',
