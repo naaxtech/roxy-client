@@ -72,8 +72,7 @@ export async function updateBusiness(businessId: string, formData: FormData): Pr
       logo_url: logoUrl,
       business_rejection_reason: null,
     })
-    .eq('id', businessId)
-    .eq('owner_id', business.id);
+    .eq('id', businessId);
 
   if (error) return { error: error.message };
   revalidatePath('/settings');
@@ -88,8 +87,7 @@ export async function resubmitBusiness(businessId: string): Promise<void> {
   await supabase
     .from('businesses')
     .update({ business_rejection_reason: null })
-    .eq('id', businessId)
-    .eq('owner_id', business.id);
+    .eq('id', businessId);
 
   revalidatePath('/settings');
 }

@@ -17,9 +17,8 @@ describe('updateBusiness', () => {
 
   it('updates and clears rejection reason', async () => {
     getOwnedBusiness.mockResolvedValue({ id: 'biz-1' });
-    const mockEq2 = jest.fn().mockResolvedValue({ error: null });
-    const mockEq1 = jest.fn().mockReturnValue({ eq: mockEq2 });
-    const mockUpdate = jest.fn().mockReturnValue({ eq: mockEq1 });
+    const mockEq = jest.fn().mockResolvedValue({ error: null });
+    const mockUpdate = jest.fn().mockReturnValue({ eq: mockEq });
     createClient.mockResolvedValue({ from: jest.fn(() => ({ update: mockUpdate })) });
     const { updateBusiness } = await import('@/app/(dashboard)/settings/business-actions');
     const fd = new FormData();
@@ -32,9 +31,8 @@ describe('updateBusiness', () => {
 describe('resubmitBusiness', () => {
   it('clears rejection reason for own business', async () => {
     getOwnedBusiness.mockResolvedValue({ id: 'biz-1' });
-    const mockEq2 = jest.fn().mockResolvedValue({ error: null });
-    const mockEq1 = jest.fn().mockReturnValue({ eq: mockEq2 });
-    const mockUpdate = jest.fn().mockReturnValue({ eq: mockEq1 });
+    const mockEq = jest.fn().mockResolvedValue({ error: null });
+    const mockUpdate = jest.fn().mockReturnValue({ eq: mockEq });
     createClient.mockResolvedValue({ from: jest.fn(() => ({ update: mockUpdate })) });
     const { resubmitBusiness } = await import('@/app/(dashboard)/settings/business-actions');
     await resubmitBusiness('biz-1');
