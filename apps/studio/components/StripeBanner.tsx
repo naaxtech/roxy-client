@@ -8,15 +8,21 @@ type StripeStatus = 'not_started' | 'incomplete' | 'complete' | 'restricted';
 interface StripeBannerProps {
   status: StripeStatus;
   onConnect: () => Promise<void>;
+  loading?: boolean;
 }
 
-export function StripeBanner({ status, onConnect }: StripeBannerProps) {
-  const [loading, setLoading] = useState(false);
+export function StripeBanner({ status, onConnect, loading: externalLoading }: StripeBannerProps) {
+  const [internalLoading, setInternalLoading] = useState(false);
+  const loading = externalLoading ?? internalLoading;
 
   const handleConnect = async () => {
-    setLoading(true);
+    if (externalLoading === undefined) {
+      setInternalLoading(true);
+    }
     await onConnect();
-    setLoading(false);
+    if (externalLoading === undefined) {
+      setInternalLoading(false);
+    }
   };
 
   if (status === 'complete') {
