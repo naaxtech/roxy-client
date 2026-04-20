@@ -17,10 +17,11 @@ export async function updateNotificationPrefs(prefs: StudioNotificationPrefs): P
   const userId = claimsData?.claims?.sub;
   if (!userId) throw new Error('Not authenticated');
 
-  await supabase
+  const { error } = await supabase
     .from('profiles')
     .update({ notification_preferences: prefs })
     .eq('id', userId);
+  if (error) throw new Error(`Failed to update preferences: ${error.message}`);
 
   revalidatePath('/settings');
 }
@@ -38,6 +39,9 @@ export async function deleteAccount(): Promise<never> {
   const adminClient = createAdminClient(supabaseUrl, serviceRoleKey);
   const { error } = await adminClient.auth.admin.deleteUser(userId);
   if (error) throw new Error(`Failed to delete account: ${error.message}`);
+
+  // Sign out the session so the browser cookie is cleared
+  await supabase.auth.signOut();
 
   redirect('/auth/login');
 }
