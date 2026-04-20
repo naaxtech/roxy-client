@@ -43,7 +43,9 @@ describe('BusinessForm', () => {
     const { createBusiness } = jest.requireMock('@/app/(dashboard)/settings/business-actions');
     createBusiness.mockResolvedValueOnce({ error: 'Business name is required' });
     render(<BusinessForm userId="user-1" />);
+    const nameInput = screen.getByRole('textbox', { name: /business name/i }) as HTMLInputElement;
     const submitButton = screen.getByRole('button', { name: /submit business/i });
+    fireEvent.change(nameInput, { target: { value: 'Test Business' } });
     fireEvent.click(submitButton);
     await waitFor(() => {
       expect(screen.getByText('Business name is required')).toBeInTheDocument();

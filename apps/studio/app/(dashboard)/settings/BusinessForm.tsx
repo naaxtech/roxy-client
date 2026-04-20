@@ -42,7 +42,7 @@ export function BusinessForm({ userId, business, onSuccess }: Props) {
     setLogoUploading(true);
     setError(null);
 
-    const ext = file.name.split('.').pop() ?? 'jpg';
+    const ext = (file.name.split('.').pop() ?? file.type.split('/')[1] ?? 'jpg').toLowerCase();
     const path = `${userId}/logo.${ext}`;
     const supabase = createClient();
     const { error: uploadError } = await supabase.storage
@@ -111,7 +111,7 @@ export function BusinessForm({ userId, business, onSuccess }: Props) {
           >
             {logoUploading ? 'Uploading\u2026' : logoPreview ? 'Change Logo' : 'Upload Logo'}
           </Button>
-          <p className="text-xs text-muted-foreground mt-1">PNG or JPG · max 5 MB</p>
+          <p className="text-xs text-muted-foreground mt-1">PNG, JPG or WebP · max 5 MB</p>
         </div>
         <input
           ref={fileInputRef}
@@ -125,7 +125,7 @@ export function BusinessForm({ userId, business, onSuccess }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="name">Business name *</Label>
-          <Input id="name" name="name" maxLength={100} defaultValue={business?.name ?? ''} placeholder="e.g. Lavender Books" />
+          <Input id="name" name="name" required maxLength={100} defaultValue={business?.name ?? ''} placeholder="e.g. Lavender Books" />
         </div>
 
         <div className="space-y-1.5">
