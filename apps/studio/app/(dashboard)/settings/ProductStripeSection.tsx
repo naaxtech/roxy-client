@@ -74,7 +74,7 @@ export function ProductStripeSection({ canSell, stripeAccountId, stripeOnboarded
         </div>
       ) : hasAccount ? (
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">You started but didn't finish Stripe setup. Complete it to start selling.</p>
+          <p className="text-xs text-muted-foreground">You started but didn&apos;t finish Stripe setup. Complete it to start selling.</p>
           <Button size="sm" disabled={isPending} onClick={handleConnect}>
             {isPending ? 'Redirecting…' : 'Continue Stripe Setup'}
           </Button>

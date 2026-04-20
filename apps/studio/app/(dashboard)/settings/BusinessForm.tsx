@@ -96,6 +96,7 @@ export function BusinessForm({ userId, business, onSuccess }: Props) {
           aria-label="Upload business logo"
         >
           {logoPreview ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={logoPreview} alt="Business logo" className="h-full w-full object-cover" />
           ) : (
             <span className="text-xs text-muted-foreground text-center px-1">Logo</span>

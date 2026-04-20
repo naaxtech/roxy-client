@@ -115,6 +115,7 @@ export default async function SettingsPage({
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 {business.logo_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={business.logo_url} alt="Business logo" className="h-12 w-12 rounded-lg object-cover border" />
                 )}
                 <div>
