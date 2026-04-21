@@ -22,9 +22,20 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Push subtree to roxy-studio
+      - name: Verify token is set
         run: |
-          git subtree push \
-            --prefix=apps/studio \
-            https://x-access-token:${{ secrets.STUDIO_SYNC_TOKEN }}@github.com/Thinqer-HQ/roxy-studio.git \
-            main
+          if [ -z "${{ secrets.STUDIO_SYNC_TOKEN }}" ]; then
+            echo "ERROR: STUDIO_SYNC_TOKEN is empty"
+            exit 1
+          else
+            echo "STUDIO_SYNC_TOKEN is set (length: ${#TOKEN})"
+          fi
+        env:
+          TOKEN: ${{ secrets.STUDIO_SYNC_TOKEN }}
+
+      - name: Push subtree to roxy-studio
+        env:
+          STUDIO_SYNC_TOKEN: ${{ secrets.STUDIO_SYNC_TOKEN }}
+        run: |
+          git remote add roxy-studio https://x-access-token:${STUDIO_SYNC_TOKEN}@github.com/Thinqer-HQ/roxy-studio.git
+          git subtree push --prefix=apps/studio roxy-studio main
