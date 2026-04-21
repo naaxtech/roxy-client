@@ -14,7 +14,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const { data: event } = await supabase
     .from('events')
     .select(`
-      id, title, starts_at, ends_at, location_text, status,
+      id, title, description, starts_at, ends_at, location_text, status,
       is_paid, price_cents, currency, payout_delay_days, payout_blocked,
       host_id, max_attendees,
       communities(id, name)
@@ -74,6 +74,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           <p className="text-sm text-muted-foreground mt-1">
             Community: {(event.communities as any)?.name}
           </p>
+          {(event as any).description && (
+            <p className="text-sm text-foreground/80 mt-3 leading-relaxed max-w-xl">
+              {(event as any).description}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col items-end gap-2 shrink-0">

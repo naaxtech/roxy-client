@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Community {
   id: string;
@@ -25,6 +26,7 @@ export function CreateEventForm({ communities, stripeConnected }: CreateEventFor
   const [communityId, setCommunityId] = useState(communities[0]?.id ?? '');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
+  const [description, setDescription] = useState('');
   const [locationText, setLocationText] = useState('');
   const [isPaid, setIsPaid] = useState(false);
   const [priceDollars, setPriceDollars] = useState('');
@@ -59,6 +61,7 @@ export function CreateEventForm({ communities, stripeConnected }: CreateEventFor
       community_id: communityId,
       starts_at: new Date(startsAt).toISOString(),
       ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+      description: description.trim() || null,
       location_text: locationText.trim() || null,
       is_paid: isPaid,
       price_cents,
@@ -70,7 +73,7 @@ export function CreateEventForm({ communities, stripeConnected }: CreateEventFor
     if (insertError) {
       setError(insertError.message);
     } else {
-      setTitle(''); setStartsAt(''); setEndsAt(''); setLocationText('');
+      setTitle(''); setDescription(''); setStartsAt(''); setEndsAt(''); setLocationText('');
       setIsPaid(false); setPriceDollars(''); setPayoutDelayDays('7');
       setSuccessMsg('Event created successfully!');
       setTimeout(() => setSuccessMsg(null), 4000);
@@ -92,6 +95,18 @@ export function CreateEventForm({ communities, stripeConnected }: CreateEventFor
       <div className="space-y-1.5">
         <Label htmlFor="title">Title</Label>
         <Input id="title" value={title} onChange={e => setTitle(e.target.value)} required />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="description">Description (optional)</Label>
+        <Textarea
+          id="description"
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          placeholder="Tell attendees what to expect…"
+          rows={3}
+          className="resize-none"
+        />
       </div>
 
       <div className="space-y-1.5">
