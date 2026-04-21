@@ -15,12 +15,11 @@ interface Community {
 interface CreateEventFormProps {
   communities: Community[];
   stripeConnected: boolean;
-  onCreated: () => void;
 }
 
 const MAX_PRICE_DOLLARS = 50;
 
-export function CreateEventForm({ communities, stripeConnected, onCreated }: CreateEventFormProps) {
+export function CreateEventForm({ communities, stripeConnected }: CreateEventFormProps) {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [communityId, setCommunityId] = useState(communities[0]?.id ?? '');
@@ -76,7 +75,6 @@ export function CreateEventForm({ communities, stripeConnected, onCreated }: Cre
       setSuccessMsg('Event created successfully!');
       setTimeout(() => setSuccessMsg(null), 4000);
       router.refresh();
-      onCreated();
     }
   };
 

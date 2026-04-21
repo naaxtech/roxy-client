@@ -47,7 +47,6 @@ export default async function EventsPage() {
         <CreateEventForm
           communities={communities}
           stripeConnected={stripeConnected}
-          onCreated={() => {}}
         />
       ) : (
         <p className="text-muted-foreground text-sm">
