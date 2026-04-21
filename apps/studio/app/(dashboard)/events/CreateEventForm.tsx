@@ -56,8 +56,12 @@ export function CreateEventForm({ communities, stripeConnected }: CreateEventFor
 
     setLoading(true);
     const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setError('Not authenticated'); setLoading(false); return; }
+
     const { error: insertError } = await supabase.from('events').insert({
       title: title.trim(),
+      host_id: user.id,
       community_id: communityId,
       starts_at: new Date(startsAt).toISOString(),
       ends_at: endsAt ? new Date(endsAt).toISOString() : null,
