@@ -16,22 +16,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # full history required for git subtree
+          persist-credentials: false  # prevent GITHUB_TOKEN overriding our PAT
 
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Verify token is set
-        run: |
-          if [ -z "${{ secrets.STUDIO_SYNC_TOKEN }}" ]; then
-            echo "ERROR: STUDIO_SYNC_TOKEN is empty"
-            exit 1
-          else
-            echo "STUDIO_SYNC_TOKEN is set (length: ${#TOKEN})"
-          fi
-        env:
-          TOKEN: ${{ secrets.STUDIO_SYNC_TOKEN }}
 
       - name: Push subtree to roxy-studio
         env:
