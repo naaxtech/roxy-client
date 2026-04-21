@@ -1,6 +1,7 @@
 'use client';
 
-import { useTransition, useState, useRef } from 'react';
+import { useTransition, useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,7 +63,7 @@ export function ProductForm({ product, onClose }: Props) {
     });
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-card border rounded-lg shadow-lg w-full max-w-md space-y-4 p-6">
         <div className="flex items-center justify-between">
@@ -150,6 +151,7 @@ export function ProductForm({ product, onClose }: Props) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
