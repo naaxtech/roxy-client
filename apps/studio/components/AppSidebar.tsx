@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Calendar, Video, Gamepad2, Users, Wallet,
   ShoppingBag, Package, ShoppingCart, DollarSign, Settings,
   Shield, CheckSquare, Mail, RefreshCw, AlertTriangle, Building2,
-  ChevronRight, LogOut, Sparkles,
+  ChevronRight, LogOut, Sparkles, Lightbulb,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOutAction } from '@/app/auth/signout-action';
@@ -32,12 +32,13 @@ const sellerNav = [
 ];
 
 const staffNav = [
-  { href: '/staff',                label: 'Overview',           icon: Shield },
-  { href: '/staff/businesses',     label: 'Business Approvals', icon: Building2 },
-  { href: '/staff/products',       label: 'Product Approval',   icon: CheckSquare },
-  { href: '/staff/email-queue',    label: 'Email Queue',        icon: Mail },
-  { href: '/staff/reconciliation', label: 'Reconciliation',     icon: RefreshCw },
-  { href: '/staff/disputes',       label: 'Disputes',           icon: AlertTriangle },
+  { href: '/staff',                        label: 'Overview',           icon: Shield },
+  { href: '/staff/businesses',             label: 'Business Approvals', icon: Building2 },
+  { href: '/staff/products',               label: 'Product Approval',   icon: CheckSquare },
+  { href: '/staff/feature-requests',       label: 'Feature Requests',   icon: Lightbulb },
+  { href: '/staff/email-queue',            label: 'Email Queue',        icon: Mail },
+  { href: '/staff/reconciliation',         label: 'Reconciliation',     icon: RefreshCw },
+  { href: '/staff/disputes',               label: 'Disputes',           icon: AlertTriangle },
 ];
 
 interface NavItemProps {

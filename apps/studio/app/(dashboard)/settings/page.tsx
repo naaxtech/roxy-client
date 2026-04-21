@@ -59,7 +59,7 @@ export default async function SettingsPage({
   const businessIsApproved = Boolean(business?.is_verified);
 
   return (
-    <div className="max-w-2xl space-y-10">
+    <div className="max-w-2xl space-y-10 pb-16">
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground mt-1">Manage your account, business, and payment settings.</p>

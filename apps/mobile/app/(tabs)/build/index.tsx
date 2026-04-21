@@ -2,10 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   RefreshControl, Linking, Share, Modal, ScrollView,
+  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
+import { callEdgeFunction } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useBuildStore } from '../../../store/buildStore';
 import { COLORS, REGISTER_BUSINESS_URL } from '../../../lib/constants';
@@ -15,6 +17,7 @@ import { CommunityContextSwitcher } from '../../../components/CommunityContextSw
 import { useCommunityStore } from '../../../store/communityStore';
 import { ChipSearchBar } from '../../../components/build/ChipSearchBar';
 import { BusinessDetailSheet } from '../../../components/build/BusinessDetailSheet';
+import { FeatureVoteCard, FeatureRequest } from '../../../components/build/FeatureVoteCard';
 
 const categoryEmoji: Record<string, string> = {
   mutual_aid: '🤝', visibility: '🏳️‍🌈', education: '📚', safety: '🛡️',
@@ -178,13 +181,24 @@ export default function BuildScreen() {
   const { selectedCommunityId } = useCommunityFilterStore();
   const { joinedCommunities } = useCommunityStore();
 
-  const [segment, setSegment] = useState<'businesses' | 'impact'>('businesses');
+  const [segment, setSegment] = useState<'businesses' | 'impact' | 'support'>('businesses');
   const [bizView, setBizView] = useState<'all' | 'saved'>('all');
   const [wlwOnly, setWlwOnly] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ImpactProject | null>(null);
   const [selectedBiz, setSelectedBiz] = useState<Business | null>(null);
   const [bizPhotos, setBizPhotos] = useState<BusinessPhoto[]>([]);
+
+  // Support Roxy — feature voting
+  const [supportTab, setSupportTab] = useState<'planned' | 'pitched'>('planned');
+  const [features, setFeatures] = useState<FeatureRequest[]>([]);
+  const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [pitchModal, setPitchModal] = useState(false);
+  const [pitchTitle, setPitchTitle] = useState('');
+  const [pitchDesc, setPitchDesc] = useState('');
+  const [pitchSubmitting, setPitchSubmitting] = useState(false);
+  const [pitchError, setPitchError] = useState<string | null>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -227,6 +241,23 @@ export default function BuildScreen() {
     setImpactProjects((data as ImpactProject[]) ?? []);
   }, [getCommunityMemberIds, setImpactProjects]);
 
+  const loadFeatures = useCallback(async () => {
+    setSupportLoading(true);
+    try {
+      const res = await callEdgeFunction<{ features: FeatureRequest[]; voted_ids: string[] }>(
+        'feature-vote', { action: 'list' }
+      );
+      if (res?.data?.features) {
+        setFeatures(res.data.features);
+        setVotedIds(new Set(res.data.voted_ids));
+      }
+    } catch {
+      // non-fatal
+    } finally {
+      setSupportLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!user?.id) return;
     setLoading(true);
@@ -242,6 +273,57 @@ export default function BuildScreen() {
   useEffect(() => {
     triggerBizLoad(searchChips, wlwOnly);
   }, [searchChips, wlwOnly, triggerBizLoad]);
+
+  useEffect(() => {
+    if (segment === 'support' && features.length === 0) {
+      loadFeatures();
+    }
+  }, [segment, features.length, loadFeatures]);
+
+  const handleFeatureVote = async (featureId: string) => {
+    const res = await callEdgeFunction<{ voted: boolean; vote_count: number }>(
+      'feature-vote', { action: 'vote', feature_id: featureId }
+    );
+    if (res?.data) {
+      const { voted, vote_count } = res.data;
+      setVotedIds((prev) => {
+        const next = new Set(prev);
+        if (voted) next.add(featureId); else next.delete(featureId);
+        return next;
+      });
+      setFeatures((prev) =>
+        prev.map((f) => f.id === featureId ? { ...f, vote_count } : f)
+      );
+    }
+  };
+
+  const handlePitchSubmit = async () => {
+    const trimTitle = pitchTitle.trim();
+    if (trimTitle.length < 3) { setPitchError('Title must be at least 3 characters'); return; }
+    setPitchError(null);
+    setPitchSubmitting(true);
+    try {
+      const res = await callEdgeFunction<{ id: string; title: string }>(
+        'feature-vote', {
+          action: 'pitch',
+          title: trimTitle,
+          description: pitchDesc.trim() || undefined,
+        }
+      );
+      if (res?.data?.id) {
+        setPitchModal(false);
+        setPitchTitle('');
+        setPitchDesc('');
+        await loadFeatures();
+      } else {
+        setPitchError('Failed to submit. Please try again.');
+      }
+    } catch {
+      setPitchError('Failed to submit. Please try again.');
+    } finally {
+      setPitchSubmitting(false);
+    }
+  };
 
   const handleRefresh = async () => {
     if (!user?.id) return;
@@ -292,7 +374,7 @@ export default function BuildScreen() {
       </View>
 
       <View style={styles.segmentRow}>
-        {(['businesses', 'impact'] as const).map((s) => (
+        {(['businesses', 'impact', 'support'] as const).map((s) => (
           <TouchableOpacity
             key={s}
             testID={`segment-${s}`}
@@ -300,7 +382,7 @@ export default function BuildScreen() {
             onPress={() => setSegment(s)}
           >
             <Text style={[styles.segmentText, segment === s && styles.segmentTextActive]}>
-              {s === 'businesses' ? 'Businesses' : 'Impact'}
+              {s === 'businesses' ? 'Businesses' : s === 'impact' ? 'Impact' : '✦ Support'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -387,6 +469,124 @@ export default function BuildScreen() {
           }
         />
       )}
+
+      {segment === 'support' && (
+        <View style={styles.supportContainer}>
+          {/* Sub-tab: Planned / Pitched */}
+          <View style={styles.supportTabRow}>
+            {(['planned', 'pitched'] as const).map((t) => (
+              <TouchableOpacity
+                key={t}
+                style={[styles.supportTabBtn, supportTab === t && styles.supportTabBtnActive]}
+                onPress={() => setSupportTab(t)}
+              >
+                <Text style={[styles.supportTabText, supportTab === t && styles.supportTabTextActive]}>
+                  {t === 'planned' ? '💜 Roxy Picks' : '💡 Community Pitches'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Feature list */}
+          {supportLoading ? (
+            <View style={styles.supportLoadingWrap}>
+              <ActivityIndicator color={COLORS.primary} size="large" />
+            </View>
+          ) : (
+            <FlashList
+              data={features.filter((f) => f.type === supportTab)}
+              keyExtractor={(item) => item.id}
+              estimatedItemSize={90}
+              renderItem={({ item }) => (
+                <FeatureVoteCard
+                  feature={item}
+                  voted={votedIds.has(item.id)}
+                  onVote={handleFeatureVote}
+                />
+              )}
+              contentContainerStyle={styles.supportListContent}
+              refreshControl={
+                <RefreshControl refreshing={false} onRefresh={loadFeatures} tintColor={COLORS.roxy} />
+              }
+              ListEmptyComponent={
+                <View style={styles.empty}>
+                  <Text style={styles.emptyTitle}>
+                    {supportTab === 'planned' ? 'No picks yet' : 'No pitches yet'}
+                  </Text>
+                  <Text style={styles.emptySubtitle}>
+                    {supportTab === 'pitched' ? 'Be the first to pitch an idea!' : ''}
+                  </Text>
+                </View>
+              }
+            />
+          )}
+
+          {/* FAB — pitch new idea */}
+          {supportTab === 'pitched' && (
+            <TouchableOpacity
+              style={styles.pitchFab}
+              onPress={() => setPitchModal(true)}
+              accessibilityLabel="Pitch a new feature idea"
+            >
+              <Text style={styles.pitchFabText}>+ Pitch an idea</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* Pitch submission modal */}
+      <Modal
+        visible={pitchModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setPitchModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.pitchModalCard}>
+            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setPitchModal(false)}>
+              <Text style={styles.modalCloseBtnText}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.pitchModalTitle}>💡 Pitch a Feature</Text>
+            <Text style={styles.pitchModalSubtitle}>
+              Got an idea for Roxy? Let the community vote on it.
+            </Text>
+            <Text style={styles.pitchLabel}>Title *</Text>
+            <TextInput
+              style={styles.pitchInput}
+              placeholder="Short and clear (e.g. 'Group video calls')"
+              placeholderTextColor={COLORS.textMuted}
+              value={pitchTitle}
+              onChangeText={setPitchTitle}
+              maxLength={200}
+            />
+            <Text style={styles.pitchLabel}>Description (optional)</Text>
+            <TextInput
+              style={[styles.pitchInput, styles.pitchInputMulti]}
+              placeholder="Why would this make Roxy better?"
+              placeholderTextColor={COLORS.textMuted}
+              value={pitchDesc}
+              onChangeText={setPitchDesc}
+              maxLength={1000}
+              multiline
+              numberOfLines={4}
+            />
+            {pitchError && <Text style={styles.pitchError}>{pitchError}</Text>}
+            <TouchableOpacity
+              style={[styles.pitchSubmitBtn, pitchSubmitting && styles.pitchSubmitBtnDisabled]}
+              onPress={handlePitchSubmit}
+              disabled={pitchSubmitting}
+            >
+              {pitchSubmitting
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.pitchSubmitBtnText}>Submit Pitch 💜</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <BusinessDetailSheet
         business={selectedBiz}
@@ -509,4 +709,51 @@ const styles = StyleSheet.create({
   },
   modalCtaBtnDone: { backgroundColor: COLORS.success },
   modalCtaBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+
+  // Support Roxy
+  supportContainer: { flex: 1 },
+  supportTabRow: {
+    flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, gap: 8,
+    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
+  },
+  supportTabBtn: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 20, backgroundColor: COLORS.surface,
+  },
+  supportTabBtnActive: {
+    backgroundColor: `${COLORS.primary}25`,
+    borderWidth: 1, borderColor: COLORS.primary,
+  },
+  supportTabText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
+  supportTabTextActive: { color: COLORS.primary },
+  supportListContent: { paddingTop: 12, paddingBottom: 100 },
+  supportLoadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
+  pitchFab: {
+    position: 'absolute', bottom: 24, right: 20,
+    backgroundColor: COLORS.primary, borderRadius: 28,
+    paddingHorizontal: 20, paddingVertical: 14,
+    shadowColor: COLORS.primary, shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  pitchFabText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  pitchModalCard: {
+    backgroundColor: COLORS.background, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 40,
+  },
+  pitchModalTitle: { fontSize: 20, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 4 },
+  pitchModalSubtitle: { fontSize: 14, color: COLORS.textMuted, marginBottom: 20, lineHeight: 20 },
+  pitchLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 6 },
+  pitchInput: {
+    backgroundColor: COLORS.surface, borderRadius: 12,
+    padding: 14, color: COLORS.textPrimary, fontSize: 15,
+    marginBottom: 16, borderWidth: 1, borderColor: 'transparent',
+  },
+  pitchInputMulti: { height: 100, textAlignVertical: 'top' },
+  pitchError: { color: COLORS.error, fontSize: 13, marginBottom: 12, fontWeight: '600' },
+  pitchSubmitBtn: {
+    backgroundColor: COLORS.primary, borderRadius: 14, paddingVertical: 15,
+    alignItems: 'center', marginTop: 4,
+  },
+  pitchSubmitBtnDisabled: { opacity: 0.6 },
+  pitchSubmitBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });
