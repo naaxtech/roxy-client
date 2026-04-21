@@ -1,0 +1,29 @@
+name: Sync studio → roxy-studio
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/studio/**'
+
+jobs:
+  sync:
+    name: Subtree push apps/studio
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history required for git subtree
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Push subtree to roxy-studio
+        run: |
+          git subtree push \
+            --prefix=apps/studio \
+            https://x-access-token:${{ secrets.STUDIO_SYNC_TOKEN }}@github.com/Thinqer-HQ/roxy-studio.git \
+            main
