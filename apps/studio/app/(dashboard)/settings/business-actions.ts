@@ -100,7 +100,7 @@ export async function connectBusinessStripe(): Promise<{ url?: string; error?: s
     body: { business_id: business.id },
   });
   if (error || !data?.url) {
-    const detail = data?.error ?? error?.message ?? 'unknown';
+    const detail = (error as any)?.context?.error ?? data?.error ?? error?.message ?? 'unknown';
     return { error: `Stripe error: ${detail}` };
   }
   return { url: data.url as string };
