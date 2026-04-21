@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
-  const auth = await verifyJWT(req);
+  const auth = verifyJWT(req);
   if (!auth) return errorResponse('Unauthorized', 401);
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;

@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   const corsRes = handleCors(req);
   if (corsRes) return corsRes;
 
-  const { user, errorResponse: authErr } = await verifyJWT(req);
+  const { user, errorResponse: authErr } = verifyJWT(req);
   if (authErr) return authErr;
 
   const body = await req.json().catch(() => ({}));

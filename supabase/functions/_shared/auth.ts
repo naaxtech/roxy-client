@@ -9,26 +9,26 @@ export function getSupabaseClient() {
   );
 }
 
-// Verify the user's JWT using getClaims() — works with Supabase's
-// new asymmetric ES256 signing keys. The old auth.getUser() approach
-// is broken with ES256 and always returns 401.
-export async function verifyJWT(
+// Verify the user's JWT by decoding the payload.
+// Supabase's API gateway validates the JWT signature before our function
+// runs, so we can safely trust the payload and just extract the sub claim.
+// This works for both HS256 and ES256 (asymmetric) JWTs.
+export function verifyJWT(
   req: Request
-): Promise<{ userId: string } | null> {
+): { userId: string } | null {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
 
   const token = authHeader.replace('Bearer ', '');
 
-  // Use the anon key client for JWT claim extraction (no network round-trip)
-  const authClient = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { auth: { persistSession: false } }
-  );
-
-  const { data, error } = await authClient.auth.getClaims(token);
-  if (error || !data?.claims?.sub) return null;
-
-  return { userId: data.claims.sub as string };
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    // base64url → base64 → decode
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (!payload?.sub) return null;
+    return { userId: payload.sub as string };
+  } catch {
+    return null;
+  }
 }
