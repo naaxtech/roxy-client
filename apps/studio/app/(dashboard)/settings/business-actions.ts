@@ -99,7 +99,10 @@ export async function connectBusinessStripe(): Promise<{ url?: string; error?: s
   const { data, error } = await supabase.functions.invoke('connect-business-stripe', {
     body: { business_id: business.id },
   });
-  if (error || !data?.url) return { error: 'Failed to start Stripe onboarding. Please try again.' };
+  if (error || !data?.url) {
+    const detail = data?.error ?? error?.message ?? 'unknown';
+    return { error: `Stripe error: ${detail}` };
+  }
   return { url: data.url as string };
 }
 
