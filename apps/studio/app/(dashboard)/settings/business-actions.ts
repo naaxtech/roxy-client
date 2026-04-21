@@ -3,7 +3,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { getOwnedBusiness } from '@/lib/business';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 
 export async function createBusiness(formData: FormData): Promise<{ error?: string }> {
   const name = (formData.get('name') as string)?.trim();
@@ -92,26 +91,26 @@ export async function resubmitBusiness(businessId: string): Promise<void> {
   revalidatePath('/settings');
 }
 
-export async function connectBusinessStripe(): Promise<never> {
+export async function connectBusinessStripe(): Promise<{ url?: string; error?: string }> {
   const business = await getOwnedBusiness();
-  if (!business) redirect('/settings');
+  if (!business) return { error: 'No business found' };
 
   const supabase = await createClient();
   const { data, error } = await supabase.functions.invoke('connect-business-stripe', {
     body: { business_id: business.id },
   });
-  if (error || !data?.url) throw new Error('Failed to start Stripe onboarding');
-  redirect(data.url as string);
+  if (error || !data?.url) return { error: 'Failed to start Stripe onboarding. Please try again.' };
+  return { url: data.url as string };
 }
 
-export async function getBusinessStripeDashboardLink(): Promise<string> {
+export async function getBusinessStripeDashboardLink(): Promise<{ url?: string; error?: string }> {
   const business = await getOwnedBusiness();
-  if (!business) throw new Error('No business found');
+  if (!business) return { error: 'No business found' };
 
   const supabase = await createClient();
   const { data, error } = await supabase.functions.invoke('connect-business-stripe', {
     body: { business_id: business.id, action: 'dashboard_link' },
   });
-  if (error || !data?.url) throw new Error('Failed to get dashboard link');
-  return data.url as string;
+  if (error || !data?.url) return { error: 'Failed to get dashboard link. Please try again.' };
+  return { url: data.url as string };
 }

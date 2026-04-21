@@ -22,10 +22,11 @@ export function ProductStripeSection({ canSell, stripeAccountId, stripeOnboarded
   const handleConnect = () => {
     setError(null);
     startTransition(async () => {
-      try {
-        await connectBusinessStripe();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to start Stripe setup. Please try again.');
+      const result = await connectBusinessStripe();
+      if (result.error) {
+        setError(result.error);
+      } else if (result.url) {
+        window.location.href = result.url;
       }
     });
   };
@@ -33,11 +34,11 @@ export function ProductStripeSection({ canSell, stripeAccountId, stripeOnboarded
   const handleDashboard = () => {
     setError(null);
     startTransition(async () => {
-      try {
-        const url = await getBusinessStripeDashboardLink();
-        window.location.href = url;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to open Stripe dashboard.');
+      const result = await getBusinessStripeDashboardLink();
+      if (result.error) {
+        setError(result.error);
+      } else if (result.url) {
+        window.location.href = result.url;
       }
     });
   };
