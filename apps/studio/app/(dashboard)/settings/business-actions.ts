@@ -99,18 +99,11 @@ export async function connectBusinessStripe(): Promise<{ url?: string; error?: s
   const { data, error } = await supabase.functions.invoke('connect-business-stripe', {
     body: { business_id: business.id },
   });
-  if (error || !data?.url) {
-    let detail = error?.message ?? 'unknown';
-    try {
-      const ctx = (error as any)?.context;
-      if (ctx && typeof ctx.json === 'function') {
-        const body = await ctx.json();
-        if (body?.error) detail = body.error;
-      }
-    } catch {}
-    return { error: `Stripe error: ${detail}` };
-  }
-  return { url: data.url as string };
+  // successResponse wraps payload: { success, data: { url }, error }
+  // so supabase.functions.invoke returns data = { success, data: { url }, error }
+  const url = data?.data?.url as string | undefined;
+  if (error || !url) return { error: 'Failed to start Stripe onboarding. Please try again.' };
+  return { url };
 }
 
 export async function getBusinessStripeDashboardLink(): Promise<{ url?: string; error?: string }> {
@@ -121,6 +114,7 @@ export async function getBusinessStripeDashboardLink(): Promise<{ url?: string; 
   const { data, error } = await supabase.functions.invoke('connect-business-stripe', {
     body: { business_id: business.id, action: 'dashboard_link' },
   });
-  if (error || !data?.url) return { error: 'Failed to get dashboard link. Please try again.' };
-  return { url: data.url as string };
+  const url = data?.data?.url as string | undefined;
+  if (error || !url) return { error: 'Failed to get dashboard link. Please try again.' };
+  return { url };
 }
