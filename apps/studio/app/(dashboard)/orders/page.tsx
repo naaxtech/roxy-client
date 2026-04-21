@@ -26,7 +26,8 @@ export default async function OrdersPage() {
       body: { business_id: business.id },
     });
     if (fnError) throw fnError;
-    orders = Array.isArray(ordersData) ? ordersData : (ordersData?.orders ?? []);
+    // successResponse wraps payload: invoke returns data = { success, data: { orders }, error }
+    orders = ordersData?.data?.orders ?? ordersData?.orders ?? [];
   } catch {
     return (
       <div className="max-w-5xl space-y-6">

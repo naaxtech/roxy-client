@@ -11,9 +11,13 @@ Deno.serve(async (req) => {
   if (!auth) return errorResponse('Unauthorized', 401);
   const { userId } = auth;
 
-  const url = new URL(req.url);
-  const businessId = url.searchParams.get('business_id');
-  const status = url.searchParams.get('status');
+  let businessId: string | null = null;
+  let status: string | null = null;
+  try {
+    const body = await req.json();
+    businessId = body.business_id ?? null;
+    status = body.status ?? null;
+  } catch { /* no body */ }
   if (!businessId) return errorResponse('Missing business_id', 400);
 
   const supabase = getSupabaseClient();
