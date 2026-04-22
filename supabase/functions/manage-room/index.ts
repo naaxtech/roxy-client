@@ -142,6 +142,18 @@ Deno.serve(async (req) => {
     return successResponse({ updated: true });
   }
 
+  // ── SYNC-COUNT (host pushes authoritative participant count) ─────────────
+  if (action === 'sync-count') {
+    const count = typeof body?.count === 'number' ? Math.max(0, body.count) : null;
+    if (count === null) return errorResponse('count required', 400);
+    const { error } = await supabase
+      .from('community_rooms')
+      .update({ participant_count: count })
+      .eq('id', roomId);
+    if (error) return errorResponse(error.message, 500);
+    return successResponse({ synced: true });
+  }
+
   // ── OPEN (Go Live) ────────────────────────────────────────────────────────
   if (action === 'open') {
     if (room.status === 'live') return successResponse({ already_live: true, room_id: roomId });

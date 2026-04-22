@@ -116,6 +116,17 @@ export default function RoomSessionPage() {
   const [ending, setEnding]           = useState(false);
 
    
+  const isHostRef = useRef(false);
+
+  const syncCountToDb = useCallback(async (callObject: any) => {
+    if (!isHostRef.current || !roomId) return;
+    const count = Object.keys(callObject.participants()).length;
+    const supabase = createClient();
+    await supabase.functions.invoke('manage-room', {
+      body: { action: 'sync-count', room_id: roomId, count },
+    });
+  }, [roomId]);
+
   const refreshParticipants = useCallback((callObject: any) => {
     const all = callObject.participants() as Record<string, any>;
     const map = new Map<string, ParticipantState>();
@@ -131,7 +142,8 @@ export default function RoomSessionPage() {
       });
     }
     setParticipants(new Map(map));
-  }, []);
+    syncCountToDb(callObject);
+  }, [syncCountToDb]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -157,6 +169,7 @@ export default function RoomSessionPage() {
           room_type: info.room_type,
           is_host:   info.is_host,
         });
+        isHostRef.current = info.is_host;
 
         // Lazy import — daily-js is browser-only
         const mod = await import('@daily-co/daily-js');
