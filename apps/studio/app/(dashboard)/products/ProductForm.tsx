@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition, useState, useRef, useEffect } from 'react';
+import { useTransition, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

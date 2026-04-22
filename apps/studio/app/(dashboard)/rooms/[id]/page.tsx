@@ -105,7 +105,7 @@ export default function RoomSessionPage() {
   const { id: roomId } = useParams<{ id: string }>();
   const router = useRouter();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const callRef = useRef<any>(null);
   const [roomInfo, setRoomInfo]       = useState<RoomInfo | null>(null);
   const [participants, setParticipants] = useState<Map<string, ParticipantState>>(new Map());
@@ -115,7 +115,7 @@ export default function RoomSessionPage() {
   const [error, setError]             = useState<string | null>(null);
   const [ending, setEnding]           = useState(false);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const refreshParticipants = useCallback((callObject: any) => {
     const all = callObject.participants() as Record<string, any>;
     const map = new Map<string, ParticipantState>();
@@ -135,7 +135,7 @@ export default function RoomSessionPage() {
 
   useEffect(() => {
     if (!roomId) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     let callObject: any = null;
 
     (async () => {
@@ -172,7 +172,7 @@ export default function RoomSessionPage() {
         callObject.on('participant-left',        () => refreshParticipants(callObject));
         callObject.on('participant-updated',     () => refreshParticipants(callObject));
         callObject.on('meeting-session-stopped', () => router.push('/rooms'));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         callObject.on('error', (e: any) => {
           setError(e?.errorMsg ?? 'Connection error');
           setStatus('error');
@@ -202,7 +202,7 @@ export default function RoomSessionPage() {
   };
 
   const handleMuteAll = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const all = (callRef.current?.participants() ?? {}) as Record<string, any>;
     for (const p of Object.values(all)) {
       if (!p.local) callRef.current?.updateParticipant(p.session_id, { setAudio: false });
