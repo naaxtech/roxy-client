@@ -168,7 +168,8 @@ Deno.serve(async (req) => {
     if (!dailyApiKey) return errorResponse('DAILY_API_KEY not configured', 503);
 
     let dailyRoomName = (room.daily_room_name as string | null) ?? `roxy-room-${roomId.slice(0, 8)}`;
-    let dailyRoomUrl  = room.daily_room_url as string | null;
+    // Closed rooms had their Daily.co room deleted — force creating a fresh one
+    let dailyRoomUrl  = room.status === 'closed' ? null : (room.daily_room_url as string | null);
 
     if (!dailyRoomUrl) {
       try {
@@ -183,6 +184,7 @@ Deno.serve(async (req) => {
     const { error } = await supabase.from('community_rooms').update({
       status:          'live',
       started_at:      new Date().toISOString(),
+      ended_at:        null,
       daily_room_name: dailyRoomName,
       daily_room_url:  dailyRoomUrl,
       is_active:       true,

@@ -239,11 +239,20 @@ export function RoomsClient({ rooms: initialRooms, communities }: RoomsClientPro
             {closedRooms.map(room => (
               <div
                 key={room.id}
-                className="flex items-center gap-3 rounded-lg border bg-muted/30 px-4 py-2 opacity-60"
+                className="flex items-center gap-3 rounded-lg border bg-muted/30 px-4 py-2"
               >
                 <span className="h-2 w-2 rounded-full bg-muted-foreground/30 shrink-0" />
-                <span className="text-sm truncate flex-1">{room.name}</span>
-                <span className="text-xs text-muted-foreground">{room.community_name}</span>
+                <span className="text-sm truncate flex-1 text-muted-foreground">{room.name}</span>
+                <span className="text-xs text-muted-foreground hidden sm:block">{room.community_name}</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => goLive(room.id)}
+                  disabled={loadingId === room.id}
+                  className="shrink-0"
+                >
+                  {loadingId === room.id ? 'Opening…' : 'Re-open'}
+                </Button>
               </div>
             ))}
           </div>
