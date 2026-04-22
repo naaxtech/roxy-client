@@ -46,6 +46,9 @@ export function RoomsClient({ rooms: initialRooms, communities }: RoomsClientPro
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Sync server-fetched rooms into state after router.refresh()
+  useEffect(() => { setRooms(initialRooms); }, [initialRooms]);
+
   // Tick every 30s to re-evaluate T-15 banner and duration labels
   useEffect(() => {
     const interval = setInterval(() => setRooms(r => [...r]), 30000);

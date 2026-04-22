@@ -114,8 +114,9 @@ export default function RoomSessionPage() {
   const [status, setStatus]           = useState<'connecting' | 'connected' | 'error'>('connecting');
   const [error, setError]             = useState<string | null>(null);
   const [ending, setEnding]           = useState(false);
+  const [leaving, setLeaving]         = useState(false);
 
-   
+
   const isHostRef = useRef(false);
 
   const syncCountToDb = useCallback(async (callObject: any) => {
@@ -191,7 +192,10 @@ export default function RoomSessionPage() {
           setStatus('error');
         });
 
-        await callObject.join({ url: info.room_url, token: info.token ?? undefined });
+        await callObject.join({
+          url: info.room_url,
+          ...(info.token ? { token: info.token } : {}),
+        });
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'Failed to join room');
         setStatus('error');
@@ -245,8 +249,9 @@ export default function RoomSessionPage() {
     router.push('/rooms');
   };
 
-  const handleLeave = () => {
-    callRef.current?.leave().catch(() => {});
+  const handleLeave = async () => {
+    setLeaving(true);
+    await callRef.current?.leave().catch(() => {});
     router.push('/rooms');
   };
 
@@ -274,8 +279,9 @@ export default function RoomSessionPage() {
             size="sm"
             className="text-zinc-400 hover:text-white"
             onClick={handleLeave}
+            disabled={leaving}
           >
-            ← Back
+            {leaving ? 'Leaving…' : '← Back'}
           </Button>
           <span className="text-white font-semibold text-sm">
             {roomInfo?.room_name ?? 'Connecting…'}
@@ -353,10 +359,11 @@ export default function RoomSessionPage() {
 
         <button
           onClick={handleLeave}
+          disabled={leaving}
           title="Leave room"
-          className="w-11 h-11 rounded-full bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center text-xl transition-colors"
+          className="w-11 h-11 rounded-full bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center text-xl transition-colors disabled:opacity-50"
         >
-          🚪
+          {leaving ? '⏳' : '🚪'}
         </button>
 
         {roomInfo?.is_host && (

@@ -49,9 +49,9 @@ export function SignUpForm({
       });
       if (error) throw error;
       router.push("/auth/login?message=Account+created.+Please+log+in.");
+      return; // keep isLoading true during navigation
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
-    } finally {
       setIsLoading(false);
     }
   };
