@@ -189,13 +189,17 @@ export interface CommunityRoom {
   name: string;
   description: string | null;
   room_type: 'video' | 'audio';
-  status: 'live' | 'scheduled' | 'closed';
+  status: 'idle' | 'live' | 'scheduled' | 'closed';
   scheduled_at: string | null;
   daily_room_url: string | null;
   daily_room_name: string | null;
   is_active: boolean;
   created_by: string | null;
   created_at: string;
+  participant_count: number;
+  max_participants: number | null;
+  started_at: string | null;
+  ended_at: string | null;
 }
 
 export interface UserBadgeProgress {
