@@ -7,10 +7,12 @@ interface CommunityRoomCardProps {
   name: string;
   description: string | null;
   room_type: 'video' | 'audio';
-  status: 'live' | 'scheduled' | 'closed';
+  status: 'idle' | 'live' | 'scheduled' | 'closed';
   scheduled_at: string | null;
   community_name: string | null;
   creator_display_name: string | null;
+  participant_count?: number;
+  max_participants?: number | null;
   /** Hide community tag when already scoped to one community (e.g. community detail screen) */
   hideCommunityTag?: boolean;
   onPress: () => void;
@@ -24,11 +26,21 @@ export function CommunityRoomCard({
   scheduled_at,
   community_name,
   creator_display_name,
+  participant_count = 0,
+  max_participants,
   hideCommunityTag = false,
   onPress,
 }: CommunityRoomCardProps) {
-  const isLive = status === 'live';
+  const isLive      = status === 'live';
   const isScheduled = status === 'scheduled';
+
+  const ratioText = isLive
+    ? max_participants != null
+      ? `${participant_count} / ${max_participants}`
+      : `${participant_count}`
+    : max_participants != null
+      ? `— / ${max_participants}`
+      : null;
 
   return (
     <TouchableOpacity
@@ -40,6 +52,9 @@ export function CommunityRoomCard({
       <View style={styles.topRow}>
         <Text style={styles.typeIcon}>{room_type === 'video' ? '🎥' : '🎙️'}</Text>
         <Text style={styles.name} numberOfLines={1}>{name}</Text>
+        {ratioText != null && (
+          <Text style={styles.ratio}>{ratioText}</Text>
+        )}
         {isLive && <Text style={styles.liveBadge}>● Live</Text>}
         {isScheduled && (
           <Text testID="scheduled-badge" style={styles.scheduledBadge}>
@@ -89,6 +104,11 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontWeight: '700',
     fontSize: 14,
+  },
+  ratio: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    fontWeight: '600',
   },
   liveBadge: {
     color: COLORS.success,

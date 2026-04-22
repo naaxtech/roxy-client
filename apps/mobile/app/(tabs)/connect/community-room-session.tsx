@@ -181,6 +181,13 @@ export default function CommunityRoomSession() {
     );
   };
 
+  // Host pushes authoritative participant count on every change
+  useEffect(() => {
+    if (!roomInfo?.is_host || !room_id) return;
+    const count = remoteParticipants.length + 1; // remotes + self
+    callEdgeFunction('manage-room', { action: 'sync-count', room_id, count }).catch(() => {});
+  }, [remoteParticipants, roomInfo?.is_host, room_id]);
+
   const isVideo = roomInfo?.room_type === 'video';
   const participantCount = remoteParticipants.length;
 

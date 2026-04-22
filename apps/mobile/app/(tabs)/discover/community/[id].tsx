@@ -114,6 +114,8 @@ export default function CommunityDetailScreen() {
       setRooms(data.map((r: any) => ({
         ...r,
         creator_display_name: r.profiles?.display_name ?? null,
+        participant_count:    r.participant_count ?? 0,
+        max_participants:     r.max_participants ?? null,
       })));
     }
     setLoadingRooms(false);
@@ -134,7 +136,28 @@ export default function CommunityDetailScreen() {
     loadEvents();
     loadRsvps();
     loadRooms();
-  }, [loadPosts, loadEvents, loadRsvps, loadRooms]);
+
+    if (!id) return;
+    // Realtime: keep participant_count and status live while on this screen
+    const channel = supabase
+      .channel(`community-rooms-${id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'community_rooms',
+        filter: `community_id=eq.${id}`,
+      }, (payload) => {
+        const updated = payload.new as any;
+        setRooms(prev => prev.map(r =>
+          r.id === updated.id
+            ? { ...r, participant_count: updated.participant_count ?? r.participant_count, status: updated.status ?? r.status }
+            : r
+        ));
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [loadPosts, loadEvents, loadRsvps, loadRooms, id]);
 
   const pagerRef = useRef<ScrollView>(null);
 
@@ -400,6 +423,8 @@ export default function CommunityDetailScreen() {
                 scheduled_at={room.scheduled_at}
                 community_name={null}
                 creator_display_name={room.creator_display_name}
+                participant_count={room.participant_count}
+                max_participants={room.max_participants}
                 hideCommunityTag={true}
                 onPress={() => router.push(`/(tabs)/connect/community-room-session?room_id=${room.id}` as any)}
               />
