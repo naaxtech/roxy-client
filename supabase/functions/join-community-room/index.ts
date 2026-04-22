@@ -147,22 +147,21 @@ Deno.serve(async (req) => {
     creatorDisplayName = creator?.display_name ?? null;
   }
 
-  // Create meeting token
-  let token: string | null = null;
+  // Create meeting token — required for private rooms
+  let token: string;
   try {
     token = await createMeetingToken(roomName, displayName, auth.userId, isOwner, dailyApiKey);
   } catch (e) {
-    // Non-fatal — fall back to tokenless join (room must be open access)
-    console.error('Meeting token creation failed, falling back to tokenless join:', e);
+    return errorResponse(`Meeting token creation failed: ${e instanceof Error ? e.message : String(e)}`, 500);
   }
 
   return successResponse({
-    room_url: roomUrl,
-    room_name: room.name,
-    room_type: room.room_type,
-    community_id: room.community_id,
-    token,
-    is_host: isOwner,
-    creator_display_name: creatorDisplayName,
+    room_url:              roomUrl,
+    room_name:             room.name,
+    room_type:             room.room_type,
+    community_id:          room.community_id,
+    token:                 token,
+    is_host:               isOwner,
+    creator_display_name:  creatorDisplayName,
   });
 });

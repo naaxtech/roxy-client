@@ -172,13 +172,10 @@ export default function RoomSessionPage() {
         });
         isHostRef.current = info.is_host;
 
-        // Lazy import — daily-js is browser-only
+        // Lazy import — daily-js is browser-only; handle both ESM default and CJS exports
         const mod = await import('@daily-co/daily-js');
-        const Daily = mod.default;
-        callObject = Daily.createCallObject({
-          audioSource: true,
-          videoSource: info.room_type === 'video',
-        });
+        const Daily = mod.default ?? mod;
+        callObject = (Daily as any).createCallObject();
         callRef.current = callObject;
 
         callObject.on('joined-meeting',         () => { setStatus('connected'); refreshParticipants(callObject); });
@@ -197,7 +194,11 @@ export default function RoomSessionPage() {
           ...(info.token ? { token: info.token } : {}),
         });
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Failed to join room');
+        let msg = 'Failed to join room';
+        if (e instanceof Error) msg = e.message;
+        else if (typeof e === 'object' && e !== null && 'errorMsg' in e) msg = (e as any).errorMsg;
+        else if (typeof e === 'string') msg = e;
+        setError(msg);
         setStatus('error');
       }
     })();
