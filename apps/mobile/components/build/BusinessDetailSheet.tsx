@@ -200,6 +200,8 @@ export function BusinessDetailSheet({
                     renderItem={({ item }) => (
                       <ProductCard
                         product={item}
+                        businessId={businessId}
+                        businessName={business.name}
                         onAddToCart={handleAddToCart}
                       />
                     )}
