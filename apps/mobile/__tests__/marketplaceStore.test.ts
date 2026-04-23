@@ -1,4 +1,5 @@
 import { useMarketplaceStore } from '../store/marketplaceStore';
+import type { ProductWithVariants, ShippingAddress } from '../types/marketplace';
 
 jest.mock('../lib/supabase', () => ({
   supabase: {
@@ -94,5 +95,61 @@ describe('marketplaceStore', () => {
     await useMarketplaceStore.getState().addToCart('b1', product, null, 2);
     useMarketplaceStore.getState().clearCart('b1');
     expect(useMarketplaceStore.getState().cartItems['b1']).toHaveLength(0);
+  });
+
+  describe('buyNow', () => {
+    it('calls create-product-order with single item and returns clientSecret + orderId', async () => {
+      const mockInvoke = jest.fn().mockResolvedValue({
+        data: { client_secret: 'secret_123', order_id: 'order_abc' },
+        error: null,
+      });
+      const { supabase } = jest.requireMock('../lib/supabase');
+      supabase.functions.invoke.mockImplementation(mockInvoke);
+
+      const fakeProduct: ProductWithVariants = {
+        id: 'prod-1', business_id: 'biz-1', name: 'Candle', description: null,
+        base_price_cents: 999, category: 'beauty', status: 'approved',
+        is_active: true, has_variants: false, rejection_reason: null,
+        created_at: '', updated_at: '',
+        product_variants: [], product_photos: [],
+      };
+
+      const shipping: ShippingAddress = {
+        name: 'Test User', line1: '123 Main St', city: 'LA',
+        state: 'CA', postal_code: '90001', country: 'US',
+      };
+
+      const result = await useMarketplaceStore.getState().buyNow('biz-1', fakeProduct, null, 2, shipping);
+
+      expect(mockInvoke).toHaveBeenCalledWith('create-product-order', {
+        body: {
+          business_id: 'biz-1',
+          items: [{ product_id: 'prod-1', variant_id: null, quantity: 2 }],
+          shipping_address: {
+            name: 'Test User', line1: '123 Main St', line2: null,
+            city: 'LA', state: 'CA', postal_code: '90001', country: 'US',
+          },
+        },
+      });
+      expect(result).toEqual({ clientSecret: 'secret_123', orderId: 'order_abc' });
+    });
+
+    it('returns null when edge function errors', async () => {
+      const { supabase } = jest.requireMock('../lib/supabase');
+      supabase.functions.invoke.mockResolvedValue({ data: null, error: { message: 'fail' } });
+
+      const fakeProduct: ProductWithVariants = {
+        id: 'p', business_id: 'b', name: 'X', description: null,
+        base_price_cents: 100, category: 'other', status: 'approved',
+        is_active: true, has_variants: false, rejection_reason: null,
+        created_at: '', updated_at: '',
+        product_variants: [], product_photos: [],
+      };
+      const shipping: ShippingAddress = {
+        name: 'A', line1: 'B', city: 'C', state: 'D', postal_code: 'E', country: 'US',
+      };
+      const result = await useMarketplaceStore.getState().buyNow('b', fakeProduct, null, 1, shipping);
+      expect(result).toBeNull();
+    });
   });
 });
