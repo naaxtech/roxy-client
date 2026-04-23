@@ -14,7 +14,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Set up SSH deploy key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.NAAXTECH_MIRROR_SSH_KEY }}
+
       - name: Push to naaxtech mirror
         run: |
-          git remote add mirror https://x-access-token:${{ secrets.NAAXTECH_MIRROR_TOKEN }}@github.com/naaxtech/roxy-client.git
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git remote add mirror git@github.com:naaxtech/roxy-client.git
           git push mirror main:main --force
