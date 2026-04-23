@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, TextInput,
 import { useStripe } from '@stripe/stripe-react-native';
 import { COLORS } from '../../lib/constants';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
-import type { ShippingAddress } from '../../types/marketplace';
+import type { ProductWithVariants, ShippingAddress } from '../../types/marketplace';
 
 type Step = 'review' | 'shipping' | 'payment';
 
@@ -15,11 +15,13 @@ interface CheckoutSheetProps {
   visible: boolean;
   onClose: () => void;
   onSuccess: (orderId: string) => void;
+  /** When set, bypasses the cart and checks out this single item directly. Cart is not cleared on success. */
+  buyNowItem?: { product: ProductWithVariants; variantId: string | null; quantity: number };
 }
 
-export function CheckoutSheet({ businessId, businessName, visible, onClose, onSuccess }: CheckoutSheetProps) {
+export function CheckoutSheet({ businessId, businessName, visible, onClose, onSuccess, buyNowItem }: CheckoutSheetProps) {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const { cartItems, getCartTotal, createOrder, clearCart } = useMarketplaceStore();
+  const { cartItems, getCartTotal, createOrder, clearCart, buyNow } = useMarketplaceStore();
 
   const [step, setStep] = useState<Step>('review');
   const [shipping, setShipping] = useState<ShippingAddress>({
@@ -27,8 +29,32 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
   });
   const [paymentLoading, setPaymentLoading] = useState(false);
 
-  const items = cartItems[businessId] ?? [];
-  const subtotal = getCartTotal(businessId);
+  // When buyNowItem is set, use it instead of cart
+  const cartItemsList = cartItems[businessId] ?? [];
+  const items = buyNowItem
+    ? [{
+        id: 'buy-now',
+        cart_id: '',
+        product_id: buyNowItem.product.id,
+        variant_id: buyNowItem.variantId,
+        quantity: buyNowItem.quantity,
+        added_at: '',
+        product: buyNowItem.product,
+        variant: buyNowItem.variantId
+          ? buyNowItem.product.product_variants.find(v => v.id === buyNowItem.variantId)
+          : undefined,
+      }]
+    : cartItemsList;
+
+  const subtotal = buyNowItem
+    ? (() => {
+        const variant = buyNowItem.variantId
+          ? buyNowItem.product.product_variants.find(v => v.id === buyNowItem.variantId)
+          : null;
+        const unitPrice = variant ? variant.price_cents : buyNowItem.product.base_price_cents;
+        return unitPrice * buyNowItem.quantity;
+      })()
+    : getCartTotal(businessId);
 
   const isShippingValid = !!(shipping.name && shipping.line1 && shipping.city && shipping.state && shipping.postal_code);
 
@@ -36,7 +62,10 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
     if (!isShippingValid) return;
     setPaymentLoading(true);
     try {
-      const result = await createOrder(businessId, shipping);
+      const result = buyNowItem
+        ? await buyNow(businessId, buyNowItem.product, buyNowItem.variantId, buyNowItem.quantity, shipping)
+        : await createOrder(businessId, shipping);
+
       if (!result) {
         Alert.alert('Error', 'Failed to create order. Please try again.');
         return;
@@ -61,8 +90,8 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
         return;
       }
 
-      // Payment succeeded
-      clearCart(businessId);
+      // Payment succeeded — only clear cart for normal checkout, not buy now
+      if (!buyNowItem) clearCart(businessId);
       onSuccess(orderId);
     } finally {
       setPaymentLoading(false);
