@@ -1,0 +1,20 @@
+name: Mirror to naaxtech/roxy-client
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Push to naaxtech mirror
+        run: |
+          git remote add mirror https://x-access-token:${{ secrets.NAAXTECH_MIRROR_TOKEN }}@github.com/naaxtech/roxy-client.git
+          git push mirror main:main --force
