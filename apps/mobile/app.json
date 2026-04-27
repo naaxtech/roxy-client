@@ -52,6 +52,10 @@
         {
           "android": {
             "minSdkVersion": 24,
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0",
+            "kotlinVersion": "1.9.24",
             "extraProguardRules": "-keep class com.google.firebase.** { *; }\n-keep class io.invertase.firebase.** { *; }\n-keep class com.oney.WebRTCModule.** { *; }\n-keep class org.webrtc.** { *; }\n-keep class com.daily.** { *; }\n-keep class com.ocetnik.timer.** { *; }"
           },
           "ios": {
