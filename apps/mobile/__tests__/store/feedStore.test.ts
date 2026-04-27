@@ -1,6 +1,18 @@
 import { act, renderHook } from '@testing-library/react-native';
+
+jest.mock('../../lib/supabase', () => ({
+  supabase: {
+    from: jest.fn(),
+    channel: jest.fn(() => ({
+      on: jest.fn(() => ({ subscribe: jest.fn(() => ({})) })),
+    })),
+    removeChannel: jest.fn(),
+  },
+}));
+const { supabase } = jest.requireMock('../../lib/supabase');
+
 import { useFeedStore } from '../../store/feedStore';
-import { Post, Event } from '../../types';
+import type { Post } from '../../types';
 
 const makePost = (id: string, overrides: Partial<Post> = {}): Post => ({
   id,
@@ -30,92 +42,159 @@ const makePost = (id: string, overrides: Partial<Post> = {}): Post => ({
   ...overrides,
 });
 
-const makeEvent = (id: string): Event => ({
-  id,
-  community_id: null,
-  host_id: 'user-1',
-  title: 'Test Event',
-  description: null,
-  event_type: 'online',
-  starts_at: '2026-04-01T18:00:00Z',
-  ends_at: null,
-  location_text: null,
-  location_url: null,
-  max_attendees: null,
-  attendee_count: 0,
-  cover_image_url: null,
-  is_paid: false,
-  is_private: false,
-  price_cents: null,
-  currency: 'usd',
-  status: 'active',
-  payout_delay_days: null,
-  created_at: '2026-01-01T00:00:00Z',
-});
+function makeQueryChain(data: unknown, error: null | { message: string } = null) {
+  const chain: Record<string, jest.Mock> = {};
+  const methods = ['select', 'eq', 'in', 'is', 'not', 'order', 'limit', 'gte'];
+  methods.forEach(m => { chain[m] = jest.fn(() => chain); });
+  (chain as any)[Symbol.iterator] = undefined;
+  // Make the chain awaitable
+  (chain as any).then = (resolve: (v: { data: unknown; error: unknown }) => void) => {
+    resolve({ data, error });
+    return Promise.resolve({ data, error });
+  };
+  return chain;
+}
 
 beforeEach(() => {
+  jest.clearAllMocks();
   useFeedStore.setState({
-    posts: [], events: [], loading: false,
-    rsvpdEventIds: new Set(),
+    posts: [],
+    newPosts: [],
+    loading: false,
+    loadingMore: false,
+    cursor: null,
+    hasMore: true,
+    newPostCount: 0,
+    likedPostIds: new Set(),
+    savedPostIds: new Set(),
+    seenPostIds: new Set(),
+    videoQueue: [],
   });
 });
 
-describe('feedStore', () => {
-  it('has correct initial state', () => {
+describe('feedStore.init', () => {
+  it('populates likedPostIds and savedPostIds', async () => {
+    const likesChain = makeQueryChain([{ post_id: 'p1' }, { post_id: 'p2' }]);
+    const savesChain = makeQueryChain([{ post_id: 'p3' }]);
+    supabase.from.mockImplementation((table: string) =>
+      table === 'post_likes' ? likesChain : savesChain
+    );
+
     const { result } = renderHook(() => useFeedStore());
-    expect(result.current.posts).toEqual([]);
-    expect(result.current.events).toEqual([]);
-    expect(result.current.loading).toBe(false);
-    expect(result.current.rsvpdEventIds).toBeInstanceOf(Set);
+    await act(async () => { await result.current.init('user1'); });
+
+    expect(result.current.likedPostIds.has('p1')).toBe(true);
+    expect(result.current.likedPostIds.has('p2')).toBe(true);
+    expect(result.current.savedPostIds.has('p3')).toBe(true);
+  });
+});
+
+describe('feedStore.toggleLike', () => {
+  it('optimistically adds likedPostId and increments like_count', async () => {
+    const insertChain = makeQueryChain(null);
+    supabase.from.mockReturnValue({ insert: jest.fn(() => insertChain) });
+
+    useFeedStore.setState({
+      posts: [makePost('p1', { like_count: 5 })],
+      likedPostIds: new Set(),
+    } as any);
+
+    const { result } = renderHook(() => useFeedStore());
+    act(() => { void result.current.toggleLike('p1'); });
+
+    expect(result.current.likedPostIds.has('p1')).toBe(true);
+    expect(result.current.posts[0].like_count).toBe(6);
   });
 
-  it('setPosts replaces array', () => {
+  it('rolls back on DB error', async () => {
+    const failChain = makeQueryChain(null, { message: 'db error' });
+    supabase.from.mockReturnValue({
+      insert: jest.fn(() => failChain),
+      delete: jest.fn(() => failChain),
+    });
+
+    useFeedStore.setState({
+      posts: [makePost('p1', { like_count: 5 })],
+      likedPostIds: new Set(),
+    } as any);
+
     const { result } = renderHook(() => useFeedStore());
-    act(() => result.current.setPosts([makePost('p1'), makePost('p2')]));
-    expect(result.current.posts).toHaveLength(2);
-    expect(result.current.posts[0].id).toBe('p1');
+    await act(async () => { await result.current.toggleLike('p1'); });
+
+    expect(result.current.likedPostIds.has('p1')).toBe(false);
+    expect(result.current.posts[0].like_count).toBe(5);
+  });
+});
+
+describe('feedStore.toggleSave', () => {
+  it('optimistically adds savedPostId and increments save_count', async () => {
+    const insertChain = makeQueryChain(null);
+    supabase.from.mockReturnValue({ insert: jest.fn(() => insertChain) });
+
+    useFeedStore.setState({
+      posts: [makePost('p1', { save_count: 2 })],
+      savedPostIds: new Set(),
+    } as any);
+
+    const { result } = renderHook(() => useFeedStore());
+    act(() => { void result.current.toggleSave('p1'); });
+
+    expect(result.current.savedPostIds.has('p1')).toBe(true);
+    expect(result.current.posts[0].save_count).toBe(3);
   });
 
-  it('setEvents replaces array', () => {
+  it('rolls back toggleSave on DB error', async () => {
+    const failChain = makeQueryChain(null, { message: 'db error' });
+    supabase.from.mockReturnValue({
+      insert: jest.fn(() => failChain),
+      delete: jest.fn(() => failChain),
+    });
+
+    useFeedStore.setState({
+      posts: [makePost('p1', { save_count: 2 })],
+      savedPostIds: new Set(),
+    } as any);
+
     const { result } = renderHook(() => useFeedStore());
-    act(() => result.current.setEvents([makeEvent('e1')]));
-    expect(result.current.events).toHaveLength(1);
-    expect(result.current.events[0].id).toBe('e1');
+    await act(async () => { await result.current.toggleSave('p1'); });
+
+    expect(result.current.savedPostIds.has('p1')).toBe(false);
+    expect(result.current.posts[0].save_count).toBe(2);
+  });
+});
+
+describe('feedStore.acceptNewPosts', () => {
+  it('moves newPosts to front and resets newPostCount', () => {
+    const newPost = makePost('new1', { feed_score: 99 });
+    useFeedStore.setState({
+      posts: [makePost('old1')],
+      newPosts: [newPost],
+      newPostCount: 1,
+      videoQueue: [],
+    } as any);
+
+    const { result } = renderHook(() => useFeedStore());
+    act(() => { result.current.acceptNewPosts(); });
+
+    expect(result.current.posts[0].id).toBe('new1');
+    expect(result.current.posts[1].id).toBe('old1');
+    expect(result.current.newPostCount).toBe(0);
+  });
+});
+
+describe('feedStore.upsertPost', () => {
+  it('inserts new post at front', () => {
+    useFeedStore.setState({ posts: [makePost('p1')] } as any);
+    const { result } = renderHook(() => useFeedStore());
+    act(() => result.current.upsertPost(makePost('p2')));
+    expect(result.current.posts[0].id).toBe('p2');
   });
 
-  it('upsertPost inserts new post', () => {
+  it('updates existing post in place', () => {
+    useFeedStore.setState({ posts: [makePost('p1', { content: 'old' })] } as any);
     const { result } = renderHook(() => useFeedStore());
-    act(() => result.current.upsertPost(makePost('p1')));
-    expect(result.current.posts).toHaveLength(1);
-    expect(result.current.posts[0].id).toBe('p1');
-  });
-
-  it('upsertPost updates existing post', () => {
-    const { result } = renderHook(() => useFeedStore());
-    act(() => result.current.setPosts([makePost('p1', { content: 'original' })]));
     act(() => result.current.upsertPost(makePost('p1', { content: 'updated' })));
     expect(result.current.posts).toHaveLength(1);
     expect(result.current.posts[0].content).toBe('updated');
-  });
-
-  it('setLoading toggles loading state', () => {
-    const { result } = renderHook(() => useFeedStore());
-    act(() => result.current.setLoading(true));
-    expect(result.current.loading).toBe(true);
-    act(() => result.current.setLoading(false));
-    expect(result.current.loading).toBe(false);
-  });
-
-  it('incrementReaction updates reaction counts', () => {
-    const { result } = renderHook(() => useFeedStore());
-    act(() => result.current.setPosts([makePost('p1', { reaction_counts: { '🌸': 2 } })]));
-    act(() => result.current.incrementReaction('p1', '🌸'));
-    expect(result.current.posts[0].reaction_counts['🌸']).toBe(3);
-  });
-
-  it('markRsvpd adds event id to Set', () => {
-    const { result } = renderHook(() => useFeedStore());
-    act(() => result.current.markRsvpd('e1'));
-    expect(result.current.rsvpdEventIds.has('e1')).toBe(true);
   });
 });
