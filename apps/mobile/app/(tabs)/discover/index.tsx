@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Animated, Alert,
+  View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Animated, Alert, Share,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,8 +13,118 @@ import { COLORS } from '../../../lib/constants';
 import { logError } from '../../../lib/errorLogger';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
+import { useFeedStore } from '../../../store/feedStore';
+import { FeedCard } from '../../../components/feed/FeedCard';
+import { FeedSkeleton } from '../../../components/feed/FeedSkeleton';
+import { NewPostsBanner } from '../../../components/feed/NewPostsBanner';
+import type { Post } from '../../../types';
 
-type SubTab = 'communities' | 'events' | 'games';
+type SubTab = 'feed' | 'communities' | 'events' | 'games';
+
+// ── Feed section ──────────────────────────────────────────────────────────────
+function FeedSection({
+  userId,
+  joinedCommunityIds,
+  onNavigateToPost,
+  onNavigateToVideo,
+}: {
+  userId: string;
+  joinedCommunityIds: string[];
+  onNavigateToPost: (id: string) => void;
+  onNavigateToVideo: (id: string) => void;
+}) {
+  const {
+    posts, loading, loadingMore, hasMore, newPostCount,
+    likedPostIds, savedPostIds,
+    init, fetchFeed, fetchMoreFeed,
+    toggleLike, toggleSave, markSeen, acceptNewPosts, pushNewPost,
+  } = useFeedStore();
+
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const communityKey = joinedCommunityIds.join(',');
+
+  useEffect(() => {
+    if (!userId) return;
+    void init(userId);
+    void fetchFeed(joinedCommunityIds);
+
+    if (joinedCommunityIds.length) {
+      const ch = supabase
+        .channel('feed-new-posts')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'posts',
+          },
+          (payload) => { pushNewPost(payload.new as Post); }
+        )
+        .subscribe();
+      channelRef.current = ch;
+    }
+    return () => {
+      if (channelRef.current) {
+        void supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, communityKey]);
+
+  if (loading) return <FeedSkeleton />;
+
+  return (
+    <View style={{ flex: 1 }}>
+      {newPostCount > 0 && (
+        <NewPostsBanner count={newPostCount} onPress={acceptNewPosts} />
+      )}
+      <FlashList
+        data={posts}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <FeedCard
+            post={item}
+            isLiked={likedPostIds.has(item.id)}
+            isSaved={savedPostIds.has(item.id)}
+            onLike={() => void toggleLike(item.id)}
+            onSave={() => void toggleSave(item.id)}
+            onComment={() => {
+              if (item.post_type === 'video') onNavigateToVideo(item.id);
+              else onNavigateToPost(item.id);
+            }}
+            onShare={() => void Share.share({ message: 'Check this out on Roxy!' })}
+            onPress={() => {
+              markSeen(item.id);
+              if (item.post_type === 'video') onNavigateToVideo(item.id);
+              else onNavigateToPost(item.id);
+            }}
+          />
+        )}
+        estimatedItemSize={320}
+        onEndReached={() => { if (hasMore && !loadingMore) void fetchMoreFeed(joinedCommunityIds); }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore
+            ? <ActivityIndicator color={COLORS.primary} style={{ padding: 20 }} />
+            : null
+        }
+        ListEmptyComponent={
+          <View style={feedStyles.empty}>
+            <Text style={feedStyles.emptyText}>
+              No posts yet. Join more communities to see content here.
+            </Text>
+          </View>
+        }
+      />
+    </View>
+  );
+}
+
+const feedStyles = StyleSheet.create({
+  empty: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
+  emptyText: { color: COLORS.textMuted, fontSize: 15, textAlign: 'center', lineHeight: 22 },
+});
 
 type EventRow = {
   id: string; title: string; starts_at: string; ends_at: string | null;
@@ -35,7 +145,7 @@ export default function DiscoverScreen() {
   const { allCommunities, joinedIds, joinedCommunities, fetchAll, fetchJoined, joinCommunity, leaveCommunity } = useCommunityStore();
   const { selectedCommunityId } = useCommunityFilterStore();
 
-  const [subTab, setSubTab] = useState<SubTab>('communities');
+  const [subTab, setSubTab] = useState<SubTab>('feed');
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const switchTab = (tab: SubTab) => {
@@ -139,7 +249,7 @@ export default function DiscoverScreen() {
 
       {/* Sub-tabs */}
       <View style={styles.subTabRow}>
-        {(['communities', 'events', 'games'] as SubTab[]).map((tab) => (
+        {(['feed', 'communities', 'events', 'games'] as SubTab[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.subTab, subTab === tab && styles.subTabActive]}
@@ -153,6 +263,16 @@ export default function DiscoverScreen() {
       </View>
 
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+      {/* Feed */}
+      {subTab === 'feed' && user && (
+        <FeedSection
+          userId={user.id}
+          joinedCommunityIds={Array.from(joinedIds)}
+          onNavigateToPost={(id) => router.push(`/(tabs)/discover/post/${id}` as any)}
+          onNavigateToVideo={(id) => router.push(`/(tabs)/discover/video/${id}` as any)}
+        />
+      )}
+
       {/* Communities */}
       {subTab === 'communities' && (
         <FlashList

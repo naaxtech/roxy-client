@@ -31,6 +31,13 @@ interface MarketplaceStore extends CartState {
   checkoutLoading: boolean;
   createOrder: (businessId: string, shipping: ShippingAddress) => Promise<{ clientSecret: string; orderId: string } | null>;
   confirmOrder: (orderId: string) => Promise<void>;
+  buyNow: (
+    businessId: string,
+    product: ProductWithVariants,
+    variantId: string | null,
+    quantity: number,
+    shipping: ShippingAddress
+  ) => Promise<{ clientSecret: string; orderId: string } | null>;
 }
 
 export const useMarketplaceStore = create<MarketplaceStore>((set, get) => ({
@@ -177,5 +184,30 @@ export const useMarketplaceStore = create<MarketplaceStore>((set, get) => ({
 
   confirmOrder: async (_orderId) => {
     await get().fetchOrders();
+  },
+
+  buyNow: async (businessId, product, variantId, quantity, shipping) => {
+    set({ checkoutLoading: true });
+    try {
+      const { data, error } = await supabase.functions.invoke('create-product-order', {
+        body: {
+          business_id: businessId,
+          items: [{ product_id: product.id, variant_id: variantId, quantity }],
+          shipping_address: {
+            name: shipping.name,
+            line1: shipping.line1,
+            line2: shipping.line2 ?? null,
+            city: shipping.city,
+            state: shipping.state,
+            postal_code: shipping.postal_code,
+            country: shipping.country,
+          },
+        },
+      });
+      if (error || !data?.client_secret) return null;
+      return { clientSecret: data.client_secret as string, orderId: data.order_id as string };
+    } finally {
+      set({ checkoutLoading: false });
+    }
   },
 }));

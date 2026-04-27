@@ -115,27 +115,56 @@ export interface Match {
   conversation_id: string | null;
 }
 
+export type PostType =
+  | 'standard' | 'event' | 'poll' | 'resource'
+  | 'photo' | 'gallery' | 'video' | 'roxy_link';
+
+export type LinkType = 'game' | 'room' | 'event';
+export type VideoAspectRatio = '4:5' | '16:9' | '1:1';
+
 export interface Post {
   id: string;
   author_id: string;
   community_id: string;
   content: string;
   media_urls: string[];
-  post_type: 'standard' | 'event' | 'poll' | 'resource';
+  post_type: PostType;
   is_pinned: boolean;
   is_flagged: boolean;
   reaction_counts: Record<string, number>;
   comment_count: number;
+  like_count: number;
+  save_count: number;
+  feed_score: number;
+  blurhash: string | null;
+  deleted_at: string | null;
+  // video
+  video_url: string | null;
+  video_thumbnail_url: string | null;
+  video_duration_secs: number | null;
+  video_aspect_ratio: VideoAspectRatio | null;
+  // roxy link
+  link_type: LinkType | null;
+  link_entity_id: string | null;
+  link_community_id: string | null;
   created_at: string;
   updated_at: string;
+  profiles?: { display_name: string; avatar_url: string | null };
 }
 
 export interface Comment {
   id: string;
   post_id: string;
   author_id: string;
-  content: string;
+  parent_id: string | null;
+  content: string | null;
+  media_url: string | null;
+  gif_url: string | null;
+  like_count: number;
+  deleted_at: string | null;
   created_at: string;
+  profiles?: { display_name: string; avatar_url: string | null };
+  replies?: Comment[];
 }
 
 export interface Event {

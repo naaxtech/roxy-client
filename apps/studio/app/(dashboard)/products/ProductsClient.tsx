@@ -1,12 +1,19 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ProductForm } from './ProductForm';
 import { archiveProduct, toggleProductActive } from './actions';
 import { useRouter } from 'next/navigation';
+
+type ProductPhoto = {
+  id: string;
+  url: string;
+  position: number;
+};
 
 type Product = {
   id: string;
@@ -18,7 +25,7 @@ type Product = {
   description?: string | null;
   created_at: string;
   product_variants: { count: number }[];
-  product_photos: { count: number }[];
+  product_photos: ProductPhoto[];
 };
 
 type Tab = 'all' | 'pending' | 'approved' | 'rejected';
@@ -117,10 +124,30 @@ export function ProductsClient({ products }: { products: Product[] }) {
               {filtered.map(p => {
                 const badge = STATUS_BADGE[p.status] ?? STATUS_BADGE.pending;
                 const variantCount = p.product_variants?.[0]?.count ?? 0;
-                const photoCount = p.product_photos?.[0]?.count ?? 0;
+                const photos = p.product_photos ?? [];
+                const cover = photos.find(ph => ph.position === 0) ?? photos[0];
                 return (
                   <tr key={p.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3 font-medium max-w-[180px] truncate">{p.name}</td>
+                    <td className="px-4 py-3 font-medium max-w-[220px]">
+                      <div className="flex items-center gap-2.5">
+                        {cover ? (
+                          <Image
+                            src={cover.url}
+                            alt={p.name}
+                            width={36}
+                            height={36}
+                            className="rounded object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded bg-muted flex items-center justify-center shrink-0">
+                            <span className="text-xs text-muted-foreground font-bold">
+                              {p.category[0].toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                        <span className="truncate">{p.name}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 capitalize text-muted-foreground">{p.category}</td>
                     <td className="px-4 py-3 text-right tabular-nums">
                       ${(p.base_price_cents / 100).toFixed(2)}
@@ -129,7 +156,7 @@ export function ProductsClient({ products }: { products: Product[] }) {
                       <Badge className={badge.className}>{badge.label}</Badge>
                     </td>
                     <td className="px-4 py-3 text-center text-muted-foreground">{variantCount}</td>
-                    <td className="px-4 py-3 text-center text-muted-foreground">{photoCount}</td>
+                    <td className="px-4 py-3 text-center text-muted-foreground">{photos.length}/4</td>
                     <td className="px-4 py-3 text-center">
                       <Checkbox
                         checked={p.is_active}
