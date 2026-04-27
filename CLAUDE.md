@@ -88,7 +88,7 @@ Do not suggest alternatives. These are final.
 
 ## 5. CURRENT PROJECT STATE
 
-### Migrations completed (next = 022)
+### Migrations completed (next = 046)
 | File | Contents |
 |---|---|
 | 001 | profiles, roxy_greetings, dev_config, ai_call_log |
@@ -102,6 +102,7 @@ Do not suggest alternatives. These are final.
 | 009 | RLS — authenticated users can insert speed_date_sessions |
 | 010 | increment_reaction SQL function |
 | 021 | fee_tiers, host_stripe_accounts, platform_settings, payment_logs, events price_cents/currency |
+| 045 | posts/comments feed v2: post_likes, post_saves, comment_likes, seen_posts, compute_feed_score (VOLATILE), post-media bucket, behavioural_consent |
 
 ### Sessions completed
 | Session | Branch | Status |
@@ -118,11 +119,12 @@ Do not suggest alternatives. These are final.
 | 10 — Presence + tap-to-chat: online dots, sortByPresence, DM | session-9-friends | Open |
 | 11 — Firebase Analytics + Crashlytics → migrating to Sentry + PostHog | session-11-firebase | Open |
 | 12 — Community Studio + Stripe: apps/studio, Stripe Connect | session-12-stripe-studio | Open |
+| 13 — Content feed v2: FeedStore, FeedCards, VideoPlayer, PostDetail, CreatePost, Cloudflare Stream | session-13-content-feed | Open (PR #19) |
 
 ### Key commands
 ```bash
 # Tests (from apps/mobile/)
-cd apps/mobile && npx jest --ci --passWithNoTests   # 54 tests expected
+cd apps/mobile && npx jest --ci --passWithNoTests   # 288 tests expected
 
 # Web preview
 preview_start "Expo Web"   # via Claude preview tool
@@ -533,4 +535,4 @@ supabase
 
 *CLAUDE.md v3.0 · Roxy by Thinqer · Three-app monorepo · Maintained by Nicole Claire Marie A. Azachee*
 *This file is read automatically by Claude Code at every session start.*
-*Last updated: Session 12 complete. Next: Session 13 (observability migration + staff app scaffold).*
+*Last updated: Session 13 complete. Next: Session 14 (observability migration: Firebase → Sentry + PostHog via @roxy/observability package + staff app scaffold).*
