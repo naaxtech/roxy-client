@@ -39,6 +39,7 @@ const staffNav = [
   { href: '/staff/email-queue',            label: 'Email Queue',        icon: Mail },
   { href: '/staff/reconciliation',         label: 'Reconciliation',     icon: RefreshCw },
   { href: '/staff/disputes',               label: 'Disputes',           icon: AlertTriangle },
+  { href: '/staff/games',                  label: 'Game Reviews',       icon: Gamepad2 },
 ];
 
 interface NavItemProps {
