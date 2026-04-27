@@ -295,3 +295,17 @@ export interface EdgeFnResponse<T = unknown> {
   data: T | null;
   error: string | null;
 }
+
+export type GameCategory = 'party' | 'trivia' | 'dating' | 'icebreaker' | 'other';
+export type GamePublisher = 'roxy' | 'community';
+
+export interface Game {
+  id: string;
+  name: string;
+  short_description: string;
+  category: GameCategory;
+  publisher_type: GamePublisher;
+  url: string | null;           // null = native Roxy game
+  thumbnail_url: string | null;
+  created_at: string;
+}

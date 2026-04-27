@@ -13,10 +13,12 @@ import { COLORS } from '../../../lib/constants';
 import { logError } from '../../../lib/errorLogger';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
+import { Image } from 'expo-image';
 import { useFeedStore } from '../../../store/feedStore';
 import { FeedCard } from '../../../components/feed/FeedCard';
 import { FeedSkeleton } from '../../../components/feed/FeedSkeleton';
 import { NewPostsBanner } from '../../../components/feed/NewPostsBanner';
+import { useGamesStore } from '../../../store/gamesStore';
 import type { Post } from '../../../types';
 
 type SubTab = 'feed' | 'communities' | 'events' | 'games';
@@ -124,6 +126,109 @@ function FeedSection({
 const feedStyles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
   emptyText: { color: COLORS.textMuted, fontSize: 15, textAlign: 'center', lineHeight: 22 },
+});
+
+// ── Games section ─────────────────────────────────────────────────────────────
+function GamesSection({
+  communityId,
+  onNavigateToGame,
+  onNavigateToSpeedDating,
+}: {
+  communityId: string | null;
+  onNavigateToGame: (gameId: string) => void;
+  onNavigateToSpeedDating: () => void;
+}) {
+  const router = useRouter();
+  const { games, loading, fetchGames } = useGamesStore();
+
+  useEffect(() => {
+    if (communityId) void fetchGames(communityId);
+  }, [communityId]);
+
+  if (!communityId) {
+    return (
+      <View style={gamesStyles.empty}>
+        <Text style={gamesStyles.emptyText}>Join a community to see games.</Text>
+      </View>
+    );
+  }
+
+  if (loading) return <ActivityIndicator color={COLORS.primary} style={{ marginTop: 48 }} />;
+
+  return (
+    <FlashList
+      data={games}
+      keyExtractor={(item) => item.id}
+      estimatedItemSize={120}
+      numColumns={2}
+      contentContainerStyle={{ padding: 12 }}
+      renderItem={({ item }) => {
+        const isNative = item.url === null;
+        return (
+          <TouchableOpacity
+            style={gamesStyles.card}
+            onPress={() => isNative ? onNavigateToSpeedDating() : onNavigateToGame(item.id)}
+            activeOpacity={0.8}
+          >
+            <View style={gamesStyles.thumbnail}>
+              {item.thumbnail_url
+                ? <Image source={{ uri: item.thumbnail_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                : <Text style={gamesStyles.thumbnailEmoji}>🎮</Text>
+              }
+            </View>
+            <Text style={gamesStyles.gameName} numberOfLines={1}>{item.name}</Text>
+            <Text style={[gamesStyles.publisherBadge, item.publisher_type === 'roxy' && gamesStyles.roxyBadge]}>
+              {item.publisher_type === 'roxy' ? 'By Roxy' : 'Community'}
+            </Text>
+            <TouchableOpacity
+              style={gamesStyles.playBtn}
+              onPress={() => isNative ? onNavigateToSpeedDating() : onNavigateToGame(item.id)}
+            >
+              <Text style={gamesStyles.playBtnText}>Play</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        );
+      }}
+      ListEmptyComponent={
+        <View style={gamesStyles.empty}>
+          <Text style={gamesStyles.emptyText}>No games enabled yet. Ask your community admin to add some.</Text>
+        </View>
+      }
+      ListFooterComponent={
+        <TouchableOpacity
+          style={gamesStyles.suggestBtn}
+          onPress={() => router.push('/(tabs)/discover/games/submit' as any)}
+        >
+          <Text style={gamesStyles.suggestBtnText}>+ Suggest a game</Text>
+        </TouchableOpacity>
+      }
+    />
+  );
+}
+
+const gamesStyles = StyleSheet.create({
+  card: {
+    flex: 1, margin: 4, backgroundColor: COLORS.surface,
+    borderRadius: 12, padding: 10, gap: 6,
+  },
+  thumbnail: {
+    width: '100%', aspectRatio: 16 / 9,
+    backgroundColor: COLORS.surfaceLight, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  },
+  thumbnailEmoji: { fontSize: 28 },
+  gameName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13 },
+  publisherBadge: { color: COLORS.textMuted, fontSize: 11 },
+  roxyBadge: { color: COLORS.primary },
+  playBtn: {
+    backgroundColor: COLORS.primary, borderRadius: 10,
+    paddingVertical: 6, alignItems: 'center',
+  },
+  playBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  empty: { flex: 1, alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
+  emptyText: { color: COLORS.textMuted, textAlign: 'center', fontSize: 14, lineHeight: 20 },
+  suggestBtn: { alignItems: 'center', padding: 16 },
+  suggestBtnText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
 });
 
 type EventRow = {
@@ -387,38 +492,11 @@ export default function DiscoverScreen() {
 
       {/* Games */}
       {subTab === 'games' && (
-        <View style={styles.gamesContainer}>
-          {/* Speed Dating card */}
-          <View style={styles.gameCard}>
-            <Text style={styles.gameEmoji}>⚡</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.gameTitle}>Speed Dating</Text>
-              <Text style={styles.gameDesc}>5-minute video speed dates. Match with someone new.</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.playBtn}
-              onPress={() => router.push('/speed-dating' as any)}
-            >
-              <Text style={styles.playBtnText}>Play Now</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Community Icebreakers */}
-          <View style={styles.gameCard}>
-            <Text style={styles.gameEmoji}>🎯</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.gameTitle}>Community Icebreakers</Text>
-              <Text style={styles.gameDesc}>Play get-to-know-you games inside your communities.</Text>
-              <Text style={styles.gameAvailable}>Available in communities</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.browseBtn}
-              onPress={() => switchTab('communities')}
-            >
-              <Text style={styles.browseBtnText}>Browse</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <GamesSection
+          communityId={joinedIds.size > 0 ? Array.from(joinedIds)[0] : null}
+          onNavigateToGame={(id) => router.push(`/(tabs)/discover/games/${id}` as any)}
+          onNavigateToSpeedDating={() => router.push('/speed-dating' as any)}
+        />
       )}
       </Animated.View>
     </SafeAreaView>
