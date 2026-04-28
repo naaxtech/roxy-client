@@ -8,17 +8,20 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { supabase, callEdgeFunction } from '../../../lib/supabase';
-import { COLORS } from '../../../lib/constants';
+import { useThemeColors } from '../../../hooks/useThemeColors';
+import { useThemeStore } from '../../../store/themeStore';
 
 export default function SettingsScreen() {
   const { user } = useAuthStore();
   const { profile, updateProfile } = useProfileStore();
   const router = useRouter();
+  const colors = useThemeColors();
+  const { theme, setTheme } = useThemeStore();
 
   if (!user || !profile) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={COLORS.roxy} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <ActivityIndicator color={colors.roxy} />
       </SafeAreaView>
     );
   }
@@ -54,6 +57,53 @@ export default function SettingsScreen() {
   const handleDeleteAccount = () => {
     router.push('/(tabs)/profile/delete-account' as any);
   };
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    scroll: { padding: 16, gap: 16 },
+    header: {
+      flexDirection: 'row', alignItems: 'center',
+      justifyContent: 'space-between', marginBottom: 4,
+    },
+    backButton: { padding: 4 },
+    backText: { color: colors.roxy, fontSize: 16, fontWeight: '500' },
+    headerTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
+    headerSpacer: { width: 56 },
+    section: {
+      backgroundColor: colors.surface, borderRadius: 16,
+      paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, width: '100%',
+    },
+    sectionHeader: {
+      color: colors.textMuted, fontSize: 11, fontWeight: '600',
+      textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8,
+    },
+    row: {
+      flexDirection: 'row', alignItems: 'center',
+      justifyContent: 'space-between', paddingVertical: 10,
+    },
+    rowLabelGroup: { flex: 1, marginRight: 12 },
+    rowLabel: { color: colors.textPrimary, fontSize: 15, fontWeight: '500' },
+    rowDescription: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+    rowValue: { color: colors.textMuted, fontSize: 14 },
+    separator: { height: 1, backgroundColor: colors.textMuted + '30', marginHorizontal: -16 },
+    actionRow: { paddingVertical: 14 },
+    actionRowLabel: { color: colors.textPrimary, fontSize: 15, fontWeight: '500' },
+    signOutButton: {
+      width: '100%', backgroundColor: colors.surface, borderRadius: 16,
+      padding: 16, alignItems: 'center',
+      borderWidth: 1, borderColor: colors.error + '60',
+    },
+    signOutText: { color: colors.error, fontSize: 16, fontWeight: '600' },
+    dangerText: { color: colors.error, fontSize: 15, fontWeight: '500' },
+    segmentedControl: {
+      flexDirection: 'row', borderRadius: 8,
+      backgroundColor: colors.surfaceLight, padding: 2,
+    },
+    segment: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6 },
+    segmentActive: { backgroundColor: colors.primary },
+    segmentText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+    segmentTextActive: { color: '#FFFFFF' },
+  });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -91,8 +141,8 @@ export default function SettingsScreen() {
                 try { await updateProfile({ is_dating_mode: value }); }
                 catch { Alert.alert('Error', 'Could not save preference'); }
               }}
-              trackColor={{ false: COLORS.surface, true: COLORS.roxy }}
-              thumbColor={COLORS.textPrimary}
+              trackColor={{ false: colors.surface, true: colors.roxy }}
+              thumbColor={colors.textPrimary}
             />
           </View>
 
@@ -109,9 +159,38 @@ export default function SettingsScreen() {
                 try { await updateProfile({ is_ghost: value }); }
                 catch { Alert.alert('Error', 'Could not save preference'); }
               }}
-              trackColor={{ false: COLORS.surface, true: COLORS.roxy }}
-              thumbColor={COLORS.textPrimary}
+              trackColor={{ false: colors.surface, true: colors.roxy }}
+              thumbColor={colors.textPrimary}
             />
+          </View>
+
+          <View style={styles.separator} />
+
+          <View style={styles.row}>
+            <View style={styles.rowLabelGroup}>
+              <Text style={styles.rowLabel}>Appearance</Text>
+              <Text style={styles.rowDescription}>App colour theme</Text>
+            </View>
+            <View style={styles.segmentedControl}>
+              <TouchableOpacity
+                style={[styles.segment, theme === 'dark' && styles.segmentActive]}
+                onPress={() => void setTheme('dark')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.segmentText, theme === 'dark' && styles.segmentTextActive]}>
+                  Dark
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.segment, theme === 'light' && styles.segmentActive]}
+                onPress={() => void setTheme('light')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.segmentText, theme === 'light' && styles.segmentTextActive]}>
+                  Light
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -139,82 +218,3 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { padding: 16, gap: 16 },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  backButton: { padding: 4 },
-  backText: { color: COLORS.roxy, fontSize: 16, fontWeight: '500' },
-  headerTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  headerSpacer: { width: 56 },
-
-  // Section card
-  section: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
-    width: '100%',
-  },
-  sectionHeader: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 8,
-  },
-
-  // Row
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-  },
-  rowLabelGroup: { flex: 1, marginRight: 12 },
-  rowLabel: { color: COLORS.textPrimary, fontSize: 15, fontWeight: '500' },
-  rowDescription: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
-  rowValue: { color: COLORS.textMuted, fontSize: 14 },
-
-  // Separator
-  separator: {
-    height: 1,
-    backgroundColor: COLORS.textMuted + '30',
-    marginHorizontal: -16,
-  },
-
-  // Action row (GDPR)
-  actionRow: {
-    paddingVertical: 14,
-  },
-  actionRowLabel: { color: COLORS.textPrimary, fontSize: 15, fontWeight: '500' },
-
-  // Sign out button
-  signOutButton: {
-    width: '100%',
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.error + '60',
-  },
-  signOutText: { color: COLORS.error, fontSize: 16, fontWeight: '600' },
-
-  // Danger text (delete account)
-  dangerText: { color: COLORS.error, fontSize: 15, fontWeight: '500' },
-});
