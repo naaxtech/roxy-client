@@ -39,6 +39,7 @@
       "bundler": "metro"
     },
     "plugins": [
+      "./plugins/withAndroidBuildFix",
       "expo-router",
       "expo-notifications",
       [
