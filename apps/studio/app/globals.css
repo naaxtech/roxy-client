@@ -26,6 +26,20 @@
     --radius: 0.75rem;
     --sidebar-width: 240px;
   }
+
+  .light {
+    --background: 340 100% 98%;
+    --foreground: 268 64% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 268 64% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 268 64% 11%;
+    --muted: 340 60% 94%;
+    --muted-foreground: 300 20% 45%;
+    --border: 340 40% 88%;
+    --input: 340 40% 88%;
+    /* primary, secondary, accent, ring, radius unchanged — brand is consistent */
+  }
 }
 
 @layer base {

@@ -12,6 +12,7 @@ import { DevPanel } from '../components/dev/DevPanel';
 import { Analytics } from '../lib/analytics';
 import { logError, logBreadcrumb, setCrashlyticsUser } from '../lib/errorLogger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { useThemeStore } from '../store/themeStore';
 
 
 function AppNavigator() {
@@ -87,6 +88,7 @@ function AppNavigator() {
             router.replace('/(auth)/onboarding/step1-identity');
           } else {
             setProfile(data);
+            void useThemeStore.getState().init(data.theme_preference ?? null);
             router.replace('/(tabs)/grow');
           }
         }).catch((e: unknown) => {
@@ -107,6 +109,7 @@ function AppNavigator() {
           if (error) { logError(error, 'layout_profile_reload'); return; }
           if (data?.onboarding_completed) {
             setProfile(data);
+            void useThemeStore.getState().init(data.theme_preference ?? null);
           } else {
             logBreadcrumb('layout_redirect_incomplete_onboarding', { has_profile: String(!!data) });
             router.replace('/(auth)/onboarding/step1-identity');

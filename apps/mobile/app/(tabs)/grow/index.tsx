@@ -10,9 +10,11 @@ import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
 import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
-import { COLORS } from '../../../lib/constants';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import { Analytics } from '../../../lib/analytics';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
+import { HappeningTonightCard } from '../../../components/grow/HappeningTonightCard';
+import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayCard';
 
 type CommunityRow = { community_id: string; communities: { id: string; name: string; category: string } | null };
 type DirectChatPreview = {
@@ -60,6 +62,7 @@ export default function GrowScreen() {
   const { profile } = useProfile();
   const router = useRouter();
   const { friends, fetchAll } = useFriendStore();
+  const colors = useThemeColors();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -114,7 +117,6 @@ export default function GrowScreen() {
   const earnedBadges = badges.filter((b) => b.earned_at !== null).slice(0, 3);
 
   const [tickets, setTickets] = useState<TicketRow[]>([]);
-
   const [chatPreviews, setChatPreviews] = useState<DirectChatPreview[]>([]);
   const [chatTotal, setChatTotal] = useState(0);
 
@@ -164,9 +166,148 @@ export default function GrowScreen() {
     })();
   }, [user?.id]);
 
+  const communityIds = communities.map((row) => row.community_id);
   const avatarUrl = profile?.avatar_url ?? null;
   const avatarInitial = profile?.display_name?.[0]?.toUpperCase() ?? '?';
   const handle = profile?.username ? `@${profile.username}` : profile?.display_name ?? '';
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    scroll: { padding: 12, gap: 10 },
+
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 4,
+      marginBottom: 4,
+      minHeight: 48,
+    },
+    headerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flex: 1,
+    },
+    headerAvatar: {
+      width: 38, height: 38, borderRadius: 19,
+      backgroundColor: colors.primary + '30',
+      borderWidth: 2, borderColor: colors.primary,
+      alignItems: 'center', justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    headerAvatarImg: { width: 38, height: 38, borderRadius: 19 },
+    headerAvatarText: { fontSize: 16 },
+    headerAvatarMeta: { flexDirection: 'column', gap: 1 },
+    headerHandle: { color: colors.textSecondary, fontSize: 11, fontWeight: '600', maxWidth: 90 },
+    headerBadgeRow: { flexDirection: 'row', gap: 1 },
+    headerBadgeEmoji: { fontSize: 9 },
+    screenTitleWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+    screenTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' },
+    headerRight: { width: 36, alignItems: 'flex-end', justifyContent: 'center' },
+
+    greetingCard: {
+      backgroundColor: colors.surface, borderRadius: 16, padding: 14,
+      minHeight: 100, justifyContent: 'center',
+      borderWidth: 1, borderColor: colors.primary + '40',
+    },
+    roxyDot: {
+      width: 24, height: 24, borderRadius: 12,
+      backgroundColor: colors.roxy, marginBottom: 8,
+    },
+    greetingText: { fontSize: 15, color: colors.textPrimary, lineHeight: 22, fontWeight: '500' },
+    greetingLabel: { color: colors.textMuted, fontSize: 11, marginTop: 6 },
+
+    section: { backgroundColor: colors.surface, borderRadius: 12, padding: 12 },
+    sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },
+    sectionHint: { color: colors.textMuted, fontSize: 11, fontWeight: '400' },
+    emptyState: { color: colors.textMuted, fontSize: 13 },
+
+    chipScroll: { marginTop: 4 },
+    chip: {
+      backgroundColor: colors.primary + '20', borderRadius: 16,
+      paddingHorizontal: 10, paddingVertical: 5,
+      marginRight: 6, borderWidth: 1, borderColor: colors.primary + '40',
+    },
+    chipText: { color: colors.primary, fontWeight: '600', fontSize: 12 },
+    chipJoin: { backgroundColor: colors.roxy + '20', borderColor: colors.roxy + '60' },
+    chipJoinText: { color: colors.roxy, fontWeight: '600', fontSize: 12 },
+
+    avatarRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+    avatarWrap: { position: 'relative' },
+    avatar: {
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: colors.primary + '30',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    avatarText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
+    avatarCount: { color: colors.textMuted, fontWeight: '700', fontSize: 12 },
+    onlineDot: {
+      position: 'absolute', bottom: 0, right: 0,
+      width: 9, height: 9, borderRadius: 5,
+      backgroundColor: colors.success,
+      borderWidth: 1.5, borderColor: colors.surface,
+    },
+
+    levelRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+    levelEmoji: { fontSize: 22 },
+    levelLabel: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
+    levelPoints: { color: colors.textMuted, fontSize: 12 },
+    progressTrack: {
+      height: 4, backgroundColor: colors.surfaceLight,
+      borderRadius: 2, overflow: 'hidden', marginBottom: 4,
+    },
+    progressFill: { height: 4, backgroundColor: colors.primary, borderRadius: 2 },
+    progressHint: { color: colors.textMuted, fontSize: 11 },
+
+    badgePreviewRow: { flexDirection: 'row', gap: 6, marginBottom: 4 },
+    badgePreviewEmoji: { fontSize: 20 },
+    badgePreviewDim: { opacity: 0.3 },
+    badgePreviewSummary: { color: colors.textMuted, fontSize: 11 },
+
+    chatPreviewRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      paddingVertical: 6,
+      borderBottomWidth: 1, borderBottomColor: colors.surfaceLight,
+    },
+    chatPreviewAvatar: {
+      width: 30, height: 30, borderRadius: 15,
+      backgroundColor: colors.primary + '30',
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    chatPreviewAvatarText: { color: colors.primary, fontWeight: '700', fontSize: 12 },
+    chatPreviewName: { flex: 1, color: colors.textPrimary, fontSize: 13, fontWeight: '600' },
+    chatPreviewTime: { color: colors.textMuted, fontSize: 11, flexShrink: 0 },
+    chatViewAll: { paddingTop: 8 },
+    chatViewAllText: { color: colors.roxy, fontSize: 13, fontWeight: '600' },
+
+    ticketSectionHeader: {
+      flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6,
+    },
+    ticketCount: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
+    ticketChip: {
+      backgroundColor: colors.background,
+      borderRadius: 12,
+      padding: 12,
+      marginRight: 10,
+      width: 130,
+      borderWidth: 1,
+      borderColor: colors.primary + '40',
+      gap: 3,
+    },
+    ticketChipGoing: { color: colors.roxy, fontSize: 11, fontWeight: '700' },
+    ticketChipTitle: { color: colors.textPrimary, fontSize: 13, fontWeight: '700', lineHeight: 17 },
+    ticketChipDate: { color: colors.textSecondary, fontSize: 11, marginTop: 4 },
+    ticketChipTime: { color: colors.textMuted, fontSize: 11 },
+    errorBanner: {
+      backgroundColor: colors.error + '20',
+      padding: 12,
+      marginHorizontal: 16,
+      marginBottom: 8,
+      borderRadius: 8,
+    },
+    errorBannerText: { color: colors.error, fontSize: 13, textAlign: 'center' },
+  });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -174,7 +315,6 @@ export default function GrowScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          {/* Left — avatar + handle + badges */}
           <TouchableOpacity
             style={styles.headerLeft}
             onPress={() => router.push('/(tabs)/profile' as any)}
@@ -206,18 +346,16 @@ export default function GrowScreen() {
             </View>
           </TouchableOpacity>
 
-          {/* Center — title (pointerEvents none so it doesn't eat avatar/settings taps) */}
           <View pointerEvents="none" style={styles.screenTitleWrap}>
             <Text style={styles.screenTitle}>Grow</Text>
           </View>
 
-          {/* Right — settings */}
           <TouchableOpacity
             style={styles.headerRight}
             onPress={() => router.push('/profile/settings' as any)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="ellipsis-vertical" size={22} color={COLORS.textPrimary} />
+            <Ionicons name="ellipsis-vertical" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -225,12 +363,23 @@ export default function GrowScreen() {
         <View style={styles.greetingCard}>
           <View style={styles.roxyDot} />
           {greetingLoading ? (
-            <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 24 }} />
+            <ActivityIndicator color={colors.roxy} style={{ marginTop: 24 }} />
           ) : (
             <Text style={styles.greetingText}>{greeting ?? 'Hey — Roxy here. 👋'}</Text>
           )}
           <Text style={styles.greetingLabel}>✨ Your daily message from Roxy</Text>
         </View>
+
+        {/* Zone NEW — Question of the Day */}
+        {user && (
+          <QuestionOfTheDayCard
+            communityIds={communityIds}
+            userId={user.id}
+          />
+        )}
+
+        {/* Zone NEW — Happening Tonight */}
+        <HappeningTonightCard communityIds={communityIds} />
 
         {/* My Chats */}
         {chatTotal > 0 && (
@@ -419,141 +568,3 @@ export default function GrowScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { padding: 12, gap: 10 },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    marginBottom: 4,
-    minHeight: 48,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  headerAvatar: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: COLORS.primary + '30',
-    borderWidth: 2, borderColor: COLORS.primary,
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  headerAvatarImg: { width: 38, height: 38, borderRadius: 19 },
-  headerAvatarText: { fontSize: 16 },
-  headerAvatarMeta: { flexDirection: 'column', gap: 1 },
-  headerHandle: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '600', maxWidth: 90 },
-  headerBadgeRow: { flexDirection: 'row', gap: 1 },
-  headerBadgeEmoji: { fontSize: 9 },
-  screenTitleWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  screenTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  headerRight: { width: 36, alignItems: 'flex-end', justifyContent: 'center' },
-
-  greetingCard: {
-    backgroundColor: COLORS.surface, borderRadius: 16, padding: 14,
-    minHeight: 100, justifyContent: 'center',
-    borderWidth: 1, borderColor: COLORS.primary + '40',
-  },
-  roxyDot: {
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: COLORS.roxy, marginBottom: 8,
-  },
-  greetingText: { fontSize: 15, color: COLORS.textPrimary, lineHeight: 22, fontWeight: '500' },
-  greetingLabel: { color: COLORS.textMuted, fontSize: 11, marginTop: 6 },
-
-  section: { backgroundColor: COLORS.surface, borderRadius: 12, padding: 12 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 6 },
-  sectionHint: { color: COLORS.textMuted, fontSize: 11, fontWeight: '400' },
-  emptyState: { color: COLORS.textMuted, fontSize: 13 },
-
-  chipScroll: { marginTop: 4 },
-  chip: {
-    backgroundColor: COLORS.primary + '20', borderRadius: 16,
-    paddingHorizontal: 10, paddingVertical: 5,
-    marginRight: 6, borderWidth: 1, borderColor: COLORS.primary + '40',
-  },
-  chipText: { color: COLORS.primary, fontWeight: '600', fontSize: 12 },
-  chipJoin: { backgroundColor: COLORS.roxy + '20', borderColor: COLORS.roxy + '60' },
-  chipJoinText: { color: COLORS.roxy, fontWeight: '600', fontSize: 12 },
-
-  avatarRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  avatarWrap: { position: 'relative' },
-  avatar: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: COLORS.primary + '30',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarText: { color: COLORS.primary, fontWeight: '700', fontSize: 13 },
-  avatarCount: { color: COLORS.textMuted, fontWeight: '700', fontSize: 12 },
-  onlineDot: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 9, height: 9, borderRadius: 5,
-    backgroundColor: COLORS.success,
-    borderWidth: 1.5, borderColor: COLORS.surface,
-  },
-
-  levelRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  levelEmoji: { fontSize: 22 },
-  levelLabel: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
-  levelPoints: { color: COLORS.textMuted, fontSize: 12 },
-  progressTrack: {
-    height: 4, backgroundColor: COLORS.surfaceLight,
-    borderRadius: 2, overflow: 'hidden', marginBottom: 4,
-  },
-  progressFill: { height: 4, backgroundColor: COLORS.primary, borderRadius: 2 },
-  progressHint: { color: COLORS.textMuted, fontSize: 11 },
-
-  badgePreviewRow: { flexDirection: 'row', gap: 6, marginBottom: 4 },
-  badgePreviewEmoji: { fontSize: 20 },
-  badgePreviewDim: { opacity: 0.3 },
-  badgePreviewSummary: { color: COLORS.textMuted, fontSize: 11 },
-
-  chatPreviewRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingVertical: 6,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surfaceLight,
-  },
-  chatPreviewAvatar: {
-    width: 30, height: 30, borderRadius: 15,
-    backgroundColor: COLORS.primary + '30',
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  chatPreviewAvatarText: { color: COLORS.primary, fontWeight: '700', fontSize: 12 },
-  chatPreviewName: { flex: 1, color: COLORS.textPrimary, fontSize: 13, fontWeight: '600' },
-  chatPreviewTime: { color: COLORS.textMuted, fontSize: 11, flexShrink: 0 },
-  chatViewAll: { paddingTop: 8 },
-  chatViewAllText: { color: COLORS.roxy, fontSize: 13, fontWeight: '600' },
-
-  ticketSectionHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6,
-  },
-  ticketCount: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
-  ticketChip: {
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
-    padding: 12,
-    marginRight: 10,
-    width: 130,
-    borderWidth: 1,
-    borderColor: COLORS.primary + '40',
-    gap: 3,
-  },
-  ticketChipGoing: { color: COLORS.roxy, fontSize: 11, fontWeight: '700' },
-  ticketChipTitle: { color: COLORS.textPrimary, fontSize: 13, fontWeight: '700', lineHeight: 17 },
-  ticketChipDate: { color: COLORS.textSecondary, fontSize: 11, marginTop: 4 },
-  ticketChipTime: { color: COLORS.textMuted, fontSize: 11 },
-  errorBanner: {
-    backgroundColor: COLORS.error + '20',
-    padding: 12,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 8,
-  },
-  errorBannerText: { color: COLORS.error, fontSize: 13, textAlign: 'center' },
-});
