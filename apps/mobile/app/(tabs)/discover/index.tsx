@@ -372,7 +372,11 @@ export default function DiscoverScreen() {
       {subTab === 'feed' && user && (
         <FeedSection
           userId={user.id}
-          joinedCommunityIds={Array.from(joinedIds)}
+          joinedCommunityIds={
+            joinedIds.size > 0
+              ? Array.from(joinedIds)
+              : allCommunities.map((c) => c.id)
+          }
           onNavigateToPost={(id) => router.push(`/(tabs)/discover/post/${id}` as any)}
           onNavigateToVideo={(id) => router.push(`/(tabs)/discover/video/${id}` as any)}
         />
