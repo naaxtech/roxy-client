@@ -28,7 +28,7 @@
     "@react-native-firebase/crashlytics": "^20.0.0",
     "@shopify/flash-list": "1.6.4",
     "@stripe/stripe-react-native": "0.37.2",
-    "@supabase/supabase-js": "^2.43.0",
+    "@supabase/supabase-js": "^2.105.4",
     "date-fns": "^3.6.0",
     "eas": "^0.1.0",
     "expo": "~51.0.0",
@@ -64,6 +64,7 @@
     "react-native-web": "^0.19.13",
     "react-native-webview": "13.8.6",
     "rn-emoji-keyboard": "^1.7.0",
+    "supabase": "^2.99.0",
     "zustand": "^4.5.0"
   },
   "overrides": {

@@ -15,6 +15,8 @@ import { COLORS, PRONOUNS, IDENTITY_LABELS } from '../../../lib/constants';
 import { logError } from '../../../lib/errorLogger';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
 import { AvatarPickerSheet } from '../../../components/profile/AvatarPickerSheet';
+import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
+import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
 import type { UserBadgeProgress, Badge } from '../../../types';
 
 type EarnedBadge = UserBadgeProgress & { badges: Badge | null };
@@ -142,6 +144,9 @@ export default function EditProfileScreen() {
           )}
           <Text style={styles.editPhotoText}>Change Photo</Text>
         </TouchableOpacity>
+
+        <ProfilePhotoGrid userId={user.id} editable />
+        <ProfileFavorites userId={user.id} editable />
 
         {/* Display name (read-only) */}
         <View style={styles.section}>

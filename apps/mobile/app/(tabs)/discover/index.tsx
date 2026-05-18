@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Animated, Alert, Share,
 } from 'react-native';
@@ -38,11 +39,13 @@ function FeedSection({
 }) {
   const {
     posts, loading, loadingMore, hasMore, newPostCount, fetchError,
-    likedPostIds, savedPostIds,
+    likedPostIds, savedPostIds, discoverScrollOffset,
     init, fetchFeed, fetchMoreFeed,
     toggleLike, toggleSave, markSeen, acceptNewPosts, pushNewPost,
+    setDiscoverScrollOffset,
   } = useFeedStore();
 
+  const listRef = useRef<FlashList<Post>>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const communityKey = feedCommunityIds.join(',');
   const [gameNames, setGameNames] = useState<Record<string, string>>({});
@@ -82,6 +85,16 @@ function FeedSection({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, communityKey, communitiesReady]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (discoverScrollOffset > 0) {
+        requestAnimationFrame(() => {
+          listRef.current?.scrollToOffset({ offset: discoverScrollOffset, animated: false });
+        });
+      }
+    }, [discoverScrollOffset])
+  );
+
   // Only skeleton on first load — background refetches must not blank the feed
   // (e.g. while opening a post from Connect, Discover tab stays mounted).
   if (!communitiesReady || (loading && posts.length === 0)) return <FeedSkeleton />;
@@ -92,8 +105,11 @@ function FeedSection({
         <NewPostsBanner count={newPostCount} onPress={acceptNewPosts} />
       )}
       <FlashList
+        ref={listRef}
         data={posts}
         keyExtractor={(item) => item.id}
+        onScroll={(e) => setDiscoverScrollOffset(e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={32}
         renderItem={({ item }) => (
           <FeedCard
             post={item}

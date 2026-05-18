@@ -59,7 +59,7 @@ describe('StaticPostCard', () => {
     const { getByTestId } = render(
       <StaticPostCard post={makePost()} {...handlers} onPress={onPress} />
     );
-    fireEvent.press(getByTestId('static-card'));
+    fireEvent.press(getByTestId('static-card-press'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 

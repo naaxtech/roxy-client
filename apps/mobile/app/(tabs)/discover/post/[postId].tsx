@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Share,
+  KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Share, Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
@@ -10,10 +10,11 @@ import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useFeedStore } from '../../../../store/feedStore';
 import { COLORS } from '../../../../lib/constants';
-import { getPostImageUrl } from '../../../../lib/media';
 import { fetchPostById } from '../../../../lib/posts';
 import { routeParam } from '../../../../lib/routeParams';
 import { COMMENT_WITH_AUTHOR } from '../../../../lib/supabaseQueries';
+import { submitComment } from '../../../../lib/comments';
+import { PostMediaCarousel } from '../../../../components/feed/PostMediaCarousel';
 import { CommentThread } from '../../../../components/feed/CommentThread';
 import type { Comment, Post } from '../../../../types';
 
@@ -22,7 +23,7 @@ export default function PostDetailScreen() {
   const postId = routeParam(params.postId);
   const router = useRouter();
   const { user } = useAuthStore();
-  const { likedPostIds, savedPostIds, toggleLike, toggleSave } = useFeedStore();
+  const { likedPostIds, savedPostIds, toggleLike, toggleSave, bumpCommentCount } = useFeedStore();
 
   const [post, setPost] = useState<Post | null>(null);
   const [loadingPost, setLoadingPost] = useState(true);
@@ -132,15 +133,18 @@ export default function PostDetailScreen() {
   const handleSubmitComment = async () => {
     if (!commentText.trim() || !user?.id || submitting) return;
     setSubmitting(true);
-    const { error } = await supabase.from('comments').insert({
-      post_id: postId,
-      author_id: user.id,
+    const { comment, error } = await submitComment({
+      postId,
+      authorId: user.id,
       content: commentText.trim(),
-      parent_id: replyingTo?.id ?? null,
+      parentId: replyingTo?.id ?? null,
     });
-    if (!error) {
+    if (error || !comment) {
+      Alert.alert('Comment not saved', error ?? 'Please sign in and try again.');
+    } else {
       setCommentText('');
       setReplyingTo(null);
+      bumpCommentCount(postId);
       await loadComments();
     }
     setSubmitting(false);
@@ -194,11 +198,10 @@ export default function PostDetailScreen() {
           {/* Media */}
           {(post.post_type === 'photo' || post.post_type === 'gallery') &&
             post.media_urls.length > 0 && (
-              <Image
-                source={{ uri: getPostImageUrl(post.media_urls[0], 'detail') }}
-                placeholder={post.blurhash ?? undefined}
-                contentFit="cover"
-                style={styles.detailImage}
+              <PostMediaCarousel
+                urls={post.media_urls}
+                blurhash={post.blurhash}
+                variant="detail"
               />
             )}
 

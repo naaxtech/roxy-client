@@ -20,6 +20,8 @@ interface FeedState {
   seenPostIds: Set<string>;
 
   videoQueue: string[];
+  discoverScrollOffset: number;
+  connectScrollOffset: number;
 
   init: (userId: string) => Promise<void>;
   fetchFeed: (communityIds: string[]) => Promise<void>;
@@ -30,6 +32,9 @@ interface FeedState {
   acceptNewPosts: () => void;
   pushNewPost: (post: Post) => void;
   upsertPost: (post: Post) => void;
+  setDiscoverScrollOffset: (y: number) => void;
+  setConnectScrollOffset: (y: number) => void;
+  bumpCommentCount: (postId: string) => void;
 }
 
 const PAGE_SIZE = 15;
@@ -54,6 +59,8 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   savedPostIds: new Set(),
   seenPostIds: new Set(),
   videoQueue: [],
+  discoverScrollOffset: 0,
+  connectScrollOffset: 0,
 
   init: async (userId) => {
     const [likes, saves] = await Promise.all([
@@ -238,4 +245,13 @@ export const useFeedStore = create<FeedState>((set, get) => ({
       return { posts: updated };
     });
   },
+
+  setDiscoverScrollOffset: (y) => set({ discoverScrollOffset: y }),
+  setConnectScrollOffset: (y) => set({ connectScrollOffset: y }),
+
+  bumpCommentCount: (postId) => set(s => ({
+    posts: s.posts.map(p =>
+      p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p
+    ),
+  })),
 }));

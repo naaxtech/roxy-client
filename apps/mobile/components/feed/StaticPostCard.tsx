@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
-import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet,
-} from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS } from '../../lib/constants';
-import { getPostImageUrl } from '../../lib/media';
 import { PostActionRow } from './PostActionRow';
+import { PostMediaCarousel } from './PostMediaCarousel';
 import type { Post } from '../../types';
 
 interface StaticPostCardProps {
@@ -25,15 +22,11 @@ export function StaticPostCard({
   post, isLiked, isSaved, onLike, onSave, onComment, onShare, onPress,
 }: StaticPostCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const [galleryIndex, setGalleryIndex] = useState(0);
-
   const mediaUrls = post.media_urls ?? [];
-  const isGallery = post.post_type === 'gallery' && mediaUrls.length > 1;
-  const isPhoto = post.post_type === 'photo' && mediaUrls.length > 0;
   const hasImage =
-    isPhoto ||
-    isGallery ||
-    (mediaUrls.length > 0 && post.post_type !== 'video' && post.post_type !== 'roxy_link');
+    mediaUrls.length > 0 &&
+    post.post_type !== 'video' &&
+    post.post_type !== 'roxy_link';
   const isTextOnly =
     !hasImage &&
     (post.post_type === 'standard' ||
@@ -47,91 +40,37 @@ export function StaticPostCard({
     null;
 
   return (
-    <TouchableOpacity
-      testID="static-card"
-      onPress={onPress}
-      activeOpacity={0.95}
-      style={styles.card}
-    >
-      {/* Author row */}
-      <View style={styles.authorRow}>
+    <View testID="static-card" style={styles.card}>
+      <TouchableOpacity testID="static-card-press" onPress={onPress} activeOpacity={0.95} style={styles.authorRow}>
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarLetter}>
             {(post.profiles?.display_name?.[0] ?? '?').toUpperCase()}
           </Text>
         </View>
         <Text style={styles.authorName}>{post.profiles?.display_name ?? ''}</Text>
-      </View>
+      </TouchableOpacity>
 
-      {/* Image zone */}
       {hasImage && (
-        <View>
-          {isGallery ? (
-            <View>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={e => {
-                  const idx = Math.round(
-                    e.nativeEvent.contentOffset.x / e.nativeEvent.layoutMeasurement.width
-                  );
-                  setGalleryIndex(idx);
-                }}
-                scrollEventThrottle={16}
-              >
-                {mediaUrls.map((path, i) => (
-                  <View
-                    key={i}
-                    testID={i === 0 ? 'post-image' : undefined}
-                    style={styles.image}
-                  >
-                    <Image
-                      source={{ uri: getPostImageUrl(path, 'feed') }}
-                      placeholder={post.blurhash ?? undefined}
-                      contentFit="cover"
-                      style={StyleSheet.absoluteFill}
-                    />
-                  </View>
-                ))}
-              </ScrollView>
-              <View testID="gallery-dots" style={styles.dots}>
-                {mediaUrls.map((_, i) => (
-                  <View
-                    key={i}
-                    style={[styles.dot, i === galleryIndex && styles.dotActive]}
-                  />
-                ))}
-              </View>
-            </View>
-          ) : (
-            <View testID="post-image" style={styles.image}>
-              <Image
-                source={{ uri: getPostImageUrl(mediaUrls[0], 'feed') }}
-                placeholder={post.blurhash ?? undefined}
-                contentFit="cover"
-                style={StyleSheet.absoluteFill}
-              />
-            </View>
-          )}
-        </View>
+        <PostMediaCarousel
+          urls={mediaUrls}
+          blurhash={post.blurhash}
+          variant="feed"
+          onOpen={onPress}
+        />
       )}
 
-      {/* Text post — styled card */}
       {isTextOnly && (
-        <View style={styles.textCard}>
-          {typeBadge ? <Text style={styles.typeBadge}>{typeBadge}</Text> : null}
-          <Text style={styles.textCardContent}>{post.content}</Text>
-        </View>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.95}>
+          <View style={styles.textCard}>
+            {typeBadge ? <Text style={styles.typeBadge}>{typeBadge}</Text> : null}
+            <Text style={styles.textCardContent}>{post.content}</Text>
+          </View>
+        </TouchableOpacity>
       )}
 
-      {/* Caption (non-text posts) */}
       {!isTextOnly && post.content ? (
-        <View style={styles.captionArea}>
-          <Text
-            style={styles.caption}
-            numberOfLines={expanded ? undefined : 3}
-          >
+        <TouchableOpacity onPress={onPress} activeOpacity={0.95} style={styles.captionArea}>
+          <Text style={styles.caption} numberOfLines={expanded ? undefined : 3}>
             {post.content}
           </Text>
           {!expanded && post.content.length > CAPTION_THRESHOLD && (
@@ -139,7 +78,7 @@ export function StaticPostCard({
               <Text style={styles.showMore}>Show more</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </TouchableOpacity>
       ) : null}
 
       <PostActionRow
@@ -153,7 +92,7 @@ export function StaticPostCard({
         onComment={onComment}
         onShare={onShare}
       />
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -170,13 +109,6 @@ const styles = StyleSheet.create({
   },
   avatarLetter: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
   authorName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  image: { width: '100%', height: 300, overflow: 'hidden' },
-  dots: {
-    flexDirection: 'row', justifyContent: 'center',
-    gap: 4, paddingVertical: 8,
-  },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.textMuted },
-  dotActive: { backgroundColor: COLORS.primary },
   textCard: {
     minHeight: 160, marginHorizontal: 16, marginVertical: 4,
     backgroundColor: COLORS.surface, borderRadius: 12,

@@ -8,7 +8,7 @@ describe('getPostImageUrl', () => {
     expect(url).toContain('/render/image/public/post-media/u1/p1/photo.jpg');
     expect(url).toContain('width=120');
     expect(url).toContain('quality=60');
-    expect(url).toContain('format=avif');
+    expect(url).toContain('format=webp');
   });
 
   it('feed: width=400 quality=75', () => {

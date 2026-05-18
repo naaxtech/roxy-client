@@ -10,6 +10,8 @@ import { useMarketplaceStore } from '../../../store/marketplaceStore';
 import { supabase } from '../../../lib/supabase';
 import { COLORS } from '../../../lib/constants';
 import { ProfileCard } from '../../../components/profile/ProfileCard';
+import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
+import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
 import { BusinessDetailSheet } from '../../../components/build/BusinessDetailSheet';
 import { OrderDetailSheet } from '../../../components/build/OrderDetailSheet';
 import { logError } from '../../../lib/errorLogger';
@@ -111,6 +113,13 @@ export default function ProfileScreen() {
           onEdit={() => router.push('/(tabs)/profile/edit' as any)}
           onSettings={() => router.push('/(tabs)/profile/settings' as any)}
         />
+
+        {user?.id && (
+          <>
+            <ProfilePhotoGrid userId={user.id} editable />
+            <ProfileFavorites userId={user.id} editable />
+          </>
+        )}
 
         {badgeLoadError ? (
           <Text style={styles.badgeError}>Could not load badges</Text>

@@ -34,25 +34,20 @@ export function VideoPostCard({
   const thumbHeight = ASPECT_HEIGHTS[post.video_aspect_ratio ?? '4:5'] ?? 375;
 
   return (
-    <TouchableOpacity
-      testID="video-card"
-      onPress={onPress}
-      activeOpacity={0.95}
-      style={styles.card}
-    >
-      {/* Author row */}
-      <View style={styles.authorRow}>
+    <View testID="video-card" style={styles.card}>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.95} style={styles.authorRow}>
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarLetter}>
             {(post.profiles?.display_name?.[0] ?? '?').toUpperCase()}
           </Text>
         </View>
         <Text style={styles.authorName}>{post.profiles?.display_name ?? ''}</Text>
-      </View>
+      </TouchableOpacity>
 
-      {/* Thumbnail */}
-      <View
+      <TouchableOpacity
         testID="video-thumbnail"
+        onPress={onPress}
+        activeOpacity={0.95}
         style={[styles.thumbContainer, { height: thumbHeight }]}
       >
         {thumbUri ? (
@@ -65,11 +60,9 @@ export function VideoPostCard({
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.thumbPlaceholder]} />
         )}
-
         <View testID="play-icon" style={styles.playOverlay}>
           <Text style={styles.playIcon}>▶</Text>
         </View>
-
         {post.video_duration_secs != null && (
           <View style={styles.durationBadge}>
             <Text style={styles.durationText}>
@@ -77,10 +70,12 @@ export function VideoPostCard({
             </Text>
           </View>
         )}
-      </View>
+      </TouchableOpacity>
 
       {post.content ? (
-        <Text style={styles.caption} numberOfLines={1}>{post.content}</Text>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.95}>
+          <Text style={styles.caption} numberOfLines={1}>{post.content}</Text>
+        </TouchableOpacity>
       ) : null}
 
       <PostActionRow
@@ -94,7 +89,7 @@ export function VideoPostCard({
         onComment={onComment}
         onShare={onShare}
       />
-    </TouchableOpacity>
+    </View>
   );
 }
 

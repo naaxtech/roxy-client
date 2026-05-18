@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch, ActivityIndicator, Animated, ScrollView, Share,
 } from 'react-native';
@@ -57,9 +58,11 @@ export default function ConnectScreen() {
   const { joinedIds, joinedCommunities, hydrated, hydrate } = useCommunityStore();
   const { selectedCommunityId } = useCommunityFilterStore();
   const {
-    likedPostIds, savedPostIds,
-    init: initFeed, toggleLike, toggleSave,
+    likedPostIds, savedPostIds, connectScrollOffset,
+    init: initFeed, toggleLike, toggleSave, setConnectScrollOffset,
   } = useFeedStore();
+
+  const feedListRef = useRef<FlashList<PostRow>>(null);
 
   const [subTab, setSubTab] = useState<SubTab>('feed');
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -84,6 +87,16 @@ export default function ConnectScreen() {
   const [loadingRooms, setLoadingRooms] = useState(false);
 
   const joinedIdsKey = useMemo(() => Array.from(joinedIds).sort().join(','), [joinedIds]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (connectScrollOffset > 0) {
+        requestAnimationFrame(() => {
+          feedListRef.current?.scrollToOffset({ offset: connectScrollOffset, animated: false });
+        });
+      }
+    }, [connectScrollOffset])
+  );
 
   useEffect(() => {
     void hydrate(user?.id);
@@ -274,9 +287,12 @@ export default function ConnectScreen() {
           <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 48 }} />
         ) : (
           <FlashList
+            ref={feedListRef}
             data={posts}
             keyExtractor={(item) => item.id}
             estimatedItemSize={360}
+            onScroll={(e) => setConnectScrollOffset(e.nativeEvent.contentOffset.y)}
+            scrollEventThrottle={32}
             onRefresh={() => void loadFeed()}
             refreshing={loadingFeed}
             contentContainerStyle={{ paddingVertical: 8 }}

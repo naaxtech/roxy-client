@@ -1,26 +1,19 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  Dimensions, StatusBar, Share,
+  Dimensions, StatusBar, Share, PanResponder,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFeedStore } from '../../../../store/feedStore';
 import { useAuthStore } from '../../../../store/authStore';
 import { COLORS } from '../../../../lib/constants';
 import { CommentSheet } from '../../../../components/feed/CommentSheet';
+import { FeedVideoPlayer } from '../../../../components/feed/FeedVideoPlayer';
 import type { Comment, Post } from '../../../../types';
 import { supabase } from '../../../../lib/supabase';
 import { fetchPostById } from '../../../../lib/posts';
 import { routeParam } from '../../../../lib/routeParams';
 import { COMMENT_WITH_AUTHOR } from '../../../../lib/supabaseQueries';
-
-// expo-av guarded import — crashes if not available
-let AVModule: any = null;
-try { AVModule = require('expo-av'); } catch {}
-const isVideoAvailable = () => AVModule !== null;
-const Video = isVideoAvailable() ? AVModule.Video : null;
-const ResizeMode = isVideoAvailable() ? AVModule.ResizeMode : {};
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -32,71 +25,37 @@ function VideoItem({
   isLiked: boolean; isSaved: boolean;
   onLike: () => void; onSave: () => void; onShare: () => void;
 }) {
-  const videoRef = React.useRef<any>(null);
   const [muted, setMuted] = useState(false);
-
-  React.useEffect(() => {
-    if (!videoRef.current) return;
-    if (isActive) {
-      void videoRef.current.playAsync?.();
-    } else {
-      void videoRef.current.pauseAsync?.();
-    }
-  }, [isActive]);
 
   return (
     <View style={styles.videoItem}>
-      {isVideoAvailable() && post.video_url && Video ? (
-        <Video
-          ref={videoRef}
-          source={{ uri: post.video_url }}
-          style={StyleSheet.absoluteFill}
-          resizeMode={ResizeMode.CONTAIN ?? 'contain'}
-          shouldPlay={isActive}
-          isLooping
-          isMuted={muted}
-        />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, styles.videoUnavailable]}>
-          <Text style={styles.videoUnavailableText}>Video unavailable</Text>
-        </View>
-      )}
-
-      <TouchableOpacity
-        style={styles.muteBtn}
-        onPress={() => setMuted(m => !m)}
-        hitSlop={8}
-      >
+      <FeedVideoPlayer
+        videoUrl={post.video_url}
+        isActive={isActive}
+        isMuted={muted}
+      />
+      <TouchableOpacity style={styles.muteBtn} onPress={() => setMuted(m => !m)} hitSlop={8}>
         <Text style={styles.muteIcon}>{muted ? '🔇' : '🔊'}</Text>
       </TouchableOpacity>
-
       <View style={styles.overlay}>
         <Text style={styles.overlayAuthor}>@{post.profiles?.display_name ?? ''}</Text>
         {post.content ? (
           <Text style={styles.overlayCaption} numberOfLines={2}>{post.content}</Text>
         ) : null}
       </View>
-
       <View style={styles.rightRail}>
         <TouchableOpacity style={styles.railAction} onPress={onLike}>
-          <Text style={[styles.railIcon, isLiked && styles.railIconActive]}>
-            {isLiked ? '♥' : '♡'}
-          </Text>
+          <Text style={[styles.railIcon, isLiked && styles.railIconActive]}>{isLiked ? '♥' : '♡'}</Text>
           <Text style={styles.railCount}>{post.like_count}</Text>
         </TouchableOpacity>
-
         <TouchableOpacity style={styles.railAction} onPress={onSave}>
-          <Text style={[styles.railIcon, isSaved && styles.railIconActive]}>
-            {isSaved ? '✦' : '✧'}
-          </Text>
+          <Text style={[styles.railIcon, isSaved && styles.railIconActive]}>{isSaved ? '✦' : '✧'}</Text>
           <Text style={styles.railCount}>{post.save_count}</Text>
         </TouchableOpacity>
-
         <TouchableOpacity style={styles.railAction} onPress={onComment}>
           <Text style={styles.railIcon}>💬</Text>
           <Text style={styles.railCount}>{post.comment_count}</Text>
         </TouchableOpacity>
-
         <TouchableOpacity style={styles.railAction} onPress={onShare}>
           <Text style={styles.railIcon}>↗</Text>
         </TouchableOpacity>
@@ -115,30 +74,52 @@ export default function VideoPlayerScreen() {
   const [videoPosts, setVideoPosts] = useState<Post[]>(() =>
     videoQueue.map(id => posts.find(p => p.id === id)).filter(Boolean) as Post[],
   );
-
-  useEffect(() => {
-    const fromStore = videoQueue
-      .map(id => posts.find(p => p.id === id))
-      .filter(Boolean) as Post[];
-    if (fromStore.length) {
-      setVideoPosts(fromStore);
-      return;
-    }
-    if (!postId) return;
-    void fetchPostById(postId).then((p) => {
-      if (p?.post_type === 'video') setVideoPosts([p]);
-    });
-  }, [postId, posts, videoQueue]);
-
-  const initialIndex = Math.max(0, videoPosts.findIndex(p => p.id === postId));
-  const [activeIndex, setActiveIndex] = useState(initialIndex);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeIndexRef = useRef(0);
   const [commentSheetPostId, setCommentSheetPostId] = useState<string | null>(null);
   const [sheetComments, setSheetComments] = useState<Comment[]>([]);
   const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
 
+  useEffect(() => {
+    const fromStore = videoQueue.map(id => posts.find(p => p.id === id)).filter(Boolean) as Post[];
+    if (fromStore.length) { setVideoPosts(fromStore); return; }
+    if (!postId) return;
+    void fetchPostById(postId).then((p) => { if (p?.post_type === 'video') setVideoPosts([p]); });
+  }, [postId, posts, videoQueue]);
+
+  const initialIndex = Math.max(0, videoPosts.findIndex(p => p.id === postId));
+
+  useEffect(() => {
+    setActiveIndex(initialIndex);
+    activeIndexRef.current = initialIndex;
+  }, [initialIndex, videoPosts.length]);
+
+  const closePlayer = useCallback(() => router.back(), [router]);
+
+  const videoCountRef = useRef(videoPosts.length);
+  useEffect(() => { videoCountRef.current = videoPosts.length; }, [videoPosts.length]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) =>
+        Math.abs(g.dx) > 12 || Math.abs(g.dy) > 12,
+      onPanResponderRelease: (_, g) => {
+        if (g.dx > 70 && Math.abs(g.dx) > Math.abs(g.dy)) {
+          closePlayer();
+          return;
+        }
+        const atLast = activeIndexRef.current >= videoCountRef.current - 1;
+        if (atLast && g.dy < -70 && Math.abs(g.dy) > Math.abs(g.dx)) {
+          closePlayer();
+        }
+      },
+    })
+  ).current;
+
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
-      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+      if (viewableItems[0]?.index != null) {
+        activeIndexRef.current = viewableItems[0].index;
         setActiveIndex(viewableItems[0].index);
       }
     },
@@ -159,19 +140,19 @@ export default function VideoPlayerScreen() {
 
   if (!videoPosts.length) {
     return (
-      <SafeAreaView style={styles.container}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+      <View style={styles.container}>
+        <TouchableOpacity onPress={closePlayer} style={styles.backBtn}>
           <Text style={styles.backText}>×</Text>
         </TouchableOpacity>
         <View style={styles.empty}>
           <Text style={styles.emptyText}>No video found</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <View style={styles.container} testID="video-player-screen">
+    <View style={styles.container} testID="video-player-screen" {...panResponder.panHandlers}>
       <StatusBar hidden />
       <FlatList
         data={videoPosts}
@@ -190,7 +171,7 @@ export default function VideoPlayerScreen() {
         )}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        initialScrollIndex={initialIndex}
+        initialScrollIndex={initialIndex > 0 ? initialIndex : undefined}
         getItemLayout={(_, index) => ({
           length: SCREEN_HEIGHT,
           offset: SCREEN_HEIGHT * index,
@@ -200,17 +181,15 @@ export default function VideoPlayerScreen() {
         viewabilityConfig={{ itemVisiblePercentThreshold: 80 }}
         windowSize={3}
         initialNumToRender={1}
+        onEndReached={() => {
+          if (activeIndexRef.current >= videoPosts.length - 1) {
+            // overscroll at end handled by pan; optional hint only
+          }
+        }}
       />
-
-      <TouchableOpacity
-        testID="video-back-btn"
-        style={styles.backBtn}
-        onPress={() => router.back()}
-        hitSlop={8}
-      >
+      <TouchableOpacity testID="video-back-btn" style={styles.backBtn} onPress={closePlayer} hitSlop={8}>
         <Text style={styles.backText}>×</Text>
       </TouchableOpacity>
-
       <CommentSheet
         visible={commentSheetPostId !== null}
         postId={commentSheetPostId ?? ''}
@@ -218,11 +197,12 @@ export default function VideoPlayerScreen() {
         likedCommentIds={likedCommentIds}
         currentUserId={user?.id ?? ''}
         onClose={() => setCommentSheetPostId(null)}
+        onCommentsChange={setSheetComments}
         onLikeComment={async (commentId) => {
           const wasLiked = likedCommentIds.has(commentId);
           setLikedCommentIds(s => {
             const next = new Set(s);
-            if (wasLiked) { next.delete(commentId); } else { next.add(commentId); }
+            if (wasLiked) next.delete(commentId); else next.add(commentId);
             return next;
           });
           if (wasLiked) {
@@ -240,26 +220,13 @@ export default function VideoPlayerScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  videoItem: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-    backgroundColor: '#000',
-  },
-  videoUnavailable: {
-    alignItems: 'center', justifyContent: 'center',
-  },
-  videoUnavailableText: { color: 'rgba(255,255,255,0.6)', fontSize: 16 },
-  muteBtn: { position: 'absolute', top: 60, right: 16 },
+  videoItem: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, backgroundColor: '#000' },
+  muteBtn: { position: 'absolute', top: 60, right: 16, zIndex: 2 },
   muteIcon: { fontSize: 24 },
-  overlay: {
-    position: 'absolute', bottom: 80, left: 16, right: 80,
-  },
+  overlay: { position: 'absolute', bottom: 80, left: 16, right: 80, zIndex: 2 },
   overlayAuthor: { color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 4 },
   overlayCaption: { color: 'rgba(255,255,255,0.9)', fontSize: 13, lineHeight: 18 },
-  rightRail: {
-    position: 'absolute', right: 12, bottom: 100,
-    alignItems: 'center', gap: 20,
-  },
+  rightRail: { position: 'absolute', right: 12, bottom: 100, alignItems: 'center', gap: 20, zIndex: 2 },
   railAction: { alignItems: 'center', gap: 2 },
   railIcon: { fontSize: 28, color: '#fff' },
   railIconActive: { color: COLORS.primary },

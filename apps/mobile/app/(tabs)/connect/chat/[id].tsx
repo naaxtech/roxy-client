@@ -2,9 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
-  Modal, FlatList, Image, Pressable, Keyboard,
+  Modal, FlatList, Image, Pressable, Keyboard, ListRenderItem,
 } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { format } from 'date-fns';
@@ -50,7 +49,7 @@ export default function ChatScreen() {
   const [wingwomanLoading, setWingwomanLoading] = useState(false);
   const [nudgeLoading, setNudgeLoading] = useState(false);
   const [icebreaker, setIcebreaker] = useState<string | null>(null);
-  const flashListRef = useRef<FlashList<Message>>(null);
+  const listRef = useRef<FlatList<Message>>(null);
 
   const [partnerId, setPartnerId] = useState<string | null>(null);
   const [partnerName, setPartnerName] = useState<string>('Chat');
@@ -168,7 +167,7 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (messages.length > 0) {
-      setTimeout(() => flashListRef.current?.scrollToEnd({ animated: true }), 100);
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     }
   }, [messages.length]);
 
@@ -360,7 +359,7 @@ export default function ChatScreen() {
     }
   };
 
-  const renderItem = ({ item }: { item: Message }) => {
+  const renderItem: ListRenderItem<Message> = ({ item }) => {
     const isOwn = item.sender_id === user?.id;
     const isRoxy = item.message_type === 'roxy_suggestion';
     const isImage = item.message_type === 'image';
@@ -485,14 +484,19 @@ export default function ChatScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <FlashList
-            ref={flashListRef}
+          <FlatList
+            ref={listRef}
             data={displayedMessages}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
-            estimatedItemSize={60}
             contentContainerStyle={styles.messageList}
             style={{ flex: 1 }}
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() => {
+              if (!searchActive && displayedMessages.length > 0) {
+                listRef.current?.scrollToEnd({ animated: false });
+              }
+            }}
             ListEmptyComponent={
               <Text style={styles.emptyText}>
                 {searchActive ? 'No messages match your search.' : 'Send your first message!'}
@@ -710,7 +714,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, paddingVertical: 10,
   },
   retryBtnText: { color: '#fff', fontWeight: '700' },
-  messageList: { padding: 16, gap: 8 },
+  messageList: { padding: 16, gap: 8, flexGrow: 1, justifyContent: 'flex-end' },
   bubble: { maxWidth: '80%', borderRadius: 16, padding: 12, marginVertical: 2 },
   bubbleOwn: { alignSelf: 'flex-end', backgroundColor: COLORS.primary, borderBottomRightRadius: 4 },
   bubbleOther: { alignSelf: 'flex-start', backgroundColor: COLORS.surface, borderBottomLeftRadius: 4 },

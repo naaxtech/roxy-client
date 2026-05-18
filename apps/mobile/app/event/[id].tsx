@@ -15,6 +15,7 @@ import { TicketCard } from '../../components/TicketCard';
 import { TicketConfirmation } from '../../components/TicketConfirmation';
 import { formatDuration, openCalendar } from '../../lib/eventUtils';
 import { purchaseTicket, subscribeToTicket } from '../../lib/stripe';
+import { toggleUserFavorite } from '../../components/profile/ProfileFavorites';
 
 type EventDetail = {
   id: string;
@@ -48,11 +49,24 @@ export default function EventDetailScreen() {
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseResult, setPurchaseResult] = useState<{ ticketCode: string | null } | null>(null);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [favorited, setFavorited] = useState(false);
   const ticketAnim = useRef(new Animated.Value(0)).current;
   const ticketSubscriptionUnsubRef = useRef<(() => void) | null>(null);
   const eventChannelRef = useRef<any>(null);
 
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+
+  useEffect(() => {
+    if (!user?.id || !id) return;
+    void supabase
+      .from('user_favorites')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('entity_type', 'event')
+      .eq('entity_id', id)
+      .maybeSingle()
+      .then(({ data }) => setFavorited(!!data));
+  }, [user?.id, id]);
 
   const fetchEvent = useCallback(async () => {
     if (!id) return;
@@ -211,9 +225,26 @@ export default function EventDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-        <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
-      </TouchableOpacity>
+      <View style={styles.topBar}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
+        </TouchableOpacity>
+        {user && (
+          <TouchableOpacity
+            onPress={async () => {
+              const on = await toggleUserFavorite(user.id, 'event', event.id);
+              setFavorited(on);
+            }}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={favorited ? 'heart' : 'heart-outline'}
+              size={24}
+              color={favorited ? COLORS.primary : COLORS.textPrimary}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>{event.title}</Text>
@@ -358,7 +389,11 @@ export default function EventDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  backBtn: { padding: 16, paddingBottom: 4 },
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingBottom: 4,
+  },
+  backBtn: { paddingVertical: 8 },
 
   scroll: { paddingHorizontal: 20, paddingBottom: 40, gap: 0 },
 
