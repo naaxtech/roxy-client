@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { supabase } from '../../../../../lib/supabase';
 import { useAuthStore } from '../../../../../store/authStore';
 import { COLORS } from '../../../../../lib/constants';
+import { COMMENT_WITH_AUTHOR } from '../../../../../lib/supabaseQueries';
 import { Analytics } from '../../../../../lib/analytics';
 import type { Comment } from '../../../../../types';
 
@@ -45,7 +46,7 @@ export default function PostDetailScreen() {
     if (!postId) return;
     const { data } = await supabase
       .from('posts')
-      .select('id, content, created_at, comment_count, profiles(display_name, avatar_url)')
+      .select('id, content, created_at, comment_count, profiles!posts_author_id_fkey(display_name, avatar_url)')
       .eq('id', postId)
       .single();
     if (data) setPost(data as unknown as PostRow);
@@ -55,7 +56,7 @@ export default function PostDetailScreen() {
     if (!postId) return;
     const { data } = await supabase
       .from('comments')
-      .select('*, profiles(display_name, avatar_url)')
+      .select(COMMENT_WITH_AUTHOR)
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
       .limit(100);
@@ -78,7 +79,7 @@ export default function PostDetailScreen() {
       const { data, error } = await supabase
         .from('comments')
         .insert({ post_id: postId, author_id: user.id, content: draft.trim() })
-        .select('*, profiles(display_name, avatar_url)')
+        .select(COMMENT_WITH_AUTHOR)
         .single();
       if (error) {
         Alert.alert('Error', error.message);

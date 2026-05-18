@@ -3,12 +3,14 @@ import { act, renderHook } from '@testing-library/react-native';
 jest.mock('../../lib/supabase', () => ({
   supabase: {
     from: jest.fn(),
+    auth: { getUser: jest.fn(() => Promise.resolve({ data: { user: { id: 'user1' } } })) },
     channel: jest.fn(() => ({
       on: jest.fn(() => ({ subscribe: jest.fn(() => ({})) })),
     })),
     removeChannel: jest.fn(),
   },
 }));
+jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 const { supabase } = jest.requireMock('../../lib/supabase');
 
 import { useFeedStore } from '../../store/feedStore';
@@ -65,10 +67,43 @@ beforeEach(() => {
     cursor: null,
     hasMore: true,
     newPostCount: 0,
+    fetchError: null,
     likedPostIds: new Set(),
     savedPostIds: new Set(),
     seenPostIds: new Set(),
     videoQueue: [],
+  });
+});
+
+describe('feedStore.fetchFeed', () => {
+  it('populates posts from Supabase', async () => {
+    const postsChain = makeQueryChain([makePost('p1'), makePost('p2')]);
+    supabase.from.mockReturnValue(postsChain);
+
+    const { result } = renderHook(() => useFeedStore());
+    await act(async () => { await result.current.fetchFeed(['comm-1']); });
+
+    expect(result.current.posts).toHaveLength(2);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.fetchError).toBeNull();
+  });
+
+  it('clears posts when communityIds is empty', async () => {
+    useFeedStore.setState({ posts: [makePost('p1')] } as any);
+    const { result } = renderHook(() => useFeedStore());
+    await act(async () => { await result.current.fetchFeed([]); });
+    expect(result.current.posts).toHaveLength(0);
+  });
+
+  it('sets fetchError on query failure', async () => {
+    const failChain = makeQueryChain(null, { message: 'relation error' });
+    supabase.from.mockReturnValue(failChain);
+
+    const { result } = renderHook(() => useFeedStore());
+    await act(async () => { await result.current.fetchFeed(['comm-1']); });
+
+    expect(result.current.fetchError).toBe('relation error');
+    expect(result.current.loading).toBe(false);
   });
 });
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   Dimensions, StatusBar, Share,
@@ -11,6 +11,9 @@ import { COLORS } from '../../../../lib/constants';
 import { CommentSheet } from '../../../../components/feed/CommentSheet';
 import type { Comment, Post } from '../../../../types';
 import { supabase } from '../../../../lib/supabase';
+import { fetchPostById } from '../../../../lib/posts';
+import { routeParam } from '../../../../lib/routeParams';
+import { COMMENT_WITH_AUTHOR } from '../../../../lib/supabaseQueries';
 
 // expo-av guarded import — crashes if not available
 let AVModule: any = null;
@@ -103,14 +106,29 @@ function VideoItem({
 }
 
 export default function VideoPlayerScreen() {
-  const { postId } = useLocalSearchParams<{ postId: string }>();
+  const params = useLocalSearchParams<{ postId: string | string[] }>();
+  const postId = routeParam(params.postId);
   const router = useRouter();
   const { user } = useAuthStore();
   const { posts, videoQueue, likedPostIds, savedPostIds, toggleLike, toggleSave } = useFeedStore();
 
-  const videoPosts = videoQueue
-    .map(id => posts.find(p => p.id === id))
-    .filter(Boolean) as Post[];
+  const [videoPosts, setVideoPosts] = useState<Post[]>(() =>
+    videoQueue.map(id => posts.find(p => p.id === id)).filter(Boolean) as Post[],
+  );
+
+  useEffect(() => {
+    const fromStore = videoQueue
+      .map(id => posts.find(p => p.id === id))
+      .filter(Boolean) as Post[];
+    if (fromStore.length) {
+      setVideoPosts(fromStore);
+      return;
+    }
+    if (!postId) return;
+    void fetchPostById(postId).then((p) => {
+      if (p?.post_type === 'video') setVideoPosts([p]);
+    });
+  }, [postId, posts, videoQueue]);
 
   const initialIndex = Math.max(0, videoPosts.findIndex(p => p.id === postId));
   const [activeIndex, setActiveIndex] = useState(initialIndex);
@@ -131,7 +149,7 @@ export default function VideoPlayerScreen() {
     setCommentSheetPostId(pid);
     const { data } = await supabase
       .from('comments')
-      .select('*, profiles(display_name, avatar_url)')
+      .select(COMMENT_WITH_AUTHOR)
       .eq('post_id', pid)
       .is('parent_id', null)
       .order('created_at', { ascending: true })
@@ -153,7 +171,7 @@ export default function VideoPlayerScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="video-player-screen">
       <StatusBar hidden />
       <FlatList
         data={videoPosts}
@@ -185,6 +203,7 @@ export default function VideoPlayerScreen() {
       />
 
       <TouchableOpacity
+        testID="video-back-btn"
         style={styles.backBtn}
         onPress={() => router.back()}
         hitSlop={8}

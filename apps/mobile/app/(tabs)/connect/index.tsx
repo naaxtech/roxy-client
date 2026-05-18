@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Switch, ActivityIndicator, Animated, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, Switch, ActivityIndicator, Animated, ScrollView, Share,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,19 +10,23 @@ import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { useCommunityStore } from '../../../store/communityStore';
+import { useFeedStore } from '../../../store/feedStore';
 import { COLORS } from '../../../lib/constants';
 import { GAME_ROUTES } from '../../../lib/games';
+import { logError } from '../../../lib/errorLogger';
+import { normalizePost } from '../../../lib/posts';
+import { contentDetailPath } from '../../../lib/contentNavigation';
+import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../lib/supabaseQueries';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
 import { CommunityRoomCard } from '../../../components/community/CommunityRoomCard';
+import { FeedCard } from '../../../components/feed/FeedCard';
+import type { Post } from '../../../types';
 
 
 type SubTab = 'feed' | 'events' | 'rooms';
 
-type PostRow = {
-  id: string; content: string; created_at: string; community_id: string;
-  author_id: string; comment_count: number;
-  profiles: { display_name: string; avatar_url: string | null } | null;
+type PostRow = Post & {
   communities: { name: string } | null;
 };
 
@@ -50,8 +54,12 @@ export default function ConnectScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { profile, setProfile } = useProfileStore();
-  const { joinedIds, joinedCommunities, fetchJoined } = useCommunityStore();
+  const { joinedIds, joinedCommunities, hydrated, hydrate } = useCommunityStore();
   const { selectedCommunityId } = useCommunityFilterStore();
+  const {
+    likedPostIds, savedPostIds,
+    init: initFeed, toggleLike, toggleSave,
+  } = useFeedStore();
 
   const [subTab, setSubTab] = useState<SubTab>('feed');
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -63,6 +71,8 @@ export default function ConnectScreen() {
   };
 
   const [posts, setPosts] = useState<PostRow[]>([]);
+  const [feedError, setFeedError] = useState<string | null>(null);
+  const [gameNames, setGameNames] = useState<Record<string, string>>({});
   const [events, setEvents] = useState<EventRow[]>([]);
   const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
   const [loadingFeed, setLoadingFeed] = useState(false);
@@ -73,19 +83,39 @@ export default function ConnectScreen() {
   const [rooms, setRooms] = useState<CommunityRoomRow[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
 
-  // Ensure communities are loaded
-  useEffect(() => {
-    if (user?.id) fetchJoined(user.id);
-  }, [user?.id, fetchJoined]);
+  const joinedIdsKey = useMemo(() => Array.from(joinedIds).sort().join(','), [joinedIds]);
 
-  // Load feed posts from joined communities
+  useEffect(() => {
+    void hydrate(user?.id);
+  }, [user?.id, hydrate]);
+
+  useEffect(() => {
+    if (user?.id) void initFeed(user.id);
+  }, [user?.id, initFeed]);
+
+  useEffect(() => {
+    void supabase.from('games').select('id, name').then(({ data }) => {
+      if (data) {
+        setGameNames(Object.fromEntries(data.map((g) => [g.id, g.name])));
+      }
+    });
+  }, []);
+
+  // Connect → Feed: posts from joined communities; filter via CommunityContextSwitcher (spec 2026-04-07)
   const loadFeed = useCallback(async () => {
+    if (!hydrated) return;
     const ids = Array.from(joinedIds);
-    if (ids.length === 0) { setPosts([]); return; }
+    if (ids.length === 0) {
+      setPosts([]);
+      setFeedError(null);
+      return;
+    }
     setLoadingFeed(true);
+    setFeedError(null);
     let query = supabase
       .from('posts')
-      .select('*, comment_count, profiles(display_name, avatar_url), communities(name)')
+      .select(POST_WITH_AUTHOR_AND_COMMUNITY)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(50);
     if (selectedCommunityId) {
@@ -93,10 +123,21 @@ export default function ConnectScreen() {
     } else {
       query = query.in('community_id', ids);
     }
-    const { data } = await query;
-    if (data) setPosts(data as PostRow[]);
+    const { data, error } = await query;
+    if (error) {
+      logError(error, 'connect.loadFeed');
+      setFeedError(error.message);
+      setPosts([]);
+    } else {
+      setPosts(
+        (data ?? []).map((row: Record<string, unknown> & { communities?: { name: string } | null }) => ({
+          ...normalizePost(row),
+          communities: row.communities ?? null,
+        })),
+      );
+    }
     setLoadingFeed(false);
-  }, [joinedIds, selectedCommunityId]);
+  }, [hydrated, joinedIdsKey, selectedCommunityId, joinedIds]);
 
   // Load upcoming events from joined communities
   const loadEvents = useCallback(async () => {
@@ -154,7 +195,9 @@ export default function ConnectScreen() {
     if (data) setRsvpIds(new Set(data.map((r: any) => r.event_id)));
   }, [user]);
 
-  useEffect(() => { if (subTab === 'feed') loadFeed(); }, [subTab, loadFeed]);
+  useEffect(() => {
+    if (subTab === 'feed' && hydrated) void loadFeed();
+  }, [subTab, loadFeed, hydrated]);
   useEffect(() => { if (subTab === 'events') { loadEvents(); loadRsvps(); } }, [subTab, loadEvents, loadRsvps]);
   useEffect(() => { if (subTab === 'rooms') loadRooms(); }, [subTab, loadRooms]);
 
@@ -205,6 +248,7 @@ export default function ConnectScreen() {
         {(['feed', 'events', 'rooms'] as SubTab[]).map((tab) => (
           <TouchableOpacity
             key={tab}
+            testID={`connect-tab-${tab}`}
             style={[styles.subTab, subTab === tab && styles.subTabActive]}
             onPress={() => switchTab(tab)}
           >
@@ -232,13 +276,13 @@ export default function ConnectScreen() {
           <FlashList
             data={posts}
             keyExtractor={(item) => item.id}
-            estimatedItemSize={120}
-            onRefresh={loadFeed}
+            estimatedItemSize={360}
+            onRefresh={() => void loadFeed()}
             refreshing={loadingFeed}
             contentContainerStyle={{ paddingVertical: 8 }}
             renderItem={({ item }) => (
-              <View style={styles.postCard}>
-                <View style={styles.postHeader}>
+              <View>
+                <View style={styles.postMetaRow}>
                   <TouchableOpacity
                     onPress={() => router.push(`/community/${item.community_id}` as any)}
                   >
@@ -248,33 +292,34 @@ export default function ConnectScreen() {
                   </TouchableOpacity>
                   <Text style={styles.postTime}>{format(new Date(item.created_at), 'dd MMM')}</Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => router.push(`/user/${item.author_id}` as any)}
-                  hitSlop={{ top: 4, bottom: 4, left: 0, right: 40 }}
-                >
-                  <Text style={styles.postAuthor}>{item.profiles?.display_name ?? 'Anonymous'}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/community/post/${item.id}` as any)}>
-                  <Text style={styles.postContent} numberOfLines={4}>{item.content}</Text>
-                </TouchableOpacity>
-                <View style={styles.reactionRow}>
-                  {['🌸', '💜', '🔥', '✊'].map((emoji) => (
-                    <Text key={emoji} style={styles.reactionEmoji}>{emoji}</Text>
-                  ))}
-                  <TouchableOpacity
-                    style={styles.commentBtn}
-                    onPress={() => router.push(`/community/post/${item.id}` as any)}
-                  >
-                    <Text style={styles.commentBtnText}>💬 {item.comment_count ?? 0}</Text>
-                  </TouchableOpacity>
-                </View>
+                <FeedCard
+                  post={item}
+                  linkEntityName={item.link_entity_id ? gameNames[item.link_entity_id] : undefined}
+                  isLiked={likedPostIds.has(item.id)}
+                  isSaved={savedPostIds.has(item.id)}
+                  onLike={() => void toggleLike(item.id)}
+                  onSave={() => void toggleSave(item.id)}
+                  onComment={() => {
+                    router.push(contentDetailPath(item.id, item.post_type) as any);
+                  }}
+                  onShare={() => void Share.share({ message: 'Check this out on Roxy!' })}
+                  onPress={() => {
+                    router.push(contentDetailPath(item.id, item.post_type) as any);
+                  }}
+                />
               </View>
             )}
             ListEmptyComponent={
               <View style={styles.emptyCenter}>
                 <Text style={styles.emptyIcon}>📝</Text>
-                <Text style={styles.emptyTitle}>No posts yet</Text>
-                <Text style={styles.emptySub}>Be the first to post in your communities!</Text>
+                <Text style={styles.emptyTitle}>
+                  {feedError ? 'Could not load feed' : 'No posts yet'}
+                </Text>
+                <Text style={styles.emptySub}>
+                  {feedError
+                    ? 'Pull to refresh or try again.'
+                    : 'Be the first to post in your communities!'}
+                </Text>
               </View>
             }
           />
@@ -459,24 +504,16 @@ const styles = StyleSheet.create({
   subTabText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
   subTabTextActive: { color: COLORS.roxy, fontWeight: '700' },
 
-  // Feed posts
-  postCard: {
-    backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8,
-    borderRadius: 12, padding: 10,
+  postMetaRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingTop: 4,
   },
-  postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   communityPill: {
     backgroundColor: COLORS.primary + '30', borderRadius: 10,
     paddingHorizontal: 8, paddingVertical: 2,
   },
   communityPillText: { color: COLORS.primary, fontSize: 11, fontWeight: '700' },
   postTime: { color: COLORS.textMuted, fontSize: 11 },
-  postAuthor: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 4 },
-  postContent: { color: COLORS.textPrimary, fontSize: 14, lineHeight: 20 },
-  reactionRow: { flexDirection: 'row', gap: 10, marginTop: 8, alignItems: 'center' },
-  reactionEmoji: { fontSize: 16, color: COLORS.textMuted },
-  commentBtn: { marginLeft: 'auto' as any },
-  commentBtnText: { color: COLORS.textMuted, fontSize: 13 },
 
   // Events
   eventCard: {

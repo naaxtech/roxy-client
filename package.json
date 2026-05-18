@@ -1,0 +1,27 @@
+{
+  "name": "roxy-client",
+  "private": true,
+  "description": "Roxy monorepo — mobile, studio, Supabase",
+  "scripts": {
+    "supabase": "supabase",
+    "supabase:login": "supabase login",
+    "supabase:link": "supabase link --project-ref ptymtdlysqbpxzlgsshp",
+    "db:push": "supabase db push",
+    "db:pull": "supabase db pull",
+    "db:reset": "supabase db reset",
+    "db:diff": "supabase db diff",
+    "db:query": "supabase db execute",
+    "functions:deploy": "supabase functions deploy",
+    "migration:list": "supabase migration list",
+    "db:admin": "node scripts/supabase-admin.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.0",
+    "expo": "^55.0.24"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.10",
+    "supabase": "^2.98.2",
+    "typescript": "~5.9.2"
+  }
+}

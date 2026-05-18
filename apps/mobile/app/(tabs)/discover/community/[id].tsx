@@ -81,7 +81,7 @@ export default function CommunityDetailScreen() {
     if (!id) return;
     const { data } = await supabase
       .from('posts')
-      .select('id, content, created_at, author_id, comment_count, profiles(display_name, avatar_url)')
+      .select('id, content, created_at, author_id, comment_count, profiles!posts_author_id_fkey(display_name, avatar_url)')
       .eq('community_id', id)
       .order('created_at', { ascending: false })
       .limit(30);

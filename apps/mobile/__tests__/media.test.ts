@@ -22,4 +22,9 @@ describe('getPostImageUrl', () => {
     expect(url).toContain('width=800');
     expect(url).toContain('quality=85');
   });
+
+  it('returns absolute URLs unchanged (seed / external media)', () => {
+    const external = 'https://picsum.photos/seed/roxy-hike/800/600';
+    expect(getPostImageUrl(external, 'feed')).toBe(external);
+  });
 });

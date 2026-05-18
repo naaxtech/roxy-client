@@ -2,7 +2,8 @@ const { spawn } = require('child_process');
 const path = require('path');
 
 const mobileDir = path.join(__dirname, '..', 'apps', 'mobile');
-const expo = spawn('npx', ['expo', 'start', '--web', '--port', '8081'], {
+const port = process.env.EXPO_WEB_PORT ?? '8083';
+const expo = spawn('npx', ['expo', 'start', '--web', '--port', port, '--clear'], {
   cwd: mobileDir,
   shell: true,
   stdio: ['ignore', 'pipe', 'pipe'],

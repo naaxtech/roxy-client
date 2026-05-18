@@ -31,7 +31,7 @@ export function RoxyLinkCard({
   const config = VARIANT_CONFIG[type];
 
   return (
-    <View style={styles.card}>
+    <View testID="roxy-link-card" style={styles.card}>
       <View style={styles.authorRow}>
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarLetter}>

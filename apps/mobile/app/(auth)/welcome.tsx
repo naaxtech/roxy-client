@@ -55,7 +55,7 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} testID="welcome-screen">
       <View style={styles.hero}>
         <Text style={styles.logo}>Roxy</Text>
         <Text style={styles.tagline}>Your community. Your story.</Text>
@@ -89,12 +89,13 @@ export default function WelcomeScreen() {
             </TouchableOpacity>
 
             {!showEmail ? (
-              <TouchableOpacity onPress={() => setShowEmail(true)}>
+              <TouchableOpacity onPress={() => setShowEmail(true)} testID="use-email-link">
                 <Text style={styles.emailLink}>Use email instead</Text>
               </TouchableOpacity>
             ) : (
               <>
                 <TextInput
+                  testID="email-input"
                   style={styles.input}
                   placeholder="your@email.com"
                   placeholderTextColor={COLORS.textMuted}
@@ -105,6 +106,7 @@ export default function WelcomeScreen() {
                   onChangeText={setEmail}
                 />
                 <TextInput
+                  testID="password-input"
                   style={styles.input}
                   placeholder="Password"
                   placeholderTextColor={COLORS.textMuted}
@@ -120,6 +122,7 @@ export default function WelcomeScreen() {
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
+                  testID="auth-submit-btn"
                   style={[styles.btn, loading && styles.btnDisabled]}
                   onPress={handleSubmit}
                   disabled={loading}

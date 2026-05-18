@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { logError } from '../lib/errorLogger';
+import { normalizePosts } from '../lib/posts';
+import { POST_WITH_AUTHOR } from '../lib/supabaseQueries';
 import type { Post } from '../types';
 
 interface FeedState {
@@ -7,9 +10,10 @@ interface FeedState {
   newPosts: Post[];
   loading: boolean;
   loadingMore: boolean;
-  cursor: string | null;
+  cursor: number | null;
   hasMore: boolean;
   newPostCount: number;
+  fetchError: string | null;
 
   likedPostIds: Set<string>;
   savedPostIds: Set<string>;
@@ -28,6 +32,15 @@ interface FeedState {
   upsertPost: (post: Post) => void;
 }
 
+const PAGE_SIZE = 15;
+
+let fetchFeedGeneration = 0;
+
+function excludeSeen(posts: Post[], seenIds: Set<string>): Post[] {
+  if (!seenIds.size) return posts;
+  return posts.filter(p => !seenIds.has(p.id));
+}
+
 export const useFeedStore = create<FeedState>((set, get) => ({
   posts: [],
   newPosts: [],
@@ -36,6 +49,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   cursor: null,
   hasMore: true,
   newPostCount: 0,
+  fetchError: null,
   likedPostIds: new Set(),
   savedPostIds: new Set(),
   seenPostIds: new Set(),
@@ -53,54 +67,84 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   },
 
   fetchFeed: async (communityIds) => {
-    if (!communityIds.length) return;
-    set({ loading: true });
-    const seenIds = Array.from(get().seenPostIds);
-    let query = supabase
-      .from('posts')
-      .select('*, profiles(display_name, avatar_url)')
-      .in('community_id', communityIds)
-      .is('deleted_at', null)
-      .order('feed_score', { ascending: false })
-      .limit(15);
-    if (seenIds.length) {
-      query = (query as any).not('id', 'in', `(${seenIds.join(',')})`);
+    const generation = ++fetchFeedGeneration;
+
+    if (!communityIds.length) {
+      set({ posts: [], videoQueue: [], cursor: null, hasMore: false, loading: false, fetchError: null });
+      return;
     }
-    const { data } = await query;
-    const posts = (data ?? []) as Post[];
-    const videoQueue = posts.filter(p => p.post_type === 'video').map(p => p.id);
-    set({
-      posts,
-      videoQueue,
-      cursor: posts.length ? posts[posts.length - 1].created_at : null,
-      hasMore: posts.length === 15,
-      loading: false,
-    });
+
+    const isInitialLoad = get().posts.length === 0;
+    if (isInitialLoad) {
+      set({ loading: true, fetchError: null });
+    }
+
+    try {
+      const seenIds = get().seenPostIds;
+      const { data, error } = await supabase
+        .from('posts')
+        .select(POST_WITH_AUTHOR)
+        .in('community_id', communityIds)
+        .is('deleted_at', null)
+        .order('feed_score', { ascending: false })
+        .limit(PAGE_SIZE);
+
+      if (generation !== fetchFeedGeneration) return;
+
+      if (error) {
+        logError(error, 'feedStore.fetchFeed');
+        set({ loading: false, fetchError: error.message });
+        return;
+      }
+
+      const posts = excludeSeen(normalizePosts(data), seenIds);
+      const videoQueue = posts.filter(p => p.post_type === 'video').map(p => p.id);
+      set({
+        posts,
+        videoQueue,
+        cursor: posts.length ? posts[posts.length - 1].feed_score : null,
+        hasMore: (data?.length ?? 0) === PAGE_SIZE,
+        loading: false,
+        fetchError: null,
+      });
+    } catch (e) {
+      if (generation !== fetchFeedGeneration) return;
+      logError(e, 'feedStore.fetchFeed');
+      set({ loading: false, fetchError: 'Could not load the feed.' });
+    }
   },
 
   fetchMoreFeed: async (communityIds) => {
-    const { cursor, loadingMore, hasMore } = get();
-    if (loadingMore || !hasMore || !cursor || !communityIds.length) return;
+    const { cursor, loadingMore, hasMore, posts: existing, seenPostIds } = get();
+    if (loadingMore || !hasMore || cursor === null || !communityIds.length) return;
     set({ loadingMore: true });
-    const seenIds = Array.from(get().seenPostIds);
+    const existingIds = new Set(existing.map(p => p.id));
     let query = supabase
       .from('posts')
-      .select('*, profiles(display_name, avatar_url)')
+      .select(POST_WITH_AUTHOR)
       .in('community_id', communityIds)
       .is('deleted_at', null)
+      .lt('feed_score', cursor)
       .order('feed_score', { ascending: false })
-      .limit(15);
-    if (seenIds.length) {
-      query = (query as any).not('id', 'in', `(${seenIds.join(',')})`);
+      .limit(PAGE_SIZE);
+
+    const { data, error } = await query;
+    if (error) {
+      logError(error, 'feedStore.fetchMoreFeed');
+      set({ loadingMore: false });
+      return;
     }
-    const { data } = await query;
-    const more = (data ?? []) as Post[];
+
+    const more = excludeSeen(
+      normalizePosts(data).filter(p => !existingIds.has(p.id)),
+      seenPostIds,
+    );
     const newVideos = more.filter(p => p.post_type === 'video').map(p => p.id);
     set(s => ({
       posts: [...s.posts, ...more],
       videoQueue: [...s.videoQueue, ...newVideos],
-      cursor: more.length ? more[more.length - 1].created_at : s.cursor,
-      hasMore: more.length === 15,
+      cursor: more.length ? more[more.length - 1].feed_score : s.cursor,
+      hasMore: (data?.length ?? 0) === PAGE_SIZE,
       loadingMore: false,
     }));
   },
@@ -157,7 +201,13 @@ export const useFeedStore = create<FeedState>((set, get) => ({
 
   markSeen: (postId) => {
     set(s => ({ seenPostIds: new Set([...s.seenPostIds, postId]) }));
-    void supabase.from('seen_posts').insert({ post_id: postId }).then(() => {});
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      void supabase
+        .from('seen_posts')
+        .upsert({ post_id: postId, user_id: user.id }, { onConflict: 'user_id,post_id' })
+        .then(() => {});
+    });
   },
 
   acceptNewPosts: () => {
@@ -171,7 +221,8 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     }));
   },
 
-  pushNewPost: (post) => {
+  pushNewPost: (raw) => {
+    const post = normalizePosts([raw])[0] ?? raw;
     set(s => ({
       newPosts: [post, ...s.newPosts],
       newPostCount: s.newPostCount + 1,

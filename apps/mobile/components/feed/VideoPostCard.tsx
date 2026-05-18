@@ -51,17 +51,19 @@ export function VideoPostCard({
       </View>
 
       {/* Thumbnail */}
-      <View style={[styles.thumbContainer, { height: thumbHeight }]}>
+      <View
+        testID="video-thumbnail"
+        style={[styles.thumbContainer, { height: thumbHeight }]}
+      >
         {thumbUri ? (
           <Image
-            testID="video-thumbnail"
             source={{ uri: thumbUri }}
             placeholder={post.blurhash ?? undefined}
             contentFit="cover"
             style={StyleSheet.absoluteFill}
           />
         ) : (
-          <View testID="video-thumbnail" style={[StyleSheet.absoluteFill, styles.thumbPlaceholder]} />
+          <View style={[StyleSheet.absoluteFill, styles.thumbPlaceholder]} />
         )}
 
         <View testID="play-icon" style={styles.playOverlay}>

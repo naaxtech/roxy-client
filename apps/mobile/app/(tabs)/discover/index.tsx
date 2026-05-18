@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Animated, Alert, Share,
 } from 'react-native';
@@ -14,6 +14,7 @@ import { logError } from '../../../lib/errorLogger';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
 import { Image } from 'expo-image';
+import { contentDetailPath } from '../../../lib/contentNavigation';
 import { useFeedStore } from '../../../store/feedStore';
 import { FeedCard } from '../../../components/feed/FeedCard';
 import { FeedSkeleton } from '../../../components/feed/FeedSkeleton';
@@ -26,31 +27,38 @@ type SubTab = 'feed' | 'communities' | 'events' | 'games';
 // ── Feed section ──────────────────────────────────────────────────────────────
 function FeedSection({
   userId,
-  joinedCommunityIds,
-  onNavigateToPost,
-  onNavigateToVideo,
+  feedCommunityIds,
+  communitiesReady,
+  onOpenContent,
 }: {
   userId: string;
-  joinedCommunityIds: string[];
-  onNavigateToPost: (id: string) => void;
-  onNavigateToVideo: (id: string) => void;
+  feedCommunityIds: string[];
+  communitiesReady: boolean;
+  onOpenContent: (post: Post) => void;
 }) {
   const {
-    posts, loading, loadingMore, hasMore, newPostCount,
+    posts, loading, loadingMore, hasMore, newPostCount, fetchError,
     likedPostIds, savedPostIds,
     init, fetchFeed, fetchMoreFeed,
     toggleLike, toggleSave, markSeen, acceptNewPosts, pushNewPost,
   } = useFeedStore();
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const communityKey = joinedCommunityIds.join(',');
+  const communityKey = feedCommunityIds.join(',');
+  const [gameNames, setGameNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!userId) return;
-    void init(userId);
-    void fetchFeed(joinedCommunityIds);
+    void supabase.from('games').select('id, name').then(({ data }) => {
+      if (data) setGameNames(Object.fromEntries(data.map((g) => [g.id, g.name])));
+    });
+  }, []);
 
-    if (joinedCommunityIds.length) {
+  useEffect(() => {
+    if (!userId || !communitiesReady) return;
+    void init(userId);
+    void fetchFeed(feedCommunityIds);
+
+    if (feedCommunityIds.length) {
       const ch = supabase
         .channel('feed-new-posts')
         .on(
@@ -72,9 +80,11 @@ function FeedSection({
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, communityKey]);
+  }, [userId, communityKey, communitiesReady]);
 
-  if (loading) return <FeedSkeleton />;
+  // Only skeleton on first load — background refetches must not blank the feed
+  // (e.g. while opening a post from Connect, Discover tab stays mounted).
+  if (!communitiesReady || (loading && posts.length === 0)) return <FeedSkeleton />;
 
   return (
     <View style={{ flex: 1 }}>
@@ -87,24 +97,21 @@ function FeedSection({
         renderItem={({ item }) => (
           <FeedCard
             post={item}
+            linkEntityName={item.link_entity_id ? gameNames[item.link_entity_id] : undefined}
             isLiked={likedPostIds.has(item.id)}
             isSaved={savedPostIds.has(item.id)}
             onLike={() => void toggleLike(item.id)}
             onSave={() => void toggleSave(item.id)}
-            onComment={() => {
-              if (item.post_type === 'video') onNavigateToVideo(item.id);
-              else onNavigateToPost(item.id);
-            }}
+            onComment={() => onOpenContent(item)}
             onShare={() => void Share.share({ message: 'Check this out on Roxy!' })}
             onPress={() => {
               markSeen(item.id);
-              if (item.post_type === 'video') onNavigateToVideo(item.id);
-              else onNavigateToPost(item.id);
+              onOpenContent(item);
             }}
           />
         )}
         estimatedItemSize={320}
-        onEndReached={() => { if (hasMore && !loadingMore) void fetchMoreFeed(joinedCommunityIds); }}
+        onEndReached={() => { if (hasMore && !loadingMore) void fetchMoreFeed(feedCommunityIds); }}
         onEndReachedThreshold={0.5}
         ListFooterComponent={
           loadingMore
@@ -114,7 +121,11 @@ function FeedSection({
         ListEmptyComponent={
           <View style={feedStyles.empty}>
             <Text style={feedStyles.emptyText}>
-              No posts yet. Join more communities to see content here.
+              {fetchError
+                ? `Could not load the feed. Pull to refresh or try again later.`
+                : feedCommunityIds.length === 0
+                  ? 'Join a community to see posts in your feed.'
+                  : 'No posts yet. Join more communities to see content here.'}
             </Text>
           </View>
         }
@@ -247,8 +258,19 @@ function getCommunityLevel(n: number): { label: string; emoji: string } {
 export default function DiscoverScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { allCommunities, joinedIds, joinedCommunities, fetchAll, fetchJoined, joinCommunity, leaveCommunity } = useCommunityStore();
+  const {
+    allCommunities, joinedIds, joinedCommunities, hydrated,
+    hydrate, joinCommunity, leaveCommunity,
+  } = useCommunityStore();
   const { selectedCommunityId } = useCommunityFilterStore();
+
+  const feedCommunityIds = useMemo(() => {
+    let ids: string[];
+    if (selectedCommunityId) ids = [selectedCommunityId];
+    else if (joinedIds.size > 0) ids = Array.from(joinedIds);
+    else ids = allCommunities.map((c) => c.id);
+    return ids.slice().sort();
+  }, [selectedCommunityId, joinedIds, allCommunities]);
 
   const [subTab, setSubTab] = useState<SubTab>('feed');
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -263,11 +285,9 @@ export default function DiscoverScreen() {
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [interestedIds, setInterestedIds] = useState<Set<string>>(new Set());
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    fetchAll();
-    if (user?.id) fetchJoined(user.id);
-  }, [user?.id]);
+    void hydrate(user?.id);
+  }, [user?.id, hydrate]);
 
   const loadEvents = useCallback(async () => {
     setLoadingEvents(true);
@@ -357,6 +377,7 @@ export default function DiscoverScreen() {
         {(['feed', 'communities', 'events', 'games'] as SubTab[]).map((tab) => (
           <TouchableOpacity
             key={tab}
+            testID={`discover-tab-${tab}`}
             style={[styles.subTab, subTab === tab && styles.subTabActive]}
             onPress={() => switchTab(tab)}
           >
@@ -372,13 +393,11 @@ export default function DiscoverScreen() {
       {subTab === 'feed' && user && (
         <FeedSection
           userId={user.id}
-          joinedCommunityIds={
-            joinedIds.size > 0
-              ? Array.from(joinedIds)
-              : allCommunities.map((c) => c.id)
-          }
-          onNavigateToPost={(id) => router.push(`/(tabs)/discover/post/${id}` as any)}
-          onNavigateToVideo={(id) => router.push(`/(tabs)/discover/video/${id}` as any)}
+          feedCommunityIds={feedCommunityIds}
+          communitiesReady={hydrated}
+          onOpenContent={(post) => {
+            router.push(contentDetailPath(post.id, post.post_type) as any);
+          }}
         />
       )}
 

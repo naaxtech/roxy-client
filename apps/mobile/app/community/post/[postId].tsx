@@ -1,1 +1,1 @@
-export { default } from '../../(tabs)/discover/community/post/[postId]';
+export { default } from '../../(tabs)/discover/post/[postId]';

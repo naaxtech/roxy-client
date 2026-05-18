@@ -11,14 +11,24 @@ type CommunityStore = {
   joinedCommunities: Community[];
   allCommunities: Community[];
   joinedIds: Set<string>;
+  hydrated: boolean;
   fetchJoined: (userId: string) => Promise<void>;
   fetchAll: () => Promise<void>;
+  hydrate: (userId?: string) => Promise<void>;
   joinCommunity: (communityId: string, userId: string) => Promise<void>;
   leaveCommunity: (communityId: string, userId: string) => Promise<void>;
 };
 
 export const useCommunityStore = create<CommunityStore>((set, get) => ({
-  joinedCommunities: [], allCommunities: [], joinedIds: new Set(),
+  joinedCommunities: [], allCommunities: [], joinedIds: new Set(), hydrated: false,
+
+  hydrate: async (userId) => {
+    await Promise.all([
+      get().fetchAll(),
+      userId ? get().fetchJoined(userId) : Promise.resolve(),
+    ]);
+    set({ hydrated: true });
+  },
 
   fetchJoined: async (userId) => {
     const { data } = await supabase.from('community_members').select('communities(*)').eq('user_id', userId);

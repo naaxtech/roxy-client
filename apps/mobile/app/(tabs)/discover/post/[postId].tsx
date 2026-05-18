@@ -11,16 +11,22 @@ import { useAuthStore } from '../../../../store/authStore';
 import { useFeedStore } from '../../../../store/feedStore';
 import { COLORS } from '../../../../lib/constants';
 import { getPostImageUrl } from '../../../../lib/media';
+import { fetchPostById } from '../../../../lib/posts';
+import { routeParam } from '../../../../lib/routeParams';
+import { COMMENT_WITH_AUTHOR } from '../../../../lib/supabaseQueries';
 import { CommentThread } from '../../../../components/feed/CommentThread';
-import type { Comment } from '../../../../types';
+import type { Comment, Post } from '../../../../types';
 
 export default function PostDetailScreen() {
-  const { postId } = useLocalSearchParams<{ postId: string }>();
+  const params = useLocalSearchParams<{ postId: string | string[] }>();
+  const postId = routeParam(params.postId);
   const router = useRouter();
   const { user } = useAuthStore();
-  const { posts, likedPostIds, savedPostIds, toggleLike, toggleSave } = useFeedStore();
+  const { likedPostIds, savedPostIds, toggleLike, toggleSave } = useFeedStore();
 
-  const post = posts.find(p => p.id === postId) ?? null;
+  const [post, setPost] = useState<Post | null>(null);
+  const [loadingPost, setLoadingPost] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
@@ -30,6 +36,35 @@ export default function PostDetailScreen() {
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
 
   useEffect(() => {
+    if (!postId) {
+      setPost(null);
+      setLoadError('Invalid post link');
+      setLoadingPost(false);
+      return;
+    }
+
+    const cached = useFeedStore.getState().posts.find(p => p.id === postId) ?? null;
+    if (cached) {
+      setPost(cached);
+      setLoadError(null);
+      setLoadingPost(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingPost(true);
+    setLoadError(null);
+    void fetchPostById(postId).then((p) => {
+      if (cancelled) return;
+      if (p) useFeedStore.getState().upsertPost(p);
+      setPost(p);
+      setLoadError(p ? null : 'This post could not be loaded.');
+      setLoadingPost(false);
+    });
+    return () => { cancelled = true; };
+  }, [postId]);
+
+  useEffect(() => {
     if (!postId) return;
     void loadComments();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -37,13 +72,18 @@ export default function PostDetailScreen() {
 
   const loadComments = async () => {
     setLoadingComments(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('comments')
-      .select('*, profiles(display_name, avatar_url)')
+      .select(COMMENT_WITH_AUTHOR)
       .eq('post_id', postId)
       .is('parent_id', null)
       .order('created_at', { ascending: true })
       .limit(20);
+
+    if (error) {
+      setLoadingComments(false);
+      return;
+    }
 
     const topLevel = (data ?? []) as Comment[];
 
@@ -51,7 +91,7 @@ export default function PostDetailScreen() {
       topLevel.map(async (c) => {
         const { data: replyData } = await supabase
           .from('comments')
-          .select('*, profiles(display_name, avatar_url)')
+          .select(COMMENT_WITH_AUTHOR)
           .eq('parent_id', c.id)
           .order('created_at', { ascending: true });
         return { ...c, replies: (replyData ?? []) as Comment[] };
@@ -106,10 +146,27 @@ export default function PostDetailScreen() {
     setSubmitting(false);
   };
 
+  if (loadingPost) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View testID="post-detail-loading" style={{ flex: 1 }}>
+          <ActivityIndicator color={COLORS.primary} style={{ flex: 1 }} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!post) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={COLORS.primary} style={{ flex: 1 }} />
+        <View testID="post-detail-error" style={{ flex: 1 }}>
+        <TouchableOpacity testID="post-detail-back" onPress={() => router.back()} style={styles.header}>
+          <Text style={styles.backBtn}>← Back</Text>
+        </TouchableOpacity>
+        <View style={styles.errorBody}>
+          <Text style={styles.errorText}>{loadError ?? 'Post not found'}</Text>
+        </View>
+        </View>
       </SafeAreaView>
     );
   }
@@ -119,6 +176,7 @@ export default function PostDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <View testID="post-detail-screen" style={{ flex: 1 }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -126,7 +184,7 @@ export default function PostDetailScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <TouchableOpacity testID="post-detail-back" onPress={() => router.back()} hitSlop={8}>
             <Text style={styles.backBtn}>← Post</Text>
           </TouchableOpacity>
           <Text style={styles.headerAuthor}>@{post.profiles?.display_name ?? ''}</Text>
@@ -234,6 +292,7 @@ export default function PostDetailScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -273,4 +332,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary + '20', color: COLORS.primary,
     fontSize: 11, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10,
   },
+  errorBody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  errorText: { color: COLORS.textSecondary, fontSize: 15, textAlign: 'center' },
 });

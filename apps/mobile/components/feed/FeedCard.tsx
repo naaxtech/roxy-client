@@ -16,9 +16,12 @@ export interface FeedCardHandlers {
 
 interface FeedCardProps extends FeedCardHandlers {
   post: Post;
+  linkEntityName?: string;
 }
 
-export function FeedCard({ post, ...handlers }: FeedCardProps) {
+const LINK_TYPE_LABELS = { game: 'Game', room: 'Room', event: 'Event' } as const;
+
+export function FeedCard({ post, linkEntityName, ...handlers }: FeedCardProps) {
   switch (post.post_type) {
     case 'video':
       return <VideoPostCard post={post} {...handlers} />;
@@ -27,7 +30,11 @@ export function FeedCard({ post, ...handlers }: FeedCardProps) {
         <RoxyLinkCard
           post={post}
           {...handlers}
-          entityName={post.link_entity_id ?? ''}
+          entityName={
+            linkEntityName ??
+            LINK_TYPE_LABELS[post.link_type ?? 'game'] ??
+            'Roxy Link'
+          }
           participantCount={0}
         />
       );

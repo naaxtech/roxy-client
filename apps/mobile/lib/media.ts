@@ -13,6 +13,9 @@ const VARIANT_PARAMS: Record<ImageVariant, { width: number; quality: number; for
  * Swap SUPABASE_STORAGE_URL to Cloudflare Images URL here when migrating — zero component changes.
  */
 export function getPostImageUrl(path: string, variant: ImageVariant): string {
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
   const p = VARIANT_PARAMS[variant];
   const qs = new URLSearchParams({
     width:   String(p.width),

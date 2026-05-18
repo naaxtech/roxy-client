@@ -27,9 +27,24 @@ export function StaticPostCard({
   const [expanded, setExpanded] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
 
-  const isGallery = post.post_type === 'gallery' && post.media_urls.length > 1;
-  const hasImage = (post.post_type === 'photo' || post.post_type === 'gallery') && post.media_urls.length > 0;
-  const isTextOnly = post.post_type === 'standard' && !hasImage;
+  const mediaUrls = post.media_urls ?? [];
+  const isGallery = post.post_type === 'gallery' && mediaUrls.length > 1;
+  const isPhoto = post.post_type === 'photo' && mediaUrls.length > 0;
+  const hasImage =
+    isPhoto ||
+    isGallery ||
+    (mediaUrls.length > 0 && post.post_type !== 'video' && post.post_type !== 'roxy_link');
+  const isTextOnly =
+    !hasImage &&
+    (post.post_type === 'standard' ||
+      post.post_type === 'poll' ||
+      post.post_type === 'resource' ||
+      post.post_type === 'event');
+  const typeBadge =
+    post.post_type === 'poll' ? '🗳️ Poll' :
+    post.post_type === 'resource' ? '📚 Resource' :
+    post.post_type === 'event' ? '📅 Event' :
+    null;
 
   return (
     <TouchableOpacity
@@ -65,19 +80,23 @@ export function StaticPostCard({
                 }}
                 scrollEventThrottle={16}
               >
-                {post.media_urls.map((path, i) => (
-                  <Image
+                {mediaUrls.map((path, i) => (
+                  <View
                     key={i}
                     testID={i === 0 ? 'post-image' : undefined}
-                    source={{ uri: getPostImageUrl(path, 'feed') }}
-                    placeholder={post.blurhash ?? undefined}
-                    contentFit="cover"
                     style={styles.image}
-                  />
+                  >
+                    <Image
+                      source={{ uri: getPostImageUrl(path, 'feed') }}
+                      placeholder={post.blurhash ?? undefined}
+                      contentFit="cover"
+                      style={StyleSheet.absoluteFill}
+                    />
+                  </View>
                 ))}
               </ScrollView>
               <View testID="gallery-dots" style={styles.dots}>
-                {post.media_urls.map((_, i) => (
+                {mediaUrls.map((_, i) => (
                   <View
                     key={i}
                     style={[styles.dot, i === galleryIndex && styles.dotActive]}
@@ -86,13 +105,14 @@ export function StaticPostCard({
               </View>
             </View>
           ) : (
-            <Image
-              testID="post-image"
-              source={{ uri: getPostImageUrl(post.media_urls[0], 'feed') }}
-              placeholder={post.blurhash ?? undefined}
-              contentFit="cover"
-              style={styles.image}
-            />
+            <View testID="post-image" style={styles.image}>
+              <Image
+                source={{ uri: getPostImageUrl(mediaUrls[0], 'feed') }}
+                placeholder={post.blurhash ?? undefined}
+                contentFit="cover"
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
           )}
         </View>
       )}
@@ -100,6 +120,7 @@ export function StaticPostCard({
       {/* Text post — styled card */}
       {isTextOnly && (
         <View style={styles.textCard}>
+          {typeBadge ? <Text style={styles.typeBadge}>{typeBadge}</Text> : null}
           <Text style={styles.textCardContent}>{post.content}</Text>
         </View>
       )}
@@ -149,7 +170,7 @@ const styles = StyleSheet.create({
   },
   avatarLetter: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
   authorName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  image: { width: '100%', height: 300 },
+  image: { width: '100%', height: 300, overflow: 'hidden' },
   dots: {
     flexDirection: 'row', justifyContent: 'center',
     gap: 4, paddingVertical: 8,
@@ -160,6 +181,10 @@ const styles = StyleSheet.create({
     minHeight: 160, marginHorizontal: 16, marginVertical: 4,
     backgroundColor: COLORS.surface, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center', padding: 20,
+  },
+  typeBadge: {
+    color: COLORS.primary, fontSize: 12, fontWeight: '700',
+    marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5,
   },
   textCardContent: {
     color: COLORS.textPrimary, fontSize: 18,

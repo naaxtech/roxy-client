@@ -6,10 +6,18 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web",
+    "web": "expo start --web --port 8083 --clear",
     "test": "jest --watchAll",
     "test:ci": "jest --ci",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint . --ext .ts,.tsx",
+    "eas": "eas",
+    "eas:build:preview": "eas build --profile preview --platform android",
+    "eas:build:list": "eas build:list --profile preview --limit 5",
+    "eas:build:run": "eas build:run --profile preview --platform android --latest",
+    "test:e2e": "playwright test",
+    "test:e2e:audit": "playwright test tests/e2e/content-feed-audit.spec.ts",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "@daily-co/react-native-daily-js": "^0.83.0",
@@ -22,6 +30,7 @@
     "@stripe/stripe-react-native": "0.37.2",
     "@supabase/supabase-js": "^2.43.0",
     "date-fns": "^3.6.0",
+    "eas": "^0.1.0",
     "expo": "~51.0.0",
     "expo-application": "~5.9.1",
     "expo-asset": "~10.0.0",
@@ -62,6 +71,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
+    "@playwright/test": "^1.60.0",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^12.4.0",
     "@types/jest": "^30.0.0",
