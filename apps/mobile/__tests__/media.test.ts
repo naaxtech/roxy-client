@@ -3,7 +3,7 @@ import { getPostImageUrl } from '../lib/media';
 process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
 
 describe('getPostImageUrl', () => {
-  it('thumb: width=120 quality=60 format=avif', () => {
+  it('thumb: width=120 quality=60 format=webp', () => {
     const url = getPostImageUrl('u1/p1/photo.jpg', 'thumb');
     expect(url).toContain('/render/image/public/post-media/u1/p1/photo.jpg');
     expect(url).toContain('width=120');

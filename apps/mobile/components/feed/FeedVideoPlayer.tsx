@@ -62,7 +62,7 @@ export function FeedVideoPlayer({ videoUrl, isActive, isMuted, style }: Props) {
       ref={nativeRef}
       source={{ uri }}
       style={[StyleSheet.absoluteFill, style]}
-      resizeMode={ResizeMode?.CONTAIN ?? 'contain'}
+      resizeMode={ResizeMode?.CONTAIN ?? ('contain' as any)}
       shouldPlay={isActive}
       isLooping
       isMuted={isMuted}

@@ -1,13 +1,12 @@
 import React, { useRef, useState } from 'react';
 import {
-  View, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform,
+  View, ScrollView, TouchableOpacity, StyleSheet, Platform, useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { getPostImageUrl } from '../../lib/media';
 import { COLORS } from '../../lib/constants';
 
-const SLIDE_WIDTH = Dimensions.get('window').width;
 const FEED_HEIGHT = 300;
 const DETAIL_HEIGHT = 400;
 
@@ -19,6 +18,7 @@ interface Props {
 }
 
 export function PostMediaCarousel({ urls, blurhash, variant, onOpen }: Props) {
+  const { width: SLIDE_WIDTH } = useWindowDimensions();
   const [index, setIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const height = variant === 'detail' ? DETAIL_HEIGHT : FEED_HEIGHT;
@@ -88,7 +88,7 @@ export function PostMediaCarousel({ urls, blurhash, variant, onOpen }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { width: SLIDE_WIDTH, backgroundColor: COLORS.surface, overflow: 'hidden' },
+  wrap: { width: '100%', backgroundColor: COLORS.surface, overflow: 'hidden' },
   dots: {
     position: 'absolute', bottom: 10, left: 0, right: 0,
     flexDirection: 'row', justifyContent: 'center', gap: 4,

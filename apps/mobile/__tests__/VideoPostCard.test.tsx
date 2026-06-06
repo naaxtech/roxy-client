@@ -50,7 +50,7 @@ describe('VideoPostCard', () => {
     const { getByTestId } = render(
       <VideoPostCard post={makeVideoPost()} {...handlers} onPress={onPress} />
     );
-    fireEvent.press(getByTestId('video-card'));
+    fireEvent.press(getByTestId('video-thumbnail'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

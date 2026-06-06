@@ -67,11 +67,14 @@ export default function PostDetailScreen() {
 
   useEffect(() => {
     if (!postId) return;
-    void loadComments();
+    let cancelled = false;
+    void loadComments(() => cancelled);
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
 
-  const loadComments = async () => {
+  const loadComments = async (isCancelled?: () => boolean) => {
+    if (!postId) return;
     setLoadingComments(true);
     const { data, error } = await supabase
       .from('comments')
@@ -81,38 +84,48 @@ export default function PostDetailScreen() {
       .order('created_at', { ascending: true })
       .limit(20);
 
-    if (error) {
-      setLoadingComments(false);
-      return;
-    }
+    if (isCancelled?.()) return;
+    if (error) { setLoadingComments(false); return; }
 
     const topLevel = (data ?? []) as Comment[];
+    const topLevelIds = topLevel.map(c => c.id);
 
-    const withReplies = await Promise.all(
-      topLevel.map(async (c) => {
-        const { data: replyData } = await supabase
+    // Single batch query for all replies — replaces N+1
+    const repliesRes = topLevelIds.length
+      ? await supabase
           .from('comments')
           .select(COMMENT_WITH_AUTHOR)
-          .eq('parent_id', c.id)
-          .order('created_at', { ascending: true });
-        return { ...c, replies: (replyData ?? []) as Comment[] };
-      })
-    );
+          .in('parent_id', topLevelIds)
+          .order('created_at', { ascending: true })
+      : { data: [] };
+
+    if (isCancelled?.()) return;
+
+    const repliesByParent = new Map<string, Comment[]>();
+    for (const r of (repliesRes.data ?? []) as Comment[]) {
+      if (!r.parent_id) continue;
+      const arr = repliesByParent.get(r.parent_id) ?? [];
+      arr.push(r);
+      repliesByParent.set(r.parent_id, arr);
+    }
+    const withReplies = topLevel.map(c => ({ ...c, replies: repliesByParent.get(c.id) ?? [] }));
 
     if (user?.id) {
-      const ids = withReplies.flatMap(c => [c.id, ...(c.replies ?? []).map(r => r.id)]);
+      const ids = withReplies.flatMap(c => [c.id, ...c.replies.map(r => r.id)]);
       if (ids.length) {
         const { data: likes } = await supabase
           .from('comment_likes')
           .select('comment_id')
           .in('comment_id', ids)
           .eq('user_id', user.id);
-        setLikedCommentIds(new Set(likes?.map(l => l.comment_id) ?? []));
+        if (!isCancelled?.()) setLikedCommentIds(new Set(likes?.map(l => l.comment_id) ?? []));
       }
     }
 
-    setComments(withReplies);
-    setLoadingComments(false);
+    if (!isCancelled?.()) {
+      setComments(withReplies);
+      setLoadingComments(false);
+    }
   };
 
   const handleLikeComment = async (commentId: string) => {
@@ -131,7 +144,7 @@ export default function PostDetailScreen() {
   };
 
   const handleSubmitComment = async () => {
-    if (!commentText.trim() || !user?.id || submitting) return;
+    if (!commentText.trim() || !user?.id || !postId || submitting) return;
     setSubmitting(true);
     const { comment, error } = await submitComment({
       postId,
@@ -145,7 +158,7 @@ export default function PostDetailScreen() {
       setCommentText('');
       setReplyingTo(null);
       bumpCommentCount(postId);
-      await loadComments();
+      await loadComments(undefined);
     }
     setSubmitting(false);
   };

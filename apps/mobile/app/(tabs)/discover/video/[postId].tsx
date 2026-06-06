@@ -87,12 +87,19 @@ export default function VideoPlayerScreen() {
     void fetchPostById(postId).then((p) => { if (p?.post_type === 'video') setVideoPosts([p]); });
   }, [postId, posts, videoQueue]);
 
-  const initialIndex = Math.max(0, videoPosts.findIndex(p => p.id === postId));
+  const initializedRef = useRef(false);
+  const initialIndexRef = useRef(0);
 
   useEffect(() => {
-    setActiveIndex(initialIndex);
-    activeIndexRef.current = initialIndex;
-  }, [initialIndex, videoPosts.length]);
+    if (initializedRef.current || !videoPosts.length) return;
+    const idx = Math.max(0, videoPosts.findIndex(p => p.id === postId));
+    initialIndexRef.current = idx;
+    setActiveIndex(idx);
+    activeIndexRef.current = idx;
+    initializedRef.current = true;
+  // Run once when videoPosts first becomes non-empty; postId is stable for this screen mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoPosts.length]);
 
   const closePlayer = useCallback(() => router.back(), [router]);
 
@@ -171,7 +178,7 @@ export default function VideoPlayerScreen() {
         )}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        initialScrollIndex={initialIndex > 0 ? initialIndex : undefined}
+        initialScrollIndex={initialIndexRef.current > 0 ? initialIndexRef.current : undefined}
         getItemLayout={(_, index) => ({
           length: SCREEN_HEIGHT,
           offset: SCREEN_HEIGHT * index,

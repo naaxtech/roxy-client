@@ -53,11 +53,11 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
       const path = `${userId}/${Date.now()}.${ext}`;
       const blob = await (await fetch(asset.uri)).blob();
       const { error: upErr } = await supabase.storage
-        .from('avatars')
+        .from('profile-photos')
         .upload(path, blob, { contentType: asset.mimeType ?? 'image/jpeg', upsert: true });
       if (upErr) throw upErr;
 
-      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+      const { data: pub } = supabase.storage.from('profile-photos').getPublicUrl(path);
       const { error } = await supabase.from('profile_photos').insert({
         user_id: userId,
         photo_url: pub.publicUrl,
@@ -75,6 +75,11 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
 
   const removePhoto = async (row: PhotoRow) => {
     if (!editable) return;
+    const storagePrefix = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/profile-photos/`;
+    if (row.photo_url.startsWith(storagePrefix)) {
+      const storagePath = row.photo_url.slice(storagePrefix.length);
+      await supabase.storage.from('profile-photos').remove([storagePath]);
+    }
     await supabase.from('profile_photos').delete().eq('id', row.id);
     await load();
   };

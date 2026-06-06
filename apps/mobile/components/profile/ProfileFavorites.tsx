@@ -26,16 +26,27 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
       .limit(20);
 
     const rows = data ?? [];
-    const enriched: Fav[] = await Promise.all(
-      rows.map(async (r) => {
-        if (r.entity_type === 'event') {
-          const { data: ev } = await supabase.from('events').select('title').eq('id', r.entity_id).maybeSingle();
-          return { ...r, title: ev?.title ?? 'Event' } as Fav;
-        }
-        const { data: g } = await supabase.from('games').select('name').eq('id', r.entity_id).maybeSingle();
-        return { ...r, title: g?.name ?? 'Game' } as Fav;
-      })
-    );
+    const eventIds = rows.filter(r => r.entity_type === 'event').map(r => r.entity_id);
+    const gameIds  = rows.filter(r => r.entity_type === 'game').map(r => r.entity_id);
+
+    const [eventsRes, gamesRes] = await Promise.all([
+      eventIds.length
+        ? supabase.from('events').select('id, title').in('id', eventIds)
+        : Promise.resolve({ data: [] }),
+      gameIds.length
+        ? supabase.from('games').select('id, name').in('id', gameIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const eventTitles = Object.fromEntries((eventsRes.data ?? []).map((e: any) => [e.id, e.title as string]));
+    const gameTitles  = Object.fromEntries((gamesRes.data  ?? []).map((g: any) => [g.id, g.name  as string]));
+
+    const enriched: Fav[] = rows.map((r) => ({
+      ...r,
+      title: r.entity_type === 'event'
+        ? (eventTitles[r.entity_id] ?? 'Event')
+        : (gameTitles[r.entity_id]  ?? 'Game'),
+    }));
     setItems(enriched);
     setLoading(false);
   }, [userId]);

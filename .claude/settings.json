@@ -39,7 +39,14 @@
       "Bash(node -e:*)",
       "Bash(node --version)",
       "Bash(ls:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint . --ext .ts,.tsx --max-warnings 0)",
+      "Bash(npx jest --testPathPattern *)",
+      "mcp__ide__getDiagnostics",
+      "WebFetch",
+      "WebSearch"
     ]
   }
 }
