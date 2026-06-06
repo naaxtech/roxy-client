@@ -85,17 +85,38 @@ function FeedSection({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, communityKey, communitiesReady]);
 
+  // On native: screen stays mounted — restore immediately after focus commit.
+  // On web: Expo Router unmounts the screen on nested-route navigation, so the
+  // FlashList doesn't exist yet when focus fires. scrollRestoredRef lets the
+  // post-fetch useEffect below handle restoration instead.
+  const scrollRestoredRef = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
+      scrollRestoredRef.current = false;
       if (discoverScrollOffset <= 0) return;
-      // RAF alone is too early — FlashList needs its layout pass after focus.
-      // 80ms covers the layout commit on all tested devices without visible delay.
       const t = setTimeout(() => {
-        listRef.current?.scrollToOffset({ offset: discoverScrollOffset, animated: false });
+        if (listRef.current) {
+          listRef.current.scrollToOffset({ offset: discoverScrollOffset, animated: false });
+          scrollRestoredRef.current = true;
+        }
       }, 80);
       return () => clearTimeout(t);
     }, [discoverScrollOffset])
   );
+
+  // Web fallback: screen remounts and fetches data fresh. Restore after
+  // loading finishes and FlashList is actually rendered.
+  useEffect(() => {
+    if (loading || scrollRestoredRef.current || discoverScrollOffset <= 0 || posts.length === 0) return;
+    const t = setTimeout(() => {
+      if (!scrollRestoredRef.current && listRef.current) {
+        listRef.current.scrollToOffset({ offset: discoverScrollOffset, animated: false });
+        scrollRestoredRef.current = true;
+      }
+    }, 50);
+    return () => clearTimeout(t);
+  }, [loading, posts.length, discoverScrollOffset]);
 
   // Only skeleton on first load — background refetches must not blank the feed
   // (e.g. while opening a post from Connect, Discover tab stays mounted).
