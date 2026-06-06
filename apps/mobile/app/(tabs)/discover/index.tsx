@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { usePathname } from 'expo-router';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Animated, Alert, Share,
+  View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Animated, Alert, Share, Platform,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -85,38 +86,39 @@ function FeedSection({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, communityKey, communitiesReady]);
 
-  // On native: screen stays mounted — restore immediately after focus commit.
-  // On web: Expo Router unmounts the screen on nested-route navigation, so the
-  // FlashList doesn't exist yet when focus fires. scrollRestoredRef lets the
-  // post-fetch useEffect below handle restoration instead.
-  const scrollRestoredRef = useRef(false);
+  // Captured in onPress before navigation — immune to Zustand re-renders.
+  // Module-level so it survives component unmount/remount on web.
+  const pathname = usePathname();
+  const prevPathnameRef = useRef('');
 
+  // Web: pathname changes are reliable (URL-based). Detect return from content.
+  // useFocusEffect does NOT fire on web when navigating via the root Stack.
+  useEffect(() => {
+    const prev = prevPathnameRef.current;
+    prevPathnameRef.current = pathname;
+    // Only restore when returning FROM a community content route
+    if (!prev.startsWith('/community/') || discoverScrollOffset <= 0) return;
+    let attempts = 0;
+    const tryRestore = () => {
+      if (listRef.current) {
+        listRef.current.scrollToOffset({ offset: discoverScrollOffset, animated: false });
+      } else if (++attempts < 8) {
+        setTimeout(tryRestore, 100); // retry until FlashList mounts
+      }
+    };
+    setTimeout(tryRestore, 80);
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Native: useFocusEffect IS reliable — screen stays mounted in the stack.
   useFocusEffect(
     useCallback(() => {
-      scrollRestoredRef.current = false;
-      if (discoverScrollOffset <= 0) return;
+      if (Platform.OS === 'web' || discoverScrollOffset <= 0) return;
       const t = setTimeout(() => {
-        if (listRef.current) {
-          listRef.current.scrollToOffset({ offset: discoverScrollOffset, animated: false });
-          scrollRestoredRef.current = true;
-        }
+        listRef.current?.scrollToOffset({ offset: discoverScrollOffset, animated: false });
       }, 80);
       return () => clearTimeout(t);
     }, [discoverScrollOffset])
   );
-
-  // Web fallback: screen remounts and fetches data fresh. Restore after
-  // loading finishes and FlashList is actually rendered.
-  useEffect(() => {
-    if (loading || scrollRestoredRef.current || discoverScrollOffset <= 0 || posts.length === 0) return;
-    const t = setTimeout(() => {
-      if (!scrollRestoredRef.current && listRef.current) {
-        listRef.current.scrollToOffset({ offset: discoverScrollOffset, animated: false });
-        scrollRestoredRef.current = true;
-      }
-    }, 50);
-    return () => clearTimeout(t);
-  }, [loading, posts.length, discoverScrollOffset]);
 
   // Only skeleton on first load — background refetches must not blank the feed
   // (e.g. while opening a post from Connect, Discover tab stays mounted).
@@ -147,6 +149,8 @@ function FeedSection({
             onShare={() => void Share.share({ message: 'Check this out on Roxy!' })}
             onPress={() => {
               markSeen(item.id);
+              // Save offset at tap time so restoration uses the exact position
+              setDiscoverScrollOffset(discoverScrollOffset);
               onOpenContent(item);
             }}
           />
