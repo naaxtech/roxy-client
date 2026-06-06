@@ -87,11 +87,13 @@ function FeedSection({
 
   useFocusEffect(
     useCallback(() => {
-      if (discoverScrollOffset > 0) {
-        requestAnimationFrame(() => {
-          listRef.current?.scrollToOffset({ offset: discoverScrollOffset, animated: false });
-        });
-      }
+      if (discoverScrollOffset <= 0) return;
+      // RAF alone is too early — FlashList needs its layout pass after focus.
+      // 80ms covers the layout commit on all tested devices without visible delay.
+      const t = setTimeout(() => {
+        listRef.current?.scrollToOffset({ offset: discoverScrollOffset, animated: false });
+      }, 80);
+      return () => clearTimeout(t);
     }, [discoverScrollOffset])
   );
 
@@ -109,6 +111,8 @@ function FeedSection({
         data={posts}
         keyExtractor={(item) => item.id}
         onScroll={(e) => setDiscoverScrollOffset(e.nativeEvent.contentOffset.y)}
+        onMomentumScrollEnd={(e) => setDiscoverScrollOffset(e.nativeEvent.contentOffset.y)}
+        onScrollEndDrag={(e) => setDiscoverScrollOffset(e.nativeEvent.contentOffset.y)}
         scrollEventThrottle={32}
         renderItem={({ item }) => (
           <FeedCard
