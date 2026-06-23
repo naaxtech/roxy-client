@@ -233,6 +233,13 @@ export default function CommunityDetailScreen() {
       paddingHorizontal: 8, paddingVertical: 2,
     },
     levelBadgeText: { color: colors.secondary, fontWeight: '700', fontSize: 11 },
+    livePill: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      backgroundColor: colors.error + '20', borderRadius: 10,
+      paddingHorizontal: 8, paddingVertical: 2,
+    },
+    livePillDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.error },
+    livePillText: { color: colors.error, fontWeight: '700', fontSize: 11 },
     membersRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     membersText: { color: colors.roxy, fontWeight: '600', fontSize: 13, textDecorationLine: 'underline' },
     privacyPill: {
@@ -374,6 +381,12 @@ export default function CommunityDetailScreen() {
           <View style={styles.levelBadge}>
             <Text style={styles.levelBadgeText}>{level.emoji} {level.label}</Text>
           </View>
+          {rooms.some((r) => r.status === 'live') && (
+            <TouchableOpacity style={styles.livePill} onPress={() => handleTabPress('rooms')}>
+              <View style={styles.livePillDot} />
+              <Text style={styles.livePillText}>Live</Text>
+            </TouchableOpacity>
+          )}
         </View>
         <TouchableOpacity
           onPress={() => router.push(`/community/members/${id}` as any)}

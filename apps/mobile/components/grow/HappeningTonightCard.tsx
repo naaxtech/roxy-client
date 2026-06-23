@@ -9,8 +9,10 @@ import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 const SCREEN_W = Dimensions.get('window').width;
-const OUTER_MARGIN = 16;
-const SLIDE_WIDTH = SCREEN_W - OUTER_MARGIN * 2;
+// Matches grow/index.tsx's scroll contentContainerStyle padding — this card has no
+// margin of its own, so it lines up flush with sibling section cards.
+const PARENT_PADDING = 12;
+const SLIDE_WIDTH = SCREEN_W - PARENT_PADDING * 2;
 
 type HappeningItem =
   | { kind: 'event'; id: string; title: string; communityName: string; startsAt: string; attendeeCount: number; spotsLeft: number | null }
@@ -111,7 +113,7 @@ export function HappeningTonightCard({ communityIds }: Props) {
 
   if (loading) {
     return (
-      <View style={[s.outer, { borderColor: colors.roxy, marginHorizontal: OUTER_MARGIN }]}>
+      <View style={[s.outer, { borderColor: colors.roxy }]}>
         <ActivityIndicator color="#fff" style={{ padding: 48 }} />
       </View>
     );
@@ -161,7 +163,7 @@ export function HappeningTonightCard({ communityIds }: Props) {
   );
 
   return (
-    <View style={[s.outer, { borderColor: colors.roxy, marginHorizontal: OUTER_MARGIN }]}>
+    <View style={[s.outer, { borderColor: colors.roxy }]}>
       <Text style={s.sectionLabel}>HAPPENING TONIGHT</Text>
       <FlatList
         data={items}
@@ -198,7 +200,6 @@ const s = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: PINK,
-    marginBottom: 16,
   },
   sectionLabel: {
     fontSize: 11, fontWeight: '700', letterSpacing: 0.8,

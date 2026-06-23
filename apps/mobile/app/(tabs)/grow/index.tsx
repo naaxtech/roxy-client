@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { format, isToday, isYesterday } from 'date-fns';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
@@ -15,6 +16,7 @@ import { Analytics } from '../../../lib/analytics';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
 import { HappeningTonightCard } from '../../../components/grow/HappeningTonightCard';
 import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayCard';
+import { MiniWinsCard } from '../../../components/grow/MiniWinsCard';
 
 type CommunityRow = { community_id: string; communities: { id: string; name: string; category: string } | null };
 type DirectChatPreview = {
@@ -102,6 +104,27 @@ export default function GrowScreen() {
   }, [user]);
 
   useEffect(() => { loadSocial(); }, [loadSocial]);
+
+  const [communityActivity, setCommunityActivity] = useState<Record<string, { content: string }>>({});
+  const communityKey = communities.map((row) => row.community_id).join(',');
+
+  useEffect(() => {
+    if (!communityKey) { setCommunityActivity({}); return; }
+    const ids = communityKey.split(',');
+    (async () => {
+      const { data } = await supabase
+        .from('posts')
+        .select('community_id, content, created_at')
+        .in('community_id', ids)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      const latest: Record<string, { content: string }> = {};
+      for (const row of data ?? []) {
+        if (!latest[row.community_id]) latest[row.community_id] = { content: row.content };
+      }
+      setCommunityActivity(latest);
+    })();
+  }, [communityKey]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -207,18 +230,34 @@ export default function GrowScreen() {
     headerRight: { width: 36, alignItems: 'flex-end', justifyContent: 'center' },
 
     greetingCard: {
-      backgroundColor: colors.surface, borderRadius: 16, padding: 14,
-      minHeight: 100, justifyContent: 'center',
-      borderWidth: 1, borderColor: colors.primary + '40',
+      // Fallback fill in case LinearGradient fails to render (e.g. a freshly
+      // installed native module the bundler hasn't picked up yet) — without this,
+      // the white text below falls through to the theme background, which is
+      // unreadable in light mode (#F4EFFF) even though it's fine in dark mode.
+      backgroundColor: '#E91E8C',
+      borderRadius: 18, padding: 16,
+      minHeight: 130, justifyContent: 'center',
+      overflow: 'hidden',
     },
-    roxyDot: {
-      width: 24, height: 24, borderRadius: 12,
-      backgroundColor: colors.roxy, marginBottom: 8,
+    greetingTopRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+    roxySparkle: {
+      width: 22, height: 22, borderRadius: 11,
+      backgroundColor: 'rgba(255,255,255,0.25)',
+      alignItems: 'center', justifyContent: 'center',
     },
-    greetingText: { fontSize: 15, color: colors.textPrimary, lineHeight: 22, fontWeight: '500' },
-    greetingLabel: { color: colors.textMuted, fontSize: 11, marginTop: 6 },
+    greetingText: { fontSize: 16, color: '#fff', lineHeight: 23, fontWeight: '600' },
+    greetingLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: '700', letterSpacing: 0.6 },
+    askRoxyBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      alignSelf: 'flex-start',
+      backgroundColor: '#fff', borderRadius: 18,
+      paddingHorizontal: 16, paddingVertical: 8,
+      marginTop: 14,
+    },
+    askRoxyBtnText: { color: colors.roxy, fontWeight: '700', fontSize: 13 },
 
     section: { backgroundColor: colors.surface, borderRadius: 12, padding: 12 },
+    sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
     sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },
     sectionHint: { color: colors.textMuted, fontSize: 11, fontWeight: '400' },
     emptyState: { color: colors.textMuted, fontSize: 13 },
@@ -232,6 +271,18 @@ export default function GrowScreen() {
     chipText: { color: colors.primary, fontWeight: '600', fontSize: 12 },
     chipJoin: { backgroundColor: colors.roxy + '20', borderColor: colors.roxy + '60' },
     chipJoinText: { color: colors.roxy, fontWeight: '600', fontSize: 12 },
+
+    communityCard: {
+      width: 150, backgroundColor: colors.background, borderRadius: 12,
+      padding: 10, marginRight: 8, borderWidth: 1, borderColor: colors.primary + '30',
+      gap: 4,
+    },
+    communityCardName: { color: colors.primary, fontWeight: '700', fontSize: 12 },
+    communityCardSnippet: { color: colors.textSecondary, fontSize: 11, lineHeight: 15 },
+    communityCardJoin: {
+      alignItems: 'center', justifyContent: 'center', gap: 4,
+      backgroundColor: colors.roxy + '14', borderColor: colors.roxy + '50',
+    },
 
     avatarRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
     avatarWrap: { position: 'relative' },
@@ -360,15 +411,32 @@ export default function GrowScreen() {
         </View>
 
         {/* Zone 1 — Roxy Greeting Card */}
-        <View style={styles.greetingCard}>
-          <View style={styles.roxyDot} />
+        <LinearGradient
+          colors={['#FF7A45', '#E91E8C']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.greetingCard}
+        >
+          <View style={styles.greetingTopRow}>
+            <View style={styles.roxySparkle}>
+              <Ionicons name="sparkles" size={13} color="#fff" />
+            </View>
+            <Text style={styles.greetingLabel}>YOUR DAILY MESSAGE FROM ROXY</Text>
+          </View>
           {greetingLoading ? (
-            <ActivityIndicator color={colors.roxy} style={{ marginTop: 24 }} />
+            <ActivityIndicator color="#fff" style={{ marginVertical: 16, alignSelf: 'flex-start' }} />
           ) : (
             <Text style={styles.greetingText}>{greeting ?? 'Hey — Roxy here. 👋'}</Text>
           )}
-          <Text style={styles.greetingLabel}>✨ Your daily message from Roxy</Text>
-        </View>
+          <TouchableOpacity
+            style={styles.askRoxyBtn}
+            onPress={() => router.push('/(tabs)/grow/roxy-chat' as any)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.askRoxyBtnText}>Ask Roxy</Text>
+            <Ionicons name="arrow-forward" size={14} color={colors.roxy} />
+          </TouchableOpacity>
+        </LinearGradient>
 
         {/* Zone NEW — Question of the Day */}
         {user && (
@@ -380,6 +448,9 @@ export default function GrowScreen() {
 
         {/* Zone NEW — Happening Tonight */}
         <HappeningTonightCard communityIds={communityIds} />
+
+        {/* Zone NEW — Mini Wins */}
+        {user && <MiniWinsCard userId={user.id} />}
 
         {/* My Chats */}
         {chatTotal > 0 && (
@@ -422,30 +493,46 @@ export default function GrowScreen() {
         )}
 
         {/* Zone 2 — My Communities */}
-        <TouchableOpacity
-          style={styles.section}
-          onPress={() => router.push('/(tabs)/discover' as any)}
-          activeOpacity={0.75}
-        >
-          <Text style={styles.sectionTitle}>
-            My Communities{' '}
-            <Text style={styles.sectionHint}>tap to browse →</Text>
-          </Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>My Communities</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/discover' as any)}>
+              <Text style={styles.sectionHint}>See all →</Text>
+            </TouchableOpacity>
+          </View>
           {communities.length === 0 ? (
             <Text style={styles.emptyState}>Join your first community in Discover →</Text>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-              {communities.map((row) => (
-                <View key={row.community_id} style={styles.chip}>
-                  <Text style={styles.chipText}>{row.communities?.name ?? '—'}</Text>
-                </View>
-              ))}
-              <View style={[styles.chip, styles.chipJoin]}>
-                <Text style={styles.chipJoinText}>+ Join more</Text>
-              </View>
+              {communities.map((row) => {
+                const activity = communityActivity[row.community_id];
+                return (
+                  <TouchableOpacity
+                    key={row.community_id}
+                    style={styles.communityCard}
+                    onPress={() => router.push(`/(tabs)/discover/community/${row.community_id}` as any)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.communityCardName} numberOfLines={1}>
+                      {row.communities?.name ?? '—'}
+                    </Text>
+                    <Text style={styles.communityCardSnippet} numberOfLines={2}>
+                      {activity ? activity.content : 'No posts yet — be the first'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <TouchableOpacity
+                style={[styles.communityCard, styles.communityCardJoin]}
+                onPress={() => router.push('/(tabs)/discover' as any)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add-circle-outline" size={20} color={colors.roxy} />
+                <Text style={styles.chipJoinText}>Join more</Text>
+              </TouchableOpacity>
             </ScrollView>
           )}
-        </TouchableOpacity>
+        </View>
 
         {/* Zone 3 — My People */}
         <TouchableOpacity
