@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -180,10 +181,13 @@ export default function GrowScreen() {
         .select('ticket_code, events!inner(id, title, starts_at, location_text, communities(name))')
         .eq('user_id', user.id)
         .eq('status', 'going')
-        .order('events.starts_at', { ascending: true })
         .limit(20);
+      // Sorted client-side — PostgREST can't order the outer query by a
+      // nested embedded resource's column (events.starts_at) via .order().
       const upcoming = ((data ?? []) as unknown as TicketRow[])
-        .filter((r) => r.events && r.events.starts_at >= now)
+        .filter((r): r is TicketRow & { events: NonNullable<TicketRow['events']> } =>
+          !!r.events && r.events.starts_at >= now)
+        .sort((a, b) => a.events.starts_at.localeCompare(b.events.starts_at))
         .slice(0, 5);
       setTickets(upcoming);
     })();
@@ -203,8 +207,10 @@ export default function GrowScreen() {
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 4,
+      paddingVertical: 8,
       marginBottom: 4,
-      minHeight: 48,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.surface,
     },
     headerLeft: {
       flexDirection: 'row',
@@ -226,8 +232,9 @@ export default function GrowScreen() {
     headerBadgeRow: { flexDirection: 'row', gap: 1 },
     headerBadgeEmoji: { fontSize: 9 },
     screenTitleWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-    screenTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' },
-    headerRight: { width: 36, alignItems: 'flex-end', justifyContent: 'center' },
+    screenTitleLogo: { width: 220, height: 63 },
+    screenSubtitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-end' },
 
     greetingCard: {
       // Fallback fill in case LinearGradient fails to render (e.g. a freshly
@@ -398,7 +405,11 @@ export default function GrowScreen() {
           </TouchableOpacity>
 
           <View pointerEvents="none" style={styles.screenTitleWrap}>
-            <Text style={styles.screenTitle}>Grow</Text>
+            <ExpoImage
+              source={require('../../../assets/brand/roxy-logo-primary.svg')}
+              style={styles.screenTitleLogo}
+              contentFit="contain"
+            />
           </View>
 
           <TouchableOpacity
@@ -406,6 +417,7 @@ export default function GrowScreen() {
             onPress={() => router.push('/profile/settings' as any)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
+            <Text style={styles.screenSubtitle}>Grow</Text>
             <Ionicons name="ellipsis-vertical" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
