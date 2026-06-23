@@ -4,11 +4,11 @@ import { StyleSheet, ActivityIndicator, Text, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
-import { COLORS } from '../../../lib/constants';
 import { ProfileCard } from '../../../components/profile/ProfileCard';
 import { logError } from '../../../lib/errorLogger';
 import { useAuthStore } from '../../../store/authStore';
 import { useFriendStore } from '../../../store/friendStore';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import type { Profile, UserBadgeProgress, Badge } from '../../../types';
 
 type EarnedBadge = UserBadgeProgress & { badges: Badge | null };
@@ -19,11 +19,17 @@ export default function UserProfileScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { friends, pendingReceived, pendingSent, sendRequest, acceptRequest } = useFriendStore();
+  const colors = useThemeColors();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [badges, setBadges] = useState<EarnedBadge[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    notFound: { color: colors.textMuted, textAlign: 'center', marginTop: 60, fontSize: 16 },
+  });
 
   useEffect(() => {
     if (!userId) return;
@@ -92,7 +98,7 @@ export default function UserProfileScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
       </SafeAreaView>
     );
   }
@@ -122,8 +128,3 @@ export default function UserProfileScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  notFound: { color: COLORS.textMuted, textAlign: 'center', marginTop: 60, fontSize: 16 },
-});

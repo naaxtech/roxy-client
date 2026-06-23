@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase, callEdgeFunction } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
-import { COLORS } from '../../../../lib/constants';
+import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
 
@@ -19,6 +19,7 @@ export default function SpeedDateResult() {
   }>();
   const router = useRouter();
   const { user } = useAuthStore();
+  const colors = useThemeColors();
 
   const liked = likedParam === '1';
   const [processing, setProcessing] = useState(liked);
@@ -121,11 +122,48 @@ export default function SpeedDateResult() {
     router.replace('/speed-dating' as any);
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 16 },
+    processingText: { color: colors.textSecondary, fontSize: 15, marginTop: 12 },
+
+    // Match
+    matchCard: {
+      backgroundColor: colors.surface, borderRadius: 24, padding: 28,
+      alignItems: 'center', gap: 12, width: '100%',
+      borderWidth: 1, borderColor: colors.primary + '50',
+    },
+    matchEmoji: { fontSize: 52 },
+    matchTitle: { color: colors.textPrimary, fontSize: 24, fontWeight: '800' },
+    matchSubtitle: { color: colors.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22 },
+    chatBtn: {
+      backgroundColor: colors.primary, borderRadius: 12,
+      paddingHorizontal: 28, paddingVertical: 14, marginTop: 8, width: '100%', alignItems: 'center',
+    },
+    chatBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+    laterBtn: { paddingVertical: 8 },
+    laterBtnText: { color: colors.textMuted, fontSize: 14 },
+
+    // No match / error
+    noMatchEmoji: { fontSize: 52 },
+    noMatchTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700', textAlign: 'center' },
+    noMatchSubtitle: { color: colors.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22 },
+    exploreBtn: {
+      backgroundColor: colors.surface, borderRadius: 12,
+      paddingHorizontal: 28, paddingVertical: 14, marginTop: 8,
+      borderWidth: 1, borderColor: colors.primary + '50',
+    },
+    exploreBtnText: { color: colors.primary, fontWeight: '700', fontSize: 15 },
+    errorEmoji: { fontSize: 48 },
+    errorTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
+    errorMsg: { color: colors.textMuted, fontSize: 14, textAlign: 'center' },
+  });
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {processing ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.roxy} />
+          <ActivityIndicator size="large" color={colors.roxy} />
           <Text style={styles.processingText}>Creating your connection…</Text>
         </View>
       ) : error ? (
@@ -172,40 +210,3 @@ export default function SpeedDateResult() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 16 },
-  processingText: { color: COLORS.textSecondary, fontSize: 15, marginTop: 12 },
-
-  // Match
-  matchCard: {
-    backgroundColor: COLORS.surface, borderRadius: 24, padding: 28,
-    alignItems: 'center', gap: 12, width: '100%',
-    borderWidth: 1, borderColor: COLORS.primary + '50',
-  },
-  matchEmoji: { fontSize: 52 },
-  matchTitle: { color: COLORS.textPrimary, fontSize: 24, fontWeight: '800' },
-  matchSubtitle: { color: COLORS.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22 },
-  chatBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 12,
-    paddingHorizontal: 28, paddingVertical: 14, marginTop: 8, width: '100%', alignItems: 'center',
-  },
-  chatBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  laterBtn: { paddingVertical: 8 },
-  laterBtnText: { color: COLORS.textMuted, fontSize: 14 },
-
-  // No match / error
-  noMatchEmoji: { fontSize: 52 },
-  noMatchTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '700', textAlign: 'center' },
-  noMatchSubtitle: { color: COLORS.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22 },
-  exploreBtn: {
-    backgroundColor: COLORS.surface, borderRadius: 12,
-    paddingHorizontal: 28, paddingVertical: 14, marginTop: 8,
-    borderWidth: 1, borderColor: COLORS.primary + '50',
-  },
-  exploreBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
-  errorEmoji: { fontSize: 48 },
-  errorTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '700' },
-  errorMsg: { color: COLORS.textMuted, fontSize: 14, textAlign: 'center' },
-});

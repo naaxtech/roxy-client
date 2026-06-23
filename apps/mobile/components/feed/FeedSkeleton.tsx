@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 function SkeletonBlock({ width, height, style }: {
   width: number | string; height: number; style?: object;
 }) {
+  const colors = useThemeColors();
   const opacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
@@ -21,7 +22,7 @@ function SkeletonBlock({ width, height, style }: {
   return (
     <Animated.View
       style={[
-        { width, height, backgroundColor: COLORS.surface, borderRadius: 6, opacity },
+        { width, height, backgroundColor: colors.surface, borderRadius: 6, opacity },
         style,
       ]}
     />

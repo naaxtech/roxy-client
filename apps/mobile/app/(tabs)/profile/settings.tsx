@@ -10,13 +10,14 @@ import { useProfileStore } from '../../../store/profileStore';
 import { supabase, callEdgeFunction } from '../../../lib/supabase';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { useThemeStore } from '../../../store/themeStore';
+import { ThemeToggle } from '../../../components/ui/ThemeToggle';
 
 export default function SettingsScreen() {
   const { user } = useAuthStore();
   const { profile, updateProfile } = useProfileStore();
   const router = useRouter();
   const colors = useThemeColors();
-  const { theme, setTheme } = useThemeStore();
+  const { theme } = useThemeStore();
 
   if (!user || !profile) {
     return (
@@ -169,28 +170,9 @@ export default function SettingsScreen() {
           <View style={styles.row}>
             <View style={styles.rowLabelGroup}>
               <Text style={styles.rowLabel}>Appearance</Text>
-              <Text style={styles.rowDescription}>App colour theme</Text>
+              <Text style={styles.rowDescription}>{theme === 'dark' ? 'Dark mode' : 'Light mode'}</Text>
             </View>
-            <View style={styles.segmentedControl}>
-              <TouchableOpacity
-                style={[styles.segment, theme === 'dark' && styles.segmentActive]}
-                onPress={() => void setTheme('dark')}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.segmentText, theme === 'dark' && styles.segmentTextActive]}>
-                  Dark
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.segment, theme === 'light' && styles.segmentActive]}
-                onPress={() => void setTheme('light')}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.segmentText, theme === 'light' && styles.segmentTextActive]}>
-                  Light
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <ThemeToggle />
           </View>
         </View>
 

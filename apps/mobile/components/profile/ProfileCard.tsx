@@ -1,6 +1,6 @@
 import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../lib/avatars';
 import { BadgeRow } from './BadgeRow';
 import type { Profile, Business } from '../../types';
@@ -28,6 +28,103 @@ interface ProfileCardProps {
 }
 
 export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack, friendshipState, onAddFriend, onAcceptFriend, onMessage, savedBusinesses, onOpenBusiness }: ProfileCardProps) {
+  const colors = useThemeColors();
+
+  const styles = StyleSheet.create({
+    scroll: { padding: 16, alignItems: 'center', gap: 12 },
+
+    navRow: {
+      flexDirection: 'row', alignItems: 'center',
+      width: '100%', marginBottom: 4,
+    },
+    navBtn: { width: 40, height: 40, justifyContent: 'center' },
+
+    avatarSection: { alignItems: 'center', marginTop: 4 },
+    avatarCircle: {
+      width: 90, height: 90, borderRadius: 45,
+      backgroundColor: colors.roxy,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    avatarImage: { width: 90, height: 90, borderRadius: 45 },
+    avatarInitial: { color: '#fff', fontSize: 36, fontWeight: '700' },
+    avatarEmoji: { fontSize: 44 },
+
+    displayName: { color: colors.textPrimary, fontSize: 22, fontWeight: '700' },
+    username: { color: colors.textMuted, fontSize: 14, marginTop: -4 },
+
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
+    chip: {
+      backgroundColor: colors.primary + '20', borderRadius: 16,
+      paddingHorizontal: 10, paddingVertical: 4,
+      borderWidth: 1, borderColor: colors.primary + '40',
+    },
+    chipText: { color: colors.primary, fontSize: 12, fontWeight: '600' },
+
+    bioBox: {
+      backgroundColor: colors.surface, borderRadius: 12,
+      padding: 14, width: '100%',
+    },
+    bioPlaceholderBox: { borderWidth: 1, borderColor: colors.textMuted + '40', borderStyle: 'dashed' },
+    bioText: { color: colors.textPrimary, fontSize: 15, lineHeight: 22 },
+    bioPlaceholder: { color: colors.textMuted, fontSize: 15, fontStyle: 'italic' },
+
+    levelRow: {
+      backgroundColor: colors.surface, borderRadius: 12,
+      paddingHorizontal: 20, paddingVertical: 10,
+    },
+    levelText: { color: colors.textPrimary, fontWeight: '600', fontSize: 15 },
+
+    editBtn: {
+      width: '100%', backgroundColor: colors.roxy,
+      borderRadius: 14, paddingVertical: 14, alignItems: 'center',
+      marginTop: 4,
+    },
+    editBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+
+    actionRow: { flexDirection: 'row', gap: 10, width: '100%', marginTop: 4 },
+    messageBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+      backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 13,
+    },
+    messageBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+    addFriendBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+      backgroundColor: colors.primary + '20', borderRadius: 14, paddingVertical: 13,
+      borderWidth: 1, borderColor: colors.primary + '60',
+    },
+    addFriendBtnText: { color: colors.primary, fontWeight: '700', fontSize: 15 },
+    requestedChip: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.surface, borderRadius: 14, paddingVertical: 13,
+    },
+    requestedText: { color: colors.textMuted, fontWeight: '600', fontSize: 15 },
+    friendsChip: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.primary + '15', borderRadius: 14, paddingVertical: 13,
+    },
+    friendsChipText: { color: colors.primary, fontWeight: '600', fontSize: 15 },
+  });
+
+  const savedStyles = StyleSheet.create({
+    section: { paddingHorizontal: 0, paddingTop: 16, paddingBottom: 8, width: '100%' },
+    sectionTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 16, marginBottom: 12 },
+    empty: { color: colors.textMuted, fontSize: 14 },
+    bizRow: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: colors.surface, borderRadius: 12,
+      padding: 12, marginBottom: 8, gap: 12,
+    },
+    bizInitial: {
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: colors.primary + '30',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    bizInitialText: { color: colors.primary, fontWeight: '700', fontSize: 15 },
+    bizName: { color: colors.textPrimary, fontWeight: '600', fontSize: 14 },
+    bizCategory: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+    chevron: { color: colors.textMuted, fontSize: 20 },
+  });
+
   const points = profile.gamification_points ?? 0;
   const level = getLevelInfo(points);
   const initials = (profile.display_name ?? '?').charAt(0).toUpperCase();
@@ -40,13 +137,13 @@ export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack
       <View style={styles.navRow}>
         {onBack ? (
           <TouchableOpacity onPress={onBack} style={styles.navBtn} testID="back-btn">
-            <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
+            <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         ) : <View style={styles.navBtn} />}
         <View style={{ flex: 1 }} />
         {isOwn && onSettings && (
           <TouchableOpacity onPress={onSettings} style={styles.navBtn} testID="settings-btn">
-            <Ionicons name="settings-outline" size={22} color={COLORS.textPrimary} />
+            <Ionicons name="settings-outline" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         )}
       </View>
@@ -146,7 +243,7 @@ export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack
           )}
           {friendshipState === 'none' && onAddFriend && (
             <TouchableOpacity style={styles.addFriendBtn} onPress={onAddFriend}>
-              <Ionicons name="person-add-outline" size={16} color={COLORS.primary} />
+              <Ionicons name="person-add-outline" size={16} color={colors.primary} />
               <Text style={styles.addFriendBtnText}>Add Friend</Text>
             </TouchableOpacity>
           )}
@@ -157,7 +254,7 @@ export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack
           )}
           {friendshipState === 'received' && onAcceptFriend && (
             <TouchableOpacity style={styles.addFriendBtn} onPress={onAcceptFriend}>
-              <Ionicons name="checkmark-outline" size={16} color={COLORS.primary} />
+              <Ionicons name="checkmark-outline" size={16} color={colors.primary} />
               <Text style={styles.addFriendBtnText}>Accept Request</Text>
             </TouchableOpacity>
           )}
@@ -171,98 +268,3 @@ export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  scroll: { padding: 16, alignItems: 'center', gap: 12 },
-
-  navRow: {
-    flexDirection: 'row', alignItems: 'center',
-    width: '100%', marginBottom: 4,
-  },
-  navBtn: { width: 40, height: 40, justifyContent: 'center' },
-
-  avatarSection: { alignItems: 'center', marginTop: 4 },
-  avatarCircle: {
-    width: 90, height: 90, borderRadius: 45,
-    backgroundColor: COLORS.roxy,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarImage: { width: 90, height: 90, borderRadius: 45 },
-  avatarInitial: { color: '#fff', fontSize: 36, fontWeight: '700' },
-  avatarEmoji: { fontSize: 44 },
-
-  displayName: { color: COLORS.textPrimary, fontSize: 22, fontWeight: '700' },
-  username: { color: COLORS.textMuted, fontSize: 14, marginTop: -4 },
-
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
-  chip: {
-    backgroundColor: COLORS.primary + '20', borderRadius: 16,
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 1, borderColor: COLORS.primary + '40',
-  },
-  chipText: { color: COLORS.primary, fontSize: 12, fontWeight: '600' },
-
-  bioBox: {
-    backgroundColor: COLORS.surface, borderRadius: 12,
-    padding: 14, width: '100%',
-  },
-  bioPlaceholderBox: { borderWidth: 1, borderColor: COLORS.textMuted + '40', borderStyle: 'dashed' },
-  bioText: { color: COLORS.textPrimary, fontSize: 15, lineHeight: 22 },
-  bioPlaceholder: { color: COLORS.textMuted, fontSize: 15, fontStyle: 'italic' },
-
-  levelRow: {
-    backgroundColor: COLORS.surface, borderRadius: 12,
-    paddingHorizontal: 20, paddingVertical: 10,
-  },
-  levelText: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 15 },
-
-  editBtn: {
-    width: '100%', backgroundColor: COLORS.roxy,
-    borderRadius: 14, paddingVertical: 14, alignItems: 'center',
-    marginTop: 4,
-  },
-  editBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-
-  actionRow: { flexDirection: 'row', gap: 10, width: '100%', marginTop: 4 },
-  messageBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: COLORS.primary, borderRadius: 14, paddingVertical: 13,
-  },
-  messageBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  addFriendBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: COLORS.primary + '20', borderRadius: 14, paddingVertical: 13,
-    borderWidth: 1, borderColor: COLORS.primary + '60',
-  },
-  addFriendBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
-  requestedChip: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: COLORS.surface, borderRadius: 14, paddingVertical: 13,
-  },
-  requestedText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 15 },
-  friendsChip: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: COLORS.primary + '15', borderRadius: 14, paddingVertical: 13,
-  },
-  friendsChipText: { color: COLORS.primary, fontWeight: '600', fontSize: 15 },
-});
-
-const savedStyles = StyleSheet.create({
-  section: { paddingHorizontal: 0, paddingTop: 16, paddingBottom: 8, width: '100%' },
-  sectionTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16, marginBottom: 12 },
-  empty: { color: COLORS.textMuted, fontSize: 14 },
-  bizRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: COLORS.surface, borderRadius: 12,
-    padding: 12, marginBottom: 8, gap: 12,
-  },
-  bizInitial: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: COLORS.primary + '30',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  bizInitialText: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
-  bizName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  bizCategory: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
-  chevron: { color: COLORS.textMuted, fontSize: 20 },
-});

@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { format } from 'date-fns';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface CommunityRoomCardProps {
   id: string;
@@ -31,6 +31,7 @@ export function CommunityRoomCard({
   hideCommunityTag = false,
   onPress,
 }: CommunityRoomCardProps) {
+  const colors = useThemeColors();
   const isLive      = status === 'live';
   const isScheduled = status === 'scheduled';
 
@@ -41,6 +42,65 @@ export function CommunityRoomCard({
     : max_participants != null
       ? `— / ${max_participants}`
       : null;
+
+  const styles = StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.primary + '30',
+      gap: 4,
+    },
+    cardDimmed: {
+      opacity: 0.65,
+      borderColor: colors.textMuted + '30',
+    },
+    topRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    typeIcon: { fontSize: 18 },
+    name: {
+      flex: 1,
+      color: colors.textPrimary,
+      fontWeight: '700',
+      fontSize: 14,
+    },
+    ratio: {
+      color: colors.textMuted,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    liveBadge: {
+      color: colors.success,
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    scheduledBadge: {
+      color: colors.textMuted,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    description: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 2,
+      flexWrap: 'wrap',
+    },
+    metaTag: {
+      color: colors.textMuted,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+  });
 
   return (
     <TouchableOpacity
@@ -78,62 +138,3 @@ export function CommunityRoomCard({
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: COLORS.primary + '30',
-    gap: 4,
-  },
-  cardDimmed: {
-    opacity: 0.65,
-    borderColor: COLORS.textMuted + '30',
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  typeIcon: { fontSize: 18 },
-  name: {
-    flex: 1,
-    color: COLORS.textPrimary,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  ratio: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  liveBadge: {
-    color: COLORS.success,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  scheduledBadge: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  description: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 2,
-    flexWrap: 'wrap',
-  },
-  metaTag: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-});

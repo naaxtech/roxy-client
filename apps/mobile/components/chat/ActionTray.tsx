@@ -2,7 +2,7 @@ import React from 'react';
 import {
   View, Text, TouchableOpacity, ActivityIndicator, StyleSheet,
 } from 'react-native';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface ActionTrayProps {
   onEmojiPress: () => void;
@@ -21,6 +21,36 @@ export function ActionTray({
   wingwomanLoading,
   nudgeLoading,
 }: ActionTrayProps) {
+  const colors = useThemeColors();
+  const styles = StyleSheet.create({
+    tray: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderTopWidth: 1,
+      borderTopColor: colors.surface,
+      backgroundColor: colors.background,
+    },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    chipRoxy: {
+      borderWidth: 1,
+      borderColor: colors.roxy + '40',
+    },
+    chipIcon: { fontSize: 14 },
+    chipLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '500' },
+    chipLabelRoxy: { color: colors.roxy },
+  });
+
   return (
     <View style={styles.tray}>
       <TouchableOpacity style={styles.chip} onPress={onEmojiPress} hitSlop={4}>
@@ -39,7 +69,7 @@ export function ActionTray({
         hitSlop={4}
       >
         {wingwomanLoading ? (
-          <ActivityIndicator size="small" color={COLORS.roxy} />
+          <ActivityIndicator size="small" color={colors.roxy} />
         ) : (
           <>
             <Text style={styles.chipIcon}>✨</Text>
@@ -55,7 +85,7 @@ export function ActionTray({
         hitSlop={4}
       >
         {nudgeLoading ? (
-          <ActivityIndicator size="small" color={COLORS.roxy} />
+          <ActivityIndicator size="small" color={colors.roxy} />
         ) : (
           <>
             <Text style={styles.chipIcon}>💜</Text>
@@ -66,32 +96,3 @@ export function ActionTray({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  tray: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.surface,
-    backgroundColor: COLORS.background,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  chipRoxy: {
-    borderWidth: 1,
-    borderColor: COLORS.roxy + '40',
-  },
-  chipIcon: { fontSize: 14 },
-  chipLabel: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '500' },
-  chipLabelRoxy: { color: COLORS.roxy },
-});

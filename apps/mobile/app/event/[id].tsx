@@ -10,7 +10,7 @@ import { format } from 'date-fns';
 import { useStripe } from '@stripe/stripe-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { TicketCard } from '../../components/TicketCard';
 import { TicketConfirmation } from '../../components/TicketConfirmation';
 import { formatDuration, openCalendar } from '../../lib/eventUtils';
@@ -37,6 +37,7 @@ type EventDetail = {
 };
 
 export default function EventDetailScreen() {
+  const colors = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -192,13 +193,99 @@ export default function EventDetailScreen() {
     ticketAnim.setValue(0);
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    topBar: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingBottom: 4,
+    },
+    backBtn: { paddingVertical: 8 },
+
+    scroll: { paddingHorizontal: 20, paddingBottom: 40, gap: 0 },
+
+    title: {
+      color: colors.textPrimary, fontSize: 22, fontWeight: '800',
+      marginTop: 8, marginBottom: 6,
+    },
+    communityLink: {
+      color: colors.primary, fontSize: 14, fontWeight: '600', marginBottom: 16,
+    },
+
+    metaBlock: { gap: 8, marginBottom: 20 },
+    metaRow: { color: colors.textSecondary, fontSize: 14 },
+    metaLink: { color: colors.primary, textDecorationLine: 'underline' },
+    metaFree: { color: colors.success },
+    metaPaid: { color: colors.warning },
+
+    descBlock: { marginBottom: 24 },
+    descLabel: { color: colors.textPrimary, fontWeight: '700', fontSize: 15, marginBottom: 8 },
+    desc: { color: colors.textSecondary, fontSize: 14, lineHeight: 22 },
+
+    divider: {
+      height: 1, backgroundColor: colors.surface,
+      marginVertical: 20,
+    },
+
+    cancelledBanner: {
+      backgroundColor: colors.error + '15',
+      borderRadius: 12,
+      padding: 16,
+      marginVertical: 16,
+      borderWidth: 1,
+      borderColor: colors.error + '40',
+    },
+    cancelledBannerText: { color: colors.error, fontWeight: '700', fontSize: 15, textAlign: 'center' },
+    cancelledBannerSub: { color: colors.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 4 },
+
+    soldOutBtn: {
+      marginTop: 24, borderRadius: 14, paddingVertical: 16,
+      alignItems: 'center', backgroundColor: colors.surface,
+      borderWidth: 1, borderColor: colors.textMuted + '40',
+    },
+    soldOutText: { color: colors.textMuted, fontWeight: '700', fontSize: 16 },
+
+    calendarBtn: {
+      marginTop: 12, alignSelf: 'center',
+      paddingHorizontal: 20, paddingVertical: 10,
+      borderRadius: 20, borderWidth: 1, borderColor: colors.primary + '60',
+    },
+    calendarBtnText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
+
+    rsvpRow: {
+      flexDirection: 'row', alignItems: 'center',
+      gap: 12, marginTop: 24,
+    },
+    goingPill: {
+      flex: 1, backgroundColor: colors.primary,
+      borderRadius: 14, paddingVertical: 14, alignItems: 'center',
+    },
+    goingPillText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+    cancelBtn: {
+      paddingHorizontal: 16, paddingVertical: 14,
+      borderRadius: 14, borderWidth: 1, borderColor: colors.surface,
+    },
+    cancelBtnText: { color: colors.textMuted, fontWeight: '600', fontSize: 14 },
+
+    rsvpBtn: {
+      marginTop: 24, backgroundColor: colors.primary,
+      borderRadius: 14, paddingVertical: 16, alignItems: 'center',
+    },
+    rsvpBtnDisabled: { opacity: 0.6 },
+    rsvpBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+    errorText: { color: colors.error, fontSize: 13, marginTop: 8, textAlign: 'center' },
+
+    notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+    notFoundText: { color: colors.textSecondary, fontSize: 15 },
+    notFoundBack: { color: colors.primary, fontWeight: '600', fontSize: 14 },
+  });
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 48 }} />
+        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
       </SafeAreaView>
     );
   }
@@ -207,7 +294,7 @@ export default function EventDetailScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.notFound}>
           <Text style={styles.notFoundText}>This event is no longer available.</Text>
@@ -227,7 +314,7 @@ export default function EventDetailScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.topBar}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         {user && (
           <TouchableOpacity
@@ -240,7 +327,7 @@ export default function EventDetailScreen() {
             <Ionicons
               name={favorited ? 'heart' : 'heart-outline'}
               size={24}
-              color={favorited ? COLORS.primary : COLORS.textPrimary}
+              color={favorited ? colors.primary : colors.textPrimary}
             />
           </TouchableOpacity>
         )}
@@ -387,88 +474,3 @@ export default function EventDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  topBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingBottom: 4,
-  },
-  backBtn: { paddingVertical: 8 },
-
-  scroll: { paddingHorizontal: 20, paddingBottom: 40, gap: 0 },
-
-  title: {
-    color: COLORS.textPrimary, fontSize: 22, fontWeight: '800',
-    marginTop: 8, marginBottom: 6,
-  },
-  communityLink: {
-    color: COLORS.primary, fontSize: 14, fontWeight: '600', marginBottom: 16,
-  },
-
-  metaBlock: { gap: 8, marginBottom: 20 },
-  metaRow: { color: COLORS.textSecondary, fontSize: 14 },
-  metaLink: { color: COLORS.primary, textDecorationLine: 'underline' },
-  metaFree: { color: COLORS.success },
-  metaPaid: { color: COLORS.warning },
-
-  descBlock: { marginBottom: 24 },
-  descLabel: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 15, marginBottom: 8 },
-  desc: { color: COLORS.textSecondary, fontSize: 14, lineHeight: 22 },
-
-  divider: {
-    height: 1, backgroundColor: COLORS.surface,
-    marginVertical: 20,
-  },
-
-  cancelledBanner: {
-    backgroundColor: COLORS.error + '15',
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 16,
-    borderWidth: 1,
-    borderColor: COLORS.error + '40',
-  },
-  cancelledBannerText: { color: COLORS.error, fontWeight: '700', fontSize: 15, textAlign: 'center' },
-  cancelledBannerSub: { color: COLORS.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 4 },
-
-  soldOutBtn: {
-    marginTop: 24, borderRadius: 14, paddingVertical: 16,
-    alignItems: 'center', backgroundColor: COLORS.surface,
-    borderWidth: 1, borderColor: COLORS.textMuted + '40',
-  },
-  soldOutText: { color: COLORS.textMuted, fontWeight: '700', fontSize: 16 },
-
-  calendarBtn: {
-    marginTop: 12, alignSelf: 'center',
-    paddingHorizontal: 20, paddingVertical: 10,
-    borderRadius: 20, borderWidth: 1, borderColor: COLORS.primary + '60',
-  },
-  calendarBtnText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
-
-  rsvpRow: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 12, marginTop: 24,
-  },
-  goingPill: {
-    flex: 1, backgroundColor: COLORS.primary,
-    borderRadius: 14, paddingVertical: 14, alignItems: 'center',
-  },
-  goingPillText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  cancelBtn: {
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderRadius: 14, borderWidth: 1, borderColor: COLORS.surface,
-  },
-  cancelBtnText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 14 },
-
-  rsvpBtn: {
-    marginTop: 24, backgroundColor: COLORS.primary,
-    borderRadius: 14, paddingVertical: 16, alignItems: 'center',
-  },
-  rsvpBtnDisabled: { opacity: 0.6 },
-  rsvpBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  errorText: { color: COLORS.error, fontSize: 13, marginTop: 8, textAlign: 'center' },
-
-  notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  notFoundText: { color: COLORS.textSecondary, fontSize: 15 },
-  notFoundBack: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
-});

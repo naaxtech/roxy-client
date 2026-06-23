@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../../lib/constants';
+import { formatDistanceToNowStrict } from 'date-fns';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { PostActionRow } from './PostActionRow';
 import { PostMediaCarousel } from './PostMediaCarousel';
 import type { Post } from '../../types';
@@ -21,7 +22,59 @@ const CAPTION_THRESHOLD = 120;
 export function StaticPostCard({
   post, isLiked, isSaved, onLike, onSave, onComment, onShare, onPress,
 }: StaticPostCardProps) {
+  const colors = useThemeColors();
   const [expanded, setExpanded] = useState(false);
+
+  const styles = StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      marginHorizontal: 10,
+      marginBottom: 12,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+      elevation: 2,
+    },
+    authorRow: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 14, paddingVertical: 12, gap: 10,
+    },
+    avatarCircle: {
+      width: 38, height: 38, borderRadius: 19,
+      backgroundColor: colors.primary + '30',
+      borderWidth: 1.5, borderColor: colors.primary + '50',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    avatarLetter: { color: colors.primary, fontWeight: '700', fontSize: 15 },
+    nameBlock: { flex: 1 },
+    authorName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
+    timestamp: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
+    textCard: {
+      minHeight: 160, marginHorizontal: 14, marginVertical: 4,
+      backgroundColor: colors.surfaceLight, borderRadius: 12,
+      alignItems: 'center', justifyContent: 'center', padding: 20,
+    },
+    typeBadge: {
+      color: colors.primary, fontSize: 12, fontWeight: '700',
+      marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5,
+    },
+    textCardContent: {
+      color: colors.textPrimary, fontSize: 18,
+      fontWeight: '600', textAlign: 'center', lineHeight: 26,
+    },
+    captionArea: { paddingHorizontal: 16, paddingTop: 8 },
+    caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
+    showMore: { color: colors.primary, fontSize: 13, marginTop: 2 },
+  });
+
+  const postedAt = new Date(post.created_at);
+  const timestamp = Number.isNaN(postedAt.getTime())
+    ? ''
+    : formatDistanceToNowStrict(postedAt, { addSuffix: true });
+
   const mediaUrls = post.media_urls ?? [];
   const hasImage =
     mediaUrls.length > 0 &&
@@ -47,7 +100,10 @@ export function StaticPostCard({
             {(post.profiles?.display_name?.[0] ?? '?').toUpperCase()}
           </Text>
         </View>
-        <Text style={styles.authorName}>{post.profiles?.display_name ?? ''}</Text>
+        <View style={styles.nameBlock}>
+          <Text style={styles.authorName}>{post.profiles?.display_name ?? ''}</Text>
+          {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}
+        </View>
       </TouchableOpacity>
 
       {hasImage && (
@@ -95,34 +151,3 @@ export function StaticPostCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { backgroundColor: COLORS.background, marginBottom: 8 },
-  authorRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 10, gap: 10,
-  },
-  avatarCircle: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: COLORS.primary + '30',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarLetter: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
-  authorName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  textCard: {
-    minHeight: 160, marginHorizontal: 16, marginVertical: 4,
-    backgroundColor: COLORS.surface, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', padding: 20,
-  },
-  typeBadge: {
-    color: COLORS.primary, fontSize: 12, fontWeight: '700',
-    marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5,
-  },
-  textCardContent: {
-    color: COLORS.textPrimary, fontSize: 18,
-    fontWeight: '600', textAlign: 'center', lineHeight: 26,
-  },
-  captionArea: { paddingHorizontal: 16, paddingTop: 8 },
-  caption: { color: COLORS.textSecondary, fontSize: 14, lineHeight: 20 },
-  showMore: { color: COLORS.primary, fontSize: 13, marginTop: 2 },
-});

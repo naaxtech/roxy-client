@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { COLORS } from '../lib/constants';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 interface Event {
   title: string;
@@ -16,6 +16,20 @@ interface Props {
 }
 
 export function TicketConfirmation({ event, ticketCode, onViewTickets }: Props) {
+  const colors = useThemeColors();
+
+  const styles = StyleSheet.create({
+    container: { alignItems: 'center', padding: 24, backgroundColor: colors.surface, borderRadius: 16 },
+    heading: { fontSize: 24, fontWeight: '800', color: colors.roxy, marginBottom: 8 },
+    eventTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, textAlign: 'center' },
+    meta: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
+    qrContainer: { marginTop: 20, padding: 16, backgroundColor: colors.surface, borderRadius: 12 },
+    ticketCode: { fontFamily: 'monospace', fontSize: 13, color: colors.textMuted, marginTop: 8, letterSpacing: 1 },
+    pending: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 20, lineHeight: 22 },
+    btn: { marginTop: 24, backgroundColor: colors.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
+    btnText: { color: colors.textPrimary, fontWeight: '600', fontSize: 15 },
+  });
+
   const dateStr = new Date(event.starts_at).toLocaleDateString('en-US', {
     weekday: 'short', day: 'numeric', month: 'short',
     hour: 'numeric', minute: '2-digit',
@@ -33,7 +47,7 @@ export function TicketConfirmation({ event, ticketCode, onViewTickets }: Props) 
       {ticketCode ? (
         <>
           <View style={styles.qrContainer}>
-            <QRCode value={ticketCode} size={180} backgroundColor={COLORS.surface} color={COLORS.textPrimary} />
+            <QRCode value={ticketCode} size={180} backgroundColor={colors.surface} color={colors.textPrimary} />
           </View>
           <Text style={styles.ticketCode}>{ticketCode}</Text>
         </>
@@ -50,15 +64,3 @@ export function TicketConfirmation({ event, ticketCode, onViewTickets }: Props) 
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { alignItems: 'center', padding: 24, backgroundColor: COLORS.surface, borderRadius: 16 },
-  heading: { fontSize: 24, fontWeight: '800', color: COLORS.roxy, marginBottom: 8 },
-  eventTitle: { fontSize: 18, fontWeight: '700', color: COLORS.textPrimary, textAlign: 'center' },
-  meta: { fontSize: 14, color: COLORS.textSecondary, marginTop: 4 },
-  qrContainer: { marginTop: 20, padding: 16, backgroundColor: COLORS.surface, borderRadius: 12 },
-  ticketCode: { fontFamily: 'monospace', fontSize: 13, color: COLORS.textMuted, marginTop: 8, letterSpacing: 1 },
-  pending: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', marginTop: 20, lineHeight: 22 },
-  btn: { marginTop: 24, backgroundColor: COLORS.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  btnText: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 15 },
-});

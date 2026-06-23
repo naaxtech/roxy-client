@@ -2,16 +2,28 @@ import React, { useRef, useEffect } from 'react';
 import { TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface Props {
   visible?: boolean;
 }
 
 export function RoxyCompanionButton({ visible = true }: Props) {
+  const colors = useThemeColors();
   const router = useRouter();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
+
+  const styles = StyleSheet.create({
+    button: {
+      position: 'absolute', bottom: 90, right: 20,
+      width: 56, height: 56, borderRadius: 28,
+      backgroundColor: colors.roxy,
+      alignItems: 'center', justifyContent: 'center',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3, shadowRadius: 6, elevation: 8, zIndex: 1000,
+    },
+  });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -40,14 +52,3 @@ export function RoxyCompanionButton({ visible = true }: Props) {
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  button: {
-    position: 'absolute', bottom: 90, right: 20,
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: COLORS.roxy,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 6, elevation: 8, zIndex: 1000,
-  },
-});

@@ -3,8 +3,8 @@ import {
   View, ScrollView, Image, TouchableOpacity,
   Modal, StyleSheet, Dimensions, TouchableWithoutFeedback,
 } from 'react-native';
-import { COLORS } from '../../lib/constants';
 import { BusinessPhoto } from '../../types';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 const THUMB_SIZE = 80;
 
@@ -13,8 +13,28 @@ interface BusinessPhotoGalleryProps {
 }
 
 export function BusinessPhotoGallery({ photos }: BusinessPhotoGalleryProps) {
+  const colors = useThemeColors();
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const { width } = Dimensions.get('window');
+
+  const styles = StyleSheet.create({
+    row: { paddingHorizontal: 16, gap: 8, paddingVertical: 8 },
+    thumb: {
+      width: THUMB_SIZE,
+      height: THUMB_SIZE,
+      borderRadius: 8,
+      backgroundColor: colors.surface,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.92)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    fullImage: {
+      height: '70%' as any,
+    },
+  });
 
   if (photos.length === 0) return null;
 
@@ -62,21 +82,3 @@ export function BusinessPhotoGallery({ photos }: BusinessPhotoGalleryProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { paddingHorizontal: 16, gap: 8, paddingVertical: 8 },
-  thumb: {
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    borderRadius: 8,
-    backgroundColor: COLORS.surface,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.92)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullImage: {
-    height: '70%' as any,
-  },
-});

@@ -8,7 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../../../lib/supabase';
 import { useAuthStore } from '../../../../../store/authStore';
 import { useFriendStore } from '../../../../../store/friendStore';
-import { COLORS } from '../../../../../lib/constants';
+import { useThemeColors } from '../../../../../hooks/useThemeColors';
 import { logError } from '../../../../../lib/errorLogger';
 
 type MemberProfile = {
@@ -21,6 +21,7 @@ type MemberProfile = {
 type FriendshipState = 'none' | 'sent' | 'received' | 'friends';
 
 export default function MembersScreen() {
+  const colors = useThemeColors();
   const { communityId } = useLocalSearchParams<{ communityId: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -83,10 +84,55 @@ export default function MembersScreen() {
     }
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    backBtn: { padding: 4 },
+    headerTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
+    listContent: { paddingVertical: 4 },
+    row: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingHorizontal: 16, paddingVertical: 10,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    avatar: {
+      width: 38, height: 38, borderRadius: 19,
+      backgroundColor: colors.surfaceLight,
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    avatarText: { color: colors.textSecondary, fontWeight: '700', fontSize: 14 },
+    rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+    rowInfo: { flex: 1 },
+    rowName: { color: colors.textPrimary, fontWeight: '600', fontSize: 14 },
+    rowSub: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
+    addBtn: {
+      borderWidth: 1, borderColor: colors.roxy, borderRadius: 16,
+      paddingHorizontal: 12, paddingVertical: 6,
+    },
+    addBtnText: { color: colors.roxy, fontWeight: '700', fontSize: 12 },
+    requestedChip: {
+      borderWidth: 1, borderColor: colors.textMuted + '60', borderRadius: 16,
+      paddingHorizontal: 12, paddingVertical: 6,
+    },
+    requestedText: { color: colors.textMuted, fontSize: 12 },
+    acceptBtn: {
+      backgroundColor: colors.roxy, borderRadius: 16,
+      paddingHorizontal: 12, paddingVertical: 6,
+    },
+    acceptBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+    friendsLabel: { color: colors.roxy, fontSize: 12, fontWeight: '600' },
+    empty: { alignItems: 'center', paddingVertical: 60 },
+    emptyText: { color: colors.textMuted, fontSize: 14 },
+  });
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 48 }} />
+        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
       </SafeAreaView>
     );
   }
@@ -95,7 +141,7 @@ export default function MembersScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Members</Text>
       </View>
@@ -153,47 +199,3 @@ export default function MembersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  backBtn: { padding: 4 },
-  headerTitle: { color: COLORS.textPrimary, fontSize: 17, fontWeight: '700' },
-  listContent: { paddingVertical: 4 },
-  row: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  avatar: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: COLORS.surfaceLight,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  avatarText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 14 },
-  rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  rowInfo: { flex: 1 },
-  rowName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  rowSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 1 },
-  addBtn: {
-    borderWidth: 1, borderColor: COLORS.roxy, borderRadius: 16,
-    paddingHorizontal: 12, paddingVertical: 6,
-  },
-  addBtnText: { color: COLORS.roxy, fontWeight: '700', fontSize: 12 },
-  requestedChip: {
-    borderWidth: 1, borderColor: COLORS.textMuted + '60', borderRadius: 16,
-    paddingHorizontal: 12, paddingVertical: 6,
-  },
-  requestedText: { color: COLORS.textMuted, fontSize: 12 },
-  acceptBtn: {
-    backgroundColor: COLORS.roxy, borderRadius: 16,
-    paddingHorizontal: 12, paddingVertical: 6,
-  },
-  acceptBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  friendsLabel: { color: COLORS.roxy, fontSize: 12, fontWeight: '600' },
-  empty: { alignItems: 'center', paddingVertical: 60 },
-  emptyText: { color: COLORS.textMuted, fontSize: 14 },
-});

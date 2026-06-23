@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { PostActionRow } from './PostActionRow';
 import type { Post, LinkType } from '../../types';
 
@@ -27,6 +27,42 @@ export function RoxyLinkCard({
   post, entityName, participantCount,
   isLiked, isSaved, onLike, onSave, onComment, onShare, onPress,
 }: RoxyLinkCardProps) {
+  const colors = useThemeColors();
+
+  const styles = StyleSheet.create({
+    card: { backgroundColor: colors.background, marginBottom: 8 },
+    authorRow: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 16, paddingVertical: 10, gap: 10,
+    },
+    avatarCircle: {
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: colors.primary + '30',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    avatarLetter: { color: colors.primary, fontWeight: '700', fontSize: 15 },
+    authorName: { color: colors.textPrimary, fontWeight: '600', fontSize: 14 },
+    linkBox: {
+      marginHorizontal: 16, padding: 14,
+      backgroundColor: colors.surface,
+      borderRadius: 12, flexDirection: 'row',
+      alignItems: 'center', gap: 12,
+    },
+    linkIcon: { fontSize: 28 },
+    linkInfo: { flex: 1 },
+    linkName: { color: colors.textPrimary, fontWeight: '700', fontSize: 15 },
+    linkMeta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+    ctaBtn: {
+      backgroundColor: colors.primary,
+      paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20,
+    },
+    ctaText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+    caption: {
+      color: colors.textSecondary, fontSize: 14,
+      paddingHorizontal: 16, paddingTop: 8,
+    },
+  });
+
   const type = post.link_type ?? 'game';
   const config = VARIANT_CONFIG[type];
 
@@ -77,37 +113,3 @@ export function RoxyLinkCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { backgroundColor: COLORS.background, marginBottom: 8 },
-  authorRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 10, gap: 10,
-  },
-  avatarCircle: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: COLORS.primary + '30',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarLetter: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
-  authorName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  linkBox: {
-    marginHorizontal: 16, padding: 14,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12, flexDirection: 'row',
-    alignItems: 'center', gap: 12,
-  },
-  linkIcon: { fontSize: 28 },
-  linkInfo: { flex: 1 },
-  linkName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 15 },
-  linkMeta: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
-  ctaBtn: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20,
-  },
-  ctaText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  caption: {
-    color: COLORS.textSecondary, fontSize: 14,
-    paddingHorizontal: 16, paddingTop: 8,
-  },
-});

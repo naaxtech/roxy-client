@@ -14,7 +14,7 @@ import { useRealtime } from '../../../../hooks/useRealtime';
 import { useReactions } from '../../../../hooks/useReactions';
 import { useTyping } from '../../../../hooks/useTyping';
 import { useSafetyStore } from '../../../../store/safetyStore';
-import { COLORS } from '../../../../lib/constants';
+import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { Analytics } from '../../../../lib/analytics';
 import { Message } from '../../../../types';
 import EmojiKeyboard from 'rn-emoji-keyboard';
@@ -40,6 +40,7 @@ export default function ChatScreen() {
   const { user } = useAuthStore();
   const { clearUnread, conversations, setActiveConversation } = useConnectStore();
   const { blockUser, openReportModal, submitReport } = useSafetyStore();
+  const colors = useThemeColors();
 
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
@@ -85,6 +86,137 @@ export default function ChatScreen() {
     conversationId: conversationId ?? '',
     currentUserId: user?.id ?? '',
     partnerName,
+  });
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    backBtn: { width: 40 },
+    backText: { color: colors.textPrimary, fontSize: 28, lineHeight: 30 },
+    headerTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 17, textAlign: 'center' },
+    menuBtn: { padding: 4 },
+    menuBtnText: { color: colors.textPrimary, fontSize: 16, letterSpacing: 1 },
+    searchInput: {
+      flex: 1, backgroundColor: colors.surface, borderRadius: 20,
+      paddingHorizontal: 14, paddingVertical: 8, color: colors.textPrimary, fontSize: 14,
+    },
+    searchCancelText: { color: colors.primary, fontWeight: '600', marginLeft: 10 },
+    icebreakerBanner: {
+      backgroundColor: colors.roxy + '20', borderBottomWidth: 1, borderBottomColor: colors.roxy + '40',
+      padding: 12,
+    },
+    icebreakerLabel: { color: colors.roxy, fontSize: 11, fontWeight: '700', marginBottom: 2 },
+    icebreakerText: { color: colors.textPrimary, fontSize: 14, fontStyle: 'italic' },
+    errorState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+    errorText: { color: colors.textMuted, fontSize: 15 },
+    retryBtn: {
+      backgroundColor: colors.primary, borderRadius: 12,
+      paddingHorizontal: 24, paddingVertical: 10,
+    },
+    retryBtnText: { color: '#fff', fontWeight: '700' },
+    messageList: { padding: 16, gap: 8, flexGrow: 1, justifyContent: 'flex-end' },
+    bubble: { maxWidth: '80%', borderRadius: 16, padding: 12, marginVertical: 2 },
+    bubbleOwn: { alignSelf: 'flex-end', backgroundColor: colors.primary, borderBottomRightRadius: 4 },
+    bubbleOther: { alignSelf: 'flex-start', backgroundColor: colors.surface, borderBottomLeftRadius: 4 },
+    bubbleRoxy: { alignSelf: 'center', backgroundColor: colors.roxy + '20', borderRadius: 12, borderWidth: 1, borderColor: colors.roxy + '60', width: '90%' },
+    bubbleHighlighted: { borderWidth: 2, borderColor: colors.primary + '80' },
+    roxyLabel: { color: colors.roxy, fontSize: 11, fontWeight: '700', marginBottom: 4 },
+    bubbleText: { fontSize: 15, lineHeight: 21 },
+    bubbleTextOwn: { color: '#fff' },
+    bubbleTextOther: { color: colors.textPrimary },
+    gifImage: { width: 200, height: 150, borderRadius: 8 },
+    roxyActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
+    roxyUseBtn: { backgroundColor: colors.roxy, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 },
+    roxyUseBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+    bubbleMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
+    bubbleTime: { color: colors.textMuted, fontSize: 10 },
+    readTick: { color: colors.textMuted, fontSize: 10, fontWeight: '700' },
+    readTickRead: { color: colors.primary },
+    emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
+    inputBar: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderTopWidth: 1,
+      borderTopColor: colors.surface,
+      backgroundColor: colors.background,
+    },
+    roxyBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+      borderWidth: 1.5,
+      borderColor: colors.roxy + '50',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 4,
+    },
+    roxyBtnActive: {
+      backgroundColor: colors.roxy + '18',
+      borderColor: colors.roxy,
+    },
+    roxyBtnText: {
+      color: colors.roxy,
+      fontSize: 14,
+      fontWeight: '700',
+      lineHeight: 16,
+    },
+    inlineEmojiContainer: {
+      borderTopWidth: 1,
+      borderTopColor: colors.surface,
+    },
+    input: {
+      flex: 1, backgroundColor: colors.surface, borderRadius: 20,
+      paddingHorizontal: 16, paddingVertical: 10,
+      color: colors.textPrimary, fontSize: 15, maxHeight: 120,
+    },
+    sendBtn: {
+      width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    sendBtnDisabled: { backgroundColor: colors.surface },
+    sendBtnText: { color: '#fff', fontSize: 24, lineHeight: 28 },
+    reactOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+    reactBarContainer: { position: 'absolute', bottom: 120, alignSelf: 'center' },
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    actionSheet: {
+      backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+      paddingBottom: 32, paddingTop: 8,
+    },
+    actionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, gap: 14 },
+    actionRowIcon: { fontSize: 18 },
+    actionRowIconDanger: { fontSize: 18 },
+    actionRowText: { color: colors.textPrimary, fontSize: 16 },
+    actionRowTextDanger: { color: colors.error, fontSize: 16, fontWeight: '600' },
+    actionSeparator: { height: 1, backgroundColor: colors.surfaceLight, marginHorizontal: 16 },
+    reportCard: {
+      backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+      padding: 24, paddingBottom: 40,
+    },
+    reportTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700', marginBottom: 4 },
+    reportSubtitle: { color: colors.textSecondary, fontSize: 14, marginBottom: 16 },
+    reasonRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 4, borderRadius: 10 },
+    reasonRowSelected: { backgroundColor: colors.primary + '20' },
+    reasonRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.textMuted },
+    reasonRadioSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
+    reasonLabel: { color: colors.textPrimary, fontSize: 15 },
+    reasonSeparator: { height: 1, backgroundColor: colors.surfaceLight },
+    reportDetailInput: {
+      backgroundColor: colors.surfaceLight, borderRadius: 12, padding: 12,
+      color: colors.textPrimary, fontSize: 14, minHeight: 72, marginTop: 16, textAlignVertical: 'top',
+    },
+    reportActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
+    reportCancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surfaceLight, alignItems: 'center' },
+    reportCancelText: { color: colors.textSecondary, fontSize: 16, fontWeight: '600' },
+    reportSubmitBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center' },
+    reportSubmitBtnDisabled: { backgroundColor: colors.textMuted },
+    reportSubmitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   });
 
   useEffect(() => {
@@ -430,7 +562,7 @@ export default function ChatScreen() {
             <TextInput
               style={styles.searchInput}
               placeholder="Search messages..."
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
@@ -475,7 +607,7 @@ export default function ChatScreen() {
         keyboardVerticalOffset={0}
       >
         {loadingInitial ? (
-          <ActivityIndicator color={COLORS.roxy} style={{ flex: 1 }} />
+          <ActivityIndicator color={colors.roxy} style={{ flex: 1 }} />
         ) : loadError ? (
           <View style={styles.errorState}>
             <Text style={styles.errorText}>Could not load messages</Text>
@@ -562,7 +694,7 @@ export default function ChatScreen() {
               ref={inputRef}
               style={styles.input}
               placeholder="Say something..."
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={inputText}
               onChangeText={(t) => { setInputText(t); sendTyping(); }}
               onFocus={() => setShowEmojiKeyboard(false)}
@@ -627,7 +759,7 @@ export default function ChatScreen() {
             </TouchableOpacity>
             <View style={styles.actionSeparator} />
             <TouchableOpacity style={styles.actionRow} onPress={() => setMenuVisible(false)}>
-              <Text style={[styles.actionRowText, { textAlign: 'center', flex: 1, color: COLORS.textMuted }]}>Cancel</Text>
+              <Text style={[styles.actionRowText, { textAlign: 'center', flex: 1, color: colors.textMuted }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -656,7 +788,7 @@ export default function ChatScreen() {
             <TextInput
               style={styles.reportDetailInput}
               placeholder="Add details (optional)"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={reportDetail}
               onChangeText={setReportDetail}
               multiline
@@ -684,134 +816,3 @@ export default function ChatScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  backBtn: { width: 40 },
-  backText: { color: COLORS.textPrimary, fontSize: 28, lineHeight: 30 },
-  headerTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 17, textAlign: 'center' },
-  menuBtn: { padding: 4 },
-  menuBtnText: { color: COLORS.textPrimary, fontSize: 16, letterSpacing: 1 },
-  searchInput: {
-    flex: 1, backgroundColor: COLORS.surface, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 8, color: COLORS.textPrimary, fontSize: 14,
-  },
-  searchCancelText: { color: COLORS.primary, fontWeight: '600', marginLeft: 10 },
-  icebreakerBanner: {
-    backgroundColor: COLORS.roxy + '20', borderBottomWidth: 1, borderBottomColor: COLORS.roxy + '40',
-    padding: 12,
-  },
-  icebreakerLabel: { color: COLORS.roxy, fontSize: 11, fontWeight: '700', marginBottom: 2 },
-  icebreakerText: { color: COLORS.textPrimary, fontSize: 14, fontStyle: 'italic' },
-  errorState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  errorText: { color: COLORS.textMuted, fontSize: 15 },
-  retryBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 12,
-    paddingHorizontal: 24, paddingVertical: 10,
-  },
-  retryBtnText: { color: '#fff', fontWeight: '700' },
-  messageList: { padding: 16, gap: 8, flexGrow: 1, justifyContent: 'flex-end' },
-  bubble: { maxWidth: '80%', borderRadius: 16, padding: 12, marginVertical: 2 },
-  bubbleOwn: { alignSelf: 'flex-end', backgroundColor: COLORS.primary, borderBottomRightRadius: 4 },
-  bubbleOther: { alignSelf: 'flex-start', backgroundColor: COLORS.surface, borderBottomLeftRadius: 4 },
-  bubbleRoxy: { alignSelf: 'center', backgroundColor: COLORS.roxy + '20', borderRadius: 12, borderWidth: 1, borderColor: COLORS.roxy + '60', width: '90%' },
-  bubbleHighlighted: { borderWidth: 2, borderColor: COLORS.primary + '80' },
-  roxyLabel: { color: COLORS.roxy, fontSize: 11, fontWeight: '700', marginBottom: 4 },
-  bubbleText: { fontSize: 15, lineHeight: 21 },
-  bubbleTextOwn: { color: '#fff' },
-  bubbleTextOther: { color: COLORS.textPrimary },
-  gifImage: { width: 200, height: 150, borderRadius: 8 },
-  roxyActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  roxyUseBtn: { backgroundColor: COLORS.roxy, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 },
-  roxyUseBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
-  bubbleMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
-  bubbleTime: { color: COLORS.textMuted, fontSize: 10 },
-  readTick: { color: COLORS.textMuted, fontSize: 10, fontWeight: '700' },
-  readTickRead: { color: COLORS.primary },
-  emptyText: { color: COLORS.textMuted, textAlign: 'center', marginTop: 40 },
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.surface,
-    backgroundColor: COLORS.background,
-  },
-  roxyBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.roxy + '50',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  roxyBtnActive: {
-    backgroundColor: COLORS.roxy + '18',
-    borderColor: COLORS.roxy,
-  },
-  roxyBtnText: {
-    color: COLORS.roxy,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 16,
-  },
-  inlineEmojiContainer: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.surface,
-  },
-  input: {
-    flex: 1, backgroundColor: COLORS.surface, borderRadius: 20,
-    paddingHorizontal: 16, paddingVertical: 10,
-    color: COLORS.textPrimary, fontSize: 15, maxHeight: 120,
-  },
-  sendBtn: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  sendBtnDisabled: { backgroundColor: COLORS.surface },
-  sendBtnText: { color: '#fff', fontSize: 24, lineHeight: 28 },
-  reactOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
-  reactBarContainer: { position: 'absolute', bottom: 120, alignSelf: 'center' },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  actionSheet: {
-    backgroundColor: COLORS.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingBottom: 32, paddingTop: 8,
-  },
-  actionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, gap: 14 },
-  actionRowIcon: { fontSize: 18 },
-  actionRowIconDanger: { fontSize: 18 },
-  actionRowText: { color: COLORS.textPrimary, fontSize: 16 },
-  actionRowTextDanger: { color: COLORS.error, fontSize: 16, fontWeight: '600' },
-  actionSeparator: { height: 1, backgroundColor: COLORS.surfaceLight, marginHorizontal: 16 },
-  reportCard: {
-    backgroundColor: COLORS.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 24, paddingBottom: 40,
-  },
-  reportTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '700', marginBottom: 4 },
-  reportSubtitle: { color: COLORS.textSecondary, fontSize: 14, marginBottom: 16 },
-  reasonRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 4, borderRadius: 10 },
-  reasonRowSelected: { backgroundColor: COLORS.primary + '20' },
-  reasonRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: COLORS.textMuted },
-  reasonRadioSelected: { borderColor: COLORS.primary, backgroundColor: COLORS.primary },
-  reasonLabel: { color: COLORS.textPrimary, fontSize: 15 },
-  reasonSeparator: { height: 1, backgroundColor: COLORS.surfaceLight },
-  reportDetailInput: {
-    backgroundColor: COLORS.surfaceLight, borderRadius: 12, padding: 12,
-    color: COLORS.textPrimary, fontSize: 14, minHeight: 72, marginTop: 16, textAlignVertical: 'top',
-  },
-  reportActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
-  reportCancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: COLORS.surfaceLight, alignItems: 'center' },
-  reportCancelText: { color: COLORS.textSecondary, fontSize: 16, fontWeight: '600' },
-  reportSubmitBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: 'center' },
-  reportSubmitBtnDisabled: { backgroundColor: COLORS.textMuted },
-  reportSubmitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-});

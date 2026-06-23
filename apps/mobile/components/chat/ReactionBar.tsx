@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MessageReaction } from '../../types';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 const QUICK_EMOJIS = ['❤️', '😂', '😮', '😢', '😡', '💜'];
 
@@ -10,6 +10,31 @@ interface ReactionBarProps {
 }
 
 export function QuickReactBar({ onReact }: ReactionBarProps) {
+  const colors = useThemeColors();
+  const styles = StyleSheet.create({
+    quickBar: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      gap: 4,
+      shadowColor: '#000',
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 8,
+    },
+    quickEmoji: {
+      width: 36,
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 18,
+    },
+    quickEmojiText: { fontSize: 22 },
+  });
+
   return (
     <View style={styles.quickBar}>
       {QUICK_EMOJIS.map((emoji) => (
@@ -33,6 +58,35 @@ interface ReactionChipsProps {
 }
 
 export function ReactionChips({ reactions, currentUserId, onToggle }: ReactionChipsProps) {
+  const colors = useThemeColors();
+  const styles = StyleSheet.create({
+    chipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 4,
+      marginTop: 4,
+      marginHorizontal: 4,
+    },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderWidth: 1,
+      borderColor: colors.surfaceLight,
+    },
+    chipOwn: {
+      backgroundColor: colors.primary + '20',
+      borderColor: colors.primary + '60',
+    },
+    chipEmoji: { fontSize: 14 },
+    chipCount: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
+    chipCountOwn: { color: colors.primary },
+  });
+
   if (!reactions || reactions.length === 0) return null;
 
   const grouped: Record<string, { count: number; isOwn: boolean }> = {};
@@ -58,52 +112,3 @@ export function ReactionChips({ reactions, currentUserId, onToggle }: ReactionCh
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  quickBar: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: 24,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    gap: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  quickEmoji: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-  },
-  quickEmojiText: { fontSize: 22 },
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginTop: 4,
-    marginHorizontal: 4,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: COLORS.surfaceLight,
-  },
-  chipOwn: {
-    backgroundColor: COLORS.primary + '20',
-    borderColor: COLORS.primary + '60',
-  },
-  chipEmoji: { fontSize: 14 },
-  chipCount: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
-  chipCountOwn: { color: COLORS.primary },
-});

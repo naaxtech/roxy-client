@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../lib/constants';
 import { RoxyCompanionButton } from '../../components/ui/RoxyCompanionButton';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { useFriendStore } from '../../store/friendStore';
 import { useConnectStore } from '../../store/connectStore';
 import { useAuthStore } from '../../store/authStore';
@@ -11,6 +11,7 @@ import { useProfileStore } from '../../store/profileStore';
 import { supabase } from '../../lib/supabase';
 
 export default function TabLayout() {
+  const colors = useThemeColors();
   const pathname = usePathname();
   const showFab = !pathname.includes('roxy-chat');
   const pendingCount = useFriendStore((s) => s.pendingCount);
@@ -66,17 +67,31 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarStyle: { backgroundColor: COLORS.background, borderTopColor: COLORS.surface },
-          tabBarActiveTintColor: COLORS.roxy,
-          tabBarInactiveTintColor: COLORS.textMuted,
+          tabBarStyle: {
+            backgroundColor: colors.background,
+            borderTopWidth: 0,
+            height: 68,
+            paddingTop: 8,
+            paddingBottom: 10,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.06,
+            shadowRadius: 10,
+            elevation: 12,
+          },
+          tabBarActiveTintColor: colors.roxy,
+          tabBarInactiveTintColor: colors.textMuted,
+          tabBarActiveBackgroundColor: colors.roxy + '16',
+          tabBarItemStyle: { borderRadius: 16, marginHorizontal: 6, marginVertical: 2 },
+          tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 0 },
         }}
       >
         <Tabs.Screen
           name="grow"
           options={{
             title: 'Grow',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="home-outline" size={size} color={color} />
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
             ),
             tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
           }}
@@ -85,8 +100,8 @@ export default function TabLayout() {
           name="connect"
           options={{
             title: 'Connect',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="heart-outline" size={size} color={color} />
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons name={focused ? 'heart' : 'heart-outline'} size={size} color={color} />
             ),
             tabBarBadge: totalUnread > 0 ? totalUnread : undefined,
           }}
@@ -95,8 +110,8 @@ export default function TabLayout() {
           name="discover"
           options={{
             title: 'Discover',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="compass-outline" size={size} color={color} />
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons name={focused ? 'compass' : 'compass-outline'} size={size} color={color} />
             ),
           }}
         />
@@ -104,8 +119,8 @@ export default function TabLayout() {
           name="build"
           options={{
             title: 'Build',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="hammer-outline" size={size} color={color} />
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons name={focused ? 'hammer' : 'hammer-outline'} size={size} color={color} />
             ),
           }}
         />

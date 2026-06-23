@@ -6,8 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
-import { COLORS } from '../../../lib/constants';
 import { TicketCard } from '../../../components/TicketCard';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 
 interface TicketRow {
   event_id: string;
@@ -29,6 +29,7 @@ interface TicketRow {
 const PAGE_SIZE = 20;
 
 export default function MyTicketsScreen() {
+  const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
   const [tickets, setTickets] = useState<TicketRow[]>([]);
@@ -166,17 +167,32 @@ export default function MyTicketsScreen() {
     );
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
+    back: { marginRight: 12 },
+    heading: { fontSize: 20, fontWeight: '800', color: colors.textPrimary },
+    list: { padding: 16 },
+    ticketWrap: { marginBottom: 12 },
+    dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 16, gap: 8 },
+    dividerLine: { flex: 1, height: 1, backgroundColor: colors.surface },
+    dividerLabel: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
+    empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+    emptyText: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
+    emptySubText: { color: colors.textSecondary, fontSize: 14 },
+  });
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.heading}>My Tickets</Text>
       </View>
 
       {loading ? (
-        <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 48 }} />
+        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
       ) : tickets.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>No tickets yet.</Text>
@@ -191,24 +207,10 @@ export default function MyTicketsScreen() {
           contentContainerStyle={styles.list}
           onEndReached={() => { if (hasMore && !loading) fetchTickets(); }}
           onEndReachedThreshold={0.4}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.roxy} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.roxy} />}
         />
       )}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
-  back: { marginRight: 12 },
-  heading: { fontSize: 20, fontWeight: '800', color: COLORS.textPrimary },
-  list: { padding: 16 },
-  ticketWrap: { marginBottom: 12 },
-  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 16, gap: 8 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.surface },
-  dividerLabel: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  emptyText: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '700' },
-  emptySubText: { color: COLORS.textSecondary, fontSize: 14 },
-});

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { useStripe } from '@stripe/stripe-react-native';
-import { COLORS } from '../../lib/constants';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import type { ProductWithVariants, ShippingAddress } from '../../types/marketplace';
 
 type Step = 'review' | 'shipping' | 'payment';
@@ -20,6 +20,7 @@ interface CheckoutSheetProps {
 }
 
 export function CheckoutSheet({ businessId, businessName, visible, onClose, onSuccess, buyNowItem }: CheckoutSheetProps) {
+  const colors = useThemeColors();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const { cartItems, getCartTotal, createOrder, clearCart, buyNow } = useMarketplaceStore();
 
@@ -139,7 +140,7 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
             value={shipping[key] as string}
             onChangeText={(v) => setShipping(s => ({ ...s, [key]: v }))}
             placeholder={placeholder}
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={colors.textMuted}
             autoCapitalize={key === 'state' ? 'characters' : 'words'}
             autoCorrect={false}
           />
@@ -193,6 +194,41 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
     </View>
   );
 
+  const styles = StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, maxHeight: '92%' },
+    handle: { width: 40, height: 4, backgroundColor: colors.textMuted, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
+    steps: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, marginBottom: 20 },
+    stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+    stepDotActive: { backgroundColor: colors.primary },
+    stepDotDone: { backgroundColor: colors.primary + '80' },
+    stepDotText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+    stepLine: { flex: 1, height: 2, backgroundColor: colors.surface },
+    stepLineDone: { backgroundColor: colors.primary + '80' },
+    stepTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginBottom: 16 },
+    reviewItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.surface },
+    reviewItemName: { flex: 1, fontSize: 14, color: colors.textPrimary },
+    reviewItemPrice: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+    totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
+    totalLabel: { fontSize: 15, color: colors.textSecondary },
+    totalAmount: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+    shippingNote: { fontSize: 12, color: colors.textMuted, marginBottom: 16 },
+    primaryBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
+    primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+    btnDisabled: { opacity: 0.4 },
+    fieldGroup: { marginBottom: 12 },
+    fieldLabel: { fontSize: 13, color: colors.textSecondary, marginBottom: 4, fontWeight: '600' },
+    input: { backgroundColor: colors.surface, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, color: colors.textPrimary, fontSize: 15 },
+    rowBtns: { flexDirection: 'row', gap: 10, marginTop: 8 },
+    backBtn: { paddingVertical: 16, paddingHorizontal: 16, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center' },
+    backBtnText: { color: colors.textMuted, fontWeight: '600' },
+    summaryBox: { backgroundColor: colors.surface, borderRadius: 10, padding: 14, marginBottom: 12, gap: 2 },
+    summaryLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600', marginBottom: 4 },
+    summaryValue: { fontSize: 14, color: colors.textPrimary },
+    closeBtn: { position: 'absolute', top: 16, right: 16, padding: 8 },
+    closeBtnText: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
+  });
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -229,37 +265,3 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: COLORS.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, maxHeight: '92%' },
-  handle: { width: 40, height: 4, backgroundColor: COLORS.textMuted, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
-  steps: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, marginBottom: 20 },
-  stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
-  stepDotActive: { backgroundColor: COLORS.primary },
-  stepDotDone: { backgroundColor: COLORS.primary + '80' },
-  stepDotText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  stepLine: { flex: 1, height: 2, backgroundColor: COLORS.surface },
-  stepLineDone: { backgroundColor: COLORS.primary + '80' },
-  stepTitle: { fontSize: 20, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 16 },
-  reviewItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.surface },
-  reviewItemName: { flex: 1, fontSize: 14, color: COLORS.textPrimary },
-  reviewItemPrice: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
-  totalLabel: { fontSize: 15, color: COLORS.textSecondary },
-  totalAmount: { fontSize: 18, fontWeight: '700', color: COLORS.textPrimary },
-  shippingNote: { fontSize: 12, color: COLORS.textMuted, marginBottom: 16 },
-  primaryBtn: { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
-  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  btnDisabled: { opacity: 0.4 },
-  fieldGroup: { marginBottom: 12 },
-  fieldLabel: { fontSize: 13, color: COLORS.textSecondary, marginBottom: 4, fontWeight: '600' },
-  input: { backgroundColor: COLORS.surface, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, color: COLORS.textPrimary, fontSize: 15 },
-  rowBtns: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  backBtn: { paddingVertical: 16, paddingHorizontal: 16, borderRadius: 12, backgroundColor: COLORS.surface, alignItems: 'center' },
-  backBtnText: { color: COLORS.textMuted, fontWeight: '600' },
-  summaryBox: { backgroundColor: COLORS.surface, borderRadius: 10, padding: 14, marginBottom: 12, gap: 2 },
-  summaryLabel: { fontSize: 12, color: COLORS.textMuted, fontWeight: '600', marginBottom: 4 },
-  summaryValue: { fontSize: 14, color: COLORS.textPrimary },
-  closeBtn: { position: 'absolute', top: 16, right: 16, padding: 8 },
-  closeBtnText: { color: COLORS.textMuted, fontSize: 18, fontWeight: '700' },
-});

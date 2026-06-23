@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface Props {
   options: readonly string[];
@@ -9,6 +9,20 @@ interface Props {
 }
 
 export function ChipSelector({ options, selected, onToggle, max }: Props) {
+  const colors = useThemeColors();
+
+  const styles = StyleSheet.create({
+    container: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: {
+      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+      borderWidth: 1.5, borderColor: colors.textMuted,
+    },
+    chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    chipDisabled: { opacity: 0.4 },
+    label: { color: colors.textSecondary, fontSize: 14, fontWeight: '500' },
+    labelSelected: { color: colors.textPrimary },
+  });
+
   return (
     <View style={styles.container}>
       {options.map((opt) => {
@@ -28,15 +42,3 @@ export function ChipSelector({ options, selected, onToggle, max }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    borderWidth: 1.5, borderColor: COLORS.textMuted,
-  },
-  chipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipDisabled: { opacity: 0.4 },
-  label: { color: COLORS.textSecondary, fontSize: 14, fontWeight: '500' },
-  labelSelected: { color: COLORS.textPrimary },
-});

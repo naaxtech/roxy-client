@@ -6,9 +6,11 @@ import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { logError, logBreadcrumb } from '../../../lib/errorLogger';
 import { ChipSelector } from '../../../components/ui/ChipSelector';
-import { INTERESTS, COLORS } from '../../../lib/constants';
+import { INTERESTS } from '../../../lib/constants';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 
 export default function Step2Interests() {
+  const colors = useThemeColors();
   const [interests, setInterests] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuthStore();
@@ -30,6 +32,17 @@ export default function Step2Interests() {
     router.replace('/(auth)/onboarding/step3-photo');
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    scroll: { padding: 24, gap: 12 },
+    step: { color: colors.textMuted, fontSize: 13 },
+    headline: { fontSize: 28, fontWeight: '700', color: colors.textPrimary },
+    sub: { color: colors.textSecondary, fontSize: 14 },
+    btn: { backgroundColor: colors.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 24 },
+    btnDisabled: { opacity: 0.5 },
+    btnText: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
+  });
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -50,13 +63,3 @@ export default function Step2Interests() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { padding: 24, gap: 12 },
-  step: { color: COLORS.textMuted, fontSize: 13 },
-  headline: { fontSize: 28, fontWeight: '700', color: COLORS.textPrimary },
-  sub: { color: COLORS.textSecondary, fontSize: 14 },
-  btn: { backgroundColor: COLORS.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 24 },
-  btnDisabled: { opacity: 0.5 },
-  btnText: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16 },
-});

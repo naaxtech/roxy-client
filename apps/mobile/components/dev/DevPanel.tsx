@@ -5,7 +5,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Switch
 } from 'react-native';
 import { callEdgeFunction } from '../../lib/supabase';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface DevStatus {
   ai_enabled: boolean;
@@ -13,6 +13,7 @@ interface DevStatus {
 }
 
 function DevPanelInner() {
+  const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
   const [status, setStatus] = useState<DevStatus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,6 +52,31 @@ function DevPanelInner() {
     setLoading(false);
   };
 
+  const styles = StyleSheet.create({
+    fab: {
+      position: 'absolute', bottom: 100, left: 16,
+      backgroundColor: colors.devPanel, borderRadius: 8,
+      paddingHorizontal: 10, paddingVertical: 6, zIndex: 9999,
+    },
+    fabText: { color: '#fff', fontWeight: '800', fontSize: 11 },
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+    panel: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
+    title: { fontSize: 16, fontWeight: '800', color: colors.textPrimary },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    rowLabel: { flex: 1, color: colors.textSecondary, fontSize: 15 },
+    badge: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+    badgeLive: { backgroundColor: colors.success + '30', color: colors.success },
+    badgePaused: { backgroundColor: colors.error + '30', color: colors.error },
+    counts: { maxHeight: 140, backgroundColor: colors.background, borderRadius: 8, padding: 8 },
+    countRow: { color: colors.textMuted, fontSize: 13, paddingVertical: 2 },
+    countNum: { color: colors.textPrimary, fontWeight: '600' },
+    actionBtn: { backgroundColor: colors.background, borderRadius: 10, padding: 12, alignItems: 'center' },
+    actionBtnAccent: { backgroundColor: colors.primary + '40' },
+    actionBtnText: { color: colors.textSecondary, fontWeight: '600' },
+    closeBtn: { backgroundColor: colors.primary, borderRadius: 10, padding: 14, alignItems: 'center', marginTop: 4 },
+    closeBtnText: { color: '#fff', fontWeight: '700' },
+  });
+
   return (
     <>
       {/* Floating button */}
@@ -69,7 +95,7 @@ function DevPanelInner() {
                 value={status?.ai_enabled ?? false}
                 onValueChange={toggleAi}
                 disabled={loading}
-                trackColor={{ false: COLORS.error, true: COLORS.success }}
+                trackColor={{ false: colors.error, true: colors.success }}
               />
               <Text style={[styles.badge, status?.ai_enabled ? styles.badgeLive : styles.badgePaused]}>
                 {status?.ai_enabled ? 'LIVE' : 'PAUSED'}
@@ -108,28 +134,3 @@ export function DevPanel() {
   if (!__DEV__) return null;
   return <DevPanelInner />;
 }
-
-const styles = StyleSheet.create({
-  fab: {
-    position: 'absolute', bottom: 100, left: 16,
-    backgroundColor: COLORS.devPanel, borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 6, zIndex: 9999,
-  },
-  fabText: { color: '#fff', fontWeight: '800', fontSize: 11 },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  panel: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
-  title: { fontSize: 16, fontWeight: '800', color: COLORS.textPrimary },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  rowLabel: { flex: 1, color: COLORS.textSecondary, fontSize: 15 },
-  badge: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  badgeLive: { backgroundColor: COLORS.success + '30', color: COLORS.success },
-  badgePaused: { backgroundColor: COLORS.error + '30', color: COLORS.error },
-  counts: { maxHeight: 140, backgroundColor: COLORS.background, borderRadius: 8, padding: 8 },
-  countRow: { color: COLORS.textMuted, fontSize: 13, paddingVertical: 2 },
-  countNum: { color: COLORS.textPrimary, fontWeight: '600' },
-  actionBtn: { backgroundColor: COLORS.background, borderRadius: 10, padding: 12, alignItems: 'center' },
-  actionBtnAccent: { backgroundColor: COLORS.primary + '40' },
-  actionBtnText: { color: COLORS.textSecondary, fontWeight: '600' },
-  closeBtn: { backgroundColor: COLORS.primary, borderRadius: 10, padding: 14, alignItems: 'center', marginTop: 4 },
-  closeBtnText: { color: '#fff', fontWeight: '700' },
-});

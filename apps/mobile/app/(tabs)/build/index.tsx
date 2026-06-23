@@ -10,7 +10,8 @@ import { supabase } from '../../../lib/supabase';
 import { callEdgeFunction } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useBuildStore } from '../../../store/buildStore';
-import { COLORS, REGISTER_BUSINESS_URL } from '../../../lib/constants';
+import { REGISTER_BUSINESS_URL } from '../../../lib/constants';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import { Business, BusinessPhoto, ImpactProject } from '../../../types';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
@@ -23,7 +24,9 @@ const categoryEmoji: Record<string, string> = {
   mutual_aid: '🤝', visibility: '🏳️‍🌈', education: '📚', safety: '🛡️',
 };
 
-function BusinessCard({ biz, onPress }: { biz: Business; onPress: () => void }) {
+type BuildStyles = ReturnType<typeof buildStyles>;
+
+function BusinessCard({ biz, onPress, styles }: { biz: Business; onPress: () => void; styles: BuildStyles }) {
   return (
     <TouchableOpacity style={styles.bizCard} onPress={onPress} activeOpacity={0.85}>
       <View style={styles.bizLogo}>
@@ -44,11 +47,13 @@ function ImpactCard({
   alreadySupported,
   onSupport,
   onOpenDetail,
+  styles,
 }: {
   project: ImpactProject;
   alreadySupported: boolean;
   onSupport: () => void;
   onOpenDetail: () => void;
+  styles: BuildStyles;
 }) {
   const progress = project.goal_amount
     ? Math.min(project.raised_amount / project.goal_amount, 1)
@@ -101,11 +106,13 @@ function ImpactDetailSheet({
   alreadySupported,
   onSupport,
   onClose,
+  styles,
 }: {
   project: ImpactProject | null;
   alreadySupported: boolean;
   onSupport: () => void;
   onClose: () => void;
+  styles: BuildStyles;
 }) {
   const handleWebsite = () => {
     if (project?.website_url) Linking.openURL(project.website_url).catch(() => {});
@@ -169,7 +176,163 @@ function ImpactDetailSheet({
   );
 }
 
+function buildStyles(colors: ReturnType<typeof useThemeColors>) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 10,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
+    segmentRow: {
+      flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.surface,
+      paddingHorizontal: 16, gap: 4,
+    },
+    segmentBtn: { paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+    segmentBtnActive: { borderBottomColor: colors.primary },
+    segmentText: { color: colors.textMuted, fontWeight: '600', fontSize: 15 },
+    segmentTextActive: { color: colors.textPrimary },
+    bizViewToggle: {
+      flexDirection: 'row', paddingHorizontal: 12, paddingTop: 8, gap: 8,
+    },
+    bizViewBtn: {
+      paddingHorizontal: 14, paddingVertical: 6,
+      borderRadius: 20, backgroundColor: colors.surface,
+    },
+    bizViewBtnActive: { backgroundColor: colors.primary + '25', borderWidth: 1, borderColor: colors.primary },
+    bizViewText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
+    bizViewTextActive: { color: colors.primary },
+    filterWrapper: { paddingBottom: 8 },
+    wlwToggle: {
+      marginHorizontal: 12, marginTop: 6,
+      backgroundColor: colors.surface, borderRadius: 10,
+      paddingHorizontal: 12, paddingVertical: 8,
+      borderWidth: 1, borderColor: 'transparent', alignSelf: 'flex-start',
+    },
+    wlwToggleActive: { borderColor: colors.primary, backgroundColor: colors.primary + '20' },
+    wlwToggleText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+    gridContent: { padding: 8 },
+    listContent: { padding: 16 },
+    bizCard: {
+      flex: 1, backgroundColor: colors.surface, borderRadius: 14, padding: 14,
+      margin: 4, gap: 4,
+    },
+    bizLogo: {
+      width: 44, height: 44, borderRadius: 22,
+      backgroundColor: colors.primary + '30', alignItems: 'center', justifyContent: 'center',
+      marginBottom: 4,
+    },
+    bizLogoText: { color: colors.primary, fontWeight: '700', fontSize: 18 },
+    bizName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
+    wlwBadge: { color: colors.secondary, fontSize: 11, fontWeight: '600' },
+    bizCity: { color: colors.textMuted, fontSize: 11 },
+    bizDesc: { color: colors.textSecondary, fontSize: 12, lineHeight: 16 },
+    impactCard: {
+      backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 10, gap: 8,
+    },
+    impactHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+    impactEmoji: { fontSize: 22 },
+    impactTitle: { color: colors.textPrimary, fontWeight: '600', fontSize: 14 },
+    impactMeta: { color: colors.textMuted, fontSize: 12 },
+    impactDesc: { color: colors.textSecondary, fontSize: 13, lineHeight: 18 },
+    supportBtn: {
+      backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
+    },
+    supportBtnDone: { backgroundColor: colors.success },
+    supportBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+    completedBadge: {
+      backgroundColor: colors.success + '20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+    },
+    completedText: { color: colors.success, fontWeight: '700', fontSize: 12 },
+    progressTrack: { height: 6, backgroundColor: colors.surfaceLight, borderRadius: 3, overflow: 'hidden' },
+    progressFill: { height: 6, backgroundColor: colors.primary, borderRadius: 3 },
+    progressLabel: { color: colors.textMuted, fontSize: 11 },
+    empty: { alignItems: 'center', paddingTop: 60, gap: 8 },
+    emptyTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
+    emptySubtitle: { color: colors.textMuted, fontSize: 14 },
+    registerFooter: {
+      alignItems: 'center', paddingVertical: 24, paddingHorizontal: 16, gap: 4,
+    },
+    registerFooterText: { color: colors.textMuted, fontSize: 13 },
+    registerFooterLink: { color: colors.primary, fontSize: 14, fontWeight: '700' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+    modalCard: {
+      backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 24, paddingBottom: 40, maxHeight: '85%',
+    },
+    modalCloseBtn: { alignSelf: 'flex-end', padding: 8, marginBottom: 8 },
+    modalCloseBtnText: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
+    modalEmoji: { fontSize: 48, textAlign: 'center', marginBottom: 8 },
+    modalTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 22, textAlign: 'center', marginBottom: 4 },
+    modalMeta: { color: colors.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 16 },
+    modalDesc: { color: colors.textSecondary, fontSize: 15, lineHeight: 22, marginBottom: 20 },
+    modalWebsiteBtn: { marginBottom: 12 },
+    modalWebsiteBtnText: { color: colors.primary, fontSize: 15, fontWeight: '700' },
+    modalShareBtn: {
+      backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12,
+      alignItems: 'center', marginBottom: 12,
+    },
+    modalShareBtnText: { color: colors.textPrimary, fontWeight: '600', fontSize: 15 },
+    modalCtaBtn: {
+      backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16,
+      alignItems: 'center', marginBottom: 12,
+    },
+    modalCtaBtnDone: { backgroundColor: colors.success },
+    modalCtaBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+
+    // Support Roxy
+    supportContainer: { flex: 1 },
+    supportTabRow: {
+      flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, gap: 8,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    supportTabBtn: {
+      paddingHorizontal: 14, paddingVertical: 7,
+      borderRadius: 20, backgroundColor: colors.surface,
+    },
+    supportTabBtnActive: {
+      backgroundColor: `${colors.primary}25`,
+      borderWidth: 1, borderColor: colors.primary,
+    },
+    supportTabText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
+    supportTabTextActive: { color: colors.primary },
+    supportListContent: { paddingTop: 12, paddingBottom: 100 },
+    supportLoadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
+    pitchFab: {
+      position: 'absolute', bottom: 24, right: 20,
+      backgroundColor: colors.primary, borderRadius: 28,
+      paddingHorizontal: 20, paddingVertical: 14,
+      shadowColor: colors.primary, shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+      elevation: 8,
+    },
+    pitchFabText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+    pitchModalCard: {
+      backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 24, paddingBottom: 40,
+    },
+    pitchModalTitle: { fontSize: 20, fontWeight: '800', color: colors.textPrimary, marginBottom: 4 },
+    pitchModalSubtitle: { fontSize: 14, color: colors.textMuted, marginBottom: 20, lineHeight: 20 },
+    pitchLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 },
+    pitchInput: {
+      backgroundColor: colors.surface, borderRadius: 12,
+      padding: 14, color: colors.textPrimary, fontSize: 15,
+      marginBottom: 16, borderWidth: 1, borderColor: 'transparent',
+    },
+    pitchInputMulti: { height: 100, textAlignVertical: 'top' },
+    pitchError: { color: colors.error, fontSize: 13, marginBottom: 12, fontWeight: '600' },
+    pitchSubmitBtn: {
+      backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 15,
+      alignItems: 'center', marginTop: 4,
+    },
+    pitchSubmitBtnDisabled: { opacity: 0.6 },
+    pitchSubmitBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  });
+}
+
 export default function BuildScreen() {
+  const colors = useThemeColors();
+  const styles = buildStyles(colors);
   const { user } = useAuthStore();
   const {
     businesses, impactProjects, loading,
@@ -424,11 +587,11 @@ export default function BuildScreen() {
             numColumns={2}
             estimatedItemSize={180}
             renderItem={({ item }) => (
-              <BusinessCard biz={item} onPress={() => handleOpenBiz(item)} />
+              <BusinessCard biz={item} onPress={() => handleOpenBiz(item)} styles={styles} />
             )}
             contentContainerStyle={styles.gridContent}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.roxy} />
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.roxy} />
             }
             ListFooterComponent={<RegisterFooter />}
             ListEmptyComponent={
@@ -454,11 +617,12 @@ export default function BuildScreen() {
               alreadySupported={supportedProjectIds.has(item.id)}
               onSupport={() => handleSupport(item.id)}
               onOpenDetail={() => setSelectedProject(item)}
+              styles={styles}
             />
           )}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.roxy} />
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.roxy} />
           }
           ListEmptyComponent={
             loading ? null : (
@@ -490,7 +654,7 @@ export default function BuildScreen() {
           {/* Feature list */}
           {supportLoading ? (
             <View style={styles.supportLoadingWrap}>
-              <ActivityIndicator color={COLORS.primary} size="large" />
+              <ActivityIndicator color={colors.primary} size="large" />
             </View>
           ) : (
             <FlashList
@@ -506,7 +670,7 @@ export default function BuildScreen() {
               )}
               contentContainerStyle={styles.supportListContent}
               refreshControl={
-                <RefreshControl refreshing={false} onRefresh={loadFeatures} tintColor={COLORS.roxy} />
+                <RefreshControl refreshing={false} onRefresh={loadFeatures} tintColor={colors.roxy} />
               }
               ListEmptyComponent={
                 <View style={styles.empty}>
@@ -557,7 +721,7 @@ export default function BuildScreen() {
             <TextInput
               style={styles.pitchInput}
               placeholder="Short and clear (e.g. 'Group video calls')"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={pitchTitle}
               onChangeText={setPitchTitle}
               maxLength={200}
@@ -566,7 +730,7 @@ export default function BuildScreen() {
             <TextInput
               style={[styles.pitchInput, styles.pitchInputMulti]}
               placeholder="Why would this make Roxy better?"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={pitchDesc}
               onChangeText={setPitchDesc}
               maxLength={1000}
@@ -601,159 +765,8 @@ export default function BuildScreen() {
         alreadySupported={selectedProject ? supportedProjectIds.has(selectedProject.id) : false}
         onSupport={() => selectedProject && handleSupport(selectedProject.id)}
         onClose={() => setSelectedProject(null)}
+        styles={styles}
       />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
-  segmentRow: {
-    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-    paddingHorizontal: 16, gap: 4,
-  },
-  segmentBtn: { paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  segmentBtnActive: { borderBottomColor: COLORS.primary },
-  segmentText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 15 },
-  segmentTextActive: { color: COLORS.textPrimary },
-  bizViewToggle: {
-    flexDirection: 'row', paddingHorizontal: 12, paddingTop: 8, gap: 8,
-  },
-  bizViewBtn: {
-    paddingHorizontal: 14, paddingVertical: 6,
-    borderRadius: 20, backgroundColor: COLORS.surface,
-  },
-  bizViewBtnActive: { backgroundColor: COLORS.primary + '25', borderWidth: 1, borderColor: COLORS.primary },
-  bizViewText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
-  bizViewTextActive: { color: COLORS.primary },
-  filterWrapper: { paddingBottom: 8 },
-  wlwToggle: {
-    marginHorizontal: 12, marginTop: 6,
-    backgroundColor: COLORS.surface, borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderWidth: 1, borderColor: 'transparent', alignSelf: 'flex-start',
-  },
-  wlwToggleActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '20' },
-  wlwToggleText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' },
-  gridContent: { padding: 8 },
-  listContent: { padding: 16 },
-  bizCard: {
-    flex: 1, backgroundColor: COLORS.surface, borderRadius: 14, padding: 14,
-    margin: 4, gap: 4,
-  },
-  bizLogo: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: COLORS.primary + '30', alignItems: 'center', justifyContent: 'center',
-    marginBottom: 4,
-  },
-  bizLogoText: { color: COLORS.primary, fontWeight: '700', fontSize: 18 },
-  bizName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
-  wlwBadge: { color: COLORS.secondary, fontSize: 11, fontWeight: '600' },
-  bizCity: { color: COLORS.textMuted, fontSize: 11 },
-  bizDesc: { color: COLORS.textSecondary, fontSize: 12, lineHeight: 16 },
-  impactCard: {
-    backgroundColor: COLORS.surface, borderRadius: 14, padding: 14, marginBottom: 10, gap: 8,
-  },
-  impactHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  impactEmoji: { fontSize: 22 },
-  impactTitle: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  impactMeta: { color: COLORS.textMuted, fontSize: 12 },
-  impactDesc: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 18 },
-  supportBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
-  },
-  supportBtnDone: { backgroundColor: COLORS.success },
-  supportBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  completedBadge: {
-    backgroundColor: COLORS.success + '20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
-  },
-  completedText: { color: COLORS.success, fontWeight: '700', fontSize: 12 },
-  progressTrack: { height: 6, backgroundColor: COLORS.surfaceLight, borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: 6, backgroundColor: COLORS.primary, borderRadius: 3 },
-  progressLabel: { color: COLORS.textMuted, fontSize: 11 },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 8 },
-  emptyTitle: { color: COLORS.textPrimary, fontSize: 17, fontWeight: '700' },
-  emptySubtitle: { color: COLORS.textMuted, fontSize: 14 },
-  registerFooter: {
-    alignItems: 'center', paddingVertical: 24, paddingHorizontal: 16, gap: 4,
-  },
-  registerFooterText: { color: COLORS.textMuted, fontSize: 13 },
-  registerFooterLink: { color: COLORS.primary, fontSize: 14, fontWeight: '700' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalCard: {
-    backgroundColor: COLORS.background, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: 40, maxHeight: '85%',
-  },
-  modalCloseBtn: { alignSelf: 'flex-end', padding: 8, marginBottom: 8 },
-  modalCloseBtnText: { color: COLORS.textMuted, fontSize: 18, fontWeight: '700' },
-  modalEmoji: { fontSize: 48, textAlign: 'center', marginBottom: 8 },
-  modalTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 22, textAlign: 'center', marginBottom: 4 },
-  modalMeta: { color: COLORS.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 16 },
-  modalDesc: { color: COLORS.textSecondary, fontSize: 15, lineHeight: 22, marginBottom: 20 },
-  modalWebsiteBtn: { marginBottom: 12 },
-  modalWebsiteBtnText: { color: COLORS.primary, fontSize: 15, fontWeight: '700' },
-  modalShareBtn: {
-    backgroundColor: COLORS.surface, borderRadius: 12, paddingVertical: 12,
-    alignItems: 'center', marginBottom: 12,
-  },
-  modalShareBtnText: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 15 },
-  modalCtaBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 14, paddingVertical: 16,
-    alignItems: 'center', marginBottom: 12,
-  },
-  modalCtaBtnDone: { backgroundColor: COLORS.success },
-  modalCtaBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-
-  // Support Roxy
-  supportContainer: { flex: 1 },
-  supportTabRow: {
-    flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, gap: 8,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  supportTabBtn: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: 20, backgroundColor: COLORS.surface,
-  },
-  supportTabBtnActive: {
-    backgroundColor: `${COLORS.primary}25`,
-    borderWidth: 1, borderColor: COLORS.primary,
-  },
-  supportTabText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
-  supportTabTextActive: { color: COLORS.primary },
-  supportListContent: { paddingTop: 12, paddingBottom: 100 },
-  supportLoadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
-  pitchFab: {
-    position: 'absolute', bottom: 24, right: 20,
-    backgroundColor: COLORS.primary, borderRadius: 28,
-    paddingHorizontal: 20, paddingVertical: 14,
-    shadowColor: COLORS.primary, shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  pitchFabText: { color: '#fff', fontWeight: '800', fontSize: 15 },
-  pitchModalCard: {
-    backgroundColor: COLORS.background, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: 40,
-  },
-  pitchModalTitle: { fontSize: 20, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 4 },
-  pitchModalSubtitle: { fontSize: 14, color: COLORS.textMuted, marginBottom: 20, lineHeight: 20 },
-  pitchLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 6 },
-  pitchInput: {
-    backgroundColor: COLORS.surface, borderRadius: 12,
-    padding: 14, color: COLORS.textPrimary, fontSize: 15,
-    marginBottom: 16, borderWidth: 1, borderColor: 'transparent',
-  },
-  pitchInputMulti: { height: 100, textAlignVertical: 'top' },
-  pitchError: { color: COLORS.error, fontSize: 13, marginBottom: 12, fontWeight: '600' },
-  pitchSubmitBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 14, paddingVertical: 15,
-    alignItems: 'center', marginTop: 4,
-  },
-  pitchSubmitBtnDisabled: { opacity: 0.6 },
-  pitchSubmitBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-});

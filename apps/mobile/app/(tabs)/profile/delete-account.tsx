@@ -12,11 +12,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
-import { COLORS } from '../../../lib/constants';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import { logError } from '../../../lib/errorLogger';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -39,6 +40,86 @@ export default function DeleteAccountScreen() {
     useAuthStore.getState().signOut();
     router.replace('/(auth)/welcome');
   };
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    content: { flex: 1, padding: 16, gap: 16 },
+
+    // Header
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 4,
+    },
+    backButton: { padding: 4 },
+    backText: { color: colors.roxy, fontSize: 16, fontWeight: '500' },
+    headerTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
+    headerSpacer: { width: 56 },
+
+    // Warning card
+    warningCard: {
+      backgroundColor: '#3B0000',
+      borderRadius: 16,
+      padding: 20,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#EF4444' + '40',
+      gap: 8,
+    },
+    warningIcon: { fontSize: 32 },
+    warningTitle: {
+      color: '#EF4444',
+      fontSize: 16,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    warningText: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+
+    // Input section
+    inputSection: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      gap: 8,
+    },
+    inputLabel: { color: colors.textMuted, fontSize: 13 },
+    inputLabelBold: { color: colors.textPrimary, fontWeight: '700' },
+    input: {
+      backgroundColor: colors.background,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontWeight: '600',
+      letterSpacing: 2,
+      borderWidth: 1,
+      borderColor: colors.textMuted + '40',
+    },
+
+    // Delete button
+    deleteButton: {
+      backgroundColor: '#EF4444',
+      borderRadius: 16,
+      padding: 16,
+      alignItems: 'center',
+    },
+    deleteButtonDisabled: {
+      backgroundColor: '#EF4444' + '40',
+      opacity: 0.6,
+    },
+    deleteButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -74,7 +155,7 @@ export default function DeleteAccountScreen() {
             value={input}
             onChangeText={setInput}
             placeholder="DELETE"
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={colors.textMuted}
             autoCapitalize="characters"
             autoCorrect={false}
             editable={!loading}
@@ -103,83 +184,3 @@ export default function DeleteAccountScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  content: { flex: 1, padding: 16, gap: 16 },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  backButton: { padding: 4 },
-  backText: { color: COLORS.roxy, fontSize: 16, fontWeight: '500' },
-  headerTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '700' },
-  headerSpacer: { width: 56 },
-
-  // Warning card
-  warningCard: {
-    backgroundColor: '#3B0000',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#EF4444' + '40',
-    gap: 8,
-  },
-  warningIcon: { fontSize: 32 },
-  warningTitle: {
-    color: '#EF4444',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  warningText: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-
-  // Input section
-  inputSection: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    gap: 8,
-  },
-  inputLabel: { color: COLORS.textMuted, fontSize: 13 },
-  inputLabelBold: { color: COLORS.textPrimary, fontWeight: '700' },
-  input: {
-    backgroundColor: COLORS.background,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: COLORS.textPrimary,
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 2,
-    borderWidth: 1,
-    borderColor: COLORS.textMuted + '40',
-  },
-
-  // Delete button
-  deleteButton: {
-    backgroundColor: '#EF4444',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-  },
-  deleteButtonDisabled: {
-    backgroundColor: '#EF4444' + '40',
-    opacity: 0.6,
-  },
-  deleteButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});

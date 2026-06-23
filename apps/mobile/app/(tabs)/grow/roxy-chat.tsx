@@ -7,12 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { callEdgeFunction } from '../../../lib/supabase';
-import { COLORS } from '../../../lib/constants';
 import { Analytics } from '../../../lib/analytics';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 
 type Message = { role: 'user' | 'roxy'; content: string };
 
 export default function RoxyChatScreen() {
+  const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
 
@@ -61,6 +62,56 @@ export default function RoxyChatScreen() {
       setLoading(false);
     }
   };
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    backBtn: { width: 60, flexDirection: 'row', alignItems: 'center' },
+    backLabel: { fontSize: 15, color: colors.textPrimary, marginLeft: 2 },
+    backIcon: { fontSize: 32, color: colors.textPrimary, lineHeight: 36 },
+    headerCenter: { flex: 1, alignItems: 'center' },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
+    headerSub: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
+    messageList: { flex: 1 },
+    messageListContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 10, flexGrow: 1 },
+    emptyState: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      paddingVertical: 60, gap: 12, paddingHorizontal: 16,
+    },
+    emptyIcon: { fontSize: 48 },
+    emptyTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
+    emptyBody: { color: colors.textSecondary, textAlign: 'center', lineHeight: 22, fontSize: 15 },
+    bubbleWrap: { flexDirection: 'row', marginVertical: 4 },
+    bubbleWrapUser: { justifyContent: 'flex-end' },
+    bubbleWrapRoxy: { justifyContent: 'flex-start' },
+    bubble: { maxWidth: '80%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
+    bubbleUser: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
+    bubbleRoxy: { backgroundColor: colors.surface, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: colors.roxy + '40' },
+    bubbleText: { fontSize: 15, lineHeight: 22 },
+    bubbleTextUser: { color: '#fff' },
+    bubbleTextRoxy: { color: colors.textPrimary },
+    thinkingWrap: { flexDirection: 'row', alignItems: 'center', marginVertical: 8, paddingHorizontal: 4 },
+    thinkingText: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic' },
+    inputArea: {
+      flexDirection: 'row', alignItems: 'flex-end',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderTopWidth: 1, borderTopColor: colors.surface, gap: 10,
+    },
+    input: {
+      flex: 1, backgroundColor: colors.surface, borderRadius: 20,
+      paddingHorizontal: 16, paddingVertical: 10,
+      color: colors.textPrimary, fontSize: 15, maxHeight: 100,
+      borderWidth: 1, borderColor: colors.surfaceLight,
+    },
+    inputDisabled: { opacity: 0.5 },
+    sendBtn: { backgroundColor: colors.roxy, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 10 },
+    sendBtnDisabled: { opacity: 0.4 },
+    sendBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -118,7 +169,7 @@ export default function RoxyChatScreen() {
           {loading && (
             <View style={styles.thinkingWrap}>
               <Text style={styles.thinkingText}>Roxy is thinking…</Text>
-              <ActivityIndicator size="small" color={COLORS.roxy} style={{ marginLeft: 8 }} />
+              <ActivityIndicator size="small" color={colors.roxy} style={{ marginLeft: 8 }} />
             </View>
           )}
         </ScrollView>
@@ -130,7 +181,7 @@ export default function RoxyChatScreen() {
             value={input}
             onChangeText={setInput}
             placeholder="Ask Roxy anything…"
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={colors.textMuted}
             multiline
             editable={!loading}
             returnKeyType="default"
@@ -148,52 +199,3 @@ export default function RoxyChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  backBtn: { width: 60, flexDirection: 'row', alignItems: 'center' },
-  backLabel: { fontSize: 15, color: COLORS.textPrimary, marginLeft: 2 },
-  backIcon: { fontSize: 32, color: COLORS.textPrimary, lineHeight: 36 },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
-  headerSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 1 },
-  messageList: { flex: 1 },
-  messageListContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 10, flexGrow: 1 },
-  emptyState: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 60, gap: 12, paddingHorizontal: 16,
-  },
-  emptyIcon: { fontSize: 48 },
-  emptyTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '700' },
-  emptyBody: { color: COLORS.textSecondary, textAlign: 'center', lineHeight: 22, fontSize: 15 },
-  bubbleWrap: { flexDirection: 'row', marginVertical: 4 },
-  bubbleWrapUser: { justifyContent: 'flex-end' },
-  bubbleWrapRoxy: { justifyContent: 'flex-start' },
-  bubble: { maxWidth: '80%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
-  bubbleUser: { backgroundColor: COLORS.primary, borderBottomRightRadius: 4 },
-  bubbleRoxy: { backgroundColor: COLORS.surface, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: COLORS.roxy + '40' },
-  bubbleText: { fontSize: 15, lineHeight: 22 },
-  bubbleTextUser: { color: '#fff' },
-  bubbleTextRoxy: { color: COLORS.textPrimary },
-  thinkingWrap: { flexDirection: 'row', alignItems: 'center', marginVertical: 8, paddingHorizontal: 4 },
-  thinkingText: { color: COLORS.textMuted, fontSize: 13, fontStyle: 'italic' },
-  inputArea: {
-    flexDirection: 'row', alignItems: 'flex-end',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderTopWidth: 1, borderTopColor: COLORS.surface, gap: 10,
-  },
-  input: {
-    flex: 1, backgroundColor: COLORS.surface, borderRadius: 20,
-    paddingHorizontal: 16, paddingVertical: 10,
-    color: COLORS.textPrimary, fontSize: 15, maxHeight: 100,
-    borderWidth: 1, borderColor: COLORS.surfaceLight,
-  },
-  inputDisabled: { opacity: 0.5 },
-  sendBtn: { backgroundColor: COLORS.roxy, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 10 },
-  sendBtnDisabled: { opacity: 0.4 },
-  sendBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-});

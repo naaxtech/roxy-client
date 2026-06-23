@@ -9,8 +9,8 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useConnectStore } from '../../../store/connectStore';
-import { COLORS } from '../../../lib/constants';
 import { Conversation } from '../../../types';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 
 type PartnerProfile = { id: string; display_name: string; username: string };
 
@@ -32,6 +32,7 @@ function formatTime(ts: string | null): string {
 }
 
 export default function ChatsScreen() {
+  const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
   const { setConversations, unreadCounts, clearUnread } = useConnectStore();
@@ -182,17 +183,72 @@ export default function ChatsScreen() {
 
   const liveUnread = (id: string) => unreadCounts[id] ?? 0;
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+
+    header: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    backBtn: { padding: 4 },
+    headerTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '800' },
+
+    // Rows
+    row: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      paddingHorizontal: 16, paddingVertical: 14,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    avatar: {
+      width: 46, height: 46, borderRadius: 23,
+      backgroundColor: colors.primary + '30',
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    avatarUnread: { backgroundColor: colors.primary + '50' },
+    avatarText: { color: colors.primary, fontWeight: '700', fontSize: 18 },
+
+    rowContent: { flex: 1, gap: 3 },
+    rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    rowName: { color: colors.textSecondary, fontWeight: '500', fontSize: 15, flex: 1 },
+    rowNameUnread: { color: colors.textPrimary, fontWeight: '700' },
+    rowTime: { color: colors.textMuted, fontSize: 12, flexShrink: 0, marginLeft: 8 },
+    rowTimeUnread: { color: colors.primary, fontWeight: '600' },
+
+    rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    rowPreview: { color: colors.textMuted, fontSize: 13, flex: 1 },
+    rowPreviewUnread: { color: colors.textSecondary, fontWeight: '500' },
+
+    // Unread badge (like WhatsApp green dot)
+    badge: {
+      backgroundColor: colors.primary,
+      borderRadius: 10, minWidth: 20, height: 20,
+      alignItems: 'center', justifyContent: 'center',
+      paddingHorizontal: 5, marginLeft: 8, flexShrink: 0,
+    },
+    badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+
+    // Empty state
+    empty: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      padding: 32, paddingTop: 80, gap: 8,
+    },
+    emptyIcon: { fontSize: 48 },
+    emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
+    emptyText: { color: colors.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  });
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Messages</Text>
       </View>
 
       {loading ? (
-        <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 48 }} />
+        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
       ) : (
         <FlatList
           data={chats}
@@ -263,57 +319,3 @@ export default function ChatsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-
-  header: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  backBtn: { padding: 4 },
-  headerTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '800' },
-
-  // Rows
-  row: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  avatar: {
-    width: 46, height: 46, borderRadius: 23,
-    backgroundColor: COLORS.primary + '30',
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  avatarUnread: { backgroundColor: COLORS.primary + '50' },
-  avatarText: { color: COLORS.primary, fontWeight: '700', fontSize: 18 },
-
-  rowContent: { flex: 1, gap: 3 },
-  rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  rowName: { color: COLORS.textSecondary, fontWeight: '500', fontSize: 15, flex: 1 },
-  rowNameUnread: { color: COLORS.textPrimary, fontWeight: '700' },
-  rowTime: { color: COLORS.textMuted, fontSize: 12, flexShrink: 0, marginLeft: 8 },
-  rowTimeUnread: { color: COLORS.primary, fontWeight: '600' },
-
-  rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  rowPreview: { color: COLORS.textMuted, fontSize: 13, flex: 1 },
-  rowPreviewUnread: { color: COLORS.textSecondary, fontWeight: '500' },
-
-  // Unread badge (like WhatsApp green dot)
-  badge: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 10, minWidth: 20, height: 20,
-    alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 5, marginLeft: 8, flexShrink: 0,
-  },
-  badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-
-  // Empty state
-  empty: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    padding: 32, paddingTop: 80, gap: 8,
-  },
-  emptyIcon: { fontSize: 48 },
-  emptyTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '700' },
-  emptyText: { color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
-});

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
-import { COLORS } from '../../lib/constants';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface CartDrawerProps {
   businessId: string;
@@ -12,10 +12,42 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ businessId, businessName, visible, onClose, onCheckout }: CartDrawerProps) {
+  const colors = useThemeColors();
   const { cartItems, removeFromCart, updateQuantity, getCartTotal, getCartCount } = useMarketplaceStore();
   const items = cartItems[businessId] ?? [];
   const total = getCartTotal(businessId);
   const count = getCartCount(businessId);
+
+  const styles = StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingBottom: 32 },
+    handle: { width: 40, height: 4, backgroundColor: colors.textMuted, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
+    title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
+    count: { fontSize: 13, color: colors.textMuted },
+    empty: { alignItems: 'center', paddingVertical: 32 },
+    emptyText: { color: colors.textMuted, fontSize: 15 },
+    itemRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, gap: 10, borderBottomWidth: 1, borderBottomColor: colors.surface },
+    itemInfo: { flex: 1 },
+    itemName: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+    itemVariant: { fontSize: 12, color: colors.textMuted },
+    itemPrice: { fontSize: 12, color: colors.textSecondary },
+    qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    qtyBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+    qtyBtnText: { fontSize: 16, color: colors.textPrimary, fontWeight: '700' },
+    qtyText: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, minWidth: 20, textAlign: 'center' },
+    removeText: { color: colors.textMuted, fontSize: 16 },
+    footer: { paddingHorizontal: 20, paddingTop: 12, gap: 8 },
+    totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    totalLabel: { fontSize: 15, color: colors.textSecondary },
+    totalAmount: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+    shippingNote: { fontSize: 12, color: colors.textMuted },
+    checkoutBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
+    btnDisabled: { opacity: 0.4 },
+    checkoutBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+    cancelBtn: { alignItems: 'center', paddingVertical: 10 },
+    cancelText: { color: colors.textMuted, fontSize: 14 },
+  });
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -86,33 +118,3 @@ export function CartDrawer({ businessId, businessName, visible, onClose, onCheck
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: COLORS.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingBottom: 32 },
-  handle: { width: 40, height: 4, backgroundColor: COLORS.textMuted, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
-  title: { fontSize: 17, fontWeight: '700', color: COLORS.textPrimary },
-  count: { fontSize: 13, color: COLORS.textMuted },
-  empty: { alignItems: 'center', paddingVertical: 32 },
-  emptyText: { color: COLORS.textMuted, fontSize: 15 },
-  itemRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, gap: 10, borderBottomWidth: 1, borderBottomColor: COLORS.surface },
-  itemInfo: { flex: 1 },
-  itemName: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
-  itemVariant: { fontSize: 12, color: COLORS.textMuted },
-  itemPrice: { fontSize: 12, color: COLORS.textSecondary },
-  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  qtyBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
-  qtyBtnText: { fontSize: 16, color: COLORS.textPrimary, fontWeight: '700' },
-  qtyText: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary, minWidth: 20, textAlign: 'center' },
-  removeText: { color: COLORS.textMuted, fontSize: 16 },
-  footer: { paddingHorizontal: 20, paddingTop: 12, gap: 8 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  totalLabel: { fontSize: 15, color: COLORS.textSecondary },
-  totalAmount: { fontSize: 18, fontWeight: '700', color: COLORS.textPrimary },
-  shippingNote: { fontSize: 12, color: COLORS.textMuted },
-  checkoutBtn: { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
-  btnDisabled: { opacity: 0.4 },
-  checkoutBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  cancelBtn: { alignItems: 'center', paddingVertical: 10 },
-  cancelText: { color: COLORS.textMuted, fontSize: 14 },
-});

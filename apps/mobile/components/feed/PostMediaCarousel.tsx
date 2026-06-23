@@ -5,7 +5,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { getPostImageUrl } from '../../lib/media';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 const FEED_HEIGHT = 300;
 const DETAIL_HEIGHT = 400;
@@ -18,11 +18,31 @@ interface Props {
 }
 
 export function PostMediaCarousel({ urls, blurhash, variant, onOpen }: Props) {
+  const colors = useThemeColors();
   const { width: SLIDE_WIDTH } = useWindowDimensions();
   const [index, setIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const height = variant === 'detail' ? DETAIL_HEIGHT : FEED_HEIGHT;
   const multi = urls.length > 1;
+
+  const styles = StyleSheet.create({
+    wrap: { width: '100%', backgroundColor: colors.surface, overflow: 'hidden' },
+    dots: {
+      position: 'absolute', bottom: 10, left: 0, right: 0,
+      flexDirection: 'row', justifyContent: 'center', gap: 4,
+    },
+    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.45)' },
+    dotActive: { backgroundColor: '#fff' },
+    arrow: {
+      position: 'absolute', top: '50%', marginTop: -20,
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      alignItems: 'center', justifyContent: 'center',
+      ...(Platform.OS === 'web' ? { cursor: 'pointer' as const } : {}),
+    },
+    arrowLeft: { left: 8 },
+    arrowRight: { right: 8 },
+  });
 
   const go = (dir: -1 | 1) => {
     const next = Math.max(0, Math.min(urls.length - 1, index + dir));
@@ -86,22 +106,3 @@ export function PostMediaCarousel({ urls, blurhash, variant, onOpen }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { width: '100%', backgroundColor: COLORS.surface, overflow: 'hidden' },
-  dots: {
-    position: 'absolute', bottom: 10, left: 0, right: 0,
-    flexDirection: 'row', justifyContent: 'center', gap: 4,
-  },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.45)' },
-  dotActive: { backgroundColor: '#fff' },
-  arrow: {
-    position: 'absolute', top: '50%', marginTop: -20,
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center', justifyContent: 'center',
-    ...(Platform.OS === 'web' ? { cursor: 'pointer' as const } : {}),
-  },
-  arrowLeft: { left: 8 },
-  arrowRight: { right: 8 },
-});

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { getPostImageUrl } from '../../lib/media';
 import { PostActionRow } from './PostActionRow';
 import type { Post } from '../../types';
@@ -28,6 +28,40 @@ const ASPECT_HEIGHTS: Record<string, number> = { '4:5': 375, '16:9': 210, '1:1':
 export function VideoPostCard({
   post, isLiked, isSaved, onLike, onSave, onComment, onShare, onPress,
 }: VideoPostCardProps) {
+  const colors = useThemeColors();
+
+  const styles = StyleSheet.create({
+    card: { backgroundColor: colors.background, marginBottom: 8 },
+    authorRow: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 16, paddingVertical: 10, gap: 10,
+    },
+    avatarCircle: {
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: colors.primary + '30',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    avatarLetter: { color: colors.primary, fontWeight: '700', fontSize: 15 },
+    authorName: { color: colors.textPrimary, fontWeight: '600', fontSize: 14 },
+    thumbContainer: { width: '100%', backgroundColor: colors.surface, overflow: 'hidden' },
+    thumbPlaceholder: { backgroundColor: colors.surface },
+    playOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    playIcon: { fontSize: 48, color: 'rgba(255,255,255,0.9)' },
+    durationBadge: {
+      position: 'absolute', bottom: 10, right: 12,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
+    },
+    durationText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+    caption: {
+      color: colors.textSecondary, fontSize: 14,
+      paddingHorizontal: 16, paddingTop: 8,
+    },
+  });
+
   const thumbUri = post.video_thumbnail_url
     ? getPostImageUrl(post.video_thumbnail_url, 'feed')
     : null;
@@ -92,35 +126,3 @@ export function VideoPostCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { backgroundColor: COLORS.background, marginBottom: 8 },
-  authorRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 10, gap: 10,
-  },
-  avatarCircle: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: COLORS.primary + '30',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarLetter: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
-  authorName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 },
-  thumbContainer: { width: '100%', backgroundColor: COLORS.surface, overflow: 'hidden' },
-  thumbPlaceholder: { backgroundColor: COLORS.surface },
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  playIcon: { fontSize: 48, color: 'rgba(255,255,255,0.9)' },
-  durationBadge: {
-    position: 'absolute', bottom: 10, right: 12,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
-  },
-  durationText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  caption: {
-    color: COLORS.textSecondary, fontSize: 14,
-    paddingHorizontal: 16, paddingTop: 8,
-  },
-});

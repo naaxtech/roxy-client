@@ -8,13 +8,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
-import { COLORS } from '../../../../lib/constants';
+import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { RoxyLinkPicker, RoxyLinkSelection } from '../../../../components/feed/RoxyLinkPicker';
 import type { PostType } from '../../../../types';
 
 type Step = 'type-picker' | 'composer';
 
 export default function CreatePostScreen() {
+  const colors = useThemeColors();
   const { communityId } = useLocalSearchParams<{ communityId: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -92,6 +93,43 @@ export default function CreatePostScreen() {
     router.back();
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    cancelBtn: { color: colors.primary, fontSize: 15 },
+    headerTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
+    publishBtn: {
+      backgroundColor: colors.primary, paddingHorizontal: 16,
+      paddingVertical: 8, borderRadius: 20,
+    },
+    publishBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    typePicker: { flex: 1, padding: 16 },
+    typeOption: {
+      flexDirection: 'row', alignItems: 'center',
+      padding: 16, marginBottom: 8,
+      backgroundColor: colors.surface, borderRadius: 12,
+    },
+    typeIcon: { fontSize: 28, marginRight: 14 },
+    typeInfo: { flex: 1 },
+    typeLabel: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
+    typeSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+    typeChevron: { color: colors.textMuted, fontSize: 20 },
+    linkPreview: {
+      backgroundColor: colors.surface, margin: 16,
+      padding: 12, borderRadius: 10,
+    },
+    linkPreviewText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
+    captionInput: {
+      flex: 1, padding: 16,
+      color: colors.textPrimary, fontSize: 16,
+      lineHeight: 24, textAlignVertical: 'top',
+    },
+  });
+
   if (step === 'type-picker') {
     return (
       <SafeAreaView style={styles.container}>
@@ -166,7 +204,7 @@ export default function CreatePostScreen() {
             ? 'Add a caption (optional)…'
             : "What's on your mind?"
         }
-        placeholderTextColor={COLORS.textMuted}
+        placeholderTextColor={colors.textMuted}
         value={content}
         onChangeText={setContent}
         multiline
@@ -177,39 +215,3 @@ export default function CreatePostScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  cancelBtn: { color: COLORS.primary, fontSize: 15 },
-  headerTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16 },
-  publishBtn: {
-    backgroundColor: COLORS.primary, paddingHorizontal: 16,
-    paddingVertical: 8, borderRadius: 20,
-  },
-  publishBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  typePicker: { flex: 1, padding: 16 },
-  typeOption: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: 16, marginBottom: 8,
-    backgroundColor: COLORS.surface, borderRadius: 12,
-  },
-  typeIcon: { fontSize: 28, marginRight: 14 },
-  typeInfo: { flex: 1 },
-  typeLabel: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16 },
-  typeSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
-  typeChevron: { color: COLORS.textMuted, fontSize: 20 },
-  linkPreview: {
-    backgroundColor: COLORS.surface, margin: 16,
-    padding: 12, borderRadius: 10,
-  },
-  linkPreviewText: { color: COLORS.primary, fontSize: 14, fontWeight: '600' },
-  captionInput: {
-    flex: 1, padding: 16,
-    color: COLORS.textPrimary, fontSize: 16,
-    lineHeight: 24, textAlignVertical: 'top',
-  },
-});

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, Linking } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { COLORS } from '../../lib/constants';
 import { Business, BusinessPhoto } from '../../types';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { BusinessPhotoGallery } from './BusinessPhotoGallery';
 import { ProductCard } from './ProductCard';
 import { CartDrawer } from './CartDrawer';
@@ -30,6 +30,7 @@ export function BusinessDetailSheet({
   onClose,
   onViewOrders,
 }: BusinessDetailSheetProps) {
+  const colors = useThemeColors();
   const hasLinks = !!(business?.website_url || business?.instagram_handle);
   const [activeTab, setActiveTab] = useState<Tab>('about');
   const [showCart, setShowCart] = useState(false);
@@ -74,6 +75,111 @@ export function BusinessDetailSheet({
     onClose();
     onViewOrders?.();
   };
+
+  const styles = StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingTop: 12,
+      maxHeight: '88%',
+      flex: 1,
+    },
+    handle: {
+      width: 40,
+      height: 4,
+      backgroundColor: colors.textMuted,
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginBottom: 16,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingLeft: 20,
+      paddingRight: 88,
+      paddingBottom: 16,
+      gap: 12,
+    },
+    logoCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.primary + '30',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    logoText: { color: colors.primary, fontWeight: '700', fontSize: 20 },
+    headerInfo: { flex: 1, gap: 2 },
+    name: { color: colors.textPrimary, fontWeight: '700', fontSize: 17 },
+    verifiedBadge: { color: colors.primary, fontSize: 12, fontWeight: '600' },
+    city: { color: colors.textMuted, fontSize: 12 },
+    bookmarkBtn: {
+      position: 'absolute',
+      top: 16,
+      right: 52,
+      padding: 8,
+    },
+    bookmarkIcon: { fontSize: 22 },
+    tabBar: {
+      flexDirection: 'row',
+      paddingHorizontal: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.surface,
+      marginBottom: 4,
+    },
+    tab: {
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      marginRight: 4,
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
+    },
+    tabActive: { borderBottomColor: colors.primary },
+    tabText: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
+    tabTextActive: { color: colors.primary },
+    description: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+    },
+    linksSection: { paddingHorizontal: 20, paddingVertical: 12, gap: 12 },
+    linksHeader: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
+    linkRow: {},
+    linkText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
+    emptyState: { alignItems: 'center', paddingVertical: 48 },
+    emptyStateText: { color: colors.textMuted, fontSize: 15 },
+    cartFab: {
+      position: 'absolute',
+      bottom: 24,
+      right: 20,
+      backgroundColor: colors.primary,
+      borderRadius: 28,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      shadowColor: '#000',
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 8,
+    },
+    cartFabText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+    closeBtn: {
+      position: 'absolute',
+      top: 16,
+      right: 16,
+      padding: 8,
+    },
+    closeBtnText: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
+  });
 
   return (
     <Modal
@@ -261,107 +367,3 @@ export function BusinessDetailSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 12,
-    maxHeight: '88%',
-    flex: 1,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: COLORS.textMuted,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingLeft: 20,
-    paddingRight: 88,
-    paddingBottom: 16,
-    gap: 12,
-  },
-  logoCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.primary + '30',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  logoText: { color: COLORS.primary, fontWeight: '700', fontSize: 20 },
-  headerInfo: { flex: 1, gap: 2 },
-  name: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 17 },
-  verifiedBadge: { color: COLORS.primary, fontSize: 12, fontWeight: '600' },
-  city: { color: COLORS.textMuted, fontSize: 12 },
-  bookmarkBtn: {
-    position: 'absolute',
-    top: 16,
-    right: 52,
-    padding: 8,
-  },
-  bookmarkIcon: { fontSize: 22 },
-  tabBar: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.surface,
-    marginBottom: 4,
-  },
-  tab: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginRight: 4,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabActive: { borderBottomColor: COLORS.primary },
-  tabText: { fontSize: 14, fontWeight: '600', color: COLORS.textMuted },
-  tabTextActive: { color: COLORS.primary },
-  description: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  linksSection: { paddingHorizontal: 20, paddingVertical: 12, gap: 12 },
-  linksHeader: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
-  linkRow: {},
-  linkText: { color: COLORS.primary, fontSize: 14, fontWeight: '600' },
-  emptyState: { alignItems: 'center', paddingVertical: 48 },
-  emptyStateText: { color: COLORS.textMuted, fontSize: 15 },
-  cartFab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 20,
-    backgroundColor: COLORS.primary,
-    borderRadius: 28,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  cartFabText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  closeBtn: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    padding: 8,
-  },
-  closeBtnText: { color: COLORS.textMuted, fontSize: 18, fontWeight: '700' },
-});

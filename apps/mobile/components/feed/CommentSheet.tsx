@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet,
   TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { CommentThread } from './CommentThread';
 import { submitComment } from '../../lib/comments';
 import { useFeedStore } from '../../store/feedStore';
@@ -25,9 +25,42 @@ export function CommentSheet({
   visible, postId, comments, likedCommentIds, currentUserId,
   onClose, onLikeComment, onReply, onCommentsChange,
 }: CommentSheetProps) {
+  const colors = useThemeColors();
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const bumpCommentCount = useFeedStore(s => s.bumpCommentCount);
+
+  const styles = StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+    sheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      maxHeight: '75%', paddingTop: 12,
+    },
+    handle: {
+      width: 40, height: 4, backgroundColor: colors.textMuted,
+      borderRadius: 2, alignSelf: 'center', marginBottom: 12,
+    },
+    header: {
+      flexDirection: 'row', justifyContent: 'space-between',
+      alignItems: 'center', paddingHorizontal: 20, paddingBottom: 12,
+    },
+    title: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
+    close: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
+    scroll: { maxHeight: 360 },
+    inputRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderTopWidth: 1, borderTopColor: colors.surface,
+    },
+    input: {
+      flex: 1, backgroundColor: colors.surface,
+      borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+      color: colors.textPrimary, fontSize: 14,
+    },
+    send: { fontSize: 18, color: colors.primary, fontWeight: '700' },
+    sendDisabled: { color: colors.textMuted },
+  });
 
   const handleSubmit = async () => {
     if (!text.trim() || !currentUserId || submitting) return;
@@ -77,7 +110,7 @@ export function CommentSheet({
             <TextInput
               style={styles.input}
               placeholder="Add a comment…"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={text}
               onChangeText={setText}
               returnKeyType="send"
@@ -89,7 +122,7 @@ export function CommentSheet({
               hitSlop={8}
             >
               {submitting
-                ? <ActivityIndicator size="small" color={COLORS.primary} />
+                ? <ActivityIndicator size="small" color={colors.primary} />
                 : <Text style={[styles.send, !text.trim() && styles.sendDisabled]}>↗</Text>
               }
             </TouchableOpacity>
@@ -99,35 +132,3 @@ export function CommentSheet({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: {
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    maxHeight: '75%', paddingTop: 12,
-  },
-  handle: {
-    width: 40, height: 4, backgroundColor: COLORS.textMuted,
-    borderRadius: 2, alignSelf: 'center', marginBottom: 12,
-  },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingHorizontal: 20, paddingBottom: 12,
-  },
-  title: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16 },
-  close: { color: COLORS.textMuted, fontSize: 18, fontWeight: '700' },
-  scroll: { maxHeight: 360 },
-  inputRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderTopWidth: 1, borderTopColor: COLORS.surface,
-  },
-  input: {
-    flex: 1, backgroundColor: COLORS.surface,
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
-    color: COLORS.textPrimary, fontSize: 14,
-  },
-  send: { fontSize: 18, color: COLORS.primary, fontWeight: '700' },
-  sendDisabled: { color: COLORS.textMuted },
-});

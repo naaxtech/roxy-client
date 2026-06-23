@@ -4,12 +4,11 @@ import {
   KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Share, Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useFeedStore } from '../../../../store/feedStore';
-import { COLORS } from '../../../../lib/constants';
+import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { fetchPostById } from '../../../../lib/posts';
 import { routeParam } from '../../../../lib/routeParams';
 import { COMMENT_WITH_AUTHOR } from '../../../../lib/supabaseQueries';
@@ -19,6 +18,7 @@ import { CommentThread } from '../../../../components/feed/CommentThread';
 import type { Comment, Post } from '../../../../types';
 
 export default function PostDetailScreen() {
+  const colors = useThemeColors();
   const params = useLocalSearchParams<{ postId: string | string[] }>();
   const postId = routeParam(params.postId);
   const router = useRouter();
@@ -163,11 +163,50 @@ export default function PostDetailScreen() {
     setSubmitting(false);
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1,
+      borderBottomColor: colors.surface,
+    },
+    backBtn: { color: colors.primary, fontSize: 15, fontWeight: '600' },
+    headerAuthor: { color: colors.textMuted, fontSize: 13 },
+    detailImage: { width: '100%', height: 400 },
+    captionBlock: { padding: 16 },
+    caption: { color: colors.textPrimary, fontSize: 15, lineHeight: 22 },
+    divider: { height: 1, backgroundColor: colors.surface, marginHorizontal: 16 },
+    sectionHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+    sectionTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 15 },
+    stickyBar: {
+      flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12,
+      paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.surface,
+      backgroundColor: colors.background, gap: 8,
+    },
+    stickyAction: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+    stickyIcon: { fontSize: 18, color: colors.textMuted },
+    stickyCount: { fontSize: 13, color: colors.textMuted },
+    iconActive: { color: colors.primary },
+    commentInput: {
+      flex: 1, backgroundColor: colors.surface,
+      borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+      color: colors.textPrimary, fontSize: 14, maxHeight: 80,
+    },
+    sendBtn: { fontSize: 18, color: colors.primary, fontWeight: '700' },
+    sendDisabled: { color: colors.textMuted },
+    replyChip: {
+      backgroundColor: colors.primary + '20', color: colors.primary,
+      fontSize: 11, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10,
+    },
+    errorBody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+    errorText: { color: colors.textSecondary, fontSize: 15, textAlign: 'center' },
+  });
+
   if (loadingPost) {
     return (
       <SafeAreaView style={styles.container}>
         <View testID="post-detail-loading" style={{ flex: 1 }}>
-          <ActivityIndicator color={COLORS.primary} style={{ flex: 1 }} />
+          <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
         </View>
       </SafeAreaView>
     );
@@ -232,7 +271,7 @@ export default function PostDetailScreen() {
           </View>
 
           {loadingComments ? (
-            <ActivityIndicator color={COLORS.primary} style={{ padding: 32 }} />
+            <ActivityIndicator color={colors.primary} style={{ padding: 32 }} />
           ) : (
             <CommentThread
               postId={post.id}
@@ -282,7 +321,7 @@ export default function PostDetailScreen() {
           <TextInput
             style={styles.commentInput}
             placeholder={replyingTo ? `Reply to ${replyingTo.profiles?.display_name}…` : 'Add a comment…'}
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={colors.textMuted}
             value={commentText}
             onChangeText={setCommentText}
             returnKeyType="send"
@@ -295,7 +334,7 @@ export default function PostDetailScreen() {
             hitSlop={8}
           >
             {submitting
-              ? <ActivityIndicator size="small" color={COLORS.primary} />
+              ? <ActivityIndicator size="small" color={colors.primary} />
               : <Text style={[styles.sendBtn, !commentText.trim() && styles.sendDisabled]}>↗</Text>
             }
           </TouchableOpacity>
@@ -313,41 +352,3 @@ export default function PostDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1,
-    borderBottomColor: COLORS.surface,
-  },
-  backBtn: { color: COLORS.primary, fontSize: 15, fontWeight: '600' },
-  headerAuthor: { color: COLORS.textMuted, fontSize: 13 },
-  detailImage: { width: '100%', height: 400 },
-  captionBlock: { padding: 16 },
-  caption: { color: COLORS.textPrimary, fontSize: 15, lineHeight: 22 },
-  divider: { height: 1, backgroundColor: COLORS.surface, marginHorizontal: 16 },
-  sectionHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-  sectionTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 15 },
-  stickyBar: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12,
-    paddingVertical: 10, borderTopWidth: 1, borderTopColor: COLORS.surface,
-    backgroundColor: COLORS.background, gap: 8,
-  },
-  stickyAction: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  stickyIcon: { fontSize: 18, color: COLORS.textMuted },
-  stickyCount: { fontSize: 13, color: COLORS.textMuted },
-  iconActive: { color: COLORS.primary },
-  commentInput: {
-    flex: 1, backgroundColor: COLORS.surface,
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
-    color: COLORS.textPrimary, fontSize: 14, maxHeight: 80,
-  },
-  sendBtn: { fontSize: 18, color: COLORS.primary, fontWeight: '700' },
-  sendDisabled: { color: COLORS.textMuted },
-  replyChip: {
-    backgroundColor: COLORS.primary + '20', color: COLORS.primary,
-    fontSize: 11, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10,
-  },
-  errorBody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  errorText: { color: COLORS.textSecondary, fontSize: 15, textAlign: 'center' },
-});

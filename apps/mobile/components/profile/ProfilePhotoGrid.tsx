@@ -5,7 +5,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { logError } from '../../lib/errorLogger';
 
 const MAX_PHOTOS = 6;
@@ -19,9 +19,28 @@ interface Props {
 }
 
 export function ProfilePhotoGrid({ userId, editable = false }: Props) {
+  const colors = useThemeColors();
   const [photos, setPhotos] = useState<PhotoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+
+  const styles = StyleSheet.create({
+    wrap: { marginTop: 20, paddingHorizontal: 16 },
+    label: { color: colors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 10 },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    slot: { width: SLOT, height: SLOT, borderRadius: 10, overflow: 'hidden' },
+    img: { width: '100%', height: '100%' },
+    add: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.surface, borderRadius: 10,
+      borderWidth: 1, borderColor: colors.primary + '50', borderStyle: 'dashed',
+    },
+    placeholder: { flex: 1, backgroundColor: colors.surface, borderRadius: 10, opacity: 0.35 },
+    remove: {
+      position: 'absolute', top: 4, right: 4,
+      backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, padding: 2,
+    },
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,7 +104,7 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
   };
 
   if (loading) {
-    return <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 16 }} />;
+    return <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />;
   }
 
   const slots = Array.from({ length: MAX_PHOTOS }, (_, i) => photos[i] ?? null);
@@ -108,9 +127,9 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
             ) : editable && i === photos.length ? (
               <TouchableOpacity style={styles.add} onPress={() => void addPhoto()} disabled={uploading}>
                 {uploading ? (
-                  <ActivityIndicator color={COLORS.primary} size="small" />
+                  <ActivityIndicator color={colors.primary} size="small" />
                 ) : (
-                  <Ionicons name="add" size={28} color={COLORS.primary} />
+                  <Ionicons name="add" size={28} color={colors.primary} />
                 )}
               </TouchableOpacity>
             ) : (
@@ -122,21 +141,3 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { marginTop: 20, paddingHorizontal: 16 },
-  label: { color: COLORS.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 10 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  slot: { width: SLOT, height: SLOT, borderRadius: 10, overflow: 'hidden' },
-  img: { width: '100%', height: '100%' },
-  add: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: COLORS.surface, borderRadius: 10,
-    borderWidth: 1, borderColor: COLORS.primary + '50', borderStyle: 'dashed',
-  },
-  placeholder: { flex: 1, backgroundColor: COLORS.surface, borderRadius: 10, opacity: 0.35 },
-  remove: {
-    position: 'absolute', top: 4, right: 4,
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, padding: 2,
-  },
-});

@@ -11,7 +11,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { supabase } from '../../../../../lib/supabase';
 import { useAuthStore } from '../../../../../store/authStore';
-import { COLORS } from '../../../../../lib/constants';
+import { useThemeColors } from '../../../../../hooks/useThemeColors';
 import { COMMENT_WITH_AUTHOR } from '../../../../../lib/supabaseQueries';
 import { Analytics } from '../../../../../lib/analytics';
 import type { Comment } from '../../../../../types';
@@ -31,6 +31,7 @@ type CommentRow = Comment & {
 };
 
 export default function PostDetailScreen() {
+  const colors = useThemeColors();
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -97,10 +98,80 @@ export default function PostDetailScreen() {
 
   const userInitial = user?.email?.[0]?.toUpperCase() ?? '?';
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+
+    header: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 16, paddingVertical: 12, gap: 12,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    backBtn: { padding: 4 },
+    backRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 8 },
+    headerTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
+
+    // Post
+    postCard: { backgroundColor: colors.surface, padding: 14, marginBottom: 0 },
+    authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+    avatar: {
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: colors.surfaceLight, alignItems: 'center', justifyContent: 'center',
+    },
+    avatarText: { color: colors.textSecondary, fontWeight: '700', fontSize: 14 },
+    authorName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
+    postTime: { color: colors.textMuted, fontSize: 12 },
+    postContent: { color: colors.textPrimary, fontSize: 16, lineHeight: 24, marginBottom: 12 },
+    commentCountLabel: { color: colors.textMuted, fontSize: 13 },
+
+    divider: { height: 1, backgroundColor: colors.surface, marginVertical: 8 },
+
+    // Empty
+    emptyComments: { alignItems: 'center', paddingVertical: 32, gap: 8 },
+    emptyIcon: { fontSize: 36 },
+    emptyText: { color: colors.textMuted, fontSize: 14 },
+
+    // Comments — Instagram flat style
+    commentRow: {
+      flexDirection: 'row', gap: 10,
+      paddingHorizontal: 16, paddingVertical: 8,
+    },
+    commentAvatar: {
+      width: 30, height: 30, borderRadius: 15,
+      backgroundColor: colors.surfaceLight, alignItems: 'center', justifyContent: 'center',
+      marginTop: 2, flexShrink: 0,
+    },
+    commentAvatarText: { color: colors.textSecondary, fontWeight: '700', fontSize: 12 },
+    commentBody: { flex: 1 },
+    commentText: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
+    commentAuthor: { fontWeight: '700', color: colors.textPrimary },
+    commentTime: { color: colors.textMuted, fontSize: 11, marginTop: 3 },
+
+    // Composer — Instagram style
+    composer: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingHorizontal: 12, paddingVertical: 10,
+      borderTopWidth: 1, borderTopColor: colors.surface,
+      backgroundColor: colors.background,
+    },
+    composerAvatar: {
+      width: 30, height: 30, borderRadius: 15,
+      backgroundColor: colors.primary + '40',
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    composerAvatarText: { color: colors.primary, fontWeight: '700', fontSize: 12 },
+    composerInput: {
+      flex: 1, color: colors.textPrimary, fontSize: 14,
+      maxHeight: 80, paddingVertical: 4,
+    },
+    postBtn: { color: colors.roxy, fontWeight: '700', fontSize: 14 },
+
+    errorText: { color: colors.textMuted, textAlign: 'center', marginTop: 48, fontSize: 16 },
+  });
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 48 }} />
+        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
       </SafeAreaView>
     );
   }
@@ -109,7 +180,7 @@ export default function PostDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <TouchableOpacity style={styles.backRow} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.errorText}>Post not found</Text>
       </SafeAreaView>
@@ -121,7 +192,7 @@ export default function PostDetailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Post</Text>
       </View>
@@ -193,7 +264,7 @@ export default function PostDetailScreen() {
           <TextInput
             style={styles.composerInput}
             placeholder="Add a comment…"
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={colors.textMuted}
             value={draft}
             onChangeText={(t) => setDraft(t.slice(0, MAX_CHARS))}
             multiline
@@ -202,7 +273,7 @@ export default function PostDetailScreen() {
           {draft.trim().length > 0 && (
             <TouchableOpacity onPress={handleSubmit} disabled={submitting}>
               {submitting
-                ? <ActivityIndicator size="small" color={COLORS.roxy} />
+                ? <ActivityIndicator size="small" color={colors.roxy} />
                 : <Text style={styles.postBtn}>Post</Text>
               }
             </TouchableOpacity>
@@ -213,72 +284,3 @@ export default function PostDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12, gap: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  backBtn: { padding: 4 },
-  backRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 8 },
-  headerTitle: { color: COLORS.textPrimary, fontSize: 17, fontWeight: '700' },
-
-  // Post
-  postCard: { backgroundColor: COLORS.surface, padding: 14, marginBottom: 0 },
-  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  avatar: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
-  },
-  avatarText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 14 },
-  authorName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
-  postTime: { color: COLORS.textMuted, fontSize: 12 },
-  postContent: { color: COLORS.textPrimary, fontSize: 16, lineHeight: 24, marginBottom: 12 },
-  commentCountLabel: { color: COLORS.textMuted, fontSize: 13 },
-
-  divider: { height: 1, backgroundColor: COLORS.surface, marginVertical: 8 },
-
-  // Empty
-  emptyComments: { alignItems: 'center', paddingVertical: 32, gap: 8 },
-  emptyIcon: { fontSize: 36 },
-  emptyText: { color: COLORS.textMuted, fontSize: 14 },
-
-  // Comments — Instagram flat style
-  commentRow: {
-    flexDirection: 'row', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 8,
-  },
-  commentAvatar: {
-    width: 30, height: 30, borderRadius: 15,
-    backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
-    marginTop: 2, flexShrink: 0,
-  },
-  commentAvatarText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 12 },
-  commentBody: { flex: 1 },
-  commentText: { color: COLORS.textPrimary, fontSize: 14, lineHeight: 20 },
-  commentAuthor: { fontWeight: '700', color: COLORS.textPrimary },
-  commentTime: { color: COLORS.textMuted, fontSize: 11, marginTop: 3 },
-
-  // Composer — Instagram style
-  composer: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 12, paddingVertical: 10,
-    borderTopWidth: 1, borderTopColor: COLORS.surface,
-    backgroundColor: COLORS.background,
-  },
-  composerAvatar: {
-    width: 30, height: 30, borderRadius: 15,
-    backgroundColor: COLORS.primary + '40',
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  composerAvatarText: { color: COLORS.primary, fontWeight: '700', fontSize: 12 },
-  composerInput: {
-    flex: 1, color: COLORS.textPrimary, fontSize: 14,
-    maxHeight: 80, paddingVertical: 4,
-  },
-  postBtn: { color: COLORS.roxy, fontWeight: '700', fontSize: 14 },
-
-  errorText: { color: COLORS.textMuted, textAlign: 'center', marginTop: 48, fontSize: 16 },
-});

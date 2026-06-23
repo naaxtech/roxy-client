@@ -6,7 +6,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useFeedStore } from '../../../../store/feedStore';
 import { useAuthStore } from '../../../../store/authStore';
-import { COLORS } from '../../../../lib/constants';
+import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { CommentSheet } from '../../../../components/feed/CommentSheet';
 import { FeedVideoPlayer } from '../../../../components/feed/FeedVideoPlayer';
 import type { Comment, Post } from '../../../../types';
@@ -18,12 +18,13 @@ import { COMMENT_WITH_AUTHOR } from '../../../../lib/supabaseQueries';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 function VideoItem({
-  post, isActive, onComment, isLiked, isSaved, onLike, onSave, onShare,
+  post, isActive, onComment, isLiked, isSaved, onLike, onSave, onShare, styles,
 }: {
   post: Post; isActive: boolean;
   onComment: () => void;
   isLiked: boolean; isSaved: boolean;
   onLike: () => void; onSave: () => void; onShare: () => void;
+  styles: ReturnType<typeof buildStyles>;
 }) {
   const [muted, setMuted] = useState(false);
 
@@ -64,7 +65,30 @@ function VideoItem({
   );
 }
 
+function buildStyles(colors: ReturnType<typeof useThemeColors>) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#000' },
+    videoItem: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, backgroundColor: '#000' },
+    muteBtn: { position: 'absolute', top: 60, right: 16, zIndex: 2 },
+    muteIcon: { fontSize: 24 },
+    overlay: { position: 'absolute', bottom: 80, left: 16, right: 80, zIndex: 2 },
+    overlayAuthor: { color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 4 },
+    overlayCaption: { color: 'rgba(255,255,255,0.9)', fontSize: 13, lineHeight: 18 },
+    rightRail: { position: 'absolute', right: 12, bottom: 100, alignItems: 'center', gap: 20, zIndex: 2 },
+    railAction: { alignItems: 'center', gap: 2 },
+    railIcon: { fontSize: 28, color: '#fff' },
+    railIconActive: { color: colors.primary },
+    railCount: { color: '#fff', fontSize: 12 },
+    backBtn: { position: 'absolute', top: 48, left: 16, zIndex: 10 },
+    backText: { color: '#fff', fontSize: 28, fontWeight: '300' },
+    empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    emptyText: { color: colors.textMuted, fontSize: 16 },
+  });
+}
+
 export default function VideoPlayerScreen() {
+  const colors = useThemeColors();
+  const styles = buildStyles(colors);
   const params = useLocalSearchParams<{ postId: string | string[] }>();
   const postId = routeParam(params.postId);
   const router = useRouter();
@@ -174,6 +198,7 @@ export default function VideoPlayerScreen() {
             onSave={() => void toggleSave(item.id)}
             onComment={() => void openComments(item.id)}
             onShare={() => void Share.share({ message: 'Check this video on Roxy!' })}
+            styles={styles}
           />
         )}
         pagingEnabled
@@ -225,21 +250,3 @@ export default function VideoPlayerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  videoItem: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, backgroundColor: '#000' },
-  muteBtn: { position: 'absolute', top: 60, right: 16, zIndex: 2 },
-  muteIcon: { fontSize: 24 },
-  overlay: { position: 'absolute', bottom: 80, left: 16, right: 80, zIndex: 2 },
-  overlayAuthor: { color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 4 },
-  overlayCaption: { color: 'rgba(255,255,255,0.9)', fontSize: 13, lineHeight: 18 },
-  rightRail: { position: 'absolute', right: 12, bottom: 100, alignItems: 'center', gap: 20, zIndex: 2 },
-  railAction: { alignItems: 'center', gap: 2 },
-  railIcon: { fontSize: 28, color: '#fff' },
-  railIconActive: { color: COLORS.primary },
-  railCount: { color: '#fff', fontSize: 12 },
-  backBtn: { position: 'absolute', top: 48, left: 16, zIndex: 10 },
-  backText: { color: '#fff', fontSize: 28, fontWeight: '300' },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { color: COLORS.textMuted, fontSize: 16 },
-});

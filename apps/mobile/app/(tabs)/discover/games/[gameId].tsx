@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGamesStore } from '../../../../store/gamesStore';
 import { useAuthStore } from '../../../../store/authStore';
 import { buildRoxySDK } from '../../../../lib/roxyGameSdk';
-import { COLORS } from '../../../../lib/constants';
+import { useThemeColors } from '../../../../hooks/useThemeColors';
 
 // react-native-webview guarded import
 let WebViewModule: any = null;
@@ -13,6 +13,7 @@ try { WebViewModule = require('react-native-webview'); } catch {}
 const WebView = WebViewModule?.WebView ?? null;
 
 export default function GameLaunchScreen() {
+  const colors = useThemeColors();
   const { gameId } = useLocalSearchParams<{ gameId: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -20,6 +21,26 @@ export default function GameLaunchScreen() {
   const webViewRef = useRef<any>(null);
 
   const game = games.find((g) => g.id === gameId);
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 8,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+      backgroundColor: colors.background,
+    },
+    closeBtn: { padding: 4 },
+    closeText: { fontSize: 28, color: colors.textPrimary, fontWeight: '300' },
+    gameName: { flex: 1, textAlign: 'center', fontWeight: '700', fontSize: 15, color: colors.textPrimary },
+    empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    emptyText: { color: colors.textMuted, fontSize: 15 },
+    loadingOverlay: {
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.background,
+    },
+  });
 
   if (!game || !game.url) {
     return (
@@ -80,7 +101,7 @@ export default function GameLaunchScreen() {
         startInLoadingState
         renderLoading={() => (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator color={COLORS.primary} size="large" />
+            <ActivityIndicator color={colors.primary} size="large" />
           </View>
         )}
         style={{ flex: 1 }}
@@ -89,22 +110,3 @@ export default function GameLaunchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-    backgroundColor: COLORS.background,
-  },
-  closeBtn: { padding: 4 },
-  closeText: { fontSize: 28, color: COLORS.textPrimary, fontWeight: '300' },
-  gameName: { flex: 1, textAlign: 'center', fontWeight: '700', fontSize: 15, color: COLORS.textPrimary },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { color: COLORS.textMuted, fontSize: 15 },
-  loadingOverlay: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: COLORS.background,
-  },
-});

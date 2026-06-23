@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
-import { COLORS } from '../../../lib/constants';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 
 type BadgeProgressRow = {
   user_id: string;
@@ -25,6 +25,7 @@ type BadgeProgressRow = {
 };
 
 export default function BadgesScreen() {
+  const colors = useThemeColors();
   const { user } = useAuthStore();
   const router = useRouter();
   const [badges, setBadges] = useState<BadgeProgressRow[]>([]);
@@ -49,6 +50,49 @@ export default function BadgesScreen() {
       });
   }, [user?.id]);
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    backBtn: { width: 60, flexDirection: 'row', alignItems: 'center' },
+    backIcon: { fontSize: 32, color: colors.textPrimary, lineHeight: 36 },
+    backLabel: { fontSize: 15, color: colors.textPrimary, marginLeft: 2 },
+    headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800', color: colors.textPrimary },
+    centreWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+    emptyIcon: { fontSize: 48 },
+    emptyTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
+    emptySub: { color: colors.textMuted, fontSize: 14 },
+    listContent: { padding: 16 },
+    badgeCard: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+    },
+    badgeCardRight: { marginLeft: 8 },
+    badgeCardDim: { opacity: 0.5 },
+    badgeEmoji: { fontSize: 28, marginBottom: 6 },
+    badgeName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
+    badgeDesc: { color: colors.textMuted, fontSize: 11, lineHeight: 15 },
+    badgeEarned: { color: colors.roxy, fontSize: 11, fontWeight: '600', marginTop: 4 },
+    progressBarBg: {
+      height: 4,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      borderRadius: 2,
+      marginTop: 6,
+      overflow: 'hidden',
+    },
+    progressBarFill: {
+      height: 4,
+      backgroundColor: colors.roxy,
+      borderRadius: 2,
+    },
+  });
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -63,7 +107,7 @@ export default function BadgesScreen() {
 
       {loading ? (
         <View style={styles.centreWrap}>
-          <ActivityIndicator size="large" color={COLORS.roxy} />
+          <ActivityIndicator size="large" color={colors.roxy} />
         </View>
       ) : fetchError ? (
         <View style={styles.centreWrap}>
@@ -111,45 +155,3 @@ export default function BadgesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  backBtn: { width: 60, flexDirection: 'row', alignItems: 'center' },
-  backIcon: { fontSize: 32, color: COLORS.textPrimary, lineHeight: 36 },
-  backLabel: { fontSize: 15, color: COLORS.textPrimary, marginLeft: 2 },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
-  centreWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  emptyIcon: { fontSize: 48 },
-  emptyTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '700' },
-  emptySub: { color: COLORS.textMuted, fontSize: 14 },
-  listContent: { padding: 16 },
-  badgeCard: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-  },
-  badgeCardRight: { marginLeft: 8 },
-  badgeCardDim: { opacity: 0.5 },
-  badgeEmoji: { fontSize: 28, marginBottom: 6 },
-  badgeName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
-  badgeDesc: { color: COLORS.textMuted, fontSize: 11, lineHeight: 15 },
-  badgeEarned: { color: COLORS.roxy, fontSize: 11, fontWeight: '600', marginTop: 4 },
-  progressBarBg: {
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 2,
-    marginTop: 6,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: 4,
-    backgroundColor: COLORS.roxy,
-    borderRadius: 2,
-  },
-});

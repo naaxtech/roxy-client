@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface OrderConfirmationSheetProps {
   visible: boolean;
@@ -10,6 +10,20 @@ interface OrderConfirmationSheetProps {
 }
 
 export function OrderConfirmationSheet({ visible, orderId, onClose, onViewOrders }: OrderConfirmationSheetProps) {
+  const colors = useThemeColors();
+  const styles = StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+    card: { backgroundColor: colors.background, borderRadius: 20, padding: 28, alignItems: 'center', width: '100%', gap: 8 },
+    emoji: { fontSize: 56 },
+    title: { fontSize: 24, fontWeight: '700', color: colors.textPrimary },
+    subtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+    orderId: { fontSize: 13, color: colors.textMuted, fontFamily: 'monospace', marginTop: 4 },
+    primaryBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 12, width: '100%', alignItems: 'center' },
+    primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+    secondaryBtn: { paddingVertical: 10 },
+    secondaryBtnText: { color: colors.textMuted, fontSize: 14 },
+  });
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -29,16 +43,3 @@ export function OrderConfirmationSheet({ visible, orderId, onClose, onViewOrders
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  card: { backgroundColor: COLORS.background, borderRadius: 20, padding: 28, alignItems: 'center', width: '100%', gap: 8 },
-  emoji: { fontSize: 56 },
-  title: { fontSize: 24, fontWeight: '700', color: COLORS.textPrimary },
-  subtitle: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20 },
-  orderId: { fontSize: 13, color: COLORS.textMuted, fontFamily: 'monospace', marginTop: 4 },
-  primaryBtn: { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 12, width: '100%', alignItems: 'center' },
-  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  secondaryBtn: { paddingVertical: 10 },
-  secondaryBtnText: { color: COLORS.textMuted, fontSize: 14 },
-});

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, TextInput, ScrollView, StyleSheet } from 'react-native';
-import { COLORS } from '../../lib/constants';
 import { SearchChip } from './SearchChip';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface ChipSearchBarProps {
   chips: string[];
@@ -10,6 +10,7 @@ interface ChipSearchBarProps {
 }
 
 export function ChipSearchBar({ chips, onAddChip, onRemoveChip }: ChipSearchBarProps) {
+  const colors = useThemeColors();
   const [text, setText] = useState('');
 
   const handleSubmit = () => {
@@ -19,12 +20,26 @@ export function ChipSearchBar({ chips, onAddChip, onRemoveChip }: ChipSearchBarP
     setText('');
   };
 
+  const styles = StyleSheet.create({
+    wrapper: { gap: 6, paddingHorizontal: 12, paddingTop: 8 },
+    input: {
+      backgroundColor: colors.surface,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      color: colors.textPrimary,
+      fontSize: 14,
+    },
+    chipRow: { maxHeight: 36 },
+    chipRowContent: { alignItems: 'center', paddingBottom: 4 },
+  });
+
   return (
     <View style={styles.wrapper}>
       <TextInput
         style={styles.input}
         placeholder="Search businesses…"
-        placeholderTextColor={COLORS.textMuted}
+        placeholderTextColor={colors.textMuted}
         value={text}
         onChangeText={setText}
         onSubmitEditing={handleSubmit}
@@ -47,16 +62,3 @@ export function ChipSearchBar({ chips, onAddChip, onRemoveChip }: ChipSearchBarP
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: { gap: 6, paddingHorizontal: 12, paddingTop: 8 },
-  input: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    color: COLORS.textPrimary,
-    fontSize: 14,
-  },
-  chipRow: { maxHeight: 36 },
-  chipRowContent: { alignItems: 'center', paddingBottom: 4 },
-});

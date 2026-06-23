@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface TypingIndicatorProps {
   partnerName: string;
@@ -8,6 +8,7 @@ interface TypingIndicatorProps {
 }
 
 export function TypingIndicator({ partnerName, visible }: TypingIndicatorProps) {
+  const colors = useThemeColors();
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
@@ -37,6 +38,19 @@ export function TypingIndicator({ partnerName, visible }: TypingIndicatorProps) 
     transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
   });
 
+  const styles = StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 4,
+      height: 24,
+    },
+    name: { color: colors.primary, fontSize: 12, fontWeight: '600' },
+    isTyping: { color: colors.textMuted, fontSize: 12 },
+    dot: { color: colors.textMuted, fontSize: 16, lineHeight: 18 },
+  });
+
   return (
     <View style={styles.container}>
       <Text style={styles.name}>{partnerName}</Text>
@@ -47,16 +61,3 @@ export function TypingIndicator({ partnerName, visible }: TypingIndicatorProps) 
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    height: 24,
-  },
-  name: { color: COLORS.primary, fontSize: 12, fontWeight: '600' },
-  isTyping: { color: COLORS.textMuted, fontSize: 12 },
-  dot: { color: COLORS.textMuted, fontSize: 16, lineHeight: 18 },
-});

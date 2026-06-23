@@ -8,13 +8,13 @@ import { useProfileStore } from '../../../store/profileStore';
 import { useBuildStore } from '../../../store/buildStore';
 import { useMarketplaceStore } from '../../../store/marketplaceStore';
 import { supabase } from '../../../lib/supabase';
-import { COLORS } from '../../../lib/constants';
 import { ProfileCard } from '../../../components/profile/ProfileCard';
 import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
 import { BusinessDetailSheet } from '../../../components/build/BusinessDetailSheet';
 import { OrderDetailSheet } from '../../../components/build/OrderDetailSheet';
 import { logError } from '../../../lib/errorLogger';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import type { UserBadgeProgress, Badge, Business, BusinessPhoto } from '../../../types';
 import type { OrderWithItems } from '../../../types/marketplace';
 
@@ -34,6 +34,7 @@ export default function ProfileScreen() {
   const { bookmarkedBusinessIds, loadBookmarks, toggleBookmark } = useBuildStore();
   const { orders, loadingOrders, fetchOrders } = useMarketplaceStore();
   const router = useRouter();
+  const colors = useThemeColors();
 
   const [badges, setBadges] = useState<EarnedBadge[]>([]);
   const [badgeLoadError, setBadgeLoadError] = useState(false);
@@ -89,10 +90,66 @@ export default function ProfileScreen() {
     setBizPhotos((data as BusinessPhoto[]) ?? []);
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    ordersSection: {
+      marginTop: 8,
+      marginHorizontal: 16,
+      marginBottom: 32,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      overflow: 'hidden',
+    },
+    ordersSectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    ordersSectionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    ordersHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    orderCountBadge: {
+      backgroundColor: colors.primary,
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    orderCountText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+    chevron: { color: colors.textMuted, fontSize: 12 },
+    ordersLoading: { paddingVertical: 24, alignItems: 'center' },
+    ordersEmpty: { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 8, alignItems: 'center', gap: 4 },
+    ordersEmptyText: { color: colors.textMuted, fontSize: 14, fontWeight: '600' },
+    ordersEmptySubtext: { color: colors.textMuted, fontSize: 12, textAlign: 'center' },
+    orderRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderTopWidth: 1,
+      borderTopColor: colors.background,
+    },
+    orderRowLeft: { gap: 2 },
+    orderRowId: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: 'monospace' },
+    orderRowDate: { fontSize: 12, color: colors.textMuted },
+    orderRowItems: { fontSize: 12, color: colors.textSecondary },
+    orderRowRight: { alignItems: 'flex-end', gap: 4 },
+    orderRowTotal: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+    statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+    statusText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+    badgeError: { color: colors.error, fontSize: 13, textAlign: 'center', paddingHorizontal: 16, paddingTop: 4 },
+    noBadges: { color: colors.textMuted, fontSize: 13, textAlign: 'center', paddingHorizontal: 16, paddingTop: 4 },
+  });
+
   if (!user || !profile) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
       </SafeAreaView>
     );
   }
@@ -149,7 +206,7 @@ export default function ProfileScreen() {
             <>
               {loadingOrders ? (
                 <View style={styles.ordersLoading}>
-                  <ActivityIndicator color={COLORS.primary} />
+                  <ActivityIndicator color={colors.primary} />
                 </View>
               ) : sortedOrders.length === 0 ? (
                 <View style={styles.ordersEmpty}>
@@ -215,59 +272,3 @@ export default function ProfileScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  ordersSection: {
-    marginTop: 8,
-    marginHorizontal: 16,
-    marginBottom: 32,
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  ordersSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  ordersSectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  ordersHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  orderCountBadge: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  orderCountText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  chevron: { color: COLORS.textMuted, fontSize: 12 },
-  ordersLoading: { paddingVertical: 24, alignItems: 'center' },
-  ordersEmpty: { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 8, alignItems: 'center', gap: 4 },
-  ordersEmptyText: { color: COLORS.textMuted, fontSize: 14, fontWeight: '600' },
-  ordersEmptySubtext: { color: COLORS.textMuted, fontSize: 12, textAlign: 'center' },
-  orderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.background,
-  },
-  orderRowLeft: { gap: 2 },
-  orderRowId: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary, fontFamily: 'monospace' },
-  orderRowDate: { fontSize: 12, color: COLORS.textMuted },
-  orderRowItems: { fontSize: 12, color: COLORS.textSecondary },
-  orderRowRight: { alignItems: 'flex-end', gap: 4 },
-  orderRowTotal: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
-  statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  statusText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
-  badgeError: { color: COLORS.error, fontSize: 13, textAlign: 'center', paddingHorizontal: 16, paddingTop: 4 },
-  noBadges: { color: COLORS.textMuted, fontSize: 13, textAlign: 'center', paddingHorizontal: 16, paddingTop: 4 },
-});

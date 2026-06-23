@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
-import { COLORS } from '../../../../lib/constants';
+import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
 import type { SpeedDateSession as SpeedDateSessionData } from '../../../../types';
@@ -18,6 +18,7 @@ import { useVideoCall } from '../../../../hooks/useVideoCall';
 const TIMER_COLORS = { green: '#10B981', yellow: '#F59E0B', red: '#EF4444' };
 
 function TimerBar({ elapsed, total }: { elapsed: number; total: number }) {
+  const colors = useThemeColors();
   const progress = Math.min(elapsed / total, 1);
   const remaining = total - elapsed;
   const color =
@@ -26,6 +27,13 @@ function TimerBar({ elapsed, total }: { elapsed: number; total: number }) {
     TIMER_COLORS.red;
   const mins = Math.floor(remaining / 60);
   const secs = remaining % 60;
+
+  const timerStyles = StyleSheet.create({
+    container: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 10 },
+    track: { flex: 1, height: 6, backgroundColor: colors.surface, borderRadius: 3, overflow: 'hidden' },
+    fill: { height: '100%', borderRadius: 3 },
+    label: { fontWeight: '700', fontSize: 15, fontVariant: ['tabular-nums'], minWidth: 44 },
+  });
 
   return (
     <View style={timerStyles.container}>
@@ -39,14 +47,14 @@ function TimerBar({ elapsed, total }: { elapsed: number; total: number }) {
   );
 }
 
-const timerStyles = StyleSheet.create({
-  container: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 10 },
-  track: { flex: 1, height: 6, backgroundColor: COLORS.surface, borderRadius: 3, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 3 },
-  label: { fontWeight: '700', fontSize: 15, fontVariant: ['tabular-nums'], minWidth: 44 },
-});
-
 function VideoPlaceholder({ label }: { label: string }) {
+  const colors = useThemeColors();
+  const vidStyles = StyleSheet.create({
+    placeholder: { flex: 1, backgroundColor: '#0d0520', alignItems: 'center', justifyContent: 'center', gap: 8 },
+    icon: { fontSize: 48 },
+    label: { color: colors.textMuted, fontSize: 14 },
+  });
+
   return (
     <View style={vidStyles.placeholder}>
       <Text style={vidStyles.icon}>👤</Text>
@@ -55,16 +63,11 @@ function VideoPlaceholder({ label }: { label: string }) {
   );
 }
 
-const vidStyles = StyleSheet.create({
-  placeholder: { flex: 1, backgroundColor: '#0d0520', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  icon: { fontSize: 48 },
-  label: { color: COLORS.textMuted, fontSize: 14 },
-});
-
 export default function SpeedDateSession() {
   const { session_id, room_url } = useLocalSearchParams<{ session_id: string; room_url: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
+  const colors = useThemeColors();
 
   const [session, setSession] = useState<SpeedDateSessionData | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -92,6 +95,68 @@ export default function SpeedDateSession() {
       onPanResponderRelease: () => overlayPos.flattenOffset(),
     })
   ).current;
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#000' },
+    topSafe: { zIndex: 10 },
+    topBar: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: 'rgba(0,0,0,0.6)', paddingRight: 8,
+    },
+    leaveBtn: {
+      paddingHorizontal: 12, paddingVertical: 6,
+      backgroundColor: colors.error + '30', borderRadius: 8,
+    },
+    leaveBtnText: { color: colors.error, fontWeight: '700', fontSize: 13 },
+    remoteVideo: { ...StyleSheet.absoluteFillObject, zIndex: 0 },
+    promptOverlay: {
+      position: 'absolute',
+      top: '35%', left: '5%', right: '5%',
+      backgroundColor: 'rgba(0,0,0,0.65)',
+      borderRadius: 16, padding: 16,
+      borderWidth: 1, borderColor: colors.roxy + '60',
+      zIndex: 20,
+    },
+    promptLabel: { color: colors.roxy, fontSize: 11, fontWeight: '700', marginBottom: 6 },
+    promptText: { color: '#fff', fontSize: 16, lineHeight: 22, fontStyle: 'italic' },
+    nextPromptBtn: {
+      alignSelf: 'flex-end', marginTop: 10,
+      backgroundColor: colors.roxy + '30', borderRadius: 8,
+      paddingHorizontal: 12, paddingVertical: 5,
+    },
+    nextPromptText: { color: colors.roxy, fontWeight: '700', fontSize: 13 },
+    selfPip: {
+      position: 'absolute', bottom: 80, right: 16,
+      width: 90, height: 130, borderRadius: 12,
+      overflow: 'hidden', backgroundColor: colors.surface,
+      borderWidth: 2, borderColor: colors.primary,
+      zIndex: 15,
+    },
+    bottomSafe: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10 },
+    bottomBar: {
+      flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+      paddingVertical: 12, backgroundColor: 'rgba(0,0,0,0.7)',
+    },
+    likeBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      paddingHorizontal: 28, paddingVertical: 12,
+      backgroundColor: colors.surface, borderRadius: 30,
+      borderWidth: 2, borderColor: colors.surface,
+    },
+    likeBtnActive: { borderColor: colors.primary, backgroundColor: colors.primary + '20' },
+    likeIcon: { fontSize: 22 },
+    likeText: { color: colors.textSecondary, fontWeight: '700', fontSize: 16 },
+    likeTextActive: { color: colors.primary },
+    partnerLeftOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.82)',
+      alignItems: 'center', justifyContent: 'center', gap: 12,
+      zIndex: 30,
+    },
+    partnerLeftEmoji: { fontSize: 52 },
+    partnerLeftTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
+    partnerLeftSub: { color: colors.textMuted, fontSize: 15 },
+  });
 
   // Load session (prompts)
   useEffect(() => {
@@ -255,65 +320,3 @@ export default function SpeedDateSession() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  topSafe: { zIndex: 10 },
-  topBar: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)', paddingRight: 8,
-  },
-  leaveBtn: {
-    paddingHorizontal: 12, paddingVertical: 6,
-    backgroundColor: COLORS.error + '30', borderRadius: 8,
-  },
-  leaveBtnText: { color: COLORS.error, fontWeight: '700', fontSize: 13 },
-  remoteVideo: { ...StyleSheet.absoluteFillObject, zIndex: 0 },
-  promptOverlay: {
-    position: 'absolute',
-    top: '35%', left: '5%', right: '5%',
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: COLORS.roxy + '60',
-    zIndex: 20,
-  },
-  promptLabel: { color: COLORS.roxy, fontSize: 11, fontWeight: '700', marginBottom: 6 },
-  promptText: { color: '#fff', fontSize: 16, lineHeight: 22, fontStyle: 'italic' },
-  nextPromptBtn: {
-    alignSelf: 'flex-end', marginTop: 10,
-    backgroundColor: COLORS.roxy + '30', borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 5,
-  },
-  nextPromptText: { color: COLORS.roxy, fontWeight: '700', fontSize: 13 },
-  selfPip: {
-    position: 'absolute', bottom: 80, right: 16,
-    width: 90, height: 130, borderRadius: 12,
-    overflow: 'hidden', backgroundColor: COLORS.surface,
-    borderWidth: 2, borderColor: COLORS.primary,
-    zIndex: 15,
-  },
-  bottomSafe: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10 },
-  bottomBar: {
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-    paddingVertical: 12, backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  likeBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 28, paddingVertical: 12,
-    backgroundColor: COLORS.surface, borderRadius: 30,
-    borderWidth: 2, borderColor: COLORS.surface,
-  },
-  likeBtnActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '20' },
-  likeIcon: { fontSize: 22 },
-  likeText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 16 },
-  likeTextActive: { color: COLORS.primary },
-  partnerLeftOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.82)',
-    alignItems: 'center', justifyContent: 'center', gap: 12,
-    zIndex: 30,
-  },
-  partnerLeftEmoji: { fontSize: 52 },
-  partnerLeftTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  partnerLeftSub: { color: COLORS.textMuted, fontSize: 15 },
-});

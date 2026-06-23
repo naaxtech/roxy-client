@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useCommunityStore, Community } from '../../../store/communityStore';
-import { COLORS } from '../../../lib/constants';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import { logError } from '../../../lib/errorLogger';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
@@ -38,6 +38,7 @@ function FeedSection({
   communitiesReady: boolean;
   onOpenContent: (post: Post) => void;
 }) {
+  const colors = useThemeColors();
   const {
     posts, loading, loadingMore, hasMore, newPostCount, fetchError,
     likedPostIds, savedPostIds, discoverScrollOffset,
@@ -50,6 +51,14 @@ function FeedSection({
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const communityKey = feedCommunityIds.join(',');
   const [gameNames, setGameNames] = useState<Record<string, string>>({});
+  // Tracks live scroll position without touching Zustand on every frame —
+  // writing to the store on each onScroll re-renders FeedSection mid-gesture and causes stutter.
+  const scrollOffsetRef = useRef(discoverScrollOffset);
+
+  const feedStyles = StyleSheet.create({
+    empty: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
+    emptyText: { color: colors.textMuted, fontSize: 15, textAlign: 'center', lineHeight: 22 },
+  });
 
   useEffect(() => {
     void supabase.from('games').select('id, name').then(({ data }) => {
@@ -133,9 +142,7 @@ function FeedSection({
         ref={listRef}
         data={posts}
         keyExtractor={(item) => item.id}
-        onScroll={(e) => setDiscoverScrollOffset(e.nativeEvent.contentOffset.y)}
-        onMomentumScrollEnd={(e) => setDiscoverScrollOffset(e.nativeEvent.contentOffset.y)}
-        onScrollEndDrag={(e) => setDiscoverScrollOffset(e.nativeEvent.contentOffset.y)}
+        onScroll={(e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; }}
         scrollEventThrottle={32}
         renderItem={({ item }) => (
           <FeedCard
@@ -149,8 +156,8 @@ function FeedSection({
             onShare={() => void Share.share({ message: 'Check this out on Roxy!' })}
             onPress={() => {
               markSeen(item.id);
-              // Save offset at tap time so restoration uses the exact position
-              setDiscoverScrollOffset(discoverScrollOffset);
+              // Commit the live offset to the store only at navigation time
+              setDiscoverScrollOffset(scrollOffsetRef.current);
               onOpenContent(item);
             }}
           />
@@ -160,7 +167,7 @@ function FeedSection({
         onEndReachedThreshold={0.5}
         ListFooterComponent={
           loadingMore
-            ? <ActivityIndicator color={COLORS.primary} style={{ padding: 20 }} />
+            ? <ActivityIndicator color={colors.primary} style={{ padding: 20 }} />
             : null
         }
         ListEmptyComponent={
@@ -179,11 +186,6 @@ function FeedSection({
   );
 }
 
-const feedStyles = StyleSheet.create({
-  empty: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
-  emptyText: { color: COLORS.textMuted, fontSize: 15, textAlign: 'center', lineHeight: 22 },
-});
-
 // ── Games section ─────────────────────────────────────────────────────────────
 function GamesSection({
   communityId,
@@ -194,8 +196,34 @@ function GamesSection({
   onNavigateToGame: (gameId: string) => void;
   onNavigateToSpeedDating: () => void;
 }) {
+  const colors = useThemeColors();
   const router = useRouter();
   const { games, loading, fetchGames } = useGamesStore();
+
+  const gamesStyles = StyleSheet.create({
+    card: {
+      flex: 1, margin: 4, backgroundColor: colors.surface,
+      borderRadius: 12, padding: 10, gap: 6,
+    },
+    thumbnail: {
+      width: '100%', aspectRatio: 16 / 9,
+      backgroundColor: colors.surfaceLight, borderRadius: 8,
+      alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    },
+    thumbnailEmoji: { fontSize: 28 },
+    gameName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
+    publisherBadge: { color: colors.textMuted, fontSize: 11 },
+    roxyBadge: { color: colors.primary },
+    playBtn: {
+      backgroundColor: colors.primary, borderRadius: 10,
+      paddingVertical: 6, alignItems: 'center',
+    },
+    playBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+    empty: { flex: 1, alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
+    emptyText: { color: colors.textMuted, textAlign: 'center', fontSize: 14, lineHeight: 20 },
+    suggestBtn: { alignItems: 'center', padding: 16 },
+    suggestBtnText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
+  });
 
   useEffect(() => {
     if (communityId) void fetchGames(communityId);
@@ -209,7 +237,7 @@ function GamesSection({
     );
   }
 
-  if (loading) return <ActivityIndicator color={COLORS.primary} style={{ marginTop: 48 }} />;
+  if (loading) return <ActivityIndicator color={colors.primary} style={{ marginTop: 48 }} />;
 
   return (
     <FlashList
@@ -262,31 +290,6 @@ function GamesSection({
   );
 }
 
-const gamesStyles = StyleSheet.create({
-  card: {
-    flex: 1, margin: 4, backgroundColor: COLORS.surface,
-    borderRadius: 12, padding: 10, gap: 6,
-  },
-  thumbnail: {
-    width: '100%', aspectRatio: 16 / 9,
-    backgroundColor: COLORS.surfaceLight, borderRadius: 8,
-    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-  },
-  thumbnailEmoji: { fontSize: 28 },
-  gameName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13 },
-  publisherBadge: { color: COLORS.textMuted, fontSize: 11 },
-  roxyBadge: { color: COLORS.primary },
-  playBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 10,
-    paddingVertical: 6, alignItems: 'center',
-  },
-  playBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  empty: { flex: 1, alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
-  emptyText: { color: COLORS.textMuted, textAlign: 'center', fontSize: 14, lineHeight: 20 },
-  suggestBtn: { alignItems: 'center', padding: 16 },
-  suggestBtnText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
-});
-
 type EventRow = {
   id: string; title: string; starts_at: string; ends_at: string | null;
   location_text: string | null; community_id: string;
@@ -301,6 +304,7 @@ function getCommunityLevel(n: number): { label: string; emoji: string } {
 }
 
 export default function DiscoverScreen() {
+  const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
   const {
@@ -399,6 +403,99 @@ export default function DiscoverScreen() {
       )
     : allCommunities;
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      paddingHorizontal: 14, paddingTop: 8, paddingBottom: 6, gap: 8,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    headerTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
+    searchInput: {
+      backgroundColor: colors.surface, borderRadius: 16,
+      paddingHorizontal: 14, paddingVertical: 7,
+      color: colors.textPrimary, fontSize: 13,
+    },
+
+    // Sub-tabs — underline style
+    subTabRow: {
+      flexDirection: 'row',
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    subTab: {
+      flex: 1, paddingVertical: 10,
+      alignItems: 'center',
+      borderBottomWidth: 2, borderBottomColor: 'transparent',
+    },
+    subTabActive: { borderBottomColor: colors.roxy },
+    subTabText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
+    subTabTextActive: { color: colors.roxy, fontWeight: '700' },
+
+    // Community cards
+    communityCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8,
+      borderRadius: 12, padding: 10,
+    },
+    communityAvatar: {
+      width: 38, height: 38, borderRadius: 19,
+      backgroundColor: colors.surfaceLight, alignItems: 'center', justifyContent: 'center',
+    },
+    communityNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' },
+    communityName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
+    levelBadge: {
+      backgroundColor: colors.secondary + '20', borderRadius: 8,
+      paddingHorizontal: 6, paddingVertical: 2,
+    },
+    levelBadgeText: { color: colors.secondary, fontSize: 10, fontWeight: '700' },
+    communityDesc: { color: colors.textMuted, fontSize: 11, marginBottom: 3 },
+    communityMeta: { flexDirection: 'row', gap: 8 },
+    communityMetaText: { color: colors.textMuted, fontSize: 11 },
+    joinBtn: {
+      paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
+      borderWidth: 1, borderColor: colors.roxy,
+    },
+    joinBtnJoined: { backgroundColor: colors.roxy, borderColor: colors.roxy },
+    joinBtnText: { color: colors.roxy, fontWeight: '700', fontSize: 11 },
+    joinBtnTextJoined: { color: '#fff' },
+
+    // Events
+    eventCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8,
+      borderRadius: 12, padding: 10,
+    },
+    eventCardBody: {
+      flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1,
+    },
+    dateChip: {
+      width: 36, alignItems: 'center', backgroundColor: colors.primary + '20',
+      borderRadius: 8, paddingVertical: 4,
+    },
+    dateDay: { color: colors.textPrimary, fontWeight: '800', fontSize: 14 },
+    dateMonth: { color: colors.textMuted, fontSize: 10 },
+    eventTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
+    eventCommunity: { color: colors.textMuted, fontSize: 11, marginBottom: 2 },
+    eventLocation: { color: colors.textSecondary, fontSize: 11 },
+    interestedBtn: {
+      paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12,
+      borderWidth: 1, borderColor: colors.secondary,
+    },
+    interestedBtnActive: { backgroundColor: colors.secondary, borderColor: colors.secondary },
+    interestedBtnText: { color: colors.secondary, fontWeight: '700', fontSize: 11 },
+    interestedBtnTextActive: { color: '#fff' },
+
+    // Empty
+    emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12, marginTop: 40 },
+    emptyIcon: { fontSize: 48 },
+    emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  });
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -410,7 +507,7 @@ export default function DiscoverScreen() {
         <TextInput
           style={styles.searchInput}
           placeholder="Search communities, events..."
-          placeholderTextColor={COLORS.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={search}
           onChangeText={setSearch}
           returnKeyType="search"
@@ -506,7 +603,7 @@ export default function DiscoverScreen() {
       {/* Events */}
       {subTab === 'events' && (
         loadingEvents ? (
-          <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 48 }} />
+          <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
         ) : (
           <FlashList
             data={events}
@@ -570,118 +667,3 @@ export default function DiscoverScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    paddingHorizontal: 14, paddingTop: 8, paddingBottom: 6, gap: 8,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
-  searchInput: {
-    backgroundColor: COLORS.surface, borderRadius: 16,
-    paddingHorizontal: 14, paddingVertical: 7,
-    color: COLORS.textPrimary, fontSize: 13,
-  },
-
-  // Sub-tabs — underline style
-  subTabRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  subTab: {
-    flex: 1, paddingVertical: 10,
-    alignItems: 'center',
-    borderBottomWidth: 2, borderBottomColor: 'transparent',
-  },
-  subTabActive: { borderBottomColor: COLORS.roxy },
-  subTabText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
-  subTabTextActive: { color: COLORS.roxy, fontWeight: '700' },
-
-  // Community cards
-  communityCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8,
-    borderRadius: 12, padding: 10,
-  },
-  communityAvatar: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
-  },
-  communityNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' },
-  communityName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13 },
-  levelBadge: {
-    backgroundColor: COLORS.secondary + '20', borderRadius: 8,
-    paddingHorizontal: 6, paddingVertical: 2,
-  },
-  levelBadgeText: { color: COLORS.secondary, fontSize: 10, fontWeight: '700' },
-  communityDesc: { color: COLORS.textMuted, fontSize: 11, marginBottom: 3 },
-  communityMeta: { flexDirection: 'row', gap: 8 },
-  communityMetaText: { color: COLORS.textMuted, fontSize: 11 },
-  joinBtn: {
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
-    borderWidth: 1, borderColor: COLORS.roxy,
-  },
-  joinBtnJoined: { backgroundColor: COLORS.roxy, borderColor: COLORS.roxy },
-  joinBtnText: { color: COLORS.roxy, fontWeight: '700', fontSize: 11 },
-  joinBtnTextJoined: { color: '#fff' },
-
-  // Events
-  eventCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8,
-    borderRadius: 12, padding: 10,
-  },
-  eventCardBody: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1,
-  },
-  dateChip: {
-    width: 36, alignItems: 'center', backgroundColor: COLORS.primary + '20',
-    borderRadius: 8, paddingVertical: 4,
-  },
-  dateDay: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 14 },
-  dateMonth: { color: COLORS.textMuted, fontSize: 10 },
-  eventTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
-  eventCommunity: { color: COLORS.textMuted, fontSize: 11, marginBottom: 2 },
-  eventLocation: { color: COLORS.textSecondary, fontSize: 11 },
-  interestedBtn: {
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12,
-    borderWidth: 1, borderColor: COLORS.secondary,
-  },
-  interestedBtnActive: { backgroundColor: COLORS.secondary, borderColor: COLORS.secondary },
-  interestedBtnText: { color: COLORS.secondary, fontWeight: '700', fontSize: 11 },
-  interestedBtnTextActive: { color: '#fff' },
-
-  // Games
-  gamesContainer: { padding: 12, gap: 8 },
-  gameCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: COLORS.surface, borderRadius: 12, padding: 12,
-  },
-  gameEmoji: { fontSize: 24 },
-  gameTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 2 },
-  gameDesc: { color: COLORS.textMuted, fontSize: 12, lineHeight: 16 },
-  gameAvailable: { color: COLORS.secondary, fontSize: 11, fontWeight: '600', marginTop: 3 },
-  playBtn: {
-    backgroundColor: COLORS.roxy, borderRadius: 16,
-    paddingHorizontal: 12, paddingVertical: 6,
-  },
-  playBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  browseBtn: {
-    backgroundColor: COLORS.surface, borderRadius: 16,
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderWidth: 1, borderColor: COLORS.secondary,
-  },
-  browseBtnText: { color: COLORS.secondary, fontWeight: '700', fontSize: 12 },
-
-  // Empty
-  emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12, marginTop: 40 },
-  emptyIcon: { fontSize: 48 },
-  emptyTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center' },
-});

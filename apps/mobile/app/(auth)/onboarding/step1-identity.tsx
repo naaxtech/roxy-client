@@ -6,9 +6,11 @@ import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { logError, logBreadcrumb } from '../../../lib/errorLogger';
 import { ChipSelector } from '../../../components/ui/ChipSelector';
-import { IDENTITY_LABELS, PRONOUNS, COLORS, USERNAME_MAX } from '../../../lib/constants';
+import { IDENTITY_LABELS, PRONOUNS, USERNAME_MAX } from '../../../lib/constants';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 
 export default function Step1Identity() {
+  const colors = useThemeColors();
   const [username, setUsername] = useState('');
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [displayName, setDisplayName] = useState('');
@@ -56,6 +58,21 @@ export default function Step1Identity() {
 
   const usernameHint = username.length < 3 ? '' : usernameAvailable === true ? '✓ Available' : usernameAvailable === false ? '✗ Taken' : '';
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    scroll: { padding: 24, gap: 8 },
+    step: { color: colors.textMuted, fontSize: 13 },
+    headline: { fontSize: 28, fontWeight: '700', color: colors.textPrimary, marginBottom: 16 },
+    label: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', marginTop: 12 },
+    input: { backgroundColor: colors.surface, borderRadius: 12, padding: 14, color: colors.textPrimary, fontSize: 16 },
+    hint: { fontSize: 12, marginTop: 2 },
+    hintGood: { color: colors.success },
+    hintBad: { color: colors.error },
+    btn: { backgroundColor: colors.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 24 },
+    btnDisabled: { opacity: 0.5 },
+    btnText: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
+  });
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -67,7 +84,7 @@ export default function Step1Identity() {
         <TextInput
           style={styles.input}
           placeholder="@yourname"
-          placeholderTextColor={COLORS.textMuted}
+          placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           value={username}
           onChangeText={checkUsername}
@@ -78,7 +95,7 @@ export default function Step1Identity() {
         <TextInput
           style={styles.input}
           placeholder="How you'll appear"
-          placeholderTextColor={COLORS.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={displayName}
           onChangeText={setDisplayName}
         />
@@ -107,17 +124,3 @@ export default function Step1Identity() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { padding: 24, gap: 8 },
-  step: { color: COLORS.textMuted, fontSize: 13 },
-  headline: { fontSize: 28, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 16 },
-  label: { color: COLORS.textSecondary, fontSize: 14, fontWeight: '600', marginTop: 12 },
-  input: { backgroundColor: COLORS.surface, borderRadius: 12, padding: 14, color: COLORS.textPrimary, fontSize: 16 },
-  hint: { fontSize: 12, marginTop: 2 },
-  hintGood: { color: COLORS.success },
-  hintBad: { color: COLORS.error },
-  btn: { backgroundColor: COLORS.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 24 },
-  btnDisabled: { opacity: 0.5 },
-  btnText: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16 },
-});

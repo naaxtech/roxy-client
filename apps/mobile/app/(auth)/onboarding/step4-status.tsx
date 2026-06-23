@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { callEdgeFunction } from '../../../lib/supabase';
-import { COLORS } from '../../../lib/constants';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import { logError, logBreadcrumb } from '../../../lib/errorLogger';
 
 const GOALS = [
@@ -15,6 +15,7 @@ const GOALS = [
 ] as const;
 
 export default function Step4Status() {
+  const colors = useThemeColors();
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuthStore();
@@ -47,6 +48,23 @@ export default function Step4Status() {
     router.replace('/(tabs)/grow');
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    content: { flex: 1, padding: 24, gap: 12 },
+    step: { color: colors.textMuted, fontSize: 13 },
+    headline: { fontSize: 28, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
+    card: {
+      backgroundColor: colors.surface, borderRadius: 16, padding: 20,
+      borderWidth: 2, borderColor: 'transparent',
+    },
+    cardSelected: { borderColor: colors.primary, backgroundColor: colors.surfaceLight },
+    cardTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary, letterSpacing: 1 },
+    cardSub: { color: colors.textSecondary, marginTop: 4 },
+    btn: { backgroundColor: colors.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 'auto' },
+    btnDisabled: { opacity: 0.5 },
+    btnText: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
+  });
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -76,19 +94,3 @@ export default function Step4Status() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  content: { flex: 1, padding: 24, gap: 12 },
-  step: { color: COLORS.textMuted, fontSize: 13 },
-  headline: { fontSize: 28, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 8 },
-  card: {
-    backgroundColor: COLORS.surface, borderRadius: 16, padding: 20,
-    borderWidth: 2, borderColor: 'transparent',
-  },
-  cardSelected: { borderColor: COLORS.primary, backgroundColor: COLORS.surfaceLight },
-  cardTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary, letterSpacing: 1 },
-  cardSub: { color: COLORS.textSecondary, marginTop: 4 },
-  btn: { backgroundColor: COLORS.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 'auto' },
-  btnDisabled: { opacity: 0.5 },
-  btnText: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16 },
-});

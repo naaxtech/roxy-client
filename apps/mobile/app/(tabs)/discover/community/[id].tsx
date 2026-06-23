@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useCommunityStore, Community } from '../../../../store/communityStore';
-import { COLORS } from '../../../../lib/constants';
+import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
 import { CommunityRoomCard } from '../../../../components/community/CommunityRoomCard';
@@ -41,6 +41,7 @@ function getCommunityLevel(n: number): { label: string; emoji: string } {
 }
 
 export default function CommunityDetailScreen() {
+  const colors = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -206,10 +207,140 @@ export default function CommunityDetailScreen() {
   };
 
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+
+    // Cover
+    cover: { height: 140, position: 'relative' },
+    coverGradient: {
+      height: 140, backgroundColor: colors.secondary + '60',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    coverEmoji: { fontSize: 48 },
+    backBtn: {
+      position: 'absolute', top: 50, left: 16,
+      width: 38, height: 38, borderRadius: 19,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+      alignItems: 'center', justifyContent: 'center',
+    },
+
+    // Info card
+    infoCard: { backgroundColor: colors.surface, padding: 14, gap: 6 },
+    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+    communityName: { color: colors.textPrimary, fontSize: 18, fontWeight: '800', flex: 1 },
+    levelBadge: {
+      backgroundColor: colors.secondary + '20', borderRadius: 10,
+      paddingHorizontal: 8, paddingVertical: 2,
+    },
+    levelBadgeText: { color: colors.secondary, fontWeight: '700', fontSize: 11 },
+    membersRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    membersText: { color: colors.roxy, fontWeight: '600', fontSize: 13, textDecorationLine: 'underline' },
+    privacyPill: {
+      backgroundColor: colors.primary + '20', borderRadius: 8,
+      paddingHorizontal: 7, paddingVertical: 2,
+    },
+    privacyPillPrivate: { backgroundColor: colors.textMuted + '20' },
+    privacyPillText: { color: colors.textMuted, fontSize: 11 },
+    communityDesc: { color: colors.textSecondary, fontSize: 13, lineHeight: 18 },
+    joinBtn: {
+      backgroundColor: colors.roxy, borderRadius: 12,
+      paddingVertical: 8, alignItems: 'center',
+    },
+    joinBtnJoined: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.textMuted + '60' },
+    joinBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+    joinBtnTextJoined: { color: colors.textMuted },
+
+    // Sub-tabs
+    subTabRow: {
+      flexDirection: 'row',
+      backgroundColor: colors.background,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    subTab: {
+      flex: 1, paddingVertical: 13,
+      alignItems: 'center',
+      borderBottomWidth: 2, borderBottomColor: 'transparent',
+    },
+    subTabActive: { borderBottomColor: colors.roxy },
+    subTabText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
+    subTabTextActive: { color: colors.roxy, fontWeight: '700' },
+
+    // Posts
+    postCard: { backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8, borderRadius: 12, padding: 10 },
+    postAuthorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+    postAvatar: {
+      width: 28, height: 28, borderRadius: 14,
+      backgroundColor: colors.surfaceLight, alignItems: 'center', justifyContent: 'center',
+    },
+    postAvatarText: { color: colors.textSecondary, fontWeight: '700', fontSize: 11 },
+    postAuthorName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
+    postTime: { color: colors.textMuted, fontSize: 11 },
+    postContent: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
+    postFooter: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 8 },
+    footerBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    footerHeart: { color: colors.textMuted, fontSize: 16 },
+    footerHeartLiked: { color: colors.roxy },
+    footerCount: { color: colors.textMuted, fontSize: 12 },
+
+    // Events
+    eventCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8,
+      borderRadius: 12, padding: 10,
+    },
+    dateChip: {
+      width: 36, alignItems: 'center', backgroundColor: colors.primary + '20',
+      borderRadius: 8, paddingVertical: 4,
+    },
+    dateDay: { color: colors.textPrimary, fontWeight: '800', fontSize: 14 },
+    dateMonth: { color: colors.textMuted, fontSize: 10 },
+    eventTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
+    eventLocation: { color: colors.textSecondary, fontSize: 11 },
+    rsvpBtn: {
+      paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
+      borderWidth: 1, borderColor: colors.primary,
+    },
+    rsvpBtnGoing: { backgroundColor: colors.primary, borderColor: colors.primary },
+    rsvpBtnText: { color: colors.primary, fontWeight: '700', fontSize: 11 },
+    rsvpBtnTextGoing: { color: '#fff' },
+
+    // Games
+    gamesContainer: { padding: 12, gap: 8 },
+    gameCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      backgroundColor: colors.surface, borderRadius: 12, padding: 12,
+    },
+    gameEmoji: { fontSize: 24 },
+    gameTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 2 },
+    gameDesc: { color: colors.textMuted, fontSize: 12, lineHeight: 16 },
+    playBtn: {
+      backgroundColor: colors.roxy, borderRadius: 16,
+      paddingHorizontal: 12, paddingVertical: 6,
+    },
+    playBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+
+    // FAB
+    fab: {
+      position: 'absolute', bottom: 24, right: 20,
+      width: 56, height: 56, borderRadius: 28,
+      backgroundColor: colors.primary,
+      alignItems: 'center', justifyContent: 'center',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3, shadowRadius: 6, elevation: 8,
+    },
+
+    // Error / empty
+    errorText: { color: colors.textMuted, textAlign: 'center', marginTop: 48, fontSize: 16 },
+    emptyCenter: { alignItems: 'center', padding: 40, gap: 12 },
+    emptyIcon: { fontSize: 48 },
+    emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center' },
+    emptySub: { color: colors.textSecondary, textAlign: 'center' },
+  });
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 48 }} />
+        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
       </SafeAreaView>
     );
   }
@@ -218,7 +349,7 @@ export default function CommunityDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.errorText}>Community not found</Text>
       </SafeAreaView>
@@ -330,11 +461,11 @@ export default function CommunityDetailScreen() {
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.footerBtn} onPress={() => router.push(`/community/post/${post.id}` as any)}>
-                    <Ionicons name="chatbubble-outline" size={13} color={COLORS.textMuted} />
+                    <Ionicons name="chatbubble-outline" size={13} color={colors.textMuted} />
                     <Text style={styles.footerCount}>{post.comment_count ?? 0}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.footerBtn} onPress={() => Share.share({ message: post.content })}>
-                    <Ionicons name="share-outline" size={13} color={COLORS.textMuted} />
+                    <Ionicons name="share-outline" size={13} color={colors.textMuted} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -404,7 +535,7 @@ export default function CommunityDetailScreen() {
         {/* Page 3 — Rooms */}
         <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ padding: 12, paddingBottom: 80 }}>
           {loadingRooms ? (
-            <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 40 }} />
+            <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
           ) : rooms.length === 0 ? (
             <View style={styles.emptyCenter}>
               <Text style={styles.emptyIcon}>📡</Text>
@@ -447,132 +578,3 @@ export default function CommunityDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-
-  // Cover
-  cover: { height: 140, position: 'relative' },
-  coverGradient: {
-    height: 140, backgroundColor: COLORS.secondary + '60',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  coverEmoji: { fontSize: 48 },
-  backBtn: {
-    position: 'absolute', top: 50, left: 16,
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-
-  // Info card
-  infoCard: { backgroundColor: COLORS.surface, padding: 14, gap: 6 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  communityName: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800', flex: 1 },
-  levelBadge: {
-    backgroundColor: COLORS.secondary + '20', borderRadius: 10,
-    paddingHorizontal: 8, paddingVertical: 2,
-  },
-  levelBadgeText: { color: COLORS.secondary, fontWeight: '700', fontSize: 11 },
-  membersRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  membersText: { color: COLORS.roxy, fontWeight: '600', fontSize: 13, textDecorationLine: 'underline' },
-  privacyPill: {
-    backgroundColor: COLORS.primary + '20', borderRadius: 8,
-    paddingHorizontal: 7, paddingVertical: 2,
-  },
-  privacyPillPrivate: { backgroundColor: COLORS.textMuted + '20' },
-  privacyPillText: { color: COLORS.textMuted, fontSize: 11 },
-  communityDesc: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 18 },
-  joinBtn: {
-    backgroundColor: COLORS.roxy, borderRadius: 12,
-    paddingVertical: 8, alignItems: 'center',
-  },
-  joinBtnJoined: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.textMuted + '60' },
-  joinBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  joinBtnTextJoined: { color: COLORS.textMuted },
-
-  // Sub-tabs
-  subTabRow: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.background,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  subTab: {
-    flex: 1, paddingVertical: 13,
-    alignItems: 'center',
-    borderBottomWidth: 2, borderBottomColor: 'transparent',
-  },
-  subTabActive: { borderBottomColor: COLORS.roxy },
-  subTabText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
-  subTabTextActive: { color: COLORS.roxy, fontWeight: '700' },
-
-  // Posts
-  postCard: { backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8, borderRadius: 12, padding: 10 },
-  postAuthorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  postAvatar: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: COLORS.surfaceLight, alignItems: 'center', justifyContent: 'center',
-  },
-  postAvatarText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 11 },
-  postAuthorName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13 },
-  postTime: { color: COLORS.textMuted, fontSize: 11 },
-  postContent: { color: COLORS.textPrimary, fontSize: 14, lineHeight: 20 },
-  postFooter: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 8 },
-  footerBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  footerHeart: { color: COLORS.textMuted, fontSize: 16 },
-  footerHeartLiked: { color: COLORS.roxy },
-  footerCount: { color: COLORS.textMuted, fontSize: 12 },
-
-  // Events
-  eventCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8,
-    borderRadius: 12, padding: 10,
-  },
-  dateChip: {
-    width: 36, alignItems: 'center', backgroundColor: COLORS.primary + '20',
-    borderRadius: 8, paddingVertical: 4,
-  },
-  dateDay: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 14 },
-  dateMonth: { color: COLORS.textMuted, fontSize: 10 },
-  eventTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
-  eventLocation: { color: COLORS.textSecondary, fontSize: 11 },
-  rsvpBtn: {
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
-    borderWidth: 1, borderColor: COLORS.primary,
-  },
-  rsvpBtnGoing: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  rsvpBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 11 },
-  rsvpBtnTextGoing: { color: '#fff' },
-
-  // Games
-  gamesContainer: { padding: 12, gap: 8 },
-  gameCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: COLORS.surface, borderRadius: 12, padding: 12,
-  },
-  gameEmoji: { fontSize: 24 },
-  gameTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 2 },
-  gameDesc: { color: COLORS.textMuted, fontSize: 12, lineHeight: 16 },
-  playBtn: {
-    backgroundColor: COLORS.roxy, borderRadius: 16,
-    paddingHorizontal: 12, paddingVertical: 6,
-  },
-  playBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-
-  // FAB
-  fab: {
-    position: 'absolute', bottom: 24, right: 20,
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 6, elevation: 8,
-  },
-
-  // Error / empty
-  errorText: { color: COLORS.textMuted, textAlign: 'center', marginTop: 48, fontSize: 16 },
-  emptyCenter: { alignItems: 'center', padding: 40, gap: 12 },
-  emptyIcon: { fontSize: 48 },
-  emptyTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center' },
-  emptySub: { color: COLORS.textSecondary, textAlign: 'center' },
-});

@@ -4,7 +4,7 @@ import {
   ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import type { LinkType } from '../../types';
 
 export interface RoxyLinkSelection {
@@ -24,8 +24,41 @@ interface RoxyLinkPickerProps {
 type EntityRow = { id: string; name: string; type: LinkType; communityId: string | null };
 
 export function RoxyLinkPicker({ visible, onSelect, onClose }: RoxyLinkPickerProps) {
+  const colors = useThemeColors();
   const [loading, setLoading] = useState(true);
   const [entities, setEntities] = useState<EntityRow[]>([]);
+
+  const styles = StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+    sheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      maxHeight: '75%', paddingBottom: 40,
+    },
+    handle: {
+      width: 40, height: 4, backgroundColor: colors.textMuted,
+      borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 8,
+    },
+    header: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingHorizontal: 20, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    title: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
+    close: { color: colors.textMuted, fontSize: 18 },
+    entityRow: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 20, paddingVertical: 14,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    entityIcon: { fontSize: 22, marginRight: 14 },
+    entityName: { flex: 1, color: colors.textPrimary, fontSize: 15 },
+    chevron: { color: colors.textMuted, fontSize: 20 },
+    empty: {
+      color: colors.textMuted, textAlign: 'center',
+      padding: 40, fontSize: 14,
+    },
+  });
 
   useEffect(() => {
     if (!visible) return;
@@ -73,7 +106,7 @@ export function RoxyLinkPicker({ visible, onSelect, onClose }: RoxyLinkPickerPro
           </TouchableOpacity>
         </View>
         {loading ? (
-          <ActivityIndicator color={COLORS.primary} style={{ padding: 40 }} />
+          <ActivityIndicator color={colors.primary} style={{ padding: 40 }} />
         ) : entities.length === 0 ? (
           <Text style={styles.empty}>No active rooms or upcoming events to link.</Text>
         ) : (
@@ -102,35 +135,3 @@ export function RoxyLinkPicker({ visible, onSelect, onClose }: RoxyLinkPickerPro
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: {
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    maxHeight: '75%', paddingBottom: 40,
-  },
-  handle: {
-    width: 40, height: 4, backgroundColor: COLORS.textMuted,
-    borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 8,
-  },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  title: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16 },
-  close: { color: COLORS.textMuted, fontSize: 18 },
-  entityRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  entityIcon: { fontSize: 22, marginRight: 14 },
-  entityName: { flex: 1, color: COLORS.textPrimary, fontSize: 15 },
-  chevron: { color: COLORS.textMuted, fontSize: 20 },
-  empty: {
-    color: COLORS.textMuted, textAlign: 'center',
-    padding: 40, fontSize: 14,
-  },
-});

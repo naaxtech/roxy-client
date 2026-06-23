@@ -12,9 +12,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 export default function WelcomeScreen() {
+  const colors = useThemeColors();
   const [showEmail, setShowEmail] = useState(false);
   const [isSignIn, setIsSignIn] = useState(false);
   const [email, setEmail] = useState('');
@@ -53,6 +54,58 @@ export default function WelcomeScreen() {
       setResetSent(true);
     }
   };
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    hero: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    logo: { fontSize: 64, fontWeight: '800', color: colors.roxy },
+    tagline: { fontSize: 18, color: colors.textSecondary, marginTop: 8 },
+    content: { padding: 24, gap: 12 },
+    btn: {
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: 'center',
+    },
+    btnSecondary: { backgroundColor: colors.surface },
+    btnDisabled: { opacity: 0.5 },
+    btnText: { color: colors.textPrimary, fontWeight: '600', fontSize: 16 },
+    emailLink: {
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 4,
+      paddingVertical: 8,
+    },
+    forgotLink: {
+      color: colors.accent,
+      textAlign: 'right',
+      fontSize: 14,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 14,
+      color: colors.textPrimary,
+      fontSize: 16,
+    },
+    sentTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      textAlign: 'center',
+    },
+    sentBody: {
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+    },
+    privacy: {
+      color: colors.textMuted,
+      fontSize: 12,
+      textAlign: 'center',
+      marginTop: 8,
+    },
+  });
 
   return (
     <SafeAreaView style={styles.container} testID="welcome-screen">
@@ -98,7 +151,7 @@ export default function WelcomeScreen() {
                   testID="email-input"
                   style={styles.input}
                   placeholder="your@email.com"
-                  placeholderTextColor={COLORS.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
@@ -109,7 +162,7 @@ export default function WelcomeScreen() {
                   testID="password-input"
                   style={styles.input}
                   placeholder="Password"
-                  placeholderTextColor={COLORS.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   secureTextEntry
                   autoCapitalize="none"
                   autoComplete={isSignIn ? 'password' : 'new-password'}
@@ -150,54 +203,3 @@ export default function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  hero: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  logo: { fontSize: 64, fontWeight: '800', color: COLORS.roxy },
-  tagline: { fontSize: 18, color: COLORS.textSecondary, marginTop: 8 },
-  content: { padding: 24, gap: 12 },
-  btn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  btnSecondary: { backgroundColor: COLORS.surface },
-  btnDisabled: { opacity: 0.5 },
-  btnText: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 16 },
-  emailLink: {
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: 4,
-    paddingVertical: 8,
-  },
-  forgotLink: {
-    color: COLORS.accent,
-    textAlign: 'right',
-    fontSize: 14,
-  },
-  input: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 14,
-    color: COLORS.textPrimary,
-    fontSize: 16,
-  },
-  sentTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    textAlign: 'center',
-  },
-  sentBody: {
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  privacy: {
-    color: COLORS.textMuted,
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-});

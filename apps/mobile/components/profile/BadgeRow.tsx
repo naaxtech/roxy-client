@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import type { UserBadgeProgress, Badge } from '../../types';
 
 export type EarnedBadge = UserBadgeProgress & { badges: Badge | null };
@@ -12,7 +12,48 @@ interface BadgeRowProps {
 }
 
 export function BadgeRow({ badges }: BadgeRowProps) {
+  const colors = useThemeColors();
   const [tooltipId, setTooltipId] = useState<string | null>(null);
+
+  const styles = StyleSheet.create({
+    container: { alignItems: 'center', marginTop: 6 },
+    row: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+    badgeBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.surfaceLight,
+    },
+    emoji: { fontSize: 16 },
+    overflow: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.surfaceLight,
+    },
+    overflowText: { color: colors.textMuted, fontSize: 10, fontWeight: '700' },
+    tooltip: {
+      marginTop: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: colors.surface,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.surfaceLight,
+      maxWidth: 220,
+      alignItems: 'center',
+    },
+    tooltipName: { color: colors.textPrimary, fontWeight: '700', fontSize: 12 },
+    tooltipDesc: { color: colors.textMuted, fontSize: 11, marginTop: 2, textAlign: 'center' },
+  });
 
   const earned = badges.filter((b) => b.earned_at !== null);
   const visible = earned.slice(0, MAX_VISIBLE);
@@ -49,43 +90,3 @@ export function BadgeRow({ badges }: BadgeRowProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { alignItems: 'center', marginTop: 6 },
-  row: { flexDirection: 'row', gap: 4, alignItems: 'center' },
-  badgeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.surfaceLight,
-  },
-  emoji: { fontSize: 16 },
-  overflow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.surfaceLight,
-  },
-  overflowText: { color: COLORS.textMuted, fontSize: 10, fontWeight: '700' },
-  tooltip: {
-    marginTop: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: COLORS.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.surfaceLight,
-    maxWidth: 220,
-    alignItems: 'center',
-  },
-  tooltipName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 12 },
-  tooltipDesc: { color: COLORS.textMuted, fontSize: 11, marginTop: 2, textAlign: 'center' },
-});

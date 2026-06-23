@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import type { OrderWithItems } from '../../types/marketplace';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -17,6 +17,36 @@ interface OrderDetailSheetProps {
 }
 
 export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
+  const colors = useThemeColors();
+  const styles = StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, maxHeight: '90%' },
+    handle: { width: 40, height: 4, backgroundColor: colors.textMuted, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 16 },
+    title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
+    statusBadge: { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+    statusText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+    sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
+    itemRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 6 },
+    itemName: { flex: 1, fontSize: 14, color: colors.textPrimary },
+    itemPrice: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+    divider: { height: 1, backgroundColor: colors.surface, marginHorizontal: 20, marginVertical: 8 },
+    totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 3 },
+    totalLabel: { fontSize: 14, color: colors.textSecondary },
+    totalValue: { fontSize: 14, color: colors.textSecondary },
+    addressText: { fontSize: 14, color: colors.textPrimary, paddingHorizontal: 20, paddingVertical: 1 },
+    trackingBox: { marginHorizontal: 20, marginTop: 8 },
+    trackingNumber: { fontSize: 15, fontWeight: '700', color: colors.primary, fontFamily: 'monospace' },
+    eventRow: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 6, gap: 12 },
+    eventDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, marginTop: 5 },
+    eventInfo: { flex: 1 },
+    eventType: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.5 },
+    eventDesc: { fontSize: 13, color: colors.textPrimary },
+    eventDate: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+    closeBtn: { position: 'absolute', top: 16, right: 16, padding: 8 },
+    closeBtnText: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
+  });
+
   if (!order) return null;
 
   return (
@@ -58,8 +88,8 @@ export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
               </View>
             )}
             <View style={styles.totalRow}>
-              <Text style={[styles.totalLabel, { fontWeight: '700', color: COLORS.textPrimary }]}>Total</Text>
-              <Text style={[styles.totalValue, { fontWeight: '700', color: COLORS.textPrimary }]}>
+              <Text style={[styles.totalLabel, { fontWeight: '700', color: colors.textPrimary }]}>Total</Text>
+              <Text style={[styles.totalValue, { fontWeight: '700', color: colors.textPrimary }]}>
                 ${(order.total_cents / 100).toFixed(2)}
               </Text>
             </View>
@@ -101,32 +131,3 @@ export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: COLORS.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, maxHeight: '90%' },
-  handle: { width: 40, height: 4, backgroundColor: COLORS.textMuted, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 16 },
-  title: { fontSize: 17, fontWeight: '700', color: COLORS.textPrimary },
-  statusBadge: { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
-  statusText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  itemRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 6 },
-  itemName: { flex: 1, fontSize: 14, color: COLORS.textPrimary },
-  itemPrice: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
-  divider: { height: 1, backgroundColor: COLORS.surface, marginHorizontal: 20, marginVertical: 8 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 3 },
-  totalLabel: { fontSize: 14, color: COLORS.textSecondary },
-  totalValue: { fontSize: 14, color: COLORS.textSecondary },
-  addressText: { fontSize: 14, color: COLORS.textPrimary, paddingHorizontal: 20, paddingVertical: 1 },
-  trackingBox: { marginHorizontal: 20, marginTop: 8 },
-  trackingNumber: { fontSize: 15, fontWeight: '700', color: COLORS.primary, fontFamily: 'monospace' },
-  eventRow: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 6, gap: 12 },
-  eventDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary, marginTop: 5 },
-  eventInfo: { flex: 1 },
-  eventType: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 0.5 },
-  eventDesc: { fontSize: 13, color: COLORS.textPrimary },
-  eventDate: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
-  closeBtn: { position: 'absolute', top: 16, right: 16, padding: 8 },
-  closeBtnText: { color: COLORS.textMuted, fontSize: 18, fontWeight: '700' },
-});

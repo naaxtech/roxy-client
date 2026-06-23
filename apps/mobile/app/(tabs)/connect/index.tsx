@@ -12,7 +12,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useFeedStore } from '../../../store/feedStore';
-import { COLORS } from '../../../lib/constants';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import { GAME_ROUTES } from '../../../lib/games';
 import { logError } from '../../../lib/errorLogger';
 import { normalizePost } from '../../../lib/posts';
@@ -61,6 +61,7 @@ export default function ConnectScreen() {
     likedPostIds, savedPostIds, connectScrollOffset,
     init: initFeed, toggleLike, toggleSave, setConnectScrollOffset,
   } = useFeedStore();
+  const colors = useThemeColors();
 
   const feedListRef = useRef<FlashList<PostRow>>(null);
 
@@ -87,6 +88,107 @@ export default function ConnectScreen() {
   const [loadingRooms, setLoadingRooms] = useState(false);
 
   const joinedIdsKey = useMemo(() => Array.from(joinedIds).sort().join(','), [joinedIds]);
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 8,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
+
+    // Sub-tabs — underline style
+    subTabRow: {
+      flexDirection: 'row',
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    subTab: {
+      flex: 1, paddingVertical: 10,
+      alignItems: 'center',
+      borderBottomWidth: 2, borderBottomColor: 'transparent',
+    },
+    subTabActive: { borderBottomColor: colors.roxy },
+    subTabText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
+    subTabTextActive: { color: colors.roxy, fontWeight: '700' },
+
+    postMetaRow: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingHorizontal: 16, paddingTop: 4,
+    },
+    communityPill: {
+      backgroundColor: colors.primary + '30', borderRadius: 10,
+      paddingHorizontal: 8, paddingVertical: 2,
+    },
+    communityPillText: { color: colors.primary, fontSize: 11, fontWeight: '700' },
+    postTime: { color: colors.textMuted, fontSize: 11 },
+
+    // Events
+    eventCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8,
+      borderRadius: 12, padding: 10,
+    },
+    dateChip: {
+      width: 36, alignItems: 'center', backgroundColor: colors.primary + '20',
+      borderRadius: 8, paddingVertical: 4,
+    },
+    dateDay: { color: colors.textPrimary, fontWeight: '800', fontSize: 14 },
+    dateMonth: { color: colors.textMuted, fontSize: 10 },
+    eventTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
+    eventCommunity: { color: colors.textMuted, fontSize: 11, marginBottom: 2 },
+    eventLocation: { color: colors.textSecondary, fontSize: 11 },
+    eventCardBody: {
+      flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1,
+    },
+    rsvpBtn: {
+      paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
+      borderWidth: 1, borderColor: colors.primary,
+    },
+    rsvpBtnGoing: { backgroundColor: colors.primary, borderColor: colors.primary },
+    rsvpBtnText: { color: colors.primary, fontWeight: '700', fontSize: 11 },
+    rsvpBtnTextGoing: { color: '#fff' },
+
+    // Rooms (dating toggle + speed date banner carried over)
+    datingToggleRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 8,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    datingLabel: { color: colors.textSecondary, fontSize: 13 },
+    speedDateBanner: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      backgroundColor: colors.primary + '20',
+      borderBottomWidth: 1, borderBottomColor: colors.primary + '40',
+      paddingHorizontal: 16, paddingVertical: 10,
+    },
+    speedDateIcon: { fontSize: 22 },
+    speedDateTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
+    speedDateSub: { color: colors.textSecondary, fontSize: 12 },
+    speedDateArrow: { color: colors.textMuted, fontSize: 20 },
+
+    // Games + Community Rooms
+    roomSection: { paddingHorizontal: 12, marginBottom: 8, marginTop: 8 },
+    roomSectionTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 15, marginBottom: 8 },
+    roomEmpty: { color: colors.textMuted, fontSize: 13, paddingVertical: 8 },
+    gameCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      backgroundColor: colors.surface, borderRadius: 12, padding: 12, marginBottom: 6,
+    },
+    gameEmoji: { fontSize: 24 },
+    gameName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
+    gameDesc: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
+    gameArrow: { color: colors.textMuted, fontSize: 20 },
+    // Empty states
+    emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12 },
+    emptyIcon: { fontSize: 48 },
+    emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center' },
+    emptySub: { color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
+    emptyCTA: { backgroundColor: colors.roxy, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10 },
+    emptyCTAText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -284,7 +386,7 @@ export default function ConnectScreen() {
             </TouchableOpacity>
           </View>
         ) : loadingFeed ? (
-          <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 48 }} />
+          <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
         ) : (
           <FlashList
             ref={feedListRef}
@@ -353,7 +455,7 @@ export default function ConnectScreen() {
             </TouchableOpacity>
           </View>
         ) : loadingEvents ? (
-          <ActivityIndicator color={COLORS.roxy} style={{ marginTop: 48 }} />
+          <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
         ) : (
           <FlashList
             data={events}
@@ -418,8 +520,8 @@ export default function ConnectScreen() {
             <Switch
               value={datingMode}
               onValueChange={toggleDatingMode}
-              trackColor={{ false: COLORS.surface, true: COLORS.primary }}
-              thumbColor={COLORS.textPrimary}
+              trackColor={{ false: colors.surface, true: colors.primary }}
+              thumbColor={colors.textPrimary}
             />
           </View>
           {datingMode && (
@@ -441,7 +543,7 @@ export default function ConnectScreen() {
           <View style={styles.roomSection}>
             <Text style={styles.roomSectionTitle}>🎮 Games</Text>
             {loadingRooms ? (
-              <ActivityIndicator color={COLORS.roxy} style={{ marginVertical: 16 }} />
+              <ActivityIndicator color={colors.roxy} style={{ marginVertical: 16 }} />
             ) : games.length === 0 ? (
               <Text style={styles.roomEmpty}>No games available</Text>
             ) : (
@@ -467,7 +569,7 @@ export default function ConnectScreen() {
           <View style={styles.roomSection}>
             <Text style={styles.roomSectionTitle}>📹 Community Rooms</Text>
             {loadingRooms ? (
-              <ActivityIndicator color={COLORS.roxy} style={{ marginVertical: 16 }} />
+              <ActivityIndicator color={colors.roxy} style={{ marginVertical: 16 }} />
             ) : rooms.length === 0 ? (
               <Text style={styles.roomEmpty}>No rooms active right now</Text>
             ) : (
@@ -494,104 +596,3 @@ export default function ConnectScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
-
-  // Sub-tabs — underline style
-  subTabRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  subTab: {
-    flex: 1, paddingVertical: 10,
-    alignItems: 'center',
-    borderBottomWidth: 2, borderBottomColor: 'transparent',
-  },
-  subTabActive: { borderBottomColor: COLORS.roxy },
-  subTabText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
-  subTabTextActive: { color: COLORS.roxy, fontWeight: '700' },
-
-  postMetaRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 4,
-  },
-  communityPill: {
-    backgroundColor: COLORS.primary + '30', borderRadius: 10,
-    paddingHorizontal: 8, paddingVertical: 2,
-  },
-  communityPillText: { color: COLORS.primary, fontSize: 11, fontWeight: '700' },
-  postTime: { color: COLORS.textMuted, fontSize: 11 },
-
-  // Events
-  eventCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: COLORS.surface, marginHorizontal: 12, marginBottom: 8,
-    borderRadius: 12, padding: 10,
-  },
-  dateChip: {
-    width: 36, alignItems: 'center', backgroundColor: COLORS.primary + '20',
-    borderRadius: 8, paddingVertical: 4,
-  },
-  dateDay: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 14 },
-  dateMonth: { color: COLORS.textMuted, fontSize: 10 },
-  eventTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
-  eventCommunity: { color: COLORS.textMuted, fontSize: 11, marginBottom: 2 },
-  eventLocation: { color: COLORS.textSecondary, fontSize: 11 },
-  eventCardBody: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1,
-  },
-  rsvpBtn: {
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
-    borderWidth: 1, borderColor: COLORS.primary,
-  },
-  rsvpBtnGoing: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  rsvpBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 11 },
-  rsvpBtnTextGoing: { color: '#fff' },
-
-  // Rooms (dating toggle + speed date banner carried over)
-  datingToggleRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  datingLabel: { color: COLORS.textSecondary, fontSize: 13 },
-  speedDateBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: COLORS.primary + '20',
-    borderBottomWidth: 1, borderBottomColor: COLORS.primary + '40',
-    paddingHorizontal: 16, paddingVertical: 10,
-  },
-  speedDateIcon: { fontSize: 22 },
-  speedDateTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
-  speedDateSub: { color: COLORS.textSecondary, fontSize: 12 },
-  speedDateArrow: { color: COLORS.textMuted, fontSize: 20 },
-
-  // Games + Community Rooms
-  roomSection: { paddingHorizontal: 12, marginBottom: 8, marginTop: 8 },
-  roomSectionTitle: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 15, marginBottom: 8 },
-  roomEmpty: { color: COLORS.textMuted, fontSize: 13, paddingVertical: 8 },
-  gameCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: COLORS.surface, borderRadius: 12, padding: 12, marginBottom: 6,
-  },
-  gameEmoji: { fontSize: 24 },
-  gameName: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 },
-  gameDesc: { color: COLORS.textMuted, fontSize: 12, marginTop: 1 },
-  gameArrow: { color: COLORS.textMuted, fontSize: 20 },
-  // Empty states
-  emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12 },
-  emptyIcon: { fontSize: 48 },
-  emptyTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center' },
-  emptySub: { color: COLORS.textSecondary, textAlign: 'center', lineHeight: 22 },
-  emptyCTA: { backgroundColor: COLORS.roxy, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10 },
-  emptyCTAText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-});

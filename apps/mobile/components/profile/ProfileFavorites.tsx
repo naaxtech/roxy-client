@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 type Fav = { id: string; entity_type: 'event' | 'game'; entity_id: string; title: string };
 
@@ -12,9 +12,25 @@ interface Props {
 }
 
 export function ProfileFavorites({ userId, editable = false }: Props) {
+  const colors = useThemeColors();
   const router = useRouter();
   const [items, setItems] = useState<Fav[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const styles = StyleSheet.create({
+    wrap: { marginTop: 16, paddingHorizontal: 16 },
+    label: { color: colors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 8 },
+    row: { gap: 8, paddingBottom: 4 },
+    chip: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      backgroundColor: colors.surface, borderRadius: 20,
+      paddingHorizontal: 12, paddingVertical: 8, maxWidth: 200,
+    },
+    chipIcon: { fontSize: 14 },
+    chipText: { color: colors.textPrimary, fontSize: 13, fontWeight: '600', flexShrink: 1 },
+    remove: { color: colors.textMuted, fontSize: 16, marginLeft: 4 },
+    hint: { color: colors.textMuted, fontSize: 13 },
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,7 +79,7 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
     await load();
   };
 
-  if (loading) return <ActivityIndicator color={COLORS.primary} style={{ margin: 16 }} />;
+  if (loading) return <ActivityIndicator color={colors.primary} style={{ margin: 16 }} />;
   if (!items.length && !editable) return null;
 
   return (
@@ -88,21 +104,6 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { marginTop: 16, paddingHorizontal: 16 },
-  label: { color: COLORS.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 8 },
-  row: { gap: 8, paddingBottom: 4 },
-  chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: COLORS.surface, borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 8, maxWidth: 200,
-  },
-  chipIcon: { fontSize: 14 },
-  chipText: { color: COLORS.textPrimary, fontSize: 13, fontWeight: '600', flexShrink: 1 },
-  remove: { color: COLORS.textMuted, fontSize: 16, marginLeft: 4 },
-  hint: { color: COLORS.textMuted, fontSize: 13 },
-});
 
 /** Toggle favourite for current user (call from event/game screens). */
 export async function toggleUserFavorite(

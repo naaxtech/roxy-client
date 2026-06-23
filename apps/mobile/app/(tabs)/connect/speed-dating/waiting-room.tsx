@@ -6,15 +6,47 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
-import { COLORS } from '../../../../lib/constants';
+import { useThemeColors } from '../../../../hooks/useThemeColors';
 
 export default function SpeedDateWaitingRoom() {
   const { session_id } = useLocalSearchParams<{ session_id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
+  const colors = useThemeColors();
   const [dots, setDots] = useState('');
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const navigatedRef = useRef(false);
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    content: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      paddingHorizontal: 32, gap: 12,
+    },
+    iconWrap: {
+      width: 80, height: 80, borderRadius: 40,
+      backgroundColor: colors.primary + '20',
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: 8,
+      borderWidth: 2, borderColor: colors.primary + '40',
+    },
+    icon: { fontSize: 36 },
+    title: { color: colors.textPrimary, fontSize: 22, fontWeight: '800', textAlign: 'center' },
+    subtitle: {
+      color: colors.textSecondary, fontSize: 14, textAlign: 'center',
+      lineHeight: 20, maxWidth: 280,
+    },
+    hint: {
+      color: colors.textMuted, fontSize: 13, textAlign: 'center',
+      lineHeight: 18, maxWidth: 260, marginTop: 16,
+    },
+    cancelBtn: {
+      marginHorizontal: 32, marginBottom: 24,
+      borderWidth: 1, borderColor: colors.textMuted + '60',
+      borderRadius: 12, paddingVertical: 14, alignItems: 'center',
+    },
+    cancelText: { color: colors.textMuted, fontWeight: '600', fontSize: 15 },
+  });
 
   // Animate the waiting dots
   useEffect(() => {
@@ -120,7 +152,7 @@ export default function SpeedDateWaitingRoom() {
           We're looking for someone in your communities to speed date with. Hang tight!
         </Text>
 
-        <ActivityIndicator color={COLORS.roxy} size="large" style={{ marginTop: 32 }} />
+        <ActivityIndicator color={colors.roxy} size="large" style={{ marginTop: 32 }} />
 
         <Text style={styles.hint}>
           As soon as we find a match, your video call will start automatically.
@@ -133,34 +165,3 @@ export default function SpeedDateWaitingRoom() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  content: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 32, gap: 12,
-  },
-  iconWrap: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: COLORS.primary + '20',
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 8,
-    borderWidth: 2, borderColor: COLORS.primary + '40',
-  },
-  icon: { fontSize: 36 },
-  title: { color: COLORS.textPrimary, fontSize: 22, fontWeight: '800', textAlign: 'center' },
-  subtitle: {
-    color: COLORS.textSecondary, fontSize: 14, textAlign: 'center',
-    lineHeight: 20, maxWidth: 280,
-  },
-  hint: {
-    color: COLORS.textMuted, fontSize: 13, textAlign: 'center',
-    lineHeight: 18, maxWidth: 260, marginTop: 16,
-  },
-  cancelBtn: {
-    marginHorizontal: 32, marginBottom: 24,
-    borderWidth: 1, borderColor: COLORS.textMuted + '60',
-    borderRadius: 12, paddingVertical: 14, alignItems: 'center',
-  },
-  cancelText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 15 },
-});

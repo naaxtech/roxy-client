@@ -9,7 +9,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { callEdgeFunction } from '../../../lib/supabase';
 import { DailyProvider } from '../../../lib/video';
 import { useVideoCall } from '../../../hooks/useVideoCall';
-import { COLORS } from '../../../lib/constants';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import { logError } from '../../../lib/errorLogger';
 import type { RemoteParticipant } from '../../../lib/video/VideoCallProvider';
 
@@ -24,32 +24,52 @@ type RoomInfo = {
   token: string | null;
 };
 
+type TileStyles = {
+  videoTile: object;
+  tileNoVideo: object;
+  tileInitial: object;
+  tileLabel: object;
+  tileOwnerBadge: object;
+  tileName: object;
+};
+
+type AudioStyles = {
+  audioBubbleWrap: object;
+  audioBubble: object;
+  audioBubbleSpeaking: object;
+  audioBubbleInitial: object;
+  audioBubbleNameRow: object;
+  audioBubbleOwner: object;
+  audioBubbleName: object;
+};
+
 // ─── Video tile for a single participant ────────────────────────────────────
 function VideoTile({
-  participant, provider, isHost: _isHost, onLongPress,
+  participant, provider, isHost: _isHost, onLongPress, tileStyles,
 }: {
   participant: RemoteParticipant;
   provider: DailyProvider;
   isHost: boolean;
   onLongPress?: () => void;
+  tileStyles: TileStyles;
 }) {
   return (
     <TouchableOpacity
-      style={styles.videoTile}
+      style={tileStyles.videoTile}
       onLongPress={onLongPress}
       delayLongPress={600}
       activeOpacity={0.9}
     >
       {provider.renderRemoteVideo(participant, StyleSheet.absoluteFillObject) ?? (
-        <View style={[StyleSheet.absoluteFillObject, styles.tileNoVideo]}>
-          <Text style={styles.tileInitial}>
+        <View style={[StyleSheet.absoluteFillObject, tileStyles.tileNoVideo]}>
+          <Text style={tileStyles.tileInitial}>
             {participant.displayName?.[0]?.toUpperCase() ?? '?'}
           </Text>
         </View>
       )}
-      <View style={styles.tileLabel}>
-        {participant.isOwner && <Text style={styles.tileOwnerBadge}>👑</Text>}
-        <Text style={styles.tileName} numberOfLines={1}>
+      <View style={tileStyles.tileLabel}>
+        {participant.isOwner && <Text style={tileStyles.tileOwnerBadge}>👑</Text>}
+        <Text style={tileStyles.tileName} numberOfLines={1}>
           {participant.displayName ?? 'Guest'}
         </Text>
       </View>
@@ -58,27 +78,28 @@ function VideoTile({
 }
 
 // ─── Audio bubble for a single participant ───────────────────────────────────
-function AudioBubble({ participant, onLongPress }: {
+function AudioBubble({ participant, onLongPress, audioStyles }: {
   participant: RemoteParticipant;
   onLongPress?: () => void;
+  audioStyles: AudioStyles;
 }) {
   const trackInfo = participant.trackInfo as any;
   const isSpeaking = trackInfo?.tracks?.audio?.state === 'playable';
   return (
     <TouchableOpacity
-      style={styles.audioBubbleWrap}
+      style={audioStyles.audioBubbleWrap}
       onLongPress={onLongPress}
       delayLongPress={600}
       activeOpacity={0.9}
     >
-      <View style={[styles.audioBubble, isSpeaking && styles.audioBubbleSpeaking]}>
-        <Text style={styles.audioBubbleInitial}>
+      <View style={[audioStyles.audioBubble, isSpeaking && audioStyles.audioBubbleSpeaking]}>
+        <Text style={audioStyles.audioBubbleInitial}>
           {participant.displayName?.[0]?.toUpperCase() ?? '?'}
         </Text>
       </View>
-      <View style={styles.audioBubbleNameRow}>
-        {participant.isOwner && <Text style={styles.audioBubbleOwner}>👑</Text>}
-        <Text style={styles.audioBubbleName} numberOfLines={1}>
+      <View style={audioStyles.audioBubbleNameRow}>
+        {participant.isOwner && <Text style={audioStyles.audioBubbleOwner}>👑</Text>}
+        <Text style={audioStyles.audioBubbleName} numberOfLines={1}>
           {participant.displayName ?? 'Guest'}
         </Text>
       </View>
@@ -90,6 +111,7 @@ function AudioBubble({ participant, onLongPress }: {
 export default function CommunityRoomSession() {
   const { room_id } = useLocalSearchParams<{ room_id: string }>();
   const router = useRouter();
+  const colors = useThemeColors();
 
   const [provider] = useState(() => new DailyProvider());
   const { state, remoteParticipants, localVideoVersion } = useVideoCall(provider);
@@ -97,6 +119,95 @@ export default function CommunityRoomSession() {
   const [micOn, setMicOn] = useState(false); // starts muted
   const [camOn, setCamOn] = useState(true);
   const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#000' },
+    content: { flex: 1, marginTop: 90, marginBottom: 80 },
+
+    // Placeholder
+    placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+    placeholderIcon: { fontSize: 56 },
+    placeholderText: { color: colors.textMuted, fontSize: 16 },
+
+    // Video grid
+    videoGrid: { padding: 12 },
+    videoGridRow: { gap: 12, marginBottom: 12 },
+    videoTile: {
+      width: TILE_SIZE, height: TILE_SIZE * 1.2,
+      borderRadius: 12, overflow: 'hidden',
+      backgroundColor: '#1a0a2e',
+    },
+    tileNoVideo: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a0a2e' },
+    tileInitial: { fontSize: 36, color: colors.textMuted },
+    tileLabel: {
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      paddingHorizontal: 8, paddingVertical: 6,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+    },
+    tileOwnerBadge: { fontSize: 13 },
+    tileName: { flex: 1, color: '#fff', fontSize: 12, fontWeight: '600' },
+
+    // Audio grid
+    audioGrid: {
+      flexDirection: 'row', flexWrap: 'wrap',
+      padding: 12, gap: 16, justifyContent: 'center',
+    },
+    audioBubbleWrap: { alignItems: 'center', width: 80, gap: 6 },
+    audioBubble: {
+      width: 64, height: 64, borderRadius: 32,
+      backgroundColor: colors.primary + '40',
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 2, borderColor: 'transparent',
+    },
+    audioBubbleSpeaking: { borderColor: colors.primary },
+    audioBubbleInitial: { fontSize: 24, color: colors.textPrimary, fontWeight: '700' },
+    audioBubbleNameRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+    audioBubbleOwner: { fontSize: 10 },
+    audioBubbleName: {
+      color: colors.textSecondary, fontSize: 11, fontWeight: '600', maxWidth: 68,
+    },
+
+    // Self PiP
+    selfPip: {
+      position: 'absolute', top: 100, right: 16,
+      width: 90, height: 130, borderRadius: 12,
+      overflow: 'hidden', backgroundColor: colors.surface,
+      borderWidth: 2, borderColor: colors.primary, zIndex: 10,
+    },
+    pipPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+    pipIcon: { fontSize: 24 },
+    pipOwnerBadge: { position: 'absolute', top: 4, left: 4, fontSize: 12 },
+
+    // Top bar
+    topBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 },
+    topBarInner: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingHorizontal: 12, paddingVertical: 8,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+    },
+    backBtn: { padding: 4 },
+    roomTitle: { color: '#fff', fontWeight: '700', fontSize: 15 },
+    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.textMuted },
+    dotLive: { backgroundColor: colors.success },
+    statusText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+
+    // Bottom bar
+    bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 20 },
+    controls: {
+      flexDirection: 'row', justifyContent: 'center', gap: 16,
+      paddingVertical: 12, paddingHorizontal: 24,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+    },
+    controlBtn: {
+      width: 50, height: 50, borderRadius: 25,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    controlBtnOff: { backgroundColor: 'rgba(255,255,255,0.1)' },
+    controlBtnLeave: { backgroundColor: colors.error },
+  });
 
   useEffect(() => {
     if (!room_id) return;
@@ -191,6 +302,25 @@ export default function CommunityRoomSession() {
   const isVideo = roomInfo?.room_type === 'video';
   const participantCount = remoteParticipants.length;
 
+  const tileStyles: TileStyles = {
+    videoTile: styles.videoTile,
+    tileNoVideo: styles.tileNoVideo,
+    tileInitial: styles.tileInitial,
+    tileLabel: styles.tileLabel,
+    tileOwnerBadge: styles.tileOwnerBadge,
+    tileName: styles.tileName,
+  };
+
+  const audioStyles: AudioStyles = {
+    audioBubbleWrap: styles.audioBubbleWrap,
+    audioBubble: styles.audioBubble,
+    audioBubbleSpeaking: styles.audioBubbleSpeaking,
+    audioBubbleInitial: styles.audioBubbleInitial,
+    audioBubbleNameRow: styles.audioBubbleNameRow,
+    audioBubbleOwner: styles.audioBubbleOwner,
+    audioBubbleName: styles.audioBubbleName,
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -199,7 +329,7 @@ export default function CommunityRoomSession() {
       <View style={styles.content}>
         {state === 'connecting' || !roomInfo ? (
           <View style={styles.placeholder}>
-            <ActivityIndicator color={COLORS.roxy} size="large" />
+            <ActivityIndicator color={colors.roxy} size="large" />
             <Text style={styles.placeholderText}>Joining room...</Text>
           </View>
         ) : isVideo ? (
@@ -222,6 +352,7 @@ export default function CommunityRoomSession() {
                   provider={provider}
                   isHost={roomInfo.is_host}
                   onLongPress={roomInfo.is_host ? () => handleMuteParticipant(item) : undefined}
+                  tileStyles={tileStyles}
                 />
               )}
             />
@@ -240,6 +371,7 @@ export default function CommunityRoomSession() {
                   key={p.id}
                   participant={p}
                   onLongPress={roomInfo.is_host ? () => handleMuteParticipant(p) : undefined}
+                  audioStyles={audioStyles}
                 />
               ))
             )}
@@ -311,92 +443,3 @@ export default function CommunityRoomSession() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  content: { flex: 1, marginTop: 90, marginBottom: 80 },
-
-  // Placeholder
-  placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  placeholderIcon: { fontSize: 56 },
-  placeholderText: { color: COLORS.textMuted, fontSize: 16 },
-
-  // Video grid
-  videoGrid: { padding: 12 },
-  videoGridRow: { gap: 12, marginBottom: 12 },
-  videoTile: {
-    width: TILE_SIZE, height: TILE_SIZE * 1.2,
-    borderRadius: 12, overflow: 'hidden',
-    backgroundColor: '#1a0a2e',
-  },
-  tileNoVideo: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a0a2e' },
-  tileInitial: { fontSize: 36, color: COLORS.textMuted },
-  tileLabel: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 8, paddingVertical: 6,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  tileOwnerBadge: { fontSize: 13 },
-  tileName: { flex: 1, color: '#fff', fontSize: 12, fontWeight: '600' },
-
-  // Audio grid
-  audioGrid: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    padding: 12, gap: 16, justifyContent: 'center',
-  },
-  audioBubbleWrap: { alignItems: 'center', width: 80, gap: 6 },
-  audioBubble: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: COLORS.primary + '40',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: 'transparent',
-  },
-  audioBubbleSpeaking: { borderColor: COLORS.primary },
-  audioBubbleInitial: { fontSize: 24, color: COLORS.textPrimary, fontWeight: '700' },
-  audioBubbleNameRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  audioBubbleOwner: { fontSize: 10 },
-  audioBubbleName: {
-    color: COLORS.textSecondary, fontSize: 11, fontWeight: '600', maxWidth: 68,
-  },
-
-  // Self PiP
-  selfPip: {
-    position: 'absolute', top: 100, right: 16,
-    width: 90, height: 130, borderRadius: 12,
-    overflow: 'hidden', backgroundColor: COLORS.surface,
-    borderWidth: 2, borderColor: COLORS.primary, zIndex: 10,
-  },
-  pipPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  pipIcon: { fontSize: 24 },
-  pipOwnerBadge: { position: 'absolute', top: 4, left: 4, fontSize: 12 },
-
-  // Top bar
-  topBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 },
-  topBarInner: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 12, paddingVertical: 8,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  backBtn: { padding: 4 },
-  roomTitle: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.textMuted },
-  dotLive: { backgroundColor: COLORS.success },
-  statusText: { color: '#fff', fontSize: 11, fontWeight: '600' },
-
-  // Bottom bar
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 20 },
-  controls: {
-    flexDirection: 'row', justifyContent: 'center', gap: 16,
-    paddingVertical: 12, paddingHorizontal: 24,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  controlBtn: {
-    width: 50, height: 50, borderRadius: 25,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  controlBtnOff: { backgroundColor: 'rgba(255,255,255,0.1)' },
-  controlBtnLeave: { backgroundColor: COLORS.error },
-});

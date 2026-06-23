@@ -3,7 +3,7 @@ import {
   Modal, View, Text, TextInput, TouchableOpacity,
   FlatList, Image, ActivityIndicator, StyleSheet, Dimensions,
 } from 'react-native';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 const GIPHY_KEY = process.env.EXPO_PUBLIC_GIPHY_API_KEY ?? '';
 const GIPHY_BASE = 'https://api.giphy.com/v1/gifs';
@@ -24,6 +24,7 @@ interface GifPickerProps {
 }
 
 export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
+  const colors = useThemeColors();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GiphyResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,6 +61,45 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
     setQuery('');
   };
 
+  const styles = StyleSheet.create({
+    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+    container: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: '70%',
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.surface,
+    },
+    headerTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 17 },
+    closeBtn: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
+    searchInput: {
+      margin: 12,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      color: colors.textPrimary,
+      fontSize: 14,
+    },
+    grid: { paddingHorizontal: 12, paddingBottom: 12 },
+    row: { gap: 8, marginBottom: 8 },
+    gif: { borderRadius: 8 },
+    empty: { color: colors.textMuted, textAlign: 'center', marginTop: 32 },
+    poweredBy: {
+      color: colors.textMuted,
+      fontSize: 10,
+      textAlign: 'center',
+      paddingBottom: 8,
+    },
+  });
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
@@ -74,14 +114,14 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
         <TextInput
           style={styles.searchInput}
           placeholder="Search GIFs..."
-          placeholderTextColor={COLORS.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={query}
           onChangeText={setQuery}
           autoCorrect={false}
         />
 
         {loading ? (
-          <ActivityIndicator color={COLORS.primary} style={{ marginTop: 32 }} />
+          <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
         ) : (
           <FlatList
             data={results}
@@ -113,42 +153,3 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-  container: {
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '70%',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.surface,
-  },
-  headerTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 17 },
-  closeBtn: { color: COLORS.textMuted, fontSize: 18, fontWeight: '700' },
-  searchInput: {
-    margin: 12,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    color: COLORS.textPrimary,
-    fontSize: 14,
-  },
-  grid: { paddingHorizontal: 12, paddingBottom: 12 },
-  row: { gap: 8, marginBottom: 8 },
-  gif: { borderRadius: 8 },
-  empty: { color: COLORS.textMuted, textAlign: 'center', marginTop: 32 },
-  poweredBy: {
-    color: COLORS.textMuted,
-    fontSize: 10,
-    textAlign: 'center',
-    paddingBottom: 8,
-  },
-});

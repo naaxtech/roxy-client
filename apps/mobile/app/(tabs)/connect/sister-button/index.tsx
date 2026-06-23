@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../../store/authStore';
 import { callEdgeFunction } from '../../../../lib/supabase';
-import { COLORS } from '../../../../lib/constants';
+import { useThemeColors } from '../../../../hooks/useThemeColors';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -25,6 +25,7 @@ type Message = {
 export default function SisterButtonScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const colors = useThemeColors();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -34,6 +35,208 @@ export default function SisterButtonScreen() {
   const [directory, setDirectory] = useState<{ name: string; url?: string; description?: string }[] | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#0d0520' },
+
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.surface,
+    },
+    backButton: {
+      width: 40,
+      alignItems: 'center',
+    },
+    backIcon: {
+      fontSize: 32,
+      color: colors.textPrimary,
+      lineHeight: 36,
+    },
+    headerCenter: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
+    headerSubtitle: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 1,
+    },
+
+    messageList: { flex: 1 },
+    messageListContent: {
+      paddingHorizontal: 16,
+      paddingVertical: 20,
+      gap: 10,
+      flexGrow: 1,
+    },
+
+    emptyState: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 60,
+      gap: 12,
+      paddingHorizontal: 16,
+    },
+    emptyIcon: { fontSize: 48 },
+    emptyTitle: {
+      color: colors.textPrimary,
+      fontSize: 20,
+      fontWeight: '700',
+    },
+    emptyBody: {
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+      fontSize: 15,
+    },
+
+    messageBubbleWrap: {
+      flexDirection: 'row',
+      marginVertical: 4,
+    },
+    bubbleWrapUser: { justifyContent: 'flex-end' },
+    bubbleWrapAssistant: { justifyContent: 'flex-start' },
+
+    messageBubble: {
+      maxWidth: '80%',
+      borderRadius: 18,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    bubbleUser: {
+      backgroundColor: colors.primary,
+      borderBottomRightRadius: 4,
+    },
+    bubbleAssistant: {
+      backgroundColor: colors.surface,
+      borderBottomLeftRadius: 4,
+    },
+    messageText: { fontSize: 15, lineHeight: 22 },
+    messageTextUser: { color: '#fff' },
+    messageTextAssistant: { color: colors.roxy },
+
+    thinkingWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 8,
+      paddingHorizontal: 4,
+    },
+    thinkingText: {
+      color: colors.textMuted,
+      fontSize: 13,
+      fontStyle: 'italic',
+    },
+
+    resourcesCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 16,
+      borderWidth: 1,
+      borderColor: colors.roxy + '40',
+      gap: 10,
+    },
+    resourcesTitle: {
+      color: colors.roxy,
+      fontWeight: '700',
+      fontSize: 14,
+      marginBottom: 4,
+    },
+    resourceRow: { gap: 2 },
+    resourceName: {
+      color: colors.textPrimary,
+      fontWeight: '600',
+      fontSize: 14,
+    },
+    resourceContact: {
+      color: colors.textSecondary,
+      fontSize: 13,
+    },
+    resourceUrl: {
+      color: colors.secondary,
+      fontSize: 13,
+    },
+    resourceDivider: {
+      height: 1,
+      backgroundColor: colors.surfaceLight,
+      marginVertical: 4,
+    },
+
+    sessionDone: {
+      alignItems: 'center',
+      paddingVertical: 24,
+      paddingHorizontal: 20,
+    },
+    sessionDoneText: {
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 24,
+      fontSize: 15,
+    },
+
+    inputArea: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderTopWidth: 1,
+      borderTopColor: colors.surface,
+      gap: 10,
+      backgroundColor: '#0d0520',
+    },
+    input: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      color: colors.textPrimary,
+      fontSize: 15,
+      maxHeight: 100,
+      borderWidth: 1,
+      borderColor: colors.surfaceLight,
+    },
+    inputDisabled: {
+      opacity: 0.5,
+    },
+    sendButton: {
+      backgroundColor: colors.roxy,
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sendButtonDisabled: {
+      opacity: 0.4,
+    },
+    sendButtonText: {
+      color: '#fff',
+      fontWeight: '700',
+      fontSize: 15,
+    },
+    restartBtn: {
+      marginTop: 16,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    restartBtnText: { color: colors.primary, fontWeight: '600', fontSize: 15 },
+  });
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -157,7 +360,7 @@ export default function SisterButtonScreen() {
           {loading && (
             <View style={styles.thinkingWrap}>
               <Text style={styles.thinkingText}>Roxy is thinking…</Text>
-              <ActivityIndicator size="small" color={COLORS.roxy} style={{ marginLeft: 8 }} />
+              <ActivityIndicator size="small" color={colors.roxy} style={{ marginLeft: 8 }} />
             </View>
           )}
 
@@ -218,7 +421,7 @@ export default function SisterButtonScreen() {
             value={input}
             onChangeText={setInput}
             placeholder={sessionDone ? 'Session complete' : 'Share what\'s on your mind…'}
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={colors.textMuted}
             multiline
             editable={!loading && !sessionDone}
             returnKeyType="default"
@@ -236,205 +439,3 @@ export default function SisterButtonScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0d0520' },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.surface,
-  },
-  backButton: {
-    width: 40,
-    alignItems: 'center',
-  },
-  backIcon: {
-    fontSize: 32,
-    color: COLORS.textPrimary,
-    lineHeight: 36,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    marginTop: 1,
-  },
-
-  messageList: { flex: 1 },
-  messageListContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    gap: 10,
-    flexGrow: 1,
-  },
-
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    gap: 12,
-    paddingHorizontal: 16,
-  },
-  emptyIcon: { fontSize: 48 },
-  emptyTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  emptyBody: {
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    fontSize: 15,
-  },
-
-  messageBubbleWrap: {
-    flexDirection: 'row',
-    marginVertical: 4,
-  },
-  bubbleWrapUser: { justifyContent: 'flex-end' },
-  bubbleWrapAssistant: { justifyContent: 'flex-start' },
-
-  messageBubble: {
-    maxWidth: '80%',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  bubbleUser: {
-    backgroundColor: COLORS.primary,
-    borderBottomRightRadius: 4,
-  },
-  bubbleAssistant: {
-    backgroundColor: COLORS.surface,
-    borderBottomLeftRadius: 4,
-  },
-  messageText: { fontSize: 15, lineHeight: 22 },
-  messageTextUser: { color: '#fff' },
-  messageTextAssistant: { color: COLORS.roxy },
-
-  thinkingWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 8,
-    paddingHorizontal: 4,
-  },
-  thinkingText: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-    fontStyle: 'italic',
-  },
-
-  resourcesCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: COLORS.roxy + '40',
-    gap: 10,
-  },
-  resourcesTitle: {
-    color: COLORS.roxy,
-    fontWeight: '700',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  resourceRow: { gap: 2 },
-  resourceName: {
-    color: COLORS.textPrimary,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  resourceContact: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-  },
-  resourceUrl: {
-    color: COLORS.secondary,
-    fontSize: 13,
-  },
-  resourceDivider: {
-    height: 1,
-    backgroundColor: COLORS.surfaceLight,
-    marginVertical: 4,
-  },
-
-  sessionDone: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-  },
-  sessionDoneText: {
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    fontSize: 15,
-  },
-
-  inputArea: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.surface,
-    gap: 10,
-    backgroundColor: '#0d0520',
-  },
-  input: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    color: COLORS.textPrimary,
-    fontSize: 15,
-    maxHeight: 100,
-    borderWidth: 1,
-    borderColor: COLORS.surfaceLight,
-  },
-  inputDisabled: {
-    opacity: 0.5,
-  },
-  sendButton: {
-    backgroundColor: COLORS.roxy,
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendButtonDisabled: {
-    opacity: 0.4,
-  },
-  sendButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  restartBtn: {
-    marginTop: 16,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-  restartBtnText: { color: COLORS.primary, fontWeight: '600', fontSize: 15 },
-});

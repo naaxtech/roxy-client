@@ -4,7 +4,7 @@ import {
   Animated,
 } from 'react-native';
 import { useCommunityFilterStore } from '../store/communityFilterStore';
-import { COLORS } from '../lib/constants';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 type CommunityOption = { id: string; name: string };
 
@@ -13,10 +13,86 @@ interface Props {
 }
 
 export function CommunityContextSwitcher({ communities }: Props) {
+  const colors = useThemeColors();
   const { selectedCommunityId, setSelectedCommunity } = useCommunityFilterStore();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const slideAnim = useRef(new Animated.Value(300)).current; // starts off-screen below
+
+  const styles = StyleSheet.create({
+    btn: {
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderWidth: 1,
+      borderColor: colors.primary + '60',
+      maxWidth: 160,
+    },
+    btnText: {
+      color: colors.primary,
+      fontWeight: '700',
+      fontSize: 12,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: 20,
+      paddingBottom: 40,
+      maxHeight: '70%',
+    },
+    handle: {
+      width: 40, height: 4,
+      backgroundColor: colors.surfaceLight,
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginBottom: 16,
+    },
+    sheetTitle: {
+      color: colors.textPrimary,
+      fontWeight: '800',
+      fontSize: 16,
+      marginBottom: 12,
+    },
+    searchInput: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      color: colors.textPrimary,
+      fontSize: 14,
+      marginBottom: 12,
+    },
+    list: { flexGrow: 0 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.surfaceLight,
+    },
+    radio: {
+      width: 18, height: 18, borderRadius: 9,
+      borderWidth: 2, borderColor: colors.textMuted,
+    },
+    radioSelected: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary,
+    },
+    rowText: { color: colors.textSecondary, fontSize: 14, flex: 1 },
+    rowTextSelected: { color: colors.textPrimary, fontWeight: '700' },
+    emptyText: {
+      color: colors.textMuted, fontSize: 13,
+      paddingVertical: 16, textAlign: 'center',
+    },
+  });
 
   // Slide the sheet up when the modal opens
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,7 +158,7 @@ export function CommunityContextSwitcher({ communities }: Props) {
             <TextInput
               style={styles.searchInput}
               placeholder="Search your communities..."
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={search}
               onChangeText={setSearch}
               testID="community-search-input"
@@ -117,78 +193,3 @@ export function CommunityContextSwitcher({ communities }: Props) {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  btn: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: COLORS.primary + '60',
-    maxWidth: 160,
-  },
-  btnText: {
-    color: COLORS.primary,
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    paddingBottom: 40,
-    maxHeight: '70%',
-  },
-  handle: {
-    width: 40, height: 4,
-    backgroundColor: COLORS.surfaceLight,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  sheetTitle: {
-    color: COLORS.textPrimary,
-    fontWeight: '800',
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  searchInput: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    color: COLORS.textPrimary,
-    fontSize: 14,
-    marginBottom: 12,
-  },
-  list: { flexGrow: 0 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.surfaceLight,
-  },
-  radio: {
-    width: 18, height: 18, borderRadius: 9,
-    borderWidth: 2, borderColor: COLORS.textMuted,
-  },
-  radioSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary,
-  },
-  rowText: { color: COLORS.textSecondary, fontSize: 14, flex: 1 },
-  rowTextSelected: { color: COLORS.textPrimary, fontWeight: '700' },
-  emptyText: {
-    color: COLORS.textMuted, fontSize: 13,
-    paddingVertical: 16, textAlign: 'center',
-  },
-});

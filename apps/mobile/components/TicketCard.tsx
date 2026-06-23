@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { format } from 'date-fns';
-import { COLORS } from '../lib/constants';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 interface TicketCardProps {
   eventTitle: string;
@@ -24,6 +24,93 @@ export function TicketCard({
   status = 'active',
   onExpand,
 }: TicketCardProps) {
+  const colors = useThemeColors();
+
+  const styles = StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 20,
+      alignItems: 'center',
+      gap: 6,
+      borderWidth: 1,
+      borderColor: colors.primary + '40',
+    },
+    cardCancelled: { borderColor: colors.error + '40', opacity: 0.7 },
+    going: { color: colors.roxy, fontWeight: '700', fontSize: 14, marginBottom: 4 },
+    cancelledLabel: { color: colors.error },
+    title: { color: colors.textPrimary, fontWeight: '800', fontSize: 16, textAlign: 'center' },
+    strikethrough: { textDecorationLine: 'line-through', color: colors.textMuted },
+    date: { color: colors.textSecondary, fontSize: 13 },
+    meta: { color: colors.textSecondary, fontSize: 13 },
+    qrWrap: {
+      backgroundColor: '#fff',
+      borderRadius: 12,
+      padding: 12,
+      marginTop: 8,
+      marginBottom: 4,
+      position: 'relative',
+    },
+    qrWrapCheckedIn: { opacity: 0.7 },
+    checkedInStamp: {
+      position: 'absolute',
+      top: 0, left: 0, right: 0, bottom: 0,
+      borderRadius: 12,
+      backgroundColor: 'rgba(34,197,94,0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 3,
+      borderColor: '#22c55e',
+    },
+    checkedInStampText: {
+      color: '#22c55e',
+      fontWeight: '900',
+      fontSize: 18,
+      letterSpacing: 2,
+      transform: [{ rotate: '-20deg' }],
+    },
+    code: {
+      color: colors.textMuted,
+      fontSize: 12,
+      fontWeight: '700',
+      letterSpacing: 1.5,
+      marginTop: 4,
+    },
+    cancelledText: { color: colors.textMuted },
+    refundNote: {
+      color: colors.textMuted,
+      fontSize: 12,
+      textAlign: 'center',
+      marginTop: 4,
+      fontStyle: 'italic',
+    },
+
+    // Collapsed variant
+    collapsed: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: colors.primary + '30',
+    },
+    collapsedCancelled: { borderColor: colors.error + '30', opacity: 0.7 },
+    collapsedLeft: { flex: 1, marginRight: 12 },
+    collapsedTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 15 },
+    collapsedDate: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
+    statusBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 20,
+    },
+    badgeActive: { backgroundColor: colors.primary + '20' },
+    badgeCancelled: { backgroundColor: colors.error + '20' },
+    badgeCheckedIn: { backgroundColor: '#22c55e20' },
+    statusBadgeText: { fontSize: 11, fontWeight: '700', color: colors.textPrimary },
+  });
+
   const isCancelled = status === 'cancelled';
   const isCheckedIn = status === 'checked_in';
   const dateStr = format(new Date(startsAt), 'EEE d MMM · h:mm a');
@@ -81,88 +168,3 @@ export function TicketCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: COLORS.primary + '40',
-  },
-  cardCancelled: { borderColor: COLORS.error + '40', opacity: 0.7 },
-  going: { color: COLORS.roxy, fontWeight: '700', fontSize: 14, marginBottom: 4 },
-  cancelledLabel: { color: COLORS.error },
-  title: { color: COLORS.textPrimary, fontWeight: '800', fontSize: 16, textAlign: 'center' },
-  strikethrough: { textDecorationLine: 'line-through', color: COLORS.textMuted },
-  date: { color: COLORS.textSecondary, fontSize: 13 },
-  meta: { color: COLORS.textSecondary, fontSize: 13 },
-  qrWrap: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 8,
-    marginBottom: 4,
-    position: 'relative',
-  },
-  qrWrapCheckedIn: { opacity: 0.7 },
-  checkedInStamp: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    borderRadius: 12,
-    backgroundColor: 'rgba(34,197,94,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#22c55e',
-  },
-  checkedInStampText: {
-    color: '#22c55e',
-    fontWeight: '900',
-    fontSize: 18,
-    letterSpacing: 2,
-    transform: [{ rotate: '-20deg' }],
-  },
-  code: {
-    color: COLORS.textMuted,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    marginTop: 4,
-  },
-  cancelledText: { color: COLORS.textMuted },
-  refundNote: {
-    color: COLORS.textMuted,
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-
-  // Collapsed variant
-  collapsed: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: COLORS.primary + '30',
-  },
-  collapsedCancelled: { borderColor: COLORS.error + '30', opacity: 0.7 },
-  collapsedLeft: { flex: 1, marginRight: 12 },
-  collapsedTitle: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 15 },
-  collapsedDate: { color: COLORS.textSecondary, fontSize: 12, marginTop: 2 },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  badgeActive: { backgroundColor: COLORS.primary + '20' },
-  badgeCancelled: { backgroundColor: COLORS.error + '20' },
-  badgeCheckedIn: { backgroundColor: '#22c55e20' },
-  statusBadgeText: { fontSize: 11, fontWeight: '700', color: COLORS.textPrimary },
-});

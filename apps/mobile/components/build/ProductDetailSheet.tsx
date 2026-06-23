@@ -4,7 +4,7 @@ import {
   ScrollView, Image, Dimensions, NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
-import { COLORS } from '../../lib/constants';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { CheckoutSheet } from './CheckoutSheet';
 import type { ProductWithVariants, ProductVariant } from '../../types/marketplace';
 
@@ -28,6 +28,7 @@ export function ProductDetailSheet({
   onClose,
   onAddToCart,
 }: ProductDetailSheetProps) {
+  const colors = useThemeColors();
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [qty, setQty] = useState(1);
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -57,6 +58,80 @@ export function ProductDetailSheet({
     if (needsVariant) return;
     setShowBuyNow(true);
   };
+
+  const styles = StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    sheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingTop: 12,
+      maxHeight: '92%',
+    },
+    handle: {
+      width: 40, height: 4,
+      backgroundColor: colors.textMuted,
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginBottom: 8,
+    },
+    closeBtn: { position: 'absolute', top: 16, right: 16, zIndex: 10, padding: 4 },
+    closeBtnText: { fontSize: 18, color: colors.textMuted },
+    gallery: { width: SCREEN_WIDTH, height: 280 },
+    galleryImage: { width: SCREEN_WIDTH, height: 280 },
+    photoPlaceholder: {
+      width: '100%', height: 200,
+      backgroundColor: colors.primary + '20',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    photoPlaceholderText: { fontSize: 64, color: colors.primary },
+    dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingVertical: 8 },
+    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.textMuted + '60' },
+    dotActive: { backgroundColor: colors.primary },
+    body: { padding: 20, gap: 8 },
+    category: { fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+    name: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+    price: { fontSize: 22, fontWeight: '700', color: colors.primary },
+    description: { fontSize: 14, color: colors.textMuted, lineHeight: 20, marginTop: 4 },
+    section: { marginTop: 8, gap: 6 },
+    sectionLabel: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+    outOfStock: { fontSize: 13, color: colors.textMuted },
+    variantRow: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingVertical: 10, paddingHorizontal: 12,
+      borderRadius: 8, backgroundColor: colors.surface,
+    },
+    variantRowSelected: { borderWidth: 2, borderColor: colors.primary },
+    variantLabel: { fontSize: 14, color: colors.textPrimary },
+    variantPrice: { fontSize: 14, fontWeight: '700', color: colors.primary },
+    qtyRow: {
+      flexDirection: 'row', alignItems: 'center',
+      justifyContent: 'space-between', marginTop: 8,
+    },
+    qtyControls: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+    qtyBtn: {
+      width: 32, height: 32, borderRadius: 16,
+      backgroundColor: colors.surface,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    qtyBtnText: { fontSize: 18, color: colors.textPrimary, fontWeight: '700' },
+    qtyText: {
+      fontSize: 16, fontWeight: '700', color: colors.textPrimary,
+      minWidth: 20, textAlign: 'center',
+    },
+    ctaSection: { gap: 10, marginTop: 16, paddingBottom: 24 },
+    addToCartBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: 12, paddingVertical: 14, alignItems: 'center',
+    },
+    addToCartText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+    buyNowBtn: {
+      borderWidth: 1.5, borderColor: colors.primary,
+      borderRadius: 12, paddingVertical: 13, alignItems: 'center',
+    },
+    buyNowText: { color: colors.primary, fontWeight: '700', fontSize: 16 },
+    btnDisabled: { opacity: 0.4 },
+  });
 
   return (
     <>
@@ -234,77 +309,3 @@ export function ProductDetailSheet({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 12,
-    maxHeight: '92%',
-  },
-  handle: {
-    width: 40, height: 4,
-    backgroundColor: COLORS.textMuted,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 8,
-  },
-  closeBtn: { position: 'absolute', top: 16, right: 16, zIndex: 10, padding: 4 },
-  closeBtnText: { fontSize: 18, color: COLORS.textMuted },
-  gallery: { width: SCREEN_WIDTH, height: 280 },
-  galleryImage: { width: SCREEN_WIDTH, height: 280 },
-  photoPlaceholder: {
-    width: '100%', height: 200,
-    backgroundColor: COLORS.primary + '20',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  photoPlaceholderText: { fontSize: 64, color: COLORS.primary },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingVertical: 8 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.textMuted + '60' },
-  dotActive: { backgroundColor: COLORS.primary },
-  body: { padding: 20, gap: 8 },
-  category: { fontSize: 11, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
-  name: { fontSize: 20, fontWeight: '700', color: COLORS.textPrimary },
-  price: { fontSize: 22, fontWeight: '700', color: COLORS.primary },
-  description: { fontSize: 14, color: COLORS.textMuted, lineHeight: 20, marginTop: 4 },
-  section: { marginTop: 8, gap: 6 },
-  sectionLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textPrimary },
-  outOfStock: { fontSize: 13, color: COLORS.textMuted },
-  variantRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 10, paddingHorizontal: 12,
-    borderRadius: 8, backgroundColor: COLORS.surface,
-  },
-  variantRowSelected: { borderWidth: 2, borderColor: COLORS.primary },
-  variantLabel: { fontSize: 14, color: COLORS.textPrimary },
-  variantPrice: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
-  qtyRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginTop: 8,
-  },
-  qtyControls: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  qtyBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  qtyBtnText: { fontSize: 18, color: COLORS.textPrimary, fontWeight: '700' },
-  qtyText: {
-    fontSize: 16, fontWeight: '700', color: COLORS.textPrimary,
-    minWidth: 20, textAlign: 'center',
-  },
-  ctaSection: { gap: 10, marginTop: 16, paddingBottom: 24 },
-  addToCartBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12, paddingVertical: 14, alignItems: 'center',
-  },
-  addToCartText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  buyNowBtn: {
-    borderWidth: 1.5, borderColor: COLORS.primary,
-    borderRadius: 12, paddingVertical: 13, alignItems: 'center',
-  },
-  buyNowText: { color: COLORS.primary, fontWeight: '700', fontSize: 16 },
-  btnDisabled: { opacity: 0.4 },
-});

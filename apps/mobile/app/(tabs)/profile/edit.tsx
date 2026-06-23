@@ -11,12 +11,13 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { supabase } from '../../../lib/supabase';
-import { COLORS, PRONOUNS, IDENTITY_LABELS } from '../../../lib/constants';
+import { PRONOUNS, IDENTITY_LABELS } from '../../../lib/constants';
 import { logError } from '../../../lib/errorLogger';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
 import { AvatarPickerSheet } from '../../../components/profile/AvatarPickerSheet';
 import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import type { UserBadgeProgress, Badge } from '../../../types';
 
 type EarnedBadge = UserBadgeProgress & { badges: Badge | null };
@@ -25,6 +26,7 @@ export default function EditProfileScreen() {
   const { user } = useAuthStore();
   const { profile, updateProfile } = useProfileStore();
   const router = useRouter();
+  const colors = useThemeColors();
 
   const [localBio, setLocalBio] = useState(profile?.bio ?? '');
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -43,10 +45,70 @@ export default function EditProfileScreen() {
       .catch((e) => logError(e, 'editProfile_fetchBadges'));
   }, [user?.id]);
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: colors.surface,
+    },
+    backBtn: { width: 40 },
+    headerTitle: { flex: 1, textAlign: 'center', color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
+    scroll: { padding: 16, gap: 14, alignItems: 'center' },
+
+    avatarSection: { alignItems: 'center', gap: 8 },
+    avatarCircle: {
+      width: 90, height: 90, borderRadius: 45,
+      backgroundColor: colors.roxy, alignItems: 'center', justifyContent: 'center',
+    },
+    avatarImage: { width: 90, height: 90, borderRadius: 45 },
+    avatarInitial: { color: '#fff', fontSize: 36, fontWeight: '700' },
+    avatarEmoji: { fontSize: 44 },
+    editPhotoText: { color: colors.roxy, fontSize: 13, fontWeight: '600' },
+
+    section: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, width: '100%' },
+    label: {
+      color: colors.textMuted, fontSize: 12, fontWeight: '600',
+      marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5,
+    },
+    readOnlyText: { color: colors.textPrimary, fontSize: 16, fontWeight: '600' },
+    hint: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
+    bioInput: {
+      color: colors.textPrimary, fontSize: 15,
+      minHeight: 72, textAlignVertical: 'top',
+    },
+
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: {
+      backgroundColor: colors.surfaceLight, borderRadius: 20,
+      paddingHorizontal: 14, paddingVertical: 7,
+      borderWidth: 1, borderColor: colors.textMuted + '60',
+    },
+    chipSelected: { backgroundColor: colors.roxy, borderColor: colors.roxy },
+    chipText: { color: colors.textPrimary, fontSize: 13, fontWeight: '500' },
+    chipTextSelected: { color: '#fff', fontWeight: '600' },
+
+    emptyBadges: { color: colors.textMuted, fontSize: 13 },
+    badgeRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.surfaceLight,
+    },
+    badgeRowDim: { opacity: 0.6 },
+    badgeEmoji: { fontSize: 24, width: 32 },
+    badgeName: { color: colors.textPrimary, fontWeight: '600', fontSize: 13 },
+    badgeDesc: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
+    badgeEarned: { color: colors.success, fontWeight: '700', fontSize: 16 },
+    progressTrack: {
+      height: 3, backgroundColor: colors.surfaceLight,
+      borderRadius: 2, overflow: 'hidden', marginTop: 4,
+    },
+    progressFill: { height: 3, backgroundColor: colors.primary, borderRadius: 2 },
+  });
+
   if (!user || !profile) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={COLORS.roxy} />
+        <ActivityIndicator color={colors.roxy} />
       </SafeAreaView>
     );
   }
@@ -114,7 +176,7 @@ export default function EditProfileScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back-outline" size={24} color={COLORS.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
         <View style={{ width: 40 }} />
@@ -129,7 +191,7 @@ export default function EditProfileScreen() {
         >
           {avatarUploading ? (
             <View style={styles.avatarCircle}>
-              <ActivityIndicator color={COLORS.textPrimary} />
+              <ActivityIndicator color={colors.textPrimary} />
             </View>
           ) : hasPreset ? (
             <View style={[styles.avatarCircle, { backgroundColor: presetColor(profile.avatar_url!) }]}>
@@ -162,7 +224,7 @@ export default function EditProfileScreen() {
             style={styles.bioInput}
             multiline
             placeholder="Add a bio..."
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={colors.textMuted}
             value={localBio}
             onChangeText={setLocalBio}
             onBlur={async () => {
@@ -253,63 +315,3 @@ export default function EditProfileScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.surface,
-  },
-  backBtn: { width: 40 },
-  headerTitle: { flex: 1, textAlign: 'center', color: COLORS.textPrimary, fontSize: 17, fontWeight: '700' },
-  scroll: { padding: 16, gap: 14, alignItems: 'center' },
-
-  avatarSection: { alignItems: 'center', gap: 8 },
-  avatarCircle: {
-    width: 90, height: 90, borderRadius: 45,
-    backgroundColor: COLORS.roxy, alignItems: 'center', justifyContent: 'center',
-  },
-  avatarImage: { width: 90, height: 90, borderRadius: 45 },
-  avatarInitial: { color: '#fff', fontSize: 36, fontWeight: '700' },
-  avatarEmoji: { fontSize: 44 },
-  editPhotoText: { color: COLORS.roxy, fontSize: 13, fontWeight: '600' },
-
-  section: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 16, width: '100%' },
-  label: {
-    color: COLORS.textMuted, fontSize: 12, fontWeight: '600',
-    marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5,
-  },
-  readOnlyText: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '600' },
-  hint: { color: COLORS.textMuted, fontSize: 11, marginTop: 4 },
-  bioInput: {
-    color: COLORS.textPrimary, fontSize: 15,
-    minHeight: 72, textAlignVertical: 'top',
-  },
-
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    backgroundColor: COLORS.surfaceLight, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderWidth: 1, borderColor: COLORS.textMuted + '60',
-  },
-  chipSelected: { backgroundColor: COLORS.roxy, borderColor: COLORS.roxy },
-  chipText: { color: COLORS.textPrimary, fontSize: 13, fontWeight: '500' },
-  chipTextSelected: { color: '#fff', fontWeight: '600' },
-
-  emptyBadges: { color: COLORS.textMuted, fontSize: 13 },
-  badgeRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceLight,
-  },
-  badgeRowDim: { opacity: 0.6 },
-  badgeEmoji: { fontSize: 24, width: 32 },
-  badgeName: { color: COLORS.textPrimary, fontWeight: '600', fontSize: 13 },
-  badgeDesc: { color: COLORS.textMuted, fontSize: 12, marginTop: 1 },
-  badgeEarned: { color: COLORS.success, fontWeight: '700', fontSize: 16 },
-  progressTrack: {
-    height: 3, backgroundColor: COLORS.surfaceLight,
-    borderRadius: 2, overflow: 'hidden', marginTop: 4,
-  },
-  progressFill: { height: 3, backgroundColor: COLORS.primary, borderRadius: 2 },
-});

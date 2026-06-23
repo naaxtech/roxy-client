@@ -6,9 +6,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { logError, logBreadcrumb } from '../../../lib/errorLogger';
-import { COLORS } from '../../../lib/constants';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 
 export default function Step3Photo() {
+  const colors = useThemeColors();
   const [uri, setUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const { user } = useAuthStore();
@@ -50,6 +51,23 @@ export default function Step3Photo() {
     router.replace('/(auth)/onboarding/step4-status');
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    content: { flex: 1, padding: 24, gap: 16 },
+    step: { color: colors.textMuted, fontSize: 13 },
+    headline: { fontSize: 28, fontWeight: '700', color: colors.textPrimary },
+    sub: { color: colors.textSecondary, fontSize: 15 },
+    photoBtn: {
+      width: 160, height: 160, borderRadius: 80, backgroundColor: colors.surface,
+      alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginTop: 24,
+    },
+    photoBtnText: { color: colors.textMuted, textAlign: 'center', padding: 16 },
+    preview: { width: 160, height: 160, borderRadius: 80 },
+    btn: { backgroundColor: colors.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 'auto' },
+    btnDisabled: { opacity: 0.5 },
+    btnText: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
+  });
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -72,19 +90,3 @@ export default function Step3Photo() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  content: { flex: 1, padding: 24, gap: 16 },
-  step: { color: COLORS.textMuted, fontSize: 13 },
-  headline: { fontSize: 28, fontWeight: '700', color: COLORS.textPrimary },
-  sub: { color: COLORS.textSecondary, fontSize: 15 },
-  photoBtn: {
-    width: 160, height: 160, borderRadius: 80, backgroundColor: COLORS.surface,
-    alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginTop: 24,
-  },
-  photoBtnText: { color: COLORS.textMuted, textAlign: 'center', padding: 16 },
-  preview: { width: 160, height: 160, borderRadius: 80 },
-  btn: { backgroundColor: COLORS.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 'auto' },
-  btnDisabled: { opacity: 0.5 },
-  btnText: { color: COLORS.textPrimary, fontWeight: '700', fontSize: 16 },
-});
