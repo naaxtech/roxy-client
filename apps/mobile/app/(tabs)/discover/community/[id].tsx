@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
   ScrollView, Alert, Dimensions, Share,
 } from 'react-native';
+import { Image } from 'expo-image';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -210,24 +211,26 @@ export default function CommunityDetailScreen() {
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
 
-    // Cover
-    cover: { height: 140, position: 'relative' },
-    coverGradient: {
-      height: 140, backgroundColor: colors.secondary + '60',
-      alignItems: 'center', justifyContent: 'center',
+    // Compact header — no decorative banner, content starts right after this
+    header: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10,
+      backgroundColor: colors.surface,
     },
-    coverEmoji: { fontSize: 48 },
     backBtn: {
-      position: 'absolute', top: 50, left: 16,
-      width: 38, height: 38, borderRadius: 19,
-      backgroundColor: 'rgba(0,0,0,0.4)',
-      alignItems: 'center', justifyContent: 'center',
+      width: 32, height: 32, borderRadius: 16,
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
+    avatarWrap: {
+      width: 40, height: 40, borderRadius: 20, flexShrink: 0,
+      backgroundColor: colors.secondary + '30',
+      alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    },
+    avatarImg: { width: 40, height: 40 },
+    avatarEmoji: { fontSize: 18 },
 
-    // Info card
-    infoCard: { backgroundColor: colors.surface, padding: 14, gap: 6 },
-    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-    communityName: { color: colors.textPrimary, fontSize: 18, fontWeight: '800', flex: 1 },
+    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+    communityName: { color: colors.textPrimary, fontSize: 15, fontWeight: '800', flexShrink: 1 },
     levelBadge: {
       backgroundColor: colors.secondary + '20', borderRadius: 10,
       paddingHorizontal: 8, paddingVertical: 2,
@@ -240,21 +243,21 @@ export default function CommunityDetailScreen() {
     },
     livePillDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.error },
     livePillText: { color: colors.error, fontWeight: '700', fontSize: 11 },
-    membersRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    membersText: { color: colors.roxy, fontWeight: '600', fontSize: 13, textDecorationLine: 'underline' },
+    membersRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+    membersText: { color: colors.textMuted, fontWeight: '600', fontSize: 12 },
     privacyPill: {
       backgroundColor: colors.primary + '20', borderRadius: 8,
-      paddingHorizontal: 7, paddingVertical: 2,
+      paddingHorizontal: 7, paddingVertical: 1,
     },
     privacyPillPrivate: { backgroundColor: colors.textMuted + '20' },
-    privacyPillText: { color: colors.textMuted, fontSize: 11 },
-    communityDesc: { color: colors.textSecondary, fontSize: 13, lineHeight: 18 },
-    joinBtn: {
-      backgroundColor: colors.roxy, borderRadius: 12,
-      paddingVertical: 8, alignItems: 'center',
+    privacyPillText: { color: colors.textMuted, fontSize: 10 },
+    communityDescInline: { color: colors.textMuted, fontSize: 12, flexShrink: 1 },
+    joinBtnCompact: {
+      backgroundColor: colors.roxy, borderRadius: 14,
+      paddingHorizontal: 14, paddingVertical: 7, flexShrink: 0,
     },
-    joinBtnJoined: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.textMuted + '60' },
-    joinBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+    joinBtnJoined: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.textMuted + '60' },
+    joinBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
     joinBtnTextJoined: { color: colors.textMuted },
 
     // Sub-tabs
@@ -365,47 +368,53 @@ export default function CommunityDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      {/* Fixed header: cover + info + tabs */}
-      <View style={styles.cover}>
-        <View style={styles.coverGradient}>
-          <Text style={styles.coverEmoji}>{level.emoji}</Text>
-        </View>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+      {/* Compact header — content starts almost immediately, no decorative banner */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-      </View>
 
-      <View style={styles.infoCard}>
-        <View style={styles.infoRow}>
-          <Text style={styles.communityName}>{community.name}</Text>
-          <View style={styles.levelBadge}>
-            <Text style={styles.levelBadgeText}>{level.emoji} {level.label}</Text>
-          </View>
-          {rooms.some((r) => r.status === 'live') && (
-            <TouchableOpacity style={styles.livePill} onPress={() => handleTabPress('rooms')}>
-              <View style={styles.livePillDot} />
-              <Text style={styles.livePillText}>Live</Text>
-            </TouchableOpacity>
+        <View style={styles.avatarWrap}>
+          {community.cover_image_url ? (
+            <Image source={{ uri: community.cover_image_url }} style={styles.avatarImg} />
+          ) : (
+            <Text style={styles.avatarEmoji}>{level.emoji}</Text>
           )}
         </View>
-        <TouchableOpacity
-          onPress={() => router.push(`/community/members/${id}` as any)}
-          style={styles.membersRow}
-        >
-          <Text style={styles.membersText}>{community.member_count} members</Text>
-          <View style={[styles.privacyPill, community.is_private && styles.privacyPillPrivate]}>
-            <Text style={styles.privacyPillText}>{community.is_private ? '🔒 Private' : '🌐 Public'}</Text>
+
+        <View style={{ flex: 1 }}>
+          <View style={styles.infoRow}>
+            <Text style={styles.communityName} numberOfLines={1}>{community.name}</Text>
+            <View style={styles.levelBadge}>
+              <Text style={styles.levelBadgeText}>{level.emoji} {level.label}</Text>
+            </View>
+            {rooms.some((r) => r.status === 'live') && (
+              <TouchableOpacity style={styles.livePill} onPress={() => handleTabPress('rooms')}>
+                <View style={styles.livePillDot} />
+                <Text style={styles.livePillText}>Live</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        </TouchableOpacity>
-        {community.description ? (
-          <Text style={styles.communityDesc}>{community.description}</Text>
-        ) : null}
+          <TouchableOpacity
+            onPress={() => router.push(`/community/members/${id}` as any)}
+            style={styles.membersRow}
+          >
+            <Text style={styles.membersText}>{community.member_count} members</Text>
+            <View style={[styles.privacyPill, community.is_private && styles.privacyPillPrivate]}>
+              <Text style={styles.privacyPillText}>{community.is_private ? '🔒 Private' : '🌐 Public'}</Text>
+            </View>
+            {community.description ? (
+              <Text style={styles.communityDescInline} numberOfLines={1}> · {community.description}</Text>
+            ) : null}
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
-          style={[styles.joinBtn, isJoined && styles.joinBtnJoined]}
+          style={[styles.joinBtnCompact, isJoined && styles.joinBtnJoined]}
           onPress={handleJoinLeave}
         >
           <Text style={[styles.joinBtnText, isJoined && styles.joinBtnTextJoined]}>
-            {isJoined ? 'Leave Community' : 'Join Community'}
+            {isJoined ? 'Joined' : 'Join'}
           </Text>
         </TouchableOpacity>
       </View>
