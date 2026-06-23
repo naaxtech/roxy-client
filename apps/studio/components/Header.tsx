@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { ChevronRight, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,14 @@ export function Header() {
 
   return (
     <header className="flex h-16 shrink-0 items-center border-b border-border/60 bg-background/60 backdrop-blur-sm px-6 gap-4">
+      <Image
+        src="/brand/roxy-logo-primary.svg"
+        alt="Roxy"
+        width={120}
+        height={68}
+        className="h-6 w-auto"
+      />
+
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm flex-1">
         <span className="text-muted-foreground/60 font-medium">Studio</span>
