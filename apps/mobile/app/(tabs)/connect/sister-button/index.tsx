@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../../store/authStore';
 import { callEdgeFunction } from '../../../../lib/supabase';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
@@ -50,11 +51,6 @@ export default function SisterButtonScreen() {
     backButton: {
       width: 40,
       alignItems: 'center',
-    },
-    backIcon: {
-      fontSize: 32,
-      color: colors.textPrimary,
-      lineHeight: 36,
     },
     headerCenter: {
       flex: 1,
@@ -305,7 +301,7 @@ export default function SisterButtonScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
-            <Text style={styles.backIcon}>‹</Text>
+            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Roxy Sister 💜</Text>

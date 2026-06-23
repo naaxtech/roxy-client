@@ -4,6 +4,7 @@ import {
   ScrollView, Image, Dimensions, NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { CheckoutSheet } from './CheckoutSheet';
 import type { ProductWithVariants, ProductVariant } from '../../types/marketplace';
@@ -76,7 +77,6 @@ export function ProductDetailSheet({
       marginBottom: 8,
     },
     closeBtn: { position: 'absolute', top: 16, right: 16, zIndex: 10, padding: 4 },
-    closeBtnText: { fontSize: 18, color: colors.textMuted },
     gallery: { width: SCREEN_WIDTH, height: 280 },
     galleryImage: { width: SCREEN_WIDTH, height: 280 },
     photoPlaceholder: {
@@ -151,7 +151,7 @@ export function ProductDetailSheet({
               onPress={onClose}
               accessibilityLabel="Close"
             >
-              <Text style={styles.closeBtnText}>✕</Text>
+              <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
 
             <ScrollView showsVerticalScrollIndicator={false}>

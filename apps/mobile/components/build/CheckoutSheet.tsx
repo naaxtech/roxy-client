@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { useStripe } from '@stripe/stripe-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import type { ProductWithVariants, ShippingAddress } from '../../types/marketplace';
@@ -226,7 +227,6 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
     summaryLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600', marginBottom: 4 },
     summaryValue: { fontSize: 14, color: colors.textPrimary },
     closeBtn: { position: 'absolute', top: 16, right: 16, padding: 8 },
-    closeBtnText: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
   });
 
   return (
@@ -257,7 +257,7 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
             {step === 'payment' && renderPayment()}
           </View>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} accessibilityLabel="Close checkout">
-            <Text style={styles.closeBtnText}>✕</Text>
+            <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
       </View>

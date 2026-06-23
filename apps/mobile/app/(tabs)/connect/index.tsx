@@ -4,6 +4,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Switch, ActivityIndicator, Animated, ScrollView, Share, Platform,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import { format } from 'date-fns';
@@ -170,7 +171,6 @@ export default function ConnectScreen() {
     speedDateIcon: { fontSize: 22 },
     speedDateTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
     speedDateSub: { color: colors.textSecondary, fontSize: 12 },
-    speedDateArrow: { color: colors.textMuted, fontSize: 20 },
 
     // Games + Community Rooms
     roomSection: { paddingHorizontal: 12, marginBottom: 8, marginTop: 8 },
@@ -183,7 +183,6 @@ export default function ConnectScreen() {
     gameEmoji: { fontSize: 24 },
     gameName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
     gameDesc: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
-    gameArrow: { color: colors.textMuted, fontSize: 20 },
     // Empty states
     emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12 },
     emptyIcon: { fontSize: 48 },
@@ -560,7 +559,7 @@ export default function ConnectScreen() {
                 <Text style={styles.speedDateTitle}>Speed Dating</Text>
                 <Text style={styles.speedDateSub}>Find your next match in 5 minutes</Text>
               </View>
-              <Text style={styles.speedDateArrow}>›</Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           )}
 
@@ -584,7 +583,7 @@ export default function ConnectScreen() {
                     <Text style={styles.gameName}>{game.name}</Text>
                     {game.description && <Text style={styles.gameDesc} numberOfLines={1}>{game.description}</Text>}
                   </View>
-                  <Text style={styles.gameArrow}>›</Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
                 </TouchableOpacity>
               ))
             )}

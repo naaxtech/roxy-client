@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, Linking } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { Ionicons } from '@expo/vector-icons';
 import { Business, BusinessPhoto } from '../../types';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { BusinessPhotoGallery } from './BusinessPhotoGallery';
@@ -178,7 +179,6 @@ export function BusinessDetailSheet({
       right: 16,
       padding: 8,
     },
-    closeBtnText: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
   });
 
   return (
@@ -332,7 +332,7 @@ export function BusinessDetailSheet({
 
             {/* Close button */}
             <TouchableOpacity style={styles.closeBtn} onPress={onClose} accessibilityLabel="Close business detail">
-              <Text style={styles.closeBtnText}>✕</Text>
+              <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 

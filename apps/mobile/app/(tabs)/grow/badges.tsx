@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
@@ -58,7 +59,6 @@ export default function BadgesScreen() {
       borderBottomWidth: 1, borderBottomColor: colors.surface,
     },
     backBtn: { width: 60, flexDirection: 'row', alignItems: 'center' },
-    backIcon: { fontSize: 32, color: colors.textPrimary, lineHeight: 36 },
     backLabel: { fontSize: 15, color: colors.textPrimary, marginLeft: 2 },
     headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800', color: colors.textPrimary },
     centreWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
@@ -98,7 +98,7 @@ export default function BadgesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>‹</Text>
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           <Text style={styles.backLabel}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Badges 🏆</Text>

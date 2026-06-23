@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Share, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGamesStore } from '../../../../store/gamesStore';
 import { useAuthStore } from '../../../../store/authStore';
@@ -31,7 +32,6 @@ export default function GameLaunchScreen() {
       backgroundColor: colors.background,
     },
     closeBtn: { padding: 4 },
-    closeText: { fontSize: 28, color: colors.textPrimary, fontWeight: '300' },
     gameName: { flex: 1, textAlign: 'center', fontWeight: '700', fontSize: 15, color: colors.textPrimary },
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     emptyText: { color: colors.textMuted, fontSize: 15 },
@@ -46,7 +46,7 @@ export default function GameLaunchScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} hitSlop={8}>
-          <Text style={styles.closeText}>×</Text>
+          <Ionicons name="close" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.empty}>
           <Text style={styles.emptyText}>Game not available</Text>
@@ -74,7 +74,7 @@ export default function GameLaunchScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} hitSlop={8}>
-          <Text style={styles.closeText}>×</Text>
+          <Ionicons name="close" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.empty}>
           <Text style={styles.emptyText}>WebView not available on this platform</Text>
@@ -87,7 +87,7 @@ export default function GameLaunchScreen() {
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-          <Text style={styles.closeText}>×</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.gameName} numberOfLines={1}>{game.name}</Text>
         <View style={{ width: 32 }} />

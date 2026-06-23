@@ -122,7 +122,6 @@ export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack
     bizInitialText: { color: colors.primary, fontWeight: '700', fontSize: 15 },
     bizName: { color: colors.textPrimary, fontWeight: '600', fontSize: 14 },
     bizCategory: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-    chevron: { color: colors.textMuted, fontSize: 20 },
   });
 
   const points = profile.gamification_points ?? 0;
@@ -225,7 +224,7 @@ export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack
                     <Text style={savedStyles.bizCategory}>{biz.category}</Text>
                   )}
                 </View>
-                <Text style={savedStyles.chevron}>›</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </TouchableOpacity>
             ))
           )}

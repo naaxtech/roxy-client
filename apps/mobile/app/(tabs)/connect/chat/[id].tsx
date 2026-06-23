@@ -96,7 +96,6 @@ export default function ChatScreen() {
       borderBottomWidth: 1, borderBottomColor: colors.surface,
     },
     backBtn: { width: 40 },
-    backText: { color: colors.textPrimary, fontSize: 28, lineHeight: 30 },
     headerTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 17, textAlign: 'center' },
     menuBtn: { padding: 4 },
     menuBtnText: { color: colors.textPrimary, fontSize: 16, letterSpacing: 1 },
@@ -176,7 +175,6 @@ export default function ChatScreen() {
       alignItems: 'center', justifyContent: 'center',
     },
     sendBtnDisabled: { backgroundColor: colors.surface },
-    sendBtnText: { color: '#fff', fontSize: 24, lineHeight: 28 },
     reactOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
     reactBarContainer: { position: 'absolute', bottom: 120, alignSelf: 'center' },
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
@@ -567,7 +565,7 @@ export default function ChatScreen() {
         ) : (
           <>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={styles.backText}>‹</Text>
+              <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => partnerId && router.push(`/user/${partnerId}` as any)}
@@ -705,7 +703,7 @@ export default function ChatScreen() {
               {sending ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.sendBtnText}>›</Text>
+                <Ionicons name="send" size={18} color="#fff" />
               )}
             </TouchableOpacity>
           </View>

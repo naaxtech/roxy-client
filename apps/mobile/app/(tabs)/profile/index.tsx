@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, ActivityIndicator, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { useBuildStore } from '../../../store/buildStore';
@@ -120,7 +121,6 @@ export default function ProfileScreen() {
       paddingVertical: 2,
     },
     orderCountText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-    chevron: { color: colors.textMuted, fontSize: 12 },
     ordersLoading: { paddingVertical: 24, alignItems: 'center' },
     ordersEmpty: { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 8, alignItems: 'center', gap: 4 },
     ordersEmptyText: { color: colors.textMuted, fontSize: 14, fontWeight: '600' },
@@ -198,7 +198,11 @@ export default function ProfileScreen() {
                   <Text style={styles.orderCountText}>{orders.length}</Text>
                 </View>
               )}
-              <Text style={styles.chevron}>{showOrders ? '▲' : '▼'}</Text>
+              <Ionicons
+                name={showOrders ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={colors.textMuted}
+              />
             </View>
           </TouchableOpacity>
 

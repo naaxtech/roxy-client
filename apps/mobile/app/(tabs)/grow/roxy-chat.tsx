@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../store/authStore';
 import { callEdgeFunction } from '../../../lib/supabase';
 import { Analytics } from '../../../lib/analytics';
@@ -72,7 +73,6 @@ export default function RoxyChatScreen() {
     },
     backBtn: { width: 60, flexDirection: 'row', alignItems: 'center' },
     backLabel: { fontSize: 15, color: colors.textPrimary, marginLeft: 2 },
-    backIcon: { fontSize: 32, color: colors.textPrimary, lineHeight: 36 },
     headerCenter: { flex: 1, alignItems: 'center' },
     headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
     headerSub: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
@@ -123,7 +123,7 @@ export default function RoxyChatScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backIcon}>‹</Text>
+            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
             <Text style={styles.backLabel}>Back</Text>
           </TouchableOpacity>
           <View style={styles.headerCenter}>

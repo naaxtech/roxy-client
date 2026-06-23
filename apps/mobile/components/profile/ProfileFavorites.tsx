@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
@@ -28,7 +29,6 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
     },
     chipIcon: { fontSize: 14 },
     chipText: { color: colors.textPrimary, fontSize: 13, fontWeight: '600', flexShrink: 1 },
-    remove: { color: colors.textMuted, fontSize: 16, marginLeft: 4 },
     hint: { color: colors.textMuted, fontSize: 13 },
   });
 
@@ -92,7 +92,7 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
             <Text style={styles.chipText} numberOfLines={1}>{f.title}</Text>
             {editable && (
               <TouchableOpacity onPress={() => void remove(f.id)} hitSlop={8}>
-                <Text style={styles.remove}>×</Text>
+                <Ionicons name="close" size={14} color={colors.textMuted} />
               </TouchableOpacity>
             )}
           </TouchableOpacity>

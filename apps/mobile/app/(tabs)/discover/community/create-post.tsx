@@ -6,6 +6,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
@@ -117,7 +118,6 @@ export default function CreatePostScreen() {
     typeInfo: { flex: 1 },
     typeLabel: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
     typeSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-    typeChevron: { color: colors.textMuted, fontSize: 20 },
     linkPreview: {
       backgroundColor: colors.surface, margin: 16,
       padding: 12, borderRadius: 10,
@@ -153,7 +153,7 @@ export default function CreatePostScreen() {
                 <Text style={styles.typeLabel}>{opt.label}</Text>
                 <Text style={styles.typeSub}>{opt.sub}</Text>
               </View>
-              <Text style={styles.typeChevron}>›</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           ))}
         </ScrollView>

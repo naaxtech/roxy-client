@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { callEdgeFunction } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
@@ -22,7 +23,6 @@ export default function SpeedDatingLobby() {
       borderBottomWidth: 1, borderBottomColor: colors.surface,
     },
     backBtn: { width: 40 },
-    backText: { color: colors.textPrimary, fontSize: 28, lineHeight: 30 },
     headerTitle: {
       flex: 1, color: colors.textPrimary, fontWeight: '700',
       fontSize: 17, textAlign: 'center',
@@ -92,7 +92,7 @@ export default function SpeedDatingLobby() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>‹</Text>
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Speed Dating</Text>
         <View style={{ width: 40 }} />

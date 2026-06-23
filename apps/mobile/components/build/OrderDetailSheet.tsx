@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import type { OrderWithItems } from '../../types/marketplace';
 
@@ -44,7 +45,6 @@ export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
     eventDesc: { fontSize: 13, color: colors.textPrimary },
     eventDate: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
     closeBtn: { position: 'absolute', top: 16, right: 16, padding: 8 },
-    closeBtnText: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
   });
 
   if (!order) return null;
@@ -124,7 +124,7 @@ export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
             <View style={{ height: 40 }} />
           </ScrollView>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} accessibilityLabel="Close order detail">
-            <Text style={styles.closeBtnText}>✕</Text>
+            <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
       </View>

@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, Modal, ScrollView,
   ActivityIndicator, StyleSheet,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import type { LinkType } from '../../types';
@@ -45,7 +46,6 @@ export function RoxyLinkPicker({ visible, onSelect, onClose }: RoxyLinkPickerPro
       borderBottomWidth: 1, borderBottomColor: colors.surface,
     },
     title: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
-    close: { color: colors.textMuted, fontSize: 18 },
     entityRow: {
       flexDirection: 'row', alignItems: 'center',
       paddingHorizontal: 20, paddingVertical: 14,
@@ -53,7 +53,6 @@ export function RoxyLinkPicker({ visible, onSelect, onClose }: RoxyLinkPickerPro
     },
     entityIcon: { fontSize: 22, marginRight: 14 },
     entityName: { flex: 1, color: colors.textPrimary, fontSize: 15 },
-    chevron: { color: colors.textMuted, fontSize: 20 },
     empty: {
       color: colors.textMuted, textAlign: 'center',
       padding: 40, fontSize: 14,
@@ -102,7 +101,7 @@ export function RoxyLinkPicker({ visible, onSelect, onClose }: RoxyLinkPickerPro
         <View style={styles.header}>
           <Text style={styles.title}>Link to...</Text>
           <TouchableOpacity onPress={onClose} hitSlop={8}>
-            <Text style={styles.close}>✕</Text>
+            <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
         {loading ? (
@@ -126,7 +125,7 @@ export function RoxyLinkPicker({ visible, onSelect, onClose }: RoxyLinkPickerPro
               >
                 <Text style={styles.entityIcon}>{TYPE_ICON[e.type]}</Text>
                 <Text style={styles.entityName}>{e.name}</Text>
-                <Text style={styles.chevron}>›</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </TouchableOpacity>
             ))}
           </ScrollView>

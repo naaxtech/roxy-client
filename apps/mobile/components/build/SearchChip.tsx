@@ -1,4 +1,5 @@
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface SearchChipProps {
@@ -22,14 +23,13 @@ export function SearchChip({ label, onRemove }: SearchChipProps) {
       gap: 6,
     },
     label: { color: colors.primary, fontSize: 13, fontWeight: '600' },
-    remove: { color: colors.primary, fontSize: 15, fontWeight: '700', lineHeight: 18 },
   });
 
   return (
     <View style={styles.chip}>
       <Text style={styles.label}>{label}</Text>
       <TouchableOpacity onPress={() => onRemove(label)} hitSlop={8}>
-        <Text style={styles.remove}>×</Text>
+        <Ionicons name="close" size={14} color={colors.primary} />
       </TouchableOpacity>
     </View>
   );

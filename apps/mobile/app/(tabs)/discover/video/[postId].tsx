@@ -85,7 +85,6 @@ function buildStyles(colors: ReturnType<typeof useThemeColors>) {
     railAction: { alignItems: 'center', gap: 2 },
     railCount: { color: '#fff', fontSize: 12 },
     backBtn: { position: 'absolute', top: 48, left: 16, zIndex: 10 },
-    backText: { color: '#fff', fontSize: 28, fontWeight: '300' },
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     emptyText: { color: colors.textMuted, fontSize: 16 },
   });
@@ -178,7 +177,7 @@ export default function VideoPlayerScreen() {
     return (
       <View style={styles.container}>
         <TouchableOpacity onPress={closePlayer} style={styles.backBtn}>
-          <Text style={styles.backText}>×</Text>
+          <Ionicons name="close" size={26} color="#fff" />
         </TouchableOpacity>
         <View style={styles.empty}>
           <Text style={styles.emptyText}>No video found</Text>
@@ -226,7 +225,7 @@ export default function VideoPlayerScreen() {
         }}
       />
       <TouchableOpacity testID="video-back-btn" style={styles.backBtn} onPress={closePlayer} hitSlop={8}>
-        <Text style={styles.backText}>×</Text>
+        <Ionicons name="close" size={26} color="#fff" />
       </TouchableOpacity>
       <CommentSheet
         visible={commentSheetPostId !== null}

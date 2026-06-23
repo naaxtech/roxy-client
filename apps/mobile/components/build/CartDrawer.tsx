@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
@@ -36,7 +37,6 @@ export function CartDrawer({ businessId, businessName, visible, onClose, onCheck
     qtyBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
     qtyBtnText: { fontSize: 16, color: colors.textPrimary, fontWeight: '700' },
     qtyText: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, minWidth: 20, textAlign: 'center' },
-    removeText: { color: colors.textMuted, fontSize: 16 },
     footer: { paddingHorizontal: 20, paddingTop: 12, gap: 8 },
     totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     totalLabel: { fontSize: 15, color: colors.textSecondary },
@@ -87,7 +87,7 @@ export function CartDrawer({ businessId, businessName, visible, onClose, onCheck
                       </TouchableOpacity>
                     </View>
                     <TouchableOpacity onPress={() => removeFromCart(businessId, item.id)} hitSlop={10}>
-                      <Text style={styles.removeText}>✕</Text>
+                      <Ionicons name="close" size={16} color={colors.textMuted} />
                     </TouchableOpacity>
                   </View>
                 );

@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
 import { callEdgeFunction } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
@@ -137,7 +138,7 @@ function ImpactDetailSheet({
               style={styles.modalCloseBtn}
               onPress={onClose}
             >
-              <Text style={styles.modalCloseBtnText}>✕</Text>
+              <Ionicons name="close" size={20} style={styles.modalCloseBtnText} />
             </TouchableOpacity>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalEmoji}>{categoryEmoji[project.category] ?? '✨'}</Text>
@@ -711,7 +712,7 @@ export default function BuildScreen() {
         >
           <View style={styles.pitchModalCard}>
             <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setPitchModal(false)}>
-              <Text style={styles.modalCloseBtnText}>✕</Text>
+              <Ionicons name="close" size={20} style={styles.modalCloseBtnText} />
             </TouchableOpacity>
             <Text style={styles.pitchModalTitle}>💡 Pitch a Feature</Text>
             <Text style={styles.pitchModalSubtitle}>

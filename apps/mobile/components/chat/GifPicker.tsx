@@ -3,6 +3,7 @@ import {
   Modal, View, Text, TextInput, TouchableOpacity,
   FlatList, Image, ActivityIndicator, StyleSheet, Dimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 const GIPHY_KEY = process.env.EXPO_PUBLIC_GIPHY_API_KEY ?? '';
@@ -78,7 +79,6 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
       borderBottomColor: colors.surface,
     },
     headerTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 17 },
-    closeBtn: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
     searchInput: {
       margin: 12,
       backgroundColor: colors.surface,
@@ -107,7 +107,7 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>GIFs</Text>
           <TouchableOpacity onPress={onClose} hitSlop={12}>
-            <Text style={styles.closeBtn}>✕</Text>
+            <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
