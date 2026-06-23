@@ -1,12 +1,13 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Calendar, Video, Gamepad2, Users, Wallet,
   ShoppingBag, Package, ShoppingCart, DollarSign, Settings,
   Shield, CheckSquare, Mail, RefreshCw, AlertTriangle, Building2,
-  ChevronRight, LogOut, Sparkles, Lightbulb,
+  ChevronRight, LogOut, Lightbulb,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOutAction } from '@/app/auth/signout-action';
@@ -102,13 +103,15 @@ export function AppSidebar({ isStaff = false, userEmail, userInitials = 'R' }: A
       <aside className="flex h-screen w-[240px] shrink-0 flex-col border-r border-border/60 bg-background/80 backdrop-blur-sm">
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-border/60 px-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 ring-1 ring-primary/30">
-            <Sparkles className="h-4 w-4 text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-bold tracking-tight text-foreground">Roxy Studio</p>
-            <p className="text-[10px] text-muted-foreground/70 leading-none mt-0.5">Host dashboard</p>
-          </div>
+          <Image
+            src="/brand/roxy-logo-primary.svg"
+            alt="Roxy"
+            width={120}
+            height={68}
+            priority
+            className="h-8 w-auto"
+          />
+          <p className="text-[10px] text-muted-foreground/70 leading-none">Host dashboard</p>
         </div>
 
         {/* Nav */}
