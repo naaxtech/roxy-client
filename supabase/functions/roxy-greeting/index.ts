@@ -11,6 +11,7 @@ Deno.serve(async (req: Request) => {
   const auth = verifyJWT(req);
   if (!auth) return errorResponse('Unauthorized', 401);
 
+  const userId = auth.userId;
   const supabase = getSupabaseClient();
   const today = new Date().toISOString().split('T')[0];
 
@@ -18,7 +19,7 @@ Deno.serve(async (req: Request) => {
   const { data: cached } = await supabase
     .from('roxy_greetings')
     .select('greeting_text')
-    .eq('user_id', auth.userId)
+    .eq('user_id', userId)
     .eq('generated_date', today)
     .maybeSingle();
 
@@ -30,7 +31,7 @@ Deno.serve(async (req: Request) => {
   const { data: profile } = await supabase
     .from('profiles')
     .select('display_name, identity_labels')
-    .eq('id', auth.userId)
+    .eq('id', userId)
     .maybeSingle();
 
   const name = profile?.display_name ?? 'friend';
@@ -55,7 +56,7 @@ Deno.serve(async (req: Request) => {
   // ON CONFLICT DO NOTHING in case of a race condition (two requests in parallel)
   await supabase.from('roxy_greetings').upsert(
     {
-      user_id: auth.userId,
+      user_id: userId,
       greeting_text: greeting,
       generated_date: today,
     },
@@ -64,7 +65,7 @@ Deno.serve(async (req: Request) => {
 
   // ── Log the call ────────────────────────────────────────────────────────────
   await logAiCall({
-    userId: auth.userId,
+    userId: userId,
     fnName: 'roxy-greeting',
     wasMock,
   });

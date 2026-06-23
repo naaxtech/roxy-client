@@ -10,16 +10,22 @@ DECLARE
 BEGIN
 
 -- ── Auth users (WHERE NOT EXISTS avoids constraint issues) ────
+-- instance_id/aud + the empty-string token columns are required: GoTrue's Go struct
+-- scan fails with a generic 500 ("Database error querying schema") if these are NULL.
 INSERT INTO auth.users (
-  id, email, encrypted_password, email_confirmed_at,
+  id, instance_id, aud, email, encrypted_password, email_confirmed_at,
   created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
-  is_super_admin, role
+  is_super_admin, role,
+  confirmation_token, recovery_token, email_change,
+  email_change_token_new, email_change_token_current,
+  phone_change, phone_change_token, reauthentication_token
 )
-SELECT gen_random_uuid(), t.email,
+SELECT gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'authenticated', t.email,
        crypt('Password123!', gen_salt('bf')),
        now(), now(), now(),
        '{"provider":"email","providers":["email"]}'::jsonb,
-       '{}'::jsonb, false, 'authenticated'
+       '{}'::jsonb, false, 'authenticated',
+       '', '', '', '', '', '', '', ''
 FROM (VALUES
   ('alex@roxy.dev'),
   ('jamie@roxy.dev'),

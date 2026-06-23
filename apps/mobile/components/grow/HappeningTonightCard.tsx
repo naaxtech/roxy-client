@@ -17,7 +17,7 @@ const SLIDE_WIDTH = SCREEN_W - PARENT_PADDING * 2;
 type HappeningItem =
   | { kind: 'event'; id: string; title: string; communityName: string; startsAt: string; attendeeCount: number; spotsLeft: number | null }
   | { kind: 'room'; id: string; name: string; communityName: string; participantCount: number | null }
-  | { kind: 'game'; id: string; title: string; communityName: string; gameType: string };
+  | { kind: 'game'; id: string; title: string; communityName: string };
 
 interface Props {
   communityIds: string[];
@@ -84,7 +84,7 @@ export function HappeningTonightCard({ communityIds }: Props) {
         supabase.from('events').select('id, title, starts_at, communities(name)')
           .in('community_id', communityIds).gte('starts_at', now).lte('starts_at', tonightEnd)
           .eq('is_private', false).order('starts_at', { ascending: true }).limit(5),
-        supabase.from('community_games').select('game_id, communities(name), games!inner(id, title, game_type, status)')
+        supabase.from('community_games').select('id, communities(name), games!inner(id, name, status)')
           .in('community_id', communityIds).eq('games.status', 'live').limit(3),
       ]);
 
@@ -98,8 +98,8 @@ export function HappeningTonightCard({ communityIds }: Props) {
         attendeeCount: 0, spotsLeft: null,
       }));
       const games: HappeningItem[] = (gamesRes.data ?? []).map((g: any) => ({
-        kind: 'game', id: g.games.id, title: g.games.title,
-        communityName: g.communities?.name ?? '', gameType: g.games.game_type,
+        kind: 'game', id: g.id, title: g.games.name,
+        communityName: g.communities?.name ?? '',
       }));
       setItems([...rooms, ...events, ...games]);
     } catch {

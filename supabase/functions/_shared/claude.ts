@@ -38,14 +38,24 @@ export async function callClaude(params: {
     return params.mockResponse ?? '[dev: AI paused]';
   }
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: params.maxTokens ?? 256,
-    system: params.system,
-    messages: params.messages,
-  });
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: params.maxTokens ?? 256,
+      system: params.system,
+      messages: params.messages,
+    });
 
-  const block = response.content[0];
-  if (block.type !== 'text') throw new Error('Unexpected Claude response type');
-  return block.text;
+    const block = response.content[0];
+    if (block.type !== 'text') throw new Error('Unexpected Claude response type');
+    return block.text;
+  } catch (err) {
+    // Anthropic API failures (billing, rate limit, outage) must degrade to the
+    // mock copy rather than crash the function — a crashed Deno.serve handler
+    // returns a platform error page with no CORS headers, which browsers report
+    // as a confusing "blocked by CORS policy" error instead of the real cause.
+    console.error('callClaude failed, falling back to mock:', err);
+    if (params.mockResponse) return params.mockResponse;
+    throw err;
+  }
 }
