@@ -185,8 +185,6 @@ export default function ChatScreen() {
       paddingBottom: 32, paddingTop: 8,
     },
     actionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, gap: 14 },
-    actionRowIcon: { fontSize: 18 },
-    actionRowIconDanger: { fontSize: 18 },
     actionRowText: { color: colors.textPrimary, fontSize: 16 },
     actionRowTextDanger: { color: colors.error, fontSize: 16, fontWeight: '600' },
     actionSeparator: { height: 1, backgroundColor: colors.surfaceLight, marginHorizontal: 16 },
@@ -741,17 +739,17 @@ export default function ChatScreen() {
               style={styles.actionRow}
               onPress={() => { setMenuVisible(false); setSearchActive(true); }}
             >
-              <Text style={styles.actionRowIcon}>⌕</Text>
+              <Ionicons name="search-outline" size={18} color={colors.textPrimary} />
               <Text style={styles.actionRowText}>Search messages</Text>
             </TouchableOpacity>
             <View style={styles.actionSeparator} />
             <TouchableOpacity style={styles.actionRow} onPress={handleBlockPress}>
-              <Text style={styles.actionRowIconDanger}>⛔</Text>
+              <Ionicons name="ban-outline" size={18} color={colors.error} />
               <Text style={styles.actionRowTextDanger}>Block {partnerName}</Text>
             </TouchableOpacity>
             <View style={styles.actionSeparator} />
             <TouchableOpacity style={styles.actionRow} onPress={handleReportPress}>
-              <Text style={styles.actionRowIcon}>🚩</Text>
+              <Ionicons name="flag-outline" size={18} color={colors.textPrimary} />
               <Text style={styles.actionRowText}>Report conversation</Text>
             </TouchableOpacity>
             <View style={styles.actionSeparator} />

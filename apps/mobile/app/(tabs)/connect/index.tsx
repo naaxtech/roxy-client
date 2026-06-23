@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Switch, ActivityIndicator, Animated, ScrollView, Share,
+  View, Text, StyleSheet, TouchableOpacity, Switch, ActivityIndicator, Animated, ScrollView, Share, Platform,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { format } from 'date-fns';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
@@ -64,6 +64,9 @@ export default function ConnectScreen() {
   const colors = useThemeColors();
 
   const feedListRef = useRef<FlashList<PostRow>>(null);
+  // Tracks live scroll position without touching Zustand on every frame —
+  // writing to the store on each onScroll re-renders this screen mid-gesture and causes stutter.
+  const scrollOffsetRef = useRef(connectScrollOffset);
 
   const [subTab, setSubTab] = useState<SubTab>('feed');
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -190,13 +193,33 @@ export default function ConnectScreen() {
     emptyCTAText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   });
 
+  // Web: pathname changes are reliable (URL-based). useFocusEffect does NOT
+  // fire on web when navigating via the root Stack (e.g. to /community/post/*).
+  const pathname = usePathname();
+  const prevPathnameRef = useRef('');
+  useEffect(() => {
+    const prev = prevPathnameRef.current;
+    prevPathnameRef.current = pathname;
+    if (!prev.startsWith('/community/') || connectScrollOffset <= 0) return;
+    let attempts = 0;
+    const tryRestore = () => {
+      if (feedListRef.current) {
+        feedListRef.current.scrollToOffset({ offset: connectScrollOffset, animated: false });
+      } else if (++attempts < 8) {
+        setTimeout(tryRestore, 100);
+      }
+    };
+    setTimeout(tryRestore, 80);
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Native: useFocusEffect IS reliable — screen stays mounted in the stack.
   useFocusEffect(
     useCallback(() => {
-      if (connectScrollOffset > 0) {
-        requestAnimationFrame(() => {
-          feedListRef.current?.scrollToOffset({ offset: connectScrollOffset, animated: false });
-        });
-      }
+      if (Platform.OS === 'web' || connectScrollOffset <= 0) return;
+      const t = setTimeout(() => {
+        feedListRef.current?.scrollToOffset({ offset: connectScrollOffset, animated: false });
+      }, 80);
+      return () => clearTimeout(t);
     }, [connectScrollOffset])
   );
 
@@ -393,7 +416,7 @@ export default function ConnectScreen() {
             data={posts}
             keyExtractor={(item) => item.id}
             estimatedItemSize={360}
-            onScroll={(e) => setConnectScrollOffset(e.nativeEvent.contentOffset.y)}
+            onScroll={(e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; }}
             scrollEventThrottle={32}
             onRefresh={() => void loadFeed()}
             refreshing={loadingFeed}
@@ -418,10 +441,12 @@ export default function ConnectScreen() {
                   onLike={() => void toggleLike(item.id)}
                   onSave={() => void toggleSave(item.id)}
                   onComment={() => {
+                    setConnectScrollOffset(scrollOffsetRef.current);
                     router.push(contentDetailPath(item.id, item.post_type) as any);
                   }}
                   onShare={() => void Share.share({ message: 'Check this out on Roxy!' })}
                   onPress={() => {
+                    setConnectScrollOffset(scrollOffsetRef.current);
                     router.push(contentDetailPath(item.id, item.post_type) as any);
                   }}
                 />
