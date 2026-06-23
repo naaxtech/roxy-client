@@ -96,16 +96,19 @@ WHERE NOT EXISTS (
 );
 
 -- ── Events ────────────────────────────────────────────────────
+-- starts_at is relative to whenever this script runs, so a stale row from a
+-- previous run would otherwise sit in the past forever — delete by title
+-- before inserting so re-running always refreshes these to be upcoming.
+DELETE FROM events WHERE title IN (
+  'WLW London Autumn Social', 'Book Club: October Pick',
+  'WLW Biz Networking Brunch', 'Online Queer Crafting Night'
+);
 INSERT INTO events (host_id, community_id, title, description, event_type, starts_at, location_text, max_attendees)
-SELECT * FROM (VALUES
+VALUES
   (u1, c1, 'WLW London Autumn Social',    'Casual drinks and good vibes at The Chameleon Bar',           'in_person', now() + interval '5 days',  'The Chameleon Bar, Soho', 30),
   (u2, c2, 'Book Club: October Pick',     'Discussing "Fingersmith" by Sarah Waters — bring your feels', 'in_person', now() + interval '10 days', 'Foyles Café, London',     12),
   (u4, c3, 'WLW Biz Networking Brunch',   'Pitch your idea, meet your next collab partner',              'in_person', now() + interval '14 days', 'Brew & Co, Brixton',      20),
-  (u3, c1, 'Online Queer Crafting Night', 'Bring your WIP, chat, create. Zoom link on join.',            'online',    now() + interval '3 days',  NULL::text,                50)
-) AS v(host_id, community_id, title, description, event_type, starts_at, location_text, max_attendees)
-WHERE NOT EXISTS (
-  SELECT 1 FROM events WHERE host_id = v.host_id AND title = v.title
-);
+  (u3, c1, 'Online Queer Crafting Night', 'Bring your WIP, chat, create. Zoom link on join.',            'online',    now() + interval '3 days',  NULL::text,                50);
 
 -- ── Businesses ────────────────────────────────────────────────
 INSERT INTO businesses (owner_id, name, description, category, location_city, is_wlw_owned, is_verified)
