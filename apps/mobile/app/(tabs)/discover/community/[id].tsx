@@ -278,8 +278,6 @@ export default function CommunityDetailScreen() {
     postContent: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
     postFooter: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 8 },
     footerBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    footerHeart: { color: colors.textMuted, fontSize: 16 },
-    footerHeartLiked: { color: colors.roxy },
     footerCount: { color: colors.textMuted, fontSize: 12 },
 
     // Events
@@ -455,10 +453,17 @@ export default function CommunityDetailScreen() {
                   <Text style={styles.postContent}>{post.content}</Text>
                 </TouchableOpacity>
                 <View style={styles.postFooter}>
-                  <TouchableOpacity style={styles.footerBtn} onPress={() => toggleLike(post.id)}>
-                    <Text style={[styles.footerHeart, likedIds.has(post.id) && styles.footerHeartLiked]}>
-                      {likedIds.has(post.id) ? '♥' : '♡'}
-                    </Text>
+                  <TouchableOpacity
+                    style={styles.footerBtn}
+                    onPress={() => toggleLike(post.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={likedIds.has(post.id) ? 'Unlike post' : 'Like post'}
+                  >
+                    <Ionicons
+                      name={likedIds.has(post.id) ? 'heart' : 'heart-outline'}
+                      size={16}
+                      color={likedIds.has(post.id) ? colors.roxy : colors.textMuted}
+                    />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.footerBtn} onPress={() => router.push(`/community/post/${post.id}` as any)}>
                     <Ionicons name="chatbubble-outline" size={13} color={colors.textMuted} />

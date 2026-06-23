@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet,
   TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { CommentThread } from './CommentThread';
 import { submitComment } from '../../lib/comments';
@@ -46,7 +47,6 @@ export function CommentSheet({
       alignItems: 'center', paddingHorizontal: 20, paddingBottom: 12,
     },
     title: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
-    close: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
     scroll: { maxHeight: 360 },
     inputRow: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -58,8 +58,6 @@ export function CommentSheet({
       borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
       color: colors.textPrimary, fontSize: 14,
     },
-    send: { fontSize: 18, color: colors.primary, fontWeight: '700' },
-    sendDisabled: { color: colors.textMuted },
   });
 
   const handleSubmit = async () => {
@@ -91,8 +89,8 @@ export function CommentSheet({
           <View style={styles.handle} />
           <View style={styles.header}>
             <Text style={styles.title}>Comments ({comments.length})</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={8}>
-              <Text style={styles.close}>✕</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close comments">
+              <Ionicons name="close" size={22} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
@@ -123,7 +121,7 @@ export function CommentSheet({
             >
               {submitting
                 ? <ActivityIndicator size="small" color={colors.primary} />
-                : <Text style={[styles.send, !text.trim() && styles.sendDisabled]}>↗</Text>
+                : <Ionicons name="arrow-up-circle" size={26} color={text.trim() ? colors.primary : colors.textMuted} />
               }
             </TouchableOpacity>
           </View>

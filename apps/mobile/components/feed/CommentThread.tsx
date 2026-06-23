@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Animated, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import type { Comment } from '../../types';
 
@@ -24,6 +25,7 @@ function CommentRow({
   indent?: boolean;
 }) {
   const colors = useThemeColors();
+  const heartScale = useRef(new Animated.Value(1)).current;
 
   const styles = StyleSheet.create({
     commentRow: {
@@ -41,12 +43,18 @@ function CommentRow({
     commentAuthor: { color: colors.textPrimary, fontWeight: '600', fontSize: 13 },
     commentContent: { color: colors.textSecondary, fontSize: 13, marginTop: 2, lineHeight: 18 },
     deletedText: { color: colors.textMuted, fontStyle: 'italic', fontSize: 13, marginTop: 2 },
-    commentActions: { flexDirection: 'row', gap: 16, marginTop: 6 },
+    commentActions: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 6 },
+    likeAction: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     actionText: { color: colors.textMuted, fontSize: 12 },
     likedText: { color: colors.primary },
   });
 
   const isDeleted = comment.deleted_at !== null;
+  const handleLike = () => {
+    heartScale.setValue(0.7);
+    Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, tension: 260, friction: 12 }).start();
+    onLike();
+  };
   return (
     <View style={[styles.commentRow, indent && styles.replyRow]}>
       <View style={styles.avatarCircle}>
@@ -63,10 +71,21 @@ function CommentRow({
         )}
         {!isDeleted && (
           <View style={styles.commentActions}>
-            <TouchableOpacity onPress={onLike}>
-              <Text style={[styles.actionText, isLiked && styles.likedText]}>
-                {isLiked ? '♥' : '♡'} {comment.like_count}
-              </Text>
+            <TouchableOpacity
+              style={styles.likeAction}
+              onPress={handleLike}
+              accessibilityRole="button"
+              accessibilityLabel={isLiked ? 'Unlike comment' : 'Like comment'}
+              hitSlop={6}
+            >
+              <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                <Ionicons
+                  name={isLiked ? 'heart' : 'heart-outline'}
+                  size={14}
+                  color={isLiked ? colors.primary : colors.textMuted}
+                />
+              </Animated.View>
+              <Text style={[styles.actionText, isLiked && styles.likedText]}>{comment.like_count}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={onReply}>
               <Text style={styles.actionText}>Reply</Text>

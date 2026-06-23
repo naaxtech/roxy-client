@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { supabase, callEdgeFunction } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
@@ -160,12 +161,6 @@ export default function ChatScreen() {
     roxyBtnActive: {
       backgroundColor: colors.roxy + '18',
       borderColor: colors.roxy,
-    },
-    roxyBtnText: {
-      color: colors.roxy,
-      fontSize: 14,
-      fontWeight: '700',
-      lineHeight: 16,
     },
     inlineEmojiContainer: {
       borderTopWidth: 1,
@@ -686,8 +681,10 @@ export default function ChatScreen() {
                 setShowEmojiKeyboard(false);
               }}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Roxy wingwoman tools"
             >
-              <Text style={styles.roxyBtnText}>✦</Text>
+              <Ionicons name="sparkles" size={16} color={colors.roxy} />
             </TouchableOpacity>
 
             <TextInput

@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Share, Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
@@ -184,7 +185,6 @@ export default function PostDetailScreen() {
       backgroundColor: colors.background, gap: 8,
     },
     stickyAction: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-    stickyIcon: { fontSize: 18, color: colors.textMuted },
     stickyCount: { fontSize: 13, color: colors.textMuted },
     iconActive: { color: colors.primary },
     commentInput: {
@@ -192,12 +192,12 @@ export default function PostDetailScreen() {
       borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
       color: colors.textPrimary, fontSize: 14, maxHeight: 80,
     },
-    sendBtn: { fontSize: 18, color: colors.primary, fontWeight: '700' },
-    sendDisabled: { color: colors.textMuted },
     replyChip: {
-      backgroundColor: colors.primary + '20', color: colors.primary,
-      fontSize: 11, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10,
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      backgroundColor: colors.primary + '20',
+      paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10,
     },
+    replyChipText: { color: colors.primary, fontSize: 11 },
     errorBody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
     errorText: { color: colors.textSecondary, fontSize: 15, textAlign: 'center' },
   });
@@ -291,10 +291,10 @@ export default function PostDetailScreen() {
           <TouchableOpacity
             onPress={() => void toggleLike(post.id)}
             style={styles.stickyAction}
+            accessibilityRole="button"
+            accessibilityLabel={isLiked ? 'Unlike post' : 'Like post'}
           >
-            <Text style={[styles.stickyIcon, isLiked && styles.iconActive]}>
-              {isLiked ? '♥' : '♡'}
-            </Text>
+            <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={20} color={isLiked ? colors.primary : colors.textMuted} />
             <Text style={[styles.stickyCount, isLiked && styles.iconActive]}>
               {post.like_count}
             </Text>
@@ -303,18 +303,19 @@ export default function PostDetailScreen() {
           <TouchableOpacity
             onPress={() => void toggleSave(post.id)}
             style={styles.stickyAction}
+            accessibilityRole="button"
+            accessibilityLabel={isSaved ? 'Remove from saved' : 'Save post'}
           >
-            <Text style={[styles.stickyIcon, isSaved && styles.iconActive]}>
-              {isSaved ? '✦' : '✧'}
-            </Text>
+            <Ionicons name={isSaved ? 'bookmark' : 'bookmark-outline'} size={19} color={isSaved ? colors.primary : colors.textMuted} />
             <Text style={[styles.stickyCount, isSaved && styles.iconActive]}>
               {post.save_count}
             </Text>
           </TouchableOpacity>
 
           {replyingTo && (
-            <TouchableOpacity onPress={() => setReplyingTo(null)}>
-              <Text style={styles.replyChip}>@{replyingTo.profiles?.display_name} ✕</Text>
+            <TouchableOpacity onPress={() => setReplyingTo(null)} style={styles.replyChip}>
+              <Text style={styles.replyChipText}>@{replyingTo.profiles?.display_name}</Text>
+              <Ionicons name="close" size={12} color={colors.primary} />
             </TouchableOpacity>
           )}
 
@@ -335,15 +336,17 @@ export default function PostDetailScreen() {
           >
             {submitting
               ? <ActivityIndicator size="small" color={colors.primary} />
-              : <Text style={[styles.sendBtn, !commentText.trim() && styles.sendDisabled]}>↗</Text>
+              : <Ionicons name="arrow-up-circle" size={26} color={commentText.trim() ? colors.primary : colors.textMuted} />
             }
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => void Share.share({ message: 'Check this out on Roxy!' })}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Share post"
           >
-            <Text style={styles.stickyIcon}>↗</Text>
+            <Ionicons name="arrow-redo-outline" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

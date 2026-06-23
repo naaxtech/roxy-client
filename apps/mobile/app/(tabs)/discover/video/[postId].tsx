@@ -4,6 +4,7 @@ import {
   Dimensions, StatusBar, Share, PanResponder,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useFeedStore } from '../../../../store/feedStore';
 import { useAuthStore } from '../../../../store/authStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
@@ -18,13 +19,14 @@ import { COMMENT_WITH_AUTHOR } from '../../../../lib/supabaseQueries';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 function VideoItem({
-  post, isActive, onComment, isLiked, isSaved, onLike, onSave, onShare, styles,
+  post, isActive, onComment, isLiked, isSaved, onLike, onSave, onShare, styles, colors,
 }: {
   post: Post; isActive: boolean;
   onComment: () => void;
   isLiked: boolean; isSaved: boolean;
   onLike: () => void; onSave: () => void; onShare: () => void;
   styles: ReturnType<typeof buildStyles>;
+  colors: ReturnType<typeof useThemeColors>;
 }) {
   const [muted, setMuted] = useState(false);
 
@@ -35,8 +37,14 @@ function VideoItem({
         isActive={isActive}
         isMuted={muted}
       />
-      <TouchableOpacity style={styles.muteBtn} onPress={() => setMuted(m => !m)} hitSlop={8}>
-        <Text style={styles.muteIcon}>{muted ? '🔇' : '🔊'}</Text>
+      <TouchableOpacity
+        style={styles.muteBtn}
+        onPress={() => setMuted(m => !m)}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={muted ? 'Unmute video' : 'Mute video'}
+      >
+        <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={22} color="#fff" />
       </TouchableOpacity>
       <View style={styles.overlay}>
         <Text style={styles.overlayAuthor}>@{post.profiles?.display_name ?? ''}</Text>
@@ -45,20 +53,20 @@ function VideoItem({
         ) : null}
       </View>
       <View style={styles.rightRail}>
-        <TouchableOpacity style={styles.railAction} onPress={onLike}>
-          <Text style={[styles.railIcon, isLiked && styles.railIconActive]}>{isLiked ? '♥' : '♡'}</Text>
+        <TouchableOpacity style={styles.railAction} onPress={onLike} accessibilityRole="button" accessibilityLabel={isLiked ? 'Unlike post' : 'Like post'}>
+          <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={28} color={isLiked ? colors.primary : '#fff'} />
           <Text style={styles.railCount}>{post.like_count}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.railAction} onPress={onSave}>
-          <Text style={[styles.railIcon, isSaved && styles.railIconActive]}>{isSaved ? '✦' : '✧'}</Text>
+        <TouchableOpacity style={styles.railAction} onPress={onSave} accessibilityRole="button" accessibilityLabel={isSaved ? 'Remove from saved' : 'Save post'}>
+          <Ionicons name={isSaved ? 'bookmark' : 'bookmark-outline'} size={26} color={isSaved ? colors.primary : '#fff'} />
           <Text style={styles.railCount}>{post.save_count}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.railAction} onPress={onComment}>
-          <Text style={styles.railIcon}>💬</Text>
+        <TouchableOpacity style={styles.railAction} onPress={onComment} accessibilityRole="button" accessibilityLabel="View comments">
+          <Ionicons name="chatbubble" size={26} color="#fff" />
           <Text style={styles.railCount}>{post.comment_count}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.railAction} onPress={onShare}>
-          <Text style={styles.railIcon}>↗</Text>
+        <TouchableOpacity style={styles.railAction} onPress={onShare} accessibilityRole="button" accessibilityLabel="Share video">
+          <Ionicons name="arrow-redo" size={26} color="#fff" />
         </TouchableOpacity>
       </View>
     </View>
@@ -70,14 +78,11 @@ function buildStyles(colors: ReturnType<typeof useThemeColors>) {
     container: { flex: 1, backgroundColor: '#000' },
     videoItem: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, backgroundColor: '#000' },
     muteBtn: { position: 'absolute', top: 60, right: 16, zIndex: 2 },
-    muteIcon: { fontSize: 24 },
     overlay: { position: 'absolute', bottom: 80, left: 16, right: 80, zIndex: 2 },
     overlayAuthor: { color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 4 },
     overlayCaption: { color: 'rgba(255,255,255,0.9)', fontSize: 13, lineHeight: 18 },
     rightRail: { position: 'absolute', right: 12, bottom: 100, alignItems: 'center', gap: 20, zIndex: 2 },
     railAction: { alignItems: 'center', gap: 2 },
-    railIcon: { fontSize: 28, color: '#fff' },
-    railIconActive: { color: colors.primary },
     railCount: { color: '#fff', fontSize: 12 },
     backBtn: { position: 'absolute', top: 48, left: 16, zIndex: 10 },
     backText: { color: '#fff', fontSize: 28, fontWeight: '300' },
@@ -199,6 +204,7 @@ export default function VideoPlayerScreen() {
             onComment={() => void openComments(item.id)}
             onShare={() => void Share.share({ message: 'Check this video on Roxy!' })}
             styles={styles}
+            colors={colors}
           />
         )}
         pagingEnabled
