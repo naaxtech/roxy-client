@@ -563,7 +563,7 @@ export default function GrowScreen() {
           </View>
           {communities.length === 0 ? (
             <View style={styles.section}>
-              <Text style={styles.emptyState}>Join your first community in Discover →</Text>
+              <Text style={styles.emptyState}>Join your first community in Play →</Text>
             </View>
           ) : (
             <ScrollView
@@ -574,7 +574,7 @@ export default function GrowScreen() {
               {communities.map((row, idx) => {
                 const name = row.communities?.name ?? '—';
                 const activity = communityActivity[row.community_id];
-                const sub = activity ? 'New post' : `${idx + 1} community`;
+                const sub = activity ? '🔥 New post' : 'Tap to open';
                 const CHIP_COLORS = ['#FF6A2E', '#8B5CF6', '#FF2F71', '#F472B6', '#C4476A', '#FF8A3D'];
                 const chipColor = CHIP_COLORS[idx % CHIP_COLORS.length];
                 return (
@@ -619,7 +619,7 @@ export default function GrowScreen() {
             <Text style={styles.sectionHint}>tap to manage →</Text>
           </Text>
           {friends.length === 0 ? (
-            <Text style={styles.emptyState}>Connect with someone in Discover →</Text>
+            <Text style={styles.emptyState}>Connect with someone in Connect →</Text>
           ) : (
             <View style={styles.avatarRow}>
               {sortByPresence(friends).slice(0, 5).map((f) => (
