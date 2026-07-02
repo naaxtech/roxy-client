@@ -1,0 +1,24 @@
+apps/mobile/app/(tabs)/messages/_layout.tsx
+  s_164deec355e208::t_bbb50c1376261c 1-5
+apps/mobile/app/(tabs)/messages/index.tsx
+  s_164deec355e208::t_b4059e38d8d2c0 190
+  s_164deec355e208::t_fc6cac4b4f0ad1 1-189,191-388
+apps/mobile/app/(tabs)/_layout.tsx
+  s_164deec355e208::t_4bae62103f39cc 117-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "2faab2361caaa754f7324275679dff34b897e452",
+  "prompts": {},
+  "sessions": {
+    "s_164deec355e208": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5229de36-9b6a-4c3f-a802-fe9a8c68bb7a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
