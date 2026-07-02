@@ -35,19 +35,19 @@ export const THEMES: Record<Theme, ThemeColors> = {
     devPanel: '#FF1493',
   },
   light: {
-    primary: '#B03060',      // darker rose — 4.8:1 on white ✓
-    secondary: '#6D28D9',    // deeper violet — 5.2:1 on white ✓
-    accent: '#C026A0',       // deeper pink — visible on light ✓
-    background: '#F4EFFF',   // soft lavender — distinct from white ✓
-    surface: '#FFFFFF',      // white cards on lavender bg ✓
-    surfaceLight: '#EBE4F8', // mid lavender — nested surfaces ✓
-    textPrimary: '#160826',  // near-black — 17:1 on white ✓
-    textSecondary: '#3D2260', // dark purple — 8:1 on white ✓
-    textMuted: '#5E4480',    // medium purple — 4.6:1 on white ✓ (passes AA)
+    primary: '#C4476A',      // design token — deep rose on warm white bg
+    secondary: '#8B5CF6',    // violet — from design system
+    accent: '#F472B6',       // pink accent
+    background: '#FFF5F7',   // warm white-pink — design bg token
+    surface: '#FFFFFF',      // white cards on warm bg
+    surfaceLight: '#FFF0F3', // warm pink — nested surfaces (card-2)
+    textPrimary: '#1A0A2E',  // near-black — design text token
+    textSecondary: '#6B4C6B', // muted rose-purple — design text-2
+    textMuted: '#8B7AA8',    // soft purple — design text-3 (AA Large ✓)
     success: '#047857',      // darker green — 4.9:1 on white ✓
     warning: '#B45309',      // darker amber — 4.7:1 on white ✓
     error: '#B91C1C',        // darker red — 5.0:1 on white ✓
-    roxy: '#A8175A',         // darker roxy — 5.5:1 on white ✓
+    roxy: '#C24A85',         // roxy accent — design roxy token
     devPanel: '#FF1493',
   },
 };

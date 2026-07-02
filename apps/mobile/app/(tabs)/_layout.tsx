@@ -109,9 +109,9 @@ export default function TabLayout() {
         <Tabs.Screen
           name="discover"
           options={{
-            title: 'Discover',
+            title: 'Play',
             tabBarIcon: ({ color, size, focused }) => (
-              <Ionicons name={focused ? 'compass' : 'compass-outline'} size={size} color={color} />
+              <Ionicons name={focused ? 'game-controller' : 'game-controller-outline'} size={size} color={color} />
             ),
           }}
         />

@@ -34,6 +34,15 @@ type EventRow = {
   description: string | null;
 };
 
+type CommunityGameRow = {
+  id: string; name: string; short_description: string;
+  category: string; url: string | null; publisher_type: 'roxy' | 'community';
+};
+
+const GAME_CATEGORY_EMOJI: Record<string, string> = {
+  dating: '⚡', icebreaker: '💞', party: '🃏', trivia: '🎯', other: '🎮',
+};
+
 function getCommunityLevel(n: number): { label: string; emoji: string } {
   if (n >= 100) return { label: 'Radiant', emoji: '✨' };
   if (n >= 20) return { label: 'Thriving', emoji: '🌸' };
@@ -57,6 +66,8 @@ export default function CommunityDetailScreen() {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [rooms, setRooms] = useState<(CommunityRoom & { creator_display_name: string | null })[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
+  const [communityGames, setCommunityGames] = useState<CommunityGameRow[]>([]);
+  const [loadingGames, setLoadingGames] = useState(false);
 
   // Track screen view once per navigation
   useEffect(() => {
@@ -132,12 +143,38 @@ export default function CommunityDetailScreen() {
     if (data) setRsvpIds(new Set(data.map((r: any) => r.event_id)));
   }, [user]);
 
+  const loadLikes = useCallback(async () => {
+    if (!user?.id) return;
+    const { data } = await supabase
+      .from('post_likes')
+      .select('post_id')
+      .eq('user_id', user.id);
+    if (data) setLikedIds(new Set(data.map((r: any) => r.post_id)));
+  }, [user?.id]);
+
+  const loadGames = useCallback(async () => {
+    if (!id) return;
+    setLoadingGames(true);
+    const { data } = await supabase
+      .from('community_games')
+      .select('games(id, name, short_description, category, url, publisher_type)')
+      .eq('community_id', id);
+    if (data) {
+      setCommunityGames(
+        (data as any[]).map((row) => row.games).filter(Boolean) as CommunityGameRow[],
+      );
+    }
+    setLoadingGames(false);
+  }, [id]);
+
   // Load all tab content upfront so swiping is instant
   useEffect(() => {
     loadPosts();
     loadEvents();
     loadRsvps();
+    loadLikes();
     loadRooms();
+    loadGames();
 
     if (!id) return;
     // Realtime: keep participant_count and status live while on this screen
@@ -159,7 +196,7 @@ export default function CommunityDetailScreen() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [loadPosts, loadEvents, loadRsvps, loadRooms, id]);
+  }, [loadPosts, loadEvents, loadRsvps, loadLikes, loadRooms, loadGames, id]);
 
   const pagerRef = useRef<ScrollView>(null);
 
@@ -171,12 +208,26 @@ export default function CommunityDetailScreen() {
 
   const isJoined = id ? joinedIds.has(id) : false;
 
-  const toggleLike = (postId: string) => {
+  const toggleLike = async (postId: string) => {
+    if (!user?.id) return;
+    const wasLiked = likedIds.has(postId);
+    // Optimistic update
     setLikedIds((prev) => {
       const n = new Set(prev);
-      if (n.has(postId)) { n.delete(postId); } else { n.add(postId); }
+      if (wasLiked) { n.delete(postId); } else { n.add(postId); }
       return n;
     });
+    const { error } = wasLiked
+      ? await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', user.id)
+      : await supabase.from('post_likes').insert({ post_id: postId, user_id: user.id });
+    if (error) {
+      // Revert on failure
+      setLikedIds((prev) => {
+        const n = new Set(prev);
+        if (wasLiked) { n.add(postId); } else { n.delete(postId); }
+        return n;
+      });
+    }
   };
 
   const handleJoinLeave = async () => {
@@ -534,29 +585,50 @@ export default function CommunityDetailScreen() {
           )}
         </ScrollView>
 
-        {/* Page 2 — Games */}
+        {/* Page 2 — Games (real data from community_games + games tables) */}
         <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={styles.gamesContainer}>
-          <TouchableOpacity
-            style={styles.gameCard}
-            onPress={() => router.push('/speed-dating' as any)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.gameEmoji}>⚡</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.gameTitle}>Speed Dating</Text>
-              <Text style={styles.gameDesc}>5-minute video speed dates. Match with someone new.</Text>
+          {loadingGames ? (
+            <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
+          ) : communityGames.length === 0 ? (
+            <View style={styles.emptyCenter}>
+              <Text style={styles.emptyIcon}>🎮</Text>
+              <Text style={styles.emptyTitle}>No games yet</Text>
+              <Text style={styles.emptySub}>Community admins can enable games here.</Text>
             </View>
-            <View style={styles.playBtn}>
-              <Text style={styles.playBtnText}>Play Now</Text>
-            </View>
-          </TouchableOpacity>
-          <View style={styles.gameCard}>
-            <Text style={styles.gameEmoji}>🎯</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.gameTitle}>Icebreakers</Text>
-              <Text style={styles.gameDesc}>More community games coming soon! 💜</Text>
-            </View>
-          </View>
+          ) : (
+            communityGames.map((game) => {
+              const canPlay = game.url !== null || game.name === 'Speed Dating';
+              return (
+                <TouchableOpacity
+                  key={game.id}
+                  style={styles.gameCard}
+                  onPress={() => {
+                    if (game.name === 'Speed Dating') router.push('/speed-dating' as any);
+                    else if (game.url) router.push(game.url as any);
+                  }}
+                  activeOpacity={canPlay ? 0.8 : 1}
+                >
+                  <Text style={styles.gameEmoji}>
+                    {GAME_CATEGORY_EMOJI[game.category] ?? '🎮'}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.gameTitle}>{game.name}</Text>
+                    <Text style={styles.gameDesc}>{game.short_description}</Text>
+                  </View>
+                  {game.publisher_type === 'roxy' && (
+                    <Text style={{ fontSize: 10, color: colors.roxy, fontWeight: '700', marginRight: 6 }}>
+                      Roxy Original
+                    </Text>
+                  )}
+                  {canPlay && (
+                    <View style={styles.playBtn}>
+                      <Text style={styles.playBtnText}>Play</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })
+          )}
         </ScrollView>
 
         {/* Page 3 — Rooms */}

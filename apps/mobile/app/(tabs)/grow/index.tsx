@@ -236,32 +236,66 @@ export default function GrowScreen() {
     screenSubtitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-end' },
 
-    greetingCard: {
-      // Fallback fill in case LinearGradient fails to render (e.g. a freshly
-      // installed native module the bundler hasn't picked up yet) — without this,
-      // the white text below falls through to the theme background, which is
-      // unreadable in light mode (#F4EFFF) even though it's fine in dark mode.
-      backgroundColor: '#E91E8C',
-      borderRadius: 18, padding: 16,
-      minHeight: 130, justifyContent: 'center',
+    // Roxy Hero card
+    roxyHero: {
+      backgroundColor: '#E81C8E', // fallback for LinearGradient
+      borderRadius: 22, padding: 17,
       overflow: 'hidden',
     },
-    greetingTopRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-    roxySparkle: {
-      width: 22, height: 22, borderRadius: 11,
-      backgroundColor: 'rgba(255,255,255,0.25)',
+    rhTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 0 },
+    rhAvRing: {
+      width: 56, height: 56, borderRadius: 28,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)',
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    rhName: { color: '#fff', fontSize: 16, fontWeight: '800', lineHeight: 20 },
+    rhBadge: {
+      color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: '700',
+      letterSpacing: 0.4, marginTop: 2,
+    },
+    rhMsg: {
+      color: '#fff', fontSize: 17, lineHeight: 25,
+      fontWeight: '500', marginTop: 13, marginBottom: 15,
+    },
+    rhActions: { flexDirection: 'row', gap: 9 },
+    rhBtn: {
+      flex: 1, height: 42, borderRadius: 999,
+      backgroundColor: '#fff',
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.16, shadowRadius: 8,
+    },
+    rhBtnText: { color: colors.roxy, fontWeight: '800', fontSize: 14 },
+    rhBtnGhost: {
+      width: 46, height: 42, borderRadius: 999,
+      backgroundColor: 'rgba(255,255,255,0.16)',
+      borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)',
       alignItems: 'center', justifyContent: 'center',
     },
-    greetingText: { fontSize: 16, color: '#fff', lineHeight: 23, fontWeight: '600' },
-    greetingLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: '700', letterSpacing: 0.6 },
-    askRoxyBtn: {
-      flexDirection: 'row', alignItems: 'center', gap: 6,
-      alignSelf: 'flex-start',
-      backgroundColor: '#fff', borderRadius: 18,
-      paddingHorizontal: 16, paddingVertical: 8,
-      marginTop: 14,
+
+    // Communities chips
+    chipsRow: { gap: 10, paddingRight: 18, paddingBottom: 4 },
+    cchip: {
+      flexDirection: 'row', alignItems: 'center', gap: 9,
+      backgroundColor: colors.surface, borderRadius: 15,
+      paddingHorizontal: 14, paddingVertical: 9, paddingLeft: 9,
+      borderWidth: 1, borderColor: colors.primary + '22',
+      shadowColor: colors.primary, shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
     },
-    askRoxyBtnText: { color: colors.roxy, fontWeight: '700', fontSize: 13 },
+    cchipAva: {
+      width: 36, height: 36, borderRadius: 11,
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    cchipAvaText: { fontSize: 17, color: '#fff' },
+    cchipName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13.5, letterSpacing: -0.2 },
+    cchipSub: { color: colors.textMuted, fontSize: 11, fontWeight: '600', marginTop: 1 },
+    cchipAdd: {
+      borderStyle: 'dashed', borderColor: colors.primary + '50',
+      backgroundColor: 'transparent',
+    },
+    cchipAddText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
 
     section: { backgroundColor: colors.surface, borderRadius: 12, padding: 12 },
     sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
@@ -422,32 +456,45 @@ export default function GrowScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Zone 1 — Roxy Greeting Card */}
+        {/* Zone 1 — Roxy Hero Card */}
         <LinearGradient
-          colors={['#FF7A45', '#E91E8C']}
+          colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.greetingCard}
+          end={{ x: 1, y: 0.85 }}
+          style={styles.roxyHero}
         >
-          <View style={styles.greetingTopRow}>
-            <View style={styles.roxySparkle}>
-              <Ionicons name="sparkles" size={13} color="#fff" />
+          <View style={styles.rhTop}>
+            <View style={styles.rhAvRing}>
+              <Ionicons name="sparkles" size={24} color="#fff" />
             </View>
-            <Text style={styles.greetingLabel}>YOUR DAILY MESSAGE FROM ROXY</Text>
+            <View>
+              <Text style={styles.rhName}>Roxy</Text>
+              <Text style={styles.rhBadge}>✦ Your daily wingwoman</Text>
+            </View>
           </View>
           {greetingLoading ? (
-            <ActivityIndicator color="#fff" style={{ marginVertical: 16, alignSelf: 'flex-start' }} />
+            <ActivityIndicator color="#fff" style={{ marginTop: 14, marginBottom: 15, alignSelf: 'flex-start' }} />
           ) : (
-            <Text style={styles.greetingText}>{greeting ?? 'Hey — Roxy here. 👋'}</Text>
+            <Text style={styles.rhMsg}>{greeting ?? 'Hey — Roxy here. 👋'}</Text>
           )}
-          <TouchableOpacity
-            style={styles.askRoxyBtn}
-            onPress={() => router.push('/(tabs)/grow/roxy-chat' as any)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.askRoxyBtnText}>Ask Roxy</Text>
-            <Ionicons name="arrow-forward" size={14} color={colors.roxy} />
-          </TouchableOpacity>
+          <View style={styles.rhActions}>
+            <TouchableOpacity
+              style={styles.rhBtn}
+              onPress={() => router.push('/(tabs)/grow/roxy-chat' as any)}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="sparkles" size={16} color={colors.roxy} />
+              <Text style={styles.rhBtnText}>Ask Roxy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.rhBtnGhost}
+              onPress={() => router.push('/(tabs)/grow/roxy-chat' as any)}
+              activeOpacity={0.8}
+              accessibilityLabel="Voice message"
+            >
+              <Ionicons name="mic" size={17} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </LinearGradient>
 
         {/* Zone NEW — Question of the Day */}
@@ -505,42 +552,55 @@ export default function GrowScreen() {
         )}
 
         {/* Zone 2 — My Communities */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
+        <View>
+          <View style={[styles.sectionHeaderRow, { paddingHorizontal: 0 }]}>
             <Text style={styles.sectionTitle}>My Communities</Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/discover' as any)}>
               <Text style={styles.sectionHint}>See all →</Text>
             </TouchableOpacity>
           </View>
           {communities.length === 0 ? (
-            <Text style={styles.emptyState}>Join your first community in Discover →</Text>
+            <View style={styles.section}>
+              <Text style={styles.emptyState}>Join your first community in Discover →</Text>
+            </View>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-              {communities.map((row) => {
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipsRow}
+            >
+              {communities.map((row, idx) => {
+                const name = row.communities?.name ?? '—';
                 const activity = communityActivity[row.community_id];
+                const sub = activity ? 'New post' : `${idx + 1} community`;
+                const CHIP_COLORS = ['#FF6A2E', '#8B5CF6', '#FF2F71', '#F472B6', '#C4476A', '#FF8A3D'];
+                const chipColor = CHIP_COLORS[idx % CHIP_COLORS.length];
                 return (
                   <TouchableOpacity
                     key={row.community_id}
-                    style={styles.communityCard}
+                    style={styles.cchip}
                     onPress={() => router.push(`/(tabs)/discover/community/${row.community_id}` as any)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.communityCardName} numberOfLines={1}>
-                      {row.communities?.name ?? '—'}
-                    </Text>
-                    <Text style={styles.communityCardSnippet} numberOfLines={2}>
-                      {activity ? activity.content : 'No posts yet — be the first'}
-                    </Text>
+                    <View style={[styles.cchipAva, { backgroundColor: chipColor }]}>
+                      <Text style={styles.cchipAvaText}>{name[0]?.toUpperCase() ?? '🌸'}</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.cchipName} numberOfLines={1}>{name}</Text>
+                      <Text style={styles.cchipSub}>{sub}</Text>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
               <TouchableOpacity
-                style={[styles.communityCard, styles.communityCardJoin]}
+                style={[styles.cchip, styles.cchipAdd]}
                 onPress={() => router.push('/(tabs)/discover' as any)}
                 activeOpacity={0.8}
               >
-                <Ionicons name="add-circle-outline" size={20} color={colors.roxy} />
-                <Text style={styles.chipJoinText}>Join more</Text>
+                <View style={[styles.cchipAva, { backgroundColor: colors.primary + '18' }]}>
+                  <Ionicons name="add" size={18} color={colors.primary} />
+                </View>
+                <Text style={styles.cchipAddText}>Discover</Text>
               </TouchableOpacity>
             </ScrollView>
           )}
