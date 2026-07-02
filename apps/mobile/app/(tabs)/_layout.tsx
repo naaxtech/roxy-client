@@ -103,7 +103,6 @@ export default function TabLayout() {
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons name={focused ? 'heart' : 'heart-outline'} size={size} color={color} />
             ),
-            tabBarBadge: totalUnread > 0 ? totalUnread : undefined,
           }}
         />
         <Tabs.Screen
@@ -113,6 +112,16 @@ export default function TabLayout() {
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons name={focused ? 'game-controller' : 'game-controller-outline'} size={size} color={color} />
             ),
+          }}
+        />
+        <Tabs.Screen
+          name="messages"
+          options={{
+            title: 'Messages',
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={size} color={color} />
+            ),
+            tabBarBadge: totalUnread > 0 ? totalUnread : undefined,
           }}
         />
         <Tabs.Screen
