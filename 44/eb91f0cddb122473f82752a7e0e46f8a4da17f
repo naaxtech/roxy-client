@@ -1,0 +1,73 @@
+apps/mobile/components/feed/StaticPostCard.tsx
+  s_164deec355e208::t_77ea964eae178e 1,3,7-19
+  s_164deec355e208::t_c6b734ad42717d 65
+  s_164deec355e208::t_a535a9836a2b3e 41-42
+  s_164deec355e208::t_0d91ef7a890a91 112,114,116
+apps/mobile/__tests__/components/ProfileCard.test.tsx
+  s_164deec355e208::t_2dcf0603ef4749 7-19
+apps/mobile/components/feed/CommentThread.tsx
+  s_164deec355e208::t_a162d007feabbe 3,9-18,39-40,52,71,73,75,92-94
+apps/mobile/components/feed/PostActionRow.tsx
+  s_164deec355e208::t_c5bf7cb785025d 1-2,18-19,23,36-37,39,42-44,46,52-57,59-60,64-94,97-117,120-121,124-127,131,133-138,141,144,148,150-151,154,157,161,163,166,168,171,175,180,184,186-205
+apps/mobile/components/chat/GifPicker.tsx
+  s_164deec355e208::t_39c7bd51b2ac45 109
+apps/mobile/components/build/SearchChip.tsx
+  s_164deec355e208::t_f3cb7f14eb9d73 31
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_164deec355e208::t_a30a0f40ada874 1,7-12
+  s_164deec355e208::t_9286b510ae89f5 13-14
+  s_164deec355e208::t_2c08aa40f9683e 15-17
+  s_164deec355e208::t_83563079001906 345,347,521-525,532-534,536,548,550,561-562
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_164deec355e208::t_0c41f2d123c9ff 1,10-11,27-49,62-78,95,97-100,135-160,163-164,166-169,171-189,194-199,201-204,207,209-235,237,241-254,256-271,273-275,277-280,282-283,290-291,293-295,298-299,303,308,320,346,351,354,358,367,409,411-412,414,488,497,535,537,552,557,570,594,603-607,609-621,623-633,635-650,652-677,680-690,696-739,741-742,744-746,749-751,757,772,775-776,781,789,831,859,866,887,916,951,953
+apps/mobile/components/profile/ProfileCard.tsx
+  s_164deec355e208::t_4ce18e0f769e2c 16
+  s_164deec355e208::t_c063abda1c2946 200-201,205
+  s_164deec355e208::t_c12d99d443a9b1 337-338,340,345
+  s_164deec355e208::t_d7523580963c0a 52,57-59
+apps/mobile/app/(tabs)/discover/post/[postId].tsx
+  s_164deec355e208::t_198b7e7f14cd38 14-18
+  s_164deec355e208::t_8368d4621971be 1,8,10-13
+  s_164deec355e208::t_5dd3b67d2ecbd4 19-20
+  s_164deec355e208::t_e8849a6125ae44 215-219,249-254,273-290,333
+apps/mobile/app/(tabs)/grow/chats.tsx
+  s_164deec355e208::t_449e9642be886c 14-18
+  s_164deec355e208::t_e13d0d57a1c8cc 7,9-11
+  s_164deec355e208::t_d1aa0edaca6535 12-13
+  s_164deec355e208::t_ef89884ed4984e 218-219,288-291,295
+apps/mobile/app/(tabs)/grow/people.tsx
+  s_164deec355e208::t_298b1527227d0d 12
+  s_164deec355e208::t_ff3fdf3f377967 13-14
+  s_164deec355e208::t_7a7848e4bfb6f8 7,11
+  s_aff4bc6f3eca5b::t_0e00d1e974f460 15-20,123,157,159
+apps/mobile/__tests__/components/build/ChipSearchBar.test.tsx
+  s_164deec355e208::t_e9caae12f13c83 28,30,38
+apps/mobile/__tests__/components/chat/GifPicker.test.tsx
+  s_164deec355e208::t_2579960fd01714 59,62
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_164deec355e208::t_ec33845d796858 22-31,344,378,535,537,635,639
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "44eb91f0cddb122473f82752a7e0e46f8a4da17f",
+  "prompts": {},
+  "sessions": {
+    "s_164deec355e208": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5229de36-9b6a-4c3f-a802-fe9a8c68bb7a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_aff4bc6f3eca5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8776a31c-0b59-42f0-aa16-629e0d7b89ce",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
