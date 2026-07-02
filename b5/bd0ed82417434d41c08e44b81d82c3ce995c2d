@@ -1,0 +1,19 @@
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_164deec355e208::t_e0ce10811609e4 566,577,622
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "b5bd0ed82417434d41c08e44b81d82c3ce995c2d",
+  "prompts": {},
+  "sessions": {
+    "s_164deec355e208": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5229de36-9b6a-4c3f-a802-fe9a8c68bb7a",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
