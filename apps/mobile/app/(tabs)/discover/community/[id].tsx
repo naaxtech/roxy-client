@@ -1,9 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
   ScrollView, Alert, Dimensions, Share,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const AUTHOR_GRADS: [string, string][] = [
+  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
+  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
+];
+function authorGrad(name: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return AUTHOR_GRADS[Math.abs(h) % AUTHOR_GRADS.length];
+}
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -331,9 +342,9 @@ export default function CommunityDetailScreen() {
     postAuthorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
     postAvatar: {
       width: 28, height: 28, borderRadius: 14,
-      backgroundColor: colors.surfaceLight, alignItems: 'center', justifyContent: 'center',
+      alignItems: 'center', justifyContent: 'center',
     },
-    postAvatarText: { color: colors.textSecondary, fontWeight: '700', fontSize: 11 },
+    postAvatarText: { color: '#fff', fontWeight: '800', fontSize: 11 },
     postAuthorName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
     postTime: { color: colors.textMuted, fontSize: 11 },
     postContent: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
@@ -507,18 +518,22 @@ export default function CommunityDetailScreen() {
               <Text style={styles.emptySub}>Be the first to post!</Text>
             </View>
           ) : (
-            posts.map((post) => (
+            posts.map((post) => {
+              const name = post.profiles?.display_name ?? '?';
+              const grad = authorGrad(name);
+              const isLiked = likedIds.has(post.id);
+              return (
               <View key={post.id} style={styles.postCard}>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   style={styles.postAuthorRow}
                   onPress={() => router.push(`/user/${post.author_id}` as any)}
                 >
-                  <View style={styles.postAvatar}>
-                    <Text style={styles.postAvatarText}>{post.profiles?.display_name?.[0]?.toUpperCase() ?? '?'}</Text>
-                  </View>
+                  <LinearGradient colors={grad} style={styles.postAvatar}>
+                    <Text style={styles.postAvatarText}>{name[0]?.toUpperCase() ?? '?'}</Text>
+                  </LinearGradient>
                   <View>
-                    <Text style={styles.postAuthorName}>{post.profiles?.display_name ?? 'Anonymous'}</Text>
+                    <Text style={styles.postAuthorName}>{name}</Text>
                     <Text style={styles.postTime}>{format(new Date(post.created_at), 'dd MMM · HH:mm')}</Text>
                   </View>
                 </TouchableOpacity>
@@ -530,13 +545,9 @@ export default function CommunityDetailScreen() {
                     style={styles.footerBtn}
                     onPress={() => toggleLike(post.id)}
                     accessibilityRole="button"
-                    accessibilityLabel={likedIds.has(post.id) ? 'Unlike post' : 'Like post'}
+                    accessibilityLabel={isLiked ? 'Unlike post' : 'Like post'}
                   >
-                    <Ionicons
-                      name={likedIds.has(post.id) ? 'heart' : 'heart-outline'}
-                      size={16}
-                      color={likedIds.has(post.id) ? colors.roxy : colors.textMuted}
-                    />
+                    <Text style={{ fontSize: 15, opacity: isLiked ? 1 : 0.4 }}>🌸</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.footerBtn} onPress={() => router.push(`/community/post/${post.id}` as any)}>
                     <Ionicons name="chatbubble-outline" size={13} color={colors.textMuted} />
@@ -547,7 +558,8 @@ export default function CommunityDetailScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
-            ))
+              );
+            })
           )}
         </ScrollView>
 

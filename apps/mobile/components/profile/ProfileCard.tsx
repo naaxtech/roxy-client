@@ -13,7 +13,7 @@ import type { EarnedBadge } from './BadgeRow';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const PHOTO_SIZE = (SCREEN_WIDTH - 4) / 3;
 
-type MediaPost = { id: string; media_url: string | null; post_type: string };
+type MediaPost = { id: string; media_urls: string[]; post_type: string };
 type ProfileTab = 'photos' | 'about' | 'badges';
 
 function getLevelInfo(points: number): { label: string; emoji: string } {
@@ -49,13 +49,14 @@ export function ProfileCard({
   useEffect(() => {
     supabase
       .from('posts')
-      .select('id, media_url, post_type')
+      .select('id, media_urls, post_type')
       .eq('user_id', profile.id)
-      .not('media_url', 'is', null)
       .in('post_type', ['photo', 'video'])
       .order('created_at', { ascending: false })
       .limit(30)
-      .then(({ data }) => { if (data) setPhotos(data as MediaPost[]); });
+      .then(({ data }) => {
+        if (data) setPhotos((data as MediaPost[]).filter((p) => p.media_urls?.length > 0));
+      });
   }, [profile.id]);
 
   const points = profile.gamification_points ?? 0;
@@ -196,11 +197,12 @@ export function ProfileCard({
   ];
 
   const renderCover = () => {
-    if (photos.length > 0 && photos[0].media_url) {
+    const firstUrl = photos[0]?.media_urls?.[0];
+    if (photos.length > 0 && firstUrl) {
       return (
         <View style={s.cover}>
           <ExpoImage
-            source={{ uri: photos[0].media_url }}
+            source={{ uri: firstUrl }}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
           />
@@ -332,15 +334,15 @@ export function ProfileCard({
           </View>
         ) : (
           <View style={s.photoGrid}>
-            {photos.map((p) => p.media_url ? (
-              <View key={p.id} style={s.photoCell}>
+            {photos.flatMap((p) => p.media_urls.map((url, i) => (
+              <View key={`${p.id}-${i}`} style={s.photoCell}>
                 <ExpoImage
-                  source={{ uri: p.media_url }}
+                  source={{ uri: url }}
                   style={s.photoImg}
                   contentFit="cover"
                 />
               </View>
-            ) : null)}
+            )))}
           </View>
         )
       )}

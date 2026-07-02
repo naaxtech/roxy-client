@@ -4,7 +4,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+
+const GRAD_COLORS = [
+  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
+  ['#F472B6', '#FF6A2E'], ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
+] as const;
+function gradFor(name: string): readonly [string, string] {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return GRAD_COLORS[Math.abs(h) % GRAD_COLORS.length];
+}
 import { format, isToday, isYesterday } from 'date-fns';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
@@ -202,11 +213,10 @@ export default function ChatsScreen() {
     },
     avatar: {
       width: 46, height: 46, borderRadius: 23,
-      backgroundColor: colors.primary + '30',
       alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    avatarUnread: { backgroundColor: colors.primary + '50' },
-    avatarText: { color: colors.primary, fontWeight: '700', fontSize: 18 },
+    avatarUnread: {},
+    avatarText: { color: '#fff', fontWeight: '800', fontSize: 18 },
 
     rowContent: { flex: 1, gap: 3 },
     rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -275,11 +285,14 @@ export default function ChatsScreen() {
                 activeOpacity={0.7}
               >
                 {/* Avatar */}
-                <View style={[styles.avatar, hasUnread && styles.avatarUnread]}>
+                <LinearGradient
+                  colors={gradFor(item.partner?.display_name ?? '?') as [string, string]}
+                  style={styles.avatar}
+                >
                   <Text style={styles.avatarText}>
                     {item.partner?.display_name?.[0]?.toUpperCase() ?? '?'}
                   </Text>
-                </View>
+                </LinearGradient>
 
                 {/* Name + preview */}
                 <View style={styles.rowContent}>

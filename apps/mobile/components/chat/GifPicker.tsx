@@ -106,7 +106,7 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>GIFs</Text>
-          <TouchableOpacity onPress={onClose} hitSlop={12}>
+          <TouchableOpacity onPress={onClose} hitSlop={12} accessibilityLabel="Close GIF picker">
             <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </View>

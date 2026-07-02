@@ -28,7 +28,7 @@ export function SearchChip({ label, onRemove }: SearchChipProps) {
   return (
     <View style={styles.chip}>
       <Text style={styles.label}>{label}</Text>
-      <TouchableOpacity onPress={() => onRemove(label)} hitSlop={8}>
+      <TouchableOpacity onPress={() => onRemove(label)} hitSlop={8} accessibilityLabel={`Remove ${label}`}>
         <Ionicons name="close" size={14} color={colors.primary} />
       </TouchableOpacity>
     </View>

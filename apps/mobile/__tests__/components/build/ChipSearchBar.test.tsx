@@ -25,9 +25,9 @@ describe('ChipSearchBar', () => {
     expect(onAddChip).not.toHaveBeenCalled();
   });
 
-  it('renders chips and calls onRemoveChip when × is pressed', () => {
+  it('renders chips and calls onRemoveChip when remove is pressed', () => {
     const onRemoveChip = jest.fn();
-    const { getByText, getAllByText } = render(
+    const { getByText, getByLabelText } = render(
       <ChipSearchBar
         chips={['wellness', 'coaching']}
         onAddChip={jest.fn()}
@@ -35,7 +35,7 @@ describe('ChipSearchBar', () => {
       />
     );
     expect(getByText('wellness')).toBeTruthy();
-    fireEvent.press(getAllByText('×')[0]);
+    fireEvent.press(getByLabelText('Remove wellness'));
     expect(onRemoveChip).toHaveBeenCalledWith('wellness');
   });
 

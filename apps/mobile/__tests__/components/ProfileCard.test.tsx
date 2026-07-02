@@ -4,23 +4,19 @@ import { render, fireEvent, act } from '@testing-library/react-native';
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 jest.mock('expo-image', () => ({ Image: 'ExpoImage' }));
-jest.mock('../../lib/supabase', () => ({
-  supabase: {
-    from: jest.fn(() => ({
-      select: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          not: jest.fn(() => ({
-            in: jest.fn(() => ({
-              order: jest.fn(() => ({
-                limit: jest.fn(() => Promise.resolve({ data: [], error: null })),
-              })),
-            })),
-          })),
-        })),
-      })),
-    })),
-  },
-}));
+jest.mock('../../lib/supabase', () => {
+  const limit = jest.fn(() => Promise.resolve({ data: [], error: null }));
+  const order = jest.fn(() => ({ limit }));
+  const inFn = jest.fn(() => ({ order }));
+  const notFn = jest.fn(() => ({ in: inFn, order }));
+  const eq = jest.fn(() => ({ not: notFn, in: inFn, order }));
+  const select = jest.fn(() => ({ eq }));
+  return {
+    supabase: {
+      from: jest.fn(() => ({ select })),
+    },
+  };
+});
 
 import { ProfileCard } from '../../components/profile/ProfileCard';
 import type { Profile } from '../../types';

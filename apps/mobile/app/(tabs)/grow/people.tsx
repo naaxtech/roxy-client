@@ -4,9 +4,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { useFriendStore, FriendshipRow, isOnline, sortByPresence } from '../../../store/friendStore';
+
+const PERSON_GRADS: [string, string][] = [
+  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
+  ['#F472B6', '#FF6A2E'], ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
+];
+function personGrad(name: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return PERSON_GRADS[Math.abs(h) % PERSON_GRADS.length];
+}
 import { supabase } from '../../../lib/supabase';
 import { logError } from '../../../lib/errorLogger';
 import { Analytics } from '../../../lib/analytics';
@@ -107,10 +118,9 @@ export default function PeopleScreen() {
     },
     avatar: {
       width: 38, height: 38, borderRadius: 19,
-      backgroundColor: colors.primary + '40',
       alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    avatarText: { color: colors.primary, fontWeight: '700', fontSize: 14 },
+    avatarText: { color: '#fff', fontWeight: '800', fontSize: 14 },
     avatarWrap: { position: 'relative' },
     onlineDot: {
       position: 'absolute', bottom: 0, right: 0,
@@ -144,9 +154,9 @@ export default function PeopleScreen() {
 
   function AvatarCircle({ name }: { name: string }) {
     return (
-      <View style={styles.avatar}>
+      <LinearGradient colors={personGrad(name)} style={styles.avatar}>
         <Text style={styles.avatarText}>{name?.[0]?.toUpperCase() ?? '?'}</Text>
-      </View>
+      </LinearGradient>
     );
   }
 

@@ -1,8 +1,22 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { PostActionRow } from './PostActionRow';
+
+const AUTHOR_GRADS: [string, string][] = [
+  ['#FF6A2E', '#E81C8E'],
+  ['#8B5CF6', '#E879A6'],
+  ['#FF2F71', '#8B5CF6'],
+  ['#C4476A', '#8B5CF6'],
+  ['#FF8A3D', '#FF2F71'],
+];
+function authorGrad(name: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return AUTHOR_GRADS[Math.abs(h) % AUTHOR_GRADS.length];
+}
 import { PostMediaCarousel } from './PostMediaCarousel';
 import type { Post } from '../../types';
 
@@ -24,6 +38,8 @@ export function StaticPostCard({
 }: StaticPostCardProps) {
   const colors = useThemeColors();
   const [expanded, setExpanded] = useState(false);
+  const authorName = post.profiles?.display_name ?? '?';
+  const grad = useMemo(() => authorGrad(authorName), [authorName]);
 
   const styles = StyleSheet.create({
     card: {
@@ -44,11 +60,9 @@ export function StaticPostCard({
     },
     avatarCircle: {
       width: 38, height: 38, borderRadius: 19,
-      backgroundColor: colors.primary + '30',
-      borderWidth: 1.5, borderColor: colors.primary + '50',
       alignItems: 'center', justifyContent: 'center',
     },
-    avatarLetter: { color: colors.primary, fontWeight: '700', fontSize: 15 },
+    avatarLetter: { color: '#fff', fontWeight: '800', fontSize: 15 },
     nameBlock: { flex: 1 },
     authorName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
     timestamp: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
@@ -95,11 +109,11 @@ export function StaticPostCard({
   return (
     <View testID="static-card" style={styles.card}>
       <TouchableOpacity testID="static-card-press" onPress={onPress} activeOpacity={0.95} style={styles.authorRow}>
-        <View style={styles.avatarCircle}>
+        <LinearGradient colors={grad} style={styles.avatarCircle}>
           <Text style={styles.avatarLetter}>
-            {(post.profiles?.display_name?.[0] ?? '?').toUpperCase()}
+            {(authorName[0] ?? '?').toUpperCase()}
           </Text>
-        </View>
+        </LinearGradient>
         <View style={styles.nameBlock}>
           <Text style={styles.authorName}>{post.profiles?.display_name ?? ''}</Text>
           {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}

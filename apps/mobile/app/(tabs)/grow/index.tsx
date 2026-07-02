@@ -19,6 +19,16 @@ import { HappeningTonightCard } from '../../../components/grow/HappeningTonightC
 import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayCard';
 import { MiniWinsCard } from '../../../components/grow/MiniWinsCard';
 
+const CHAT_GRADS: [string, string][] = [
+  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
+  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
+];
+function chatGrad(name: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return CHAT_GRADS[Math.abs(h) % CHAT_GRADS.length];
+}
+
 type CommunityRow = { community_id: string; communities: { id: string; name: string; category: string } | null };
 type DirectChatPreview = {
   id: string;
@@ -329,10 +339,9 @@ export default function GrowScreen() {
     avatarWrap: { position: 'relative' },
     avatar: {
       width: 36, height: 36, borderRadius: 18,
-      backgroundColor: colors.primary + '30',
       alignItems: 'center', justifyContent: 'center',
     },
-    avatarText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
+    avatarText: { color: '#fff', fontWeight: '800', fontSize: 13 },
     avatarCount: { color: colors.textMuted, fontWeight: '700', fontSize: 12 },
     onlineDot: {
       position: 'absolute', bottom: 0, right: 0,
@@ -364,10 +373,9 @@ export default function GrowScreen() {
     },
     chatPreviewAvatar: {
       width: 30, height: 30, borderRadius: 15,
-      backgroundColor: colors.primary + '30',
       alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    chatPreviewAvatarText: { color: colors.primary, fontWeight: '700', fontSize: 12 },
+    chatPreviewAvatarText: { color: '#fff', fontWeight: '800', fontSize: 12 },
     chatPreviewName: { flex: 1, color: colors.textPrimary, fontSize: 13, fontWeight: '600' },
     chatPreviewTime: { color: colors.textMuted, fontSize: 11, flexShrink: 0 },
     chatViewAll: { paddingTop: 8 },
@@ -524,9 +532,9 @@ export default function GrowScreen() {
                 onPress={() => router.push(`/chat/${chat.id}` as any)}
                 activeOpacity={0.7}
               >
-                <View style={styles.chatPreviewAvatar}>
+                <LinearGradient colors={chatGrad(chat.partnerName)} style={styles.chatPreviewAvatar}>
                   <Text style={styles.chatPreviewAvatarText}>{chat.partnerName[0]?.toUpperCase() ?? '?'}</Text>
-                </View>
+                </LinearGradient>
                 <Text style={styles.chatPreviewName} numberOfLines={1}>{chat.partnerName}</Text>
                 <Text style={styles.chatPreviewTime}>
                   {chat.last_message_at
@@ -624,11 +632,11 @@ export default function GrowScreen() {
             <View style={styles.avatarRow}>
               {sortByPresence(friends).slice(0, 5).map((f) => (
                 <View key={f.id} style={styles.avatarWrap}>
-                  <View style={styles.avatar}>
+                  <LinearGradient colors={chatGrad(f.profile.display_name ?? '?')} style={styles.avatar}>
                     <Text style={styles.avatarText}>
                       {f.profile.display_name?.[0]?.toUpperCase() ?? '?'}
                     </Text>
-                  </View>
+                  </LinearGradient>
                   {isOnline(f.profile.last_seen_at) && (
                     <View style={styles.onlineDot} />
                   )}

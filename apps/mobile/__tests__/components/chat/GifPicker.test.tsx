@@ -56,10 +56,10 @@ describe('GifPicker', () => {
   it('calls onClose when the close button is pressed', async () => {
     mockGiphyResponse([]);
     const onClose = jest.fn();
-    const { getByText } = render(
+    const { getByLabelText } = render(
       <GifPicker visible={true} onGifSelected={jest.fn()} onClose={onClose} />
     );
-    fireEvent.press(getByText('✕'));
+    fireEvent.press(getByLabelText('Close GIF picker'));
     expect(onClose).toHaveBeenCalled();
   });
 

@@ -1,11 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Share, Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { formatDistanceToNowStrict } from 'date-fns';
+
+const DETAIL_GRADS: [string, string][] = [
+  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
+  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
+];
+function detailGrad(name: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return DETAIL_GRADS[Math.abs(h) % DETAIL_GRADS.length];
+}
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useFeedStore } from '../../../../store/feedStore';
@@ -200,6 +212,11 @@ export default function PostDetailScreen() {
     replyChipText: { color: colors.primary, fontSize: 11 },
     errorBody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
     errorText: { color: colors.textSecondary, fontSize: 15, textAlign: 'center' },
+    authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
+    authorAva: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+    authorAvaText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+    authorName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
+    authorTime: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
   });
 
   if (loadingPost) {
@@ -229,6 +246,12 @@ export default function PostDetailScreen() {
 
   const isLiked = likedPostIds.has(post.id);
   const isSaved = savedPostIds.has(post.id);
+  const authorName = post.profiles?.display_name ?? '?';
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const authorGrad = useMemo(() => detailGrad(authorName), [authorName]);
+  const postedAt = new Date(post.created_at);
+  const timeAgo = Number.isNaN(postedAt.getTime())
+    ? '' : formatDistanceToNowStrict(postedAt, { addSuffix: true });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -247,6 +270,24 @@ export default function PostDetailScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Author row */}
+          <View style={styles.authorRow}>
+            <LinearGradient colors={authorGrad} style={styles.authorAva}>
+              <Text style={styles.authorAvaText}>{authorName[0]?.toUpperCase() ?? '?'}</Text>
+            </LinearGradient>
+            <View>
+              <Text style={styles.authorName}>{authorName}</Text>
+              {timeAgo ? <Text style={styles.authorTime}>{timeAgo}</Text> : null}
+            </View>
+          </View>
+
+          {/* Caption */}
+          {post.content ? (
+            <View style={styles.captionBlock}>
+              <Text style={styles.caption}>{post.content}</Text>
+            </View>
+          ) : null}
+
           {/* Media */}
           {(post.post_type === 'photo' || post.post_type === 'gallery') &&
             post.media_urls.length > 0 && (
@@ -256,11 +297,6 @@ export default function PostDetailScreen() {
                 variant="detail"
               />
             )}
-
-          {/* Caption */}
-          <View style={styles.captionBlock}>
-            <Text style={styles.caption}>{post.content}</Text>
-          </View>
 
           <View style={styles.divider} />
 
@@ -294,7 +330,7 @@ export default function PostDetailScreen() {
             accessibilityRole="button"
             accessibilityLabel={isLiked ? 'Unlike post' : 'Like post'}
           >
-            <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={20} color={isLiked ? colors.primary : colors.textMuted} />
+            <Text style={{ fontSize: 20, opacity: isLiked ? 1 : 0.45 }}>🌸</Text>
             <Text style={[styles.stickyCount, isLiked && styles.iconActive]}>
               {post.like_count}
             </Text>

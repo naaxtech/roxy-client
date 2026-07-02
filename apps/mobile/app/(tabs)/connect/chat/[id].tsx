@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
@@ -7,7 +7,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
+import { LinearGradient } from 'expo-linear-gradient';
+import { format, isToday, isYesterday } from 'date-fns';
 import { supabase, callEdgeFunction } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useConnectStore } from '../../../../store/connectStore';
@@ -23,6 +24,29 @@ import { ActionTray } from '../../../../components/chat/ActionTray';
 import { GifPicker } from '../../../../components/chat/GifPicker';
 import { QuickReactBar, ReactionChips } from '../../../../components/chat/ReactionBar';
 import { TypingIndicator } from '../../../../components/chat/TypingIndicator';
+import { isOnline } from '../../../../store/friendStore';
+
+const GRAD_COLORS: [string, string][] = [
+  ['#FF6A2E', '#E81C8E'],
+  ['#8B5CF6', '#E879A6'],
+  ['#FF2F71', '#8B5CF6'],
+  ['#F472B6', '#FF6A2E'],
+  ['#C4476A', '#8B5CF6'],
+  ['#FF8A3D', '#FF2F71'],
+];
+
+function gradFor(name: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return GRAD_COLORS[Math.abs(h) % GRAD_COLORS.length];
+}
+
+function formatTimeSep(iso: string): string {
+  const d = new Date(iso);
+  if (isToday(d)) return format(d, 'HH:mm');
+  if (isYesterday(d)) return `Yesterday ${format(d, 'HH:mm')}`;
+  return format(d, 'EEE, MMM d · HH:mm');
+}
 
 const REPORT_REASONS: {
   key: 'harassment' | 'spam' | 'inappropriate' | 'hate_speech' | 'other';
@@ -34,6 +58,23 @@ const REPORT_REASONS: {
   { key: 'hate_speech', label: 'Hate speech' },
   { key: 'other', label: 'Other' },
 ];
+
+type PartnerProfile = {
+  id: string;
+  display_name: string;
+  username: string;
+  avatar_url: string | null;
+  last_seen_at: string | null;
+};
+
+type MessageWithGroup = Message & {
+  isFirstInGroup: boolean;
+  isLastInGroup: boolean;
+  showTimestamp: boolean;
+};
+
+const AVA_SIZE = 32;
+const AVA_GAP = 8;
 
 export default function ChatScreen() {
   const { id: conversationId } = useLocalSearchParams<{ id: string }>();
@@ -51,10 +92,12 @@ export default function ChatScreen() {
   const [wingwomanLoading, setWingwomanLoading] = useState(false);
   const [nudgeLoading, setNudgeLoading] = useState(false);
   const [icebreaker, setIcebreaker] = useState<string | null>(null);
-  const listRef = useRef<FlatList<Message>>(null);
+  const listRef = useRef<FlatList<MessageWithGroup>>(null);
 
-  const [partnerId, setPartnerId] = useState<string | null>(null);
-  const [partnerName, setPartnerName] = useState<string>('Chat');
+  const [partnerProfile, setPartnerProfile] = useState<PartnerProfile | null>(null);
+  const partnerName = partnerProfile?.display_name || partnerProfile?.username || 'Chat';
+  const partnerGrad = useMemo(() => gradFor(partnerName), [partnerName]);
+  const partnerIsOnline = isOnline(partnerProfile?.last_seen_at ?? null);
 
   const [showTray, setShowTray] = useState(false);
   const [showEmojiKeyboard, setShowEmojiKeyboard] = useState(false);
@@ -89,103 +132,180 @@ export default function ChatScreen() {
     partnerName,
   });
 
+  // Build grouped messages with per-item display metadata
+  const groupedMessages = useMemo((): MessageWithGroup[] => {
+    const base = searchActive && searchQuery.trim()
+      ? messages.filter((m) => m.content?.toLowerCase().includes(searchQuery.toLowerCase()))
+      : messages;
+
+    return base.map((msg, i) => {
+      const prev = base[i - 1];
+      const next = base[i + 1];
+      const isRoxy = msg.message_type === 'roxy_suggestion';
+      const prevBreaks = !prev || prev.message_type === 'roxy_suggestion' || prev.sender_id !== msg.sender_id;
+      const nextBreaks = !next || next.message_type === 'roxy_suggestion' || next.sender_id !== msg.sender_id;
+
+      const isFirstInGroup = isRoxy || prevBreaks;
+      const isLastInGroup = isRoxy || nextBreaks;
+      const showTimestamp =
+        !prev ||
+        new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() > 5 * 60 * 1000;
+
+      return { ...msg, isFirstInGroup, isLastInGroup, showTimestamp };
+    });
+  }, [messages, searchActive, searchQuery]);
+
+  // Reversed for inverted FlatList — newest first renders at visual bottom
+  const reversedMessages = useMemo(() => [...groupedMessages].reverse(), [groupedMessages]);
+
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+
+    // Header
     header: {
-      flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: colors.surface,
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 12, paddingVertical: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.surfaceLight,
+      gap: 10,
     },
-    backBtn: { width: 40 },
-    headerTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 17, textAlign: 'center' },
-    menuBtn: { padding: 4 },
-    menuBtnText: { color: colors.textPrimary, fontSize: 16, letterSpacing: 1 },
+    backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+    headerAvaWrap: { position: 'relative' },
+    headerAva: {
+      width: 38, height: 38, borderRadius: 19,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    headerAvaText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+    headerOnlineDot: {
+      position: 'absolute', bottom: 0, right: 0,
+      width: 11, height: 11, borderRadius: 6,
+      backgroundColor: '#22C55E', borderWidth: 2, borderColor: colors.background,
+    },
+    headerCenter: { flex: 1 },
+    headerName: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
+    headerSub: { color: colors.textMuted, fontSize: 11, marginTop: 1 },
+    headerActions: { flexDirection: 'row', gap: 2 },
+    headerBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+
+    // Search header
     searchInput: {
       flex: 1, backgroundColor: colors.surface, borderRadius: 20,
       paddingHorizontal: 14, paddingVertical: 8, color: colors.textPrimary, fontSize: 14,
     },
-    searchCancelText: { color: colors.primary, fontWeight: '600', marginLeft: 10 },
-    icebreakerBanner: {
-      backgroundColor: colors.roxy + '20', borderBottomWidth: 1, borderBottomColor: colors.roxy + '40',
-      padding: 12,
+    searchCancelText: { color: colors.primary, fontWeight: '600', marginLeft: 6 },
+
+    // Icebreaker
+    iceBanner: {
+      backgroundColor: colors.roxy + '18', borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.roxy + '40', paddingHorizontal: 16, paddingVertical: 10,
     },
-    icebreakerLabel: { color: colors.roxy, fontSize: 11, fontWeight: '700', marginBottom: 2 },
-    icebreakerText: { color: colors.textPrimary, fontSize: 14, fontStyle: 'italic' },
+    iceLabel: { color: colors.roxy, fontSize: 11, fontWeight: '700', marginBottom: 2 },
+    iceText: { color: colors.textPrimary, fontSize: 13, fontStyle: 'italic' },
+
+    // Error
     errorState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
     errorText: { color: colors.textMuted, fontSize: 15 },
-    retryBtn: {
-      backgroundColor: colors.primary, borderRadius: 12,
-      paddingHorizontal: 24, paddingVertical: 10,
-    },
+    retryBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 10 },
     retryBtnText: { color: '#fff', fontWeight: '700' },
-    messageList: { padding: 16, gap: 8, flexGrow: 1, justifyContent: 'flex-end' },
-    bubble: { maxWidth: '80%', borderRadius: 16, padding: 12, marginVertical: 2 },
-    bubbleOwn: { alignSelf: 'flex-end', backgroundColor: colors.primary, borderBottomRightRadius: 4 },
-    bubbleOther: { alignSelf: 'flex-start', backgroundColor: colors.surface, borderBottomLeftRadius: 4 },
-    bubbleRoxy: { alignSelf: 'center', backgroundColor: colors.roxy + '20', borderRadius: 12, borderWidth: 1, borderColor: colors.roxy + '60', width: '90%' },
+
+    // List
+    listContent: { paddingVertical: 12, paddingHorizontal: 12 },
+
+    timeSep: {
+      alignSelf: 'center', color: colors.textMuted, fontSize: 11,
+      marginVertical: 8, fontWeight: '500',
+    },
+
+    // Message rows
+    msgRow: { flexDirection: 'row', alignItems: 'flex-end', marginVertical: 1 },
+    msgRowOwn: { justifyContent: 'flex-end' },
+    msgRowOther: { justifyContent: 'flex-start' },
+
+    avaSlot: { width: AVA_SIZE + AVA_GAP, alignItems: 'flex-start' },
+    msgAva: {
+      width: AVA_SIZE, height: AVA_SIZE, borderRadius: AVA_SIZE / 2,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    msgAvaText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+    // Bubbles
+    bubble: { maxWidth: '76%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
+    bubbleOwn: { backgroundColor: colors.primary },
+    bubbleOther: { backgroundColor: colors.surface },
+    bubbleOwnLast: { borderBottomRightRadius: 4 },
+    bubbleOtherLast: { borderBottomLeftRadius: 4 },
     bubbleHighlighted: { borderWidth: 2, borderColor: colors.primary + '80' },
-    roxyLabel: { color: colors.roxy, fontSize: 11, fontWeight: '700', marginBottom: 4 },
+
     bubbleText: { fontSize: 15, lineHeight: 21 },
     bubbleTextOwn: { color: '#fff' },
     bubbleTextOther: { color: colors.textPrimary },
-    gifImage: { width: 200, height: 150, borderRadius: 8 },
-    roxyActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
-    roxyUseBtn: { backgroundColor: colors.roxy, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 },
-    roxyUseBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
-    bubbleMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
-    bubbleTime: { color: colors.textMuted, fontSize: 10 },
-    readTick: { color: colors.textMuted, fontSize: 10, fontWeight: '700' },
-    readTickRead: { color: colors.primary },
-    emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
-    inputBar: {
-      flexDirection: 'row',
-      alignItems: 'flex-end',
-      gap: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderTopWidth: 1,
-      borderTopColor: colors.surface,
+
+    gifImage: { width: 200, height: 150, borderRadius: 10 },
+
+    bubbleMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3, marginTop: 4 },
+    bubbleTime: { fontSize: 10, color: 'rgba(255,255,255,0.7)' },
+    bubbleTimeOther: { color: colors.textMuted },
+    readTick: { fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '700' },
+    readTickRead: { color: 'rgba(255,255,255,0.95)' },
+
+    // Roxy suggestion
+    roxyBubble: {
+      alignSelf: 'center', backgroundColor: colors.roxy + '14',
+      borderRadius: 16, borderWidth: 1, borderColor: colors.roxy + '40',
+      padding: 14, marginVertical: 6, width: '88%',
+    },
+    roxyLabel: { color: colors.roxy, fontSize: 11, fontWeight: '700', marginBottom: 6 },
+    roxyText: { color: colors.textPrimary, fontSize: 14, lineHeight: 20, fontStyle: 'italic' },
+    roxyUseBtnRow: { marginTop: 10 },
+    roxyUseBtn: {
+      alignSelf: 'flex-start', backgroundColor: colors.roxy,
+      borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7,
+    },
+    roxyUseBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+    emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: 40, fontSize: 14 },
+
+    // Input bar
+    inputWrap: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.surfaceLight,
       backgroundColor: colors.background,
     },
+    inputBar: {
+      flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+      paddingHorizontal: 12, paddingVertical: 10,
+    },
     roxyBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.surface,
-      borderWidth: 1.5,
-      borderColor: colors.roxy + '50',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 4,
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.roxy + '50',
+      alignItems: 'center', justifyContent: 'center', marginBottom: 2,
     },
-    roxyBtnActive: {
-      backgroundColor: colors.roxy + '18',
-      borderColor: colors.roxy,
-    },
-    inlineEmojiContainer: {
-      borderTopWidth: 1,
-      borderTopColor: colors.surface,
-    },
+    roxyBtnActive: { backgroundColor: colors.roxy + '18', borderColor: colors.roxy },
+    inlineEmojiContainer: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.surfaceLight },
     input: {
       flex: 1, backgroundColor: colors.surface, borderRadius: 20,
       paddingHorizontal: 16, paddingVertical: 10,
       color: colors.textPrimary, fontSize: 15, maxHeight: 120,
     },
     sendBtn: {
-      width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary,
-      alignItems: 'center', justifyContent: 'center',
+      width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary,
+      alignItems: 'center', justifyContent: 'center', marginBottom: 2,
     },
-    sendBtnDisabled: { backgroundColor: colors.surface },
+    sendBtnDisabled: { backgroundColor: colors.surfaceLight },
+
+    // Reaction overlay
     reactOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
     reactBarContainer: { position: 'absolute', bottom: 120, alignSelf: 'center' },
+
+    // Modals
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
     actionSheet: {
       backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-      paddingBottom: 32, paddingTop: 8,
+      paddingBottom: 34, paddingTop: 8,
     },
     actionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, gap: 14 },
     actionRowText: { color: colors.textPrimary, fontSize: 16 },
     actionRowTextDanger: { color: colors.error, fontSize: 16, fontWeight: '600' },
-    actionSeparator: { height: 1, backgroundColor: colors.surfaceLight, marginHorizontal: 16 },
+    actionSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.surfaceLight, marginHorizontal: 16 },
     reportCard: {
       backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
       padding: 24, paddingBottom: 40,
@@ -197,7 +317,7 @@ export default function ChatScreen() {
     reasonRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.textMuted },
     reasonRadioSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
     reasonLabel: { color: colors.textPrimary, fontSize: 15 },
-    reasonSeparator: { height: 1, backgroundColor: colors.surfaceLight },
+    reasonSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.surfaceLight },
     reportDetailInput: {
       backgroundColor: colors.surfaceLight, borderRadius: 12, padding: 12,
       color: colors.textPrimary, fontSize: 14, minHeight: 72, marginTop: 16, textAlignVertical: 'top',
@@ -216,7 +336,6 @@ export default function ChatScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
 
-  // Reset messages when navigating to a different conversation
   useEffect(() => {
     setInitialMessages([]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -224,20 +343,19 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (!conversationId || !user) return;
-    const resolvePartner = async (participantIds: string[]) => {
+    const resolve = async (participantIds: string[]) => {
       const pid = participantIds.find((id) => id !== user.id) ?? null;
-      setPartnerId(pid);
       if (!pid) return;
       const { data } = await supabase
         .from('profiles')
-        .select('display_name, username')
+        .select('id, display_name, username, avatar_url, last_seen_at')
         .eq('id', pid)
         .single();
-      if (data) setPartnerName(data.display_name || data.username || 'Chat');
+      if (data) setPartnerProfile(data as PartnerProfile);
     };
     const conv = conversations.find((c) => c.id === conversationId);
     if (conv) {
-      void resolvePartner(conv.participant_ids);
+      void resolve(conv.participant_ids);
     } else {
       void (async () => {
         try {
@@ -246,7 +364,7 @@ export default function ChatScreen() {
             .select('participant_ids')
             .eq('id', conversationId)
             .single();
-          if (data) void resolvePartner(data.participant_ids);
+          if (data) void resolve(data.participant_ids);
         } catch {}
       })();
     }
@@ -288,17 +406,12 @@ export default function ChatScreen() {
 
   useEffect(() => { void loadMessages(); }, [loadMessages]);
 
+  // With inverted FlatList, scroll to offset 0 = newest = visual bottom
   useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+    if (messages.length > 0 && !searchActive) {
+      setTimeout(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }), 80);
     }
-  }, [messages.length]);
-
-  const displayedMessages = searchActive && searchQuery.trim()
-    ? messages.filter((m) =>
-        m.content?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : messages;
+  }, [messages.length, searchActive]);
 
   const sendMessage = async (content: string, type: Message['message_type'] = 'text', mediaUrl?: string) => {
     if ((!content.trim() && !mediaUrl) || !user || !conversationId) return;
@@ -341,7 +454,6 @@ export default function ChatScreen() {
     } else if (inserted?.id) {
       replaceMessageId(optimisticMsg.id, inserted.id);
       Analytics.messageSent(conversationId);
-      // Update conversation list order (fire-and-forget, non-critical)
       supabase
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })
@@ -373,7 +485,7 @@ export default function ChatScreen() {
       });
       if (error) { Alert.alert('Wingwoman unavailable', error); return; }
       if (data?.suggestion) {
-        const suggestionMsg: Message = {
+        appendMessage({
           id: `roxy-${Date.now()}`,
           conversation_id: conversationId,
           sender_id: null,
@@ -382,8 +494,7 @@ export default function ChatScreen() {
           message_type: 'roxy_suggestion',
           is_read: true,
           created_at: new Date().toISOString(),
-        };
-        appendMessage(suggestionMsg);
+        });
       }
     } catch {
       Alert.alert('Error', 'Failed to get suggestion. Please try again.');
@@ -421,9 +532,9 @@ export default function ChatScreen() {
         {
           text: 'Block', style: 'destructive',
           onPress: async () => {
-            if (!partnerId) return;
+            if (!partnerProfile?.id) return;
             try {
-              await blockUser(partnerId);
+              await blockUser(partnerProfile.id);
               router.back();
             } catch {
               Alert.alert('Error', 'Could not block user. Please try again.');
@@ -438,12 +549,12 @@ export default function ChatScreen() {
     setMenuVisible(false);
     setReportReason(null);
     setReportDetail('');
-    if (partnerId) openReportModal({ userId: partnerId, contentType: 'message' });
+    if (partnerProfile?.id) openReportModal({ userId: partnerProfile.id, contentType: 'message' });
     setReportVisible(true);
   };
 
   const handleReportSubmit = async () => {
-    if (!reportReason || !partnerId) return;
+    if (!reportReason || !partnerProfile?.id) return;
     setReportSubmitting(true);
     try {
       await submitReport(reportReason, reportDetail.trim() || undefined);
@@ -456,9 +567,7 @@ export default function ChatScreen() {
     }
   };
 
-  const handleLongPress = (messageId: string) => {
-    setReactingToMessage(messageId);
-  };
+  const handleLongPress = (messageId: string) => setReactingToMessage(messageId);
 
   const handleReact = async (emoji: string) => {
     if (!reactingToMessage || !user) return;
@@ -482,7 +591,7 @@ export default function ChatScreen() {
     }
   };
 
-  const renderItem: ListRenderItem<Message> = ({ item }) => {
+  const renderItem: ListRenderItem<MessageWithGroup> = ({ item }) => {
     const isOwn = item.sender_id === user?.id;
     const isRoxy = item.message_type === 'roxy_suggestion';
     const isImage = item.message_type === 'image';
@@ -491,110 +600,161 @@ export default function ChatScreen() {
       ? (item.content?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
       : false;
 
+    // Timestamp separator — in inverted FlatList, isFirstInGroup items are oldest in group
+    // and render at the top of the visual group, so timestamp sits above them naturally.
+    const timeSep = item.showTimestamp ? (
+      <Text style={styles.timeSep}>{formatTimeSep(item.created_at)}</Text>
+    ) : null;
+
+    if (isRoxy) {
+      return (
+        <View>
+          {timeSep}
+          <Pressable onLongPress={() => handleLongPress(item.id)} delayLongPress={400}>
+            <View style={[styles.roxyBubble, isHighlighted && styles.bubbleHighlighted]}>
+              <Text style={styles.roxyLabel}>✨ Roxy suggests</Text>
+              <Text style={styles.roxyText}>{item.content}</Text>
+              <View style={styles.roxyUseBtnRow}>
+                <TouchableOpacity style={styles.roxyUseBtn} onPress={() => setInputText(item.content ?? '')}>
+                  <Text style={styles.roxyUseBtnText}>Use this</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            {reactions.length > 0 && (
+              <ReactionChips
+                reactions={reactions}
+                currentUserId={user?.id ?? ''}
+                onToggle={(emoji, own) => void handleReactionToggle(item.id, emoji, own)}
+              />
+            )}
+          </Pressable>
+        </View>
+      );
+    }
+
     return (
-      <Pressable
-        onLongPress={() => !isRoxy && handleLongPress(item.id)}
-        delayLongPress={400}
-      >
-        <View style={[
-          styles.bubble,
-          isOwn && !isRoxy ? styles.bubbleOwn : styles.bubbleOther,
-          isRoxy && styles.bubbleRoxy,
-          isHighlighted && styles.bubbleHighlighted,
-        ]}>
-          {isRoxy && <Text style={styles.roxyLabel}>✨ Roxy suggests</Text>}
+      <View>
+        {timeSep}
+        <Pressable onLongPress={() => handleLongPress(item.id)} delayLongPress={400}>
+          <View style={[styles.msgRow, isOwn ? styles.msgRowOwn : styles.msgRowOther]}>
+            {/* Avatar slot on left for partner messages; shown only for last in group */}
+            {!isOwn && (
+              <View style={styles.avaSlot}>
+                {item.isLastInGroup && (
+                  <LinearGradient colors={partnerGrad} style={styles.msgAva}>
+                    <Text style={styles.msgAvaText}>
+                      {partnerName[0]?.toUpperCase() ?? '?'}
+                    </Text>
+                  </LinearGradient>
+                )}
+              </View>
+            )}
 
-          {isImage && item.media_url ? (
-            <Image
-              source={{ uri: item.media_url }}
-              style={styles.gifImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <Text style={[styles.bubbleText, isOwn && !isRoxy ? styles.bubbleTextOwn : styles.bubbleTextOther]}>
-              {item.content}
-            </Text>
-          )}
+            <View style={[
+              styles.bubble,
+              isOwn ? styles.bubbleOwn : styles.bubbleOther,
+              isOwn && item.isLastInGroup && styles.bubbleOwnLast,
+              !isOwn && item.isLastInGroup && styles.bubbleOtherLast,
+              isHighlighted && styles.bubbleHighlighted,
+            ]}>
+              {isImage && item.media_url ? (
+                <Image source={{ uri: item.media_url }} style={styles.gifImage} resizeMode="cover" />
+              ) : (
+                <Text style={[styles.bubbleText, isOwn ? styles.bubbleTextOwn : styles.bubbleTextOther]}>
+                  {item.content}
+                </Text>
+              )}
+              <View style={styles.bubbleMeta}>
+                <Text style={[styles.bubbleTime, !isOwn && styles.bubbleTimeOther]}>
+                  {format(new Date(item.created_at), 'HH:mm')}
+                </Text>
+                {isOwn && (
+                  <Text style={[styles.readTick, item.is_read && styles.readTickRead]}>
+                    {item.is_read ? '✓✓' : '✓'}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
 
-          {isRoxy && (
-            <View style={styles.roxyActions}>
-              <TouchableOpacity style={styles.roxyUseBtn} onPress={() => setInputText(item.content ?? '')}>
-                <Text style={styles.roxyUseBtnText}>Use this</Text>
-              </TouchableOpacity>
+          {reactions.length > 0 && (
+            <View style={{ paddingLeft: isOwn ? 0 : AVA_SIZE + AVA_GAP }}>
+              <ReactionChips
+                reactions={reactions}
+                currentUserId={user?.id ?? ''}
+                onToggle={(emoji, own) => void handleReactionToggle(item.id, emoji, own)}
+              />
             </View>
           )}
-
-          <View style={styles.bubbleMeta}>
-            <Text style={styles.bubbleTime}>{format(new Date(item.created_at), 'HH:mm')}</Text>
-            {isOwn && !isRoxy && (
-              <Text style={[styles.readTick, item.is_read && styles.readTickRead]}>
-                {item.is_read ? '✓✓' : '✓'}
-              </Text>
-            )}
-          </View>
-        </View>
-
-        {reactions.length > 0 && (
-          <ReactionChips
-            reactions={reactions}
-            currentUserId={user?.id ?? ''}
-            onToggle={(emoji, isOwn) => void handleReactionToggle(item.id, emoji, isOwn)}
-          />
-        )}
-      </Pressable>
+        </Pressable>
+      </View>
     );
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        {searchActive ? (
-          <>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search messages..."
-              placeholderTextColor={colors.textMuted}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoFocus
-            />
-            <TouchableOpacity onPress={() => { setSearchActive(false); setSearchQuery(''); }}>
-              <Text style={styles.searchCancelText}>Cancel</Text>
+      {/* Header */}
+      {searchActive ? (
+        <View style={styles.header}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search messages..."
+            placeholderTextColor={colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus
+          />
+          <TouchableOpacity onPress={() => { setSearchActive(false); setSearchQuery(''); }}>
+            <Text style={styles.searchCancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => partnerProfile?.id && router.push(`/user/${partnerProfile.id}` as any)}
+            disabled={!partnerProfile?.id}
+            style={styles.headerAvaWrap}
+          >
+            <LinearGradient colors={partnerGrad} style={styles.headerAva}>
+              <Text style={styles.headerAvaText}>{partnerName[0]?.toUpperCase() ?? '?'}</Text>
+            </LinearGradient>
+            {partnerIsOnline && <View style={styles.headerOnlineDot} />}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => partnerProfile?.id && router.push(`/user/${partnerProfile.id}` as any)}
+            disabled={!partnerProfile?.id}
+            style={styles.headerCenter}
+          >
+            <Text style={styles.headerName} numberOfLines={1}>{partnerName}</Text>
+            <Text style={styles.headerSub}>{partnerIsOnline ? 'Online now' : 'Tap to view profile'}</Text>
+          </TouchableOpacity>
+
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerBtn} onPress={() => setSearchActive(true)}>
+              <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+            <TouchableOpacity style={styles.headerBtn} onPress={() => setMenuVisible(true)}>
+              <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => partnerId && router.push(`/user/${partnerId}` as any)}
-              disabled={!partnerId}
-              style={{ flex: 1 }}
-            >
-              <Text style={styles.headerTitle} numberOfLines={1}>{partnerName}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.menuBtn}
-              onPress={() => setMenuVisible(true)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={styles.menuBtnText}>•••</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
+          </View>
+        </View>
+      )}
 
       {icebreaker && !searchActive && (
-        <View style={styles.icebreakerBanner}>
-          <Text style={styles.icebreakerLabel}>✨ Roxy's icebreaker</Text>
-          <Text style={styles.icebreakerText}>{icebreaker}</Text>
+        <View style={styles.iceBanner}>
+          <Text style={styles.iceLabel}>✨ Roxy's icebreaker</Text>
+          <Text style={styles.iceText}>{icebreaker}</Text>
         </View>
       )}
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
         {loadingInitial ? (
@@ -609,20 +769,16 @@ export default function ChatScreen() {
         ) : (
           <FlatList
             ref={listRef}
-            data={displayedMessages}
+            data={reversedMessages}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
-            contentContainerStyle={styles.messageList}
+            inverted
+            contentContainerStyle={styles.listContent}
             style={{ flex: 1 }}
             keyboardShouldPersistTaps="handled"
-            onContentSizeChange={() => {
-              if (!searchActive && displayedMessages.length > 0) {
-                listRef.current?.scrollToEnd({ animated: false });
-              }
-            }}
             ListEmptyComponent={
               <Text style={styles.emptyText}>
-                {searchActive ? 'No messages match your search.' : 'Send your first message!'}
+                {searchActive ? 'No messages match your search.' : 'Send your first message 💜'}
               </Text>
             }
           />
@@ -630,7 +786,7 @@ export default function ChatScreen() {
 
         <TypingIndicator partnerName={partnerName} visible={partnerIsTyping} />
 
-        <View>
+        <View style={styles.inputWrap}>
           {showTray && (
             <ActionTray
               onEmojiPress={() => {
@@ -672,10 +828,7 @@ export default function ChatScreen() {
           <View style={styles.inputBar}>
             <TouchableOpacity
               style={[styles.roxyBtn, showTray && styles.roxyBtnActive]}
-              onPress={() => {
-                setShowTray((v) => !v);
-                setShowEmojiKeyboard(false);
-              }}
+              onPress={() => { setShowTray((v) => !v); setShowEmojiKeyboard(false); }}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Roxy wingwoman tools"
@@ -703,13 +856,14 @@ export default function ChatScreen() {
               {sending ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Ionicons name="send" size={18} color="#fff" />
+                <Ionicons name="send" size={17} color="#fff" />
               )}
             </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
 
+      {/* Reaction quick-pick overlay */}
       {reactingToMessage && (
         <Modal transparent animationType="fade" onRequestClose={() => setReactingToMessage(null)}>
           <TouchableOpacity
@@ -730,6 +884,7 @@ export default function ChatScreen() {
         onClose={() => setShowGifPicker(false)}
       />
 
+      {/* Context menu */}
       <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
           <View style={styles.actionSheet}>
@@ -758,6 +913,7 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </Modal>
 
+      {/* Report modal */}
       <Modal visible={reportVisible} transparent animationType="slide" onRequestClose={() => setReportVisible(false)}>
         <View style={styles.overlay}>
           <View style={styles.reportCard}>
@@ -792,9 +948,9 @@ export default function ChatScreen() {
                 <Text style={styles.reportCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.reportSubmitBtn, (!reportReason || !partnerId || reportSubmitting) && styles.reportSubmitBtnDisabled]}
+                style={[styles.reportSubmitBtn, (!reportReason || !partnerProfile?.id || reportSubmitting) && styles.reportSubmitBtnDisabled]}
                 onPress={() => void handleReportSubmit()}
-                disabled={!reportReason || !partnerId || reportSubmitting}
+                disabled={!reportReason || !partnerProfile?.id || reportSubmitting}
               >
                 {reportSubmitting ? (
                   <ActivityIndicator size="small" color="#fff" />

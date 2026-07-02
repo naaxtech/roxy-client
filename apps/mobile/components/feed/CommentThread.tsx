@@ -1,10 +1,20 @@
 import React, { useRef, useState } from 'react';
 import { Animated, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import type { Comment } from '../../types';
 
 const REPLY_PREVIEW_COUNT = 2;
+
+const COMMENT_GRADS: [string, string][] = [
+  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
+  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
+];
+function commentGrad(name: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return COMMENT_GRADS[Math.abs(h) % COMMENT_GRADS.length];
+}
 
 interface CommentThreadProps {
   postId: string;
@@ -26,6 +36,8 @@ function CommentRow({
 }) {
   const colors = useThemeColors();
   const heartScale = useRef(new Animated.Value(1)).current;
+  const authorName = comment.profiles?.display_name ?? '?';
+  const grad = commentGrad(authorName);
 
   const styles = StyleSheet.create({
     commentRow: {
@@ -35,10 +47,9 @@ function CommentRow({
     replyRow: { paddingLeft: 48 },
     avatarCircle: {
       width: 30, height: 30, borderRadius: 15,
-      backgroundColor: colors.primary + '30',
       alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    avatarLetter: { color: colors.primary, fontWeight: '700', fontSize: 12 },
+    avatarLetter: { color: '#fff', fontWeight: '800', fontSize: 12 },
     commentBody: { flex: 1 },
     commentAuthor: { color: colors.textPrimary, fontWeight: '600', fontSize: 13 },
     commentContent: { color: colors.textSecondary, fontSize: 13, marginTop: 2, lineHeight: 18 },
@@ -57,11 +68,11 @@ function CommentRow({
   };
   return (
     <View style={[styles.commentRow, indent && styles.replyRow]}>
-      <View style={styles.avatarCircle}>
+      <LinearGradient colors={grad} style={styles.avatarCircle}>
         <Text style={styles.avatarLetter}>
-          {(comment.profiles?.display_name?.[0] ?? '?').toUpperCase()}
+          {authorName[0]?.toUpperCase() ?? '?'}
         </Text>
-      </View>
+      </LinearGradient>
       <View style={styles.commentBody}>
         <Text style={styles.commentAuthor}>{comment.profiles?.display_name ?? ''}</Text>
         {isDeleted ? (
@@ -78,13 +89,9 @@ function CommentRow({
               accessibilityLabel={isLiked ? 'Unlike comment' : 'Like comment'}
               hitSlop={6}
             >
-              <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-                <Ionicons
-                  name={isLiked ? 'heart' : 'heart-outline'}
-                  size={14}
-                  color={isLiked ? colors.primary : colors.textMuted}
-                />
-              </Animated.View>
+              <Animated.Text style={{ transform: [{ scale: heartScale }] }}>
+                <Text style={{ fontSize: 14, opacity: isLiked ? 1 : 0.5 }}>🌸</Text>
+              </Animated.Text>
               <Text style={[styles.actionText, isLiked && styles.likedText]}>{comment.like_count}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={onReply}>
