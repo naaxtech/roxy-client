@@ -446,14 +446,16 @@ export default function GrowScreen() {
             />
           </View>
 
-          <TouchableOpacity
-            style={styles.headerRight}
-            onPress={() => router.push('/profile/settings' as any)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={styles.screenSubtitle}>Grow</Text>
-            <Ionicons name="ellipsis-vertical" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={() => router.push('/profile/settings' as any)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+              accessibilityLabel="Notifications"
+            >
+              <Ionicons name="notifications-outline" size={20} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Zone 1 — Roxy Hero Card */}
@@ -555,7 +557,7 @@ export default function GrowScreen() {
         <View>
           <View style={[styles.sectionHeaderRow, { paddingHorizontal: 0 }]}>
             <Text style={styles.sectionTitle}>My Communities</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/discover' as any)}>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/discover/communities' as any)}>
               <Text style={styles.sectionHint}>See all →</Text>
             </TouchableOpacity>
           </View>
@@ -594,7 +596,7 @@ export default function GrowScreen() {
               })}
               <TouchableOpacity
                 style={[styles.cchip, styles.cchipAdd]}
-                onPress={() => router.push('/(tabs)/discover' as any)}
+                onPress={() => router.push('/(tabs)/discover/communities' as any)}
                 activeOpacity={0.8}
               >
                 <View style={[styles.cchipAva, { backgroundColor: colors.primary + '18' }]}>

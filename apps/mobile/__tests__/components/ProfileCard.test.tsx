@@ -1,8 +1,25 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
 
-jest.mock('@expo/vector-icons', () => ({
-  Ionicons: 'Ionicons',
+jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
+jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
+jest.mock('expo-image', () => ({ Image: 'ExpoImage' }));
+jest.mock('../../lib/supabase', () => ({
+  supabase: {
+    from: jest.fn(() => ({
+      select: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          not: jest.fn(() => ({
+            in: jest.fn(() => ({
+              order: jest.fn(() => ({
+                limit: jest.fn(() => Promise.resolve({ data: [], error: null })),
+              })),
+            })),
+          })),
+        })),
+      })),
+    })),
+  },
 }));
 
 import { ProfileCard } from '../../components/profile/ProfileCard';
@@ -37,7 +54,7 @@ const baseProfile: Profile = {
 };
 
 describe('ProfileCard', () => {
-  it('renders display name and username', () => {
+  it('renders display name and username', async () => {
     const { getByText } = render(
       <ProfileCard profile={baseProfile} badges={[]} isOwn={false} />
     );
@@ -45,10 +62,11 @@ describe('ProfileCard', () => {
     expect(getByText('@testuser')).toBeTruthy();
   });
 
-  it('renders bio when present', () => {
+  it('renders bio when About tab is active', async () => {
     const { getByText } = render(
       <ProfileCard profile={baseProfile} badges={[]} isOwn={false} />
     );
+    fireEvent.press(getByText('About'));
     expect(getByText('Hello world')).toBeTruthy();
   });
 
@@ -107,10 +125,11 @@ describe('ProfileCard', () => {
     expect(getByText('🐱')).toBeTruthy();
   });
 
-  it('shows level and points', () => {
+  it('shows level and points in About tab', () => {
     const { getByText } = render(
       <ProfileCard profile={baseProfile} badges={[]} isOwn={false} />
     );
+    fireEvent.press(getByText('About'));
     expect(getByText('🌸 Bloom · 125 pts')).toBeTruthy();
   });
 });

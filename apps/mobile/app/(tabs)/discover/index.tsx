@@ -1,669 +1,394 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
-import { usePathname } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Animated, Alert, Share, Platform,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator,
 } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { format } from 'date-fns';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
-import { useCommunityStore, Community } from '../../../store/communityStore';
+import { useCommunityStore } from '../../../store/communityStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
-import { logError } from '../../../lib/errorLogger';
-import { useCommunityFilterStore } from '../../../store/communityFilterStore';
-import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
-import { Image } from 'expo-image';
-import { contentDetailPath } from '../../../lib/contentNavigation';
-import { useFeedStore } from '../../../store/feedStore';
-import { FeedCard } from '../../../components/feed/FeedCard';
-import { FeedSkeleton } from '../../../components/feed/FeedSkeleton';
-import { NewPostsBanner } from '../../../components/feed/NewPostsBanner';
-import { useGamesStore } from '../../../store/gamesStore';
-import type { Post } from '../../../types';
 
-type SubTab = 'feed' | 'communities' | 'events' | 'games';
-
-// ── Feed section ──────────────────────────────────────────────────────────────
-function FeedSection({
-  userId,
-  feedCommunityIds,
-  communitiesReady,
-  onOpenContent,
-}: {
-  userId: string;
-  feedCommunityIds: string[];
-  communitiesReady: boolean;
-  onOpenContent: (post: Post) => void;
-}) {
-  const colors = useThemeColors();
-  const {
-    posts, loading, loadingMore, hasMore, newPostCount, fetchError,
-    likedPostIds, savedPostIds, discoverScrollOffset,
-    init, fetchFeed, fetchMoreFeed,
-    toggleLike, toggleSave, markSeen, acceptNewPosts, pushNewPost,
-    setDiscoverScrollOffset,
-  } = useFeedStore();
-
-  const listRef = useRef<FlashList<Post>>(null);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const communityKey = feedCommunityIds.join(',');
-  const [gameNames, setGameNames] = useState<Record<string, string>>({});
-  // Tracks live scroll position without touching Zustand on every frame —
-  // writing to the store on each onScroll re-renders FeedSection mid-gesture and causes stutter.
-  const scrollOffsetRef = useRef(discoverScrollOffset);
-
-  const feedStyles = StyleSheet.create({
-    empty: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
-    emptyText: { color: colors.textMuted, fontSize: 15, textAlign: 'center', lineHeight: 22 },
-  });
-
-  useEffect(() => {
-    void supabase.from('games').select('id, name').then(({ data }) => {
-      if (data) setGameNames(Object.fromEntries(data.map((g) => [g.id, g.name])));
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!userId || !communitiesReady) return;
-    void init(userId);
-    void fetchFeed(feedCommunityIds);
-
-    if (feedCommunityIds.length) {
-      const ch = supabase
-        .channel('feed-new-posts')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'posts',
-          },
-          (payload) => { pushNewPost(payload.new as Post); }
-        )
-        .subscribe();
-      channelRef.current = ch;
-    }
-    return () => {
-      if (channelRef.current) {
-        void supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, communityKey, communitiesReady]);
-
-  // Captured in onPress before navigation — immune to Zustand re-renders.
-  // Module-level so it survives component unmount/remount on web.
-  const pathname = usePathname();
-  const prevPathnameRef = useRef('');
-
-  // Web: pathname changes are reliable (URL-based). Detect return from content.
-  // useFocusEffect does NOT fire on web when navigating via the root Stack.
-  useEffect(() => {
-    const prev = prevPathnameRef.current;
-    prevPathnameRef.current = pathname;
-    // Only restore when returning FROM a community content route
-    if (!prev.startsWith('/community/') || discoverScrollOffset <= 0) return;
-    let attempts = 0;
-    const tryRestore = () => {
-      if (listRef.current) {
-        listRef.current.scrollToOffset({ offset: discoverScrollOffset, animated: false });
-      } else if (++attempts < 8) {
-        setTimeout(tryRestore, 100); // retry until FlashList mounts
-      }
-    };
-    setTimeout(tryRestore, 80);
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Native: useFocusEffect IS reliable — screen stays mounted in the stack.
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS === 'web' || discoverScrollOffset <= 0) return;
-      const t = setTimeout(() => {
-        listRef.current?.scrollToOffset({ offset: discoverScrollOffset, animated: false });
-      }, 80);
-      return () => clearTimeout(t);
-    }, [discoverScrollOffset])
-  );
-
-  // Only skeleton on first load — background refetches must not blank the feed
-  // (e.g. while opening a post from Connect, Discover tab stays mounted).
-  if (!communitiesReady || (loading && posts.length === 0)) return <FeedSkeleton />;
-
-  return (
-    <View style={{ flex: 1 }}>
-      {newPostCount > 0 && (
-        <NewPostsBanner count={newPostCount} onPress={acceptNewPosts} />
-      )}
-      <FlashList
-        ref={listRef}
-        data={posts}
-        keyExtractor={(item) => item.id}
-        onScroll={(e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; }}
-        scrollEventThrottle={32}
-        renderItem={({ item }) => (
-          <FeedCard
-            post={item}
-            linkEntityName={item.link_entity_id ? gameNames[item.link_entity_id] : undefined}
-            isLiked={likedPostIds.has(item.id)}
-            isSaved={savedPostIds.has(item.id)}
-            onLike={() => void toggleLike(item.id)}
-            onSave={() => void toggleSave(item.id)}
-            onComment={() => onOpenContent(item)}
-            onShare={() => void Share.share({ message: 'Check this out on Roxy!' })}
-            onPress={() => {
-              markSeen(item.id);
-              // Commit the live offset to the store only at navigation time
-              setDiscoverScrollOffset(scrollOffsetRef.current);
-              onOpenContent(item);
-            }}
-          />
-        )}
-        estimatedItemSize={320}
-        onEndReached={() => { if (hasMore && !loadingMore) void fetchMoreFeed(feedCommunityIds); }}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={
-          loadingMore
-            ? <ActivityIndicator color={colors.primary} style={{ padding: 20 }} />
-            : null
-        }
-        ListEmptyComponent={
-          <View style={feedStyles.empty}>
-            <Text style={feedStyles.emptyText}>
-              {fetchError
-                ? `Could not load the feed. Pull to refresh or try again later.`
-                : feedCommunityIds.length === 0
-                  ? 'Join a community to see posts in your feed.'
-                  : 'No posts yet. Join more communities to see content here.'}
-            </Text>
-          </View>
-        }
-      />
-    </View>
-  );
-}
-
-// ── Games section ─────────────────────────────────────────────────────────────
-function GamesSection({
-  communityId,
-  onNavigateToGame,
-  onNavigateToSpeedDating,
-}: {
-  communityId: string | null;
-  onNavigateToGame: (gameId: string) => void;
-  onNavigateToSpeedDating: () => void;
-}) {
-  const colors = useThemeColors();
-  const router = useRouter();
-  const { games, loading, fetchGames } = useGamesStore();
-
-  const gamesStyles = StyleSheet.create({
-    card: {
-      flex: 1, margin: 4, backgroundColor: colors.surface,
-      borderRadius: 12, padding: 10, gap: 6,
-    },
-    thumbnail: {
-      width: '100%', aspectRatio: 16 / 9,
-      backgroundColor: colors.surfaceLight, borderRadius: 8,
-      alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-    },
-    thumbnailEmoji: { fontSize: 28 },
-    gameName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
-    publisherBadge: { color: colors.textMuted, fontSize: 11 },
-    roxyBadge: { color: colors.primary },
-    playBtn: {
-      backgroundColor: colors.primary, borderRadius: 10,
-      paddingVertical: 6, alignItems: 'center',
-    },
-    playBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-    empty: { flex: 1, alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
-    emptyText: { color: colors.textMuted, textAlign: 'center', fontSize: 14, lineHeight: 20 },
-    suggestBtn: { alignItems: 'center', padding: 16 },
-    suggestBtnText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
-  });
-
-  useEffect(() => {
-    if (communityId) void fetchGames(communityId);
-  }, [communityId]);
-
-  if (!communityId) {
-    return (
-      <View style={gamesStyles.empty}>
-        <Text style={gamesStyles.emptyText}>Join a community to see games.</Text>
-      </View>
-    );
-  }
-
-  if (loading) return <ActivityIndicator color={colors.primary} style={{ marginTop: 48 }} />;
-
-  return (
-    <FlashList
-      data={games}
-      keyExtractor={(item) => item.id}
-      estimatedItemSize={120}
-      numColumns={2}
-      contentContainerStyle={{ padding: 12 }}
-      renderItem={({ item }) => {
-        const isNative = item.url === null;
-        return (
-          <TouchableOpacity
-            style={gamesStyles.card}
-            onPress={() => isNative ? onNavigateToSpeedDating() : onNavigateToGame(item.id)}
-            activeOpacity={0.8}
-          >
-            <View style={gamesStyles.thumbnail}>
-              {item.thumbnail_url
-                ? <Image source={{ uri: item.thumbnail_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                : <Text style={gamesStyles.thumbnailEmoji}>🎮</Text>
-              }
-            </View>
-            <Text style={gamesStyles.gameName} numberOfLines={1}>{item.name}</Text>
-            <Text style={[gamesStyles.publisherBadge, item.publisher_type === 'roxy' && gamesStyles.roxyBadge]}>
-              {item.publisher_type === 'roxy' ? 'By Roxy' : 'Community'}
-            </Text>
-            <TouchableOpacity
-              style={gamesStyles.playBtn}
-              onPress={() => isNative ? onNavigateToSpeedDating() : onNavigateToGame(item.id)}
-            >
-              <Text style={gamesStyles.playBtnText}>Play</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        );
-      }}
-      ListEmptyComponent={
-        <View style={gamesStyles.empty}>
-          <Text style={gamesStyles.emptyText}>No games enabled yet. Ask your community admin to add some.</Text>
-        </View>
-      }
-      ListFooterComponent={
-        <TouchableOpacity
-          style={gamesStyles.suggestBtn}
-          onPress={() => router.push('/(tabs)/discover/games/submit' as any)}
-        >
-          <Text style={gamesStyles.suggestBtnText}>+ Suggest a game</Text>
-        </TouchableOpacity>
-      }
-    />
-  );
-}
-
-type EventRow = {
-  id: string; title: string; starts_at: string; ends_at: string | null;
-  location_text: string | null; community_id: string;
-  is_paid: boolean; communities: { name: string } | null;
+const CATEGORY_EMOJI: Record<string, string> = {
+  dating: '⚡', icebreaker: '💞', party: '🃏', trivia: '🎯', other: '🎮',
 };
 
-function getCommunityLevel(n: number): { label: string; emoji: string } {
-  if (n >= 100) return { label: 'Radiant', emoji: '✨' };
-  if (n >= 20) return { label: 'Thriving', emoji: '🌸' };
-  if (n >= 5) return { label: 'Growing', emoji: '🌿' };
-  return { label: 'Seedling', emoji: '🌱' };
+const GRAD_COLORS = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
+const TILE_GRADS = [
+  ['#FF6A2E', '#E81C8E'],
+  ['#8B5CF6', '#E879A6'],
+  ['#FF2F71', '#8B5CF6'],
+  ['#F472B6', '#FF6A2E'],
+] as const;
+
+type Game = {
+  id: string; name: string; short_description: string;
+  category: string; publisher_type: 'roxy' | 'community';
+  url: string | null; thumbnail_url: string | null;
+};
+type CommunityGame = Game & { community_name?: string };
+type LiveRoom = {
+  id: string; name: string; participant_count: number;
+  community_name: string; status: string;
+};
+
+function GameTile({
+  emoji, name, sub, grad, badge, onPress,
+}: {
+  emoji: string; name: string; sub: string;
+  grad: readonly [string, string]; badge?: string; onPress?: () => void;
+}) {
+  const colors = useThemeColors();
+  const s = StyleSheet.create({
+    tile: {
+      flex: 1, margin: 5, borderRadius: 18,
+      backgroundColor: colors.surface,
+      overflow: 'hidden',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+    },
+    gradTop: { height: 72, alignItems: 'center', justifyContent: 'center' },
+    emoji: { fontSize: 28 },
+    body: { padding: 10, gap: 3 },
+    badge: {
+      position: 'absolute', top: 8, right: 8,
+      backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 8,
+      paddingHorizontal: 6, paddingVertical: 2,
+    },
+    badgeText: { fontSize: 10, fontWeight: '700', color: '#1A0A2E' },
+    name: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
+    sub: { color: colors.textMuted, fontSize: 11 },
+  });
+  return (
+    <TouchableOpacity style={s.tile} onPress={onPress} activeOpacity={0.82}>
+      <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.gradTop}>
+        <Text style={s.emoji}>{emoji}</Text>
+        {badge && (
+          <View style={s.badge}><Text style={s.badgeText}>{badge}</Text></View>
+        )}
+      </LinearGradient>
+      <View style={s.body}>
+        <Text style={s.name} numberOfLines={1}>{name}</Text>
+        <Text style={s.sub} numberOfLines={1}>{sub}</Text>
+      </View>
+    </TouchableOpacity>
+  );
 }
 
-export default function DiscoverScreen() {
+export default function PlayScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
-  const {
-    allCommunities, joinedIds, joinedCommunities, hydrated,
-    hydrate, joinCommunity, leaveCommunity,
-  } = useCommunityStore();
-  const { selectedCommunityId } = useCommunityFilterStore();
+  const { joinedIds, joinedCommunities, hydrate } = useCommunityStore();
 
-  const feedCommunityIds = useMemo(() => {
-    let ids: string[];
-    if (selectedCommunityId) ids = [selectedCommunityId];
-    else if (joinedIds.size > 0) ids = Array.from(joinedIds);
-    else ids = allCommunities.map((c) => c.id);
-    return ids.slice().sort();
-  }, [selectedCommunityId, joinedIds, allCommunities]);
+  const [originals, setOriginals] = useState<Game[]>([]);
+  const [communityGames, setCommunityGames] = useState<CommunityGame[]>([]);
+  const [liveRooms, setLiveRooms] = useState<LiveRoom[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [subTab, setSubTab] = useState<SubTab>('feed');
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => { void hydrate(user?.id); }, [user?.id]);
 
-  const switchTab = (tab: SubTab) => {
-    fadeAnim.setValue(0);
-    setSubTab(tab);
-    Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
-  };
-  const [search, setSearch] = useState('');
-  const [events, setEvents] = useState<EventRow[]>([]);
-  const [loadingEvents, setLoadingEvents] = useState(false);
-  const [interestedIds, setInterestedIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    void hydrate(user?.id);
-  }, [user?.id, hydrate]);
-
-  const loadEvents = useCallback(async () => {
-    setLoadingEvents(true);
-    const now = new Date().toISOString();
-    let query = supabase
-      .from('events')
-      .select('*, communities(name)')
-      .eq('is_private', false)
-      .gte('starts_at', now)
-      .order('starts_at')
-      .limit(50);
-    if (selectedCommunityId) {
-      query = query.eq('community_id', selectedCommunityId);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const [origRes, liveRes] = await Promise.all([
+      supabase.from('games').select('*').eq('publisher_type', 'roxy').order('name'),
+      supabase
+        .from('community_rooms')
+        .select('id, name, participant_count, status, communities(name)')
+        .eq('is_active', true)
+        .neq('status', 'closed')
+        .order('participant_count', { ascending: false })
+        .limit(3),
+    ]);
+    if (origRes.data) setOriginals(origRes.data as Game[]);
+    if (liveRes.data) {
+      setLiveRooms(liveRes.data.map((r: any) => ({
+        id: r.id, name: r.name,
+        participant_count: r.participant_count ?? 0,
+        community_name: (r.communities as any)?.name ?? 'Roxy',
+        status: r.status,
+      })));
     }
-    const { data } = await query;
-    if (data) setEvents(data as EventRow[]);
-    setLoadingEvents(false);
-  }, [selectedCommunityId]);
 
-  const loadInterested = useCallback(async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('event_attendees')
-      .select('event_id')
-      .eq('user_id', user.id)
-      .eq('status', 'interested');
-    if (data) setInterestedIds(new Set(data.map((r: any) => r.event_id)));
-  }, [user]);
-
-  useEffect(() => {
-    if (subTab === 'events') { loadEvents(); loadInterested(); }
-  }, [subTab, loadEvents, loadInterested]);
-
-  const toggleInterested = async (eventId: string) => {
-    if (!user) return;
-    if (interestedIds.has(eventId)) {
-      await supabase.from('event_attendees').delete().eq('event_id', eventId).eq('user_id', user.id).eq('status', 'interested');
-      setInterestedIds((prev) => { const n = new Set(prev); n.delete(eventId); return n; });
-    } else {
-      await supabase.from('event_attendees').insert({ event_id: eventId, user_id: user.id, status: 'interested' });
-      setInterestedIds((prev) => new Set([...prev, eventId]));
-    }
-  };
-
-  const handleJoinLeave = async (community: Community) => {
-    if (!user) return;
-    try {
-      if (joinedIds.has(community.id)) {
-        await leaveCommunity(community.id, user.id);
-      } else {
-        await joinCommunity(community.id, user.id);
+    // Community games for joined communities
+    if (joinedIds.size > 0) {
+      const ids = Array.from(joinedIds);
+      const { data } = await supabase
+        .from('community_games')
+        .select('community_id, games(*), communities(name)')
+        .in('community_id', ids)
+        .limit(4);
+      if (data) {
+        const games = data
+          .map((row: any) => ({
+            ...(row.games as Game),
+            community_name: (row.communities as any)?.name,
+          }))
+          .filter((g: any) => g?.id) as CommunityGame[];
+        setCommunityGames(games);
       }
-    } catch (e: any) {
-      logError(e, 'handleJoinLeave');
-      Alert.alert('Error', e?.message ?? 'Could not update membership');
+    }
+    setLoading(false);
+  }, [joinedIds]);
+
+  useEffect(() => { void loadData(); }, [loadData]);
+
+  const navigateToGame = (game: Game | CommunityGame) => {
+    if (game.name === 'Speed Dating' || game.url === null) {
+      router.push('/speed-dating' as any);
+    } else if (game.url) {
+      router.push(game.url as any);
     }
   };
 
-  const filteredCommunities = search
-    ? allCommunities.filter(
-        (c) =>
-          c.name.toLowerCase().includes(search.toLowerCase()) ||
-          (c.description ?? '').toLowerCase().includes(search.toLowerCase())
-      )
-    : allCommunities;
-
-  const styles = StyleSheet.create({
+  const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
-      paddingHorizontal: 14, paddingTop: 8, paddingBottom: 6, gap: 8,
-      borderBottomWidth: 1, borderBottomColor: colors.surface,
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 18, paddingTop: 6, paddingBottom: 12,
     },
-    headerTop: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 8,
-    },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
-    searchInput: {
-      backgroundColor: colors.surface, borderRadius: 16,
-      paddingHorizontal: 14, paddingVertical: 7,
-      color: colors.textPrimary, fontSize: 13,
-    },
-
-    // Sub-tabs — underline style
-    subTabRow: {
-      flexDirection: 'row',
-      borderBottomWidth: 1, borderBottomColor: colors.surface,
-    },
-    subTab: {
-      flex: 1, paddingVertical: 10,
-      alignItems: 'center',
-      borderBottomWidth: 2, borderBottomColor: 'transparent',
-    },
-    subTabActive: { borderBottomColor: colors.roxy },
-    subTabText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
-    subTabTextActive: { color: colors.roxy, fontWeight: '700' },
-
-    // Community cards
-    communityCard: {
-      flexDirection: 'row', alignItems: 'center', gap: 10,
-      backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8,
-      borderRadius: 12, padding: 10,
-    },
-    communityAvatar: {
+    headerLeft: { flex: 1 },
+    eyebrow: { color: colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
+    title: { color: colors.textPrimary, fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
+    iconBtn: {
       width: 38, height: 38, borderRadius: 19,
-      backgroundColor: colors.surfaceLight, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.surface,
+      alignItems: 'center', justifyContent: 'center',
     },
-    communityNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' },
-    communityName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
-    levelBadge: {
-      backgroundColor: colors.secondary + '20', borderRadius: 8,
-      paddingHorizontal: 6, paddingVertical: 2,
-    },
-    levelBadgeText: { color: colors.secondary, fontSize: 10, fontWeight: '700' },
-    communityDesc: { color: colors.textMuted, fontSize: 11, marginBottom: 3 },
-    communityMeta: { flexDirection: 'row', gap: 8 },
-    communityMetaText: { color: colors.textMuted, fontSize: 11 },
-    joinBtn: {
-      paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
-      borderWidth: 1, borderColor: colors.roxy,
-    },
-    joinBtnJoined: { backgroundColor: colors.roxy, borderColor: colors.roxy },
-    joinBtnText: { color: colors.roxy, fontWeight: '700', fontSize: 11 },
-    joinBtnTextJoined: { color: '#fff' },
 
-    // Events
-    eventCard: {
-      flexDirection: 'row', alignItems: 'center', gap: 10,
-      backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8,
-      borderRadius: 12, padding: 10,
+    // Speed Dating Hero
+    hero: { marginHorizontal: 14, borderRadius: 22, overflow: 'hidden', marginBottom: 8 },
+    heroInner: { padding: 20 },
+    heroTags: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+    heroTag: {
+      backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 20,
+      paddingHorizontal: 10, paddingVertical: 4,
     },
-    eventCardBody: {
-      flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1,
+    heroTagText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+    heroEmoji: { fontSize: 44, marginBottom: 8 },
+    heroTitle: { color: '#fff', fontSize: 24, fontWeight: '800', marginBottom: 6 },
+    heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 14, lineHeight: 20, marginBottom: 16 },
+    heroFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    heroLive: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    heroPulse: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
+    heroLiveText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+    heroPlayBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      backgroundColor: '#fff', borderRadius: 999,
+      paddingHorizontal: 18, paddingVertical: 10,
     },
-    dateChip: {
-      width: 36, alignItems: 'center', backgroundColor: colors.primary + '20',
-      borderRadius: 8, paddingVertical: 4,
-    },
-    dateDay: { color: colors.textPrimary, fontWeight: '800', fontSize: 14 },
-    dateMonth: { color: colors.textMuted, fontSize: 10 },
-    eventTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 2 },
-    eventCommunity: { color: colors.textMuted, fontSize: 11, marginBottom: 2 },
-    eventLocation: { color: colors.textSecondary, fontSize: 11 },
-    interestedBtn: {
-      paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12,
-      borderWidth: 1, borderColor: colors.secondary,
-    },
-    interestedBtnActive: { backgroundColor: colors.secondary, borderColor: colors.secondary },
-    interestedBtnText: { color: colors.secondary, fontWeight: '700', fontSize: 11 },
-    interestedBtnTextActive: { color: '#fff' },
+    heroPlayText: { color: '#E81C8E', fontWeight: '800', fontSize: 14 },
 
-    // Empty
-    emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12, marginTop: 40 },
-    emptyIcon: { fontSize: 48 },
-    emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center' },
+    // Sections
+    section: { marginBottom: 20 },
+    secBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, marginBottom: 10 },
+    secName: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    secNameText: { color: colors.textPrimary, fontWeight: '700', fontSize: 15 },
+    secLink: { color: colors.roxy, fontSize: 13, fontWeight: '600' },
+    gameGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 9 },
+
+    // Live rooms
+    liveCard: {
+      backgroundColor: colors.surface, marginHorizontal: 14,
+      borderRadius: 14, overflow: 'hidden',
+    },
+    liveRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      paddingHorizontal: 14, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: colors.background,
+    },
+    liveEmoji: {
+      width: 38, height: 38, borderRadius: 12,
+      backgroundColor: colors.primary + '18',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    liveEmojiText: { fontSize: 18 },
+    liveBody: { flex: 1 },
+    liveName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
+    liveMeta: { color: colors.textMuted, fontSize: 11, marginTop: 1 },
+    seatsChip: {
+      backgroundColor: colors.primary + '18', borderRadius: 10,
+      paddingHorizontal: 8, paddingVertical: 3,
+    },
+    seatsText: { color: colors.primary, fontWeight: '700', fontSize: 12 },
+    pulseRed: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
+
+    emptyBox: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 32 },
+    emptyText: { color: colors.textMuted, textAlign: 'center', fontSize: 13, lineHeight: 18 },
   });
 
+  // Fallback Roxy Originals in case DB is empty
+  const displayOriginals: Game[] = originals.length > 0 ? originals : [
+    { id: 'sd', name: 'Speed Dating', short_description: '1-on-1, 5 min each', category: 'dating', publisher_type: 'roxy', url: null, thumbnail_url: null },
+    { id: 'tt', name: 'Two Truths & a Lie', short_description: 'Break the ice', category: 'icebreaker', publisher_type: 'roxy', url: null, thumbnail_url: null },
+    { id: 'wyr', name: 'Would You Rather', short_description: 'Spicy or sweet', category: 'party', publisher_type: 'roxy', url: null, thumbnail_url: null },
+    { id: 'tot', name: 'This or That', short_description: 'Rapid-fire taste check', category: 'trivia', publisher_type: 'roxy', url: null, thumbnail_url: null },
+  ];
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={s.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.headerTitle}>Discover</Text>
-          <CommunityContextSwitcher communities={joinedCommunities} />
+      <View style={s.header}>
+        <View style={s.headerLeft}>
+          <Text style={s.eyebrow}>Games & Rooms</Text>
+          <Text style={s.title}>Play</Text>
         </View>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search communities, events..."
-          placeholderTextColor={colors.textMuted}
-          value={search}
-          onChangeText={setSearch}
-          returnKeyType="search"
-        />
+        <TouchableOpacity
+          style={s.iconBtn}
+          onPress={() => router.push('/(tabs)/discover/communities' as any)}
+          accessibilityLabel="Browse communities"
+        >
+          <Ionicons name="people-outline" size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
       </View>
 
-      {/* Sub-tabs */}
-      <View style={styles.subTabRow}>
-        {(['feed', 'communities', 'events', 'games'] as SubTab[]).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            testID={`discover-tab-${tab}`}
-            style={[styles.subTab, subTab === tab && styles.subTabActive]}
-            onPress={() => switchTab(tab)}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Speed Dating Hero */}
+        <View style={s.hero}>
+          <LinearGradient
+            colors={GRAD_COLORS}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.heroInner}
           >
-            <Text style={[styles.subTabText, subTab === tab && styles.subTabTextActive]}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-      {/* Feed */}
-      {subTab === 'feed' && user && (
-        <FeedSection
-          userId={user.id}
-          feedCommunityIds={feedCommunityIds}
-          communitiesReady={hydrated}
-          onOpenContent={(post) => {
-            router.push(contentDetailPath(post.id, post.post_type) as any);
-          }}
-        />
-      )}
-
-      {/* Communities */}
-      {subTab === 'communities' && (
-        <FlashList
-          data={filteredCommunities}
-          keyExtractor={(item) => item.id}
-          estimatedItemSize={90}
-          extraData={joinedIds}
-          contentContainerStyle={{ paddingVertical: 8 }}
-          renderItem={({ item }) => {
-            const lvl = getCommunityLevel(item.member_count);
-            const isJoined = joinedIds.has(item.id);
-            return (
-              <TouchableOpacity
-                style={styles.communityCard}
-                onPress={() => router.push(`/(tabs)/discover/community/${item.id}` as any)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.communityAvatar}>
-                  <Text style={{ fontSize: 24 }}>{lvl.emoji}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.communityNameRow}>
-                    <Text style={styles.communityName} numberOfLines={1}>{item.name}</Text>
-                    <View style={styles.levelBadge}>
-                      <Text style={styles.levelBadgeText}>{lvl.emoji} {lvl.label}</Text>
-                    </View>
-                  </View>
-                  {item.description ? (
-                    <Text style={styles.communityDesc} numberOfLines={1}>{item.description}</Text>
-                  ) : null}
-                  <View style={styles.communityMeta}>
-                    <Text style={styles.communityMetaText}>
-                      {item.is_private ? '🔒 Private' : '🌐 Public'} · {item.member_count} members
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={[styles.joinBtn, isJoined && styles.joinBtnJoined]}
-                  onPress={() => handleJoinLeave(item)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[styles.joinBtnText, isJoined && styles.joinBtnTextJoined]}>
-                    {isJoined ? 'Joined' : 'Join'}
-                  </Text>
-                </TouchableOpacity>
-              </TouchableOpacity>
-            );
-          }}
-          ListEmptyComponent={
-            <View style={styles.emptyCenter}>
-              <Text style={styles.emptyIcon}>🔍</Text>
-              <Text style={styles.emptyTitle}>No communities found</Text>
+            <View style={s.heroTags}>
+              <View style={s.heroTag}><Text style={s.heroTagText}>⚡ Featured</Text></View>
+              <View style={s.heroTag}><Text style={s.heroTagText}>Roxy Original</Text></View>
             </View>
-          }
-        />
-      )}
-
-      {/* Events */}
-      {subTab === 'events' && (
-        loadingEvents ? (
-          <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
-        ) : (
-          <FlashList
-            data={events}
-            keyExtractor={(item) => item.id}
-            estimatedItemSize={100}
-            onRefresh={() => { loadEvents(); loadInterested(); }}
-            refreshing={loadingEvents}
-            contentContainerStyle={{ paddingVertical: 8 }}
-            renderItem={({ item }) => {
-              const interested = interestedIds.has(item.id);
-              return (
-                <View style={styles.eventCard}>
-                  <TouchableOpacity
-                    style={styles.eventCardBody}
-                    onPress={() => router.push(`/event/${item.id}` as any)}
-                    activeOpacity={0.75}
-                  >
-                    <View style={styles.dateChip}>
-                      <Text style={styles.dateDay}>{format(new Date(item.starts_at), 'dd')}</Text>
-                      <Text style={styles.dateMonth}>{format(new Date(item.starts_at), 'MMM')}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.eventTitle} numberOfLines={1}>{item.title}</Text>
-                      <Text style={styles.eventCommunity}>{item.communities?.name ?? '—'}</Text>
-                      {item.location_text
-                        ? <Text style={styles.eventLocation} numberOfLines={1}>📍 {item.location_text}</Text>
-                        : null
-                      }
-                    </View>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.interestedBtn, interested && styles.interestedBtnActive]}
-                    onPress={() => toggleInterested(item.id)}
-                  >
-                    <Text style={[styles.interestedBtnText, interested && styles.interestedBtnTextActive]}>
-                      {interested ? 'Interested ✓' : 'Interested'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            }}
-            ListEmptyComponent={
-              <View style={styles.emptyCenter}>
-                <Text style={styles.emptyIcon}>🗓️</Text>
-                <Text style={styles.emptyTitle}>No upcoming events</Text>
+            <Text style={s.heroEmoji}>⚡</Text>
+            <Text style={s.heroTitle}>Speed Dating</Text>
+            <Text style={s.heroSub}>Five minutes, real connections. Get matched with sapphics near you.</Text>
+            <View style={s.heroFoot}>
+              <View style={s.heroLive}>
+                <View style={s.heroPulse} />
+                <Text style={s.heroLiveText}>Live now</Text>
               </View>
-            }
-          />
-        )
-      )}
+              <TouchableOpacity
+                style={s.heroPlayBtn}
+                onPress={() => router.push('/speed-dating' as any)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="play" size={15} color="#E81C8E" />
+                <Text style={s.heroPlayText}>Play</Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </View>
 
-      {/* Games */}
-      {subTab === 'games' && (
-        <GamesSection
-          communityId={joinedIds.size > 0 ? Array.from(joinedIds)[0] : null}
-          onNavigateToGame={(id) => router.push(`/(tabs)/discover/games/${id}` as any)}
-          onNavigateToSpeedDating={() => router.push('/speed-dating' as any)}
-        />
-      )}
-      </Animated.View>
+        {/* Live Rooms */}
+        {loading ? (
+          <ActivityIndicator color={colors.roxy} style={{ marginTop: 16, marginBottom: 24 }} />
+        ) : liveRooms.length > 0 && (
+          <View style={s.section}>
+            <View style={s.secBar}>
+              <View style={s.secName}>
+                <View style={s.pulseRed} />
+                <Text style={s.secNameText}>Live now</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/connect' as any)}>
+                <Text style={s.secLink}>All →</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={s.liveCard}>
+              {liveRooms.map((room, i) => (
+                <TouchableOpacity
+                  key={room.id}
+                  style={[s.liveRow, i === liveRooms.length - 1 && { borderBottomWidth: 0 }]}
+                  onPress={() => router.push(`/(tabs)/connect` as any)}
+                  activeOpacity={0.8}
+                >
+                  <View style={s.liveEmoji}>
+                    <Text style={s.liveEmojiText}>🎙️</Text>
+                  </View>
+                  <View style={s.liveBody}>
+                    <Text style={s.liveName} numberOfLines={1}>{room.name}</Text>
+                    <Text style={s.liveMeta}>{room.community_name} · in progress</Text>
+                  </View>
+                  {room.participant_count > 0 && (
+                    <View style={s.seatsChip}>
+                      <Text style={s.seatsText}>{room.participant_count} in</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Roxy Originals */}
+        <View style={s.section}>
+          <View style={s.secBar}>
+            <View style={s.secName}>
+              <Ionicons name="sparkles" size={15} color={colors.roxy} />
+              <Text style={s.secNameText}>Roxy Originals</Text>
+            </View>
+          </View>
+          <View style={s.gameGrid}>
+            {displayOriginals.slice(0, 4).map((g, i) => (
+              <View key={g.id} style={{ width: '50%' }}>
+                <GameTile
+                  emoji={CATEGORY_EMOJI[g.category] ?? '🎮'}
+                  name={g.name}
+                  sub={g.short_description}
+                  grad={TILE_GRADS[i % TILE_GRADS.length]}
+                  onPress={() => navigateToGame(g)}
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* From Your Communities */}
+        <View style={s.section}>
+          <View style={s.secBar}>
+            <View style={s.secName}>
+              <Ionicons name="people" size={15} color={colors.secondary} />
+              <Text style={s.secNameText}>From your communities</Text>
+            </View>
+            {joinedCommunities.length > 0 && (
+              <TouchableOpacity onPress={() => router.push('/(tabs)/discover/communities' as any)}>
+                <Text style={s.secLink}>Browse →</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {joinedIds.size === 0 ? (
+            <View style={s.emptyBox}>
+              <Text style={s.emptyText}>
+                Join a community to see their games here.{'\n'}
+                <Text
+                  style={{ color: colors.roxy, fontWeight: '700' }}
+                  onPress={() => router.push('/(tabs)/discover/communities' as any)}
+                >
+                  Browse communities →
+                </Text>
+              </Text>
+            </View>
+          ) : communityGames.length === 0 ? (
+            <View style={s.emptyBox}>
+              <Text style={s.emptyText}>Your communities haven't added games yet.</Text>
+            </View>
+          ) : (
+            <View style={s.gameGrid}>
+              {communityGames.slice(0, 4).map((g, i) => (
+                <View key={g.id + i} style={{ width: '50%' }}>
+                  <GameTile
+                    emoji={CATEGORY_EMOJI[g.category] ?? '🎮'}
+                    name={g.name}
+                    sub={g.community_name ?? g.short_description}
+                    grad={TILE_GRADS[i % TILE_GRADS.length]}
+                    badge={g.community_name?.split(' ')[0]}
+                    onPress={() => navigateToGame(g)}
+                  />
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={{ height: 32 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 }

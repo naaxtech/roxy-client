@@ -1,10 +1,20 @@
-import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Image as ExpoImage } from 'expo-image';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../lib/avatars';
 import { BadgeRow } from './BadgeRow';
+import { supabase } from '../../lib/supabase';
 import type { Profile, Business } from '../../types';
 import type { EarnedBadge } from './BadgeRow';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const PHOTO_SIZE = (SCREEN_WIDTH - 4) / 3;
+
+type MediaPost = { id: string; media_url: string | null; post_type: string };
+type ProfileTab = 'photos' | 'about' | 'badges';
 
 function getLevelInfo(points: number): { label: string; emoji: string } {
   if (points >= 500) return { label: 'Radiant', emoji: '✨' };
@@ -27,92 +37,147 @@ interface ProfileCardProps {
   onOpenBusiness?: (business: Business) => void;
 }
 
-export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack, friendshipState, onAddFriend, onAcceptFriend, onMessage, savedBusinesses, onOpenBusiness }: ProfileCardProps) {
+export function ProfileCard({
+  profile, badges, isOwn, onEdit, onSettings, onBack,
+  friendshipState, onAddFriend, onAcceptFriend, onMessage,
+  savedBusinesses, onOpenBusiness,
+}: ProfileCardProps) {
   const colors = useThemeColors();
+  const [tab, setTab] = useState<ProfileTab>('photos');
+  const [photos, setPhotos] = useState<MediaPost[]>([]);
 
-  const styles = StyleSheet.create({
-    scroll: { padding: 16, alignItems: 'center', gap: 12 },
+  useEffect(() => {
+    supabase
+      .from('posts')
+      .select('id, media_url, post_type')
+      .eq('user_id', profile.id)
+      .not('media_url', 'is', null)
+      .in('post_type', ['photo', 'video'])
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .then(({ data }) => { if (data) setPhotos(data as MediaPost[]); });
+  }, [profile.id]);
 
-    navRow: {
+  const points = profile.gamification_points ?? 0;
+  const level = getLevelInfo(points);
+  const initials = (profile.display_name ?? '?').charAt(0).toUpperCase();
+  const hasPreset = !!profile.avatar_url && isPresetAvatar(profile.avatar_url);
+  const chips = [...(profile.pronouns ?? []), ...(profile.identity_labels ?? [])];
+
+  const s = StyleSheet.create({
+    scroll: { flex: 1 },
+
+    // Header bar
+    headerBar: {
       flexDirection: 'row', alignItems: 'center',
-      width: '100%', marginBottom: 4,
+      paddingHorizontal: 14, paddingTop: 8, paddingBottom: 4,
     },
-    navBtn: { width: 40, height: 40, justifyContent: 'center' },
+    navBtn: { width: 38, height: 38, justifyContent: 'center' },
+    headerFlex: { flex: 1 },
 
-    avatarSection: { alignItems: 'center', marginTop: 4 },
+    // Cover + avatar
+    cover: { height: 130, backgroundColor: colors.surfaceLight, position: 'relative' },
+    coverGrad: { ...StyleSheet.absoluteFillObject },
+    avatarWrap: {
+      position: 'absolute', bottom: -40, left: 18,
+      width: 80, height: 80, borderRadius: 24,
+      borderWidth: 3, borderColor: colors.background,
+      overflow: 'hidden',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.18, shadowRadius: 10, elevation: 8,
+    },
     avatarCircle: {
-      width: 90, height: 90, borderRadius: 45,
+      width: '100%', height: '100%', borderRadius: 21,
       backgroundColor: colors.roxy,
       alignItems: 'center', justifyContent: 'center',
     },
-    avatarImage: { width: 90, height: 90, borderRadius: 45 },
-    avatarInitial: { color: '#fff', fontSize: 36, fontWeight: '700' },
-    avatarEmoji: { fontSize: 44 },
+    avatarEmoji: { fontSize: 36 },
+    avatarInitial: { color: '#fff', fontSize: 32, fontWeight: '700' },
 
-    displayName: { color: colors.textPrimary, fontSize: 22, fontWeight: '700' },
-    username: { color: colors.textMuted, fontSize: 14, marginTop: -4 },
+    // Info section
+    infoSection: { paddingHorizontal: 18, paddingTop: 48, paddingBottom: 12 },
+    displayName: { color: colors.textPrimary, fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
+    username: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
 
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
+    // Chips
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
     chip: {
-      backgroundColor: colors.primary + '20', borderRadius: 16,
+      backgroundColor: colors.primary + '18', borderRadius: 20,
       paddingHorizontal: 10, paddingVertical: 4,
-      borderWidth: 1, borderColor: colors.primary + '40',
+      borderWidth: 1, borderColor: colors.primary + '35',
     },
     chipText: { color: colors.primary, fontSize: 12, fontWeight: '600' },
 
-    bioBox: {
-      backgroundColor: colors.surface, borderRadius: 12,
-      padding: 14, width: '100%',
+    // Action row
+    actionRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 18, marginBottom: 8 },
+    msgBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+      backgroundColor: colors.roxy, borderRadius: 14, paddingVertical: 11,
     },
-    bioPlaceholderBox: { borderWidth: 1, borderColor: colors.textMuted + '40', borderStyle: 'dashed' },
-    bioText: { color: colors.textPrimary, fontSize: 15, lineHeight: 22 },
-    bioPlaceholder: { color: colors.textMuted, fontSize: 15, fontStyle: 'italic' },
-
-    levelRow: {
-      backgroundColor: colors.surface, borderRadius: 12,
-      paddingHorizontal: 20, paddingVertical: 10,
+    msgBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    addBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+      borderRadius: 14, paddingVertical: 11,
+      backgroundColor: colors.primary + '18',
+      borderWidth: 1, borderColor: colors.primary + '50',
     },
-    levelText: { color: colors.textPrimary, fontWeight: '600', fontSize: 15 },
+    addBtnText: { color: colors.primary, fontWeight: '700', fontSize: 14 },
+    statusChip: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      borderRadius: 14, paddingVertical: 11,
+      backgroundColor: colors.surface,
+    },
+    statusText: { color: colors.textMuted, fontWeight: '600', fontSize: 14 },
 
     editBtn: {
-      width: '100%', backgroundColor: colors.roxy,
-      borderRadius: 14, paddingVertical: 14, alignItems: 'center',
-      marginTop: 4,
+      marginHorizontal: 18, marginBottom: 8,
+      backgroundColor: colors.roxy, borderRadius: 14,
+      paddingVertical: 12, alignItems: 'center',
     },
-    editBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+    editBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
-    actionRow: { flexDirection: 'row', gap: 10, width: '100%', marginTop: 4 },
-    messageBtn: {
-      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-      backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 13,
+    // Sub-tabs
+    tabRow: {
+      flexDirection: 'row',
+      borderBottomWidth: 1, borderBottomColor: colors.surfaceLight,
+      marginHorizontal: 0,
     },
-    messageBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-    addFriendBtn: {
-      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-      backgroundColor: colors.primary + '20', borderRadius: 14, paddingVertical: 13,
-      borderWidth: 1, borderColor: colors.primary + '60',
+    tabItem: {
+      flex: 1, paddingVertical: 10, alignItems: 'center',
+      borderBottomWidth: 2, borderBottomColor: 'transparent',
     },
-    addFriendBtnText: { color: colors.primary, fontWeight: '700', fontSize: 15 },
-    requestedChip: {
-      flex: 1, alignItems: 'center', justifyContent: 'center',
-      backgroundColor: colors.surface, borderRadius: 14, paddingVertical: 13,
-    },
-    requestedText: { color: colors.textMuted, fontWeight: '600', fontSize: 15 },
-    friendsChip: {
-      flex: 1, alignItems: 'center', justifyContent: 'center',
-      backgroundColor: colors.primary + '15', borderRadius: 14, paddingVertical: 13,
-    },
-    friendsChipText: { color: colors.primary, fontWeight: '600', fontSize: 15 },
-  });
+    tabItemActive: { borderBottomColor: colors.roxy },
+    tabText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
+    tabTextActive: { color: colors.roxy, fontWeight: '700' },
 
-  const savedStyles = StyleSheet.create({
-    section: { paddingHorizontal: 0, paddingTop: 16, paddingBottom: 8, width: '100%' },
-    sectionTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 16, marginBottom: 12 },
-    empty: { color: colors.textMuted, fontSize: 14 },
+    // Photos grid
+    photoGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+    photoCell: {
+      width: PHOTO_SIZE, height: PHOTO_SIZE,
+      margin: 1, backgroundColor: colors.surfaceLight,
+    },
+    photoImg: { width: '100%', height: '100%' },
+    noPhotos: { alignItems: 'center', padding: 48, gap: 8 },
+    noPhotosText: { color: colors.textMuted, fontSize: 15, textAlign: 'center' },
+
+    // About tab
+    aboutBox: { padding: 18, gap: 14 },
+    bioBox: { backgroundColor: colors.surface, borderRadius: 14, padding: 14 },
+    bioText: { color: colors.textPrimary, fontSize: 15, lineHeight: 22 },
+    bioPlaceholder: { color: colors.textMuted, fontSize: 15, fontStyle: 'italic' },
+    levelRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      backgroundColor: colors.surface, borderRadius: 14, padding: 14,
+    },
+    levelText: { color: colors.textPrimary, fontWeight: '600', fontSize: 15, flex: 1 },
+
+    // Saved businesses (own profile)
+    bizSection: { padding: 18, gap: 10 },
+    bizSectionTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 15, marginBottom: 4 },
     bizRow: {
       flexDirection: 'row', alignItems: 'center',
       backgroundColor: colors.surface, borderRadius: 12,
-      padding: 12, marginBottom: 8, gap: 12,
+      padding: 12, gap: 12,
     },
     bizInitial: {
       width: 36, height: 36, borderRadius: 18,
@@ -124,146 +189,217 @@ export function ProfileCard({ profile, badges, isOwn, onEdit, onSettings, onBack
     bizCategory: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   });
 
-  const points = profile.gamification_points ?? 0;
-  const level = getLevelInfo(points);
-  const initials = (profile.display_name ?? '?').charAt(0).toUpperCase();
-  const hasPreset = !!profile.avatar_url && isPresetAvatar(profile.avatar_url);
-  const chips = [...(profile.pronouns ?? []), ...(profile.identity_labels ?? [])];
+  const TABS: { id: ProfileTab; label: string }[] = [
+    { id: 'photos', label: 'Photos' },
+    { id: 'about', label: 'About' },
+    { id: 'badges', label: 'Badges' },
+  ];
+
+  const renderCover = () => {
+    if (photos.length > 0 && photos[0].media_url) {
+      return (
+        <View style={s.cover}>
+          <ExpoImage
+            source={{ uri: photos[0].media_url }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+          <LinearGradient
+            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.4)']}
+            style={s.coverGrad}
+          />
+        </View>
+      );
+    }
+    return (
+      <LinearGradient
+        colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={s.cover}
+      />
+    );
+  };
+
+  const renderAvatar = () => (
+    <View style={s.avatarWrap}>
+      {hasPreset ? (
+        <View style={[s.avatarCircle, { backgroundColor: presetColor(profile.avatar_url as string) }]}>
+          <Text style={s.avatarEmoji}>{presetEmoji(profile.avatar_url as string)}</Text>
+        </View>
+      ) : profile.avatar_url ? (
+        <Image source={{ uri: profile.avatar_url }} style={{ width: '100%', height: '100%' }} />
+      ) : (
+        <View style={s.avatarCircle}>
+          <Text style={s.avatarInitial}>{initials}</Text>
+        </View>
+      )}
+    </View>
+  );
 
   return (
-    <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-      {/* Nav row */}
-      <View style={styles.navRow}>
+    <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+      {/* Nav */}
+      <View style={s.headerBar}>
         {onBack ? (
-          <TouchableOpacity onPress={onBack} style={styles.navBtn} testID="back-btn">
+          <TouchableOpacity onPress={onBack} style={s.navBtn} testID="back-btn">
             <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-        ) : <View style={styles.navBtn} />}
-        <View style={{ flex: 1 }} />
+        ) : <View style={s.navBtn} />}
+        <View style={s.headerFlex} />
         {isOwn && onSettings && (
-          <TouchableOpacity onPress={onSettings} style={styles.navBtn} testID="settings-btn">
+          <TouchableOpacity onPress={onSettings} style={s.navBtn}>
             <Ionicons name="settings-outline" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Avatar + badge row */}
-      <View style={styles.avatarSection}>
-        {hasPreset ? (
-          <View style={[styles.avatarCircle, { backgroundColor: presetColor(profile.avatar_url as string) }]}>
-            <Text style={styles.avatarEmoji}>{presetEmoji(profile.avatar_url as string)}</Text>
-          </View>
-        ) : profile.avatar_url ? (
-          <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-        ) : (
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitial}>{initials}</Text>
+      {/* Cover + Avatar */}
+      {renderCover()}
+      {renderAvatar()}
+
+      {/* Info */}
+      <View style={s.infoSection}>
+        <Text style={s.displayName}>{profile.display_name}</Text>
+        <Text style={s.username}>@{profile.username}</Text>
+        {chips.length > 0 && (
+          <View style={s.chipRow}>
+            {chips.map((tag) => (
+              <View key={tag} style={s.chip}>
+                <Text style={s.chipText}>{tag}</Text>
+              </View>
+            ))}
           </View>
         )}
-        <BadgeRow badges={badges} />
       </View>
 
-      {/* Name */}
-      <Text style={styles.displayName}>{profile.display_name}</Text>
-      <Text style={styles.username}>@{profile.username}</Text>
-
-      {/* Identity + pronouns chips */}
-      {(chips.length > 0) && (
-        <View style={styles.chipRow}>
-          {chips.map((tag) => (
-            <View key={tag} style={styles.chip}>
-              <Text style={styles.chipText}>{tag}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Bio */}
-      {profile.bio ? (
-        <View style={styles.bioBox}>
-          <Text style={styles.bioText}>{profile.bio}</Text>
-        </View>
-      ) : isOwn && onEdit ? (
-        <TouchableOpacity style={[styles.bioBox, styles.bioPlaceholderBox]} onPress={onEdit}>
-          <Text style={styles.bioPlaceholder}>Add a bio…</Text>
+      {/* Actions */}
+      {isOwn && onEdit ? (
+        <TouchableOpacity style={s.editBtn} onPress={onEdit}>
+          <Text style={s.editBtnText}>Edit Profile</Text>
         </TouchableOpacity>
-      ) : null}
-
-      {/* Level */}
-      <View style={styles.levelRow}>
-        <Text style={styles.levelText}>{level.emoji} {level.label} · {points} pts</Text>
-      </View>
-
-      {/* Edit button (own profile) */}
-      {isOwn && onEdit && (
-        <TouchableOpacity style={styles.editBtn} onPress={onEdit}>
-          <Text style={styles.editBtnText}>Edit Profile</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Saved Businesses (own profile only) */}
-      {isOwn && savedBusinesses && (
-        <View style={savedStyles.section}>
-          <Text style={savedStyles.sectionTitle}>💜 Saved Businesses</Text>
-          {savedBusinesses.length === 0 ? (
-            <Text style={savedStyles.empty}>No saved businesses yet</Text>
-          ) : (
-            savedBusinesses.map((biz) => (
-              <TouchableOpacity
-                key={biz.id}
-                style={savedStyles.bizRow}
-                onPress={() => onOpenBusiness?.(biz)}
-                activeOpacity={0.8}
-              >
-                <View style={savedStyles.bizInitial}>
-                  <Text style={savedStyles.bizInitialText}>{biz.name[0].toUpperCase()}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={savedStyles.bizName}>{biz.name}</Text>
-                  {biz.category && (
-                    <Text style={savedStyles.bizCategory}>{biz.category}</Text>
-                  )}
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
-      )}
-
-      {/* Actions (other user's profile) */}
-      {!isOwn && (
-        <View style={styles.actionRow}>
+      ) : !isOwn && (
+        <View style={s.actionRow}>
           {onMessage && (
-            <TouchableOpacity style={styles.messageBtn} onPress={onMessage}>
+            <TouchableOpacity style={s.msgBtn} onPress={onMessage}>
               <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-              <Text style={styles.messageBtnText}>Message</Text>
+              <Text style={s.msgBtnText}>Message</Text>
             </TouchableOpacity>
           )}
           {friendshipState === 'none' && onAddFriend && (
-            <TouchableOpacity style={styles.addFriendBtn} onPress={onAddFriend}>
+            <TouchableOpacity style={s.addBtn} onPress={onAddFriend}>
               <Ionicons name="person-add-outline" size={16} color={colors.primary} />
-              <Text style={styles.addFriendBtnText}>Add Friend</Text>
+              <Text style={s.addBtnText}>Add Friend</Text>
             </TouchableOpacity>
           )}
           {friendshipState === 'sent' && (
-            <View style={styles.requestedChip}>
-              <Text style={styles.requestedText}>Requested</Text>
-            </View>
+            <View style={s.statusChip}><Text style={s.statusText}>Requested</Text></View>
           )}
           {friendshipState === 'received' && onAcceptFriend && (
-            <TouchableOpacity style={styles.addFriendBtn} onPress={onAcceptFriend}>
+            <TouchableOpacity style={s.addBtn} onPress={onAcceptFriend}>
               <Ionicons name="checkmark-outline" size={16} color={colors.primary} />
-              <Text style={styles.addFriendBtnText}>Accept Request</Text>
+              <Text style={s.addBtnText}>Accept Request</Text>
             </TouchableOpacity>
           )}
           {friendshipState === 'friends' && (
-            <View style={styles.friendsChip}>
-              <Text style={styles.friendsChipText}>Friends 💜</Text>
+            <View style={[s.statusChip, { backgroundColor: colors.primary + '15' }]}>
+              <Text style={[s.statusText, { color: colors.primary }]}>Friends 💜</Text>
             </View>
           )}
         </View>
       )}
+
+      {/* Sub-tabs */}
+      <View style={s.tabRow}>
+        {TABS.map((t) => (
+          <TouchableOpacity
+            key={t.id}
+            style={[s.tabItem, tab === t.id && s.tabItemActive]}
+            onPress={() => setTab(t.id)}
+          >
+            <Text style={[s.tabText, tab === t.id && s.tabTextActive]}>{t.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Photos tab */}
+      {tab === 'photos' && (
+        photos.length === 0 ? (
+          <View style={s.noPhotos}>
+            <Text style={{ fontSize: 40 }}>📷</Text>
+            <Text style={s.noPhotosText}>
+              {isOwn ? 'Share your first photo to fill this up.' : 'No photos yet.'}
+            </Text>
+          </View>
+        ) : (
+          <View style={s.photoGrid}>
+            {photos.map((p) => p.media_url ? (
+              <View key={p.id} style={s.photoCell}>
+                <ExpoImage
+                  source={{ uri: p.media_url }}
+                  style={s.photoImg}
+                  contentFit="cover"
+                />
+              </View>
+            ) : null)}
+          </View>
+        )
+      )}
+
+      {/* About tab */}
+      {tab === 'about' && (
+        <View style={s.aboutBox}>
+          {profile.bio ? (
+            <View style={s.bioBox}>
+              <Text style={s.bioText}>{profile.bio}</Text>
+            </View>
+          ) : isOwn && onEdit ? (
+            <TouchableOpacity style={[s.bioBox, { borderWidth: 1, borderStyle: 'dashed', borderColor: colors.textMuted + '40' }]} onPress={onEdit}>
+              <Text style={s.bioPlaceholder}>Add a bio…</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={s.bioBox}>
+              <Text style={s.bioPlaceholder}>No bio yet.</Text>
+            </View>
+          )}
+          <View style={s.levelRow}>
+            <Ionicons name="star" size={18} color={colors.roxy} />
+            <Text style={s.levelText}>{level.emoji} {level.label} · {points} pts</Text>
+          </View>
+
+          {/* Saved businesses (own profile) */}
+          {isOwn && savedBusinesses && savedBusinesses.length > 0 && (
+            <View style={{ gap: 8 }}>
+              <Text style={s.bizSectionTitle}>💜 Saved Businesses</Text>
+              {savedBusinesses.map((biz) => (
+                <TouchableOpacity
+                  key={biz.id}
+                  style={s.bizRow}
+                  onPress={() => onOpenBusiness?.(biz)}
+                  activeOpacity={0.8}
+                >
+                  <View style={s.bizInitial}>
+                    <Text style={s.bizInitialText}>{biz.name[0].toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.bizName}>{biz.name}</Text>
+                    {biz.category && <Text style={s.bizCategory}>{biz.category}</Text>}
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Badges tab */}
+      {tab === 'badges' && (
+        <View style={{ padding: 18 }}>
+          <BadgeRow badges={badges} expanded />
+        </View>
+      )}
+
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }

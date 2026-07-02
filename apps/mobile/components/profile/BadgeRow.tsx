@@ -9,9 +9,10 @@ const MAX_VISIBLE = 5;
 
 interface BadgeRowProps {
   badges: EarnedBadge[];
+  expanded?: boolean;
 }
 
-export function BadgeRow({ badges }: BadgeRowProps) {
+export function BadgeRow({ badges, expanded = false }: BadgeRowProps) {
   const colors = useThemeColors();
   const [tooltipId, setTooltipId] = useState<string | null>(null);
 
@@ -58,7 +59,44 @@ export function BadgeRow({ badges }: BadgeRowProps) {
   const earned = badges.filter((b) => b.earned_at !== null);
   const visible = earned.slice(0, MAX_VISIBLE);
   const overflow = earned.length - MAX_VISIBLE;
-  const tooltipBadge = earned.find((b) => b.badge_id === tooltipId) ?? null;
+  const tooltipBadge = badges.find((b) => b.badge_id === tooltipId) ?? null;
+
+  if (badges.length === 0) return null;
+
+  // Expanded mode: full grid with earned/locked states for Badges tab
+  if (expanded) {
+    return (
+      <View style={{ gap: 14 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          {badges.map((b) => {
+            const isEarned = b.earned_at !== null;
+            return (
+              <TouchableOpacity
+                key={b.badge_id}
+                style={[
+                  styles.badgeBtn,
+                  { width: 54, height: 54, borderRadius: 16, opacity: isEarned ? 1 : 0.35 },
+                  isEarned && { borderColor: colors.roxy + '60', borderWidth: 2 },
+                ]}
+                onPress={() => setTooltipId(tooltipId === b.badge_id ? null : b.badge_id)}
+              >
+                <Text style={{ fontSize: 26 }}>{b.badges?.emoji ?? '🏅'}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {tooltipBadge && (
+          <View style={styles.tooltip}>
+            <Text style={styles.tooltipName}>{tooltipBadge.badges?.name}</Text>
+            <Text style={styles.tooltipDesc}>{tooltipBadge.badges?.description}</Text>
+            {tooltipBadge.earned_at === null && (
+              <Text style={[styles.tooltipDesc, { marginTop: 4, color: colors.roxy }]}>Not earned yet</Text>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  }
 
   if (earned.length === 0) return null;
 
