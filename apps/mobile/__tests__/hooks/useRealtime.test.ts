@@ -34,7 +34,7 @@ describe('useRealtime', () => {
     // Use EMPTY_ARRAY stable reference to avoid infinite re-renders
     const EMPTY: Message[] = [];
     const { result } = renderHook(() =>
-      useRealtime({ conversationId: 'conv-1', initialMessages: EMPTY })
+      useRealtime({ conversationId: 'conv-1', currentUserId: 'user-1', initialMessages: EMPTY })
     );
     expect(result.current.messages).toHaveLength(0);
   });
@@ -42,7 +42,7 @@ describe('useRealtime', () => {
   it('syncs messages when initialMessages prop changes', () => {
     const initial: Message[] = [];
     const { result, rerender } = renderHook(
-      ({ msgs }) => useRealtime({ conversationId: 'conv-1', initialMessages: msgs }),
+      ({ msgs }) => useRealtime({ conversationId: 'conv-1', currentUserId: 'user-1', initialMessages: msgs }),
       { initialProps: { msgs: initial } }
     );
     expect(result.current.messages).toHaveLength(0);
@@ -55,14 +55,14 @@ describe('useRealtime', () => {
 
   it('creates a supabase channel on mount', () => {
     const EMPTY: Message[] = [];
-    renderHook(() => useRealtime({ conversationId: 'conv-1', initialMessages: EMPTY }));
+    renderHook(() => useRealtime({ conversationId: 'conv-1', currentUserId: 'user-1', initialMessages: EMPTY }));
     expect(supabase.channel).toHaveBeenCalledWith('messages:conv-1');
   });
 
   it('removeChannel is called on unmount', () => {
     const EMPTY: Message[] = [];
     const { unmount } = renderHook(() =>
-      useRealtime({ conversationId: 'conv-1', initialMessages: EMPTY })
+      useRealtime({ conversationId: 'conv-1', currentUserId: 'user-1', initialMessages: EMPTY })
     );
     unmount();
     expect(supabase.removeChannel).toHaveBeenCalled();
@@ -72,7 +72,7 @@ describe('useRealtime', () => {
     // stable reference — must NOT be inline array inside callback
     const initial = [makeMsg('m1')];
     const { result } = renderHook(() =>
-      useRealtime({ conversationId: 'conv-1', initialMessages: initial })
+      useRealtime({ conversationId: 'conv-1', currentUserId: 'user-1', initialMessages: initial })
     );
     act(() => result.current.appendMessage(makeMsg('m1'))); // duplicate
     expect(result.current.messages).toHaveLength(1);
@@ -81,7 +81,7 @@ describe('useRealtime', () => {
   it('appendMessage adds a new message', () => {
     const EMPTY: Message[] = [];
     const { result } = renderHook(() =>
-      useRealtime({ conversationId: 'conv-1', initialMessages: EMPTY })
+      useRealtime({ conversationId: 'conv-1', currentUserId: 'user-1', initialMessages: EMPTY })
     );
     act(() => result.current.appendMessage(makeMsg('m1')));
     expect(result.current.messages).toHaveLength(1);
@@ -92,7 +92,7 @@ describe('useRealtime', () => {
     const tmpMsg = makeMsg('tmp-123');
     const initial = [tmpMsg];
     const { result } = renderHook(() =>
-      useRealtime({ conversationId: 'conv-1', initialMessages: initial })
+      useRealtime({ conversationId: 'conv-1', currentUserId: 'user-1', initialMessages: initial })
     );
     act(() => result.current.replaceMessageId('tmp-123', 'real-uuid'));
     expect(result.current.messages[0].id).toBe('real-uuid');
@@ -102,7 +102,7 @@ describe('useRealtime', () => {
     // stable reference — must NOT be inline array inside callback
     const initial = [makeMsg('m1'), makeMsg('m2')];
     const { result } = renderHook(() =>
-      useRealtime({ conversationId: 'conv-1', initialMessages: initial })
+      useRealtime({ conversationId: 'conv-1', currentUserId: 'user-1', initialMessages: initial })
     );
     act(() => result.current.removeMessage('m1'));
     expect(result.current.messages).toHaveLength(1);

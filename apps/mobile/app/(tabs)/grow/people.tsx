@@ -8,6 +8,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { useFriendStore, FriendshipRow, isOnline, sortByPresence } from '../../../store/friendStore';
+import { supabase } from '../../../lib/supabase';
+import { logError } from '../../../lib/errorLogger';
+import { Analytics } from '../../../lib/analytics';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 
 const PERSON_GRADS: [string, string][] = [
   ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
@@ -18,10 +22,6 @@ function personGrad(name: string): [string, string] {
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
   return PERSON_GRADS[Math.abs(h) % PERSON_GRADS.length];
 }
-import { supabase } from '../../../lib/supabase';
-import { logError } from '../../../lib/errorLogger';
-import { Analytics } from '../../../lib/analytics';
-import { useThemeColors } from '../../../hooks/useThemeColors';
 
 type SubTab = 'friends' | 'requests' | 'sent';
 
@@ -170,20 +170,24 @@ export default function PeopleScreen() {
       </View>
 
       <View style={styles.subTabRow}>
-        {(['friends', 'requests', 'sent'] as SubTab[]).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.subTab, subTab === tab && styles.subTabActive]}
-            onPress={() => setSubTab(tab)}
-          >
-            <Text style={[styles.subTabText, subTab === tab && styles.subTabTextActive]}>
-              {tab === 'friends' ? 'Friends'
-                : tab === 'requests'
-                  ? `Requests${pendingReceived.length > 0 ? ` (${pendingReceived.length})` : ''}`
-                  : 'Sent'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {(['friends', 'requests', 'sent'] as SubTab[]).map((tab) => {
+          const label: Record<SubTab, string> = {
+            friends: 'Friends',
+            requests: `Requests${pendingReceived.length > 0 ? ` (${pendingReceived.length})` : ''}`,
+            sent: 'Sent',
+          };
+          return (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.subTab, subTab === tab && styles.subTabActive]}
+              onPress={() => setSubTab(tab)}
+            >
+              <Text style={[styles.subTabText, subTab === tab && styles.subTabTextActive]}>
+                {label[tab]}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {loading ? (

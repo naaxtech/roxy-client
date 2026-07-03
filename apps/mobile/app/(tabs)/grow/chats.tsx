@@ -6,6 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { format, isToday, isYesterday } from 'date-fns';
+import { supabase } from '../../../lib/supabase';
+import { useAuthStore } from '../../../store/authStore';
+import { useConnectStore } from '../../../store/connectStore';
+import { Conversation } from '../../../types';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 
 const GRAD_COLORS = [
   ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
@@ -16,12 +22,6 @@ function gradFor(name: string): readonly [string, string] {
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
   return GRAD_COLORS[Math.abs(h) % GRAD_COLORS.length];
 }
-import { format, isToday, isYesterday } from 'date-fns';
-import { supabase } from '../../../lib/supabase';
-import { useAuthStore } from '../../../store/authStore';
-import { useConnectStore } from '../../../store/connectStore';
-import { Conversation } from '../../../types';
-import { useThemeColors } from '../../../hooks/useThemeColors';
 
 type PartnerProfile = { id: string; display_name: string; username: string };
 
@@ -215,7 +215,6 @@ export default function ChatsScreen() {
       width: 46, height: 46, borderRadius: 23,
       alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    avatarUnread: {},
     avatarText: { color: '#fff', fontWeight: '800', fontSize: 18 },
 
     rowContent: { flex: 1, gap: 3 },

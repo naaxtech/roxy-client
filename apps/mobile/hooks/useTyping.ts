@@ -20,8 +20,12 @@ export function useTyping({ conversationId, currentUserId, partnerName }: UseTyp
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
-    const channel = supabase
-      .channel(`typing:${conversationId}`)
+    // Capture the channel object BEFORE chaining .on().subscribe() so that
+    // channelRef.current holds the RealtimeChannel, not the return of subscribe().
+    const channel = supabase.channel(`typing:${conversationId}`);
+    channelRef.current = channel;
+
+    channel
       .on('broadcast', { event: 'typing' }, ({ payload }: { payload: { user_id: string } }) => {
         if (payload.user_id === currentUserId) return;
         setPartnerIsTyping(true);
@@ -30,9 +34,8 @@ export function useTyping({ conversationId, currentUserId, partnerName }: UseTyp
       })
       .subscribe();
 
-    channelRef.current = channel;
-
     return () => {
+      channelRef.current = null;
       supabase.removeChannel(channel);
       if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
       if (throttleRef.current) clearTimeout(throttleRef.current);
@@ -40,14 +43,16 @@ export function useTyping({ conversationId, currentUserId, partnerName }: UseTyp
   }, [conversationId, currentUserId]);
 
   const sendTyping = useCallback(() => {
-    if (throttleRef.current) return;
-    void supabase.channel(`typing:${conversationId}`).send({
+    if (throttleRef.current || !channelRef.current) return;
+    // Use the already-subscribed channel ref — NOT supabase.channel() which creates a new
+    // unsubscribed instance and silently drops the broadcast.
+    void channelRef.current.send({
       type: 'broadcast',
       event: 'typing',
       payload: { user_id: currentUserId },
     });
     throttleRef.current = setTimeout(() => { throttleRef.current = null; }, 1500);
-  }, [conversationId, currentUserId]);
+  }, [currentUserId]);
 
   return { partnerIsTyping, sendTyping };
 }

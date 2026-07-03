@@ -5,6 +5,7 @@ import { Message } from '../types';
 interface UseRealtimeOptions {
   conversationId: string;
   initialMessages: Message[];
+  currentUserId: string;
 }
 
 interface UseRealtimeReturn {
@@ -18,6 +19,7 @@ interface UseRealtimeReturn {
 export function useRealtime({
   conversationId,
   initialMessages,
+  currentUserId,
 }: UseRealtimeOptions): UseRealtimeReturn {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -58,7 +60,11 @@ export function useRealtime({
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          appendMessage(payload.new as Message);
+          const msg = payload.new as Message;
+          // Skip own INSERTs — already handled optimistically via appendMessage + replaceMessageId.
+          // Without this, the Realtime event races with replaceMessageId and creates a duplicate.
+          if (msg.sender_id === currentUserId) return;
+          appendMessage(msg);
         }
       )
       .on(
@@ -89,7 +95,7 @@ export function useRealtime({
       supabase.removeChannel(channel);
       setIsSubscribed(false);
     };
-  }, [conversationId]);
+  }, [conversationId, currentUserId]);
 
   return { messages, isSubscribed, appendMessage, replaceMessageId, removeMessage };
 }

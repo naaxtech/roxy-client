@@ -118,6 +118,7 @@ export default function ChatScreen() {
   const { messages, isSubscribed: _isSubscribed, appendMessage, replaceMessageId, removeMessage } = useRealtime({
     conversationId: conversationId ?? '',
     initialMessages,
+    currentUserId: user?.id ?? '',
   });
 
   const messageIds = messages.map((m) => m.id);

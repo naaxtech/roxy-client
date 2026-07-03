@@ -8,16 +8,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatDistanceToNowStrict } from 'date-fns';
-
-const DETAIL_GRADS: [string, string][] = [
-  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
-  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
-];
-function detailGrad(name: string): [string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return DETAIL_GRADS[Math.abs(h) % DETAIL_GRADS.length];
-}
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useFeedStore } from '../../../../store/feedStore';
@@ -29,6 +19,16 @@ import { submitComment } from '../../../../lib/comments';
 import { PostMediaCarousel } from '../../../../components/feed/PostMediaCarousel';
 import { CommentThread } from '../../../../components/feed/CommentThread';
 import type { Comment, Post } from '../../../../types';
+
+const DETAIL_GRADS: [string, string][] = [
+  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
+  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
+];
+function detailGrad(name: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return DETAIL_GRADS[Math.abs(h) % DETAIL_GRADS.length];
+}
 
 export default function PostDetailScreen() {
   const colors = useThemeColors();
@@ -48,6 +48,13 @@ export default function PostDetailScreen() {
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+
+  // Derived — must be above early returns to respect Rules of Hooks
+  const authorName = post?.profiles?.display_name ?? '?';
+  const authorGrad = useMemo(() => detailGrad(authorName), [authorName]);
+  const postedAt = post ? new Date(post.created_at) : null;
+  const timeAgo = postedAt && !Number.isNaN(postedAt.getTime())
+    ? formatDistanceToNowStrict(postedAt, { addSuffix: true }) : '';
 
   useEffect(() => {
     if (!postId) {
@@ -171,7 +178,7 @@ export default function PostDetailScreen() {
       setCommentText('');
       setReplyingTo(null);
       bumpCommentCount(postId);
-      await loadComments(undefined);
+      await loadComments();
     }
     setSubmitting(false);
   };
@@ -246,12 +253,6 @@ export default function PostDetailScreen() {
 
   const isLiked = likedPostIds.has(post.id);
   const isSaved = savedPostIds.has(post.id);
-  const authorName = post.profiles?.display_name ?? '?';
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const authorGrad = useMemo(() => detailGrad(authorName), [authorName]);
-  const postedAt = new Date(post.created_at);
-  const timeAgo = Number.isNaN(postedAt.getTime())
-    ? '' : formatDistanceToNowStrict(postedAt, { addSuffix: true });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

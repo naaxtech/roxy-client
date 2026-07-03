@@ -29,6 +29,8 @@ function chatGrad(name: string): [string, string] {
   return CHAT_GRADS[Math.abs(h) % CHAT_GRADS.length];
 }
 
+const CHIP_COLORS = ['#FF6A2E', '#8B5CF6', '#FF2F71', '#F472B6', '#C4476A', '#FF8A3D'];
+
 type CommunityRow = { community_id: string; communities: { id: string; name: string; category: string } | null };
 type DirectChatPreview = {
   id: string;
@@ -146,9 +148,10 @@ export default function GrowScreen() {
 
   const points = profile?.gamification_points ?? 0;
   const level = getLevelInfo(points);
-  const earnedCount = badges.filter((b) => b.earned_at !== null).length;
+  const earned = badges.filter((b) => b.earned_at !== null);
+  const earnedCount = earned.length;
   const inProgressCount = badges.filter((b) => b.earned_at === null && b.current_value > 0).length;
-  const earnedBadges = badges.filter((b) => b.earned_at !== null).slice(0, 3);
+  const earnedBadges = earned.slice(0, 3);
 
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [chatPreviews, setChatPreviews] = useState<DirectChatPreview[]>([]);
@@ -583,7 +586,6 @@ export default function GrowScreen() {
                 const name = row.communities?.name ?? '—';
                 const activity = communityActivity[row.community_id];
                 const sub = activity ? '🔥 New post' : 'Tap to open';
-                const CHIP_COLORS = ['#FF6A2E', '#8B5CF6', '#FF2F71', '#F472B6', '#C4476A', '#FF8A3D'];
                 const chipColor = CHIP_COLORS[idx % CHIP_COLORS.length];
                 return (
                   <TouchableOpacity
