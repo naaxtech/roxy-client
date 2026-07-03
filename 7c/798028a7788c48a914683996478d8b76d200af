@@ -1,0 +1,55 @@
+docs/reference/proven-social-apps.md
+  s_164deec355e208::t_379cc6fdb1ceec 1-155
+apps/mobile/hooks/useRealtime.ts
+  s_164deec355e208::t_e5afbe4cfde580 8
+  s_164deec355e208::t_5df3d708e66cbf 22,63-67,98
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_164deec355e208::t_33f26d60aa1ec7 121
+apps/mobile/app/(tabs)/grow/people.tsx
+  s_164deec355e208::t_d5e869cc2ad204 11-14
+  s_6bbf2b2f61e54f::t_799ef1becdb076 173-190
+apps/mobile/app/(tabs)/grow/chats.tsx
+  s_aff4bc6f3eca5b::t_7c29ccb4880b47 9-14
+.claude/log.md
+  s_164deec355e208::t_c320f7d1b90571 45
+apps/mobile/__tests__/hooks/useRealtime.test.ts
+  s_164deec355e208::t_a8bee6da8d8ae1 37,45,58,65,75,84,95,105
+apps/mobile/app/(tabs)/discover/post/[postId].tsx
+  s_6bbf2b2f61e54f::t_596a83085bf4cf 23-32,52-58,181
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_6bbf2b2f61e54f::t_ecfe3a96f326e1 32-33,151-152,154
+apps/mobile/hooks/useTyping.ts
+  s_164deec355e208::t_aeed0820659b1a 23-28,38,46-49,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "7c798028a7788c48a914683996478d8b76d200af",
+  "prompts": {},
+  "sessions": {
+    "s_164deec355e208": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5229de36-9b6a-4c3f-a802-fe9a8c68bb7a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_6bbf2b2f61e54f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a82d69dbb13fe2025",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_aff4bc6f3eca5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8776a31c-0b59-42f0-aa16-629e0d7b89ce",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
