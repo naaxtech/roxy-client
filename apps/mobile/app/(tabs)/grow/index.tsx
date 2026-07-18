@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
+import { recordDailyCheckin } from '../../../lib/streaks';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
 import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
@@ -89,6 +90,12 @@ export default function GrowScreen() {
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
   const [badges, setBadges] = useState<BadgeProgressRow[]>([]);
   const [socialError, setSocialError] = useState(false);
+  const [streak, setStreak] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    void recordDailyCheckin().then(setStreak);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -345,6 +352,7 @@ export default function GrowScreen() {
     greetTitle: { fontSize: 26, fontWeight: '800', color: colors.textPrimary, lineHeight: 32 },
     greetName: { color: colors.roxy },
     greetSub: { color: colors.textMuted, fontSize: 13, fontWeight: '600', marginTop: 4 },
+    greetStreak: { color: colors.roxy, fontWeight: '700' },
     sisterCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     sisterEmoji: { fontSize: 26 },
     sisterSub: { color: colors.textMuted, fontSize: 12, marginTop: 2, lineHeight: 17 },
@@ -441,6 +449,9 @@ export default function GrowScreen() {
             <Text style={styles.greetName}>{firstName} </Text>🌸
           </Text>
           <Text style={styles.greetSub}>
+            {streak !== null && streak > 0 && (
+              <Text style={styles.greetStreak}>🔥 {streak}-day streak · </Text>
+            )}
             {buzzingCount > 0
               ? `${buzzingCount} ${buzzingCount === 1 ? 'community is' : 'communities are'} buzzing today`
               : 'Your communities are quiet — start something 💜'}
