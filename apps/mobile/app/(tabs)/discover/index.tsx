@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Modal, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -31,7 +31,11 @@ type Game = {
   category: string; publisher_type: 'roxy' | 'community';
   url: string | null; thumbnail_url: string | null;
 };
-type CommunityGame = Game & { community_name?: string };
+type CommunityGame = Game & {
+  community_name?: string;
+  /** Every community offering this game — one tile per game, tagged. */
+  offeredBy: { id: string; name: string }[];
+};
 type LiveRoom = {
   id: string; name: string; participant_count: number;
   community_name: string; status: string;
@@ -116,22 +120,28 @@ export default function PlayScreen() {
       })));
     }
 
-    // Community games for joined communities
+    // Community games — dedupe to one tile per game, tagging every
+    // community that offers it (no more Speed Dating × 4).
     if (joinedIds.size > 0) {
       const ids = Array.from(joinedIds);
       const { data } = await supabase
         .from('community_games')
         .select('community_id, games(*), communities(name)')
-        .in('community_id', ids)
-        .limit(4);
+        .in('community_id', ids);
       if (data) {
-        const games = data
-          .map((row: any) => ({
-            ...(row.games as Game),
-            community_name: (row.communities as any)?.name,
-          }))
-          .filter((g: any) => g?.id) as CommunityGame[];
-        setCommunityGames(games);
+        const byGame = new Map<string, CommunityGame>();
+        for (const row of data as any[]) {
+          const g = row.games as Game;
+          if (!g?.id) continue;
+          const offer = { id: row.community_id as string, name: (row.communities as any)?.name ?? 'Community' };
+          const existing = byGame.get(g.id);
+          if (existing) {
+            existing.offeredBy.push(offer);
+          } else {
+            byGame.set(g.id, { ...g, community_name: offer.name, offeredBy: [offer] });
+          }
+        }
+        setCommunityGames([...byGame.values()]);
       }
     }
     setLoading(false);
@@ -139,9 +149,16 @@ export default function PlayScreen() {
 
   useEffect(() => { void loadData(); }, [loadData]);
 
+  // Speed Dating gets a choice: random ("feeling wild") or via one of your
+  // communities. Other games route straight in.
+  const [speedDatingOptions, setSpeedDatingOptions] = useState<{ id: string; name: string }[] | null>(null);
+
   const navigateToGame = (game: Game | CommunityGame) => {
     if (game.name === 'Speed Dating' || game.url === null) {
-      router.push('/speed-dating' as any);
+      const offeredBy = 'offeredBy' in game && game.offeredBy.length > 0
+        ? game.offeredBy
+        : communityGames.find((g) => g.name === 'Speed Dating')?.offeredBy ?? [];
+      setSpeedDatingOptions(offeredBy);
     } else if (game.url) {
       router.push(game.url as any);
     }
@@ -213,6 +230,36 @@ export default function PlayScreen() {
       paddingHorizontal: 8, paddingVertical: 3,
     },
     seatsText: { color: colors.primary, fontWeight: '700', fontSize: 12 },
+
+    // Pop modal (Speed Dating options)
+    popOverlay: {
+      flex: 1, backgroundColor: 'rgba(26,10,46,0.55)',
+      alignItems: 'center', justifyContent: 'center', padding: 28,
+    },
+    popCard: {
+      width: '100%', maxWidth: 340,
+      backgroundColor: colors.background, borderRadius: 22,
+      padding: 20, alignItems: 'center', gap: 8,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3, shadowRadius: 24, elevation: 20,
+    },
+    popEmoji: { fontSize: 40 },
+    popTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 19 },
+    popSub: { color: colors.textMuted, fontSize: 13, marginBottom: 6 },
+    popPrimary: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+      alignSelf: 'stretch', minHeight: 48, borderRadius: 16,
+      backgroundColor: colors.roxy,
+    },
+    popPrimaryText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+    popOption: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      alignSelf: 'stretch', minHeight: 44, borderRadius: 14,
+      paddingHorizontal: 14,
+      backgroundColor: colors.surface,
+    },
+    popOptionText: { color: colors.textPrimary, fontWeight: '700', fontSize: 14, flex: 1 },
+    popCancel: { color: colors.textMuted, fontWeight: '700', fontSize: 13, paddingVertical: 10 },
   });
 
   // Fallback Roxy Originals in case DB is empty
@@ -289,7 +336,9 @@ export default function PlayScreen() {
               </View>
               <TouchableOpacity
                 style={s.heroPlayBtn}
-                onPress={() => router.push('/speed-dating' as any)}
+                onPress={() => setSpeedDatingOptions(
+                  communityGames.find((g) => g.name === 'Speed Dating')?.offeredBy ?? []
+                )}
                 activeOpacity={0.85}
               >
                 <Ionicons name="play" size={15} color="#E81C8E" />
@@ -377,14 +426,18 @@ export default function PlayScreen() {
             />
           ) : (
             <View style={s.gameGrid}>
-              {shownCommunityGames.slice(0, 4).map((g, i) => (
-                <View key={g.id + i} style={{ width: '50%' }}>
+              {shownCommunityGames.slice(0, 6).map((g, i) => (
+                <View key={g.id} style={{ width: '50%' }}>
                   <GameTile
                     emoji={CATEGORY_EMOJI[g.category] ?? '🎮'}
                     name={g.name}
-                    sub={g.community_name ?? g.short_description}
+                    sub={g.offeredBy.length > 1
+                      ? `${g.offeredBy.length} of your communities`
+                      : g.community_name ?? g.short_description}
                     grad={TILE_GRADS[i % TILE_GRADS.length]}
-                    badge={g.community_name?.split(' ')[0]}
+                    badge={g.offeredBy.length > 1
+                      ? `${g.offeredBy[0].name.split(' ')[0]} +${g.offeredBy.length - 1}`
+                      : g.community_name?.split(' ')[0]}
                     onPress={() => navigateToGame(g)}
                   />
                 </View>
@@ -395,6 +448,47 @@ export default function PlayScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Speed Dating join options — pop style, not a bottom drawer */}
+      <Modal
+        visible={speedDatingOptions !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSpeedDatingOptions(null)}
+      >
+        <Pressable style={s.popOverlay} onPress={() => setSpeedDatingOptions(null)}>
+          <Pressable style={s.popCard} onPress={() => {}}>
+            <Text style={s.popEmoji}>⚡</Text>
+            <Text style={s.popTitle}>Speed Dating</Text>
+            <Text style={s.popSub}>How do you want to play?</Text>
+            <TouchableOpacity
+              style={s.popPrimary}
+              onPress={() => { setSpeedDatingOptions(null); router.push('/speed-dating' as any); }}
+              accessibilityLabel="Join random speed dating"
+            >
+              <Ionicons name="flash" size={16} color="#fff" />
+              <Text style={s.popPrimaryText}>Feeling wild — join random</Text>
+            </TouchableOpacity>
+            {(speedDatingOptions ?? []).map((c) => (
+              <TouchableOpacity
+                key={c.id}
+                style={s.popOption}
+                onPress={() => {
+                  setSpeedDatingOptions(null);
+                  router.push(`/speed-dating?communityId=${c.id}` as any);
+                }}
+                accessibilityLabel={`Speed dating with ${c.name}`}
+              >
+                <Ionicons name="people" size={15} color={colors.roxy} />
+                <Text style={s.popOptionText} numberOfLines={1}>With {c.name}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity onPress={() => setSpeedDatingOptions(null)} accessibilityLabel="Cancel">
+              <Text style={s.popCancel}>Not tonight</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

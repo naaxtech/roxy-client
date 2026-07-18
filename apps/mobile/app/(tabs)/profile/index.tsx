@@ -93,6 +93,16 @@ export default function ProfileScreen() {
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 12, paddingVertical: 8,
+    },
+    headerBtn: {
+      width: 40, height: 40, borderRadius: 20,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.surface,
+    },
+    headerTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 16 },
     ordersSection: {
       marginTop: 8,
       marginHorizontal: 16,
@@ -160,6 +170,24 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Standard social profile header: back · @handle · settings */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => (router.canGoBack() ? router.back() : router.push('/(tabs)/grow' as any))}
+          accessibilityLabel="Back"
+        >
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>@{profile.username}</Text>
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => router.push('/(tabs)/profile/settings' as any)}
+          accessibilityLabel="Settings"
+        >
+          <Ionicons name="settings-outline" size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
       <ScrollView showsVerticalScrollIndicator={false}>
         <ProfileCard
           profile={profile}
@@ -180,8 +208,6 @@ export default function ProfileScreen() {
 
         {badgeLoadError ? (
           <Text style={styles.badgeError}>Could not load badges</Text>
-        ) : badges.length === 0 ? (
-          <Text style={styles.noBadges}>No badges yet — keep engaging!</Text>
         ) : null}
 
         {/* My Orders section */}
