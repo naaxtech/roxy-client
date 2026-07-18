@@ -24,6 +24,7 @@ import { CommunityContextSwitcher } from '../../../components/CommunityContextSw
 import { ScreenHeader } from '../../../components/ui/ScreenHeader';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { CommunitiesBrowser } from '../../../components/community/CommunitiesBrowser';
+import { EventsCalendar } from '../../../components/events/EventsCalendar';
 import { CommunityRoomCard } from '../../../components/community/CommunityRoomCard';
 import { FeedCard } from '../../../components/feed/FeedCard';
 import type { Post } from '../../../types';
@@ -95,6 +96,7 @@ export default function ConnectScreen() {
   // inside each community.
   const [adminPairs, setAdminPairs] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
+  const [eventsView, setEventsView] = useState<'list' | 'calendar'>('list');
   const [feedError, setFeedError] = useState<string | null>(null);
   const [gameNames, setGameNames] = useState<Record<string, string>>({});
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -131,6 +133,16 @@ export default function ConnectScreen() {
       paddingHorizontal: 12, paddingVertical: 8,
     },
     searchInput: { color: colors.textPrimary, fontSize: 14, flex: 1, paddingVertical: 0 },
+    viewToggleRow: {
+      flexDirection: 'row', gap: 6, justifyContent: 'flex-end',
+      paddingHorizontal: 16, paddingTop: 8,
+    },
+    viewToggleBtn: {
+      width: 34, height: 30, borderRadius: 10,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.surface,
+    },
+    viewToggleBtnActive: { backgroundColor: colors.roxy },
 
     // Suggested communities rail (feed header)
     railWrap: { marginBottom: 6 },
@@ -647,6 +659,36 @@ export default function ConnectScreen() {
         ) : loadingEvents ? (
           <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
         ) : (
+          <>
+          <View style={styles.viewToggleRow}>
+            {(['list', 'calendar'] as const).map((v) => (
+              <TouchableOpacity
+                key={v}
+                style={[styles.viewToggleBtn, eventsView === v && styles.viewToggleBtnActive]}
+                onPress={() => setEventsView(v)}
+                accessibilityLabel={v === 'list' ? 'List view' : 'Calendar view'}
+              >
+                <Ionicons
+                  name={v === 'list' ? 'list' : 'calendar'}
+                  size={16}
+                  color={eventsView === v ? '#fff' : colors.textMuted}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+          {eventsView === 'calendar' ? (
+            <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+              <EventsCalendar
+                events={displayedEvents.map((e) => ({
+                  id: e.id,
+                  title: e.title,
+                  starts_at: e.starts_at,
+                  subtitle: e.communities?.name ?? e.location_text,
+                }))}
+                onEventPress={(eventId) => router.push(`/event/${eventId}` as any)}
+              />
+            </ScrollView>
+          ) : (
           <FlashList
             data={displayedEvents}
             keyExtractor={(item) => item.id}
@@ -693,11 +735,13 @@ export default function ConnectScreen() {
             ListEmptyComponent={
               <EmptyState
                 emoji="🗓️"
-                title="No upcoming events"
-                body="Check back soon for events in your communities!"
+                title={q ? 'No matching events' : 'No upcoming events'}
+                body={q ? 'Try a different search.' : 'Check back soon for events in your communities!'}
               />
             }
           />
+          )}
+          </>
         )
       )}
 

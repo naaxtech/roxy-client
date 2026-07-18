@@ -22,6 +22,7 @@ import { useFeedStore } from '../../../../store/feedStore';
 import { normalizePost } from '../../../../lib/posts';
 import { contentDetailPath } from '../../../../lib/contentNavigation';
 import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../../lib/supabaseQueries';
+import { EventsCalendar } from '../../../../components/events/EventsCalendar';
 
 type SubTab = 'posts' | 'events' | 'games' | 'rooms';
 
@@ -62,6 +63,7 @@ export default function CommunityDetailScreen() {
   const [subTab, setSubTab] = useState<SubTab>('posts');
   const [posts, setPosts] = useState<Post[]>([]);
   const [events, setEvents] = useState<EventRow[]>([]);
+  const [eventsView, setEventsView] = useState<'list' | 'calendar'>('list');
   const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
   const {
     likedPostIds, savedPostIds,
@@ -304,6 +306,17 @@ export default function CommunityDetailScreen() {
     subTabTextActive: { color: colors.roxy, fontWeight: '700' },
 
     // Events
+    eventCardBody: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+    viewToggleRow: {
+      flexDirection: 'row', gap: 6, justifyContent: 'flex-end',
+      paddingHorizontal: 14, marginBottom: 6,
+    },
+    viewToggleBtn: {
+      width: 34, height: 30, borderRadius: 10,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.surface,
+    },
+    viewToggleBtnActive: { backgroundColor: colors.roxy },
     eventCard: {
       flexDirection: 'row', alignItems: 'center', gap: 10,
       backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8,
@@ -560,7 +573,24 @@ export default function CommunityDetailScreen() {
 
         {/* Page 3 — Events */}
         <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}>
-          {events.length === 0 ? (
+          <View style={styles.viewToggleRow}>
+            {(['list', 'calendar'] as const).map((v) => (
+              <TouchableOpacity
+                key={v}
+                style={[styles.viewToggleBtn, eventsView === v && styles.viewToggleBtnActive]}
+                onPress={() => setEventsView(v)}
+                accessibilityLabel={v === 'list' ? 'List view' : 'Calendar view'}
+              >
+                <Ionicons name={v === 'list' ? 'list' : 'calendar'} size={16} color={eventsView === v ? '#fff' : colors.textMuted} />
+              </TouchableOpacity>
+            ))}
+          </View>
+          {eventsView === 'calendar' ? (
+            <EventsCalendar
+              events={events.map((e) => ({ id: e.id, title: e.title, starts_at: e.starts_at, subtitle: e.location }))}
+              onEventPress={(eventId) => router.push(`/event/${eventId}` as any)}
+            />
+          ) : events.length === 0 ? (
             <View style={styles.emptyCenter}>
               <Text style={styles.emptyIcon}>🗓️</Text>
               <Text style={styles.emptyTitle}>No upcoming events</Text>
@@ -570,14 +600,22 @@ export default function CommunityDetailScreen() {
               const going = rsvpIds.has(event.id);
               return (
                 <View key={event.id} style={styles.eventCard}>
-                  <View style={styles.dateChip}>
-                    <Text style={styles.dateDay}>{format(new Date(event.starts_at), 'dd')}</Text>
-                    <Text style={styles.dateMonth}>{format(new Date(event.starts_at), 'MMM')}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
-                    {event.location && <Text style={styles.eventLocation} numberOfLines={1}>📍 {event.location}</Text>}
-                  </View>
+                  {/* Tappable body → event detail; RSVP stays a separate target */}
+                  <TouchableOpacity
+                    style={styles.eventCardBody}
+                    onPress={() => router.push(`/event/${event.id}` as any)}
+                    activeOpacity={0.75}
+                    accessibilityLabel={`Open event ${event.title}`}
+                  >
+                    <View style={styles.dateChip}>
+                      <Text style={styles.dateDay}>{format(new Date(event.starts_at), 'dd')}</Text>
+                      <Text style={styles.dateMonth}>{format(new Date(event.starts_at), 'MMM')}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
+                      {event.location && <Text style={styles.eventLocation} numberOfLines={1}>📍 {event.location}</Text>}
+                    </View>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.rsvpBtn, going && styles.rsvpBtnGoing]}
                     onPress={() => toggleRsvp(event.id)}
