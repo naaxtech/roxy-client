@@ -8,9 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { useFriendStore, FriendshipRow, isOnline, sortByPresence } from '../../../store/friendStore';
-import { supabase } from '../../../lib/supabase';
+import { openDirectChat } from '../../../lib/directMessages';
 import { logError } from '../../../lib/errorLogger';
-import { Analytics } from '../../../lib/analytics';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 
 const PERSON_GRADS: [string, string][] = [
@@ -46,31 +45,8 @@ export default function PeopleScreen() {
   const handleFriendTap = async (item: FriendshipRow) => {
     if (!user) return;
     try {
-      const { data, error: searchError } = await supabase
-        .from('conversations')
-        .select('id')
-        .contains('participant_ids', [user.id, item.profile.id])
-        .eq('conversation_type', 'direct')
-        .limit(1)
-        .maybeSingle();
-
-      if (searchError) throw searchError;
-
-      if (data) {
-        Analytics.dmOpened(data.id);
-        router.push(`/chat/${data.id}` as any);
-        return;
-      }
-
-      const { data: created, error } = await supabase
-        .from('conversations')
-        .insert({ participant_ids: [user.id, item.profile.id], conversation_type: 'direct' })
-        .select('id')
-        .single();
-
-      if (error) throw error;
-      Analytics.dmCreated();
-      router.push(`/chat/${created.id}` as any);
+      const convId = await openDirectChat(user.id, item.profile.id);
+      router.push(`/chat/${convId}` as any);
     } catch (e: any) {
       logError(e, 'handleFriendTap');
       Alert.alert('Error', e?.message);
