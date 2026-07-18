@@ -10,6 +10,9 @@ import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { ScreenHeader } from '../../../components/ui/ScreenHeader';
+import { SectionHeader } from '../../../components/ui/SectionHeader';
+import { EmptyState } from '../../../components/ui/EmptyState';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   dating: '⚡', icebreaker: '💞', party: '🃏', trivia: '🎯', other: '🎮',
@@ -145,13 +148,6 @@ export default function PlayScreen() {
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    header: {
-      flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 18, paddingTop: 6, paddingBottom: 12,
-    },
-    headerLeft: { flex: 1 },
-    eyebrow: { color: colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
-    title: { color: colors.textPrimary, fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
     iconBtn: {
       width: 38, height: 38, borderRadius: 19,
       backgroundColor: colors.surface,
@@ -183,10 +179,6 @@ export default function PlayScreen() {
 
     // Sections
     section: { marginBottom: 20 },
-    secBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, marginBottom: 10 },
-    secName: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    secNameText: { color: colors.textPrimary, fontWeight: '700', fontSize: 15 },
-    secLink: { color: colors.roxy, fontSize: 13, fontWeight: '600' },
     gameGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 9 },
 
     // Live rooms
@@ -213,10 +205,6 @@ export default function PlayScreen() {
       paddingHorizontal: 8, paddingVertical: 3,
     },
     seatsText: { color: colors.primary, fontWeight: '700', fontSize: 12 },
-    pulseRed: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
-
-    emptyBox: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 32 },
-    emptyText: { color: colors.textMuted, textAlign: 'center', fontSize: 13, lineHeight: 18 },
   });
 
   // Fallback Roxy Originals in case DB is empty
@@ -230,19 +218,19 @@ export default function PlayScreen() {
   return (
     <SafeAreaView style={s.container}>
       {/* Header */}
-      <View style={s.header}>
-        <View style={s.headerLeft}>
-          <Text style={s.eyebrow}>Games & Rooms</Text>
-          <Text style={s.title}>Play</Text>
-        </View>
-        <TouchableOpacity
-          style={s.iconBtn}
-          onPress={() => router.push('/communities' as any)}
-          accessibilityLabel="Browse communities"
-        >
-          <Ionicons name="people-outline" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="Play"
+        eyebrow="Games & Rooms"
+        actions={
+          <TouchableOpacity
+            style={s.iconBtn}
+            onPress={() => router.push('/communities' as any)}
+            accessibilityLabel="Browse communities"
+          >
+            <Ionicons name="people-outline" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Speed Dating Hero */}
@@ -282,15 +270,12 @@ export default function PlayScreen() {
           <ActivityIndicator color={colors.roxy} style={{ marginTop: 16, marginBottom: 24 }} />
         ) : liveRooms.length > 0 && (
           <View style={s.section}>
-            <View style={s.secBar}>
-              <View style={s.secName}>
-                <View style={s.pulseRed} />
-                <Text style={s.secNameText}>Live now</Text>
-              </View>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/connect' as any)}>
-                <Text style={s.secLink}>All →</Text>
-              </TouchableOpacity>
-            </View>
+            <SectionHeader
+              title="Live now"
+              icon="radio"
+              linkLabel="All"
+              onLinkPress={() => router.push('/(tabs)/connect' as any)}
+            />
             <View style={s.liveCard}>
               {liveRooms.map((room, i) => (
                 <TouchableOpacity
@@ -319,12 +304,7 @@ export default function PlayScreen() {
 
         {/* Roxy Originals */}
         <View style={s.section}>
-          <View style={s.secBar}>
-            <View style={s.secName}>
-              <Ionicons name="sparkles" size={15} color={colors.roxy} />
-              <Text style={s.secNameText}>Roxy Originals</Text>
-            </View>
-          </View>
+          <SectionHeader title="Roxy Originals" icon="sparkles" />
           <View style={s.gameGrid}>
             {displayOriginals.slice(0, 4).map((g, i) => (
               <View key={g.id} style={{ width: '50%' }}>
@@ -342,33 +322,21 @@ export default function PlayScreen() {
 
         {/* From Your Communities */}
         <View style={s.section}>
-          <View style={s.secBar}>
-            <View style={s.secName}>
-              <Ionicons name="people" size={15} color={colors.secondary} />
-              <Text style={s.secNameText}>From your communities</Text>
-            </View>
-            {joinedCommunities.length > 0 && (
-              <TouchableOpacity onPress={() => router.push('/communities' as any)}>
-                <Text style={s.secLink}>Browse →</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          <SectionHeader
+            title="From your communities"
+            icon="people"
+            linkLabel={joinedCommunities.length > 0 ? 'Browse' : undefined}
+            onLinkPress={joinedCommunities.length > 0 ? () => router.push('/communities' as any) : undefined}
+          />
           {joinedIds.size === 0 ? (
-            <View style={s.emptyBox}>
-              <Text style={s.emptyText}>
-                Join a community to see their games here.{'\n'}
-                <Text
-                  style={{ color: colors.roxy, fontWeight: '700' }}
-                  onPress={() => router.push('/communities' as any)}
-                >
-                  Browse communities →
-                </Text>
-              </Text>
-            </View>
+            <EmptyState
+              emoji="🎮"
+              title="Join a community to see their games"
+              ctaLabel="Browse communities →"
+              onCtaPress={() => router.push('/communities' as any)}
+            />
           ) : communityGames.length === 0 ? (
-            <View style={s.emptyBox}>
-              <Text style={s.emptyText}>Your communities haven't added games yet.</Text>
-            </View>
+            <EmptyState emoji="🎮" title="No community games yet" body="Your communities haven't added games yet." />
           ) : (
             <View style={s.gameGrid}>
               {communityGames.slice(0, 4).map((g, i) => (

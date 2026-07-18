@@ -15,6 +15,8 @@ import { useFriendStore, isOnline } from '../../../store/friendStore';
 import { Conversation } from '../../../types';
 import { avatarGradient } from '../../../lib/avatars';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { ScreenHeader } from '../../../components/ui/ScreenHeader';
+import { EmptyState } from '../../../components/ui/EmptyState';
 
 type PartnerProfile = { id: string; display_name: string; username: string };
 type ChatItem = {
@@ -174,12 +176,6 @@ export default function MessagesScreen() {
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    header: {
-      flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 18, paddingTop: 6, paddingBottom: 10,
-    },
-    headerLeft: { flex: 1 },
-    title: { color: colors.textPrimary, fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
     iconBtn: {
       width: 38, height: 38, borderRadius: 19,
       backgroundColor: colors.surface,
@@ -255,20 +251,15 @@ export default function MessagesScreen() {
     },
     badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
-    // Empty
-    empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 10 },
-    emptyIcon: { fontSize: 48 },
-    emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
-    emptyText: { color: colors.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
   });
 
   return (
     <SafeAreaView style={s.container}>
       {/* Header */}
-      <View style={s.header}>
-        <View style={s.headerLeft}>
-          <Text style={s.title}>Messages</Text>
-        </View>
+      <ScreenHeader
+        title="Messages"
+        eyebrow="Your people"
+        actions={
         <TouchableOpacity
           style={s.iconBtn}
           onPress={() => router.push('/(tabs)/messages/new' as any)}
@@ -276,7 +267,8 @@ export default function MessagesScreen() {
         >
           <Ionicons name="create-outline" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
-      </View>
+        }
+      />
 
       {/* Search */}
       <View style={s.search}>
@@ -321,13 +313,13 @@ export default function MessagesScreen() {
           refreshing={loading}
           contentContainerStyle={{ flexGrow: 1 }}
           ListEmptyComponent={
-            <View style={s.empty}>
-              <Text style={s.emptyIcon}>💬</Text>
-              <Text style={s.emptyTitle}>No messages yet</Text>
-              <Text style={s.emptyText}>
-                Your people are in your communities — say hi in a feed or add friends from a member list 💜
-              </Text>
-            </View>
+            <EmptyState
+              emoji="💬"
+              title="No messages yet"
+              body="Your people are in your communities — say hi in a feed or add friends from a member list 💜"
+              ctaLabel="Start a chat"
+              onCtaPress={() => router.push('/(tabs)/messages/new' as any)}
+            />
           }
           renderItem={({ item }) => {
             const unread = liveUnread(item.id);

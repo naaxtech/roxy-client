@@ -12,6 +12,7 @@ import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useFocusEffect } from '@react-navigation/native';
 import { recordDailyCheckin } from '../../../lib/streaks';
 import { fetchUnreadNotificationCount } from '../../../lib/notifications';
+import { SectionHeader } from '../../../components/ui/SectionHeader';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
 import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
@@ -548,12 +549,13 @@ export default function GrowScreen() {
 
         {/* Zone 2 — My Communities */}
         <View>
-          <View style={[styles.sectionHeaderRow, { paddingHorizontal: 0 }]}>
-            <Text style={styles.sectionTitle}>My Communities</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/connect/communities' as any)}>
-              <Text style={styles.sectionHint}>See all →</Text>
-            </TouchableOpacity>
-          </View>
+          <SectionHeader
+            title="My Communities"
+            icon="people"
+            inset={false}
+            linkLabel="See all"
+            onLinkPress={() => router.push('/(tabs)/connect/communities' as any)}
+          />
           {communities.length === 0 ? (
             <TouchableOpacity
               style={styles.section}
