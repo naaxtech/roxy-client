@@ -1,0 +1,23 @@
+apps/mobile/lib/directMessages.ts
+  s_093307bfc37bee::t_ce71c6e70982bb 1-29
+apps/mobile/__tests__/directMessages.test.ts
+  s_093307bfc37bee::t_a4de1294d1198b 1-55
+apps/mobile/app/(tabs)/grow/people.tsx
+  s_093307bfc37bee::t_7eaeaa78244a2c 11,48-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4bd4f685e65b5ddbc6dada4c790aadf7b36ecc2b",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
