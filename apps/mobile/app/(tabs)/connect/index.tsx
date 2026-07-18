@@ -21,6 +21,8 @@ import { contentDetailPath } from '../../../lib/contentNavigation';
 import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../lib/supabaseQueries';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
+import { ScreenHeader } from '../../../components/ui/ScreenHeader';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import { CommunityRoomCard } from '../../../components/community/CommunityRoomCard';
 import { FeedCard } from '../../../components/feed/FeedCard';
 import type { Post } from '../../../types';
@@ -102,13 +104,12 @@ export default function ConnectScreen() {
       paddingHorizontal: 16, paddingVertical: 8,
       borderBottomWidth: 1, borderBottomColor: colors.surface,
     },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
-    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     browseBtn: {
-      width: 34, height: 34, borderRadius: 17,
-      backgroundColor: colors.surface,
-      alignItems: 'center', justifyContent: 'center',
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      minHeight: 34, borderRadius: 17, paddingHorizontal: 12,
+      backgroundColor: colors.roxy,
     },
+    browseBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
 
     // Sub-tabs — underline style
     subTabRow: {
@@ -180,7 +181,8 @@ export default function ConnectScreen() {
 
     // Games + Community Rooms
     roomSection: { paddingHorizontal: 12, marginBottom: 8, marginTop: 8 },
-    roomSectionTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 15, marginBottom: 8 },
+    roomSectionBar: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+    roomSectionTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 15 },
     roomEmpty: { color: colors.textMuted, fontSize: 13, paddingVertical: 8 },
     gameCard: {
       flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -189,13 +191,6 @@ export default function ConnectScreen() {
     gameEmoji: { fontSize: 24 },
     gameName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
     gameDesc: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
-    // Empty states
-    emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12 },
-    emptyIcon: { fontSize: 48 },
-    emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center' },
-    emptySub: { color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
-    emptyCTA: { backgroundColor: colors.roxy, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10 },
-    emptyCTAText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   });
 
   // Web: pathname changes are reliable (URL-based). useFocusEffect does NOT
@@ -381,19 +376,23 @@ export default function ConnectScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Connect</Text>
-        <View style={styles.headerActions}>
-          <CommunityContextSwitcher communities={joinedCommunities} />
-          <TouchableOpacity
-            style={styles.browseBtn}
-            onPress={() => router.push('/(tabs)/connect/communities' as any)}
-            accessibilityLabel="Browse communities"
-          >
-            <Ionicons name="compass-outline" size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ScreenHeader
+        title="Connect"
+        eyebrow="Your communities"
+        actions={
+          <>
+            <CommunityContextSwitcher communities={joinedCommunities} />
+            <TouchableOpacity
+              style={styles.browseBtn}
+              onPress={() => router.push('/(tabs)/connect/communities' as any)}
+              accessibilityLabel="Browse communities"
+            >
+              <Ionicons name="compass" size={16} color="#fff" />
+              <Text style={styles.browseBtnText}>Browse</Text>
+            </TouchableOpacity>
+          </>
+        }
+      />
 
       {/* Sub-tabs */}
       <View style={styles.subTabRow}>
@@ -415,13 +414,12 @@ export default function ConnectScreen() {
       {/* Feed */}
       {subTab === 'feed' && (
         !hasJoinedCommunities ? (
-          <View style={styles.emptyCenter}>
-            <Text style={styles.emptyIcon}>🌸</Text>
-            <Text style={styles.emptyTitle}>Join communities to see their posts here</Text>
-            <TouchableOpacity style={styles.emptyCTA} onPress={() => router.push('/(tabs)/connect/communities' as any)}>
-              <Text style={styles.emptyCTAText}>Find your communities →</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            emoji="🌸"
+            title="Join communities to see their posts here"
+            ctaLabel="Find your communities →"
+            onCtaPress={() => router.push('/(tabs)/connect/communities' as any)}
+          />
         ) : loadingFeed ? (
           <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
         ) : (
@@ -467,17 +465,13 @@ export default function ConnectScreen() {
               </View>
             )}
             ListEmptyComponent={
-              <View style={styles.emptyCenter}>
-                <Text style={styles.emptyIcon}>📝</Text>
-                <Text style={styles.emptyTitle}>
-                  {feedError ? 'Could not load feed' : 'No posts yet'}
-                </Text>
-                <Text style={styles.emptySub}>
-                  {feedError
-                    ? 'Pull to refresh or try again.'
-                    : 'Be the first to post in your communities!'}
-                </Text>
-              </View>
+              <EmptyState
+                emoji="📝"
+                title={feedError ? 'Could not load feed' : 'No posts yet'}
+                body={feedError
+                  ? 'Pull to refresh or try again.'
+                  : 'Be the first to post in your communities!'}
+              />
             }
           />
         )
@@ -486,13 +480,12 @@ export default function ConnectScreen() {
       {/* Events */}
       {subTab === 'events' && (
         !hasJoinedCommunities ? (
-          <View style={styles.emptyCenter}>
-            <Text style={styles.emptyIcon}>🗓️</Text>
-            <Text style={styles.emptyTitle}>Join communities to see events</Text>
-            <TouchableOpacity style={styles.emptyCTA} onPress={() => router.push('/(tabs)/connect/communities' as any)}>
-              <Text style={styles.emptyCTAText}>Find your communities →</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            emoji="🗓️"
+            title="Join communities to see events"
+            ctaLabel="Find your communities →"
+            onCtaPress={() => router.push('/(tabs)/connect/communities' as any)}
+          />
         ) : loadingEvents ? (
           <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
         ) : (
@@ -540,11 +533,11 @@ export default function ConnectScreen() {
               );
             }}
             ListEmptyComponent={
-              <View style={styles.emptyCenter}>
-                <Text style={styles.emptyIcon}>🗓️</Text>
-                <Text style={styles.emptyTitle}>No upcoming events</Text>
-                <Text style={styles.emptySub}>Check back soon for events in your communities!</Text>
-              </View>
+              <EmptyState
+                emoji="🗓️"
+                title="No upcoming events"
+                body="Check back soon for events in your communities!"
+              />
             }
           />
         )
@@ -580,7 +573,10 @@ export default function ConnectScreen() {
 
           {/* Games */}
           <View style={styles.roomSection}>
-            <Text style={styles.roomSectionTitle}>🎮 Games</Text>
+            <View style={styles.roomSectionBar}>
+              <Ionicons name="game-controller" size={15} color={colors.roxy} />
+              <Text style={styles.roomSectionTitle}>Games</Text>
+            </View>
             {loadingRooms ? (
               <ActivityIndicator color={colors.roxy} style={{ marginVertical: 16 }} />
             ) : games.length === 0 ? (
@@ -606,7 +602,10 @@ export default function ConnectScreen() {
 
           {/* Community Rooms */}
           <View style={styles.roomSection}>
-            <Text style={styles.roomSectionTitle}>📹 Community Rooms</Text>
+            <View style={styles.roomSectionBar}>
+              <Ionicons name="videocam" size={15} color={colors.roxy} />
+              <Text style={styles.roomSectionTitle}>Community Rooms</Text>
+            </View>
             {loadingRooms ? (
               <ActivityIndicator color={colors.roxy} style={{ marginVertical: 16 }} />
             ) : rooms.length === 0 ? (
