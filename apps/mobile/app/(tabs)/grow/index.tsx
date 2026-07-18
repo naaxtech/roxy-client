@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { recordDailyCheckin } from '../../../lib/streaks';
+import { fetchNotifications, countUnread } from '../../../lib/notifications';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
 import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
@@ -91,10 +92,27 @@ export default function GrowScreen() {
   const [badges, setBadges] = useState<BadgeProgressRow[]>([]);
   const [socialError, setSocialError] = useState(false);
   const [streak, setStreak] = useState<number | null>(null);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
 
   useEffect(() => {
     if (!user?.id) return;
     void recordDailyCheckin().then(setStreak);
+  }, [user?.id]);
+
+  // Unread notification badge — refetch on mount, live-increment via a
+  // user-filtered Realtime subscription (never table-wide).
+  useEffect(() => {
+    if (!user?.id) return;
+    void fetchNotifications(user.id).then((list) => setUnreadNotifs(countUnread(list)));
+    const channel = supabase
+      .channel(`notifications:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => setUnreadNotifs((n) => n + 1)
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [user?.id]);
 
   useEffect(() => {
@@ -353,6 +371,14 @@ export default function GrowScreen() {
     greetName: { color: colors.roxy },
     greetSub: { color: colors.textMuted, fontSize: 13, fontWeight: '600', marginTop: 4 },
     greetStreak: { color: colors.roxy, fontWeight: '700' },
+    bellBadge: {
+      position: 'absolute', top: -2, right: -2,
+      minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3,
+      backgroundColor: colors.roxy,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1.5, borderColor: colors.background,
+    },
+    bellBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
     sisterCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     sisterEmoji: { fontSize: 26 },
     sisterSub: { color: colors.textMuted, fontSize: 12, marginTop: 2, lineHeight: 17 },
@@ -432,12 +458,17 @@ export default function GrowScreen() {
 
           <View style={styles.headerRight}>
             <TouchableOpacity
-              onPress={() => router.push('/profile/settings' as any)}
+              onPress={() => router.push('/(tabs)/grow/notifications' as any)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
-              accessibilityLabel="Settings"
+              accessibilityLabel="Notifications"
             >
-              <Ionicons name="settings-outline" size={20} color={colors.textPrimary} />
+              <Ionicons name="notifications-outline" size={20} color={colors.textPrimary} />
+              {unreadNotifs > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>{unreadNotifs > 9 ? '9+' : unreadNotifs}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
