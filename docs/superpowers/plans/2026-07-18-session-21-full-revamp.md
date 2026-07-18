@@ -31,3 +31,14 @@
 
 - Do NOT touch: stores, supabase queries, edge functions, routes, testIDs, business logic.
 - One tab per commit. If context compacts mid-way: this file + `.claude/log.md` carry state; continue from the last committed tab.
+
+## Session 22+ queue (Nicole rapid-fire, 2026-07-18 — keep until all done)
+- [x] Communities = 4th Connect subtab + suggestion rail + /communities redirect
+- [x] Community detail Posts → shared FeedCard pipeline
+- [x] Admin-only Connect feed (community_members role admin/moderator pairs, client filter) + search on Connect subtabs + Play games search
+- [x] Community event cards tappable → /event/[id]; EventsCalendar component + list/calendar toggle in Connect Events AND community Events
+- [ ] #13 Join Game buttons on roxy_link feed posts must join the game (GAME_ROUTES / speed-dating)
+- [ ] #15 Author avatars/names in FeedCard/StaticPostCard/comments → /user/[userId]
+- [ ] #14 Play: dedupe games (one tile per game, community tags); Speed Dating open → options: Join random ("feeling wild") vs pick one of your communities
+- [ ] #12 Room cards next-level: migration 059 community_rooms.banner_url + room-banners bucket; CommunityRoomCard redesign (banner cover/gradient fallback, veil, live pill, host+count); Play Live-now rows same treatment; Studio RoomModal banner upload
+- [ ] #11 Comprehensive Playwright button test across all tabs; fix breaks; QA loop; deploy to roxy.expo.app
