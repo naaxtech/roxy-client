@@ -1,56 +1,89 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert,
+  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { callEdgeFunction } from '../../../../lib/supabase';
+import { LinearGradient } from 'expo-linear-gradient';
+import { callEdgeFunction, supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
+import { showAlert } from '../../../../lib/confirm';
 
 export default function SpeedDatingLobby() {
   const router = useRouter();
+  const { communityId } = useLocalSearchParams<{ communityId?: string }>();
   const { user } = useAuthStore();
   const colors = useThemeColors();
   const [joining, setJoining] = useState(false);
+  const [communityName, setCommunityName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!communityId) { setCommunityName(null); return; }
+    void supabase
+      .from('communities')
+      .select('name')
+      .eq('id', communityId)
+      .maybeSingle()
+      .then(({ data }) => setCommunityName(data?.name ?? null));
+  }, [communityId]);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
       flexDirection: 'row', alignItems: 'center',
       paddingHorizontal: 16, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: colors.surface,
     },
-    backBtn: { width: 40 },
+    backBtn: {
+      width: 40, height: 40, borderRadius: 20,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.surface,
+    },
     headerTitle: {
-      flex: 1, color: colors.textPrimary, fontWeight: '700',
+      flex: 1, color: colors.textPrimary, fontWeight: '800',
       fontSize: 17, textAlign: 'center',
     },
-    body: {
-      flex: 1, alignItems: 'center', justifyContent: 'center',
-      paddingHorizontal: 28, gap: 16,
+    body: { flex: 1, paddingHorizontal: 20, gap: 14, justifyContent: 'center' },
+    hero: {
+      borderRadius: 24, padding: 22, alignItems: 'center', gap: 8,
+      shadowColor: '#E81C8E', shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.35, shadowRadius: 16, elevation: 8,
     },
-    heroIcon: { fontSize: 56, marginBottom: 4 },
-    heroTitle: { color: colors.textPrimary, fontSize: 26, fontWeight: '800', textAlign: 'center' },
+    heroIconPlate: {
+      width: 64, height: 64, borderRadius: 32,
+      backgroundColor: '#fff',
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: 4,
+    },
+    heroTitle: { color: '#fff', fontSize: 26, fontWeight: '800', textAlign: 'center' },
     heroSubtitle: {
-      color: colors.textSecondary, fontSize: 15, textAlign: 'center',
-      lineHeight: 22, maxWidth: 300,
+      color: 'rgba(255,255,255,0.92)', fontSize: 14.5, textAlign: 'center',
+      lineHeight: 21, maxWidth: 300, fontWeight: '600',
     },
+    scopeChip: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      backgroundColor: 'rgba(255,255,255,0.22)',
+      borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5,
+      marginTop: 4,
+    },
+    scopeChipText: { color: '#fff', fontSize: 12, fontWeight: '800' },
     stepsCard: {
-      backgroundColor: colors.surface, borderRadius: 16, padding: 16,
-      width: '100%', gap: 8, marginVertical: 8,
+      backgroundColor: colors.surface, borderRadius: 18, padding: 16, gap: 10,
     },
-    stepsTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 4 },
-    step: { color: colors.textSecondary, fontSize: 13, lineHeight: 18 },
+    stepRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    stepNum: {
+      width: 24, height: 24, borderRadius: 12,
+      backgroundColor: colors.roxy + '22',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    stepNumText: { color: colors.roxy, fontWeight: '800', fontSize: 12 },
+    step: { color: colors.textSecondary, fontSize: 13.5, lineHeight: 18, flex: 1 },
+    joinBtnWrap: { borderRadius: 18, overflow: 'hidden' },
     joinBtn: {
-      backgroundColor: colors.primary, borderRadius: 16,
-      paddingVertical: 16, paddingHorizontal: 40,
-      width: '100%', alignItems: 'center',
-      shadowColor: colors.primary, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
-      elevation: 6,
+      minHeight: 54, alignItems: 'center', justifyContent: 'center',
+      flexDirection: 'row', gap: 8,
     },
-    joinBtnLoading: { opacity: 0.7 },
     joinBtnText: { color: '#fff', fontWeight: '800', fontSize: 17 },
   });
 
@@ -63,12 +96,12 @@ export default function SpeedDatingLobby() {
       status: 'waiting' | 'active';
       room_url: string | null;
       participant_count: number;
-    }>('join-speed-date-session', {});
+    }>('join-speed-date-session', communityId ? { community_id: communityId } : {});
 
     setJoining(false);
 
     if (error || !data?.session_id) {
-      Alert.alert('Could not join', error ?? 'Something went wrong. Please try again.');
+      showAlert('Could not join', error ?? 'Something went wrong. Please try again.');
       return;
     }
 
@@ -82,7 +115,7 @@ export default function SpeedDatingLobby() {
       // Waiting for a match — go to waiting room
       router.push({
         pathname: '/speed-dating/waiting-room',
-        params: { session_id: data.session_id },
+        params: { session_id: data.session_id, communityName: communityName ?? '' },
       } as any);
     }
   };
@@ -91,8 +124,8 @@ export default function SpeedDatingLobby() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Back">
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Speed Dating</Text>
         <View style={{ width: 40 }} />
@@ -100,31 +133,63 @@ export default function SpeedDatingLobby() {
 
       {/* Body */}
       <View style={styles.body}>
-        <Text style={styles.heroIcon}>⚡</Text>
-        <Text style={styles.heroTitle}>Meet someone new</Text>
-        <Text style={styles.heroSubtitle}>
-          We'll match you with someone from your communities for a 5-minute video speed date.
-        </Text>
+        <LinearGradient
+          colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.heroIconPlate}>
+            <Ionicons name="flash" size={30} color="#FF2F71" />
+          </View>
+          <Text style={styles.heroTitle}>Meet someone new</Text>
+          <Text style={styles.heroSubtitle}>
+            Five minutes on video. Real sparks, zero pressure.
+          </Text>
+          <View style={styles.scopeChip}>
+            <Ionicons name={communityName ? 'people' : 'flash'} size={12} color="#fff" />
+            <Text style={styles.scopeChipText}>
+              {communityName ? `Matching within ${communityName}` : 'Feeling wild — open matching'}
+            </Text>
+          </View>
+        </LinearGradient>
 
         <View style={styles.stepsCard}>
-          <Text style={styles.stepsTitle}>How it works</Text>
-          <Text style={styles.step}>1. Tap Join — we'll find you a match</Text>
-          <Text style={styles.step}>2. Wait in the queue (usually under 1 min)</Text>
-          <Text style={styles.step}>3. Video call starts automatically when matched</Text>
-          <Text style={styles.step}>4. Chat for 5 minutes, then decide if you like them</Text>
+          {[
+            "Tap Join — we'll find your match",
+            'Wait in the queue (usually under a minute)',
+            'Your video date starts automatically',
+            'Chat for 5 minutes, then choose 🌸 or pass',
+          ].map((text, i) => (
+            <View key={i} style={styles.stepRow}>
+              <View style={styles.stepNum}><Text style={styles.stepNumText}>{i + 1}</Text></View>
+              <Text style={styles.step}>{text}</Text>
+            </View>
+          ))}
         </View>
 
         <TouchableOpacity
-          style={[styles.joinBtn, joining && styles.joinBtnLoading]}
+          style={styles.joinBtnWrap}
           onPress={handleJoin}
           disabled={joining}
           activeOpacity={0.85}
+          accessibilityLabel="Join speed dating"
         >
-          {joining ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.joinBtnText}>⚡ Join Speed Dating</Text>
-          )}
+          <LinearGradient
+            colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.joinBtn, joining && { opacity: 0.7 }]}
+          >
+            {joining ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="flash" size={18} color="#fff" />
+                <Text style={styles.joinBtnText}>Join Speed Dating</Text>
+              </>
+            )}
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

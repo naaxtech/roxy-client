@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  Animated, PanResponder, Alert, StatusBar,
+  Animated, PanResponder, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -9,6 +9,7 @@ import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { logError } from '../../../../lib/errorLogger';
+import { confirmAction } from '../../../../lib/confirm';
 import { Analytics } from '../../../../lib/analytics';
 import type { SpeedDateSession as SpeedDateSessionData } from '../../../../types';
 
@@ -234,11 +235,9 @@ export default function SpeedDateSession() {
     } as any);
   }, [session, provider, session_id, router, user]);
 
-  const handleLeave = () => {
-    Alert.alert('Leave session?', 'Are you sure you want to leave early?', [
-      { text: 'Stay', style: 'cancel' },
-      { text: 'Leave', style: 'destructive', onPress: handleEnd },
-    ]);
+  const handleLeave = async () => {
+    const confirmed = await confirmAction('Leave session?', 'Are you sure you want to leave early?', 'Leave');
+    if (confirmed) handleEnd();
   };
 
   const duration = session?.duration_seconds ?? 300;

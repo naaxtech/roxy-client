@@ -6,6 +6,15 @@ import { Alert, Platform } from 'react-native';
  * handlers silently never fire (this is why Sign out "did nothing" on web).
  * Use this for every destructive/confirm flow instead of Alert.alert.
  */
+/** Web-safe info alert — react-native-web's Alert.alert is a stub. */
+export function showAlert(title: string, message: string): void {
+  if (Platform.OS === 'web') {
+    (globalThis as { alert?: (msg: string) => void }).alert?.(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message);
+}
+
 export function confirmAction(
   title: string,
   message: string,

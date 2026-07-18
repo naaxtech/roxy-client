@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
   if (!auth) return errorResponse('Unauthorized', 401);
 
   const body = await req.json().catch(() => ({}));
-  const { session_id } = body;
+  const { session_id, community_id } = body;
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
   const supabase = getSupabaseClient();
@@ -100,7 +100,20 @@ Deno.serve(async (req) => {
     });
   }
 
-  // 1. Check if caller is already in a waiting session
+  // Community-scoped matching: verify membership, then match only within
+  // that community's pool. No community_id = the open "feeling wild" pool.
+  const scopeCommunityId: string | null = typeof community_id === 'string' && community_id ? community_id : null;
+  if (scopeCommunityId) {
+    const { data: membership } = await supabase
+      .from('community_members')
+      .select('community_id')
+      .eq('community_id', scopeCommunityId)
+      .eq('user_id', auth.userId)
+      .maybeSingle();
+    if (!membership) return errorResponse('Join this community first to speed date in it', 403);
+  }
+
+  // 1. Check if caller is already in a waiting session (any pool)
   const { data: mySession } = await supabase
     .from('speed_date_sessions')
     .select('*')
@@ -128,7 +141,8 @@ Deno.serve(async (req) => {
   const openSession = (openSessions ?? []).find(
     (s: any) =>
       s.participant_ids.length === 1 &&
-      !s.participant_ids.includes(auth.userId),
+      !s.participant_ids.includes(auth.userId) &&
+      (s.community_id ?? null) === scopeCommunityId,
   );
 
   if (openSession) {
@@ -163,6 +177,7 @@ Deno.serve(async (req) => {
       duration_seconds: 300,
       participant_ids: [auth.userId],
       status: 'scheduled',
+      community_id: scopeCommunityId,
       prompts: [
         "What's something you're really proud of this year?",
         "What does your ideal weekend look like?",

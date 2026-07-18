@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert,
+  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../../lib/supabase';
+import { confirmAction } from '../../../../lib/confirm';
 import { useAuthStore } from '../../../../store/authStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
 
 export default function SpeedDateWaitingRoom() {
-  const { session_id } = useLocalSearchParams<{ session_id: string }>();
+  const { session_id, communityName } = useLocalSearchParams<{ session_id: string; communityName?: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
   const colors = useThemeColors();
@@ -110,33 +111,26 @@ export default function SpeedDateWaitingRoom() {
     };
   }, [session_id]);
 
-  const handleCancel = () => {
-    Alert.alert('Leave queue?', 'You will be removed from the waiting list.', [
-      { text: 'Stay', style: 'cancel' },
-      {
-        text: 'Leave',
-        style: 'destructive',
-        onPress: async () => {
-          if (session_id && user?.id) {
-            // Remove self from participant_ids
-            const { data: session } = await supabase
-              .from('speed_date_sessions')
-              .select('participant_ids')
-              .eq('id', session_id)
-              .single();
-            if (session) {
-              const remaining = (session.participant_ids as string[]).filter((id) => id !== user.id);
-              await supabase
-                .from('speed_date_sessions')
-                .update({ participant_ids: remaining })
-                .eq('id', session_id);
-            }
-          }
-          if (channelRef.current) supabase.removeChannel(channelRef.current);
-          router.back();
-        },
-      },
-    ]);
+  const handleCancel = async () => {
+    const confirmed = await confirmAction('Leave queue?', 'You will be removed from the waiting list.', 'Leave');
+    if (!confirmed) return;
+    if (session_id && user?.id) {
+      // Remove self from participant_ids
+      const { data: session } = await supabase
+        .from('speed_date_sessions')
+        .select('participant_ids')
+        .eq('id', session_id)
+        .single();
+      if (session) {
+        const remaining = (session.participant_ids as string[]).filter((id) => id !== user.id);
+        await supabase
+          .from('speed_date_sessions')
+          .update({ participant_ids: remaining })
+          .eq('id', session_id);
+      }
+    }
+    if (channelRef.current) supabase.removeChannel(channelRef.current);
+    router.back();
   };
 
   return (
@@ -149,7 +143,9 @@ export default function SpeedDateWaitingRoom() {
 
         <Text style={styles.title}>Finding your match{dots}</Text>
         <Text style={styles.subtitle}>
-          We're looking for someone in your communities to speed date with. Hang tight!
+          {communityName
+            ? `We're finding you a date inside ${communityName}. Hang tight!`
+            : "We're looking for your next great five minutes. Hang tight!"}
         </Text>
 
         <ActivityIndicator color={colors.roxy} size="large" style={{ marginTop: 32 }} />
