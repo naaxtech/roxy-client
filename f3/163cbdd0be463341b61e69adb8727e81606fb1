@@ -1,0 +1,22 @@
+apps/mobile/app/(auth)/welcome.tsx
+  s_093307bfc37bee::t_72e2085faa2315 233
+  s_093307bfc37bee::t_1bd2aa053b51a1 1,12-14,17-19,23-25,28,37-42,74-75,77-125,127-128,130-139,141-148,150-151,153-154,157,160-168,172-174,177-178,180-181,184,192,198-199,203-204,206-232,234-255,259-261,263-264,266-273,275-358,361-364
+apps/mobile/assets/brand/roxy-logo-mono-white.svg
+  s_093307bfc37bee::t_4b4047f8c112ae 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f3163cbdd0be463341b61e69adb8727e81606fb1",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
