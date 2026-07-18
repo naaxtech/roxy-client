@@ -1,0 +1,28 @@
+apps/mobile/components/grow/QuestionOfTheDayCard.tsx
+  s_093307bfc37bee::t_3f330b6fa7cbe5 7
+  s_093307bfc37bee::t_1016c2b242e535 129,152,164,166,169-170,172-181,185,188,190,217,229-234,236
+apps/mobile/components/grow/HappeningTonightCard.tsx
+  s_093307bfc37bee::t_e34b3823f37ed5 7,9,17,20,30,42-49,51-55,58-69,74,84,87-91,97-98,106,117-118,138-150,153,155,160-172,175-183,185-186,188-213,218-223,225,237-239,250,256,258-259,262,264,268-288,290-300,303-321
+apps/mobile/store/buildStore.ts
+  s_093307bfc37bee::t_5fc1b963c91ce8 98-102,105-106,108-113
+.claude/log.md
+  s_093307bfc37bee::t_5f8741483f309b 57
+apps/mobile/__tests__/components/grow/QuestionOfTheDayCard.test.tsx
+  s_093307bfc37bee::t_12878e044dac6d 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a7f2d21a9c86f579456953537f8ff494e73fdf55",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
