@@ -1,21 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
   ScrollView, Alert, Dimensions, Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const AUTHOR_GRADS: [string, string][] = [
-  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
-  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
-];
-function authorGrad(name: string): [string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return AUTHOR_GRADS[Math.abs(h) % AUTHOR_GRADS.length];
-}
-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -28,11 +17,12 @@ import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
 import { CommunityRoomCard } from '../../../../components/community/CommunityRoomCard';
 import { CommunityRoom } from '../../../../types';
+import { avatarGradient } from '../../../../lib/avatars';
 
 type SubTab = 'posts' | 'events' | 'games' | 'rooms';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const TABS: SubTab[] = ['posts', 'events', 'games', 'rooms'];
+const TABS: SubTab[] = ['posts', 'rooms', 'games', 'events'];
 
 type PostRow = {
   id: string; content: string; created_at: string; author_id: string;
@@ -520,7 +510,7 @@ export default function CommunityDetailScreen() {
           ) : (
             posts.map((post) => {
               const name = post.profiles?.display_name ?? '?';
-              const grad = authorGrad(name);
+              const grad = avatarGradient(name);
               const isLiked = likedIds.has(post.id);
               return (
               <View key={post.id} style={styles.postCard}>
@@ -563,37 +553,34 @@ export default function CommunityDetailScreen() {
           )}
         </ScrollView>
 
-        {/* Page 1 — Events */}
-        <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}>
-          {events.length === 0 ? (
+        {/* Page 1 — Rooms */}
+        <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ padding: 12, paddingBottom: 80 }}>
+          {loadingRooms ? (
+            <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
+          ) : rooms.length === 0 ? (
             <View style={styles.emptyCenter}>
-              <Text style={styles.emptyIcon}>🗓️</Text>
-              <Text style={styles.emptyTitle}>No upcoming events</Text>
+              <Text style={styles.emptyIcon}>📡</Text>
+              <Text style={styles.emptyTitle}>No rooms open right now</Text>
+              <Text style={styles.emptySub}>Check back later for live rooms</Text>
             </View>
           ) : (
-            events.map((event) => {
-              const going = rsvpIds.has(event.id);
-              return (
-                <View key={event.id} style={styles.eventCard}>
-                  <View style={styles.dateChip}>
-                    <Text style={styles.dateDay}>{format(new Date(event.starts_at), 'dd')}</Text>
-                    <Text style={styles.dateMonth}>{format(new Date(event.starts_at), 'MMM')}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
-                    {event.location && <Text style={styles.eventLocation} numberOfLines={1}>📍 {event.location}</Text>}
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.rsvpBtn, going && styles.rsvpBtnGoing]}
-                    onPress={() => toggleRsvp(event.id)}
-                  >
-                    <Text style={[styles.rsvpBtnText, going && styles.rsvpBtnTextGoing]}>
-                      {going ? 'Going ✓' : 'RSVP'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })
+            rooms.map((room) => (
+              <CommunityRoomCard
+                key={room.id}
+                id={room.id}
+                name={room.name}
+                description={room.description}
+                room_type={room.room_type}
+                status={room.status}
+                scheduled_at={room.scheduled_at}
+                community_name={null}
+                creator_display_name={room.creator_display_name}
+                participant_count={room.participant_count}
+                max_participants={room.max_participants}
+                hideCommunityTag={true}
+                onPress={() => router.push(`/(tabs)/connect/community-room-session?room_id=${room.id}` as any)}
+              />
+            ))
           )}
         </ScrollView>
 
@@ -643,34 +630,37 @@ export default function CommunityDetailScreen() {
           )}
         </ScrollView>
 
-        {/* Page 3 — Rooms */}
-        <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ padding: 12, paddingBottom: 80 }}>
-          {loadingRooms ? (
-            <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
-          ) : rooms.length === 0 ? (
+        {/* Page 3 — Events */}
+        <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}>
+          {events.length === 0 ? (
             <View style={styles.emptyCenter}>
-              <Text style={styles.emptyIcon}>📡</Text>
-              <Text style={styles.emptyTitle}>No rooms open right now</Text>
-              <Text style={styles.emptySub}>Check back later for live rooms</Text>
+              <Text style={styles.emptyIcon}>🗓️</Text>
+              <Text style={styles.emptyTitle}>No upcoming events</Text>
             </View>
           ) : (
-            rooms.map((room) => (
-              <CommunityRoomCard
-                key={room.id}
-                id={room.id}
-                name={room.name}
-                description={room.description}
-                room_type={room.room_type}
-                status={room.status}
-                scheduled_at={room.scheduled_at}
-                community_name={null}
-                creator_display_name={room.creator_display_name}
-                participant_count={room.participant_count}
-                max_participants={room.max_participants}
-                hideCommunityTag={true}
-                onPress={() => router.push(`/(tabs)/connect/community-room-session?room_id=${room.id}` as any)}
-              />
-            ))
+            events.map((event) => {
+              const going = rsvpIds.has(event.id);
+              return (
+                <View key={event.id} style={styles.eventCard}>
+                  <View style={styles.dateChip}>
+                    <Text style={styles.dateDay}>{format(new Date(event.starts_at), 'dd')}</Text>
+                    <Text style={styles.dateMonth}>{format(new Date(event.starts_at), 'MMM')}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
+                    {event.location && <Text style={styles.eventLocation} numberOfLines={1}>📍 {event.location}</Text>}
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.rsvpBtn, going && styles.rsvpBtnGoing]}
+                    onPress={() => toggleRsvp(event.id)}
+                  >
+                    <Text style={[styles.rsvpBtnText, going && styles.rsvpBtnTextGoing]}>
+                      {going ? 'Going ✓' : 'RSVP'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })
           )}
         </ScrollView>
       </ScrollView>

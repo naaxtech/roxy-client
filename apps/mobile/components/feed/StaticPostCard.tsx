@@ -4,20 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { PostActionRow } from './PostActionRow';
-
-const AUTHOR_GRADS: [string, string][] = [
-  ['#FF6A2E', '#E81C8E'],
-  ['#8B5CF6', '#E879A6'],
-  ['#FF2F71', '#8B5CF6'],
-  ['#C4476A', '#8B5CF6'],
-  ['#FF8A3D', '#FF2F71'],
-];
-function authorGrad(name: string): [string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return AUTHOR_GRADS[Math.abs(h) % AUTHOR_GRADS.length];
-}
 import { PostMediaCarousel } from './PostMediaCarousel';
+import { avatarGradient } from '../../lib/avatars';
 import type { Post } from '../../types';
 
 interface StaticPostCardProps {
@@ -39,7 +27,7 @@ export function StaticPostCard({
   const colors = useThemeColors();
   const [expanded, setExpanded] = useState(false);
   const authorName = post.profiles?.display_name ?? '?';
-  const grad = useMemo(() => authorGrad(authorName), [authorName]);
+  const grad = useMemo(() => avatarGradient(authorName), [authorName]);
 
   const styles = StyleSheet.create({
     card: {

@@ -88,7 +88,7 @@ Do not suggest alternatives. These are final.
 
 ## 5. CURRENT PROJECT STATE
 
-### Migrations completed (next = 046)
+### Migrations completed (next = 058 — always verify with `ls supabase/migrations` first)
 | File | Contents |
 |---|---|
 | 001 | profiles, roxy_greetings, dev_config, ai_call_log |
@@ -103,6 +103,9 @@ Do not suggest alternatives. These are final.
 | 010 | increment_reaction SQL function |
 | 021 | fee_tiers, host_stripe_accounts, platform_settings, payment_logs, events price_cents/currency |
 | 045 | posts/comments feed v2: post_likes, post_saves, comment_likes, seen_posts, compute_feed_score (VOLATILE), post-media bucket, behavioural_consent |
+| 046–055 | games platform, feed seeds/fixes, theme QOTD, profile photos + favorites (see files) |
+| 056 | login streaks: profiles.streak_count/streak_last_day + record_daily_checkin() RPC |
+| 057 | notifications: table + RLS + Realtime + triggers (friend request/accept, community event fan-out) |
 
 ### Sessions completed
 | Session | Branch | Status |
@@ -120,6 +123,8 @@ Do not suggest alternatives. These are final.
 | 11 — Firebase Analytics + Crashlytics → migrating to Sentry + PostHog | session-11-firebase | Open |
 | 12 — Community Studio + Stripe: apps/studio, Stripe Connect | session-12-stripe-studio | Open |
 | 13 — Content feed v2: FeedStore, FeedCards, VideoPlayer, PostDetail, CreatePost, Cloudflare Stream | session-13-content-feed | Open (PR #19) |
+| 14–18 — Marketplace, chat overhaul, rooms v2, business approval, Support voting, product photos | various | Merged (see .claude/log.md) |
+| 19 — UX coherence revamp per Claude Design handoff + streaks + notifications | session-19-ux-coherence | Open (PR #1 on naaxtech/roxy-client) |
 
 ### Key commands
 ```bash
@@ -535,4 +540,4 @@ supabase
 
 *CLAUDE.md v3.0 · Roxy by Thinqer · Three-app monorepo · Maintained by Nicole Claire Marie A. Azachee*
 *This file is read automatically by Claude Code at every session start.*
-*Last updated: Session 13 complete. Next: Session 14 (observability migration: Firebase → Sentry + PostHog via @roxy/observability package + staff app scaffold).*
+*Last updated: Session 19 (UX coherence revamp + streaks + notifications). Pending: human-approved `npx supabase db push` for migrations 056–057; deferred backlog in docs/superpowers/specs/2026-07-18-ux-coherence-revamp-design.md (game creation flow, discover/→play/ folder rename).*

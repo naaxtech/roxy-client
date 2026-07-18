@@ -5,14 +5,21 @@
 # Prerequisites:
 #   - Dev build running on emulator/device (com.roxy.app)
 #   - User signed in (run login flow first if needed)
+#
+# Session 19: the communities browser moved from the Discover (now Play) tab
+# to Connect — reached via the compass "Browse communities" header button.
 
 appId: com.roxy.app
 ---
-# Navigate to Discover tab
+# Navigate to Connect tab (owns community discovery)
 - tapOn:
-    text: "Discover"
+    text: "Connect"
 
-# Communities sub-tab should be default active — assert visible
+# Open the communities browser via the header compass button
+- tapOn:
+    id: "Browse communities"
+
+# Browser screen loaded
 - assertVisible:
     text: "Communities"
 
@@ -37,9 +44,9 @@ appId: com.roxy.app
 - tapOn:
     text: "Queer Gamers"
 
-# Verify detail screen loaded
+# Verify detail screen loaded — joined state shows "Joined" on the detail button
 - assertVisible:
-    text: "Join Community"
+    text: "Joined"
     timeout: 3000
 
 # Go back

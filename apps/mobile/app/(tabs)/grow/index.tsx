@@ -7,36 +7,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { format, isToday, isYesterday } from 'date-fns';
+import { format } from 'date-fns';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
+import { useFocusEffect } from '@react-navigation/native';
+import { recordDailyCheckin } from '../../../lib/streaks';
+import { fetchUnreadNotificationCount } from '../../../lib/notifications';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
 import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { Analytics } from '../../../lib/analytics';
-import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
+import { isPresetAvatar, presetEmoji, presetColor, avatarGradient } from '../../../lib/avatars';
 import { HappeningTonightCard } from '../../../components/grow/HappeningTonightCard';
 import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayCard';
 import { MiniWinsCard } from '../../../components/grow/MiniWinsCard';
 
-const CHAT_GRADS: [string, string][] = [
-  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
-  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
-];
-function chatGrad(name: string): [string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return CHAT_GRADS[Math.abs(h) % CHAT_GRADS.length];
-}
-
 const CHIP_COLORS = ['#FF6A2E', '#8B5CF6', '#FF2F71', '#F472B6', '#C4476A', '#FF8A3D'];
 
 type CommunityRow = { community_id: string; communities: { id: string; name: string; category: string } | null };
-type DirectChatPreview = {
-  id: string;
-  partnerName: string;
-  last_message_at: string | null;
-};
 
 type TicketRow = {
   ticket_code: string;
@@ -66,6 +54,11 @@ type BadgeProgressRow = {
   } | null;
 };
 
+function greetingWord(): string {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
 function getLevelInfo(points: number): { label: string; emoji: string; nextThreshold: number | null; progress: number } {
   if (points >= 500) return { label: 'Radiant', emoji: '✨', nextThreshold: null, progress: 1 };
   if (points >= 100) return { label: 'Bloom', emoji: '🌸', nextThreshold: 500, progress: (points - 100) / 400 };
@@ -89,6 +82,34 @@ export default function GrowScreen() {
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
   const [badges, setBadges] = useState<BadgeProgressRow[]>([]);
   const [socialError, setSocialError] = useState(false);
+  const [streak, setStreak] = useState<number | null>(null);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+
+  // On every focus (not just mount — the tab stays mounted for days):
+  // re-record the daily check-in so long-lived sessions keep their streak,
+  // and refresh the unread count so the bell clears after reads.
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id) return;
+      void recordDailyCheckin().then(setStreak);
+      void fetchUnreadNotificationCount(user.id).then(setUnreadNotifs);
+    }, [user?.id])
+  );
+
+  // Live badge increments via a user-filtered Realtime subscription
+  // (never table-wide); focus refetch above corrects any drift.
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`notifications:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => setUnreadNotifs((n) => n + 1)
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -154,36 +175,6 @@ export default function GrowScreen() {
   const earnedBadges = earned.slice(0, 3);
 
   const [tickets, setTickets] = useState<TicketRow[]>([]);
-  const [chatPreviews, setChatPreviews] = useState<DirectChatPreview[]>([]);
-  const [chatTotal, setChatTotal] = useState(0);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    (async () => {
-      const { data: convs } = await supabase
-        .from('conversations')
-        .select('id, participant_ids, last_message_at')
-        .contains('participant_ids', [user.id])
-        .eq('conversation_type', 'direct')
-        .order('last_message_at', { ascending: false, nullsFirst: false })
-        .limit(10);
-      if (!convs || convs.length === 0) return;
-      setChatTotal(convs.length);
-      const top3 = convs.slice(0, 3) as { id: string; participant_ids: string[]; last_message_at: string | null }[];
-      const partnerIds = top3.map((c) => c.participant_ids.find((id) => id !== user.id) ?? null).filter(Boolean) as string[];
-      if (partnerIds.length === 0) return;
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, display_name')
-        .in('id', partnerIds);
-      const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p.display_name]));
-      setChatPreviews(top3.map((c) => ({
-        id: c.id,
-        partnerName: profileMap.get(c.participant_ids.find((id) => id !== user.id) ?? '') ?? 'Unknown',
-        last_message_at: c.last_message_at,
-      })));
-    })();
-  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -207,6 +198,8 @@ export default function GrowScreen() {
   }, [user?.id]);
 
   const communityIds = communities.map((row) => row.community_id);
+  const firstName = profile?.display_name?.split(' ')[0] ?? 'you';
+  const buzzingCount = Object.keys(communityActivity).length;
   const avatarUrl = profile?.avatar_url ?? null;
   const avatarInitial = profile?.display_name?.[0]?.toUpperCase() ?? '?';
   const handle = profile?.username ? `@${profile.username}` : profile?.display_name ?? '';
@@ -369,20 +362,22 @@ export default function GrowScreen() {
     badgePreviewDim: { opacity: 0.3 },
     badgePreviewSummary: { color: colors.textMuted, fontSize: 11 },
 
-    chatPreviewRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      paddingVertical: 6,
-      borderBottomWidth: 1, borderBottomColor: colors.surfaceLight,
+    greet: { paddingHorizontal: 4, paddingTop: 2 },
+    greetTitle: { fontSize: 26, fontWeight: '800', color: colors.textPrimary, lineHeight: 32 },
+    greetName: { color: colors.roxy },
+    greetSub: { color: colors.textMuted, fontSize: 13, fontWeight: '600', marginTop: 4 },
+    greetStreak: { color: colors.roxy, fontWeight: '700' },
+    bellBadge: {
+      position: 'absolute', top: -2, right: -2,
+      minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3,
+      backgroundColor: colors.roxy,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1.5, borderColor: colors.background,
     },
-    chatPreviewAvatar: {
-      width: 30, height: 30, borderRadius: 15,
-      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    },
-    chatPreviewAvatarText: { color: '#fff', fontWeight: '800', fontSize: 12 },
-    chatPreviewName: { flex: 1, color: colors.textPrimary, fontSize: 13, fontWeight: '600' },
-    chatPreviewTime: { color: colors.textMuted, fontSize: 11, flexShrink: 0 },
-    chatViewAll: { paddingTop: 8 },
-    chatViewAllText: { color: colors.roxy, fontSize: 13, fontWeight: '600' },
+    bellBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+    sisterCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    sisterEmoji: { fontSize: 26 },
+    sisterSub: { color: colors.textMuted, fontSize: 12, marginTop: 2, lineHeight: 17 },
 
     ticketSectionHeader: {
       flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6,
@@ -459,14 +454,35 @@ export default function GrowScreen() {
 
           <View style={styles.headerRight}>
             <TouchableOpacity
-              onPress={() => router.push('/profile/settings' as any)}
+              onPress={() => router.push('/(tabs)/grow/notifications' as any)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
               accessibilityLabel="Notifications"
             >
               <Ionicons name="notifications-outline" size={20} color={colors.textPrimary} />
+              {unreadNotifs > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>{unreadNotifs > 9 ? '9+' : unreadNotifs}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Greeting */}
+        <View style={styles.greet}>
+          <Text style={styles.greetTitle}>
+            {greetingWord()},{'\n'}
+            <Text style={styles.greetName}>{firstName} </Text>🌸
+          </Text>
+          <Text style={styles.greetSub}>
+            {streak !== null && streak > 0 && (
+              <Text style={styles.greetStreak}>🔥 {streak}-day streak · </Text>
+            )}
+            {buzzingCount > 0
+              ? `${buzzingCount} ${buzzingCount === 1 ? 'community is' : 'communities are'} buzzing today`
+              : 'Your communities are quiet — start something 💜'}
+          </Text>
         </View>
 
         {/* Zone 1 — Roxy Hero Card */}
@@ -524,40 +540,6 @@ export default function GrowScreen() {
         {/* Zone NEW — Mini Wins */}
         {user && <MiniWinsCard userId={user.id} />}
 
-        {/* My Chats */}
-        {chatTotal > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>My Chats</Text>
-            {chatPreviews.map((chat) => (
-              <TouchableOpacity
-                key={chat.id}
-                style={styles.chatPreviewRow}
-                onPress={() => router.push(`/chat/${chat.id}` as any)}
-                activeOpacity={0.7}
-              >
-                <LinearGradient colors={chatGrad(chat.partnerName)} style={styles.chatPreviewAvatar}>
-                  <Text style={styles.chatPreviewAvatarText}>{chat.partnerName[0]?.toUpperCase() ?? '?'}</Text>
-                </LinearGradient>
-                <Text style={styles.chatPreviewName} numberOfLines={1}>{chat.partnerName}</Text>
-                <Text style={styles.chatPreviewTime}>
-                  {chat.last_message_at
-                    ? isToday(new Date(chat.last_message_at)) ? format(new Date(chat.last_message_at), 'HH:mm')
-                    : isYesterday(new Date(chat.last_message_at)) ? 'Yesterday'
-                    : format(new Date(chat.last_message_at), 'dd MMM')
-                    : ''}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/grow/chats' as any)}
-              style={styles.chatViewAll}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.chatViewAllText}>View all {chatTotal} chats →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {socialError && (
           <View style={styles.errorBanner}>
             <Text style={styles.errorBannerText}>Could not load communities. Pull to refresh.</Text>
@@ -568,14 +550,18 @@ export default function GrowScreen() {
         <View>
           <View style={[styles.sectionHeaderRow, { paddingHorizontal: 0 }]}>
             <Text style={styles.sectionTitle}>My Communities</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/discover/communities' as any)}>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/connect/communities' as any)}>
               <Text style={styles.sectionHint}>See all →</Text>
             </TouchableOpacity>
           </View>
           {communities.length === 0 ? (
-            <View style={styles.section}>
-              <Text style={styles.emptyState}>Join your first community in Play →</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.section}
+              onPress={() => router.push('/(tabs)/connect/communities' as any)}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.emptyState}>Find your communities →</Text>
+            </TouchableOpacity>
           ) : (
             <ScrollView
               horizontal
@@ -606,7 +592,7 @@ export default function GrowScreen() {
               })}
               <TouchableOpacity
                 style={[styles.cchip, styles.cchipAdd]}
-                onPress={() => router.push('/(tabs)/discover/communities' as any)}
+                onPress={() => router.push('/(tabs)/connect/communities' as any)}
                 activeOpacity={0.8}
               >
                 <View style={[styles.cchipAva, { backgroundColor: colors.primary + '18' }]}>
@@ -629,12 +615,12 @@ export default function GrowScreen() {
             <Text style={styles.sectionHint}>tap to manage →</Text>
           </Text>
           {friends.length === 0 ? (
-            <Text style={styles.emptyState}>Connect with someone in Connect →</Text>
+            <Text style={styles.emptyState}>Add friends from your communities →</Text>
           ) : (
             <View style={styles.avatarRow}>
               {sortByPresence(friends).slice(0, 5).map((f) => (
                 <View key={f.id} style={styles.avatarWrap}>
-                  <LinearGradient colors={chatGrad(f.profile.display_name ?? '?')} style={styles.avatar}>
+                  <LinearGradient colors={avatarGradient(f.profile.display_name)} style={styles.avatar}>
                     <Text style={styles.avatarText}>
                       {f.profile.display_name?.[0]?.toUpperCase() ?? '?'}
                     </Text>
@@ -651,6 +637,20 @@ export default function GrowScreen() {
               )}
             </View>
           )}
+        </TouchableOpacity>
+
+        {/* Sister — quiet support space */}
+        <TouchableOpacity
+          style={[styles.section, styles.sisterCard]}
+          onPress={() => router.push('/sister-button' as any)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.sisterEmoji}>🕯️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionTitle}>Need to talk?</Text>
+            <Text style={styles.sisterSub}>Sister is here for the heavy days — private, gentle, judgement-free.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </TouchableOpacity>
 
         {/* Zone 4 — My Journey */}

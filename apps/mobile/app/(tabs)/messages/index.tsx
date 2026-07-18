@@ -13,6 +13,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useConnectStore } from '../../../store/connectStore';
 import { useFriendStore, isOnline } from '../../../store/friendStore';
 import { Conversation } from '../../../types';
+import { avatarGradient } from '../../../lib/avatars';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 
 type PartnerProfile = { id: string; display_name: string; username: string };
@@ -24,25 +25,6 @@ type ChatItem = {
   lastMessagePreview: string;
   unreadCount: number;
 };
-
-const GRAD_COLORS = [
-  ['#FF6A2E', '#E81C8E'],
-  ['#8B5CF6', '#E879A6'],
-  ['#FF2F71', '#8B5CF6'],
-  ['#F472B6', '#FF6A2E'],
-  ['#C4476A', '#8B5CF6'],
-  ['#FF8A3D', '#FF2F71'],
-] as const;
-
-function gradFor(seed: number) {
-  return GRAD_COLORS[((seed % GRAD_COLORS.length) + GRAD_COLORS.length) % GRAD_COLORS.length];
-}
-
-function nameToSeed(name: string) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
 
 function formatTime(ts: string | null): string {
   if (!ts) return '';
@@ -289,7 +271,7 @@ export default function MessagesScreen() {
         </View>
         <TouchableOpacity
           style={s.iconBtn}
-          onPress={() => router.push('/(tabs)/discover/communities' as any)}
+          onPress={() => router.push('/(tabs)/messages/new' as any)}
           accessibilityLabel="New message"
         >
           <Ionicons name="create-outline" size={20} color={colors.textPrimary} />
@@ -343,7 +325,7 @@ export default function MessagesScreen() {
               <Text style={s.emptyIcon}>💬</Text>
               <Text style={s.emptyTitle}>No messages yet</Text>
               <Text style={s.emptyText}>
-                Connect with people in the community to start chatting 💜
+                Your people are in your communities — say hi in a feed or add friends from a member list 💜
               </Text>
             </View>
           }
@@ -352,8 +334,7 @@ export default function MessagesScreen() {
             const hasUnread = unread > 0;
             const online = isPartnerOnline(item);
             const name = item.partner?.display_name ?? 'Unknown';
-            const seed = nameToSeed(name);
-            const grad = gradFor(seed);
+            const grad = avatarGradient(name);
             return (
               <TouchableOpacity style={s.row} onPress={() => handleOpen(item)} activeOpacity={0.7}>
                 <View style={s.avaWrap}>

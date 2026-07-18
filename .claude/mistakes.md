@@ -65,3 +65,8 @@
 [ROOT CAUSE] tsconfig paths not configured in each app's tsconfig.json
 [FIX] Add paths: { "@roxy/observability": ["../../packages/observability/src"] } to each app's tsconfig.json
 [PREVENTION] Check tsconfig paths after any new package is added to monorepo
+
+[MISTAKE] PowerShell Set-Content regex replace corrupted emoji/UTF-8 in source files
+[ROOT CAUSE] Windows PowerShell 5.1 Get-Content without -Encoding reads UTF-8 (no BOM) as ANSI; writing back with -Encoding utf8 double-encodes all non-ASCII
+[FIX] git checkout the files, re-apply changes with the Edit tool
+[PREVENTION] Never bulk-rewrite source files via PowerShell string replace; use the Edit tool (encoding-safe) for all source edits

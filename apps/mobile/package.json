@@ -100,6 +100,10 @@
     "setupFilesAfterEnv": [
       "@testing-library/jest-native/extend-expect"
     ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/tests/e2e/"
+    ],
     "globalSetup": "./jest.setup.env.js"
   }
 }

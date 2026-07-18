@@ -34,7 +34,6 @@ export function PostActionRow({
   const likeAnim = usePopAnimation();
   const saveAnim = usePopAnimation();
   const [showReactions, setShowReactions] = useState(false);
-  const likeRef = useRef<View>(null);
 
   const s = StyleSheet.create({
     row: {
@@ -103,7 +102,7 @@ export function PostActionRow({
     setShowReactions(true);
   };
 
-  const handleReact = (emoji: string) => {
+  const handleReact = (_emoji: string) => {
     setShowReactions(false);
     if (!isLiked) {
       likeAnim.pop();
@@ -189,7 +188,7 @@ export function PostActionRow({
         <Modal transparent animationType="fade" onRequestClose={() => setShowReactions(false)}>
           <Pressable style={s.pickerOverlay} onPress={() => setShowReactions(false)}>
             <View style={s.picker}>
-              {REACTIONS.map((emoji, i) => (
+              {REACTIONS.map((emoji) => (
                 <TouchableOpacity
                   key={emoji}
                   style={s.pickerBtn}

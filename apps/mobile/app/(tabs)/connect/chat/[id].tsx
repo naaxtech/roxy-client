@@ -25,21 +25,7 @@ import { GifPicker } from '../../../../components/chat/GifPicker';
 import { QuickReactBar, ReactionChips } from '../../../../components/chat/ReactionBar';
 import { TypingIndicator } from '../../../../components/chat/TypingIndicator';
 import { isOnline } from '../../../../store/friendStore';
-
-const GRAD_COLORS: [string, string][] = [
-  ['#FF6A2E', '#E81C8E'],
-  ['#8B5CF6', '#E879A6'],
-  ['#FF2F71', '#8B5CF6'],
-  ['#F472B6', '#FF6A2E'],
-  ['#C4476A', '#8B5CF6'],
-  ['#FF8A3D', '#FF2F71'],
-];
-
-function gradFor(name: string): [string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return GRAD_COLORS[Math.abs(h) % GRAD_COLORS.length];
-}
+import { avatarGradient } from '../../../../lib/avatars';
 
 function formatTimeSep(iso: string): string {
   const d = new Date(iso);
@@ -96,7 +82,7 @@ export default function ChatScreen() {
 
   const [partnerProfile, setPartnerProfile] = useState<PartnerProfile | null>(null);
   const partnerName = partnerProfile?.display_name || partnerProfile?.username || 'Chat';
-  const partnerGrad = useMemo(() => gradFor(partnerName), [partnerName]);
+  const partnerGrad = useMemo(() => avatarGradient(partnerName), [partnerName]);
   const partnerIsOnline = isOnline(partnerProfile?.last_seen_at ?? null);
 
   const [showTray, setShowTray] = useState(false);
