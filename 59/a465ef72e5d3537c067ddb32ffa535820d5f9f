@@ -1,0 +1,25 @@
+apps/mobile/app/(tabs)/messages/new.tsx
+  s_093307bfc37bee::t_2ff9dbaf71c521 1-162
+apps/mobile/app/(tabs)/messages/index.tsx
+  s_093307bfc37bee::t_ea9a1e9c7d2e3c 292
+  s_093307bfc37bee::t_d6d669be78dab4 346
+apps/mobile/__tests__/MessagesNew.test.tsx
+  s_093307bfc37bee::t_fcbd9116e4cf6c 1-36,39-49
+  s_093307bfc37bee::t_2cf43620f91e5a 37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "59a465ef72e5d3537c067ddb32ffa535820d5f9f",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
