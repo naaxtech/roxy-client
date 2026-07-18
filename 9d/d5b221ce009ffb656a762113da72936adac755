@@ -1,0 +1,21 @@
+apps/mobile/components/ui/SectionHeader.tsx
+  s_093307bfc37bee::t_9930da50a69686 10-11,15,22
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_093307bfc37bee::t_fa5fb677bd3cb1 15,552-558
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9dd5b221ce009ffb656a762113da72936adac755",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
