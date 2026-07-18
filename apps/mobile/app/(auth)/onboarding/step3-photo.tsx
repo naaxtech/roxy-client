@@ -7,6 +7,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { logError, logBreadcrumb } from '../../../lib/errorLogger';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { RoxyWordmark } from '../../../components/ui/RoxyWordmark';
 
 export default function Step3Photo() {
   const colors = useThemeColors();
@@ -71,6 +72,7 @@ export default function Step3Photo() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
+        <RoxyWordmark height={34} style={{ marginBottom: 10 }} />
         <Text style={styles.step}>Step 3 of 4</Text>
         <Text style={styles.headline}>Add a photo</Text>
         <Text style={styles.sub}>Optional, but it helps people connect with you.</Text>

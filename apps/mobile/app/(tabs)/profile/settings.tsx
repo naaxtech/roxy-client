@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { supabase, callEdgeFunction } from '../../../lib/supabase';
+import { confirmAction } from '../../../lib/confirm';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { useThemeStore } from '../../../store/themeStore';
 import { ThemeToggle } from '../../../components/ui/ThemeToggle';
@@ -27,23 +28,12 @@ export default function SettingsScreen() {
     );
   }
 
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign out',
-          style: 'destructive',
-          onPress: async () => {
-            await supabase.auth.signOut();
-            useAuthStore.getState().signOut();
-            router.replace('/(auth)/welcome');
-          },
-        },
-      ]
-    );
+  const handleSignOut = async () => {
+    const confirmed = await confirmAction('Sign out', 'Are you sure you want to sign out?', 'Sign out');
+    if (!confirmed) return;
+    await supabase.auth.signOut();
+    useAuthStore.getState().signOut();
+    router.replace('/(auth)/welcome');
   };
 
   const handleExportData = async () => {

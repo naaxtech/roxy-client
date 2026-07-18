@@ -6,6 +6,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { callEdgeFunction } from '../../../lib/supabase';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { RoxyWordmark } from '../../../components/ui/RoxyWordmark';
 import { logError, logBreadcrumb } from '../../../lib/errorLogger';
 
 const GOALS = [
@@ -68,6 +69,7 @@ export default function Step4Status() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
+        <RoxyWordmark height={34} style={{ marginBottom: 10 }} />
         <Text style={styles.step}>Step 4 of 4</Text>
         <Text style={styles.headline}>What are you here for?</Text>
 
