@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Switch, ActivityIndicator, Animated, ScrollView, Share, Platform,
+  View, Text, StyleSheet, TouchableOpacity, Switch, ActivityIndicator, Animated, ScrollView, Share, Platform, TextInput,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
@@ -90,6 +90,11 @@ export default function ConnectScreen() {
   }, [tabParam]);
 
   const [posts, setPosts] = useState<PostRow[]>([]);
+  // "communityId:userId" pairs for admins/moderators of joined communities —
+  // the Connect feed is the admins' promotion surface; member posts live
+  // inside each community.
+  const [adminPairs, setAdminPairs] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState('');
   const [feedError, setFeedError] = useState<string | null>(null);
   const [gameNames, setGameNames] = useState<Record<string, string>>({});
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -119,6 +124,13 @@ export default function ConnectScreen() {
       backgroundColor: colors.roxy,
     },
     browseBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+    searchRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      backgroundColor: colors.surface, borderRadius: 14,
+      marginHorizontal: 16, marginTop: 8, marginBottom: 2,
+      paddingHorizontal: 12, paddingVertical: 8,
+    },
+    searchInput: { color: colors.textPrimary, fontSize: 14, flex: 1, paddingVertical: 0 },
 
     // Suggested communities rail (feed header)
     railWrap: { marginBottom: 6 },
@@ -288,18 +300,26 @@ export default function ConnectScreen() {
     }
     setLoadingFeed(true);
     setFeedError(null);
-    let query = supabase
+    let postsQuery = supabase
       .from('posts')
       .select(POST_WITH_AUTHOR_AND_COMMUNITY)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(50);
     if (selectedCommunityId) {
-      query = query.eq('community_id', selectedCommunityId);
+      postsQuery = postsQuery.eq('community_id', selectedCommunityId);
     } else {
-      query = query.in('community_id', ids);
+      postsQuery = postsQuery.in('community_id', ids);
     }
-    const { data, error } = await query;
+    const [{ data, error }, { data: adminRows }] = await Promise.all([
+      postsQuery,
+      supabase
+        .from('community_members')
+        .select('community_id, user_id')
+        .in('community_id', ids)
+        .in('role', ['admin', 'moderator']),
+    ]);
+    setAdminPairs(new Set((adminRows ?? []).map((r: { community_id: string; user_id: string }) => `${r.community_id}:${r.user_id}`)));
     if (error) {
       logError(error, 'connect.loadFeed');
       setFeedError(error.message);
@@ -411,6 +431,38 @@ export default function ConnectScreen() {
 
   const hasJoinedCommunities = joinedIds.size > 0;
 
+  // Feed shows admin/moderator posts only (community promotion surface);
+  // the search box filters whichever subtab is active.
+  const q = query.trim().toLowerCase();
+  const displayedPosts = useMemo(
+    () => posts
+      .filter((p) => adminPairs.has(`${p.community_id}:${p.author_id}`))
+      .filter((p) => !q
+        || (p.content ?? '').toLowerCase().includes(q)
+        || (p.profiles?.display_name ?? '').toLowerCase().includes(q)
+        || (p.communities?.name ?? '').toLowerCase().includes(q)),
+    [posts, adminPairs, q],
+  );
+  const displayedEvents = useMemo(
+    () => events.filter((e) => !q
+      || e.title.toLowerCase().includes(q)
+      || (e.communities?.name ?? '').toLowerCase().includes(q)
+      || (e.location_text ?? '').toLowerCase().includes(q)),
+    [events, q],
+  );
+  const displayedGames = useMemo(
+    () => games.filter((g) => !q
+      || g.name.toLowerCase().includes(q)
+      || (g.description ?? '').toLowerCase().includes(q)),
+    [games, q],
+  );
+  const displayedRooms = useMemo(
+    () => rooms.filter((r) => !q
+      || r.name.toLowerCase().includes(q)
+      || (r.communities?.name ?? '').toLowerCase().includes(q)),
+    [rooms, q],
+  );
+
   // Discovery comes to the feed: suggest unjoined communities while the
   // user's community list is still small.
   const suggestions = joinedIds.size < 5
@@ -489,6 +541,30 @@ export default function ConnectScreen() {
         ))}
       </View>
 
+      {/* Quick search — filters the active subtab (Communities has its own) */}
+      {subTab !== 'communities' && (
+        <View style={styles.searchRow}>
+          <Ionicons name="search-outline" size={16} color={colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={
+              subTab === 'feed' ? 'Search announcements…'
+              : subTab === 'events' ? 'Search events…'
+              : 'Search rooms & games…'
+            }
+            placeholderTextColor={colors.textMuted}
+            value={query}
+            onChangeText={setQuery}
+            accessibilityLabel="Search"
+          />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => setQuery('')} accessibilityLabel="Clear search">
+              <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
       {/* Feed */}
       {subTab === 'feed' && (
@@ -504,7 +580,7 @@ export default function ConnectScreen() {
         ) : (
           <FlashList
             ref={feedListRef}
-            data={posts}
+            data={displayedPosts}
             keyExtractor={(item) => item.id}
             estimatedItemSize={360}
             onScroll={(e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; }}
@@ -546,11 +622,13 @@ export default function ConnectScreen() {
             )}
             ListEmptyComponent={
               <EmptyState
-                emoji="📝"
-                title={feedError ? 'Could not load feed' : 'No posts yet'}
+                emoji="📣"
+                title={feedError ? 'Could not load feed' : q ? 'No matches' : 'No announcements yet'}
                 body={feedError
                   ? 'Pull to refresh or try again.'
-                  : 'Be the first to post in your communities!'}
+                  : q
+                    ? 'Try a different search.'
+                    : 'Admins post community news here. Open a community to see all member posts.'}
               />
             }
           />
@@ -570,7 +648,7 @@ export default function ConnectScreen() {
           <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
         ) : (
           <FlashList
-            data={events}
+            data={displayedEvents}
             keyExtractor={(item) => item.id}
             estimatedItemSize={100}
             extraData={rsvpIds}
@@ -659,10 +737,10 @@ export default function ConnectScreen() {
             </View>
             {loadingRooms ? (
               <ActivityIndicator color={colors.roxy} style={{ marginVertical: 16 }} />
-            ) : games.length === 0 ? (
-              <Text style={styles.roomEmpty}>No games available</Text>
+            ) : displayedGames.length === 0 ? (
+              <Text style={styles.roomEmpty}>{q ? 'No games match your search' : 'No games available'}</Text>
             ) : (
-              games.map((game) => (
+              displayedGames.map((game) => (
                 <TouchableOpacity
                   key={game.id}
                   style={styles.gameCard}
@@ -688,10 +766,10 @@ export default function ConnectScreen() {
             </View>
             {loadingRooms ? (
               <ActivityIndicator color={colors.roxy} style={{ marginVertical: 16 }} />
-            ) : rooms.length === 0 ? (
-              <Text style={styles.roomEmpty}>No rooms active right now</Text>
+            ) : displayedRooms.length === 0 ? (
+              <Text style={styles.roomEmpty}>{q ? 'No rooms match your search' : 'No rooms active right now'}</Text>
             ) : (
-              rooms.map((room) => (
+              displayedRooms.map((room) => (
                 <CommunityRoomCard
                   key={room.id}
                   id={room.id}

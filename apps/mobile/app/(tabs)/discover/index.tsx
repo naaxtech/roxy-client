@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -90,6 +90,7 @@ export default function PlayScreen() {
   const [communityGames, setCommunityGames] = useState<CommunityGame[]>([]);
   const [liveRooms, setLiveRooms] = useState<LiveRoom[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
 
   useEffect(() => { void hydrate(user?.id); }, [user?.id]);
 
@@ -148,6 +149,13 @@ export default function PlayScreen() {
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+    searchRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      backgroundColor: colors.surface, borderRadius: 14,
+      marginHorizontal: 16, marginBottom: 10,
+      paddingHorizontal: 12, paddingVertical: 8,
+    },
+    searchInput: { color: colors.textPrimary, fontSize: 14, flex: 1, paddingVertical: 0 },
     iconBtn: {
       width: 38, height: 38, borderRadius: 19,
       backgroundColor: colors.surface,
@@ -215,6 +223,14 @@ export default function PlayScreen() {
     { id: 'tot', name: 'This or That', short_description: 'Rapid-fire taste check', category: 'trivia', publisher_type: 'roxy', url: null, thumbnail_url: null },
   ];
 
+  const q = query.trim().toLowerCase();
+  const matchesGame = (g: Game | CommunityGame) => !q
+    || g.name.toLowerCase().includes(q)
+    || (g.short_description ?? '').toLowerCase().includes(q)
+    || ('community_name' in g && (g.community_name ?? '').toLowerCase().includes(q));
+  const shownOriginals = displayOriginals.filter(matchesGame);
+  const shownCommunityGames = communityGames.filter(matchesGame);
+
   return (
     <SafeAreaView style={s.container}>
       {/* Header */}
@@ -231,6 +247,24 @@ export default function PlayScreen() {
           </TouchableOpacity>
         }
       />
+
+      {/* Quick search across all games */}
+      <View style={s.searchRow}>
+        <Ionicons name="search-outline" size={16} color={colors.textMuted} />
+        <TextInput
+          style={s.searchInput}
+          placeholder="Search games…"
+          placeholderTextColor={colors.textMuted}
+          value={query}
+          onChangeText={setQuery}
+          accessibilityLabel="Search games"
+        />
+        {query.length > 0 && (
+          <TouchableOpacity onPress={() => setQuery('')} accessibilityLabel="Clear search">
+            <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Speed Dating Hero */}
@@ -306,7 +340,7 @@ export default function PlayScreen() {
         <View style={s.section}>
           <SectionHeader title="Roxy Originals" icon="sparkles" />
           <View style={s.gameGrid}>
-            {displayOriginals.slice(0, 4).map((g, i) => (
+            {shownOriginals.slice(0, 4).map((g, i) => (
               <View key={g.id} style={{ width: '50%' }}>
                 <GameTile
                   emoji={CATEGORY_EMOJI[g.category] ?? '🎮'}
@@ -335,11 +369,15 @@ export default function PlayScreen() {
               ctaLabel="Browse communities →"
               onCtaPress={() => router.push('/communities' as any)}
             />
-          ) : communityGames.length === 0 ? (
-            <EmptyState emoji="🎮" title="No community games yet" body="Your communities haven't added games yet." />
+          ) : shownCommunityGames.length === 0 ? (
+            <EmptyState
+              emoji="🎮"
+              title={q ? 'No games match your search' : 'No community games yet'}
+              body={q ? 'Try a different search.' : "Your communities haven't added games yet."}
+            />
           ) : (
             <View style={s.gameGrid}>
-              {communityGames.slice(0, 4).map((g, i) => (
+              {shownCommunityGames.slice(0, 4).map((g, i) => (
                 <View key={g.id + i} style={{ width: '50%' }}>
                   <GameTile
                     emoji={CATEGORY_EMOJI[g.category] ?? '🎮'}
