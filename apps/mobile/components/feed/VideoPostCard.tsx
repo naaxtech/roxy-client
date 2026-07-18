@@ -15,6 +15,7 @@ interface VideoPostCardProps {
   onComment: () => void;
   onShare: () => void;
   onPress: () => void;
+  onAuthorPress?: () => void;
 }
 
 function formatDuration(secs: number): string {
@@ -26,7 +27,7 @@ function formatDuration(secs: number): string {
 const ASPECT_HEIGHTS: Record<string, number> = { '4:5': 375, '16:9': 210, '1:1': 300 };
 
 export function VideoPostCard({
-  post, isLiked, isSaved, onLike, onSave, onComment, onShare, onPress,
+  post, isLiked, isSaved, onLike, onSave, onComment, onShare, onPress, onAuthorPress,
 }: VideoPostCardProps) {
   const colors = useThemeColors();
 
@@ -69,7 +70,7 @@ export function VideoPostCard({
 
   return (
     <View testID="video-card" style={styles.card}>
-      <TouchableOpacity onPress={onPress} activeOpacity={0.95} style={styles.authorRow}>
+      <TouchableOpacity onPress={onAuthorPress ?? onPress} activeOpacity={0.95} style={styles.authorRow}>
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarLetter}>
             {(post.profiles?.display_name?.[0] ?? '?').toUpperCase()}

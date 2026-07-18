@@ -20,7 +20,7 @@ import { FeedCard } from '../../../../components/feed/FeedCard';
 import { EmptyState } from '../../../../components/ui/EmptyState';
 import { useFeedStore } from '../../../../store/feedStore';
 import { normalizePost } from '../../../../lib/posts';
-import { contentDetailPath } from '../../../../lib/contentNavigation';
+import { contentDetailPath, linkedEntityPath } from '../../../../lib/contentNavigation';
 import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../../lib/supabaseQueries';
 import { EventsCalendar } from '../../../../components/events/EventsCalendar';
 
@@ -482,6 +482,12 @@ export default function CommunityDetailScreen() {
               <FeedCard
                 key={post.id}
                 post={post}
+                onLinkPress={() => {
+                  void linkedEntityPath(post).then((path) => {
+                    router.push((path ?? contentDetailPath(post.id, post.post_type)) as any);
+                  });
+                }}
+                onAuthorPress={() => router.push(`/user/${post.author_id}` as any)}
                 isLiked={likedPostIds.has(post.id)}
                 isSaved={savedPostIds.has(post.id)}
                 onLike={() => void feedToggleLike(post.id)}

@@ -17,7 +17,7 @@ import { useThemeColors } from '../../../hooks/useThemeColors';
 import { GAME_ROUTES } from '../../../lib/games';
 import { logError } from '../../../lib/errorLogger';
 import { normalizePost } from '../../../lib/posts';
-import { contentDetailPath } from '../../../lib/contentNavigation';
+import { contentDetailPath, linkedEntityPath } from '../../../lib/contentNavigation';
 import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../lib/supabaseQueries';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
@@ -616,6 +616,12 @@ export default function ConnectScreen() {
                 <FeedCard
                   post={item}
                   linkEntityName={item.link_entity_id ? gameNames[item.link_entity_id] : undefined}
+                  onLinkPress={() => {
+                    void linkedEntityPath(item).then((path) => {
+                      router.push((path ?? contentDetailPath(item.id, item.post_type)) as any);
+                    });
+                  }}
+                  onAuthorPress={() => router.push(`/user/${item.author_id}` as any)}
                   isLiked={likedPostIds.has(item.id)}
                   isSaved={savedPostIds.has(item.id)}
                   onLike={() => void toggleLike(item.id)}

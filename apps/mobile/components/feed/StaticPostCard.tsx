@@ -17,12 +17,13 @@ interface StaticPostCardProps {
   onComment: () => void;
   onShare: () => void;
   onPress: () => void;
+  onAuthorPress?: () => void;
 }
 
 const CAPTION_THRESHOLD = 120;
 
 export function StaticPostCard({
-  post, isLiked, isSaved, onLike, onSave, onComment, onShare, onPress,
+  post, isLiked, isSaved, onLike, onSave, onComment, onShare, onPress, onAuthorPress,
 }: StaticPostCardProps) {
   const colors = useThemeColors();
   const [expanded, setExpanded] = useState(false);
@@ -96,7 +97,13 @@ export function StaticPostCard({
 
   return (
     <View testID="static-card" style={styles.card}>
-      <TouchableOpacity testID="static-card-press" onPress={onPress} activeOpacity={0.95} style={styles.authorRow}>
+      <TouchableOpacity
+        testID="static-card-press"
+        onPress={onAuthorPress ?? onPress}
+        activeOpacity={0.95}
+        style={styles.authorRow}
+        accessibilityLabel={`View ${post.profiles?.display_name ?? 'author'}'s profile`}
+      >
         <LinearGradient colors={grad} style={styles.avatarCircle}>
           <Text style={styles.avatarLetter}>
             {(authorName[0] ?? '?').toUpperCase()}

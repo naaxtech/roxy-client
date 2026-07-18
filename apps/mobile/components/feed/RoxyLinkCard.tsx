@@ -15,6 +15,9 @@ interface RoxyLinkCardProps {
   onComment: () => void;
   onShare: () => void;
   onPress: () => void;
+  /** The CTA button (Join Game etc.) — routes into the linked entity, not the post. */
+  onCtaPress?: () => void;
+  onAuthorPress?: () => void;
 }
 
 const VARIANT_CONFIG: Record<LinkType, { icon: string; ctaLabel: string; countLabel: string }> = {
@@ -25,7 +28,7 @@ const VARIANT_CONFIG: Record<LinkType, { icon: string; ctaLabel: string; countLa
 
 export function RoxyLinkCard({
   post, entityName, participantCount,
-  isLiked, isSaved, onLike, onSave, onComment, onShare, onPress,
+  isLiked, isSaved, onLike, onSave, onComment, onShare, onPress, onCtaPress, onAuthorPress,
 }: RoxyLinkCardProps) {
   const colors = useThemeColors();
 
@@ -68,14 +71,19 @@ export function RoxyLinkCard({
 
   return (
     <View testID="roxy-link-card" style={styles.card}>
-      <View style={styles.authorRow}>
+      <TouchableOpacity
+        style={styles.authorRow}
+        onPress={onAuthorPress ?? onPress}
+        activeOpacity={0.8}
+        accessibilityLabel={`View ${post.profiles?.display_name ?? 'author'}'s profile`}
+      >
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarLetter}>
             {(post.profiles?.display_name?.[0] ?? '?').toUpperCase()}
           </Text>
         </View>
         <Text style={styles.authorName}>{post.profiles?.display_name ?? ''}</Text>
-      </View>
+      </TouchableOpacity>
 
       <View style={styles.linkBox}>
         <Text style={styles.linkIcon}>{config.icon}</Text>
@@ -88,7 +96,7 @@ export function RoxyLinkCard({
         <TouchableOpacity
           testID="roxy-link-cta"
           style={styles.ctaBtn}
-          onPress={onPress}
+          onPress={onCtaPress ?? onPress}
           accessibilityLabel={config.ctaLabel}
         >
           <Text style={styles.ctaText}>{config.ctaLabel}</Text>
