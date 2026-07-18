@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { format, isToday, isYesterday } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
+import { freshChannel } from '../../../lib/realtimeChannel';
 import { useAuthStore } from '../../../store/authStore';
 import { useConnectStore } from '../../../store/connectStore';
 import { useFriendStore, isOnline } from '../../../store/friendStore';
@@ -139,8 +140,7 @@ export default function MessagesScreen() {
   useEffect(() => {
     if (!user || chats.length === 0) return;
     const convIds = chats.map((c) => c.id);
-    const channel = supabase
-      .channel('messages-tab-unread')
+    const channel = freshChannel('messages-tab-unread')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const msg = payload.new as { conversation_id: string; sender_id: string; content?: string };
         if (!convIds.includes(msg.conversation_id)) return;

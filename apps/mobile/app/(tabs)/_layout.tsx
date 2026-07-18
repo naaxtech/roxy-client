@@ -9,6 +9,7 @@ import { useConnectStore } from '../../store/connectStore';
 import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
 import { supabase } from '../../lib/supabase';
+import { freshChannel } from '../../lib/realtimeChannel';
 
 export default function TabLayout() {
   const colors = useThemeColors();
@@ -40,8 +41,7 @@ export default function TabLayout() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const channel = supabase
-      .channel(`global-messages:${user.id}`)
+    const channel = freshChannel(`global-messages:${user.id}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },

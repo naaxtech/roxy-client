@@ -1,10 +1,10 @@
 export const IDENTITY_LABELS = [
   'Lesbian', 'Bisexual', 'Queer', 'Pansexual', 'Trans',
-  'Non-binary', 'Questioning', 'WLW ally', 'Prefer not to say',
+  'Non-binary', 'Questioning', 'WLW ally',
 ] as const;
 
 export const PRONOUNS = [
-  'she/her', 'they/them', 'she/they', 'any/all', 'other',
+  'she/her', 'they/them', 'she/they',
 ] as const;
 
 export const INTERESTS = [

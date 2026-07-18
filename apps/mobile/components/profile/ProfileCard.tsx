@@ -63,7 +63,10 @@ export function ProfileCard({
   const level = getLevelInfo(points);
   const initials = (profile.display_name ?? '?').charAt(0).toUpperCase();
   const hasPreset = !!profile.avatar_url && isPresetAvatar(profile.avatar_url);
-  const chips = [...(profile.pronouns ?? []), ...(profile.identity_labels ?? [])];
+  // Retired options linger in old profile rows — never display them.
+  const RETIRED_CHIPS = new Set(['any/all', 'other', 'Prefer not to say']);
+  const chips = [...(profile.pronouns ?? []), ...(profile.identity_labels ?? [])]
+    .filter((c) => !RETIRED_CHIPS.has(c));
 
   const s = StyleSheet.create({
     scroll: { flex: 1 },

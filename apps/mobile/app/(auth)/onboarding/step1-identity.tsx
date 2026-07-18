@@ -103,7 +103,8 @@ export default function Step1Identity() {
         />
 
         <Text style={styles.label}>Identity</Text>
-        <ChipSelector options={IDENTITY_LABELS} selected={labels} onToggle={(v) => setLabels((p) => p.includes(v) ? p.filter((x) => x !== v) : [...p, v])} />
+        {/* Identity is single-choice: picking one replaces the previous. */}
+        <ChipSelector options={IDENTITY_LABELS} selected={labels} onToggle={(v) => setLabels((p) => (p.includes(v) ? [] : [v]))} />
 
         <Text style={[styles.label, { marginTop: 16 }]}>Pronouns</Text>
         <ChipSelector options={PRONOUNS} selected={pronouns} onToggle={(v) => setPronouns((p) => p.includes(v) ? p.filter((x) => x !== v) : [...p, v])} />

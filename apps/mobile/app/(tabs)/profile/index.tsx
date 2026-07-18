@@ -196,7 +196,6 @@ export default function ProfileScreen() {
           savedBusinesses={savedBusinesses}
           onOpenBusiness={handleOpenBiz}
           onEdit={() => router.push('/(tabs)/profile/edit' as any)}
-          onSettings={() => router.push('/(tabs)/profile/settings' as any)}
         />
 
         {user?.id && (

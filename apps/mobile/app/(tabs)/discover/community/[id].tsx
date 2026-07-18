@@ -23,6 +23,7 @@ import { normalizePost } from '../../../../lib/posts';
 import { contentDetailPath, linkedEntityPath } from '../../../../lib/contentNavigation';
 import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../../lib/supabaseQueries';
 import { EventsCalendar } from '../../../../components/events/EventsCalendar';
+import { freshChannel } from '../../../../lib/realtimeChannel';
 
 type SubTab = 'posts' | 'events' | 'games' | 'rooms';
 
@@ -179,8 +180,7 @@ export default function CommunityDetailScreen() {
 
     if (!id) return;
     // Realtime: keep participant_count and status live while on this screen
-    const channel = supabase
-      .channel(`community-rooms-${id}`)
+    const channel = freshChannel(`community-rooms-${id}`)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',

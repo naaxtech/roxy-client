@@ -12,6 +12,7 @@ import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useFocusEffect } from '@react-navigation/native';
 import { recordDailyCheckin } from '../../../lib/streaks';
 import { fetchUnreadNotificationCount } from '../../../lib/notifications';
+import { freshChannel } from '../../../lib/realtimeChannel';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
@@ -101,8 +102,7 @@ export default function GrowScreen() {
   // (never table-wide); focus refetch above corrects any drift.
   useEffect(() => {
     if (!user?.id) return;
-    const channel = supabase
-      .channel(`notifications:${user.id}`)
+    const channel = freshChannel(`notifications:${user.id}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },

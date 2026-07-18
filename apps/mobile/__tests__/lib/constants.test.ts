@@ -12,12 +12,15 @@ describe('constants', () => {
     expect(INTERESTS).toHaveLength(24);
   });
 
-  it('IDENTITY_LABELS has exactly 9 items', () => {
-    expect(IDENTITY_LABELS).toHaveLength(9);
+  it('IDENTITY_LABELS has exactly 8 items and no opt-out option', () => {
+    expect(IDENTITY_LABELS).toHaveLength(8);
+    expect(IDENTITY_LABELS).not.toContain('Prefer not to say');
   });
 
-  it('PRONOUNS has exactly 5 items', () => {
-    expect(PRONOUNS).toHaveLength(5);
+  it('PRONOUNS has exactly 3 items and no any/all or other', () => {
+    expect(PRONOUNS).toHaveLength(3);
+    expect(PRONOUNS).not.toContain('any/all');
+    expect(PRONOUNS).not.toContain('other');
   });
 
   it('MAX_INTERESTS is 8', () => {

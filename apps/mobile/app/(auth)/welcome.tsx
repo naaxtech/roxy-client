@@ -76,11 +76,6 @@ export default function WelcomeScreen() {
   const styles = StyleSheet.create({
     container: { flex: 1 },
     flex: { flex: 1 },
-    // Decorative blobs — depth on the gradient without competing with content.
-    blob: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.10)' },
-    blobA: { width: 260, height: 260, top: -80, right: -70 },
-    blobB: { width: 180, height: 180, top: 140, left: -90, backgroundColor: 'rgba(255,255,255,0.07)' },
-    blobC: { width: 120, height: 120, top: 60, right: 40, backgroundColor: 'rgba(26,10,46,0.10)' },
 
     hero: {
       flex: 1,
@@ -209,10 +204,6 @@ export default function WelcomeScreen() {
       style={styles.container}
       testID="welcome-screen"
     >
-      <View style={[styles.blob, styles.blobA]} pointerEvents="none" />
-      <View style={[styles.blob, styles.blobB]} pointerEvents="none" />
-      <View style={[styles.blob, styles.blobC]} pointerEvents="none" />
-
       <SafeAreaView style={styles.flex} edges={['top']}>
         <Animated.View
           style={[
@@ -225,7 +216,7 @@ export default function WelcomeScreen() {
             },
           ]}
         >
-          <RoxyWordmark variant="white" height={compactHero ? 64 : 96} />
+          <RoxyWordmark variant="primary" height={compactHero ? 88 : 150} />
           {!compactHero && (
             <Text style={styles.tagline}>Your community. Your story.</Text>
           )}

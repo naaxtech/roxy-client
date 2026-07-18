@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, Linking, Animated } from 'react-native';
+import { usePopIn } from '../ui/popIn';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { Business, BusinessPhoto } from '../../types';
@@ -32,6 +33,7 @@ export function BusinessDetailSheet({
   onViewOrders,
 }: BusinessDetailSheetProps) {
   const colors = useThemeColors();
+  const popStyle = usePopIn(business !== null);
   const hasLinks = !!(business?.website_url || business?.instagram_handle);
   const [activeTab, setActiveTab] = useState<Tab>('about');
   const [showCart, setShowCart] = useState(false);
@@ -80,24 +82,27 @@ export function BusinessDetailSheet({
   const styles = StyleSheet.create({
     overlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-      justifyContent: 'flex-end',
+      backgroundColor: 'rgba(26,10,46,0.6)',
+      justifyContent: 'center',
+      padding: 14,
     },
     sheet: {
       backgroundColor: colors.background,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      paddingTop: 12,
-      maxHeight: '88%',
-      flex: 1,
+      borderRadius: 24,
+      paddingTop: 8,
+      maxHeight: '94%',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.35, shadowRadius: 28, elevation: 24,
     },
-    handle: {
-      width: 40,
-      height: 4,
-      backgroundColor: colors.textMuted,
-      borderRadius: 2,
-      alignSelf: 'center',
-      marginBottom: 16,
+    backRow: {
+      paddingHorizontal: 12,
+      paddingTop: 6,
+      paddingBottom: 2,
+    },
+    backBtn: {
+      width: 40, height: 40, borderRadius: 20,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.surface,
     },
     headerRow: {
       flexDirection: 'row',
@@ -190,9 +195,17 @@ export function BusinessDetailSheet({
     >
       {business && (
         <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            {/* Handle */}
-            <View style={styles.handle} />
+          <Animated.View style={[styles.sheet, popStyle]}>
+            {/* Back */}
+            <View style={styles.backRow}>
+              <TouchableOpacity
+                style={styles.backBtn}
+                onPress={onClose}
+                accessibilityLabel="Back"
+              >
+                <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
 
             {/* Header row */}
             <View style={styles.headerRow}>
@@ -334,11 +347,7 @@ export function BusinessDetailSheet({
               </View>
             )}
 
-            {/* Close button */}
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose} accessibilityLabel="Close business detail">
-              <Ionicons name="close" size={20} color={colors.textMuted} />
-            </TouchableOpacity>
-          </View>
+          </Animated.View>
 
           {/* Cart drawer */}
           <CartDrawer

@@ -159,11 +159,10 @@ export default function EditProfileScreen() {
     catch (e) { logError(e, 'editProfile_togglePronoun'); Alert.alert('Error', 'Could not save pronouns'); }
   };
 
+  // Identity is single-choice: picking one replaces the previous.
   const toggleIdentity = async (label: string) => {
     const current = profile.identity_labels ?? [];
-    const updated = current.includes(label)
-      ? current.filter((l) => l !== label)
-      : [...current, label];
+    const updated = current.includes(label) ? [] : [label];
     try { await updateProfile({ identity_labels: updated }); }
     catch (e) { logError(e, 'editProfile_toggleIdentity'); Alert.alert('Error', 'Could not save identity labels'); }
   };
