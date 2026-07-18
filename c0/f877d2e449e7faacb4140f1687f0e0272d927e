@@ -1,0 +1,24 @@
+apps/mobile/app/(tabs)/profile/index.tsx
+  s_093307bfc37bee::t_3330d561570c8f 173-190
+  s_093307bfc37bee::t_5832650120f1e9 96-105
+apps/mobile/app/(tabs)/discover/index.tsx
+  s_093307bfc37bee::t_5f25e1eb16bde8 34-38
+  s_093307bfc37bee::t_404abb23f62dda 3
+  s_093307bfc37bee::t_9b99ecaa0c3aa3 123-124,130,132-144,152-155,158-161,233-262,339-341,429-430,434-436,438-440,451-491
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c0f877d2e449e7faacb4140f1687f0e0272d927e",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
