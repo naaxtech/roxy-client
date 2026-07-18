@@ -296,7 +296,7 @@ export default function PlayScreen() {
                 <TouchableOpacity
                   key={room.id}
                   style={[s.liveRow, i === liveRooms.length - 1 && { borderBottomWidth: 0 }]}
-                  onPress={() => router.push(`/(tabs)/connect` as any)}
+                  onPress={() => router.push(`/(tabs)/connect/community-room-session?room_id=${room.id}` as any)}
                   activeOpacity={0.8}
                 >
                   <View style={s.liveEmoji}>
