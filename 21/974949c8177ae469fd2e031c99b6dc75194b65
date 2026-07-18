@@ -1,0 +1,20 @@
+apps/mobile/app/(tabs)/discover/index.tsx
+  s_093307bfc37bee::t_987e4d507d25c9 13-15
+  s_093307bfc37bee::t_2d633f3099783a 221-233,273-278,307,325-330,332-337,339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "21974949c8177ae469fd2e031c99b6dc75194b65",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
