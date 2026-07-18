@@ -7,17 +7,19 @@ type Props = {
   icon?: keyof typeof Ionicons.glyphMap;
   linkLabel?: string;
   onLinkPress?: () => void;
+  /** false when the parent container already provides horizontal padding. */
+  inset?: boolean;
 };
 
 /** Standard section bar: icon + bold title left, roxy-colored link right. */
-export function SectionHeader({ title, icon, linkLabel, onLinkPress }: Props) {
+export function SectionHeader({ title, icon, linkLabel, onLinkPress, inset = true }: Props) {
   const colors = useThemeColors();
   const styles = StyleSheet.create({
     bar: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 18,
+      paddingHorizontal: inset ? 18 : 0,
       marginBottom: 10,
     },
     name: { flexDirection: 'row', alignItems: 'center', gap: 6 },
