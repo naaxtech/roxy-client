@@ -1,0 +1,25 @@
+apps/mobile/__tests__/streaks.test.ts
+  s_093307bfc37bee::t_8b662758844a4d 1-31
+supabase/migrations/056_login_streaks.sql
+  s_093307bfc37bee::t_fe4e35cee4e833 1-50
+apps/mobile/lib/streaks.ts
+  s_093307bfc37bee::t_cd274ae370f4c0 1-16
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_093307bfc37bee::t_f9f879f4a80bb9 12,93-98,355,452-454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b5fe6cf0a8ebbfce34d5b556b7b9b138099cc241",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
