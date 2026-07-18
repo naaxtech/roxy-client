@@ -1,0 +1,45 @@
+apps/mobile/components/ui/popIn.ts
+  s_093307bfc37bee::t_baba8666ae8861 1-25
+apps/mobile/components/build/BusinessDetailSheet.tsx
+  s_093307bfc37bee::t_573369fe2ad4ce 3
+  s_093307bfc37bee::t_248c03dc9dc194 2
+  s_093307bfc37bee::t_36514045e8827d 36,85-87,91-95,97-105,198-208,350
+apps/mobile/lib/realtimeChannel.ts
+  s_093307bfc37bee::t_83b9935b014658 1-18
+apps/mobile/components/profile/ProfileCard.tsx
+  s_093307bfc37bee::t_ec2732aaa150a6 66-69
+apps/mobile/app/(tabs)/profile/edit.tsx
+  s_093307bfc37bee::t_afd3b62ceba42c 162,165
+apps/mobile/app/(auth)/onboarding/step1-identity.tsx
+  s_093307bfc37bee::t_cf2a918c0e32b4 106-107
+apps/mobile/app/(auth)/welcome.tsx
+  s_093307bfc37bee::t_b9cd17b9929528 219
+apps/mobile/app/(tabs)/_layout.tsx
+  s_093307bfc37bee::t_f72d687134e982 12,44
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_093307bfc37bee::t_132e2c794f8e2f 26,183
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_093307bfc37bee::t_71f35d837a524a 15,105
+apps/mobile/app/(tabs)/messages/index.tsx
+  s_093307bfc37bee::t_7bdc3841e6e1bf 12,143
+apps/mobile/lib/constants.ts
+  s_093307bfc37bee::t_01cc4e8a3eb82e 3,7
+apps/mobile/__tests__/lib/constants.test.ts
+  s_093307bfc37bee::t_c891f60eb5857a 15-17,20-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3e959fa04bad75f3c5191978cf8d9248497b19f3",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
