@@ -22,6 +22,7 @@ interface RoomModalProps {
     community_id: string;
     scheduled_at: string | null;
     max_participants: number | null;
+    banner_url?: string | null;
   };
 }
 
@@ -43,6 +44,19 @@ export function RoomModal({ communities, onClose, onCreated, editRoom }: RoomMod
   );
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(editRoom?.banner_url ?? null);
+
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    if (file && file.size > 3 * 1024 * 1024) {
+      setError('Banner must be under 3MB');
+      return;
+    }
+    setError(null);
+    setBannerFile(file);
+    setBannerPreview(file ? URL.createObjectURL(file) : editRoom?.banner_url ?? null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,14 +82,42 @@ export function RoomModal({ communities, onClose, onCreated, editRoom }: RoomMod
       },
     });
 
-    setLoading(false);
     const roomId = res?.data?.room_id ?? editRoom?.id;
-    if (roomId || res?.data?.updated) {
-      onCreated(roomId ?? editRoom!.id);
-      onClose();
-    } else {
+    if (!roomId && !res?.data?.updated) {
+      setLoading(false);
       setError('Failed to save room. Please try again.');
+      return;
     }
+
+    // Banner upload — path is <community_id>/<room_id> so the storage RLS
+    // (migration 059) can verify admin/moderator membership.
+    const finalRoomId = roomId ?? editRoom!.id;
+    const bannerCommunityId = isEdit ? editRoom!.community_id : communityId;
+    if (bannerFile && bannerCommunityId) {
+      const path = `${bannerCommunityId}/${finalRoomId}`;
+      const { error: uploadError } = await supabase.storage
+        .from('room-banners')
+        .upload(path, bannerFile, { upsert: true, contentType: bannerFile.type });
+      if (uploadError) {
+        setLoading(false);
+        setError(`Room saved, but the banner upload failed: ${uploadError.message}`);
+        return;
+      }
+      const { data: pub } = supabase.storage.from('room-banners').getPublicUrl(path);
+      const { error: updateError } = await supabase
+        .from('community_rooms')
+        .update({ banner_url: `${pub.publicUrl}?v=${Date.now()}` })
+        .eq('id', finalRoomId);
+      if (updateError) {
+        setLoading(false);
+        setError('Room saved, but the banner could not be attached. Try again.');
+        return;
+      }
+    }
+
+    setLoading(false);
+    onCreated(finalRoomId);
+    onClose();
   };
 
   const modal = (
@@ -162,6 +204,25 @@ export function RoomModal({ communities, onClose, onCreated, editRoom }: RoomMod
               onChange={e => setScheduledAt(e.target.value)}
             />
           )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="room-banner">Card banner (optional — shown on the room card in the app)</Label>
+          {bannerPreview && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={bannerPreview}
+              alt="Room banner preview"
+              className="h-24 w-full rounded-lg object-cover border"
+            />
+          )}
+          <Input
+            id="room-banner"
+            type="file"
+            accept="image/*"
+            onChange={handleBannerChange}
+            className="cursor-pointer"
+          />
         </div>
 
         <div className="space-y-1.5">
