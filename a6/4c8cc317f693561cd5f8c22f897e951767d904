@@ -1,0 +1,39 @@
+apps/mobile/app/(tabs)/connect/speed-dating/index.tsx
+  s_093307bfc37bee::t_3cdd07aea07b7b 12
+  s_093307bfc37bee::t_e6fce95f2e9fe0 104
+  s_093307bfc37bee::t_1bd0e0a5678738 1,6,8-9,16,20-30,38-42,44,47-57,59,61-62,64-70,72-78,80-82,84-85,99,118,127-128,136-155,158-168,172,176,178-192
+  s_093307bfc37bee::t_e9df8b4fcacbef 3
+apps/mobile/lib/confirm.ts
+  s_093307bfc37bee::t_6e9cfc14ed70c1 9
+  s_093307bfc37bee::t_467dd0ac36ab4c 10-12
+  s_093307bfc37bee::t_ffe8da300ab64a 13-17
+apps/mobile/app/(tabs)/connect/speed-dating/waiting-room.tsx
+  s_093307bfc37bee::t_614969ad5238c0 146-148
+  s_093307bfc37bee::t_1f2d56cc3de2ca 13
+  s_093307bfc37bee::t_875a17ad5700f5 114-133
+  s_093307bfc37bee::t_ac754473d78dc4 3,8
+apps/mobile/app/(tabs)/connect/speed-dating/session.tsx
+  s_093307bfc37bee::t_a07a521a233c45 12
+  s_093307bfc37bee::t_b5db74974d1fb1 238-240
+  s_093307bfc37bee::t_b5b0c9529d7de6 4
+supabase/functions/join-speed-date-session/index.ts
+  s_093307bfc37bee::t_bcb423d0f0b2ef 53,103-116,144-145,180
+.claude/log.md
+  s_093307bfc37bee::t_e9975f6cb68cbe 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a64c8cc317f693561cd5f8c22f897e951767d904",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
