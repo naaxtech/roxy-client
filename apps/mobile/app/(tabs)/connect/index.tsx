@@ -103,6 +103,12 @@ export default function ConnectScreen() {
       borderBottomWidth: 1, borderBottomColor: colors.surface,
     },
     headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    browseBtn: {
+      width: 34, height: 34, borderRadius: 17,
+      backgroundColor: colors.surface,
+      alignItems: 'center', justifyContent: 'center',
+    },
 
     // Sub-tabs — underline style
     subTabRow: {
@@ -377,7 +383,16 @@ export default function ConnectScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Connect</Text>
-        <CommunityContextSwitcher communities={joinedCommunities} />
+        <View style={styles.headerActions}>
+          <CommunityContextSwitcher communities={joinedCommunities} />
+          <TouchableOpacity
+            style={styles.browseBtn}
+            onPress={() => router.push('/(tabs)/connect/communities' as any)}
+            accessibilityLabel="Browse communities"
+          >
+            <Ionicons name="compass-outline" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Sub-tabs */}

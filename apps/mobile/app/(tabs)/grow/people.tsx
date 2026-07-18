@@ -10,17 +10,8 @@ import { useAuthStore } from '../../../store/authStore';
 import { useFriendStore, FriendshipRow, isOnline, sortByPresence } from '../../../store/friendStore';
 import { openDirectChat } from '../../../lib/directMessages';
 import { logError } from '../../../lib/errorLogger';
+import { avatarGradient } from '../../../lib/avatars';
 import { useThemeColors } from '../../../hooks/useThemeColors';
-
-const PERSON_GRADS: [string, string][] = [
-  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
-  ['#F472B6', '#FF6A2E'], ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
-];
-function personGrad(name: string): [string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return PERSON_GRADS[Math.abs(h) % PERSON_GRADS.length];
-}
 
 type SubTab = 'friends' | 'requests' | 'sent';
 
@@ -34,6 +25,8 @@ export default function PeopleScreen() {
   } = useFriendStore();
   const [subTab, setSubTab] = useState<SubTab>('friends');
   const [loading, setLoading] = useState(false);
+  // Friend row currently opening a chat — double-tap guard + spinner flag.
+  const [messagingId, setMessagingId] = useState<string | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -43,13 +36,16 @@ export default function PeopleScreen() {
   }, [user?.id]);
 
   const handleFriendTap = async (item: FriendshipRow) => {
-    if (!user) return;
+    if (!user || messagingId) return;
+    setMessagingId(item.profile.id);
     try {
       const convId = await openDirectChat(user.id, item.profile.id);
       router.push(`/chat/${convId}` as any);
     } catch (e: any) {
       logError(e, 'handleFriendTap');
-      Alert.alert('Error', e?.message);
+      Alert.alert('Could not start the chat', 'Something went wrong on our side — try again in a moment 💜');
+    } finally {
+      setMessagingId(null);
     }
   };
 
@@ -130,7 +126,7 @@ export default function PeopleScreen() {
 
   function AvatarCircle({ name }: { name: string }) {
     return (
-      <LinearGradient colors={personGrad(name)} style={styles.avatar}>
+      <LinearGradient colors={avatarGradient(name)} style={styles.avatar}>
         <Text style={styles.avatarText}>{name?.[0]?.toUpperCase() ?? '?'}</Text>
       </LinearGradient>
     );
@@ -197,8 +193,14 @@ export default function PeopleScreen() {
                     <Text style={styles.rowSub}>@{item.profile.username}</Text>
                   </TouchableOpacity>
                   <View style={styles.actionBtns}>
-                    <TouchableOpacity style={styles.messageBtn} onPress={() => handleFriendTap(item)}>
-                      <Text style={styles.messageBtnText}>Message</Text>
+                    <TouchableOpacity
+                      style={styles.messageBtn}
+                      onPress={() => handleFriendTap(item)}
+                      disabled={messagingId !== null}
+                    >
+                      {messagingId === item.profile.id
+                        ? <ActivityIndicator size="small" color="#fff" />
+                        : <Text style={styles.messageBtnText}>Message</Text>}
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.mutedBtn} onPress={() => confirmUnfriend(item)}>
                       <Text style={styles.mutedBtnText}>Remove</Text>

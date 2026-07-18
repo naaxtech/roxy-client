@@ -9,27 +9,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
+import { useFocusEffect } from '@react-navigation/native';
 import { recordDailyCheckin } from '../../../lib/streaks';
-import { fetchNotifications, countUnread } from '../../../lib/notifications';
+import { fetchUnreadNotificationCount } from '../../../lib/notifications';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
 import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { Analytics } from '../../../lib/analytics';
-import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
+import { isPresetAvatar, presetEmoji, presetColor, avatarGradient } from '../../../lib/avatars';
 import { HappeningTonightCard } from '../../../components/grow/HappeningTonightCard';
 import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayCard';
 import { MiniWinsCard } from '../../../components/grow/MiniWinsCard';
-
-const CHAT_GRADS: [string, string][] = [
-  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
-  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
-];
-function chatGrad(name: string): [string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return CHAT_GRADS[Math.abs(h) % CHAT_GRADS.length];
-}
 
 const CHIP_COLORS = ['#FF6A2E', '#8B5CF6', '#FF2F71', '#F472B6', '#C4476A', '#FF8A3D'];
 
@@ -94,16 +85,21 @@ export default function GrowScreen() {
   const [streak, setStreak] = useState<number | null>(null);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
 
-  useEffect(() => {
-    if (!user?.id) return;
-    void recordDailyCheckin().then(setStreak);
-  }, [user?.id]);
+  // On every focus (not just mount — the tab stays mounted for days):
+  // re-record the daily check-in so long-lived sessions keep their streak,
+  // and refresh the unread count so the bell clears after reads.
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id) return;
+      void recordDailyCheckin().then(setStreak);
+      void fetchUnreadNotificationCount(user.id).then(setUnreadNotifs);
+    }, [user?.id])
+  );
 
-  // Unread notification badge — refetch on mount, live-increment via a
-  // user-filtered Realtime subscription (never table-wide).
+  // Live badge increments via a user-filtered Realtime subscription
+  // (never table-wide); focus refetch above corrects any drift.
   useEffect(() => {
     if (!user?.id) return;
-    void fetchNotifications(user.id).then((list) => setUnreadNotifs(countUnread(list)));
     const channel = supabase
       .channel(`notifications:${user.id}`)
       .on(
@@ -624,7 +620,7 @@ export default function GrowScreen() {
             <View style={styles.avatarRow}>
               {sortByPresence(friends).slice(0, 5).map((f) => (
                 <View key={f.id} style={styles.avatarWrap}>
-                  <LinearGradient colors={chatGrad(f.profile.display_name ?? '?')} style={styles.avatar}>
+                  <LinearGradient colors={avatarGradient(f.profile.display_name)} style={styles.avatar}>
                     <Text style={styles.avatarText}>
                       {f.profile.display_name?.[0]?.toUpperCase() ?? '?'}
                     </Text>

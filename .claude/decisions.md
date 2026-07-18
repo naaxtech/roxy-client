@@ -86,3 +86,18 @@
 [REASON] Nicole's monorepo uses apps/mobile as the client app name; architecture PDFs say "apps/client"
 [ALTERNATIVES REJECTED] Renaming the folder (breaking change across all import paths)
 [REVISIT CONDITION] Unless repo is restructured
+
+[DECISION] Notification link_path stores client route strings in the DB (migration 057)
+[REASON] Ship the MVP fast; notification rows are short-lived and the two routes used are stable shims
+[ALTERNATIVES REJECTED] Storing (type, entity_id) and resolving routes client-side — better seam, more work now
+[REVISIT CONDITION] Before any route-group rename, or when a third notification type is added
+
+[DECISION] Community-event notification fan-out runs synchronously inside the events INSERT trigger
+[REASON] Simple and correct at current community sizes; trigger swallows its own errors so event creation can never fail because of it
+[ALTERNATIVES REJECTED] Queued/async fan-out via pg_cron or edge function — infra not warranted pre-launch
+[REVISIT CONDITION] When any community approaches ~5k members, move fan-out to a queue
+
+[DECISION] No live-DB RLS isolation test harness yet; RLS verified by policy review only
+[REASON] Repo has zero RLS test infrastructure; building it mid-branch would balloon session 19
+[ALTERNATIVES REJECTED] Skipping the parent-CLAUDE isolation-test rule silently
+[REVISIT CONDITION] Before public launch — add a supabase-test harness exercising notifications/conversations policies as two different users

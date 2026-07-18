@@ -7,7 +7,11 @@ ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS streak_count int NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS streak_last_day date;
 
-CREATE OR REPLACE FUNCTION record_daily_checkin()
+-- client_tz: IANA timezone from the device (e.g. 'Asia/Manila') so "a day"
+-- means the user's local day, not UTC. Invalid/missing values fall back to
+-- UTC. Trusting the device timezone only shifts day boundaries — it cannot
+-- mint extra streak days because consecutive-day logic still applies.
+CREATE OR REPLACE FUNCTION record_daily_checkin(client_tz text DEFAULT 'UTC')
 RETURNS int
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -15,13 +19,19 @@ SET search_path = public
 AS $$
 DECLARE
   uid uuid := auth.uid();
-  today date := (now() AT TIME ZONE 'utc')::date;
+  today date;
   last_day date;
   new_count int;
 BEGIN
   IF uid IS NULL THEN
     RAISE EXCEPTION 'not authenticated';
   END IF;
+
+  BEGIN
+    today := (now() AT TIME ZONE client_tz)::date;
+  EXCEPTION WHEN OTHERS THEN
+    today := (now() AT TIME ZONE 'UTC')::date;
+  END;
 
   SELECT streak_last_day, streak_count INTO last_day, new_count
   FROM profiles WHERE id = uid FOR UPDATE;
@@ -46,5 +56,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION record_daily_checkin() FROM public;
-GRANT EXECUTE ON FUNCTION record_daily_checkin() TO authenticated;
+REVOKE ALL ON FUNCTION record_daily_checkin(text) FROM public;
+GRANT EXECUTE ON FUNCTION record_daily_checkin(text) TO authenticated;

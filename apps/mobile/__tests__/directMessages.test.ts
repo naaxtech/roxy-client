@@ -52,4 +52,23 @@ describe('openDirectChat', () => {
     await expect(openDirectChat('me', 'her')).rejects.toThrow('insert denied');
     expect(Analytics.dmCreated).not.toHaveBeenCalled();
   });
+
+  it('recovers the existing conversation when the insert loses the unique race (23505)', async () => {
+    // First lookup: none. Insert: unique violation. Second lookup: the winner's row.
+    const maybeSingle = jest.fn()
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: { id: 'conv-won' }, error: null });
+    const single = jest.fn().mockResolvedValue({ data: null, error: { code: '23505', message: 'duplicate' } });
+    (supabase.from as jest.Mock).mockImplementation(() => ({
+      select: jest.fn(() => ({
+        contains: jest.fn(() => ({
+          eq: jest.fn(() => ({ limit: jest.fn(() => ({ maybeSingle })) })),
+        })),
+      })),
+      insert: jest.fn(() => ({ select: jest.fn(() => ({ single })) })),
+    }));
+    await expect(openDirectChat('me', 'her')).resolves.toBe('conv-won');
+    expect(Analytics.dmOpened).toHaveBeenCalledWith('conv-won');
+    expect(Analytics.dmCreated).not.toHaveBeenCalled();
+  });
 });

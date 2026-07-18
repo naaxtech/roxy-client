@@ -52,3 +52,21 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
 export function countUnread(list: RoxyNotification[]): number {
   return list.filter((n) => n.read_at === null).length;
 }
+
+/**
+ * Unread count only — a head request transfers a single integer instead of
+ * full rows, which is all the Grow bell badge needs. Returns 0 on failure.
+ */
+export async function fetchUnreadNotificationCount(userId: string): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .is('read_at', null);
+    if (error || count === null) return 0;
+    return count;
+  } catch {
+    return 0;
+  }
+}

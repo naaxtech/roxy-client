@@ -7,7 +7,15 @@ import { supabase } from './supabase';
  */
 export async function recordDailyCheckin(): Promise<number | null> {
   try {
-    const { data, error } = await supabase.rpc('record_daily_checkin');
+    // Device timezone so "a day" means the user's local day; the RPC falls
+    // back to UTC when the value is missing or invalid.
+    let clientTz = 'UTC';
+    try {
+      clientTz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
+    } catch {
+      // keep UTC
+    }
+    const { data, error } = await supabase.rpc('record_daily_checkin', { client_tz: clientTz });
     if (error || typeof data !== 'number') return null;
     return data;
   } catch {

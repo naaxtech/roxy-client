@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, ActivityIndicator,
 } from 'react-native';
@@ -10,17 +10,8 @@ import { useAuthStore } from '../../../store/authStore';
 import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
 import { openDirectChat } from '../../../lib/directMessages';
 import { logError } from '../../../lib/errorLogger';
+import { avatarGradient } from '../../../lib/avatars';
 import { useThemeColors } from '../../../hooks/useThemeColors';
-
-const PERSON_GRADS: [string, string][] = [
-  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
-  ['#F472B6', '#FF6A2E'], ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
-];
-function personGrad(name: string): [string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return PERSON_GRADS[Math.abs(h) % PERSON_GRADS.length];
-}
 
 export default function NewMessageScreen() {
   const colors = useThemeColors();
@@ -28,8 +19,8 @@ export default function NewMessageScreen() {
   const { user } = useAuthStore();
   const { friends, fetchAll } = useFriendStore();
   const [loading, setLoading] = useState(false);
-  // Blocks double-taps while a conversation is being found/created.
-  const creatingRef = useRef(false);
+  // Row currently opening a chat — doubles as double-tap guard and spinner flag.
+  const [creatingId, setCreatingId] = useState<string | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -39,16 +30,16 @@ export default function NewMessageScreen() {
   }, [user?.id]);
 
   const startChat = async (partnerId: string) => {
-    if (!user || creatingRef.current) return;
-    creatingRef.current = true;
+    if (!user || creatingId) return;
+    setCreatingId(partnerId);
     try {
       const convId = await openDirectChat(user.id, partnerId);
       router.push(`/chat/${convId}` as any);
     } catch (e: any) {
       logError(e, 'newMessage.startChat');
-      Alert.alert('Error', e?.message);
+      Alert.alert('Could not start the chat', 'Something went wrong on our side — try again in a moment 💜');
     } finally {
-      creatingRef.current = false;
+      setCreatingId(null);
     }
   };
 
@@ -135,14 +126,16 @@ export default function NewMessageScreen() {
           }
           renderItem={({ item }) => {
             const name = item.profile.display_name ?? '?';
+            const isCreating = creatingId === item.profile.id;
             return (
               <TouchableOpacity
                 style={styles.row}
                 onPress={() => void startChat(item.profile.id)}
                 activeOpacity={0.7}
+                disabled={creatingId !== null}
               >
                 <View style={styles.avatarWrap}>
-                  <LinearGradient colors={personGrad(name)} style={styles.avatar}>
+                  <LinearGradient colors={avatarGradient(name)} style={styles.avatar}>
                     <Text style={styles.avatarText}>{name[0]?.toUpperCase() ?? '?'}</Text>
                   </LinearGradient>
                   {isOnline(item.profile.last_seen_at ?? null) && <View style={styles.onlineDot} />}
@@ -151,7 +144,9 @@ export default function NewMessageScreen() {
                   <Text style={styles.rowName}>{name}</Text>
                   <Text style={styles.rowSub}>@{item.profile.username}</Text>
                 </View>
-                <Ionicons name="chatbubble-outline" size={18} color={colors.roxy} />
+                {isCreating
+                  ? <ActivityIndicator size="small" color={colors.roxy} />
+                  : <Ionicons name="chatbubble-outline" size={18} color={colors.roxy} />}
               </TouchableOpacity>
             );
           }}

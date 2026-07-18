@@ -8,10 +8,12 @@ const { supabase } = jest.requireMock('../lib/supabase');
 describe('recordDailyCheckin', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('returns the streak count on success', async () => {
+  it('returns the streak count on success, passing the device timezone', async () => {
     (supabase.rpc as jest.Mock).mockResolvedValue({ data: 5, error: null });
     await expect(recordDailyCheckin()).resolves.toBe(5);
-    expect(supabase.rpc).toHaveBeenCalledWith('record_daily_checkin');
+    expect(supabase.rpc).toHaveBeenCalledWith('record_daily_checkin', {
+      client_tz: expect.any(String),
+    });
   });
 
   it('returns null when the RPC errors (e.g. migration not applied yet)', async () => {
