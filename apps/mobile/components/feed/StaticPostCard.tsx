@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { PostActionRow } from './PostActionRow';
+import { PostMediaCarousel } from './PostMediaCarousel';
+import type { Post } from '../../types';
 
 const AUTHOR_GRADS: [string, string][] = [
   ['#FF6A2E', '#E81C8E'],
@@ -17,8 +19,6 @@ function authorGrad(name: string): [string, string] {
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
   return AUTHOR_GRADS[Math.abs(h) % AUTHOR_GRADS.length];
 }
-import { PostMediaCarousel } from './PostMediaCarousel';
-import type { Post } from '../../types';
 
 interface StaticPostCardProps {
   post: Post;

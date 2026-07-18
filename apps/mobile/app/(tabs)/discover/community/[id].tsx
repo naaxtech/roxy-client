@@ -1,21 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
   ScrollView, Alert, Dimensions, Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const AUTHOR_GRADS: [string, string][] = [
-  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
-  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
-];
-function authorGrad(name: string): [string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return AUTHOR_GRADS[Math.abs(h) % AUTHOR_GRADS.length];
-}
-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -28,6 +17,16 @@ import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
 import { CommunityRoomCard } from '../../../../components/community/CommunityRoomCard';
 import { CommunityRoom } from '../../../../types';
+
+const AUTHOR_GRADS: [string, string][] = [
+  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
+  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
+];
+function authorGrad(name: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return AUTHOR_GRADS[Math.abs(h) % AUTHOR_GRADS.length];
+}
 
 type SubTab = 'posts' | 'events' | 'games' | 'rooms';
 

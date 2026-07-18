@@ -24,7 +24,7 @@ export default function CommunitiesScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
-  const { allCommunities, joinedIds, hydrated, hydrate, joinCommunity, leaveCommunity } = useCommunityStore();
+  const { allCommunities, joinedIds, hydrate, joinCommunity, leaveCommunity } = useCommunityStore();
   const [search, setSearch] = useState('');
 
   useEffect(() => { void hydrate(user?.id); }, [user?.id]);
