@@ -8,6 +8,7 @@ import { logError, logBreadcrumb } from '../../../lib/errorLogger';
 import { ChipSelector } from '../../../components/ui/ChipSelector';
 import { INTERESTS } from '../../../lib/constants';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { RoxyWordmark } from '../../../components/ui/RoxyWordmark';
 
 export default function Step2Interests() {
   const colors = useThemeColors();
@@ -46,6 +47,7 @@ export default function Step2Interests() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
+        <RoxyWordmark height={34} style={{ marginBottom: 10 }} />
         <Text style={styles.step}>Step 2 of 4</Text>
         <Text style={styles.headline}>What lights you up?</Text>
         <Text style={styles.sub}>Pick up to 8</Text>

@@ -15,8 +15,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { RoxyWordmark } from '../../components/ui/RoxyWordmark';
 import { useAuth } from '../../hooks/useAuth';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
@@ -89,7 +89,6 @@ export default function WelcomeScreen() {
       paddingHorizontal: 32,
       minHeight: compactHero ? 120 : 220,
     },
-    logo: { width: 240, height: compactHero ? 64 : 96 },
     tagline: {
       fontSize: 17,
       fontWeight: '600',
@@ -226,13 +225,7 @@ export default function WelcomeScreen() {
             },
           ]}
         >
-          <ExpoImage
-            source={require('../../assets/brand/roxy-logo-mono-white.svg')}
-            style={styles.logo}
-            contentFit="contain"
-            tintColor="#FFFFFF"
-            accessibilityLabel="Roxy"
-          />
+          <RoxyWordmark variant="white" height={compactHero ? 64 : 96} />
           {!compactHero && (
             <Text style={styles.tagline}>Your community. Your story.</Text>
           )}

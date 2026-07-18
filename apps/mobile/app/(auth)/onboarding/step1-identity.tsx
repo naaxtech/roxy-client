@@ -8,6 +8,7 @@ import { logError, logBreadcrumb } from '../../../lib/errorLogger';
 import { ChipSelector } from '../../../components/ui/ChipSelector';
 import { IDENTITY_LABELS, PRONOUNS, USERNAME_MAX } from '../../../lib/constants';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { RoxyWordmark } from '../../../components/ui/RoxyWordmark';
 
 export default function Step1Identity() {
   const colors = useThemeColors();
@@ -77,6 +78,7 @@ export default function Step1Identity() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <RoxyWordmark height={34} style={{ marginBottom: 10 }} />
         <Text style={styles.step}>Step 1 of 4</Text>
         <Text style={styles.headline}>How do you identify?</Text>
 
