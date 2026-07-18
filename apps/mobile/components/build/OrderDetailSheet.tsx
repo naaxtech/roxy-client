@@ -50,7 +50,7 @@ export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
   if (!order) return null;
 
   return (
-    <Modal visible={order !== null} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={order !== null} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           <View style={styles.handle} />

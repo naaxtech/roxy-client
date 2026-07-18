@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 export interface FeatureRequest {
@@ -151,9 +152,11 @@ export function FeatureVoteCard({
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <>
-              <Text style={[styles.voteHeart, localVoted && styles.voteHeartActive]}>
-                {localVoted ? '💜' : '🤍'}
-              </Text>
+              <Ionicons
+                name={localVoted ? 'heart' : 'heart-outline'}
+                size={18}
+                color={localVoted ? colors.roxy : colors.textMuted}
+              />
               <Text style={[styles.voteCount, localVoted && styles.voteCountActive]}>
                 {localCount}
               </Text>

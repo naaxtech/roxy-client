@@ -40,7 +40,7 @@ export function AnswerSheet({ questionId, userId, onClose, onSubmitted }: Props)
     <Modal
       visible
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView

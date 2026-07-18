@@ -184,7 +184,7 @@ export function BusinessDetailSheet({
   return (
     <Modal
       visible={business !== null}
-      animationType="slide"
+      animationType="fade"
       transparent
       onRequestClose={onClose}
     >
@@ -218,7 +218,11 @@ export function BusinessDetailSheet({
               accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
               hitSlop={12}
             >
-              <Text style={styles.bookmarkIcon}>{isBookmarked ? '💜' : '🤍'}</Text>
+              <Ionicons
+                name={isBookmarked ? 'heart' : 'heart-outline'}
+                size={22}
+                color={isBookmarked ? colors.roxy : colors.textPrimary}
+              />
             </TouchableOpacity>
 
             {/* Tab bar */}

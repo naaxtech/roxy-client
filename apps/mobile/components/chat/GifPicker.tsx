@@ -101,7 +101,7 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
   });
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
       <View style={styles.container}>
         <View style={styles.header}>
