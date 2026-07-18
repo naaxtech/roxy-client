@@ -16,6 +16,7 @@ import { useThemeColors } from '../../../hooks/useThemeColors';
 import { Business, BusinessPhoto, ImpactProject } from '../../../types';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
+import { ScreenHeader } from '../../../components/ui/ScreenHeader';
 import { useCommunityStore } from '../../../store/communityStore';
 import { ChipSearchBar } from '../../../components/build/ChipSearchBar';
 import { BusinessDetailSheet } from '../../../components/build/BusinessDetailSheet';
@@ -180,20 +181,18 @@ function ImpactDetailSheet({
 function buildStyles(colors: ReturnType<typeof useThemeColors>) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    header: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingHorizontal: 16, paddingVertical: 10,
-      borderBottomWidth: 1, borderBottomColor: colors.surface,
-    },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
     segmentRow: {
-      flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.surface,
-      paddingHorizontal: 16, gap: 4,
+      flexDirection: 'row', gap: 6,
+      marginHorizontal: 16, marginBottom: 10, padding: 4,
+      backgroundColor: colors.surface, borderRadius: 14,
     },
-    segmentBtn: { paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-    segmentBtnActive: { borderBottomColor: colors.primary },
-    segmentText: { color: colors.textMuted, fontWeight: '600', fontSize: 15 },
-    segmentTextActive: { color: colors.textPrimary },
+    segmentBtn: {
+      flex: 1, minHeight: 38, borderRadius: 10,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    segmentBtnActive: { backgroundColor: colors.roxy },
+    segmentText: { color: colors.textMuted, fontWeight: '700', fontSize: 14 },
+    segmentTextActive: { color: '#fff' },
     bizViewToggle: {
       flexDirection: 'row', paddingHorizontal: 12, paddingTop: 8, gap: 8,
     },
@@ -532,10 +531,11 @@ export default function BuildScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Build</Text>
-        <CommunityContextSwitcher communities={joinedCommunities} />
-      </View>
+      <ScreenHeader
+        title="Build"
+        eyebrow="The WLW economy"
+        actions={<CommunityContextSwitcher communities={joinedCommunities} />}
+      />
 
       <View style={styles.segmentRow}>
         {(['businesses', 'impact', 'support'] as const).map((s) => (
