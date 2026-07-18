@@ -1,0 +1,19 @@
+apps/mobile/app/(tabs)/messages/index.tsx
+  s_093307bfc37bee::t_1ce5ce30175aae 18-19,259-262,270-271,316-322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f7e7b1255c247328143d9ee8d58e4e690ab76afa",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
