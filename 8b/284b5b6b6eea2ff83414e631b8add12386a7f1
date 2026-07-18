@@ -1,0 +1,27 @@
+apps/mobile/app/(tabs)/connect/index.tsx
+  s_093307bfc37bee::t_bb40d25461a30c 27
+  s_093307bfc37bee::t_f42d624b50c594 99,136-145,662-691,738-739,743-744
+apps/mobile/components/events/EventsCalendar.tsx
+  s_093307bfc37bee::t_b51516844b2d88 1-180
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_093307bfc37bee::t_920032f76cc3c0 25
+  s_093307bfc37bee::t_5bad4ea3c427a7 66,309-319,576-593,603-618
+apps/mobile/tsconfig.json
+  s_093307bfc37bee::t_c8d238772be0b7 15-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8b284b5b6b6eea2ff83414e631b8add12386a7f1",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
