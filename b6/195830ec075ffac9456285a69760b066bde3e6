@@ -1,0 +1,39 @@
+apps/mobile/app/(tabs)/connect/communities.tsx
+  s_093307bfc37bee::t_0aecd16af2ffb6 1,3-6
+apps/mobile/components/community/CommunitiesBrowser.tsx
+  s_093307bfc37bee::t_e41169b7af7909 1-154
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_093307bfc37bee::t_17845db0cd3c72 21-24
+  s_093307bfc37bee::t_9481ee87df2f05 20
+  s_093307bfc37bee::t_bc4a1fabc6e904 18-19
+  s_093307bfc37bee::t_5ab15a3d8e03e6 63,66-69,96,101,103,106,151-153,198,463,466,468-480
+apps/mobile/app/(tabs)/connect/index.tsx
+  s_093307bfc37bee::t_242683bfd4d424 26,32
+  s_093307bfc37bee::t_dec09f2877a9d5 85
+  s_093307bfc37bee::t_9394ad68d67353 9
+  s_093307bfc37bee::t_e9ea27f934aad5 62
+  s_093307bfc37bee::t_444c5b2d76fd17 88-90
+  s_093307bfc37bee::t_fcd4d1887ed6df 84
+  s_093307bfc37bee::t_2e288fe1ef259a 87
+  s_093307bfc37bee::t_1a673d51787c1b 86
+  s_093307bfc37bee::t_215d99e7d557e7 91
+  s_093307bfc37bee::t_4266bdbd52b8f3 123-151,414-454,466,478,500,515,567,712-714
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_093307bfc37bee::t_50e374d8b2454b 557,562,597
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b6195830ec075ffac9456285a69760b066bde3e6",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
