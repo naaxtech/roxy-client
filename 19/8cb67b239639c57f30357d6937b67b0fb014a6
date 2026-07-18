@@ -1,0 +1,30 @@
+apps/mobile/app/(auth)/welcome.tsx
+  s_093307bfc37bee::t_76cd25a2e3773d 19
+  s_093307bfc37bee::t_14ee629d651f81 228
+apps/mobile/components/ui/RoxyWordmark.tsx
+  s_093307bfc37bee::t_2bccf596ddf6ad 1-35
+apps/mobile/app/(auth)/onboarding/step1-identity.tsx
+  s_093307bfc37bee::t_54dea8556beaab 11,81
+apps/mobile/app/(auth)/onboarding/step2-interests.tsx
+  s_093307bfc37bee::t_d1fdc098c51efd 11,50
+apps/mobile/app/(auth)/onboarding/step3-photo.tsx
+  s_093307bfc37bee::t_7ca8998f167611 10,75
+apps/mobile/app/(auth)/onboarding/step4-status.tsx
+  s_093307bfc37bee::t_d5662a30bfa516 9,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "198cb67b239639c57f30357d6937b67b0fb014a6",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
