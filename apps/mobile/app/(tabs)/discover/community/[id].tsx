@@ -4,7 +4,6 @@ import {
   ScrollView, Alert, Dimensions, Share,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,19 +15,19 @@ import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
 import { CommunityRoomCard } from '../../../../components/community/CommunityRoomCard';
-import { CommunityRoom } from '../../../../types';
-import { avatarGradient } from '../../../../lib/avatars';
+import { CommunityRoom, Post } from '../../../../types';
+import { FeedCard } from '../../../../components/feed/FeedCard';
+import { EmptyState } from '../../../../components/ui/EmptyState';
+import { useFeedStore } from '../../../../store/feedStore';
+import { normalizePost } from '../../../../lib/posts';
+import { contentDetailPath } from '../../../../lib/contentNavigation';
+import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../../lib/supabaseQueries';
 
 type SubTab = 'posts' | 'events' | 'games' | 'rooms';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const TABS: SubTab[] = ['posts', 'rooms', 'games', 'events'];
 
-type PostRow = {
-  id: string; content: string; created_at: string; author_id: string;
-  comment_count: number;
-  profiles: { display_name: string; avatar_url: string | null } | null;
-};
 
 type EventRow = {
   id: string; title: string; starts_at: string; location: string | null;
@@ -61,10 +60,13 @@ export default function CommunityDetailScreen() {
   const [community, setCommunity] = useState<Community | null>(null);
   const [loading, setLoading] = useState(true);
   const [subTab, setSubTab] = useState<SubTab>('posts');
-  const [posts, setPosts] = useState<PostRow[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
-  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const {
+    likedPostIds, savedPostIds,
+    init: initFeed, toggleLike: feedToggleLike, toggleSave,
+  } = useFeedStore();
   const [rooms, setRooms] = useState<(CommunityRoom & { creator_display_name: string | null })[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [communityGames, setCommunityGames] = useState<CommunityGameRow[]>([]);
@@ -91,15 +93,17 @@ export default function CommunityDetailScreen() {
     }
   }, [id, allCommunities]);
 
+  // Same query + normalizer as the Connect feed — one post pipeline app-wide.
   const loadPosts = useCallback(async () => {
     if (!id) return;
     const { data } = await supabase
       .from('posts')
-      .select('id, content, created_at, author_id, comment_count, profiles!posts_author_id_fkey(display_name, avatar_url)')
+      .select(POST_WITH_AUTHOR_AND_COMMUNITY)
       .eq('community_id', id)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(30);
-    if (data) setPosts(data as unknown as PostRow[]);
+    if (data) setPosts((data as Record<string, unknown>[]).map(normalizePost));
   }, [id]);
 
   const loadEvents = useCallback(async () => {
@@ -144,14 +148,9 @@ export default function CommunityDetailScreen() {
     if (data) setRsvpIds(new Set(data.map((r: any) => r.event_id)));
   }, [user]);
 
-  const loadLikes = useCallback(async () => {
-    if (!user?.id) return;
-    const { data } = await supabase
-      .from('post_likes')
-      .select('post_id')
-      .eq('user_id', user.id);
-    if (data) setLikedIds(new Set(data.map((r: any) => r.post_id)));
-  }, [user?.id]);
+  useEffect(() => {
+    if (user?.id) void initFeed(user.id);
+  }, [user?.id, initFeed]);
 
   const loadGames = useCallback(async () => {
     if (!id) return;
@@ -173,7 +172,6 @@ export default function CommunityDetailScreen() {
     loadPosts();
     loadEvents();
     loadRsvps();
-    loadLikes();
     loadRooms();
     loadGames();
 
@@ -197,7 +195,7 @@ export default function CommunityDetailScreen() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [loadPosts, loadEvents, loadRsvps, loadLikes, loadRooms, loadGames, id]);
+  }, [loadPosts, loadEvents, loadRsvps, loadRooms, loadGames, id]);
 
   const pagerRef = useRef<ScrollView>(null);
 
@@ -208,28 +206,6 @@ export default function CommunityDetailScreen() {
   };
 
   const isJoined = id ? joinedIds.has(id) : false;
-
-  const toggleLike = async (postId: string) => {
-    if (!user?.id) return;
-    const wasLiked = likedIds.has(postId);
-    // Optimistic update
-    setLikedIds((prev) => {
-      const n = new Set(prev);
-      if (wasLiked) { n.delete(postId); } else { n.add(postId); }
-      return n;
-    });
-    const { error } = wasLiked
-      ? await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', user.id)
-      : await supabase.from('post_likes').insert({ post_id: postId, user_id: user.id });
-    if (error) {
-      // Revert on failure
-      setLikedIds((prev) => {
-        const n = new Set(prev);
-        if (wasLiked) { n.add(postId); } else { n.delete(postId); }
-        return n;
-      });
-    }
-  };
 
   const handleJoinLeave = async () => {
     if (!user || !id) return;
@@ -326,21 +302,6 @@ export default function CommunityDetailScreen() {
     subTabActive: { borderBottomColor: colors.roxy },
     subTabText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
     subTabTextActive: { color: colors.roxy, fontWeight: '700' },
-
-    // Posts
-    postCard: { backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8, borderRadius: 12, padding: 10 },
-    postAuthorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-    postAvatar: {
-      width: 28, height: 28, borderRadius: 14,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    postAvatarText: { color: '#fff', fontWeight: '800', fontSize: 11 },
-    postAuthorName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
-    postTime: { color: colors.textMuted, fontSize: 11 },
-    postContent: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
-    postFooter: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 8 },
-    footerBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    footerCount: { color: colors.textMuted, fontSize: 12 },
 
     // Events
     eventCard: {
@@ -499,57 +460,24 @@ export default function CommunityDetailScreen() {
           setSubTab(TABS[index]);
         }}
       >
-        {/* Page 0 — Posts */}
+        {/* Page 0 — Posts (shared FeedCard pipeline — identical to Connect feed) */}
         <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 80 }}>
           {posts.length === 0 ? (
-            <View style={styles.emptyCenter}>
-              <Text style={styles.emptyIcon}>📝</Text>
-              <Text style={styles.emptyTitle}>No posts yet</Text>
-              <Text style={styles.emptySub}>Be the first to post!</Text>
-            </View>
+            <EmptyState emoji="📝" title="No posts yet" body="Be the first to post!" />
           ) : (
-            posts.map((post) => {
-              const name = post.profiles?.display_name ?? '?';
-              const grad = avatarGradient(name);
-              const isLiked = likedIds.has(post.id);
-              return (
-              <View key={post.id} style={styles.postCard}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.postAuthorRow}
-                  onPress={() => router.push(`/user/${post.author_id}` as any)}
-                >
-                  <LinearGradient colors={grad} style={styles.postAvatar}>
-                    <Text style={styles.postAvatarText}>{name[0]?.toUpperCase() ?? '?'}</Text>
-                  </LinearGradient>
-                  <View>
-                    <Text style={styles.postAuthorName}>{name}</Text>
-                    <Text style={styles.postTime}>{format(new Date(post.created_at), 'dd MMM · HH:mm')}</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/community/post/${post.id}` as any)}>
-                  <Text style={styles.postContent}>{post.content}</Text>
-                </TouchableOpacity>
-                <View style={styles.postFooter}>
-                  <TouchableOpacity
-                    style={styles.footerBtn}
-                    onPress={() => toggleLike(post.id)}
-                    accessibilityRole="button"
-                    accessibilityLabel={isLiked ? 'Unlike post' : 'Like post'}
-                  >
-                    <Text style={{ fontSize: 15, opacity: isLiked ? 1 : 0.4 }}>🌸</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.footerBtn} onPress={() => router.push(`/community/post/${post.id}` as any)}>
-                    <Ionicons name="chatbubble-outline" size={13} color={colors.textMuted} />
-                    <Text style={styles.footerCount}>{post.comment_count ?? 0}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.footerBtn} onPress={() => Share.share({ message: post.content })}>
-                    <Ionicons name="share-outline" size={13} color={colors.textMuted} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-              );
-            })
+            posts.map((post) => (
+              <FeedCard
+                key={post.id}
+                post={post}
+                isLiked={likedPostIds.has(post.id)}
+                isSaved={savedPostIds.has(post.id)}
+                onLike={() => void feedToggleLike(post.id)}
+                onSave={() => void toggleSave(post.id)}
+                onComment={() => router.push(contentDetailPath(post.id, post.post_type) as any)}
+                onShare={() => void Share.share({ message: 'Check this out on Roxy!' })}
+                onPress={() => router.push(contentDetailPath(post.id, post.post_type) as any)}
+              />
+            ))
           )}
         </ScrollView>
 

@@ -554,12 +554,12 @@ export default function GrowScreen() {
             icon="people"
             inset={false}
             linkLabel="See all"
-            onLinkPress={() => router.push('/(tabs)/connect/communities' as any)}
+            onLinkPress={() => router.push({ pathname: '/(tabs)/connect', params: { tab: 'communities' } } as any)}
           />
           {communities.length === 0 ? (
             <TouchableOpacity
               style={styles.section}
-              onPress={() => router.push('/(tabs)/connect/communities' as any)}
+              onPress={() => router.push({ pathname: '/(tabs)/connect', params: { tab: 'communities' } } as any)}
               activeOpacity={0.75}
             >
               <Text style={styles.emptyState}>Find your communities →</Text>
@@ -594,7 +594,7 @@ export default function GrowScreen() {
               })}
               <TouchableOpacity
                 style={[styles.cchip, styles.cchipAdd]}
-                onPress={() => router.push('/(tabs)/connect/communities' as any)}
+                onPress={() => router.push({ pathname: '/(tabs)/connect', params: { tab: 'communities' } } as any)}
                 activeOpacity={0.8}
               >
                 <View style={[styles.cchipAva, { backgroundColor: colors.primary + '18' }]}>

@@ -6,7 +6,7 @@ import {
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter, usePathname, useLocalSearchParams } from 'expo-router';
 import { format } from 'date-fns';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
@@ -23,12 +23,13 @@ import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
 import { ScreenHeader } from '../../../components/ui/ScreenHeader';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { CommunitiesBrowser } from '../../../components/community/CommunitiesBrowser';
 import { CommunityRoomCard } from '../../../components/community/CommunityRoomCard';
 import { FeedCard } from '../../../components/feed/FeedCard';
 import type { Post } from '../../../types';
 
 
-type SubTab = 'feed' | 'events' | 'rooms';
+type SubTab = 'feed' | 'events' | 'rooms' | 'communities';
 
 type PostRow = Post & {
   communities: { name: string } | null;
@@ -58,7 +59,7 @@ export default function ConnectScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { profile, setProfile } = useProfileStore();
-  const { joinedIds, joinedCommunities, hydrated, hydrate } = useCommunityStore();
+  const { joinedIds, joinedCommunities, allCommunities, hydrated, hydrate, joinCommunity } = useCommunityStore();
   const { selectedCommunityId } = useCommunityFilterStore();
   const {
     likedPostIds, savedPostIds, connectScrollOffset,
@@ -79,6 +80,14 @@ export default function ConnectScreen() {
     setSubTab(tab);
     Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
   };
+
+  // Deep links (/communities shim, cross-tab CTAs) land on a specific subtab.
+  const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
+  useEffect(() => {
+    if (tabParam && ['feed', 'events', 'rooms', 'communities'].includes(tabParam)) {
+      setSubTab(tabParam as SubTab);
+    }
+  }, [tabParam]);
 
   const [posts, setPosts] = useState<PostRow[]>([]);
   const [feedError, setFeedError] = useState<string | null>(null);
@@ -110,6 +119,35 @@ export default function ConnectScreen() {
       backgroundColor: colors.roxy,
     },
     browseBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+
+    // Suggested communities rail (feed header)
+    railWrap: { marginBottom: 6 },
+    railBar: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, marginBottom: 8, marginTop: 2,
+    },
+    railTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 15 },
+    railLink: { color: colors.roxy, fontSize: 13, fontWeight: '700' },
+    railRow: { paddingHorizontal: 12, gap: 8 },
+    railCard: {
+      width: 132, backgroundColor: colors.surface, borderRadius: 16,
+      padding: 12, alignItems: 'center', gap: 4,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+    },
+    railInfo: { alignItems: 'center', gap: 4 },
+    railAva: {
+      width: 42, height: 42, borderRadius: 13,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    railAvaText: { color: '#fff', fontWeight: '800', fontSize: 18 },
+    railName: { color: colors.textPrimary, fontWeight: '700', fontSize: 12.5, textAlign: 'center' },
+    railMeta: { color: colors.textMuted, fontSize: 11 },
+    railJoin: {
+      marginTop: 4, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 5,
+      backgroundColor: colors.roxy,
+    },
+    railJoinText: { color: '#fff', fontWeight: '800', fontSize: 12 },
 
     // Sub-tabs — underline style
     subTabRow: {
@@ -373,6 +411,47 @@ export default function ConnectScreen() {
 
   const hasJoinedCommunities = joinedIds.size > 0;
 
+  // Discovery comes to the feed: suggest unjoined communities while the
+  // user's community list is still small.
+  const suggestions = joinedIds.size < 5
+    ? allCommunities.filter((c) => !joinedIds.has(c.id)).slice(0, 6)
+    : [];
+
+  const SuggestionRail = suggestions.length > 0 ? (
+    <View style={styles.railWrap}>
+      <View style={styles.railBar}>
+        <Text style={styles.railTitle}>Find your communities</Text>
+        <TouchableOpacity onPress={() => switchTab('communities')} accessibilityLabel="See all communities">
+          <Text style={styles.railLink}>See all →</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.railRow}>
+        {suggestions.map((c, i) => (
+          <View key={c.id} style={styles.railCard}>
+            <TouchableOpacity
+              style={styles.railInfo}
+              onPress={() => router.push(`/(tabs)/discover/community/${c.id}` as any)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.railAva, { backgroundColor: ['#FF6A2E', '#8B5CF6', '#FF2F71', '#F472B6', '#C4476A', '#FF8A3D'][i % 6] }]}>
+                <Text style={styles.railAvaText}>{c.name[0]?.toUpperCase()}</Text>
+              </View>
+              <Text style={styles.railName} numberOfLines={1}>{c.name}</Text>
+              <Text style={styles.railMeta}>{c.member_count} members</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.railJoin}
+              onPress={() => user && void joinCommunity(c.id, user.id).catch(() => {})}
+              accessibilityLabel={`Join ${c.name}`}
+            >
+              <Text style={styles.railJoinText}>Join</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </ScrollView>
+    </View>
+  ) : null;
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -384,7 +463,7 @@ export default function ConnectScreen() {
             <CommunityContextSwitcher communities={joinedCommunities} />
             <TouchableOpacity
               style={styles.browseBtn}
-              onPress={() => router.push('/(tabs)/connect/communities' as any)}
+              onPress={() => switchTab('communities')}
               accessibilityLabel="Browse communities"
             >
               <Ionicons name="compass" size={16} color="#fff" />
@@ -396,7 +475,7 @@ export default function ConnectScreen() {
 
       {/* Sub-tabs */}
       <View style={styles.subTabRow}>
-        {(['feed', 'events', 'rooms'] as SubTab[]).map((tab) => (
+        {(['feed', 'events', 'rooms', 'communities'] as SubTab[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             testID={`connect-tab-${tab}`}
@@ -418,7 +497,7 @@ export default function ConnectScreen() {
             emoji="🌸"
             title="Join communities to see their posts here"
             ctaLabel="Find your communities →"
-            onCtaPress={() => router.push('/(tabs)/connect/communities' as any)}
+            onCtaPress={() => switchTab('communities')}
           />
         ) : loadingFeed ? (
           <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
@@ -433,6 +512,7 @@ export default function ConnectScreen() {
             onRefresh={() => void loadFeed()}
             refreshing={loadingFeed}
             contentContainerStyle={{ paddingVertical: 8 }}
+            ListHeaderComponent={SuggestionRail}
             renderItem={({ item }) => (
               <View>
                 <View style={styles.postMetaRow}>
@@ -484,7 +564,7 @@ export default function ConnectScreen() {
             emoji="🗓️"
             title="Join communities to see events"
             ctaLabel="Find your communities →"
-            onCtaPress={() => router.push('/(tabs)/connect/communities' as any)}
+            onCtaPress={() => switchTab('communities')}
           />
         ) : loadingEvents ? (
           <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
@@ -629,6 +709,9 @@ export default function ConnectScreen() {
           </View>
         </ScrollView>
       )}
+
+      {/* Communities — discovery lives inside the tab flow */}
+      {subTab === 'communities' && <CommunitiesBrowser />}
       </Animated.View>
 
     </SafeAreaView>
