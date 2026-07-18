@@ -568,14 +568,18 @@ export default function GrowScreen() {
         <View>
           <View style={[styles.sectionHeaderRow, { paddingHorizontal: 0 }]}>
             <Text style={styles.sectionTitle}>My Communities</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/discover/communities' as any)}>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/connect/communities' as any)}>
               <Text style={styles.sectionHint}>See all →</Text>
             </TouchableOpacity>
           </View>
           {communities.length === 0 ? (
-            <View style={styles.section}>
-              <Text style={styles.emptyState}>Join your first community in Play →</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.section}
+              onPress={() => router.push('/(tabs)/connect/communities' as any)}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.emptyState}>Find your communities →</Text>
+            </TouchableOpacity>
           ) : (
             <ScrollView
               horizontal
@@ -606,7 +610,7 @@ export default function GrowScreen() {
               })}
               <TouchableOpacity
                 style={[styles.cchip, styles.cchipAdd]}
-                onPress={() => router.push('/(tabs)/discover/communities' as any)}
+                onPress={() => router.push('/(tabs)/connect/communities' as any)}
                 activeOpacity={0.8}
               >
                 <View style={[styles.cchipAva, { backgroundColor: colors.primary + '18' }]}>

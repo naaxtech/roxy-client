@@ -403,8 +403,8 @@ export default function ConnectScreen() {
           <View style={styles.emptyCenter}>
             <Text style={styles.emptyIcon}>🌸</Text>
             <Text style={styles.emptyTitle}>Join communities to see their posts here</Text>
-            <TouchableOpacity style={styles.emptyCTA} onPress={() => router.push('/(tabs)/discover' as any)}>
-              <Text style={styles.emptyCTAText}>Discover Communities →</Text>
+            <TouchableOpacity style={styles.emptyCTA} onPress={() => router.push('/(tabs)/connect/communities' as any)}>
+              <Text style={styles.emptyCTAText}>Find your communities →</Text>
             </TouchableOpacity>
           </View>
         ) : loadingFeed ? (
@@ -474,8 +474,8 @@ export default function ConnectScreen() {
           <View style={styles.emptyCenter}>
             <Text style={styles.emptyIcon}>🗓️</Text>
             <Text style={styles.emptyTitle}>Join communities to see events</Text>
-            <TouchableOpacity style={styles.emptyCTA} onPress={() => router.push('/(tabs)/discover' as any)}>
-              <Text style={styles.emptyCTAText}>Discover Communities →</Text>
+            <TouchableOpacity style={styles.emptyCTA} onPress={() => router.push('/(tabs)/connect/communities' as any)}>
+              <Text style={styles.emptyCTAText}>Find your communities →</Text>
             </TouchableOpacity>
           </View>
         ) : loadingEvents ? (

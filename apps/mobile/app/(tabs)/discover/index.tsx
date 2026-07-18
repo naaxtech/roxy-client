@@ -237,7 +237,7 @@ export default function PlayScreen() {
         </View>
         <TouchableOpacity
           style={s.iconBtn}
-          onPress={() => router.push('/(tabs)/discover/communities' as any)}
+          onPress={() => router.push('/communities' as any)}
           accessibilityLabel="Browse communities"
         >
           <Ionicons name="people-outline" size={20} color={colors.textPrimary} />
@@ -348,7 +348,7 @@ export default function PlayScreen() {
               <Text style={s.secNameText}>From your communities</Text>
             </View>
             {joinedCommunities.length > 0 && (
-              <TouchableOpacity onPress={() => router.push('/(tabs)/discover/communities' as any)}>
+              <TouchableOpacity onPress={() => router.push('/communities' as any)}>
                 <Text style={s.secLink}>Browse →</Text>
               </TouchableOpacity>
             )}
@@ -359,7 +359,7 @@ export default function PlayScreen() {
                 Join a community to see their games here.{'\n'}
                 <Text
                   style={{ color: colors.roxy, fontWeight: '700' }}
-                  onPress={() => router.push('/(tabs)/discover/communities' as any)}
+                  onPress={() => router.push('/communities' as any)}
                 >
                   Browse communities →
                 </Text>
