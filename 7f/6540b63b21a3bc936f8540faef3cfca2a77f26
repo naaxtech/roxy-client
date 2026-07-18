@@ -1,0 +1,40 @@
+apps/mobile/components/feed/PrivacyGateSheet.tsx
+  s_093307bfc37bee::t_d3b9d9de1f5ae4 49
+apps/mobile/components/chat/GifPicker.tsx
+  s_093307bfc37bee::t_f1e8af93a9a1ed 104
+apps/mobile/components/build/OrderDetailSheet.tsx
+  s_093307bfc37bee::t_3558327feba8a3 53
+apps/mobile/components/build/FeatureVoteCard.tsx
+  s_093307bfc37bee::t_b1b4f353146b7c 155-159
+  s_093307bfc37bee::t_5f44f16d7ce628 3
+apps/mobile/components/build/ProductDetailSheet.tsx
+  s_093307bfc37bee::t_100d7c74a1f6f1 140
+apps/mobile/components/feed/RoxyLinkPicker.tsx
+  s_093307bfc37bee::t_65986ebbe7151b 97
+apps/mobile/components/feed/CommentSheet.tsx
+  s_093307bfc37bee::t_6e11061fe1035e 82
+apps/mobile/components/build/BusinessDetailSheet.tsx
+  s_093307bfc37bee::t_047cdda47fec9f 187,221-225
+apps/mobile/components/build/CartDrawer.tsx
+  s_093307bfc37bee::t_bcddbbfd84f0ee 53
+apps/mobile/components/build/CheckoutSheet.tsx
+  s_093307bfc37bee::t_6b1a0302f01094 233
+apps/mobile/components/grow/AnswerSheet.tsx
+  s_093307bfc37bee::t_8f80edc68b29c5 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7f6540b63b21a3bc936f8540faef3cfca2a77f26",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
