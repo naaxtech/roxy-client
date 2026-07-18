@@ -51,6 +51,7 @@ type CommunityRoomRow = {
   id: string; name: string; description: string | null;
   room_type: 'video' | 'audio'; status: 'live' | 'scheduled' | 'closed';
   scheduled_at: string | null; community_id: string;
+  banner_url: string | null;
   communities: { name: string } | null;
   creator_display_name: string | null; is_active: boolean;
 };
@@ -374,7 +375,7 @@ export default function ConnectScreen() {
     setLoadingRooms(true);
     let roomsQuery = supabase
       .from('community_rooms')
-      .select('id, name, description, room_type, status, scheduled_at, community_id, communities(name), profiles!created_by(display_name), is_active')
+      .select('id, name, description, room_type, status, scheduled_at, community_id, banner_url, communities(name), profiles!created_by(display_name), is_active')
       .neq('status', 'closed')
       .eq('is_active', true)
       .order('name');
@@ -828,6 +829,7 @@ export default function ConnectScreen() {
                   room_type={room.room_type}
                   status={room.status}
                   scheduled_at={room.scheduled_at}
+                  banner_url={room.banner_url}
                   community_name={room.communities?.name ?? null}
                   creator_display_name={room.creator_display_name}
                   onPress={() => router.push(`/(tabs)/connect/community-room-session?room_id=${room.id}` as any)}

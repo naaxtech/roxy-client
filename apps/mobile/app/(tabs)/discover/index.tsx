@@ -6,7 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 import { supabase } from '../../../lib/supabase';
+import { avatarGradient } from '../../../lib/avatars';
 import { useAuthStore } from '../../../store/authStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
@@ -39,6 +41,7 @@ type CommunityGame = Game & {
 type LiveRoom = {
   id: string; name: string; participant_count: number;
   community_name: string; status: string;
+  room_type: 'video' | 'audio'; banner_url: string | null;
 };
 
 function GameTile({
@@ -104,11 +107,11 @@ export default function PlayScreen() {
       supabase.from('games').select('*').eq('publisher_type', 'roxy').order('name'),
       supabase
         .from('community_rooms')
-        .select('id, name, participant_count, status, communities(name)')
+        .select('id, name, participant_count, status, room_type, banner_url, communities(name)')
         .eq('is_active', true)
         .neq('status', 'closed')
         .order('participant_count', { ascending: false })
-        .limit(3),
+        .limit(6),
     ]);
     if (origRes.data) setOriginals(origRes.data as Game[]);
     if (liveRes.data) {
@@ -117,6 +120,8 @@ export default function PlayScreen() {
         participant_count: r.participant_count ?? 0,
         community_name: (r.communities as any)?.name ?? 'Roxy',
         status: r.status,
+        room_type: r.room_type ?? 'audio',
+        banner_url: r.banner_url ?? null,
       })));
     }
 
@@ -206,30 +211,35 @@ export default function PlayScreen() {
     section: { marginBottom: 20 },
     gameGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 9 },
 
-    // Live rooms
-    liveCard: {
-      backgroundColor: colors.surface, marginHorizontal: 14,
-      borderRadius: 14, overflow: 'hidden',
+    // Live rooms — banner rail
+    liveRail: { paddingHorizontal: 14, gap: 10 },
+    liveTile: {
+      width: 190, height: 116, borderRadius: 18,
+      overflow: 'hidden', justifyContent: 'space-between',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.12, shadowRadius: 10, elevation: 4,
     },
-    liveRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 12,
-      paddingHorizontal: 14, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: colors.background,
+    liveTileBg: { ...StyleSheet.absoluteFillObject },
+    liveTileVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(26,10,46,0.32)' },
+    liveTileTop: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      padding: 8,
     },
-    liveEmoji: {
-      width: 38, height: 38, borderRadius: 12,
-      backgroundColor: colors.primary + '18',
-      alignItems: 'center', justifyContent: 'center',
-    },
-    liveEmojiText: { fontSize: 18 },
-    liveBody: { flex: 1 },
-    liveName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
-    liveMeta: { color: colors.textMuted, fontSize: 11, marginTop: 1 },
-    seatsChip: {
-      backgroundColor: colors.primary + '18', borderRadius: 10,
+    livePill: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      backgroundColor: '#E5484D', borderRadius: 999,
       paddingHorizontal: 8, paddingVertical: 3,
     },
-    seatsText: { color: colors.primary, fontWeight: '700', fontSize: 12 },
+    livePulse: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
+    livePillText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+    liveTypeBadge: {
+      width: 24, height: 24, borderRadius: 12,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: 'rgba(26,10,46,0.45)',
+    },
+    liveTileBottom: { padding: 10 },
+    liveTileName: { color: '#fff', fontWeight: '800', fontSize: 13, lineHeight: 17 },
+    liveTileMeta: { color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 2 },
 
     // Pop modal (Speed Dating options)
     popOverlay: {
@@ -359,29 +369,44 @@ export default function PlayScreen() {
               linkLabel="All"
               onLinkPress={() => router.push('/(tabs)/connect' as any)}
             />
-            <View style={s.liveCard}>
-              {liveRooms.map((room, i) => (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.liveRail}>
+              {liveRooms.map((room) => (
                 <TouchableOpacity
                   key={room.id}
-                  style={[s.liveRow, i === liveRooms.length - 1 && { borderBottomWidth: 0 }]}
+                  style={s.liveTile}
                   onPress={() => router.push(`/(tabs)/connect/community-room-session?room_id=${room.id}` as any)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
+                  accessibilityLabel={`Join ${room.name}`}
                 >
-                  <View style={s.liveEmoji}>
-                    <Text style={s.liveEmojiText}>🎙️</Text>
-                  </View>
-                  <View style={s.liveBody}>
-                    <Text style={s.liveName} numberOfLines={1}>{room.name}</Text>
-                    <Text style={s.liveMeta}>{room.community_name} · in progress</Text>
-                  </View>
-                  {room.participant_count > 0 && (
-                    <View style={s.seatsChip}>
-                      <Text style={s.seatsText}>{room.participant_count} in</Text>
-                    </View>
+                  {room.banner_url ? (
+                    <ExpoImage source={{ uri: room.banner_url }} style={s.liveTileBg} contentFit="cover" />
+                  ) : (
+                    <LinearGradient
+                      colors={avatarGradient(room.name)}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={s.liveTileBg}
+                    />
                   )}
+                  <View style={s.liveTileVeil} />
+                  <View style={s.liveTileTop}>
+                    <View style={s.livePill}>
+                      <View style={s.livePulse} />
+                      <Text style={s.livePillText}>LIVE</Text>
+                    </View>
+                    <View style={s.liveTypeBadge}>
+                      <Ionicons name={room.room_type === 'video' ? 'videocam' : 'mic'} size={13} color="#fff" />
+                    </View>
+                  </View>
+                  <View style={s.liveTileBottom}>
+                    <Text style={s.liveTileName} numberOfLines={2}>{room.name}</Text>
+                    <Text style={s.liveTileMeta} numberOfLines={1}>
+                      {room.community_name}{room.participant_count > 0 ? ` · ${room.participant_count} in` : ''}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
           </View>
         )}
 

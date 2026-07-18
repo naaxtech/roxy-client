@@ -520,6 +520,7 @@ export default function CommunityDetailScreen() {
                 room_type={room.room_type}
                 status={room.status}
                 scheduled_at={room.scheduled_at}
+                banner_url={(room as { banner_url?: string | null }).banner_url ?? null}
                 community_name={null}
                 creator_display_name={room.creator_display_name}
                 participant_count={room.participant_count}

@@ -2,6 +2,8 @@ import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
+jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
+jest.mock('expo-image', () => ({ Image: 'Image' }));
 
 // eslint-disable-next-line import/first
 import { CommunityRoomCard } from '../../components/community/CommunityRoomCard';
@@ -25,9 +27,9 @@ describe('CommunityRoomCard', () => {
     expect(getByText('Chill voice while we game')).toBeTruthy();
   });
 
-  it('shows Live badge for live rooms', () => {
+  it('shows LIVE pill for live rooms', () => {
     const { getByText } = render(<CommunityRoomCard {...base} />);
-    expect(getByText('● Live')).toBeTruthy();
+    expect(getByText('LIVE')).toBeTruthy();
   });
 
   it('shows scheduled time for scheduled rooms', () => {
@@ -59,17 +61,20 @@ describe('CommunityRoomCard', () => {
 
   it('shows community and host info', () => {
     const { getByText } = render(<CommunityRoomCard {...base} />);
-    expect(getByText('🏘 Queer Gamers')).toBeTruthy();
-    expect(getByText('👑 Sam')).toBeTruthy();
+    expect(getByText('Queer Gamers')).toBeTruthy();
+    expect(getByText('hosted by Sam')).toBeTruthy();
   });
 
-  it('shows audio icon for audio rooms', () => {
-    const { getByText } = render(<CommunityRoomCard {...base} room_type="audio" />);
-    expect(getByText('🎙️')).toBeTruthy();
+  it('hides the community tag when scoped to one community', () => {
+    const { queryByText } = render(<CommunityRoomCard {...base} hideCommunityTag />);
+    expect(queryByText('Queer Gamers')).toBeNull();
+    expect(queryByText('hosted by Sam')).toBeTruthy();
   });
 
-  it('shows video icon for video rooms', () => {
-    const { getByText } = render(<CommunityRoomCard {...base} room_type="video" />);
-    expect(getByText('🎥')).toBeTruthy();
+  it('shows live participant count when provided', () => {
+    const { getByText } = render(
+      <CommunityRoomCard {...base} participant_count={6} max_participants={12} />
+    );
+    expect(getByText('6/12 in')).toBeTruthy();
   });
 });
