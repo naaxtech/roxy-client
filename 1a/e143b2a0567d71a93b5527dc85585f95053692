@@ -1,0 +1,78 @@
+supabase/migrations/056_login_streaks.sql
+  s_093307bfc37bee::t_c9de7ddf09ecca 59-60
+  s_093307bfc37bee::t_e1a311662c072b 35
+  s_093307bfc37bee::t_b6e3dde2b33549 10-14,22,30-34
+apps/mobile/app/(tabs)/messages/index.tsx
+  s_093307bfc37bee::t_0e5d53b71359ab 337
+  s_093307bfc37bee::t_a1a43e1c16d94c 16
+apps/mobile/app/(tabs)/connect/index.tsx
+  s_093307bfc37bee::t_3f5973ebb349e9 106-111
+  s_093307bfc37bee::t_01dff8bd7ba490 386-395
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_093307bfc37bee::t_600967334d6e0d 20,513
+apps/mobile/app/(tabs)/messages/new.tsx
+  s_093307bfc37bee::t_6a7af44c8e781e 129,135,138,147-149
+  s_093307bfc37bee::t_2f8b814a3c7572 1
+  s_093307bfc37bee::t_eed55641ba5681 13
+  s_093307bfc37bee::t_8f8750ef20fa5b 22-23,33-34,40,42
+.maestro/flows/community_join_leave.yaml
+  s_093307bfc37bee::t_b6b4710c653ec3 8-10,14-18,20,22,47,49
+.claude/mistakes.md
+  s_164deec355e208::t_80f61cec920b73 68-72
+apps/mobile/components/feed/StaticPostCard.tsx
+  s_093307bfc37bee::t_400aea5aefc542 8,30
+supabase/migrations/057_notifications.sql
+  s_093307bfc37bee::t_b9418d1e8c369b 2-5,7,10,19-20,24,28,32-36,39-44,47-49,55-72,75-76,79,91,94,96,102-103,106,112-114,121,124,126-127,134-135,138
+apps/mobile/app/(tabs)/grow/people.tsx
+  s_093307bfc37bee::t_a515b174e06779 13
+  s_093307bfc37bee::t_840c1746c81eac 28-29,39-40,46-48,129,196-203
+apps/mobile/lib/directMessages.ts
+  s_093307bfc37bee::t_f311b54c137051 4-5,12-14,16-21,29-41
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_093307bfc37bee::t_80aecd8b87954b 28
+  s_093307bfc37bee::t_804e307a338499 85
+apps/mobile/__tests__/directMessages.test.ts
+  s_093307bfc37bee::t_c914ee1377055d 55-73
+apps/mobile/lib/avatars.ts
+  s_093307bfc37bee::t_7e02bc37c3285c 28-46
+.claude/decisions.md
+  s_164deec355e208::t_1ec0b181b9e83e 89-103
+.claude/log.md
+  s_164deec355e208::t_e96b82175c73e1 50
+apps/mobile/lib/notifications.ts
+  s_093307bfc37bee::t_22287149b97bd5 55-72
+apps/mobile/__tests__/streaks.test.ts
+  s_093307bfc37bee::t_527974ea9d6d59 11,14-16
+apps/mobile/lib/streaks.ts
+  s_093307bfc37bee::t_1e80c9adaeb3d4 10-18
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_093307bfc37bee::t_74ed4e0f75a26d 20,88-100,623
+  s_093307bfc37bee::t_850e41a234f58e 14
+  s_093307bfc37bee::t_c28bc507766790 12
+supabase/migrations/058_unique_direct_conversations.sql
+  s_093307bfc37bee::t_f5b3afed0673c1 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1ae143b2a0567d71a93b5527dc85585f95053692",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_164deec355e208": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5229de36-9b6a-4c3f-a802-fe9a8c68bb7a",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
