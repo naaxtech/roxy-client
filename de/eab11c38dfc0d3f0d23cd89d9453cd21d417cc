@@ -1,0 +1,23 @@
+apps/mobile/__tests__/confirm.test.ts
+  s_093307bfc37bee::t_3c62a37469ed7c 1-42
+apps/mobile/lib/confirm.ts
+  s_093307bfc37bee::t_d6a4eab5e2559a 1-30
+apps/mobile/app/(tabs)/profile/settings.tsx
+  s_093307bfc37bee::t_03758b22b01f75 11,31-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "deeab11c38dfc0d3f0d23cd89d9453cd21d417cc",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
