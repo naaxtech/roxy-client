@@ -289,7 +289,7 @@ export default function MessagesScreen() {
         </View>
         <TouchableOpacity
           style={s.iconBtn}
-          onPress={() => router.push('/(tabs)/discover/communities' as any)}
+          onPress={() => router.push('/(tabs)/messages/new' as any)}
           accessibilityLabel="New message"
         >
           <Ionicons name="create-outline" size={20} color={colors.textPrimary} />
@@ -343,7 +343,7 @@ export default function MessagesScreen() {
               <Text style={s.emptyIcon}>💬</Text>
               <Text style={s.emptyTitle}>No messages yet</Text>
               <Text style={s.emptyText}>
-                Connect with people in the community to start chatting 💜
+                Your people are in your communities — say hi in a feed or add friends from a member list 💜
               </Text>
             </View>
           }
