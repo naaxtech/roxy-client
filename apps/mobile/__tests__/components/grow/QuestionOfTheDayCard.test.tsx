@@ -54,7 +54,7 @@ describe('QuestionOfTheDayCard', () => {
       <QuestionOfTheDayCard communityIds={['c1']} userId="u1" />
     );
     await waitFor(() => {
-      expect(getByText(/"What made you smile today\?"/)).toBeTruthy();
+      expect(getByText('What made you smile today?')).toBeTruthy();
     });
   });
 

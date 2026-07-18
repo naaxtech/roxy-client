@@ -4,6 +4,7 @@ import {
   Animated, Image, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { AnswerSheet } from './AnswerSheet';
@@ -125,7 +126,7 @@ export function QuestionOfTheDayCard({ communityIds, userId }: Props) {
       </View>
 
       <Text style={[q.questionText, { color: colors.textPrimary }]}>
-        "{question.question}"
+        {question.question}
       </Text>
 
       {question.answer_count > 0 && (
@@ -148,7 +149,7 @@ export function QuestionOfTheDayCard({ communityIds, userId }: Props) {
             </View>
           ))}
           <Text style={[q.countText, { color: colors.textSecondary }]}>
-            {' '}{question.answer_count} answered
+            {' '}{question.answer_count} sapphics answered today
           </Text>
         </View>
       )}
@@ -160,27 +161,33 @@ export function QuestionOfTheDayCard({ communityIds, userId }: Props) {
       )}
 
       <View style={q.btnRow}>
+        {/* Peg: filled gradient "Add yours" pill leads; "Read N" is outlined. */}
         <TouchableOpacity
-          style={[
-            q.addBtn,
-            { borderColor: colors.primary },
-            answered && { opacity: 0.45 },
-          ]}
+          style={[q.addBtnWrap, answered && { opacity: 0.55 }]}
           onPress={() => !answered && setShowSheet(true)}
           disabled={answered}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
+          accessibilityLabel="Add your answer"
         >
-          <Text style={[q.addBtnText, { color: colors.primary }]}>
-            {answered ? 'You answered \u2713' : '+ Add yours'}
-          </Text>
+          <LinearGradient
+            colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={q.addBtn}
+          >
+            <Text style={q.addBtnText}>
+              {answered ? 'You answered \u2713' : '+ Add yours'}
+            </Text>
+          </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[q.readBtn, { backgroundColor: colors.primary }]}
+          style={[q.readBtn, { borderColor: colors.roxy }]}
           onPress={() => router.push(`/(tabs)/grow/qotd/${question!.id}` as any)}
           activeOpacity={0.85}
+          accessibilityLabel={`Read ${question.answer_count} answers`}
         >
-          <Text style={q.readBtnText}>Read {question.answer_count}</Text>
+          <Text style={[q.readBtnText, { color: colors.roxy }]}>Read {question.answer_count}</Text>
         </TouchableOpacity>
       </View>
 
@@ -207,7 +214,7 @@ const q = StyleSheet.create({
   livePill: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pulseDot: { width: 7, height: 7, borderRadius: 4 },
   liveText: { fontSize: 11, fontWeight: '700' },
-  questionText: { fontSize: 16, fontWeight: '600', lineHeight: 22, fontStyle: 'italic' },
+  questionText: { fontSize: 18, fontWeight: '800', lineHeight: 25 },
   metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
   avatar: {
     width: 26, height: 26, borderRadius: 13,
@@ -219,11 +226,12 @@ const q = StyleSheet.create({
   countText: { fontSize: 12, marginLeft: 6 },
   answerPreview: { fontSize: 12, fontStyle: 'italic' },
   btnRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  addBtn: {
-    flex: 1, borderWidth: 1.5, borderRadius: 20,
-    paddingVertical: 8, alignItems: 'center',
+  addBtnWrap: { flex: 1, borderRadius: 999, overflow: 'hidden' },
+  addBtn: { minHeight: 40, alignItems: 'center', justifyContent: 'center' },
+  addBtnText: { fontSize: 13.5, fontWeight: '800', color: '#fff' },
+  readBtn: {
+    flex: 1, borderRadius: 999, minHeight: 40, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
   },
-  addBtnText: { fontSize: 13, fontWeight: '700' },
-  readBtn: { flex: 1, borderRadius: 20, paddingVertical: 8, alignItems: 'center' },
-  readBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  readBtnText: { fontSize: 13.5, fontWeight: '800' },
 });

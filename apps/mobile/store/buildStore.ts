@@ -95,18 +95,22 @@ export const useBuildStore = create<BuildState>((set, get) => ({
       return { bookmarkedBusinessIds: next };
     });
 
-    try {
-      if (isBookmarked) {
-        await supabase
+    // supabase-js returns errors, it does not throw — check explicitly, and
+    // upsert so a row that already exists (state raced hydration) is a no-op
+    // instead of a 409 that leaves the heart permanently out of sync.
+    const { error } = isBookmarked
+      ? await supabase
           .from('user_business_bookmarks')
           .delete()
-          .match({ user_id: userId, business_id: businessId });
-      } else {
-        await supabase
+          .match({ user_id: userId, business_id: businessId })
+      : await supabase
           .from('user_business_bookmarks')
-          .insert({ user_id: userId, business_id: businessId });
-      }
-    } catch {
+          .upsert(
+            { user_id: userId, business_id: businessId },
+            { onConflict: 'user_id,business_id', ignoreDuplicates: true },
+          );
+
+    if (error) {
       // Rollback
       set((s) => {
         const next = new Set(s.bookmarkedBusinessIds);

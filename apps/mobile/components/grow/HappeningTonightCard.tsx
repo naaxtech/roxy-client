@@ -4,18 +4,20 @@ import {
   Animated, Dimensions, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { format, addHours } from 'date-fns';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
-import { useThemeColors } from '../../hooks/useThemeColors';
 
 const SCREEN_W = Dimensions.get('window').width;
 // Matches grow/index.tsx's scroll contentContainerStyle padding — this card has no
 // margin of its own, so it lines up flush with sibling section cards.
 const PARENT_PADDING = 12;
 const SLIDE_WIDTH = SCREEN_W - PARENT_PADDING * 2;
+const AUTO_ADVANCE_MS = 4500;
 
 type HappeningItem =
-  | { kind: 'event'; id: string; title: string; communityName: string; startsAt: string; attendeeCount: number; spotsLeft: number | null }
+  | { kind: 'event'; id: string; title: string; communityName: string; startsAt: string }
   | { kind: 'room'; id: string; name: string; communityName: string; participantCount: number | null }
   | { kind: 'game'; id: string; title: string; communityName: string };
 
@@ -25,8 +27,8 @@ interface Props {
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
 
+/** Peg-style boxed countdown: STARTS IN [04]:[46]:[21] HRS MIN SEC. */
 function Countdown({ startsAt }: { startsAt: string }) {
-  const colors = useThemeColors();
   const [secs, setSecs] = useState<number | null>(null);
 
   useEffect(() => {
@@ -37,23 +39,39 @@ function Countdown({ startsAt }: { startsAt: string }) {
     return () => clearInterval(id);
   }, [startsAt]);
 
-  const started = new Date(startsAt) <= new Date();
-  if (started) return <Text style={[s.liveLabel, { color: colors.error }]}>● LIVE</Text>;
+  if (new Date(startsAt) <= new Date()) {
+    return (
+      <View style={s.livePill}>
+        <LivePulse />
+        <Text style={s.livePillText}>LIVE</Text>
+      </View>
+    );
+  }
   if (secs === null) return null;
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const sc = secs % 60;
+  const units = [
+    { v: Math.floor(secs / 3600), l: 'HRS' },
+    { v: Math.floor((secs % 3600) / 60), l: 'MIN' },
+    { v: secs % 60, l: 'SEC' },
+  ];
   return (
     <View>
-      <Text style={[s.countdownLabel, { color: 'rgba(255,255,255,0.7)' }]}>STARTS IN</Text>
-      <Text style={[s.countdown, { color: '#fff' }]}>
-        {pad(h)} : {pad(m)} : {pad(sc)}
-      </Text>
+      <Text style={s.countdownLabel}>STARTS IN</Text>
+      <View style={s.countdownRow}>
+        {units.map((u, i) => (
+          <View key={u.l} style={s.countdownUnit}>
+            <View style={s.countdownBox}>
+              <Text style={s.countdownDigits}>{pad(u.v)}</Text>
+            </View>
+            <Text style={s.countdownUnitLabel}>{u.l}</Text>
+            {i < 2 && <View style={s.countdownColonSpacer} />}
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
 
-function LivePulse({ color }: { color: string }) {
+function LivePulse() {
   const anim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     Animated.loop(
@@ -63,15 +81,21 @@ function LivePulse({ color }: { color: string }) {
       ])
     ).start();
   }, [anim]);
-  return <Animated.View style={[s.liveDot, { backgroundColor: color, opacity: anim }]} />;
+  return <Animated.View style={[s.liveDot, { opacity: anim }]} />;
 }
 
+/**
+ * Jo's peg (roxy-home-v1): full brand-gradient card, white circle flash
+ * plate, HAPPENING TONIGHT pill, boxed countdown, solid white Join CTA —
+ * as an auto-moving carousel of everything live/tonight in your communities.
+ */
 export function HappeningTonightCard({ communityIds }: Props) {
-  const colors = useThemeColors();
   const router = useRouter();
   const [items, setItems] = useState<HappeningItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const listRef = useRef<FlatList<HappeningItem>>(null);
+  const indexRef = useRef(0);
 
   const load = useCallback(async () => {
     if (communityIds.length === 0) { setLoading(false); return; }
@@ -79,7 +103,7 @@ export function HappeningTonightCard({ communityIds }: Props) {
     const tonightEnd = addHours(new Date(), 24).toISOString();
     try {
       const [roomsRes, eventsRes, gamesRes] = await Promise.all([
-        supabase.from('community_rooms').select('id, name, communities(name)')
+        supabase.from('community_rooms').select('id, name, participant_count, communities(name)')
           .in('community_id', communityIds).eq('status', 'live').eq('is_active', true).limit(5),
         supabase.from('events').select('id, title, starts_at, communities(name)')
           .in('community_id', communityIds).gte('starts_at', now).lte('starts_at', tonightEnd)
@@ -90,12 +114,12 @@ export function HappeningTonightCard({ communityIds }: Props) {
 
       const rooms: HappeningItem[] = (roomsRes.data ?? []).map((r: any) => ({
         kind: 'room', id: r.id, name: r.name,
-        communityName: r.communities?.name ?? '', participantCount: null,
+        communityName: r.communities?.name ?? '',
+        participantCount: r.participant_count ?? null,
       }));
       const events: HappeningItem[] = (eventsRes.data ?? []).map((e: any) => ({
         kind: 'event', id: e.id, title: e.title,
         communityName: e.communities?.name ?? '', startsAt: e.starts_at,
-        attendeeCount: 0, spotsLeft: null,
       }));
       const games: HappeningItem[] = (gamesRes.data ?? []).map((g: any) => ({
         kind: 'game', id: g.id, title: g.games.name,
@@ -111,61 +135,94 @@ export function HappeningTonightCard({ communityIds }: Props) {
 
   useEffect(() => { void load(); }, [load]);
 
+  // Auto-advance: loop through slides; any manual swipe resets the rhythm
+  // because momentum end updates indexRef.
+  useEffect(() => {
+    if (items.length < 2) return;
+    const id = setInterval(() => {
+      const next = (indexRef.current + 1) % items.length;
+      indexRef.current = next;
+      setCurrentIndex(next);
+      listRef.current?.scrollToIndex({ index: next, animated: true });
+    }, AUTO_ADVANCE_MS);
+    return () => clearInterval(id);
+  }, [items.length]);
+
   if (loading) {
     return (
-      <View style={[s.outer, { borderColor: colors.roxy }]}>
+      <LinearGradient colors={['#FF6A2E', '#FF2F71', '#E81C8E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.outer}>
         <ActivityIndicator color="#fff" style={{ padding: 48 }} />
-      </View>
+      </LinearGradient>
     );
   }
   if (items.length === 0) return null;
 
+  const iconFor = (item: HappeningItem) =>
+    item.kind === 'room' ? 'videocam' : item.kind === 'game' ? 'game-controller' : 'flash';
+
+  const openItem = (item: HappeningItem) => {
+    if (item.kind === 'room') {
+      router.push(`/(tabs)/connect/community-room-session?room_id=${item.id}` as any);
+    } else if (item.kind === 'event') {
+      router.push(`/event/${item.id}` as any);
+    } else {
+      router.push('/(tabs)/discover' as any);
+    }
+  };
+
   const renderSlide = ({ item }: { item: HappeningItem }) => (
     <View style={[s.slide, { width: SLIDE_WIDTH }]}>
-      {item.kind === 'room' && (
-        <>
-          <View style={s.itemHeader}>
-            <LivePulse color={colors.error} />
-            <Text style={s.itemBadge}>LIVE</Text>
+      <View style={s.slideRow}>
+        <View style={s.iconPlate}>
+          <Ionicons name={iconFor(item)} size={26} color="#FF2F71" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={s.pillLabel}>
+            <Text style={s.pillLabelText}>
+              {item.kind === 'room' ? 'HAPPENING NOW' : 'HAPPENING TONIGHT'}
+            </Text>
           </View>
-          <Text style={s.itemTitle} numberOfLines={2}>{item.name}</Text>
-          <Text style={s.itemMeta}>{item.communityName}</Text>
-          <TouchableOpacity style={s.joinBtn} onPress={() => router.push(`/room/${item.id}` as any)}>
-            <Text style={s.joinBtnText}>Join now</Text>
-          </TouchableOpacity>
-        </>
-      )}
-      {item.kind === 'event' && (
-        <>
-          <Text style={s.itemTitle} numberOfLines={2}>{item.title}</Text>
-          <Text style={s.itemMeta}>
-            {item.communityName} · {format(new Date(item.startsAt), 'h:mm a')}
+          <Text style={s.itemTitle} numberOfLines={2}>
+            {item.kind === 'room' ? item.name : item.title}
           </Text>
-          <View style={s.eventBottom}>
-            <TouchableOpacity style={s.joinBtn} onPress={() => router.push(`/event/${item.id}` as any)}>
-              <Text style={s.joinBtnText}>Join now</Text>
-            </TouchableOpacity>
-            <Countdown startsAt={item.startsAt} />
-          </View>
-        </>
-      )}
-      {item.kind === 'game' && (
-        <>
-          <Text style={s.itemBadge}>Available now</Text>
-          <Text style={s.itemTitle} numberOfLines={2}>{item.title}</Text>
-          <Text style={s.itemMeta}>{item.communityName}</Text>
-          <TouchableOpacity style={s.joinBtn} onPress={() => router.push('/(tabs)/discover' as any)}>
-            <Text style={s.joinBtnText}>Play now</Text>
-          </TouchableOpacity>
-        </>
-      )}
+          <Text style={s.itemMeta} numberOfLines={1}>
+            {item.kind === 'event'
+              ? `${format(new Date(item.startsAt), 'h:mm a')} · ${item.communityName}`
+              : item.kind === 'room' && item.participantCount
+                ? `${item.communityName} · ${item.participantCount} here now`
+                : item.communityName}
+          </Text>
+        </View>
+      </View>
+      <View style={s.slideBottom}>
+        {item.kind === 'event'
+          ? <Countdown startsAt={item.startsAt} />
+          : (
+            <View style={s.livePill}>
+              <LivePulse />
+              <Text style={s.livePillText}>{item.kind === 'room' ? 'LIVE' : 'OPEN NOW'}</Text>
+            </View>
+          )}
+        <TouchableOpacity
+          style={s.joinBtn}
+          onPress={() => openItem(item)}
+          accessibilityLabel={item.kind === 'game' ? 'Play now' : 'Join now'}
+        >
+          <Text style={s.joinBtnText}>{item.kind === 'game' ? 'Play now' : 'Join now'}</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
   return (
-    <View style={[s.outer, { borderColor: colors.roxy }]}>
-      <Text style={s.sectionLabel}>HAPPENING TONIGHT</Text>
+    <LinearGradient
+      colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={s.outer}
+    >
       <FlatList
+        ref={listRef}
         data={items}
         keyExtractor={(item) => `${item.kind}-${item.id}`}
         renderItem={renderSlide}
@@ -177,7 +234,9 @@ export function HappeningTonightCard({ communityIds }: Props) {
         decelerationRate="fast"
         disableIntervalMomentum
         onMomentumScrollEnd={(e) => {
-          setCurrentIndex(Math.round(e.nativeEvent.contentOffset.x / SLIDE_WIDTH));
+          const idx = Math.round(e.nativeEvent.contentOffset.x / SLIDE_WIDTH);
+          indexRef.current = idx;
+          setCurrentIndex(idx);
         }}
         getItemLayout={(_, i) => ({ length: SLIDE_WIDTH, offset: SLIDE_WIDTH * i, index: i })}
       />
@@ -188,46 +247,78 @@ export function HappeningTonightCard({ communityIds }: Props) {
           ))}
         </View>
       )}
-    </View>
+    </LinearGradient>
   );
 }
 
-const PINK = '#C4476A';
-
 const s = StyleSheet.create({
   outer: {
-    borderWidth: 2,
-    borderRadius: 16,
+    borderRadius: 22,
     overflow: 'hidden',
-    backgroundColor: PINK,
-  },
-  sectionLabel: {
-    fontSize: 11, fontWeight: '700', letterSpacing: 0.8,
-    color: 'rgba(255,255,255,0.75)',
-    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8,
+    shadowColor: '#E81C8E', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35, shadowRadius: 16, elevation: 8,
   },
   slide: {
-    minHeight: 140,
+    minHeight: 148,
     paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 14,
     justifyContent: 'space-between',
   },
-  itemHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  liveDot: { width: 8, height: 8, borderRadius: 4 },
-  itemBadge: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, color: 'rgba(255,255,255,0.85)' },
-  itemTitle: { fontSize: 17, fontWeight: '800', lineHeight: 22, marginVertical: 4, color: '#fff' },
-  itemMeta: { fontSize: 12, marginBottom: 8, color: 'rgba(255,255,255,0.75)' },
-  eventBottom: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-  joinBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    borderRadius: 20, paddingHorizontal: 16, paddingVertical: 7,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
+  slideRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  iconPlate: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2, shadowRadius: 8,
   },
-  joinBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  countdownLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 0.5, textAlign: 'right' },
-  countdown: { fontSize: 16, fontWeight: '700', textAlign: 'right', fontVariant: ['tabular-nums'] },
-  liveLabel: { fontSize: 13, fontWeight: '700' },
+  pillLabel: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3,
+    marginBottom: 6,
+  },
+  pillLabelText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  itemTitle: { fontSize: 18, fontWeight: '800', lineHeight: 23, color: '#fff' },
+  itemMeta: { fontSize: 12, marginTop: 3, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+  slideBottom: {
+    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  joinBtn: {
+    backgroundColor: '#fff',
+    borderRadius: 999, paddingHorizontal: 20, minHeight: 40,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18, shadowRadius: 6,
+  },
+  joinBtnText: { color: '#E81C8E', fontSize: 14, fontWeight: '800' },
+  livePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(26,10,46,0.35)',
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5,
+    alignSelf: 'flex-start',
+  },
+  livePillText: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
+  countdownLabel: {
+    fontSize: 9, fontWeight: '800', letterSpacing: 1,
+    color: 'rgba(255,255,255,0.8)', marginBottom: 4,
+  },
+  countdownRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  countdownUnit: { flexDirection: 'row', alignItems: 'center' },
+  countdownBox: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 8, paddingHorizontal: 7, paddingVertical: 4,
+    alignItems: 'center',
+  },
+  countdownDigits: { color: '#fff', fontSize: 16, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  countdownUnitLabel: {
+    color: 'rgba(255,255,255,0.7)', fontSize: 8, fontWeight: '700',
+    marginLeft: 3, marginRight: 3,
+  },
+  countdownColonSpacer: { width: 2 },
   dots: { flexDirection: 'row', gap: 4, justifyContent: 'center', paddingBottom: 12 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.35)' },
   dotActive: { backgroundColor: '#fff' },
