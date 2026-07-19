@@ -84,6 +84,19 @@ export default function TabLayout() {
           tabBarActiveBackgroundColor: colors.roxy + '16',
           tabBarItemStyle: { borderRadius: 16, marginHorizontal: 6, marginVertical: 2 },
           tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 0 },
+          // Keep the phone layout at every width — wide web viewports otherwise
+          // switch to icon-beside-label and the badge collides with the icon.
+          tabBarLabelPosition: 'below-icon',
+          tabBarBadgeStyle: {
+            backgroundColor: '#E81C8E',
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: '800',
+            minWidth: 16,
+            height: 16,
+            borderRadius: 8,
+            lineHeight: 15,
+          },
         }}
       >
         <Tabs.Screen

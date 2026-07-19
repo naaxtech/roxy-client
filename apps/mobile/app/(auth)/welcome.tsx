@@ -88,9 +88,22 @@ export default function WelcomeScreen() {
       fontSize: 17,
       fontWeight: '600',
       color: 'rgba(255,255,255,0.95)',
-      marginTop: 10,
+      marginTop: 16,
       letterSpacing: 0.2,
       textAlign: 'center',
+    },
+    // Colored wordmark disappears straight on the brand gradient — float it
+    // on a soft white plate so the brand colors stay legible.
+    logoPlate: {
+      backgroundColor: 'rgba(255,255,255,0.96)',
+      borderRadius: 32,
+      paddingHorizontal: 34,
+      paddingVertical: compactHero ? 14 : 22,
+      shadowColor: '#7A0E45',
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.28,
+      shadowRadius: 30,
+      elevation: 14,
     },
 
     // Bottom sheet card that carries all auth actions.
@@ -216,7 +229,9 @@ export default function WelcomeScreen() {
             },
           ]}
         >
-          <RoxyWordmark variant="primary" height={compactHero ? 88 : 150} />
+          <View style={styles.logoPlate}>
+            <RoxyWordmark variant="primary" height={compactHero ? 64 : 96} />
+          </View>
           {!compactHero && (
             <Text style={styles.tagline}>Your community. Your story.</Text>
           )}

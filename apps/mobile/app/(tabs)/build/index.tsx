@@ -13,6 +13,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useBuildStore } from '../../../store/buildStore';
 import { REGISTER_BUSINESS_URL } from '../../../lib/constants';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { FRAME_MAX_WIDTH } from '../../../hooks/useAppWidth';
 import { Business, BusinessPhoto, ImpactProject } from '../../../types';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
@@ -23,8 +24,9 @@ import { BusinessDetailSheet } from '../../../components/build/BusinessDetailShe
 import { FeatureVoteCard, FeatureRequest } from '../../../components/build/FeatureVoteCard';
 import { DonateModal } from '../../../components/donations/DonateModal';
 
-const categoryEmoji: Record<string, string> = {
-  mutual_aid: '🤝', visibility: '🏳️‍🌈', education: '📚', safety: '🛡️',
+// Vector icons in chrome — never emoji (brand rule).
+const categoryIcon: Record<string, keyof typeof Ionicons.glyphMap> = {
+  mutual_aid: 'people', visibility: 'flag', education: 'book', safety: 'shield-checkmark',
 };
 
 type BuildStyles = ReturnType<typeof buildStyles>;
@@ -65,7 +67,9 @@ function ImpactCard({
   return (
     <TouchableOpacity style={styles.impactCard} onPress={onOpenDetail} activeOpacity={0.85}>
       <View style={styles.impactHeader}>
-        <Text style={styles.impactEmoji}>{categoryEmoji[project.category] ?? '✨'}</Text>
+        <View style={styles.impactIconWrap}>
+          <Ionicons name={categoryIcon[project.category] ?? 'sparkles'} size={18} color="#E81C8E" />
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.impactTitle} numberOfLines={2}>{project.title}</Text>
           <Text style={styles.impactMeta}>{project.supporter_count} supporters</Text>
@@ -128,7 +132,7 @@ function ImpactDetailSheet({
     <Modal
       testID="impact-detail-modal"
       visible={project !== null}
-      animationType="slide"
+      animationType="fade"
       transparent
       onRequestClose={onClose}
     >
@@ -143,7 +147,9 @@ function ImpactDetailSheet({
               <Ionicons name="close" size={20} style={styles.modalCloseBtnText} />
             </TouchableOpacity>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalEmoji}>{categoryEmoji[project.category] ?? '✨'}</Text>
+              <View style={[styles.impactIconWrap, { alignSelf: 'center', width: 52, height: 52, borderRadius: 26 }]}>
+                <Ionicons name={categoryIcon[project.category] ?? 'sparkles'} size={26} color="#E81C8E" />
+              </View>
               <Text style={styles.modalTitle}>{project.title}</Text>
               <Text style={styles.modalMeta}>{project.supporter_count} supporters</Text>
               {project.description ? (
@@ -233,7 +239,11 @@ function buildStyles(colors: ReturnType<typeof useThemeColors>) {
       backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 10, gap: 8,
     },
     impactHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-    impactEmoji: { fontSize: 22 },
+    impactIconWrap: {
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: '#E81C8E' + '14',
+      alignItems: 'center', justifyContent: 'center',
+    },
     impactTitle: { color: colors.textPrimary, fontWeight: '600', fontSize: 14 },
     impactMeta: { color: colors.textMuted, fontSize: 12 },
     impactDesc: { color: colors.textSecondary, fontSize: 13, lineHeight: 18 },
@@ -261,6 +271,7 @@ function buildStyles(colors: ReturnType<typeof useThemeColors>) {
     modalCard: {
       backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24,
       padding: 24, paddingBottom: 40, maxHeight: '85%',
+      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
     },
     modalCloseBtn: { alignSelf: 'flex-end', padding: 8, marginBottom: 8 },
     modalCloseBtnText: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
@@ -319,6 +330,7 @@ function buildStyles(colors: ReturnType<typeof useThemeColors>) {
     pitchModalCard: {
       backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24,
       padding: 24, paddingBottom: 40,
+      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
     },
     pitchModalTitle: { fontSize: 20, fontWeight: '800', color: colors.textPrimary, marginBottom: 4 },
     pitchModalSubtitle: { fontSize: 14, color: colors.textMuted, marginBottom: 20, lineHeight: 20 },
@@ -728,7 +740,7 @@ export default function BuildScreen() {
       {/* Pitch submission modal */}
       <Modal
         visible={pitchModal}
-        animationType="slide"
+        animationType="fade"
         transparent
         onRequestClose={() => setPitchModal(false)}
       >

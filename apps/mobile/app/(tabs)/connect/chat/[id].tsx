@@ -17,6 +17,7 @@ import { useReactions } from '../../../../hooks/useReactions';
 import { useTyping } from '../../../../hooks/useTyping';
 import { useSafetyStore } from '../../../../store/safetyStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
+import { FRAME_MAX_WIDTH } from '../../../../hooks/useAppWidth';
 import { showAlert, confirmAction } from '../../../../lib/confirm';
 import { Analytics } from '../../../../lib/analytics';
 import { Message } from '../../../../types';
@@ -313,6 +314,7 @@ export default function ChatScreen() {
     reportCard: {
       backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
       padding: 24, paddingBottom: 40,
+      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
     },
     reportTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700', marginBottom: 4 },
     reportSubtitle: { color: colors.textSecondary, fontSize: 14, marginBottom: 16 },
@@ -945,7 +947,7 @@ export default function ChatScreen() {
       </Modal>
 
       {/* Report modal */}
-      <Modal visible={reportVisible} transparent animationType="slide" onRequestClose={() => setReportVisible(false)}>
+      <Modal visible={reportVisible} transparent animationType="fade" onRequestClose={() => setReportVisible(false)}>
         <View style={styles.overlay}>
           <View style={styles.reportCard}>
             <Text style={styles.reportTitle}>Report</Text>
