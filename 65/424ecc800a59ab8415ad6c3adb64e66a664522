@@ -1,0 +1,21 @@
+supabase/migrations/060_donations.sql
+  s_093307bfc37bee::t_faa457d0fc1287 1-32
+supabase/functions/create-donation-checkout/index.ts
+  s_093307bfc37bee::t_2e06210d287114 1-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "65424ecc800a59ab8415ad6c3adb64e66a664522",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
