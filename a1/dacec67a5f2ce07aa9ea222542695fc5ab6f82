@@ -1,0 +1,19 @@
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_e658711f8c2631::t_41dc96820dce87 732-733,883
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a1dacec67a5f2ce07aa9ea222542695fc5ab6f82",
+  "prompts": {},
+  "sessions": {
+    "s_e658711f8c2631": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae635d1cd727bd78a",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
