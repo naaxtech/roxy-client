@@ -1,0 +1,25 @@
+docs/qa/2026-07-19-full-click-audit.md
+  s_093307bfc37bee::t_7bcd02be5406c1 1-79
+  s_093307bfc37bee::t_199ff9f7b52177 80-120
+apps/mobile/tests/e2e/navigation-smoke.spec.ts
+  s_093307bfc37bee::t_0b0d93f146f388 1-63,68-82
+  s_093307bfc37bee::t_aea8a24664ad02 64-67
+apps/mobile/tests/e2e/helpers/auth.ts
+  s_093307bfc37bee::t_0381f12745fb2f 16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ab0fc2988edb18681e939f9fcc6ceaaa14b2b6c7",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
