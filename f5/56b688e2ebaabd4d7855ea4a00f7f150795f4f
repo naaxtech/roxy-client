@@ -1,0 +1,24 @@
+apps/mobile/components/grow/MiniWinsCard.tsx
+  s_093307bfc37bee::t_3605e02534e629 6,17,63-64,67-68,71-72,76,81-94,105-112,116,119-124,136-148,150-152,154-155,159-163
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_093307bfc37bee::t_32b5fc05bdd115 65-69
+  s_093307bfc37bee::t_e33c047e7a9c14 275-277,358-359,361-362,364-365,367-392,682-684,686,700-702,704,712-718,720-722,725-729,733-738,748-760,762-763,765,767-768,771-773
+apps/mobile/components/ui/RoxyCompanionButton.tsx
+  s_093307bfc37bee::t_556ecf933f1038 173-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f556b688e2ebaabd4d7855ea4a00f7f150795f4f",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
