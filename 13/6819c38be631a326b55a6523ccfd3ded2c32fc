@@ -1,0 +1,32 @@
+apps/mobile/components/grow/HappeningTonightCard.tsx
+  s_093307bfc37bee::t_f0e9fab28f6934 298
+  s_093307bfc37bee::t_a32bd9b87d9183 303-305,311,314,316-317,319
+  s_093307bfc37bee::t_73f88b6c497dab 175-181,184-193,195
+  s_093307bfc37bee::t_625e1dc196604f 260-265,268,271,275-276,280-281,283-285,288,293
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_f2c9ed8fc1410c::t_2d82814dd597e5 248-249,251,253,257-258,260-268,271-272,274,276,278-280,282,284-286,495-511,519-526,534,537
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "136819c38be631a326b55a6523ccfd3ded2c32fc",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_f2c9ed8fc1410c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aff843c266e4c3b7d",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
