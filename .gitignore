@@ -36,3 +36,12 @@ supabase/.temp
 
 # Git worktrees
 .worktrees/
+
+# Local agent/tooling artifacts and design handoffs — never commit
+.agents/
+.codex/
+.playwright-mcp/
+.superpowers/
+docs/Roxy-handoff/
+/*.png
+AGENTS.md
