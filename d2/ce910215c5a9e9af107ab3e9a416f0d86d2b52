@@ -1,0 +1,21 @@
+apps/mobile/app/(tabs)/connect/index.tsx
+  s_093307bfc37bee::t_22922b40931ec0 371,542,759
+apps/mobile/app/(tabs)/discover/index.tsx
+  s_093307bfc37bee::t_b1d3dbd041b358 288-290,338,415-430,432
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d2ce910215c5a9e9af107ab3e9a416f0d86d2b52",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
