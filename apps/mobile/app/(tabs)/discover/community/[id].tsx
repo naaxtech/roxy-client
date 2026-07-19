@@ -381,10 +381,17 @@ export default function CommunityDetailScreen() {
     );
   }
 
+  // Cold deep links (shared URL, new tab) have no history — back must still
+  // land somewhere sensible instead of doing nothing on web.
+  const handleBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace({ pathname: '/(tabs)/connect', params: { tab: 'communities' } } as any);
+  };
+
   if (!community) {
     return (
       <SafeAreaView style={styles.container}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
           <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.errorText}>Community not found</Text>
@@ -398,7 +405,7 @@ export default function CommunityDetailScreen() {
     <SafeAreaView style={styles.container} edges={[]}>
       {/* Compact header — content starts almost immediately, no decorative banner */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
 
@@ -528,7 +535,7 @@ export default function CommunityDetailScreen() {
                 participant_count={room.participant_count}
                 max_participants={room.max_participants}
                 hideCommunityTag={true}
-                onPress={() => router.push(`/(tabs)/connect/community-room-session?room_id=${room.id}` as any)}
+                onPress={() => router.push(`/community-room-session?room_id=${room.id}` as any)}
               />
             ))
           )}

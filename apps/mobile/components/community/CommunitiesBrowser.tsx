@@ -113,7 +113,7 @@ export function CommunitiesBrowser() {
           return (
             <TouchableOpacity
               style={s.card}
-              onPress={() => router.push(`/(tabs)/discover/community/${item.id}` as any)}
+              onPress={() => router.push(`/community/${item.id}` as any)}
               activeOpacity={0.8}
             >
               <View style={[s.ava, { backgroundColor: chipColor }]}>

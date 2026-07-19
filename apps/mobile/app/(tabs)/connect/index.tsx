@@ -471,7 +471,7 @@ export default function ConnectScreen() {
           <View key={c.id} style={styles.railCard}>
             <TouchableOpacity
               style={styles.railInfo}
-              onPress={() => router.push(`/(tabs)/discover/community/${c.id}` as any)}
+              onPress={() => router.push(`/community/${c.id}` as any)}
               activeOpacity={0.8}
             >
               <View style={[styles.railAva, { backgroundColor: ['#FF6A2E', '#8B5CF6', '#FF2F71', '#F472B6', '#C4476A', '#FF8A3D'][i % 6] }]}>
@@ -781,7 +781,7 @@ export default function ConnectScreen() {
                   banner_url={room.banner_url}
                   community_name={room.communities?.name ?? null}
                   creator_display_name={room.creator_display_name}
-                  onPress={() => router.push(`/(tabs)/connect/community-room-session?room_id=${room.id}` as any)}
+                  onPress={() => router.push(`/community-room-session?room_id=${room.id}` as any)}
                 />
               ))
             )}

@@ -587,7 +587,7 @@ export default function GrowScreen() {
                   <TouchableOpacity
                     key={row.community_id}
                     style={styles.cchip}
-                    onPress={() => router.push(`/(tabs)/discover/community/${row.community_id}` as any)}
+                    onPress={() => router.push(`/community/${row.community_id}` as any)}
                     activeOpacity={0.8}
                   >
                     <View style={[styles.cchipAva, { backgroundColor: chipColor }]}>

@@ -169,7 +169,7 @@ export default function GlobalSearchScreen() {
                 <TouchableOpacity
                   key={c.id}
                   style={styles.row}
-                  onPress={() => router.push(`/(tabs)/discover/community/${c.id}` as any)}
+                  onPress={() => router.push(`/community/${c.id}` as any)}
                   accessibilityLabel={`Open community ${c.name}`}
                 >
                   <View style={styles.iconPlate}>
