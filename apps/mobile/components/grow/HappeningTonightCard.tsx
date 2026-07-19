@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Animated, Dimensions, ActivityIndicator,
+  Animated, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,11 +9,6 @@ import { format, addHours } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 
-const SCREEN_W = Dimensions.get('window').width;
-// Matches grow/index.tsx's scroll contentContainerStyle padding — this card has no
-// margin of its own, so it lines up flush with sibling section cards.
-const PARENT_PADDING = 12;
-const SLIDE_WIDTH = SCREEN_W - PARENT_PADDING * 2;
 const AUTO_ADVANCE_MS = 4500;
 
 type HappeningItem =
@@ -94,6 +89,9 @@ export function HappeningTonightCard({ communityIds }: Props) {
   const [items, setItems] = useState<HappeningItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
+  // Responsive: slides are as wide as the card actually is — measured via
+  // onLayout (module-scope Dimensions broke on phone viewports/resizes).
+  const [slideWidth, setSlideWidth] = useState(0);
   const listRef = useRef<FlatList<HappeningItem>>(null);
   const indexRef = useRef(0);
 
@@ -171,7 +169,7 @@ export function HappeningTonightCard({ communityIds }: Props) {
   };
 
   const renderSlide = ({ item }: { item: HappeningItem }) => (
-    <View style={[s.slide, { width: SLIDE_WIDTH }]}>
+    <View style={[s.slide, { width: slideWidth }]}>
       <View style={s.iconPlate}>
         <Ionicons name={iconFor(item)} size={20} color="#FF2F71" />
       </View>
@@ -218,8 +216,21 @@ export function HappeningTonightCard({ communityIds }: Props) {
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={s.outer}
+      onLayout={(e) => {
+        const w = Math.round(e.nativeEvent.layout.width);
+        if (w > 0 && w !== slideWidth) {
+          // Width changed (rotation/resize): remount resets scroll to 0,
+          // so keep the index state in sync.
+          indexRef.current = 0;
+          setCurrentIndex(0);
+          setSlideWidth(w);
+        }
+      }}
     >
+      {slideWidth > 0 && (
       <FlatList
+        // Re-mount when the measured width changes so pagination offsets stay exact.
+        key={slideWidth}
         ref={listRef}
         data={items}
         keyExtractor={(item) => `${item.kind}-${item.id}`}
@@ -228,16 +239,17 @@ export function HappeningTonightCard({ communityIds }: Props) {
         nestedScrollEnabled
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        snapToInterval={SLIDE_WIDTH}
+        snapToInterval={slideWidth}
         decelerationRate="fast"
         disableIntervalMomentum
         onMomentumScrollEnd={(e) => {
-          const idx = Math.round(e.nativeEvent.contentOffset.x / SLIDE_WIDTH);
+          const idx = Math.round(e.nativeEvent.contentOffset.x / slideWidth);
           indexRef.current = idx;
           setCurrentIndex(idx);
         }}
-        getItemLayout={(_, i) => ({ length: SLIDE_WIDTH, offset: SLIDE_WIDTH * i, index: i })}
+        getItemLayout={(_, i) => ({ length: slideWidth, offset: slideWidth * i, index: i })}
       />
+      )}
       {items.length > 1 && (
         <View style={s.dots}>
           {items.map((_, i) => (
