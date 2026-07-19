@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { useStripe } from '@stripe/stripe-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { showAlert } from '../../lib/confirm';
 import type { ProductWithVariants, ShippingAddress } from '../../types/marketplace';
 
 type Step = 'review' | 'shipping' | 'payment';
@@ -69,7 +70,7 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
         : await createOrder(businessId, shipping);
 
       if (!result) {
-        Alert.alert('Error', 'Failed to create order. Please try again.');
+        showAlert('Error', 'Failed to create order. Please try again.');
         return;
       }
       const { clientSecret, orderId } = result;
@@ -80,14 +81,14 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
         allowsDelayedPaymentMethods: false,
       });
       if (initError) {
-        Alert.alert('Payment Error', initError.message);
+        showAlert('Payment Error', initError.message);
         return;
       }
 
       const { error: payError } = await presentPaymentSheet();
       if (payError) {
         if (payError.code !== 'Canceled') {
-          Alert.alert('Payment Failed', payError.message);
+          showAlert('Payment Failed', payError.message);
         }
         return;
       }

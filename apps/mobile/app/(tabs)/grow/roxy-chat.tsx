@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
+  ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { callEdgeFunction } from '../../../lib/supabase';
 import { Analytics } from '../../../lib/analytics';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { showAlert } from '../../../lib/confirm';
 
 type Message = { role: 'user' | 'roxy'; content: string };
 
@@ -50,7 +51,7 @@ export default function RoxyChatScreen() {
       });
 
       if (fnError) {
-        Alert.alert('Roxy is unavailable', fnError);
+        showAlert('Roxy is unavailable', fnError);
         return;
       }
 
@@ -58,7 +59,7 @@ export default function RoxyChatScreen() {
         setMessages((prev) => [...prev, { role: 'roxy', content: data.response }]);
       }
     } catch {
-      Alert.alert('Something went wrong', 'Please try again.');
+      showAlert('Something went wrong', 'Please try again.');
     } finally {
       setLoading(false);
     }

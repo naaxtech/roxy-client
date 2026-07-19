@@ -15,6 +15,7 @@ export interface Profile {
   location_city: string | null;
   location_country: string | null;
   is_verified: boolean;
+  gov_verified?: boolean;
   is_active: boolean;
   last_seen_at: string;
   gamification_points: number;

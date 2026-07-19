@@ -1,14 +1,14 @@
 import React from 'react';
 import {
   View, Text, TouchableOpacity, Switch,
-  ScrollView, StyleSheet, Alert, ActivityIndicator,
+  ScrollView, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { supabase, callEdgeFunction } from '../../../lib/supabase';
-import { confirmAction } from '../../../lib/confirm';
+import { confirmAction, showAlert } from '../../../lib/confirm';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { useThemeStore } from '../../../store/themeStore';
 import { ThemeToggle } from '../../../components/ui/ThemeToggle';
@@ -39,9 +39,9 @@ export default function SettingsScreen() {
   const handleExportData = async () => {
     const { data: _data, error } = await callEdgeFunction('gdpr-export', {});
     if (error) {
-      Alert.alert('Error', error ?? 'Could not export data. Please try again.');
+      showAlert('Error', error ?? 'Could not export data. Please try again.');
     } else {
-      Alert.alert('Export ready', 'Your data has been compiled. Download will be available shortly.');
+      showAlert('Export ready', 'Your data has been compiled. Download will be available shortly.');
     }
   };
 
@@ -130,7 +130,7 @@ export default function SettingsScreen() {
               value={profile.is_dating_mode ?? false}
               onValueChange={async (value) => {
                 try { await updateProfile({ is_dating_mode: value }); }
-                catch { Alert.alert('Error', 'Could not save preference'); }
+                catch { showAlert('Error', 'Could not save preference'); }
               }}
               trackColor={{ false: colors.surface, true: colors.roxy }}
               thumbColor={colors.textPrimary}
@@ -148,7 +148,7 @@ export default function SettingsScreen() {
               value={profile.is_ghost ?? false}
               onValueChange={async (value) => {
                 try { await updateProfile({ is_ghost: value }); }
-                catch { Alert.alert('Error', 'Could not save preference'); }
+                catch { showAlert('Error', 'Could not save preference'); }
               }}
               trackColor={{ false: colors.surface, true: colors.roxy }}
               thumbColor={colors.textPrimary}

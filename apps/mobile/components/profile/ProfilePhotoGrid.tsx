@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Image, TouchableOpacity, StyleSheet, Text, Alert, ActivityIndicator,
+  View, Image, TouchableOpacity, StyleSheet, Text, ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { logError } from '../../lib/errorLogger';
+import { showAlert } from '../../lib/confirm';
 
 const MAX_PHOTOS = 6;
 const SLOT = 108;
@@ -86,7 +87,7 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
       await load();
     } catch (e) {
       logError(e, 'ProfilePhotoGrid.addPhoto');
-      Alert.alert('Upload failed', 'Could not add photo. Try again.');
+      showAlert('Upload failed', 'Could not add photo. Try again.');
     } finally {
       setUploading(false);
     }

@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../../store/authStore';
 import { callEdgeFunction } from '../../../../lib/supabase';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
+import { showAlert } from '../../../../lib/confirm';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -264,7 +264,7 @@ export default function SisterButtonScreen() {
       });
 
       if (fnError) {
-        Alert.alert('Something went wrong', 'Please try again.');
+        showAlert('Something went wrong', 'Please try again.');
         return;
       }
 
@@ -285,7 +285,7 @@ export default function SisterButtonScreen() {
         setSessionDone(true);
       }
     } catch {
-      Alert.alert('Something went wrong', 'Please try again.');
+      showAlert('Something went wrong', 'Please try again.');
     } finally {
       setLoading(false);
     }

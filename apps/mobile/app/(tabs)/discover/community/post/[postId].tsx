@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   TextInput, ActivityIndicator, KeyboardAvoidingView,
-  Platform, FlatList, Alert,
+  Platform, FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,7 @@ import { useAuthStore } from '../../../../../store/authStore';
 import { useThemeColors } from '../../../../../hooks/useThemeColors';
 import { COMMENT_WITH_AUTHOR } from '../../../../../lib/supabaseQueries';
 import { Analytics } from '../../../../../lib/analytics';
+import { showAlert } from '../../../../../lib/confirm';
 import type { Comment } from '../../../../../types';
 
 const MAX_CHARS = 500;
@@ -83,7 +84,7 @@ export default function PostDetailScreen() {
         .select(COMMENT_WITH_AUTHOR)
         .single();
       if (error) {
-        Alert.alert('Error', error.message);
+        showAlert('Error', error.message);
       } else {
         setComments((prev) => [...prev, data as CommentRow]);
         setPost((prev) => prev ? { ...prev, comment_count: prev.comment_count + 1 } : prev);

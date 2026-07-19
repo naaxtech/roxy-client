@@ -5,6 +5,7 @@ export function useVideoCall(provider: VideoCallProvider | null) {
   const [state, setState] = useState<VideoCallState>('idle');
   const [remoteParticipants, setRemoteParticipants] = useState<RemoteParticipant[]>([]);
   const [localVideoVersion, setLocalVideoVersion] = useState(0);
+  const [localMediaState, setLocalMediaState] = useState<{ audio: boolean; video: boolean } | null>(null);
 
   useEffect(() => {
     if (!provider) return;
@@ -29,6 +30,7 @@ export function useVideoCall(provider: VideoCallProvider | null) {
 
     provider.onLocalUpdated = () => {
       setLocalVideoVersion((v) => v + 1);
+      setLocalMediaState(provider.getLocalMediaState?.() ?? null);
     };
 
     return () => {
@@ -44,6 +46,7 @@ export function useVideoCall(provider: VideoCallProvider | null) {
     state,
     remoteParticipants,
     localVideoVersion,
+    localMediaState,
     // Backward compat for Speed Dating (single remote participant)
     remoteParticipant: remoteParticipants[0] ?? null,
   };

@@ -1,6 +1,6 @@
 // apps/mobile/app/(tabs)/profile/[userId].tsx
 import { useEffect, useState } from 'react';
-import { StyleSheet, ActivityIndicator, Text, Alert } from 'react-native';
+import { StyleSheet, ActivityIndicator, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
@@ -9,6 +9,7 @@ import { logError } from '../../../lib/errorLogger';
 import { useAuthStore } from '../../../store/authStore';
 import { useFriendStore } from '../../../store/friendStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { showAlert } from '../../../lib/confirm';
 import type { Profile, UserBadgeProgress, Badge } from '../../../types';
 
 type EarnedBadge = UserBadgeProgress & { badges: Badge | null };
@@ -60,14 +61,14 @@ export default function UserProfileScreen() {
   const handleAddFriend = async () => {
     if (!userId) return;
     try { await sendRequest(userId); }
-    catch (e: any) { logError(e, 'userProfile_addFriend'); Alert.alert('Error', e?.message); }
+    catch (e: any) { logError(e, 'userProfile_addFriend'); showAlert('Error', e?.message); }
   };
 
   const handleAcceptFriend = async () => {
     const row = pendingReceived.find((f) => f.profile.id === userId);
     if (!row) return;
     try { await acceptRequest(row.id); }
-    catch (e: any) { logError(e, 'userProfile_acceptFriend'); Alert.alert('Error', e?.message); }
+    catch (e: any) { logError(e, 'userProfile_acceptFriend'); showAlert('Error', e?.message); }
   };
 
   const handleMessage = async () => {
@@ -91,7 +92,7 @@ export default function UserProfileScreen() {
       .select('id')
       .single();
 
-    if (error || !created) { Alert.alert('Error', 'Could not open chat.'); return; }
+    if (error || !created) { showAlert('Error', 'Could not open chat.'); return; }
     router.push(`/chat/${created.id}` as any);
   };
 

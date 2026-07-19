@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  ScrollView, Alert, Dimensions, Share,
+  ScrollView, Dimensions, Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { useCommunityStore, Community } from '../../../../store/communityStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
+import { showAlert } from '../../../../lib/confirm';
 import { CommunityRoomCard } from '../../../../components/community/CommunityRoomCard';
 import { CommunityRoom, Post } from '../../../../types';
 import { FeedCard } from '../../../../components/feed/FeedCard';
@@ -222,7 +223,7 @@ export default function CommunityDetailScreen() {
       await fetchAll();
     } catch (e: any) {
       logError(e, 'handleJoinLeave');
-      Alert.alert('Error', e?.message ?? 'Could not update membership');
+      showAlert('Error', e?.message ?? 'Could not update membership');
     }
   };
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
@@ -8,6 +8,7 @@ import { callEdgeFunction } from '../../../lib/supabase';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { RoxyWordmark } from '../../../components/ui/RoxyWordmark';
 import { logError, logBreadcrumb } from '../../../lib/errorLogger';
+import { showAlert } from '../../../lib/confirm';
 
 const GOALS = [
   { key: 'community', label: 'COMMUNITY', sub: 'Find your people, build connections' },
@@ -35,14 +36,14 @@ export default function Step4Status() {
     if (profileError) {
       logError(profileError, 'onboarding_step4_profile_update');
       setLoading(false);
-      Alert.alert('Setup error', 'Could not save your settings. Please try again.');
+      showAlert('Setup error', 'Could not save your settings. Please try again.');
       return;
     }
     const { error } = await callEdgeFunction('roxy-onboarding', { user_id: user.id });
     setLoading(false);
     if (error) {
       logError(new Error(String(error)), 'onboarding_step4_edge_function');
-      Alert.alert('Setup error', 'Could not finish setup. Please try again.');
+      showAlert('Setup error', 'Could not finish setup. Please try again.');
       return;
     }
     logBreadcrumb('onboarding_complete', { user_id: user.id });

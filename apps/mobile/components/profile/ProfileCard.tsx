@@ -12,6 +12,8 @@ import type { EarnedBadge } from './BadgeRow';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const PHOTO_SIZE = (SCREEN_WIDTH - 4) / 3;
+const AVATAR_SIZE = 110;
+const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
 type MediaPost = { id: string; media_urls: string[]; post_type: string };
 type ProfileTab = 'photos' | 'about' | 'badges';
@@ -65,8 +67,14 @@ export function ProfileCard({
   const hasPreset = !!profile.avatar_url && isPresetAvatar(profile.avatar_url);
   // Retired options linger in old profile rows — never display them.
   const RETIRED_CHIPS = new Set(['any/all', 'other', 'Prefer not to say']);
-  const chips = [...(profile.pronouns ?? []), ...(profile.identity_labels ?? [])]
-    .filter((c) => !RETIRED_CHIPS.has(c));
+  // Tinted at the source: pronouns (roxy tint) vs orientation/identity (secondary tint) —
+  // never string-matched, since both can contain arbitrary free-form values.
+  const pronounChips = (profile.pronouns ?? []).filter((c) => !RETIRED_CHIPS.has(c));
+  const orientationChips = (profile.identity_labels ?? []).filter((c) => !RETIRED_CHIPS.has(c));
+  const earnedBadges = badges.filter((b) => b.earned_at !== null);
+  const MAX_HEADER_BADGES = 6;
+  const visibleHeaderBadges = earnedBadges.slice(0, MAX_HEADER_BADGES);
+  const headerBadgeOverflow = earnedBadges.length - MAX_HEADER_BADGES;
 
   const s = StyleSheet.create({
     scroll: { flex: 1 },
@@ -80,37 +88,60 @@ export function ProfileCard({
     headerFlex: { flex: 1 },
 
     // Cover + avatar
+    coverWrap: { position: 'relative' },
     cover: { height: 130, backgroundColor: colors.surfaceLight, position: 'relative' },
     coverGrad: { ...StyleSheet.absoluteFillObject },
+    // Bumble-style: centered, circular, overlapping ~50% of the cover's bottom edge.
     avatarWrap: {
-      position: 'absolute', bottom: -40, left: 18,
-      width: 80, height: 80, borderRadius: 24,
+      position: 'absolute', top: 130 - AVATAR_SIZE / 2, left: '50%', marginLeft: -AVATAR_SIZE / 2,
+      width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2,
       borderWidth: 3, borderColor: colors.background,
       overflow: 'hidden',
       shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.18, shadowRadius: 10, elevation: 8,
     },
     avatarCircle: {
-      width: '100%', height: '100%', borderRadius: 21,
+      width: '100%', height: '100%', borderRadius: AVATAR_SIZE / 2,
       backgroundColor: colors.roxy,
       alignItems: 'center', justifyContent: 'center',
     },
-    avatarEmoji: { fontSize: 36 },
-    avatarInitial: { color: '#fff', fontSize: 32, fontWeight: '700' },
+    avatarEmoji: { fontSize: 48 },
+    avatarInitial: { color: '#fff', fontSize: 42, fontWeight: '700' },
 
-    // Info section
-    infoSection: { paddingHorizontal: 18, paddingTop: 48, paddingBottom: 12 },
-    displayName: { color: colors.textPrimary, fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
-    username: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
-
-    // Chips
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-    chip: {
-      backgroundColor: colors.primary + '18', borderRadius: 20,
-      paddingHorizontal: 10, paddingVertical: 4,
-      borderWidth: 1, borderColor: colors.primary + '35',
+    // Info section — centered under the avatar
+    infoSection: { paddingHorizontal: 18, paddingTop: AVATAR_SIZE / 2 + 14, paddingBottom: 12, alignItems: 'center' },
+    nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+    displayName: { color: colors.textPrimary, fontSize: 20, fontWeight: '800', letterSpacing: -0.3, textAlign: 'center' },
+    username: { color: colors.textMuted, fontSize: 13, marginTop: 2, textAlign: 'center' },
+    verifiedBadge: {
+      width: 20, height: 20, borderRadius: 10,
+      alignItems: 'center', justifyContent: 'center',
     },
-    chipText: { color: colors.primary, fontSize: 12, fontWeight: '600' },
+
+    // Badges row — small Discord-like flat chips, emoji only
+    badgeChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 10, justifyContent: 'center' },
+    badgeChip: {
+      width: 22, height: 22, borderRadius: 6,
+      backgroundColor: colors.surface,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    badgeChipEmoji: { fontSize: 14 },
+    badgeChipOverflowText: { color: colors.textMuted, fontSize: 10, fontWeight: '700' },
+
+    // Pronoun / orientation chips — tinted at the source, prominent, centered
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8, justifyContent: 'center' },
+    pronounChip: {
+      backgroundColor: colors.roxy + '20', borderRadius: 20,
+      paddingHorizontal: 10, paddingVertical: 4,
+      borderWidth: 1, borderColor: colors.roxy + '45',
+    },
+    pronounChipText: { color: colors.roxy, fontSize: 12, fontWeight: '700' },
+    orientationChip: {
+      backgroundColor: colors.secondary + '20', borderRadius: 20,
+      paddingHorizontal: 10, paddingVertical: 4,
+      borderWidth: 1, borderColor: colors.secondary + '45',
+    },
+    orientationChipText: { color: colors.secondary, fontSize: 12, fontWeight: '700' },
 
     // Action row
     actionRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 18, marginBottom: 8 },
@@ -218,7 +249,7 @@ export function ProfileCard({
     }
     return (
       <LinearGradient
-        colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
+        colors={BRAND_GRADIENT}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={s.cover}
       />
@@ -259,18 +290,54 @@ export function ProfileCard({
       </View>
 
       {/* Cover + Avatar */}
-      {renderCover()}
-      {renderAvatar()}
+      <View style={s.coverWrap}>
+        {renderCover()}
+        {renderAvatar()}
+      </View>
 
       {/* Info */}
       <View style={s.infoSection}>
-        <Text style={s.displayName}>{profile.display_name}</Text>
+        <View style={s.nameRow}>
+          <Text style={s.displayName}>{profile.display_name}</Text>
+          {profile.gov_verified && (
+            <LinearGradient
+              colors={BRAND_GRADIENT}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={s.verifiedBadge}
+              accessibilityLabel="Government verified"
+              testID="gov-verified-badge"
+            >
+              <Ionicons name="shield-checkmark" size={12} color="#fff" />
+            </LinearGradient>
+          )}
+        </View>
         <Text style={s.username}>@{profile.username}</Text>
-        {chips.length > 0 && (
+
+        {visibleHeaderBadges.length > 0 && (
+          <View style={s.badgeChipRow}>
+            {visibleHeaderBadges.map((b) => (
+              <View key={b.badge_id} style={s.badgeChip}>
+                <Text style={s.badgeChipEmoji}>{b.badges?.emoji ?? '🏅'}</Text>
+              </View>
+            ))}
+            {headerBadgeOverflow > 0 && (
+              <View style={s.badgeChip}>
+                <Text style={s.badgeChipOverflowText}>+{headerBadgeOverflow}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {(pronounChips.length > 0 || orientationChips.length > 0) && (
           <View style={s.chipRow}>
-            {chips.map((tag) => (
-              <View key={tag} style={s.chip}>
-                <Text style={s.chipText}>{tag}</Text>
+            {pronounChips.map((tag) => (
+              <View key={`pronoun-${tag}`} style={s.pronounChip}>
+                <Text style={s.pronounChipText}>{tag}</Text>
+              </View>
+            ))}
+            {orientationChips.map((tag) => (
+              <View key={`identity-${tag}`} style={s.orientationChip}>
+                <Text style={s.orientationChipText}>{tag}</Text>
               </View>
             ))}
           </View>

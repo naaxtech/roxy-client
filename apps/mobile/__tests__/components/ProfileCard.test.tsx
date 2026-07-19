@@ -20,6 +20,7 @@ jest.mock('../../lib/supabase', () => {
 
 import { ProfileCard } from '../../components/profile/ProfileCard';
 import type { Profile } from '../../types';
+import type { EarnedBadge } from '../../components/profile/BadgeRow';
 
 const baseProfile: Profile = {
   id: 'u1',
@@ -127,5 +128,126 @@ describe('ProfileCard', () => {
     );
     fireEvent.press(getByText('About'));
     expect(getByText('🌸 Bloom · 125 pts')).toBeTruthy();
+  });
+
+  it('hides the government-verified badge when gov_verified is false/undefined', () => {
+    const { queryByTestId } = render(
+      <ProfileCard profile={baseProfile} badges={[]} isOwn={false} />
+    );
+    expect(queryByTestId('gov-verified-badge')).toBeNull();
+  });
+
+  it('shows the government-verified badge when gov_verified is true', () => {
+    const { getByTestId } = render(
+      <ProfileCard profile={{ ...baseProfile, gov_verified: true }} badges={[]} isOwn={false} />
+    );
+    const badge = getByTestId('gov-verified-badge');
+    expect(badge.props.accessibilityLabel).toBe('Government verified');
+  });
+
+  it('renders only earned badge emojis in header (2 of 3 badges earned)', () => {
+    const badges: EarnedBadge[] = [
+      {
+        user_id: 'u1',
+        badge_id: 'badge-1',
+        current_value: 1,
+        earned_at: '2026-01-15T10:00:00Z',
+        badges: {
+          id: 'badge-1',
+          name: 'Community Star',
+          description: 'Join your first community',
+          emoji: '⭐',
+          category: 'community',
+          points_value: 10,
+          requirement_type: 'communities_joined',
+          requirement_threshold: 1,
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      },
+      {
+        user_id: 'u1',
+        badge_id: 'badge-2',
+        current_value: 1,
+        earned_at: '2026-01-20T10:00:00Z',
+        badges: {
+          id: 'badge-2',
+          name: 'Connection Master',
+          description: 'Make 5 connections',
+          emoji: '💜',
+          category: 'connection',
+          points_value: 20,
+          requirement_type: 'connections_made',
+          requirement_threshold: 5,
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      },
+      {
+        user_id: 'u1',
+        badge_id: 'badge-3',
+        current_value: 0,
+        earned_at: null,
+        badges: {
+          id: 'badge-3',
+          name: 'Milestone Maker',
+          description: 'Attend 10 events',
+          emoji: '🎉',
+          category: 'milestone',
+          points_value: 50,
+          requirement_type: 'events_attended',
+          requirement_threshold: 10,
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      },
+    ];
+
+    const { getAllByText, queryByText } = render(
+      <ProfileCard profile={baseProfile} badges={badges} isOwn={false} />
+    );
+
+    // Should render the two earned badge emojis
+    expect(getAllByText('⭐')).toBeTruthy();
+    expect(getAllByText('💜')).toBeTruthy();
+
+    // Unearned badge emoji should not render
+    expect(queryByText('🎉')).toBeNull();
+  });
+
+  it('renders 6 earned badge emojis plus +2 overflow chip with 8 total badges', () => {
+    const badges: EarnedBadge[] = Array.from({ length: 8 }, (_, i) => ({
+      user_id: 'u1',
+      badge_id: `badge-${i + 1}`,
+      current_value: 1,
+      earned_at: `2026-01-${10 + i}T10:00:00Z`,
+      badges: {
+        id: `badge-${i + 1}`,
+        name: `Badge ${i + 1}`,
+        description: `Test badge ${i + 1}`,
+        emoji: ['⭐', '💜', '🎉', '🏆', '👑', '🌟', '✨', '🔥'][i],
+        category: 'community',
+        points_value: 10,
+        requirement_type: 'test',
+        requirement_threshold: 1,
+        created_at: '2026-01-01T00:00:00Z',
+      },
+    }));
+
+    const { getByText, queryByText } = render(
+      <ProfileCard profile={baseProfile} badges={badges} isOwn={false} />
+    );
+
+    // Should render first 6 badge emojis
+    expect(getByText('⭐')).toBeTruthy();
+    expect(getByText('💜')).toBeTruthy();
+    expect(getByText('🎉')).toBeTruthy();
+    expect(getByText('🏆')).toBeTruthy();
+    expect(getByText('👑')).toBeTruthy();
+    expect(getByText('🌟')).toBeTruthy();
+
+    // 7th and 8th badges should not render in header
+    expect(queryByText('✨')).toBeNull();
+    expect(queryByText('🔥')).toBeNull();
+
+    // Should render +2 overflow
+    expect(getByText('+2')).toBeTruthy();
   });
 });

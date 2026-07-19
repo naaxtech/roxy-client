@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -14,6 +13,7 @@ import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { logError } from '../../../lib/errorLogger';
+import { showAlert } from '../../../lib/confirm';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
@@ -32,7 +32,7 @@ export default function DeleteAccountScreen() {
       logError(e, 'handleDelete');
       setLoading(false);
       const message = e instanceof Error ? e.message : 'Could not delete account. Please try again.';
-      Alert.alert('Error', message);
+      showAlert('Error', message);
       return;
     }
     // GDPR delete succeeded — best-effort sign out, always redirect

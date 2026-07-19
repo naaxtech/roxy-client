@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { logError, logBreadcrumb } from '../../../lib/errorLogger';
+import { showAlert } from '../../../lib/confirm';
 import { ChipSelector } from '../../../components/ui/ChipSelector';
 import { INTERESTS } from '../../../lib/constants';
 import { useThemeColors } from '../../../hooks/useThemeColors';
@@ -26,7 +27,7 @@ export default function Step2Interests() {
     setLoading(false);
     if (error) {
       logError(error, 'onboarding_step2_update');
-      Alert.alert('Error', 'Could not save your interests. Please try again.');
+      showAlert('Error', 'Could not save your interests. Please try again.');
       return;
     }
     logBreadcrumb('onboarding_step2_complete');
