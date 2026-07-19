@@ -138,3 +138,18 @@
 - [ ] Slide minHeight drops to ~104 (from 148); paddings tighten (12-14). Dots row stays.
 - [ ] Do not change data loading, auto-advance, or navigation — layout only.
 - [ ] QA loop. Commit: `style(grow): peg-exact hero split — Roxy bubble vs compact happening card`.
+
+### Task 7: Profile header — Bumble-style centered avatar + Discord-style badges
+
+**Files:**
+- Modify: `apps/mobile/components/profile/ProfileCard.tsx` only.
+- Reference peg (view with Read tool): `docs/brand/roxy-home-v1-dark.jpeg` (profile peg) for chip/badge feel.
+
+**Requirements (Nicole, verbatim intent):** "When you open someone's profile, their profile picture should be in the middle on top, similar to how Bumble does it, then badges below the profile picture, small badges similar to Discord. The profile picture was already correct before" (i.e., the avatar itself renders fine — this is a LAYOUT change).
+- [ ] Avatar: centered horizontally at the top of the card, large (~110px, borderRadius 55 — circular per Bumble), overlapping the bottom edge of the gradient cover by ~50% (cover stays). Keep existing avatar rendering logic (preset emoji / image / initial) untouched.
+- [ ] Display name + @username centered under the avatar.
+- [ ] Badges row: directly below name — small Discord-like flat chips (~22px tall, borderRadius 6, surface bg, 14px badge emoji + no text, 4px gap, centered row, max ~6 with a "+N" chip). Use the user's EARNED badges (the component already receives `badges`; earned = `earned_at !== null`).
+- [ ] Pronoun/identity chips row stays but centered, below the badges.
+- [ ] Everything below (stats, Edit Profile / Say hi actions, tabs) unchanged except centering adjustments needed to look coherent.
+- [ ] Keep every existing testID and prop; `ProfileCard.test.tsx` must still pass (update layout-based queries only if strictly necessary).
+- [ ] QA loop. Commit: `style(profile): centered Bumble-style avatar + Discord-style badge chips`.
