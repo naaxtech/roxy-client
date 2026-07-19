@@ -13,5 +13,6 @@ export async function signInWithSeedUser(page: Page) {
   await page.getByTestId('password-input').fill(E2E_PASSWORD);
   await page.getByTestId('auth-submit-btn').click();
 
-  await expect(page.getByRole('link', { name: /Discover/i })).toBeVisible({ timeout: 30_000 });
+  // Tab labeled "Play" since the 5-tab IA (Grow · Connect · Play · Messages · Build).
+  await expect(page.getByRole('link', { name: /Play/i })).toBeVisible({ timeout: 30_000 });
 }
