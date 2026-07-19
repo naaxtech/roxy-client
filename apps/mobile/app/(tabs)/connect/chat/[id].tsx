@@ -729,6 +729,8 @@ export default function ChatScreen() {
             onPress={() => partnerProfile?.id && router.push(`/user/${partnerProfile.id}` as any)}
             disabled={!partnerProfile?.id}
             style={styles.headerAvaWrap}
+            accessibilityLabel="View profile"
+            hitSlop={6}
           >
             <LinearGradient colors={partnerGrad} style={styles.headerAva}>
               <Text style={styles.headerAvaText}>{partnerName[0]?.toUpperCase() ?? '?'}</Text>
@@ -878,6 +880,7 @@ export default function ChatScreen() {
               disabled={!inputText.trim() || sending}
               accessibilityRole="button"
               accessibilityLabel="Send message"
+              hitSlop={6}
             >
               <LinearGradient colors={BRAND_GRADIENT} style={styles.sendBtnGradient}>
                 {sending ? (
