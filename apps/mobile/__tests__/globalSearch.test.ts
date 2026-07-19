@@ -111,4 +111,42 @@ describe('globalSearch', () => {
       expect.stringContaining('username.ilike.%femme%')
     );
   });
+
+  it('sanitizes commas/parens (PostgREST filter delimiters) and escapes %/_ (ILIKE wildcards) before querying', async () => {
+    const chains = mockTables({
+      communities: { data: [{ id: 'c1', name: 'Femme Fest', description: null }], error: null },
+      profiles: { data: [{ id: 'p1', display_name: 'Jo Anna', username: 'joanna' }], error: null },
+      events: { data: [{ id: 'e1', title: 'Femme Fest Mixer', starts_at: '2026-08-01T20:00:00Z' }], error: null },
+      businesses: { data: [{ id: 'b1', name: 'Femme Bakery', description: null }], error: null },
+    });
+
+    // Contains every dangerous character at once: `,` `(` `)` break PostgREST's
+    // `.or()` grammar; `%` `_` are ILIKE wildcards that must be escaped literal.
+    const result = await globalSearch('jo,anna%_(test)');
+
+    // `,()` are stripped entirely; `%` and `_` survive but are backslash-escaped.
+    const expectedPattern = '%joanna\\%\\_test%';
+
+    expect(chains.communities.ilike).toHaveBeenCalledWith('name', expectedPattern);
+    expect(chains.events.ilike).toHaveBeenCalledWith('title', expectedPattern);
+    expect(chains.businesses.ilike).toHaveBeenCalledWith('name', expectedPattern);
+    expect(chains.profiles.or).toHaveBeenCalledWith(
+      `display_name.ilike.${expectedPattern},username.ilike.${expectedPattern}`
+    );
+
+    // The `.or()` filter string itself must not contain the raw comma/parens
+    // that would have corrupted the PostgREST grammar.
+    const orArg = (chains.profiles.or as jest.Mock).mock.calls[0][0] as string;
+    expect(orArg.match(/[()]/)).toBeNull();
+    // Exactly two commas remain — both are the `.or()` clause separator, not
+    // input-supplied.
+    expect(orArg.split(',').length).toBe(2);
+
+    // Grouped results still come back for every section — sanitizing didn't
+    // break the happy path.
+    expect(result.communities).toHaveLength(1);
+    expect(result.people).toHaveLength(1);
+    expect(result.events).toHaveLength(1);
+    expect(result.businesses).toHaveLength(1);
+  });
 });

@@ -33,6 +33,20 @@ async function safeQuery<T>(
 }
 
 /**
+ * Sanitizes raw user input before it is embedded in an ILIKE pattern or a
+ * PostgREST `.or()` filter string:
+ *  - strips `,`, `(`, `)` — these are the PostgREST filter-grammar delimiters;
+ *    left unescaped, a query like `"a,b"` or `"f(x)"` corrupts the `.or()`
+ *    expression and silently empties the People section.
+ *  - escapes `%` and `_` — the two ILIKE wildcard characters — so user input
+ *    is matched literally instead of acting as a wildcard.
+ */
+function sanitizeForPattern(input: string): string {
+  const withoutFilterDelimiters = input.replace(/[,()]/g, '');
+  return withoutFilterDelimiters.replace(/[%_]/g, '\\$&');
+}
+
+/**
  * Global search across communities, people, events, and businesses.
  * Four independent ILIKE queries run in parallel; any single table failing
  * (RLS denial, network blip) degrades to an empty array for that section
@@ -42,7 +56,7 @@ export async function globalSearch(q: string): Promise<GlobalSearchResult> {
   const query = q.trim();
   if (!query) return EMPTY_RESULT;
 
-  const pattern = `%${query}%`;
+  const pattern = `%${sanitizeForPattern(query)}%`;
 
   const [communities, people, events, businesses] = await Promise.all([
     safeQuery<SearchCommunity>(

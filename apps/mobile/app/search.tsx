@@ -21,6 +21,7 @@ export default function GlobalSearchScreen() {
   const router = useRouter();
   const inputRef = useRef<TextInput>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestIdRef = useRef(0);
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GlobalSearchResult>(EMPTY_RESULTS);
@@ -44,9 +45,16 @@ export default function GlobalSearchScreen() {
 
     setLoading(true);
     debounceRef.current = setTimeout(() => {
+      const requestId = ++requestIdRef.current;
       globalSearch(trimmed)
-        .then(setResults)
-        .finally(() => setLoading(false));
+        .then((data) => {
+          // Discard stale responses: a newer request may have already
+          // dispatched (and possibly resolved) while this one was in flight.
+          if (requestIdRef.current === requestId) setResults(data);
+        })
+        .finally(() => {
+          if (requestIdRef.current === requestId) setLoading(false);
+        });
     }, DEBOUNCE_MS);
 
     return () => {
