@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet,
-  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform,
+  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Animated,
 } from 'react-native';
+import { usePopIn } from '../ui/popIn';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
@@ -29,6 +30,7 @@ export function CommentSheet({
   onClose, onLikeComment, onReply, onCommentsChange,
 }: CommentSheetProps) {
   const colors = useThemeColors();
+  const pop = usePopIn(visible);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const bumpCommentCount = useFeedStore(s => s.bumpCommentCount);
@@ -82,13 +84,13 @@ export function CommentSheet({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose} />
-        <View style={styles.sheet}>
+        <Animated.View style={[styles.sheet, pop]}>
           <View style={styles.handle} />
           <View style={styles.header}>
             <Text style={styles.title}>Comments ({comments.length})</Text>
@@ -128,7 +130,7 @@ export function CommentSheet({
               }
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );

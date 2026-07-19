@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Animated, Text, TouchableOpacity, View, StyleSheet, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { usePopIn } from '../ui/popIn';
 
 interface PostActionRowProps {
   likeCount: number;
@@ -34,6 +35,7 @@ export function PostActionRow({
   const likeAnim = usePopAnimation();
   const saveAnim = usePopAnimation();
   const [showReactions, setShowReactions] = useState(false);
+  const pickerPop = usePopIn(showReactions);
 
   const s = StyleSheet.create({
     row: {
@@ -185,9 +187,9 @@ export function PostActionRow({
 
       {/* Emoji reaction picker (long-press on 🌸) */}
       {showReactions && (
-        <Modal transparent animationType="fade" onRequestClose={() => setShowReactions(false)}>
+        <Modal transparent animationType="none" onRequestClose={() => setShowReactions(false)}>
           <Pressable style={s.pickerOverlay} onPress={() => setShowReactions(false)}>
-            <View style={s.picker}>
+            <Animated.View style={[s.picker, pickerPop]}>
               {REACTIONS.map((emoji) => (
                 <TouchableOpacity
                   key={emoji}
@@ -198,7 +200,7 @@ export function PostActionRow({
                   <Text style={s.pickerEmoji}>{emoji}</Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </Animated.View>
           </Pressable>
         </Modal>
       )}

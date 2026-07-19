@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, Animated } from 'react-native';
+import { usePopIn } from '../ui/popIn';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface OrderConfirmationSheetProps {
@@ -11,6 +12,7 @@ interface OrderConfirmationSheetProps {
 
 export function OrderConfirmationSheet({ visible, orderId, onClose, onViewOrders }: OrderConfirmationSheetProps) {
   const colors = useThemeColors();
+  const pop = usePopIn(visible);
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', padding: 24 },
     card: { backgroundColor: colors.background, borderRadius: 20, padding: 28, alignItems: 'center', width: '100%', maxWidth: 400, gap: 8 },
@@ -25,9 +27,9 @@ export function OrderConfirmationSheet({ visible, orderId, onClose, onViewOrders
   });
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.card}>
+        <Animated.View style={[styles.card, pop]}>
           <Text style={styles.emoji}>🎉</Text>
           <Text style={styles.title}>Order Placed!</Text>
           <Text style={styles.subtitle}>Your order has been confirmed. You'll receive an email confirmation shortly.</Text>
@@ -38,7 +40,7 @@ export function OrderConfirmationSheet({ visible, orderId, onClose, onViewOrders
           <TouchableOpacity onPress={onClose} style={styles.secondaryBtn}>
             <Text style={styles.secondaryBtnText}>Continue Shopping</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

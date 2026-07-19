@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Animated } from 'react-native';
+import { usePopIn } from '../ui/popIn';
 import { Ionicons } from '@expo/vector-icons';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -15,6 +16,7 @@ interface CartDrawerProps {
 
 export function CartDrawer({ businessId, businessName, visible, onClose, onCheckout }: CartDrawerProps) {
   const colors = useThemeColors();
+  const pop = usePopIn(visible);
   const { cartItems, removeFromCart, updateQuantity, getCartTotal, getCartCount } = useMarketplaceStore();
   const items = cartItems[businessId] ?? [];
   const total = getCartTotal(businessId);
@@ -51,9 +53,9 @@ export function CartDrawer({ businessId, businessName, visible, onClose, onCheck
   });
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <Animated.View style={[styles.sheet, pop]}>
           <View style={styles.handle} />
           <View style={styles.header}>
             <Text style={styles.title}>Cart · {businessName}</Text>
@@ -113,7 +115,7 @@ export function CartDrawer({ businessId, businessName, visible, onClose, onCheck
               <Text style={styles.cancelText}>Continue Shopping</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

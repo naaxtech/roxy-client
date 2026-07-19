@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, ScrollView,
-  ActivityIndicator, StyleSheet,
+  ActivityIndicator, StyleSheet, Animated,
 } from 'react-native';
+import { usePopIn } from '../ui/popIn';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -27,6 +28,7 @@ type EntityRow = { id: string; name: string; type: LinkType; communityId: string
 
 export function RoxyLinkPicker({ visible, onSelect, onClose }: RoxyLinkPickerProps) {
   const colors = useThemeColors();
+  const pop = usePopIn(visible);
   const [loading, setLoading] = useState(true);
   const [entities, setEntities] = useState<EntityRow[]>([]);
 
@@ -96,9 +98,9 @@ export function RoxyLinkPicker({ visible, onSelect, onClose }: RoxyLinkPickerPro
   const TYPE_ICON: Record<LinkType, string> = { game: '🎮', room: '🎙', event: '📅' };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose} />
-      <View style={styles.sheet}>
+      <Animated.View style={[styles.sheet, pop]}>
         <View style={styles.handle} />
         <View style={styles.header}>
           <Text style={styles.title}>Link to...</Text>
@@ -132,7 +134,7 @@ export function RoxyLinkPicker({ visible, onSelect, onClose }: RoxyLinkPickerPro
             ))}
           </ScrollView>
         )}
-      </View>
+      </Animated.View>
     </Modal>
   );
 }

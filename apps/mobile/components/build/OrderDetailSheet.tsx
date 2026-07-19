@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Animated } from 'react-native';
+import { usePopIn } from '../ui/popIn';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
@@ -20,6 +21,7 @@ interface OrderDetailSheetProps {
 
 export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
   const colors = useThemeColors();
+  const pop = usePopIn(order !== null);
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
     sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, maxHeight: '90%', width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center' },
@@ -51,9 +53,9 @@ export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
   if (!order) return null;
 
   return (
-    <Modal visible={order !== null} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={order !== null} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <Animated.View style={[styles.sheet, pop]}>
           <View style={styles.handle} />
           <View style={styles.header}>
             <Text style={styles.title}>Order #{order.id.slice(-8).toUpperCase()}</Text>
@@ -127,7 +129,7 @@ export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} accessibilityLabel="Close order detail">
             <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

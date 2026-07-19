@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   RefreshControl, Linking, Share, Modal, ScrollView,
-  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
+  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Animated,
 } from 'react-native';
+import { usePopIn } from '../../../components/ui/popIn';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -121,6 +122,7 @@ function ImpactDetailSheet({
   onClose: () => void;
   styles: BuildStyles;
 }) {
+  const pop = usePopIn(project !== null);
   const handleWebsite = () => {
     if (project?.website_url) Linking.openURL(project.website_url).catch(() => {});
   };
@@ -132,13 +134,13 @@ function ImpactDetailSheet({
     <Modal
       testID="impact-detail-modal"
       visible={project !== null}
-      animationType="fade"
+      animationType="none"
       transparent
       onRequestClose={onClose}
     >
       {project && (
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <Animated.View style={[styles.modalCard, pop]}>
             <TouchableOpacity
               testID="modal-close-btn"
               style={styles.modalCloseBtn}
@@ -178,7 +180,7 @@ function ImpactDetailSheet({
                 </Text>
               </TouchableOpacity>
             </ScrollView>
-          </View>
+          </Animated.View>
         </View>
       )}
     </Modal>
@@ -379,6 +381,7 @@ export default function BuildScreen() {
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
   const [supportLoading, setSupportLoading] = useState(false);
   const [pitchModal, setPitchModal] = useState(false);
+  const pitchPop = usePopIn(pitchModal);
   const [pitchTitle, setPitchTitle] = useState('');
   const [pitchDesc, setPitchDesc] = useState('');
   const [showDonateModal, setShowDonateModal] = useState(false);
@@ -740,7 +743,7 @@ export default function BuildScreen() {
       {/* Pitch submission modal */}
       <Modal
         visible={pitchModal}
-        animationType="fade"
+        animationType="none"
         transparent
         onRequestClose={() => setPitchModal(false)}
       >
@@ -748,7 +751,7 @@ export default function BuildScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.modalOverlay}
         >
-          <View style={styles.pitchModalCard}>
+          <Animated.View style={[styles.pitchModalCard, pitchPop]}>
             <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setPitchModal(false)}>
               <Ionicons name="close" size={20} style={styles.modalCloseBtnText} />
             </TouchableOpacity>
@@ -787,7 +790,7 @@ export default function BuildScreen() {
                 : <Text style={styles.pitchSubmitBtnText}>Submit Pitch 💜</Text>
               }
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
 

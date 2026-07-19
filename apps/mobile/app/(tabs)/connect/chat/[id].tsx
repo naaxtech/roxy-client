@@ -905,7 +905,7 @@ export default function ChatScreen() {
 
       {/* Reaction quick-pick overlay */}
       {reactingToMessage && (
-        <Modal transparent animationType="fade" onRequestClose={() => setReactingToMessage(null)}>
+        <Modal transparent animationType="none" onRequestClose={() => setReactingToMessage(null)}>
           <TouchableOpacity
             style={styles.reactOverlay}
             activeOpacity={1}
@@ -925,7 +925,7 @@ export default function ChatScreen() {
       />
 
       {/* Context menu */}
-      <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
+      <Modal visible={menuVisible} transparent animationType="none" onRequestClose={() => setMenuVisible(false)}>
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
           <View style={styles.actionSheet}>
             <TouchableOpacity
@@ -954,7 +954,7 @@ export default function ChatScreen() {
       </Modal>
 
       {/* Report modal */}
-      <Modal visible={reportVisible} transparent animationType="fade" onRequestClose={() => setReportVisible(false)}>
+      <Modal visible={reportVisible} transparent animationType="none" onRequestClose={() => setReportVisible(false)}>
         <View style={styles.overlay}>
           <View style={styles.reportCard}>
             <Text style={styles.reportTitle}>Report</Text>

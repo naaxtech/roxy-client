@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, StyleSheet,
   ScrollView, Image, NativeSyntheticEvent,
-  NativeScrollEvent,
+  NativeScrollEvent, Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useAppWidth } from '../../hooks/useAppWidth';
+import { usePopIn } from '../ui/popIn';
 import { CheckoutSheet } from './CheckoutSheet';
 import type { ProductWithVariants, ProductVariant } from '../../types/marketplace';
 
@@ -30,6 +31,7 @@ export function ProductDetailSheet({
 }: ProductDetailSheetProps) {
   const colors = useThemeColors();
   const screenWidth = useAppWidth();
+  const pop = usePopIn(visible);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [qty, setQty] = useState(1);
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -141,12 +143,12 @@ export function ProductDetailSheet({
     <>
       <Modal
         visible={visible}
-        animationType="fade"
+        animationType="none"
         transparent
         onRequestClose={onClose}
       >
         <View style={styles.overlay}>
-          <View style={styles.sheet}>
+          <Animated.View style={[styles.sheet, pop]}>
             <View style={styles.handle} />
 
             {/* Close button */}
@@ -297,7 +299,7 @@ export function ProductDetailSheet({
                 </View>
               </View>
             </ScrollView>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
 

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import {
   Modal, View, Text, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator,
+  KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Animated,
 } from 'react-native';
+import { usePopIn } from '../ui/popIn';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
@@ -18,6 +19,7 @@ interface Props {
 
 export function AnswerSheet({ questionId, userId, onClose, onSubmitted }: Props) {
   const colors = useThemeColors();
+  const pop = usePopIn(true);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export function AnswerSheet({ questionId, userId, onClose, onSubmitted }: Props)
     <Modal
       visible
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
@@ -49,7 +51,7 @@ export function AnswerSheet({ questionId, userId, onClose, onSubmitted }: Props)
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <TouchableOpacity style={a.backdrop} onPress={onClose} activeOpacity={1} />
-        <View style={[a.sheet, { backgroundColor: colors.surface }]}>
+        <Animated.View style={[a.sheet, { backgroundColor: colors.surface }, pop]}>
           <View style={[a.handle, { backgroundColor: colors.textMuted + '40' }]} />
           <Text style={[a.sheetTitle, { color: colors.textPrimary }]}>Your answer</Text>
           <TextInput
@@ -84,7 +86,7 @@ export function AnswerSheet({ questionId, userId, onClose, onSubmitted }: Props)
               <Text style={a.submitBtnText}>Submit</Text>
             )}
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );

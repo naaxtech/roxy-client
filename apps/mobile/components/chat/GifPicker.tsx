@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Modal, View, Text, TextInput, TouchableOpacity,
-  FlatList, Image, ActivityIndicator, StyleSheet,
+  FlatList, Image, ActivityIndicator, StyleSheet, Animated,
 } from 'react-native';
+import { usePopIn } from '../ui/popIn';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useAppWidth, FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
@@ -26,6 +27,7 @@ interface GifPickerProps {
 
 export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
   const colors = useThemeColors();
+  const pop = usePopIn(visible);
   const appWidth = useAppWidth();
   const COL_WIDTH = (appWidth - 48) / 2;
   const [query, setQuery] = useState('');
@@ -104,9 +106,9 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
   });
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.container}>
+      <Animated.View style={[styles.container, pop]}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>GIFs</Text>
           <TouchableOpacity onPress={onClose} hitSlop={12} accessibilityLabel="Close GIF picker">
@@ -147,12 +149,14 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
               );
             }}
             ListEmptyComponent={
-              <Text style={styles.empty}>No GIFs found</Text>
+              <Text style={styles.empty}>
+                {GIPHY_KEY ? 'No GIFs found' : 'GIF search is warming up — check back soon 🌸'}
+              </Text>
             }
           />
         )}
         <Text style={styles.poweredBy}>Powered by GIPHY</Text>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }

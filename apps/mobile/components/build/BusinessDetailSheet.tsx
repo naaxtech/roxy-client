@@ -191,7 +191,7 @@ export function BusinessDetailSheet({
   return (
     <Modal
       visible={business !== null}
-      animationType="fade"
+      animationType="none"
       transparent
       onRequestClose={onClose}
     >

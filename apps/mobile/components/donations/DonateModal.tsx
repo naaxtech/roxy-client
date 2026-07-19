@@ -107,7 +107,7 @@ export function DonateModal({ visible, onClose }: DonateModalProps) {
   });
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Animated.View style={[styles.card, popStyle]}>
           <Pressable onPress={() => {}}>

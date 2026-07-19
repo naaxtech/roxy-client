@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, Animated } from 'react-native';
+import { usePopIn } from '../ui/popIn';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 
@@ -14,6 +15,7 @@ export function PrivacyGateSheet({
   visible, communityName, onRequestJoin, onClose,
 }: PrivacyGateSheetProps) {
   const colors = useThemeColors();
+  const pop = usePopIn(visible);
 
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
@@ -48,9 +50,9 @@ export function PrivacyGateSheet({
   });
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose} />
-      <View style={styles.sheet}>
+      <Animated.View style={[styles.sheet, pop]}>
         <View style={styles.handle} />
         <Text style={styles.lockIcon}>🔒</Text>
         <Text style={styles.title}>This is inside</Text>
@@ -63,7 +65,7 @@ export function PrivacyGateSheet({
         <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
           <Text style={styles.cancelBtnText}>Cancel</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }

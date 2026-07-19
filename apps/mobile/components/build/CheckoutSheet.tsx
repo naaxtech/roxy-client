@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, TextInput, ActivityIndicator, Animated } from 'react-native';
 import { useStripe } from '@stripe/stripe-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
+import { usePopIn } from '../ui/popIn';
 import { showAlert } from '../../lib/confirm';
 import type { ProductWithVariants, ShippingAddress } from '../../types/marketplace';
 
@@ -24,6 +25,7 @@ interface CheckoutSheetProps {
 
 export function CheckoutSheet({ businessId, businessName, visible, onClose, onSuccess, buyNowItem }: CheckoutSheetProps) {
   const colors = useThemeColors();
+  const pop = usePopIn(visible);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const { cartItems, getCartTotal, createOrder, clearCart, buyNow } = useMarketplaceStore();
 
@@ -232,9 +234,9 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
   });
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <Animated.View style={[styles.sheet, pop]}>
           <View style={styles.handle} />
           {/* Step indicator */}
           <View style={styles.steps}>
@@ -261,7 +263,7 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} accessibilityLabel="Close checkout">
             <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

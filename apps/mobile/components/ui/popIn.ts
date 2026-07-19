@@ -22,5 +22,8 @@ export function usePopIn(visible: boolean) {
     }
   }, [visible, scale]);
 
-  return { transform: [{ scale }] };
+  // Opacity rides the same spring: content appears popping, never a soft
+  // cross-fade. Use with animationType="none" so the backdrop is instant
+  // (the community-filter treatment — the house animation standard).
+  return { opacity: scale, transform: [{ scale }] };
 }

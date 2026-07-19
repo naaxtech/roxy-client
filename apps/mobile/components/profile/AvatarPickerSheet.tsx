@@ -78,7 +78,7 @@ export function AvatarPickerSheet({
   }, [visible]);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       {/* Backdrop appears instantly */}
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
       {/* The sheet pops in — no slide-from-below */}

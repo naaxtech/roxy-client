@@ -63,7 +63,7 @@ export function BusinessPhotoGallery({ photos }: BusinessPhotoGalleryProps) {
       <Modal
         visible={lightboxUrl !== null}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={() => setLightboxUrl(null)}
       >
         <TouchableWithoutFeedback onPress={() => setLightboxUrl(null)}>
