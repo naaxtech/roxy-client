@@ -155,3 +155,19 @@
 - [ ] QA loop. Commit: `style(profile): centered Bumble-style avatar + Discord-style badge chips`.
 
 **Task 7 addendum (Nicole 2026-07-19):** tags must make pronouns + sexual orientation readable at a glance: pronoun chips get a distinct tint (roxy) vs orientation chip (secondary tint), both prominently under the name. Additionally create `supabase/migrations/061_gov_verification.sql`: `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS gov_verified boolean NOT NULL DEFAULT false;` (set by staff tooling later — no client write path, no RLS change needed since profiles select policies already exist). ProfileCard: when `profile.gov_verified` is true show a special verified badge — small shield/checkmark chip (Ionicons shield-checkmark, roxy gradient background, white icon) directly beside the display name with accessibilityLabel "Government verified". Add `gov_verified?: boolean` to the Profile type in apps/mobile/types/index.ts.
+
+### Task 8: Roxy companion FAB revamp (approved by Nicole)
+
+**Files:**
+- Modify: `apps/mobile/components/ui/RoxyCompanionButton.tsx`
+- Create: `apps/mobile/app/search.tsx` (global search overlay screen, root-level route)
+- Create: `apps/mobile/lib/globalSearch.ts` + `apps/mobile/__tests__/globalSearch.test.ts`
+- Asset: copy `docs/brand/roxy-logos/roxy_icon_192.png` → `apps/mobile/assets/brand/roxy-icon.png`
+
+**Requirements:**
+- [ ] FAB face becomes the R mark: brand-gradient circle containing the roxy-icon image (ExpoImage, ~60% of the circle). Keep size/position/visibility logic.
+- [ ] Tap → pop-out action stack: dim scrim (fade) + three pill buttons springing upward (usePopIn or Animated.spring, stagger optional): "✦ Chat with Roxy" → existing roxy-chat route; "Search Roxy" (Ionicons search) → push('/search'); "Filter this view" (Ionicons options) — on Connect/Build tabs it opens the community filter: set a flag the CommunityContextSwitcher can react to OR simply navigate to the current tab with the switcher opened — simplest robust: on these tabs render the same community list in the FAB sheet itself using useCommunityFilterStore + communityStore and apply selection directly; on other tabs show the pill disabled with hint "Works on Connect & Build". Long-press FAB = straight to Roxy chat.
+- [ ] `lib/globalSearch.ts`: `globalSearch(q: string): Promise<{ communities: ..., people: ..., events: ..., businesses: ... }>` — four parallel supabase ILIKE queries (name/title/display_name/username), limit 5 each, safe-empty on error. Test with mocked supabase (inline factory).
+- [ ] `/search` screen: auto-focused input, debounced (300ms) globalSearch, grouped results with SectionHeader idiom, rows navigate: community → /(tabs)/discover/community/[id]; person → /user/[id]; event → /event/[id]; business → Build tab (push '/(tabs)/build'). EmptyState for no query ("Search communities, people, events…") and no results.
+- [ ] All icon buttons labeled; scrim tap closes; back closes search.
+- [ ] QA loop. Commit: `feat(fab): R-mark companion button with actions + global search`.
