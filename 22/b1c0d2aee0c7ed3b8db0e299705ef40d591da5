@@ -1,0 +1,20 @@
+.superpowers/sdd/task-6-report.md
+  s_093307bfc37bee::t_bfcc34e4633597 63-67
+  s_093307bfc37bee::t_e0eef8591362e7 1-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "22b1c0d2aee0c7ed3b8db0e299705ef40d591da5",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
