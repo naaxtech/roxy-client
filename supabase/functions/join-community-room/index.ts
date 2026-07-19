@@ -47,7 +47,8 @@ async function createMeetingToken(
         user_id: userId,
         is_owner: isOwner,
         start_audio_off: true,
-        eject_at_room_exp: true,
+        // NOTE: eject_at_room_exp is a ROOM property, not a token property —
+        // Daily rejects tokens that include it (invalid-request-error).
       },
     }),
   });
