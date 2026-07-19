@@ -1,0 +1,97 @@
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  s_093307bfc37bee::t_9703f410eb5cbd 4
+  s_4fc1d0ebf60707::t_84f5d22bb66ecf 14,70,92
+apps/mobile/app/(tabs)/discover/community/post/[postId].tsx
+  s_4fc1d0ebf60707::t_ce321904573fbd 6,17,87
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_4fc1d0ebf60707::t_68b4dfd6c4aa1d 4,17,226
+apps/mobile/app/(auth)/onboarding/step1-identity.tsx
+  s_4fc1d0ebf60707::t_e22fd3ac9c7a9d 8,54
+  s_093307bfc37bee::t_356fc03a3bd892 2
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_093307bfc37bee::t_15fa0393e7640f 20
+  s_4fc1d0ebf60707::t_70dcb4fd034348 434,437,439,472,486,500,505,511,513,516,518-525,542,544
+  s_093307bfc37bee::t_7e6e1355397f49 4
+apps/mobile/app/(tabs)/connect/community-room-session.tsx
+  s_093307bfc37bee::t_9eb86f7292e671 272,274,277,279
+  s_093307bfc37bee::t_78fcb8b0fdc3d4 4,14
+  s_093307bfc37bee::t_be087367577e9c 255-259
+  s_093307bfc37bee::t_9db98e1d92eeff 223
+  s_093307bfc37bee::t_d272c2f7dbec0f 238-239,241-242,244
+apps/mobile/components/profile/ProfilePhotoGrid.tsx
+  s_093307bfc37bee::t_46da3695627be7 3,10
+  s_093307bfc37bee::t_e8239c5a0c4634 90
+apps/mobile/app/(tabs)/profile/settings.tsx
+  s_4fc1d0ebf60707::t_56c89cf82b8c54 11,42,44,133,151
+  s_093307bfc37bee::t_7035e086cbd8db 4
+apps/mobile/app/(tabs)/profile/edit.tsx
+  s_093307bfc37bee::t_78796969d1b31a 232
+  s_093307bfc37bee::t_4e49c31cad9e8b 160,168
+  s_093307bfc37bee::t_4868097ea0fc42 5,16
+  s_093307bfc37bee::t_d03b4fd2092f37 134,139,150
+apps/mobile/components/feed/CommentSheet.tsx
+  s_093307bfc37bee::t_c3de9e4b5394a7 74
+  s_093307bfc37bee::t_7deb233c44c3e7 4,10
+apps/mobile/app/(auth)/onboarding/step4-status.tsx
+  s_093307bfc37bee::t_ffec3a78f05a17 2
+  s_4fc1d0ebf60707::t_1b2faa86655388 11,39,46
+apps/mobile/app/(tabs)/profile/[userId].tsx
+  s_093307bfc37bee::t_5a65cf43da4c4d 95
+  s_093307bfc37bee::t_af4cdc53b27e6b 3,12
+  s_093307bfc37bee::t_c9d43f56dd2c83 64,71
+apps/mobile/app/(tabs)/profile/delete-account.tsx
+  s_093307bfc37bee::t_551364a723dcca 16
+  s_093307bfc37bee::t_800162a87a63e1 35
+apps/mobile/app/(tabs)/discover/post/[postId].tsx
+  s_4fc1d0ebf60707::t_e69dc94c170087 4,19,177
+apps/mobile/app/(tabs)/grow/roxy-chat.tsx
+  s_4fc1d0ebf60707::t_09f7f2ee1a43d3 13,54,62
+  s_093307bfc37bee::t_0d7406a14441a9 4
+apps/mobile/components/build/CheckoutSheet.tsx
+  s_093307bfc37bee::t_a5038af9173f39 2
+  s_4fc1d0ebf60707::t_dd4578a773f100 7,73,84,91
+apps/mobile/app/(tabs)/connect/sister-button/index.tsx
+  s_093307bfc37bee::t_1017d07076cea0 267,288
+  s_093307bfc37bee::t_8b321feafda45f 19
+apps/mobile/components/community/CommunitiesBrowser.tsx
+  s_093307bfc37bee::t_50bcb4c224ac8a 42
+  s_093307bfc37bee::t_5d614aca6aa4de 2,9
+apps/mobile/app/(tabs)/messages/new.tsx
+  s_4fc1d0ebf60707::t_c4889917c2ea31 13,41
+  s_093307bfc37bee::t_c88adf8c166c57 3
+apps/mobile/app/(tabs)/discover/community/members/[communityId].tsx
+  s_093307bfc37bee::t_2331f7a23476ac 3
+  s_4fc1d0ebf60707::t_85ec40ba7f1795 13,73,84
+apps/mobile/app/(auth)/onboarding/step2-interests.tsx
+  s_093307bfc37bee::t_b1de7ab731c2d0 2
+  s_4fc1d0ebf60707::t_d3fbffe63a014d 8,30
+apps/mobile/app/(tabs)/grow/people.tsx
+  s_093307bfc37bee::t_dbf73e224f6fa0 3
+  s_4fc1d0ebf60707::t_a7da0019c37ba1 13,47,53-57,237,246,284
+apps/mobile/app/(auth)/welcome.tsx
+  s_4fc1d0ebf60707::t_02c5c80ac3ceaf 21,46,55,61,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d220a50316c8b9cb971fe03e47c948a7dc7431d5",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_4fc1d0ebf60707": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2ca375d5a25c4cc6",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
