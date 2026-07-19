@@ -1,0 +1,38 @@
+apps/mobile/components/build/OrderDetailSheet.tsx
+  s_093307bfc37bee::t_c9123245969569 48
+apps/mobile/lib/video/DailyProvider.ts
+  s_093307bfc37bee::t_31d55ceacd742f 4-9
+  s_093307bfc37bee::t_a42c90f01751bd 14-16
+apps/mobile/app/community-room-session.tsx
+  s_093307bfc37bee::t_f10201c5bc741b 1-5
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_093307bfc37bee::t_1d6d7a7721c694 877-883
+apps/mobile/app/(tabs)/discover/index.tsx
+  s_093307bfc37bee::t_efd4daef34e7d3 378
+apps/mobile/app/(tabs)/grow/roxy-chat.tsx
+  s_093307bfc37bee::t_2745abe957c5f2 329-335
+apps/mobile/components/build/CheckoutSheet.tsx
+  s_093307bfc37bee::t_9e34172bee4030 231
+apps/mobile/components/donations/DonateModal.tsx
+  s_093307bfc37bee::t_b516589a6ca5f4 72-74
+apps/mobile/components/grow/HappeningTonightCard.tsx
+  s_093307bfc37bee::t_6d2d6b0eb20283 163
+apps/mobile/components/profile/ProfileCard.tsx
+  s_093307bfc37bee::t_863059f7051d74 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4654aaa302fef3bab8f5cf8302d57c4eb9c4056f",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
