@@ -166,9 +166,15 @@ export const useFeedStore = create<FeedState>((set, get) => ({
         p.id === postId ? { ...p, like_count: p.like_count + (wasLiked ? -1 : 1) } : p
       ),
     }));
+    // Upsert, not insert: a row can already exist server-side (state drift,
+    // double-tap, another device) and a bare insert 409s on the PK — the
+    // optimistic UI then reverts and the tap looks dead.
     const { error } = wasLiked
       ? await supabase.from('post_likes').delete().eq('post_id', postId)
-      : await supabase.from('post_likes').insert({ post_id: postId });
+      : await supabase.from('post_likes').upsert(
+          { post_id: postId },
+          { onConflict: 'post_id,user_id', ignoreDuplicates: true },
+        );
     if (error) {
       set(s => ({
         likedPostIds: wasLiked
@@ -193,7 +199,10 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     }));
     const { error } = wasSaved
       ? await supabase.from('post_saves').delete().eq('post_id', postId)
-      : await supabase.from('post_saves').insert({ post_id: postId });
+      : await supabase.from('post_saves').upsert(
+          { post_id: postId },
+          { onConflict: 'post_id,user_id', ignoreDuplicates: true },
+        );
     if (error) {
       set(s => ({
         savedPostIds: wasSaved

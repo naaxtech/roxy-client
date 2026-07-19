@@ -1,8 +1,7 @@
-import React, { useRef, useState } from 'react';
-import { Animated, Text, TouchableOpacity, View, StyleSheet, Modal, Pressable } from 'react-native';
+import React, { useRef } from 'react';
+import { Animated, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { usePopIn } from '../ui/popIn';
 
 interface PostActionRowProps {
   likeCount: number;
@@ -16,7 +15,6 @@ interface PostActionRowProps {
   onShare: () => void;
 }
 
-const REACTIONS = ['🌸', '💜', '🔥', '✨', '🥹'];
 
 function usePopAnimation() {
   const scale = useRef(new Animated.Value(1)).current;
@@ -34,8 +32,6 @@ export function PostActionRow({
   const colors = useThemeColors();
   const likeAnim = usePopAnimation();
   const saveAnim = usePopAnimation();
-  const [showReactions, setShowReactions] = useState(false);
-  const pickerPop = usePopIn(showReactions);
 
   const s = StyleSheet.create({
     row: {
@@ -57,59 +53,15 @@ export function PostActionRow({
     actionActive: {
       backgroundColor: colors.primary + '14',
     },
-    emoji: { fontSize: 19 },
-    emojiActive: { fontSize: 20 },
     count: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
     countActive: { color: colors.primary },
     spacer: { flex: 1 },
 
-    // Reaction picker popover
-    pickerOverlay: { flex: 1 },
-    picker: {
-      position: 'absolute',
-      flexDirection: 'row',
-      backgroundColor: colors.surface,
-      borderRadius: 28,
-      paddingVertical: 8,
-      paddingHorizontal: 6,
-      gap: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.14,
-      shadowRadius: 14,
-      elevation: 12,
-      // positioned dynamically below
-      bottom: 80,
-      left: 12,
-    },
-    pickerBtn: {
-      width: 44, height: 44, borderRadius: 22,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    pickerEmoji: { fontSize: 24 },
-    separator: {
-      width: StyleSheet.hairlineWidth,
-      backgroundColor: colors.surfaceLight,
-      marginHorizontal: 8,
-      alignSelf: 'stretch',
-    },
   });
 
   const handleLikePress = () => {
     likeAnim.pop();
     onLike();
-  };
-
-  const handleLikeLong = () => {
-    setShowReactions(true);
-  };
-
-  const handleReact = (_emoji: string) => {
-    setShowReactions(false);
-    if (!isLiked) {
-      likeAnim.pop();
-      onLike();
-    }
   };
 
   const handleSave = () => {
@@ -119,21 +71,24 @@ export function PostActionRow({
 
   return (
     <View style={s.row}>
-      {/* Like / Emoji react */}
+      {/* Like — plain tap, the Instagram/TikTok model. Roxy's like is the
+          flower, rendered as a vector (no emoji chrome). */}
       <TouchableOpacity
         testID="action-like"
         style={[s.action, isLiked && s.actionActive]}
         onPress={handleLikePress}
-        onLongPress={handleLikeLong}
-        delayLongPress={350}
         accessibilityRole="button"
         accessibilityLabel={isLiked ? 'Unlike post' : 'Like post'}
         accessibilityState={{ selected: isLiked }}
         hitSlop={6}
       >
-        <Animated.Text style={{ transform: [{ scale: likeAnim.scale }] }}>
-          <Text style={isLiked ? s.emojiActive : s.emoji}>{isLiked ? '🌸' : '🌸'}</Text>
-        </Animated.Text>
+        <Animated.View style={{ transform: [{ scale: likeAnim.scale }] }}>
+          <Ionicons
+            name={isLiked ? 'flower' : 'flower-outline'}
+            size={20}
+            color={isLiked ? colors.roxy : colors.textMuted}
+          />
+        </Animated.View>
         <Text style={[s.count, isLiked && s.countActive]}>
           {likeCount > 0 ? likeCount : ''}
         </Text>
@@ -185,25 +140,6 @@ export function PostActionRow({
         {saveCount > 0 && <Text style={[s.count, isSaved && s.countActive]}>{saveCount}</Text>}
       </TouchableOpacity>
 
-      {/* Emoji reaction picker (long-press on 🌸) */}
-      {showReactions && (
-        <Modal transparent animationType="none" onRequestClose={() => setShowReactions(false)}>
-          <Pressable style={s.pickerOverlay} onPress={() => setShowReactions(false)}>
-            <Animated.View style={[s.picker, pickerPop]}>
-              {REACTIONS.map((emoji) => (
-                <TouchableOpacity
-                  key={emoji}
-                  style={s.pickerBtn}
-                  onPress={() => handleReact(emoji)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={s.pickerEmoji}>{emoji}</Text>
-                </TouchableOpacity>
-              ))}
-            </Animated.View>
-          </Pressable>
-        </Modal>
-      )}
     </View>
   );
 }

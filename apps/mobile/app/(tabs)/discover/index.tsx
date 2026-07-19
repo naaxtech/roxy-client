@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Modal, Pressable,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Modal, Pressable, Animated,
 } from 'react-native';
+import { usePopIn } from '../../../components/ui/popIn';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -157,6 +158,7 @@ export default function PlayScreen() {
   // Speed Dating gets a choice: random ("feeling wild") or via one of your
   // communities. Other games route straight in.
   const [speedDatingOptions, setSpeedDatingOptions] = useState<{ id: string; name: string }[] | null>(null);
+  const sdPop = usePopIn(speedDatingOptions !== null);
 
   const navigateToGame = (game: Game | CommunityGame) => {
     if (game.name === 'Speed Dating' || game.url === null) {
@@ -253,7 +255,10 @@ export default function PlayScreen() {
       shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.3, shadowRadius: 24, elevation: 20,
     },
-    popEmoji: { fontSize: 40 },
+    popPlate: {
+      width: 56, height: 56, borderRadius: 18,
+      alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+    },
     popTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 19 },
     popSub: { color: colors.textMuted, fontSize: 13, marginBottom: 6 },
     popPrimary: {
@@ -481,12 +486,15 @@ export default function PlayScreen() {
       <Modal
         visible={speedDatingOptions !== null}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={() => setSpeedDatingOptions(null)}
       >
         <Pressable style={s.popOverlay} onPress={() => setSpeedDatingOptions(null)}>
+          <Animated.View style={sdPop}>
           <Pressable style={s.popCard} onPress={() => {}}>
-            <Text style={s.popEmoji}>⚡</Text>
+            <LinearGradient colors={['#FF6A2E', '#E81C8E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.popPlate}>
+              <Ionicons name="flash" size={24} color="#fff" />
+            </LinearGradient>
             <Text style={s.popTitle}>Speed Dating</Text>
             <Text style={s.popSub}>How do you want to play?</Text>
             <TouchableOpacity
@@ -515,6 +523,7 @@ export default function PlayScreen() {
               <Text style={s.popCancel}>Not tonight</Text>
             </TouchableOpacity>
           </Pressable>
+          </Animated.View>
         </Pressable>
       </Modal>
     </SafeAreaView>

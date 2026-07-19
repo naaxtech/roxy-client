@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../../../store/authStore';
 import { callEdgeFunction } from '../../../../lib/supabase';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
@@ -43,10 +44,15 @@ export default function SisterButtonScreen() {
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.surface,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      gap: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: 'rgba(255,255,255,0.08)',
+    },
+    headerPlate: {
+      width: 38, height: 38, borderRadius: 13,
+      alignItems: 'center', justifyContent: 'center',
     },
     backButton: {
       width: 40,
@@ -54,16 +60,15 @@ export default function SisterButtonScreen() {
     },
     headerCenter: {
       flex: 1,
-      alignItems: 'center',
     },
     headerTitle: {
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: '800',
-      color: colors.textPrimary,
+      color: '#fff',
     },
     headerSubtitle: {
-      fontSize: 12,
-      color: colors.textMuted,
+      fontSize: 11.5,
+      color: '#B9A8D8',
       marginTop: 1,
     },
 
@@ -83,14 +88,32 @@ export default function SisterButtonScreen() {
       gap: 12,
       paddingHorizontal: 16,
     },
-    emptyIcon: { fontSize: 48 },
+    emptyPlate: {
+      width: 64, height: 64, borderRadius: 22,
+      alignItems: 'center', justifyContent: 'center',
+      shadowColor: '#8E7CF7', shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.4, shadowRadius: 20, elevation: 8,
+    },
+    chipsWrap: {
+      flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+      justifyContent: 'center', marginTop: 10,
+    },
+    chip: {
+      borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9,
+      backgroundColor: 'rgba(142,124,247,0.14)',
+      borderWidth: 1, borderColor: 'rgba(142,124,247,0.35)',
+    },
+    chipText: { color: '#CFC3EE', fontSize: 13, fontWeight: '600' },
+    // Sister is always a dark stage — fixed light text, never theme tokens
+    // (light-theme tokens would render dark-on-dark here).
     emptyTitle: {
-      color: colors.textPrimary,
+      color: '#FFFFFF',
       fontSize: 20,
-      fontWeight: '700',
+      fontWeight: '800',
+      marginTop: 6,
     },
     emptyBody: {
-      color: colors.textSecondary,
+      color: '#C9BCE4',
       textAlign: 'center',
       lineHeight: 22,
       fontSize: 15,
@@ -110,16 +133,16 @@ export default function SisterButtonScreen() {
       paddingVertical: 10,
     },
     bubbleUser: {
-      backgroundColor: colors.primary,
-      borderBottomRightRadius: 4,
+      borderBottomRightRadius: 6,
+      overflow: 'hidden',
     },
     bubbleAssistant: {
-      backgroundColor: colors.surface,
-      borderBottomLeftRadius: 4,
+      backgroundColor: 'rgba(255,255,255,0.07)',
+      borderBottomLeftRadius: 6,
     },
     messageText: { fontSize: 15, lineHeight: 22 },
     messageTextUser: { color: '#fff' },
-    messageTextAssistant: { color: colors.roxy },
+    messageTextAssistant: { color: '#EDE7F8' },
 
     thinkingWrap: {
       flexDirection: 'row',
@@ -206,12 +229,14 @@ export default function SisterButtonScreen() {
       opacity: 0.5,
     },
     sendButton: {
-      backgroundColor: colors.roxy,
-      borderRadius: 20,
-      paddingHorizontal: 18,
-      paddingVertical: 10,
+      width: 42, height: 42, borderRadius: 21,
+      overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    sendButtonInner: {
+      width: 42, height: 42, borderRadius: 21,
+      alignItems: 'center', justifyContent: 'center',
     },
     sendButtonDisabled: {
       opacity: 0.4,
@@ -303,11 +328,13 @@ export default function SisterButtonScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
             <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
+          <LinearGradient colors={['#8E7CF7', '#C86DD7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerPlate}>
+            <Ionicons name="moon" size={18} color="#fff" />
+          </LinearGradient>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Roxy Sister 💜</Text>
-            <Text style={styles.headerSubtitle}>A safe space, just for you</Text>
+            <Text style={styles.headerTitle}>Sister</Text>
+            <Text style={styles.headerSubtitle}>Private - gentle - judgement-free</Text>
           </View>
-          <View style={styles.backButton} />
         </View>
 
         {/* Messages */}
@@ -319,11 +346,20 @@ export default function SisterButtonScreen() {
         >
           {messages.length === 0 && (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>💜</Text>
-              <Text style={styles.emptyTitle}>Hi, I'm Roxy Sister</Text>
+              <LinearGradient colors={['#8E7CF7', '#C86DD7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.emptyPlate}>
+                <Ionicons name="moon" size={30} color="#fff" />
+              </LinearGradient>
+              <Text style={styles.emptyTitle}>Hi, I'm Sister</Text>
               <Text style={styles.emptyBody}>
                 This is a safe space. You can share what's on your mind — I'm here to listen, without judgment.
               </Text>
+              <View style={styles.chipsWrap}>
+                {["I'm feeling overwhelmed", 'Something happened today', 'I just need to vent'].map((c) => (
+                  <TouchableOpacity key={c} style={styles.chip} onPress={() => setInput(c)} activeOpacity={0.8}>
+                    <Text style={styles.chipText}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           )}
 
@@ -335,27 +371,26 @@ export default function SisterButtonScreen() {
                 msg.role === 'user' ? styles.bubbleWrapUser : styles.bubbleWrapAssistant,
               ]}
             >
-              <View
-                style={[
-                  styles.messageBubble,
-                  msg.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.messageText,
-                    msg.role === 'user' ? styles.messageTextUser : styles.messageTextAssistant,
-                  ]}
+              {msg.role === 'user' ? (
+                <LinearGradient
+                  colors={['#8E7CF7', '#C86DD7']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.messageBubble, styles.bubbleUser]}
                 >
-                  {msg.content}
-                </Text>
-              </View>
+                  <Text style={[styles.messageText, styles.messageTextUser]}>{msg.content}</Text>
+                </LinearGradient>
+              ) : (
+                <View style={[styles.messageBubble, styles.bubbleAssistant]}>
+                  <Text style={[styles.messageText, styles.messageTextAssistant]}>{msg.content}</Text>
+                </View>
+              )}
             </View>
           ))}
 
           {loading && (
             <View style={styles.thinkingWrap}>
-              <Text style={styles.thinkingText}>Roxy is thinking…</Text>
+              <Text style={styles.thinkingText}>Sister is listening…</Text>
               <ActivityIndicator size="small" color={colors.roxy} style={{ marginLeft: 8 }} />
             </View>
           )}
@@ -421,14 +456,23 @@ export default function SisterButtonScreen() {
             multiline
             editable={!loading && !sessionDone}
             returnKeyType="default"
+            onKeyPress={(e: any) => {
+              if (Platform.OS === 'web' && e.nativeEvent?.key === 'Enter' && !e.nativeEvent?.shiftKey) {
+                e.preventDefault?.();
+                if (input.trim() && !loading && !sessionDone) void handleSend();
+              }
+            }}
           />
           <TouchableOpacity
             style={[styles.sendButton, (loading || sessionDone || !input.trim()) && styles.sendButtonDisabled]}
             onPress={handleSend}
             disabled={loading || sessionDone || !input.trim()}
             activeOpacity={0.75}
+            accessibilityLabel="Send message"
           >
-            <Text style={styles.sendButtonText}>Send</Text>
+            <LinearGradient colors={['#8E7CF7', '#C86DD7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.sendButtonInner}>
+              <Ionicons name="send" size={16} color="#fff" />
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
