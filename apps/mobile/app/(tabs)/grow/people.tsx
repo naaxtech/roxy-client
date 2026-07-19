@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, ActivityIndicator,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useFriendStore, FriendshipRow, isOnline, sortByPresence } from '../../../store/friendStore';
 import { openDirectChat } from '../../../lib/directMessages';
 import { logError } from '../../../lib/errorLogger';
+import { showAlert, confirmAction } from '../../../lib/confirm';
 import { avatarGradient } from '../../../lib/avatars';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 
@@ -43,23 +44,17 @@ export default function PeopleScreen() {
       router.push(`/chat/${convId}` as any);
     } catch (e: any) {
       logError(e, 'handleFriendTap');
-      Alert.alert('Could not start the chat', 'Something went wrong on our side — try again in a moment 💜');
+      showAlert('Could not start the chat', 'Something went wrong on our side — try again in a moment 💜');
     } finally {
       setMessagingId(null);
     }
   };
 
-  const confirmUnfriend = (item: FriendshipRow) => {
-    Alert.alert('Remove friend', `Remove ${item.profile.display_name}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove', style: 'destructive',
-        onPress: async () => {
-          try { await unfriend(item.id); }
-          catch (e: any) { logError(e, 'confirmUnfriend'); Alert.alert('Error', e?.message); }
-        },
-      },
-    ]);
+  const confirmUnfriend = async (item: FriendshipRow) => {
+    const ok = await confirmAction('Remove friend', `Remove ${item.profile.display_name}?`, 'Remove');
+    if (!ok) return;
+    try { await unfriend(item.id); }
+    catch (e: any) { logError(e, 'confirmUnfriend'); showAlert('Error', e?.message); }
   };
 
   const styles = StyleSheet.create({
@@ -239,7 +234,7 @@ export default function PeopleScreen() {
                       style={styles.acceptBtn}
                       onPress={async () => {
                         try { await acceptRequest(item.id); }
-                        catch (e: any) { logError(e, 'acceptRequest'); Alert.alert('Error', e?.message); }
+                        catch (e: any) { logError(e, 'acceptRequest'); showAlert('Error', e?.message); }
                       }}
                     >
                       <Text style={styles.acceptBtnText}>Accept</Text>
@@ -248,7 +243,7 @@ export default function PeopleScreen() {
                       style={styles.mutedBtn}
                       onPress={async () => {
                         try { await rejectRequest(item.id); }
-                        catch (e: any) { logError(e, 'rejectRequest'); Alert.alert('Error', e?.message); }
+                        catch (e: any) { logError(e, 'rejectRequest'); showAlert('Error', e?.message); }
                       }}
                     >
                       <Text style={styles.mutedBtnText}>Decline</Text>
@@ -286,7 +281,7 @@ export default function PeopleScreen() {
                     style={styles.mutedBtn}
                     onPress={async () => {
                       try { await cancelRequest(item.id); }
-                      catch (e: any) { logError(e, 'cancelRequest'); Alert.alert('Error', e?.message); }
+                      catch (e: any) { logError(e, 'cancelRequest'); showAlert('Error', e?.message); }
                     }}
                   >
                     <Text style={styles.mutedBtnText}>Cancel</Text>

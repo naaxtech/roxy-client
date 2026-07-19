@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { useCommunityStore, Community } from '../../store/communityStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { logError } from '../../lib/errorLogger';
+import { showAlert } from '../../lib/confirm';
 import { EmptyState } from '../ui/EmptyState';
 
 function getCommunityLevel(n: number): { label: string; emoji: string } {
@@ -38,7 +39,7 @@ export function CommunitiesBrowser() {
       }
     } catch (e: any) {
       logError(e, 'communities_joinLeave');
-      Alert.alert('Error', e?.message ?? 'Could not update membership');
+      showAlert('Error', e?.message ?? 'Could not update membership');
     }
   }, [user, joinedIds, joinCommunity, leaveCommunity]);
 

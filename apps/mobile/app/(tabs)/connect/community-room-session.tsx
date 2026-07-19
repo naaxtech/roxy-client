@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  StatusBar, Alert, FlatList, ScrollView, Dimensions,
+  StatusBar, FlatList, ScrollView, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import { DailyProvider } from '../../../lib/video';
 import { useVideoCall } from '../../../hooks/useVideoCall';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { logError } from '../../../lib/errorLogger';
+import { showAlert, confirmAction } from '../../../lib/confirm';
 import type { RemoteParticipant } from '../../../lib/video/VideoCallProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -219,7 +220,7 @@ export default function CommunityRoomSession() {
         );
 
         if (!data?.room_url) {
-          Alert.alert('Room unavailable', 'This room is not live right now.');
+          showAlert('Room unavailable', 'This room is not live right now.');
           router.back();
           return;
         }
@@ -234,15 +235,13 @@ export default function CommunityRoomSession() {
         logError(e, 'communityRoomSession_join');
         const status = e?.status ?? e?.statusCode;
         if (status === 409) {
-          Alert.alert('Not live yet', 'This room is scheduled but not open yet.', [
-            { text: 'OK', onPress: () => router.back() },
-          ]);
+          showAlert('Not live yet', 'This room is scheduled but not open yet.');
+          router.back();
         } else if (status === 410) {
-          Alert.alert('Room closed', 'This room has ended.', [
-            { text: 'OK', onPress: () => router.back() },
-          ]);
+          showAlert('Room closed', 'This room has ended.');
+          router.back();
         } else {
-          Alert.alert('Error', 'Failed to join room. Please try again.');
+          showAlert('Error', 'Failed to join room. Please try again.');
           router.back();
         }
       }
@@ -253,17 +252,11 @@ export default function CommunityRoomSession() {
     };
   }, [room_id, provider, router]);
 
-  const handleLeave = () => {
-    Alert.alert('Leave Room?', 'Are you sure you want to leave?', [
-      { text: 'Stay', style: 'cancel' },
-      {
-        text: 'Leave', style: 'destructive',
-        onPress: () => {
-          provider.leave().catch(() => {});
-          router.back();
-        },
-      },
-    ]);
+  const handleLeave = async () => {
+    const ok = await confirmAction('Leave Room?', 'Are you sure you want to leave?', 'Leave');
+    if (!ok) return;
+    provider.leave().catch(() => {});
+    router.back();
   };
 
   const toggleMic = () => {
@@ -276,20 +269,14 @@ export default function CommunityRoomSession() {
     setCamOn((v) => !v);
   };
 
-  const handleMuteParticipant = (participant: RemoteParticipant) => {
+  const handleMuteParticipant = async (participant: RemoteParticipant) => {
     if (!roomInfo?.is_host) return;
-    Alert.alert(
+    const ok = await confirmAction(
       `Mute ${participant.displayName ?? 'participant'}?`,
       'They will be muted. They can unmute themselves.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Mute',
-          style: 'destructive',
-          onPress: () => provider.muteParticipant(participant.id),
-        },
-      ],
+      'Mute',
     );
+    if (ok) provider.muteParticipant(participant.id);
   };
 
   // Host pushes authoritative participant count on every change

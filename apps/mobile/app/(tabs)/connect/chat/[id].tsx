@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
   Modal, FlatList, Image, Pressable, Keyboard, ListRenderItem,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +17,7 @@ import { useReactions } from '../../../../hooks/useReactions';
 import { useTyping } from '../../../../hooks/useTyping';
 import { useSafetyStore } from '../../../../store/safetyStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
+import { showAlert, confirmAction } from '../../../../lib/confirm';
 import { Analytics } from '../../../../lib/analytics';
 import { Message } from '../../../../types';
 import EmojiKeyboard from 'rn-emoji-keyboard';
@@ -430,14 +431,12 @@ export default function ChatScreen() {
 
     if (error) {
       removeMessage(optimisticMsg.id);
-      Alert.alert(
+      const retry = await confirmAction(
         'Message not sent',
         'Could not deliver your message.',
-        [
-          { text: 'Dismiss', style: 'cancel' },
-          { text: 'Retry', onPress: () => void sendMessage(content, type, mediaUrl) },
-        ]
+        'Retry',
       );
+      if (retry) void sendMessage(content, type, mediaUrl);
     } else if (inserted?.id) {
       replaceMessageId(optimisticMsg.id, inserted.id);
       Analytics.messageSent(conversationId);
@@ -470,7 +469,7 @@ export default function ChatScreen() {
         message_history: history,
         current_message: inputText || 'I want to keep the conversation going',
       });
-      if (error) { Alert.alert('Wingwoman unavailable', error); return; }
+      if (error) { showAlert('Wingwoman unavailable', error); return; }
       if (data?.suggestion) {
         appendMessage({
           id: `roxy-${Date.now()}`,
@@ -484,7 +483,7 @@ export default function ChatScreen() {
         });
       }
     } catch {
-      Alert.alert('Error', 'Failed to get suggestion. Please try again.');
+      showAlert('Error', 'Failed to get suggestion. Please try again.');
     } finally {
       setWingwomanLoading(false);
     }
@@ -498,38 +497,32 @@ export default function ChatScreen() {
         conversation_id: conversationId,
       });
       if (error) {
-        Alert.alert('Roxy Nudge', "Nudge limit reached for this conversation, but you've got this! 💜");
+        showAlert('Roxy Nudge', "Nudge limit reached for this conversation, but you've got this! 💜");
         return;
       }
       if (data?.nudge) setInputText(data.nudge);
     } catch {
-      Alert.alert('Error', 'Failed to get nudge. Please try again.');
+      showAlert('Error', 'Failed to get nudge. Please try again.');
     } finally {
       setNudgeLoading(false);
     }
   };
 
-  const handleBlockPress = () => {
+  const handleBlockPress = async () => {
     setMenuVisible(false);
-    Alert.alert(
+    const ok = await confirmAction(
       `Block ${partnerName}?`,
       "They won't be able to message you and you won't see their profile.",
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Block', style: 'destructive',
-          onPress: async () => {
-            if (!partnerProfile?.id) return;
-            try {
-              await blockUser(partnerProfile.id);
-              router.back();
-            } catch {
-              Alert.alert('Error', 'Could not block user. Please try again.');
-            }
-          },
-        },
-      ]
+      'Block',
     );
+    if (!ok) return;
+    if (!partnerProfile?.id) return;
+    try {
+      await blockUser(partnerProfile.id);
+      router.back();
+    } catch {
+      showAlert('Error', 'Could not block user. Please try again.');
+    }
   };
 
   const handleReportPress = () => {
@@ -546,9 +539,9 @@ export default function ChatScreen() {
     try {
       await submitReport(reportReason, reportDetail.trim() || undefined);
       setReportVisible(false);
-      Alert.alert('Report submitted', 'Thank you for keeping our community safe 💜');
+      showAlert('Report submitted', 'Thank you for keeping our community safe 💜');
     } catch {
-      Alert.alert('Error', 'Could not submit report. Please try again.');
+      showAlert('Error', 'Could not submit report. Please try again.');
     } finally {
       setReportSubmitting(false);
     }

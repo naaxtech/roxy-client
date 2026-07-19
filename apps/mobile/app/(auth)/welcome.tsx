@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RoxyWordmark } from '../../components/ui/RoxyWordmark';
 import { useAuth } from '../../hooks/useAuth';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { showAlert } from '../../lib/confirm';
 
 // Roxy brand gradient — same 3 stops as the Grow hero card.
 const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
@@ -43,7 +43,7 @@ export default function WelcomeScreen() {
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) return;
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters.');
+      showAlert('Error', 'Password must be at least 6 characters.');
       return;
     }
     setLoading(true);
@@ -52,20 +52,20 @@ export default function WelcomeScreen() {
       : await signUp(email.trim(), password);
     setLoading(false);
     if (error) {
-      Alert.alert('Error', error.message);
+      showAlert('Error', error.message);
     }
   };
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
-      Alert.alert('Enter your email', 'Please enter your email address first.');
+      showAlert('Enter your email', 'Please enter your email address first.');
       return;
     }
     setLoading(true);
     const { error } = await resetPassword(email.trim());
     setLoading(false);
     if (error) {
-      Alert.alert('Error', error.message);
+      showAlert('Error', error.message);
     } else {
       setResetSent(true);
     }

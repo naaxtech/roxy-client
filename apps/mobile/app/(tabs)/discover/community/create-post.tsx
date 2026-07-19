@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert, StyleSheet,
+  ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { RoxyLinkPicker, RoxyLinkSelection } from '../../../../components/feed/RoxyLinkPicker';
+import { showAlert } from '../../../../lib/confirm';
 import type { PostType } from '../../../../types';
 
 type Step = 'type-picker' | 'composer';
@@ -66,7 +67,7 @@ export default function CreatePostScreen() {
   const handleSubmit = async () => {
     if (!user?.id || !communityId || submitting) return;
     if (postType !== 'roxy_link' && !content.trim()) {
-      Alert.alert('Add some text', 'Your post needs content.');
+      showAlert('Add some text', 'Your post needs content.');
       return;
     }
     setSubmitting(true);
@@ -88,7 +89,7 @@ export default function CreatePostScreen() {
     setSubmitting(false);
 
     if (error) {
-      Alert.alert('Post failed', 'Could not publish. Please try again.');
+      showAlert('Post failed', 'Could not publish. Please try again.');
       return;
     }
     router.back();

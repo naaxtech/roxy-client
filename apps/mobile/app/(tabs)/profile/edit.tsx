@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, Alert, ActivityIndicator, Image,
+  ScrollView, ActivityIndicator, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { useProfileStore } from '../../../store/profileStore';
 import { supabase } from '../../../lib/supabase';
 import { PRONOUNS, IDENTITY_LABELS } from '../../../lib/constants';
 import { logError } from '../../../lib/errorLogger';
+import { showAlert } from '../../../lib/confirm';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
 import { AvatarPickerSheet } from '../../../components/profile/AvatarPickerSheet';
 import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
@@ -130,12 +131,12 @@ export default function EditProfileScreen() {
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
-      if (uploadError) { Alert.alert('Upload failed', uploadError.message); return; }
+      if (uploadError) { showAlert('Upload failed', uploadError.message); return; }
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
       await updateProfile({ avatar_url: data.publicUrl });
     } catch (e: any) {
       logError(e, 'editProfile_uploadPhoto');
-      Alert.alert('Upload failed', e?.message ?? 'Unknown error');
+      showAlert('Upload failed', e?.message ?? 'Unknown error');
     } finally {
       setAvatarUploading(false);
     }
@@ -146,7 +147,7 @@ export default function EditProfileScreen() {
       await updateProfile({ avatar_url: avatarUrl });
     } catch (e: any) {
       logError(e, 'editProfile_selectPreset');
-      Alert.alert('Error', 'Could not save avatar');
+      showAlert('Error', 'Could not save avatar');
     }
   };
 
@@ -156,7 +157,7 @@ export default function EditProfileScreen() {
       ? current.filter((p) => p !== pronoun)
       : [...current, pronoun];
     try { await updateProfile({ pronouns: updated }); }
-    catch (e) { logError(e, 'editProfile_togglePronoun'); Alert.alert('Error', 'Could not save pronouns'); }
+    catch (e) { logError(e, 'editProfile_togglePronoun'); showAlert('Error', 'Could not save pronouns'); }
   };
 
   // Identity is single-choice: picking one replaces the previous.
@@ -164,7 +165,7 @@ export default function EditProfileScreen() {
     const current = profile.identity_labels ?? [];
     const updated = current.includes(label) ? [] : [label];
     try { await updateProfile({ identity_labels: updated }); }
-    catch (e) { logError(e, 'editProfile_toggleIdentity'); Alert.alert('Error', 'Could not save identity labels'); }
+    catch (e) { logError(e, 'editProfile_toggleIdentity'); showAlert('Error', 'Could not save identity labels'); }
   };
 
   const initials = (profile.display_name ?? '?').charAt(0).toUpperCase();
@@ -228,7 +229,7 @@ export default function EditProfileScreen() {
             onChangeText={setLocalBio}
             onBlur={async () => {
               try { await updateProfile({ bio: localBio }); }
-              catch (e) { logError(e, 'editProfile_saveBio'); Alert.alert('Error', 'Could not save bio'); }
+              catch (e) { logError(e, 'editProfile_saveBio'); showAlert('Error', 'Could not save bio'); }
             }}
             numberOfLines={3}
             textAlignVertical="top"

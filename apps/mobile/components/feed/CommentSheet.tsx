@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet,
-  TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { CommentThread } from './CommentThread';
 import { submitComment } from '../../lib/comments';
+import { showAlert } from '../../lib/confirm';
 import { useFeedStore } from '../../store/feedStore';
 import type { Comment } from '../../types';
 
@@ -70,7 +71,7 @@ export function CommentSheet({
     });
     setSubmitting(false);
     if (error || !comment) {
-      Alert.alert('Comment not saved', error ?? 'Please try again.');
+      showAlert('Comment not saved', error ?? 'Please try again.');
       return;
     }
     setText('');

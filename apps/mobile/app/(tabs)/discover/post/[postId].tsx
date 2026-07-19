@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Share, Alert,
+  KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Share,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,7 @@ import { fetchPostById } from '../../../../lib/posts';
 import { routeParam } from '../../../../lib/routeParams';
 import { COMMENT_WITH_AUTHOR } from '../../../../lib/supabaseQueries';
 import { submitComment } from '../../../../lib/comments';
+import { showAlert } from '../../../../lib/confirm';
 import { PostMediaCarousel } from '../../../../components/feed/PostMediaCarousel';
 import { CommentThread } from '../../../../components/feed/CommentThread';
 import type { Comment, Post } from '../../../../types';
@@ -173,7 +174,7 @@ export default function PostDetailScreen() {
       parentId: replyingTo?.id ?? null,
     });
     if (error || !comment) {
-      Alert.alert('Comment not saved', error ?? 'Please sign in and try again.');
+      showAlert('Comment not saved', error ?? 'Please sign in and try again.');
     } else {
       setCommentText('');
       setReplyingTo(null);

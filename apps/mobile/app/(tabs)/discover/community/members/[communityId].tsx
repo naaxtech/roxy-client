@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, ActivityIndicator,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { useAuthStore } from '../../../../../store/authStore';
 import { useFriendStore } from '../../../../../store/friendStore';
 import { useThemeColors } from '../../../../../hooks/useThemeColors';
 import { logError } from '../../../../../lib/errorLogger';
+import { showAlert } from '../../../../../lib/confirm';
 
 type MemberProfile = {
   id: string;
@@ -69,7 +70,7 @@ export default function MembersScreen() {
       setJustSent((prev) => new Set([...prev, memberId]));
     } catch (e: any) {
       logError(e, 'handleAddFriend');
-      Alert.alert('Error', e?.message);
+      showAlert('Error', e?.message);
     }
   };
 
@@ -80,7 +81,7 @@ export default function MembersScreen() {
       await acceptRequest(friendshipId);
     } catch (e: any) {
       logError(e, 'handleAccept');
-      Alert.alert('Error', e?.message);
+      showAlert('Error', e?.message);
     }
   };
 

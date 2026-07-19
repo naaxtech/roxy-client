@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, ActivityIndicator,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
 import { openDirectChat } from '../../../lib/directMessages';
 import { logError } from '../../../lib/errorLogger';
+import { showAlert } from '../../../lib/confirm';
 import { avatarGradient } from '../../../lib/avatars';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 
@@ -37,7 +38,7 @@ export default function NewMessageScreen() {
       router.push(`/chat/${convId}` as any);
     } catch (e: any) {
       logError(e, 'newMessage.startChat');
-      Alert.alert('Could not start the chat', 'Something went wrong on our side — try again in a moment 💜');
+      showAlert('Could not start the chat', 'Something went wrong on our side — try again in a moment 💜');
     } finally {
       setCreatingId(null);
     }

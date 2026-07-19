@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { logError, logBreadcrumb } from '../../../lib/errorLogger';
+import { showAlert } from '../../../lib/confirm';
 import { ChipSelector } from '../../../components/ui/ChipSelector';
 import { IDENTITY_LABELS, PRONOUNS, USERNAME_MAX } from '../../../lib/constants';
 import { useThemeColors } from '../../../hooks/useThemeColors';
@@ -50,7 +51,7 @@ export default function Step1Identity() {
     setLoading(false);
     if (error) {
       logError(error, 'onboarding_step1_upsert');
-      Alert.alert('Error', 'Could not save your identity. Please try again.');
+      showAlert('Error', 'Could not save your identity. Please try again.');
       return;
     }
     logBreadcrumb('onboarding_step1_complete');
