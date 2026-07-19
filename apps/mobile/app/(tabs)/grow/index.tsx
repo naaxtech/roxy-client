@@ -62,10 +62,11 @@ function greetingWord(): string {
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 }
 
-function getLevelInfo(points: number): { label: string; emoji: string; nextThreshold: number | null; progress: number } {
-  if (points >= 500) return { label: 'Radiant', emoji: '✨', nextThreshold: null, progress: 1 };
-  if (points >= 100) return { label: 'Bloom', emoji: '🌸', nextThreshold: 500, progress: (points - 100) / 400 };
-  return { label: 'Seedling', emoji: '🌱', nextThreshold: 100, progress: points / 100 };
+// Vector level marks — never raw emoji as UI assets.
+function getLevelInfo(points: number): { label: string; icon: 'sparkles' | 'flower' | 'leaf'; nextThreshold: number | null; progress: number } {
+  if (points >= 500) return { label: 'Radiant', icon: 'sparkles', nextThreshold: null, progress: 1 };
+  if (points >= 100) return { label: 'Bloom', icon: 'flower', nextThreshold: 500, progress: (points - 100) / 400 };
+  return { label: 'Seedling', icon: 'leaf', nextThreshold: 100, progress: points / 100 };
 }
 
 export default function GrowScreen() {
@@ -271,7 +272,9 @@ export default function GrowScreen() {
       color: colors.textPrimary, fontSize: 15, lineHeight: 21,
       fontWeight: '500',
     },
-    rhActions: { flexDirection: 'row', gap: 10, alignItems: 'center', marginTop: 12 },
+    // Indented under the bubble (avatar 56 + gap 12) so the pill reads as the
+    // bubble's reply affordance instead of floating loose at the screen edge.
+    rhActions: { flexDirection: 'row', gap: 10, alignItems: 'center', marginTop: 10, marginLeft: 68 },
     rhBtn: {
       minHeight: 44, borderRadius: 999, paddingHorizontal: 22,
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -352,21 +355,42 @@ export default function GrowScreen() {
       borderWidth: 1.5, borderColor: colors.surface,
     },
 
-    levelRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-    levelEmoji: { fontSize: 22 },
-    levelLabel: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
-    levelPoints: { color: colors.textMuted, fontSize: 12 },
+    levelRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+    levelLabel: { color: colors.textPrimary, fontWeight: '800', fontSize: 15 },
     progressTrack: {
-      height: 4, backgroundColor: colors.surfaceLight,
-      borderRadius: 2, overflow: 'hidden', marginBottom: 4,
+      height: 7, backgroundColor: colors.surfaceLight,
+      borderRadius: 4, overflow: 'hidden',
     },
-    progressFill: { height: 4, backgroundColor: colors.primary, borderRadius: 2 },
-    progressHint: { color: colors.textMuted, fontSize: 11 },
+    progressFill: { height: 7, borderRadius: 4 },
+    progressHint: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
 
-    badgePreviewRow: { flexDirection: 'row', gap: 6, marginBottom: 4 },
-    badgePreviewEmoji: { fontSize: 20 },
+    // Shared gradient icon plate for the lower Grow rows — the "exciting"
+    // treatment: vector icon on a bold gradient squircle, never emoji chrome.
+    rowPlate: {
+      width: 42, height: 42, borderRadius: 14,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    rowTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 15 },
+    journeyHeader: {
+      flexDirection: 'row', alignItems: 'center',
+      justifyContent: 'space-between', marginBottom: 10,
+    },
+    pointsChip: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      backgroundColor: colors.roxy + '14',
+      borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4,
+    },
+    pointsChipText: { color: colors.roxy, fontWeight: '800', fontSize: 11 },
+
+    badgeHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    badgePreviewRow: { flexDirection: 'row', gap: 4 },
+    badgeCoin: {
+      width: 30, height: 30, borderRadius: 15,
+      backgroundColor: colors.surfaceLight,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    badgePreviewEmoji: { fontSize: 15 },
     badgePreviewDim: { opacity: 0.3 },
-    badgePreviewSummary: { color: colors.textMuted, fontSize: 11 },
 
     greet: { paddingHorizontal: 4, paddingTop: 2 },
     greetTitle: { fontSize: 26, fontWeight: '800', color: colors.textPrimary, lineHeight: 32 },
@@ -655,9 +679,11 @@ export default function GrowScreen() {
           onPress={() => router.push('/sister-button' as any)}
           activeOpacity={0.8}
         >
-          <Text style={styles.sisterEmoji}>🕯️</Text>
+          <LinearGradient colors={['#8E7CF7', '#C86DD7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.rowPlate}>
+            <Ionicons name="moon" size={20} color="#fff" />
+          </LinearGradient>
           <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>Need to talk?</Text>
+            <Text style={styles.rowTitle}>Need to talk?</Text>
             <Text style={styles.sisterSub}>Sister is here for the heavy days — private, gentle, judgement-free.</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -671,9 +697,11 @@ export default function GrowScreen() {
           testID="support-roxy-card"
           accessibilityLabel="Support Roxy"
         >
-          <Text style={styles.sisterEmoji}>💜</Text>
+          <LinearGradient colors={['#FF6A2E', '#FF2F71', '#E81C8E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.rowPlate}>
+            <Ionicons name="heart" size={20} color="#fff" />
+          </LinearGradient>
           <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>Support Roxy</Text>
+            <Text style={styles.rowTitle}>Support Roxy</Text>
             <Text style={styles.sisterSub}>Help keep this space ours — from $5/month</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -681,22 +709,34 @@ export default function GrowScreen() {
 
         {/* Zone 4 — My Journey */}
         <TouchableOpacity style={styles.section} activeOpacity={0.75}>
-          <Text style={styles.sectionTitle}>My Journey</Text>
+          <View style={styles.journeyHeader}>
+            <Text style={styles.rowTitle}>My Journey</Text>
+            <View style={styles.pointsChip}>
+              <Ionicons name="star" size={11} color={colors.roxy} />
+              <Text style={styles.pointsChipText}>{points} pts</Text>
+            </View>
+          </View>
           <View style={styles.levelRow}>
-            <Text style={styles.levelEmoji}>{level.emoji}</Text>
+            <LinearGradient colors={['#FF6A2E', '#E81C8E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.rowPlate}>
+              <Ionicons name={level.icon} size={20} color="#fff" />
+            </LinearGradient>
             <View style={{ flex: 1 }}>
               <Text style={styles.levelLabel}>{level.label}</Text>
-              <Text style={styles.levelPoints}>{points} points</Text>
+              {level.nextThreshold !== null ? (
+                <Text style={styles.progressHint}>{level.nextThreshold - points} points to next level</Text>
+              ) : (
+                <Text style={styles.progressHint}>Highest level reached</Text>
+              )}
             </View>
           </View>
           <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${level.progress * 100}%` as any }]} />
+            <LinearGradient
+              colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.progressFill, { width: `${Math.max(level.progress * 100, 3)}%` as any }]}
+            />
           </View>
-          {level.nextThreshold !== null ? (
-            <Text style={styles.progressHint}>{level.nextThreshold - points} points to next level</Text>
-          ) : (
-            <Text style={styles.progressHint}>You've reached the highest level! ✨</Text>
-          )}
         </TouchableOpacity>
 
         {/* Zone 5 — Badges preview */}
@@ -705,29 +745,32 @@ export default function GrowScreen() {
           onPress={() => router.push('/(tabs)/grow/badges' as any)}
           activeOpacity={0.75}
         >
-          <Text style={styles.sectionTitle}>
-            🏆 Badges{' '}
-            <Text style={styles.sectionHint}>tap to see all →</Text>
-          </Text>
-          {badges.length === 0 ? (
-            <Text style={styles.emptyState}>Complete actions to earn badges! ✨</Text>
-          ) : (
-            <>
+          <View style={styles.badgeHeader}>
+            <LinearGradient colors={['#F7B42C', '#FC575E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.rowPlate}>
+              <Ionicons name="trophy" size={20} color="#fff" />
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>Badges</Text>
+              {badges.length === 0 ? (
+                <Text style={styles.sisterSub}>Complete actions to earn your first badge</Text>
+              ) : (
+                <Text style={styles.sisterSub}>{earnedCount} earned · {inProgressCount} in progress</Text>
+              )}
+            </View>
+            {badges.length > 0 && (
               <View style={styles.badgePreviewRow}>
-                {badges.slice(0, 4).map((b) => (
-                  <Text
+                {badges.slice(0, 3).map((b) => (
+                  <View
                     key={b.badge_id}
-                    style={[styles.badgePreviewEmoji, b.earned_at === null && styles.badgePreviewDim]}
+                    style={[styles.badgeCoin, b.earned_at === null && styles.badgePreviewDim]}
                   >
-                    {b.badges?.emoji ?? '🏅'}
-                  </Text>
+                    <Text style={styles.badgePreviewEmoji}>{b.badges?.emoji ?? '★'}</Text>
+                  </View>
                 ))}
               </View>
-              <Text style={styles.badgePreviewSummary}>
-                {earnedCount} earned · {inProgressCount} in progress
-              </Text>
-            </>
-          )}
+            )}
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </View>
         </TouchableOpacity>
 
         {/* My Tickets */}

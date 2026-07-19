@@ -170,6 +170,8 @@ export function RoxyCompanionButton({ visible = true }: Props) {
               source={require('../../assets/brand/roxy-icon.png')}
               style={styles.icon}
               contentFit="contain"
+              // White mark on the brand gradient (colored-on-colored didn't read).
+              tintColor="#FFFFFF"
               accessibilityLabel="Roxy"
             />
           </LinearGradient>
