@@ -11,6 +11,55 @@ type RoomInfo = {
   is_host: boolean;
 };
 
+// supabase-js rejects any non-2xx response with a FunctionsHttpError whose
+// .message is the useless literal "Edge Function returned a non-2xx status
+// code" — the real { success:false, error } body our edge functions send
+// (see supabase/functions/_shared/errorHandler.ts) only lives on
+// error.context (the raw Response), same for the HTTP status. Unwrap it here
+// so callers can surface the real failure instead of silently swallowing it.
+async function invokeFn<T = unknown>(
+  supabase: ReturnType<typeof createClient>,
+  name: string,
+  body: Record<string, unknown>,
+): Promise<{ data: T | null; error: string | null; status?: number }> {
+  try {
+    const { data, error } = await supabase.functions.invoke(name, { body });
+    if (error) {
+      let parsedBody: { error?: string } | undefined;
+      try {
+        parsedBody = await (error as { context?: Response }).context?.json?.();
+      } catch {
+        parsedBody = undefined;
+      }
+      return {
+        data: null,
+        error: parsedBody?.error ?? error.message ?? 'Request failed',
+        status: (error as { context?: Response }).context?.status,
+      };
+    }
+    // Unwrap { success, data, error } envelope used by successResponse/errorResponse
+    if (data && typeof data === 'object' && 'success' in data) {
+      const envelope = data as { success: boolean; data: T; error: string | null };
+      if (!envelope.success) return { data: null, error: envelope.error ?? 'Request failed' };
+      return { data: envelope.data, error: null };
+    }
+    return { data: data as T, error: null };
+  } catch (err) {
+    return { data: null, error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+function friendlyJoinError(message: string | null, status?: number): string {
+  if (status === 404) return 'This room no longer exists.';
+  if (status === 409) return 'This room has not started yet. Go back and click "Go Live" first.';
+  if (status === 410) return 'This room has ended.';
+  if (status === 403) return "You don't have access to this room.";
+  if (message && /network|fetch|failed to fetch/i.test(message)) {
+    return 'Network error — check your connection and try again.';
+  }
+  return message ?? 'Could not join room. Please try again.';
+}
+
 type ParticipantState = {
   session_id: string;
   user_name: string;
@@ -115,6 +164,9 @@ export default function RoomSessionPage() {
   const [error, setError]             = useState<string | null>(null);
   const [ending, setEnding]           = useState(false);
   const [leaving, setLeaving]         = useState(false);
+  // Non-fatal errors from in-call host actions (kick/mute/end) — surfaced as a
+  // dismissible inline banner, distinct from the fatal join/connect `error` above.
+  const [actionError, setActionError] = useState<string | null>(null);
 
 
   const isHostRef = useRef(false);
@@ -147,20 +199,27 @@ export default function RoomSessionPage() {
   }, [syncCountToDb]);
 
   useEffect(() => {
-    if (!roomId) return;
-     
+    if (!roomId) {
+      setError('Invalid room link.');
+      setStatus('error');
+      return;
+    }
+
     let callObject: any = null;
 
     (async () => {
       try {
         const supabase = createClient();
-        const { data: res } = await supabase.functions.invoke('join-community-room', {
-          body: { room_id: roomId },
-        });
+        const { data: info, error: joinErr, status: joinStatus } = await invokeFn<{
+          room_url: string;
+          room_name: string;
+          room_type: 'video' | 'audio';
+          is_host: boolean;
+          token: string | null;
+        }>(supabase, 'join-community-room', { room_id: roomId });
 
-        const info = res?.data;
-        if (!info?.room_url) {
-          setError('Room is not live. Go back and click "Go Live" first.');
+        if (joinErr || !info?.room_url) {
+          setError(friendlyJoinError(joinErr, joinStatus));
           setStatus('error');
           return;
         }
@@ -219,34 +278,53 @@ export default function RoomSessionPage() {
     setCamOn(v => !v);
   };
 
+  // Mute is a client-side-only Daily.co call, not an edge function — the meeting
+  // token minted by join-community-room grants `is_owner: true` to hosts/mods,
+  // which authorizes updateParticipant() on remote participants directly via
+  // the Daily SDK (same as apps/mobile's DailyProvider.muteParticipant). There's
+  // nothing to await, but it can throw synchronously if the session is gone.
   const handleMuteAll = () => {
-     
-    const all = (callRef.current?.participants() ?? {}) as Record<string, any>;
-    for (const p of Object.values(all)) {
-      if (!p.local) callRef.current?.updateParticipant(p.session_id, { setAudio: false });
+    try {
+      const all = (callRef.current?.participants() ?? {}) as Record<string, any>;
+      for (const p of Object.values(all)) {
+        if (!p.local) callRef.current?.updateParticipant(p.session_id, { setAudio: false });
+      }
+    } catch {
+      setActionError('Could not mute all participants. Try again.');
     }
   };
 
   const handleMute = (sessionId: string) => {
-    callRef.current?.updateParticipant(sessionId, { setAudio: false });
+    try {
+      callRef.current?.updateParticipant(sessionId, { setAudio: false });
+    } catch {
+      setActionError('Could not mute that participant. Try again.');
+    }
   };
 
   const handleKick = async (sessionId: string) => {
     if (!confirm('Remove this participant from the room?')) return;
+    setActionError(null);
     const supabase = createClient();
-    await supabase.functions.invoke('kick-participant', {
-      body: { room_id: roomId, session_id: sessionId },
+    const { error } = await invokeFn(supabase, 'kick-participant', {
+      room_id: roomId,
+      session_id: sessionId,
     });
+    if (error) setActionError(`Could not remove participant: ${error}`);
   };
 
   const handleEndRoom = async () => {
     if (!confirm('End this room for everyone?')) return;
     setEnding(true);
+    setActionError(null);
     const supabase = createClient();
-    await supabase.functions.invoke('manage-room', {
-      body: { action: 'close', room_id: roomId },
-    });
-    callRef.current?.leave().catch(() => {});
+    const { error } = await invokeFn(supabase, 'manage-room', { action: 'close', room_id: roomId });
+    if (error) {
+      setActionError(`Could not end the room: ${error}`);
+      setEnding(false);
+      return;
+    }
+    await callRef.current?.leave().catch(() => {});
     router.push('/rooms');
   };
 
@@ -298,6 +376,19 @@ export default function RoomSessionPage() {
           {count} participant{count !== 1 ? 's' : ''}
         </span>
       </div>
+
+      {/* Inline banner for non-fatal host-action failures (kick/mute/end) */}
+      {actionError && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-red-950/60 border-b border-red-900/50 shrink-0">
+          <p className="text-xs text-red-300">{actionError}</p>
+          <button
+            onClick={() => setActionError(null)}
+            className="text-xs text-red-300/70 hover:text-red-200 underline underline-offset-2 shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Video grid */}
       <div className="flex-1 overflow-y-auto p-4">
