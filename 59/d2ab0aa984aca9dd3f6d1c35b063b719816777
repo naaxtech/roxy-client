@@ -1,0 +1,37 @@
+supabase/migrations/061_gov_verification.sql
+  s_093307bfc37bee::t_67816b687ff5a0 1-8
+apps/mobile/components/profile/ProfileCard.tsx
+  s_093307bfc37bee::t_92f3cb4ef4a49d 15-16
+  s_093307bfc37bee::t_486c9af75a059a 252
+  s_093307bfc37bee::t_ac37df463e7eb5 91,94,96-97,104,108-109,111-129,131-140,142,144
+  s_093307bfc37bee::t_79b9e6623a76cb 293-296,300-313,315-331,333-340
+  s_093307bfc37bee::t_6cadb2f600f498 70-77
+apps/mobile/__tests__/components/ProfileCard.test.tsx
+  s_653f8e430e5f5a::t_0937cb0ad8610f 131-145
+apps/mobile/types/index.ts
+  s_653f8e430e5f5a::t_e76482dbf30e87 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "59d2ab0aa984aca9dd3f6d1c35b063b719816777",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_653f8e430e5f5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4b8755ba4a2fea46",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
