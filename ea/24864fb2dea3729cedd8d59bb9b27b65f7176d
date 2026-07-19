@@ -1,0 +1,32 @@
+apps/mobile/app/(tabs)/connect/community-room-session.tsx
+  s_093307bfc37bee::t_baf596f4e582d9 238,241,244
+  s_093307bfc37bee::t_53f4669fa7d740 223
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_9f68cf856cf5a5::t_903ff947a6b4f7 438
+apps/mobile/lib/confirm.ts
+  s_9f68cf856cf5a5::t_97bdcf82060776 10,13,15-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ea24864fb2dea3729cedd8d59bb9b27b65f7176d",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_9f68cf856cf5a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a38845e18cea5bafe",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
