@@ -100,6 +100,13 @@ export class DailyProvider implements VideoCallProvider {
     this._call.updateParticipant(sessionId, { setAudio: false });
   }
 
+  getLocalMediaState(): { audio: boolean; video: boolean } | null {
+    if (!this._call) return null;
+    const local = this._call.participants()?.local;
+    if (!local) return null;
+    return { audio: !!local.audio, video: !!local.video };
+  }
+
   renderRemoteVideo(participant: RemoteParticipant, style: object): React.ReactElement | null {
     if (!DailyMediaView) return null;
     const p = participant.trackInfo as any;

@@ -17,6 +17,13 @@ import type { RemoteParticipant } from '../../../lib/video/VideoCallProvider';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TILE_SIZE = (SCREEN_WIDTH - 36) / 2; // 2-col grid, 12px padding each side + 12px gap
 
+// Always-dark video-stage palette — this screen stays visually consistent
+// regardless of the app's light/dark theme (a call stage is not a themed surface).
+const STAGE_BG = '#0d0520';
+const STAGE_SURFACE = '#1a0a2e';
+
+const EMPTY_COPY = 'Waiting for others to join 🌸';
+
 type RoomInfo = {
   room_url: string;
   room_name: string;
@@ -30,7 +37,8 @@ type TileStyles = {
   tileNoVideo: object;
   tileInitial: object;
   tileLabel: object;
-  tileOwnerBadge: object;
+  hostBadge: object;
+  hostBadgeText: object;
   tileName: object;
 };
 
@@ -40,13 +48,33 @@ type AudioStyles = {
   audioBubbleSpeaking: object;
   audioBubbleInitial: object;
   audioBubbleNameRow: object;
-  audioBubbleOwner: object;
+  hostBadge: object;
+  hostBadgeText: object;
   audioBubbleName: object;
 };
 
+/** Friendly copy for known join-failure reasons — the join edge function's exact
+ *  error strings (see supabase/functions/join-community-room/index.ts). */
+function joinErrorCopy(error: string | null): { title: string; message: string } {
+  const msg = error ?? '';
+  if (/not started yet|has not started/i.test(msg)) {
+    return { title: 'Not live yet', message: 'This room is scheduled but not open yet.' };
+  }
+  if (/closed/i.test(msg)) {
+    return { title: 'Room closed', message: 'This room has ended.' };
+  }
+  if (/not a member/i.test(msg)) {
+    return { title: "Can't join", message: 'You need to be a member of this community to join this room.' };
+  }
+  if (/not found/i.test(msg)) {
+    return { title: 'Room unavailable', message: 'This room no longer exists.' };
+  }
+  return { title: 'Error', message: 'Failed to join room. Please try again.' };
+}
+
 // ─── Video tile for a single participant ────────────────────────────────────
 function VideoTile({
-  participant, provider, isHost: _isHost, onLongPress, tileStyles,
+  participant, provider, onLongPress, tileStyles,
 }: {
   participant: RemoteParticipant;
   provider: DailyProvider;
@@ -60,6 +88,7 @@ function VideoTile({
       onLongPress={onLongPress}
       delayLongPress={600}
       activeOpacity={0.9}
+      accessibilityLabel={`${participant.displayName ?? 'Guest'}${onLongPress ? ' — long press to mute' : ''}`}
     >
       {provider.renderRemoteVideo(participant, StyleSheet.absoluteFillObject) ?? (
         <View style={[StyleSheet.absoluteFillObject, tileStyles.tileNoVideo]}>
@@ -69,7 +98,11 @@ function VideoTile({
         </View>
       )}
       <View style={tileStyles.tileLabel}>
-        {participant.isOwner && <Text style={tileStyles.tileOwnerBadge}>👑</Text>}
+        {participant.isOwner && (
+          <View style={tileStyles.hostBadge}>
+            <Text style={tileStyles.hostBadgeText}>👑 Host</Text>
+          </View>
+        )}
         <Text style={tileStyles.tileName} numberOfLines={1}>
           {participant.displayName ?? 'Guest'}
         </Text>
@@ -92,6 +125,7 @@ function AudioBubble({ participant, onLongPress, audioStyles }: {
       onLongPress={onLongPress}
       delayLongPress={600}
       activeOpacity={0.9}
+      accessibilityLabel={`${participant.displayName ?? 'Guest'}${onLongPress ? ' — long press to mute' : ''}`}
     >
       <View style={[audioStyles.audioBubble, isSpeaking && audioStyles.audioBubbleSpeaking]}>
         <Text style={audioStyles.audioBubbleInitial}>
@@ -99,7 +133,11 @@ function AudioBubble({ participant, onLongPress, audioStyles }: {
         </Text>
       </View>
       <View style={audioStyles.audioBubbleNameRow}>
-        {participant.isOwner && <Text style={audioStyles.audioBubbleOwner}>👑</Text>}
+        {participant.isOwner && (
+          <View style={audioStyles.hostBadge}>
+            <Text style={audioStyles.hostBadgeText}>👑</Text>
+          </View>
+        )}
         <Text style={audioStyles.audioBubbleName} numberOfLines={1}>
           {participant.displayName ?? 'Guest'}
         </Text>
@@ -115,20 +153,40 @@ export default function CommunityRoomSession() {
   const colors = useThemeColors();
 
   const [provider] = useState(() => new DailyProvider());
-  const { state, remoteParticipants, localVideoVersion } = useVideoCall(provider);
-
-  const [micOn, setMicOn] = useState(false); // starts muted
-  const [camOn, setCamOn] = useState(true);
+  const { state, remoteParticipants, localVideoVersion, localMediaState } = useVideoCall(provider);
   const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
 
+  // Real provider state, not a client-side guess. Defaults match the actual
+  // join params (startAudioOff: true, camera on) until the first sync arrives.
+  const micOn = localMediaState?.audio ?? false;
+  const camOn = localMediaState?.video ?? true;
+
+  const dailyUnavailable = !provider.isAvailable;
+
   const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#000' },
+    container: { flex: 1, backgroundColor: STAGE_BG },
     content: { flex: 1, marginTop: 90, marginBottom: 80 },
 
     // Placeholder
     placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
     placeholderIcon: { fontSize: 56 },
-    placeholderText: { color: colors.textMuted, fontSize: 16 },
+    placeholderText: { color: colors.textMuted, fontSize: 16, textAlign: 'center', paddingHorizontal: 32 },
+
+    // Web / Expo Go fallback (Daily unavailable)
+    unavailable: {
+      flex: 1, backgroundColor: STAGE_BG,
+      alignItems: 'center', justifyContent: 'center', gap: 14, padding: 32,
+    },
+    unavailableIcon: { fontSize: 52 },
+    unavailableTitle: { color: '#fff', fontSize: 18, fontWeight: '800', textAlign: 'center', lineHeight: 25 },
+    unavailableBody: { color: '#C4B5D4', fontSize: 14, textAlign: 'center', lineHeight: 20 },
+    unavailableBackBtn: {
+      marginTop: 8, minHeight: 44, minWidth: 120,
+      borderRadius: 22, paddingHorizontal: 22,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.roxy,
+    },
+    unavailableBackText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 
     // Video grid
     videoGrid: { padding: 12 },
@@ -136,9 +194,9 @@ export default function CommunityRoomSession() {
     videoTile: {
       width: TILE_SIZE, height: TILE_SIZE * 1.2,
       borderRadius: 12, overflow: 'hidden',
-      backgroundColor: '#1a0a2e',
+      backgroundColor: STAGE_SURFACE,
     },
-    tileNoVideo: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a0a2e' },
+    tileNoVideo: { alignItems: 'center', justifyContent: 'center', backgroundColor: STAGE_SURFACE },
     tileInitial: { fontSize: 36, color: colors.textMuted },
     tileLabel: {
       position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -146,7 +204,6 @@ export default function CommunityRoomSession() {
       paddingHorizontal: 8, paddingVertical: 6,
       backgroundColor: 'rgba(0,0,0,0.55)',
     },
-    tileOwnerBadge: { fontSize: 13 },
     tileName: { flex: 1, color: '#fff', fontSize: 12, fontWeight: '600' },
 
     // Audio grid
@@ -163,22 +220,29 @@ export default function CommunityRoomSession() {
     },
     audioBubbleSpeaking: { borderColor: colors.primary },
     audioBubbleInitial: { fontSize: 24, color: colors.textPrimary, fontWeight: '700' },
-    audioBubbleNameRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-    audioBubbleOwner: { fontSize: 10 },
+    audioBubbleNameRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
     audioBubbleName: {
       color: colors.textSecondary, fontSize: 11, fontWeight: '600', maxWidth: 68,
     },
+
+    // Host pill badge (shared: video tiles + audio bubbles + self PiP)
+    hostBadge: {
+      flexDirection: 'row', alignItems: 'center',
+      borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2,
+      backgroundColor: colors.roxy,
+    },
+    hostBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
 
     // Self PiP
     selfPip: {
       position: 'absolute', top: 100, right: 16,
       width: 90, height: 130, borderRadius: 12,
-      overflow: 'hidden', backgroundColor: colors.surface,
+      overflow: 'hidden', backgroundColor: STAGE_SURFACE,
       borderWidth: 2, borderColor: colors.primary, zIndex: 10,
     },
     pipPlaceholder: { alignItems: 'center', justifyContent: 'center' },
     pipIcon: { fontSize: 24 },
-    pipOwnerBadge: { position: 'absolute', top: 4, left: 4, fontSize: 12 },
+    pipHostBadge: { position: 'absolute', top: 4, left: 4 },
 
     // Top bar
     topBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 },
@@ -187,12 +251,20 @@ export default function CommunityRoomSession() {
       paddingHorizontal: 12, paddingVertical: 8,
       backgroundColor: 'rgba(0,0,0,0.55)',
     },
-    backBtn: { padding: 4 },
+    backBtn: {
+      minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center',
+    },
     roomTitle: { color: '#fff', fontWeight: '700', fontSize: 15 },
-    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.textMuted },
-    dotLive: { backgroundColor: colors.success },
-    statusText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+
+    // Status pill (reuses CommunityRoomCard's LIVE-pill visual language)
+    statusPill: {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4,
+      backgroundColor: 'rgba(26,10,46,0.55)',
+    },
+    statusPillLive: { backgroundColor: '#E5484D' },
+    statusPulse: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' },
+    statusText: { color: '#fff', fontSize: 11, fontWeight: '800' },
 
     // Bottom bar
     bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 20 },
@@ -210,64 +282,69 @@ export default function CommunityRoomSession() {
     controlBtnLeave: { backgroundColor: colors.error },
   });
 
+  // Always tear the call down when this screen unmounts, regardless of how we
+  // got here (leave button, back arrow, hardware back, error → router.back()).
   useEffect(() => {
-    if (!room_id) return;
+    return () => {
+      provider.leave().catch(() => {});
+      provider.destroy();
+    };
+  }, [provider]);
+
+  // Join the room once we know Daily is available and we have a room_id.
+  useEffect(() => {
+    if (!provider.isAvailable) return; // web / Expo Go — friendly fallback renders instead
+
+    if (!room_id) {
+      (async () => {
+        await showAlert('Room unavailable', "We couldn't find that room.");
+        router.back();
+      })();
+      return;
+    }
+
+    let cancelled = false;
     (async () => {
+      const { data, error } = await callEdgeFunction<RoomInfo>('join-community-room', { room_id });
+      if (cancelled) return;
+
+      if (error || !data?.room_url) {
+        logError(new Error(error ?? 'join-community-room: missing room_url'), 'communityRoomSession_join');
+        const { title, message } = joinErrorCopy(error);
+        await showAlert(title, message);
+        if (!cancelled) router.back();
+        return;
+      }
+
+      setRoomInfo(data);
       try {
-        const { data } = await callEdgeFunction<RoomInfo & { status?: number }>(
-          'join-community-room',
-          { room_id },
-        );
-
-        if (!data?.room_url) {
-          await showAlert('Room unavailable', 'This room is not live right now.');
-          router.back();
-          return;
-        }
-
-        setRoomInfo(data);
         await provider.join({
           roomUrl: data.room_url,
           token: data.token ?? undefined,
           startAudioOff: true,
         });
-      } catch (e: any) {
-        logError(e, 'communityRoomSession_join');
-        const status = e?.status ?? e?.statusCode;
-        if (status === 409) {
-          await showAlert('Not live yet', 'This room is scheduled but not open yet.');
-          router.back();
-        } else if (status === 410) {
-          await showAlert('Room closed', 'This room has ended.');
-          router.back();
-        } else {
-          await showAlert('Error', 'Failed to join room. Please try again.');
-          router.back();
-        }
+      } catch (e) {
+        if (cancelled) return;
+        logError(e, 'communityRoomSession_daily_join');
+        await showAlert('Connection error', 'Failed to connect to the room. Please try again.');
+        router.back();
       }
     })();
+
     return () => {
-      provider.leave().catch(() => {});
-      provider.destroy();
+      cancelled = true;
     };
   }, [room_id, provider, router]);
 
   const handleLeave = async () => {
     const ok = await confirmAction('Leave Room?', 'Are you sure you want to leave?', 'Leave');
     if (!ok) return;
-    provider.leave().catch(() => {});
+    await provider.leave().catch(() => {});
     router.back();
   };
 
-  const toggleMic = () => {
-    provider.toggleMic();
-    setMicOn((v) => !v);
-  };
-
-  const toggleCam = () => {
-    provider.toggleCamera();
-    setCamOn((v) => !v);
-  };
+  const toggleMic = () => provider.toggleMic();
+  const toggleCam = () => provider.toggleCamera();
 
   const handleMuteParticipant = async (participant: RemoteParticipant) => {
     if (!roomInfo?.is_host) return;
@@ -283,7 +360,9 @@ export default function CommunityRoomSession() {
   useEffect(() => {
     if (!roomInfo?.is_host || !room_id) return;
     const count = remoteParticipants.length + 1; // remotes + self
-    callEdgeFunction('manage-room', { action: 'sync-count', room_id, count }).catch(() => {});
+    callEdgeFunction('manage-room', { action: 'sync-count', room_id, count }).then(({ error }) => {
+      if (error) logError(new Error(error), 'communityRoomSession_syncCount');
+    });
   }, [remoteParticipants, roomInfo?.is_host, room_id]);
 
   const isVideo = roomInfo?.room_type === 'video';
@@ -294,7 +373,8 @@ export default function CommunityRoomSession() {
     tileNoVideo: styles.tileNoVideo,
     tileInitial: styles.tileInitial,
     tileLabel: styles.tileLabel,
-    tileOwnerBadge: styles.tileOwnerBadge,
+    hostBadge: styles.hostBadge,
+    hostBadgeText: styles.hostBadgeText,
     tileName: styles.tileName,
   };
 
@@ -304,9 +384,31 @@ export default function CommunityRoomSession() {
     audioBubbleSpeaking: styles.audioBubbleSpeaking,
     audioBubbleInitial: styles.audioBubbleInitial,
     audioBubbleNameRow: styles.audioBubbleNameRow,
-    audioBubbleOwner: styles.audioBubbleOwner,
+    hostBadge: styles.hostBadge,
+    hostBadgeText: styles.hostBadgeText,
     audioBubbleName: styles.audioBubbleName,
   };
+
+  // ── Daily unavailable (web / Expo Go): friendly degrade, never a crash or blank screen ──
+  if (dailyUnavailable) {
+    return (
+      <SafeAreaView style={styles.unavailable} edges={['top', 'bottom']}>
+        <StatusBar barStyle="light-content" />
+        <Text style={styles.unavailableIcon}>🎥</Text>
+        <Text style={styles.unavailableTitle}>Video rooms work in the Roxy app 💜</Text>
+        <Text style={styles.unavailableBody}>
+          Audio-video isn&apos;t available in the browser yet.
+        </Text>
+        <TouchableOpacity
+          style={styles.unavailableBackBtn}
+          onPress={() => router.back()}
+          accessibilityLabel="Go back"
+        >
+          <Text style={styles.unavailableBackText}>Go back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -324,7 +426,7 @@ export default function CommunityRoomSession() {
           remoteParticipants.length === 0 ? (
             <View style={styles.placeholder}>
               <Text style={styles.placeholderIcon}>🎥</Text>
-              <Text style={styles.placeholderText}>Waiting for others...</Text>
+              <Text style={styles.placeholderText}>{EMPTY_COPY}</Text>
             </View>
           ) : (
             <FlatList
@@ -350,7 +452,7 @@ export default function CommunityRoomSession() {
             {remoteParticipants.length === 0 ? (
               <View style={styles.placeholder}>
                 <Text style={styles.placeholderIcon}>🎙️</Text>
-                <Text style={styles.placeholderText}>Waiting for others...</Text>
+                <Text style={styles.placeholderText}>{EMPTY_COPY}</Text>
               </View>
             ) : (
               remoteParticipants.map((p) => (
@@ -374,14 +476,18 @@ export default function CommunityRoomSession() {
               <Text style={styles.pipIcon}>👤</Text>
             </View>
           )}
-          {roomInfo?.is_host && <Text style={styles.pipOwnerBadge}>👑</Text>}
+          {roomInfo?.is_host && (
+            <View style={[styles.hostBadge, styles.pipHostBadge]}>
+              <Text style={styles.hostBadgeText}>👑</Text>
+            </View>
+          )}
         </View>
       )}
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <SafeAreaView edges={['top']} style={styles.topBar}>
         <View style={styles.topBarInner}>
-          <TouchableOpacity onPress={handleLeave} style={styles.backBtn}>
+          <TouchableOpacity onPress={handleLeave} style={styles.backBtn} accessibilityLabel="Leave room">
             <Ionicons name="arrow-back-outline" size={22} color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -389,8 +495,8 @@ export default function CommunityRoomSession() {
               {roomInfo?.room_name ?? 'Community Room'}
             </Text>
           </View>
-          <View style={styles.statusRow}>
-            <View style={[styles.dot, state === 'connected' && styles.dotLive]} />
+          <View style={[styles.statusPill, state === 'connected' && styles.statusPillLive]}>
+            {state === 'connected' && <View style={styles.statusPulse} />}
             <Text style={styles.statusText}>
               {state === 'connected' ? `Live · ${participantCount + 1}` : state}
             </Text>
@@ -404,6 +510,7 @@ export default function CommunityRoomSession() {
           <TouchableOpacity
             style={[styles.controlBtn, !micOn && styles.controlBtnOff]}
             onPress={toggleMic}
+            accessibilityLabel={micOn ? 'Mute microphone' : 'Unmute microphone'}
           >
             <Ionicons name={micOn ? 'mic-outline' : 'mic-off-outline'} size={22} color="#fff" />
           </TouchableOpacity>
@@ -411,6 +518,7 @@ export default function CommunityRoomSession() {
             <TouchableOpacity
               style={[styles.controlBtn, !camOn && styles.controlBtnOff]}
               onPress={toggleCam}
+              accessibilityLabel={camOn ? 'Turn off camera' : 'Turn on camera'}
             >
               <Ionicons
                 name={camOn ? 'videocam-outline' : 'videocam-off-outline'}
@@ -422,6 +530,7 @@ export default function CommunityRoomSession() {
           <TouchableOpacity
             style={[styles.controlBtn, styles.controlBtnLeave]}
             onPress={handleLeave}
+            accessibilityLabel="Leave room"
           >
             <Ionicons name="call-outline" size={22} color="#fff" />
           </TouchableOpacity>

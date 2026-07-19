@@ -36,6 +36,12 @@ export interface VideoCallProvider {
   toggleCamera(): void;
   /** Mute a remote participant — only works when local participant joined with is_owner: true */
   muteParticipant(sessionId: string): void;
+  /**
+   * Read the local participant's current mic/cam enabled state directly from the
+   * provider (not a client-side guess). Returns null before join / if unavailable.
+   * Optional so existing provider mocks/stubs don't need updating.
+   */
+  getLocalMediaState?(): { audio: boolean; video: boolean } | null;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   renderRemoteVideo(participant: RemoteParticipant, style: object): React.ReactElement | null;
