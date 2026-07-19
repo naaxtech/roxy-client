@@ -172,29 +172,27 @@ export function HappeningTonightCard({ communityIds }: Props) {
 
   const renderSlide = ({ item }: { item: HappeningItem }) => (
     <View style={[s.slide, { width: SLIDE_WIDTH }]}>
-      <View style={s.slideRow}>
-        <View style={s.iconPlate}>
-          <Ionicons name={iconFor(item)} size={26} color="#FF2F71" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <View style={s.pillLabel}>
-            <Text style={s.pillLabelText}>
-              {item.kind === 'room' ? 'HAPPENING NOW' : 'HAPPENING TONIGHT'}
-            </Text>
-          </View>
-          <Text style={s.itemTitle} numberOfLines={2}>
-            {item.kind === 'room' ? item.name : item.title}
-          </Text>
-          <Text style={s.itemMeta} numberOfLines={1}>
-            {item.kind === 'event'
-              ? `${format(new Date(item.startsAt), 'h:mm a')} · ${item.communityName}`
-              : item.kind === 'room' && item.participantCount
-                ? `${item.communityName} · ${item.participantCount} here now`
-                : item.communityName}
-          </Text>
-        </View>
+      <View style={s.iconPlate}>
+        <Ionicons name={iconFor(item)} size={20} color="#FF2F71" />
       </View>
-      <View style={s.slideBottom}>
+      <View style={s.middleCol}>
+        <View style={s.pillLabel}>
+          <Text style={s.pillLabelText}>
+            {item.kind === 'room' ? 'HAPPENING NOW' : 'HAPPENING TONIGHT'}
+          </Text>
+        </View>
+        <Text style={s.itemTitle} numberOfLines={1}>
+          {item.kind === 'room' ? item.name : item.title}
+        </Text>
+        <Text style={s.itemMeta} numberOfLines={1}>
+          {item.kind === 'event'
+            ? `${format(new Date(item.startsAt), 'h:mm a')} · ${item.communityName}`
+            : item.kind === 'room' && item.participantCount
+              ? `${item.communityName} · ${item.participantCount} here now`
+              : item.communityName}
+        </Text>
+      </View>
+      <View style={s.rightCol}>
         {item.kind === 'event'
           ? <Countdown startsAt={item.startsAt} />
           : (
@@ -259,66 +257,66 @@ const s = StyleSheet.create({
     shadowOpacity: 0.35, shadowRadius: 16, elevation: 8,
   },
   slide: {
-    minHeight: 148,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 14,
-    justifyContent: 'space-between',
+    minHeight: 104,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 10,
   },
-  slideRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   iconPlate: {
-    width: 52, height: 52, borderRadius: 26,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: '#fff',
     alignItems: 'center', justifyContent: 'center',
+    alignSelf: 'flex-start',
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2, shadowRadius: 8,
   },
+  middleCol: { flex: 1, justifyContent: 'center' },
+  rightCol: { alignItems: 'flex-end', justifyContent: 'space-between' },
   pillLabel: {
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3,
-    marginBottom: 6,
+    borderRadius: 999, paddingHorizontal: 9, paddingVertical: 2,
+    marginBottom: 4,
   },
-  pillLabelText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
-  itemTitle: { fontSize: 18, fontWeight: '800', lineHeight: 23, color: '#fff' },
-  itemMeta: { fontSize: 12, marginTop: 3, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-  slideBottom: {
-    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
-    marginTop: 12,
-  },
+  pillLabelText: { color: '#fff', fontSize: 9.5, fontWeight: '800', letterSpacing: 0.6 },
+  itemTitle: { fontSize: 16.5, fontWeight: '800', lineHeight: 20, color: '#fff' },
+  itemMeta: { fontSize: 11.5, marginTop: 2, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
   joinBtn: {
     backgroundColor: '#fff',
-    borderRadius: 999, paddingHorizontal: 20, minHeight: 40,
+    borderRadius: 999, paddingHorizontal: 16, minHeight: 36,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.18, shadowRadius: 6,
   },
-  joinBtnText: { color: '#E81C8E', fontSize: 14, fontWeight: '800' },
+  joinBtnText: { color: '#E81C8E', fontSize: 13, fontWeight: '800' },
   livePill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(26,10,46,0.35)',
     borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5,
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-end',
   },
   livePillText: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
   countdownLabel: {
-    fontSize: 9, fontWeight: '800', letterSpacing: 1,
-    color: 'rgba(255,255,255,0.8)', marginBottom: 4,
+    fontSize: 8, fontWeight: '800', letterSpacing: 0.8,
+    color: 'rgba(255,255,255,0.8)', marginBottom: 3,
+    alignSelf: 'flex-end',
   },
   countdownRow: { flexDirection: 'row', alignItems: 'flex-start' },
   countdownUnit: { flexDirection: 'row', alignItems: 'center' },
   countdownBox: {
     backgroundColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 8, paddingHorizontal: 7, paddingVertical: 4,
+    borderRadius: 6, paddingHorizontal: 5, paddingVertical: 3,
     alignItems: 'center',
   },
-  countdownDigits: { color: '#fff', fontSize: 16, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  countdownDigits: { color: '#fff', fontSize: 14, fontWeight: '800', fontVariant: ['tabular-nums'] },
   countdownUnitLabel: {
-    color: 'rgba(255,255,255,0.7)', fontSize: 8, fontWeight: '700',
-    marginLeft: 3, marginRight: 3,
+    color: 'rgba(255,255,255,0.7)', fontSize: 7, fontWeight: '700',
+    marginLeft: 2, marginRight: 2,
   },
-  countdownColonSpacer: { width: 2 },
+  countdownColonSpacer: { width: 1 },
   dots: { flexDirection: 'row', gap: 4, justifyContent: 'center', paddingBottom: 12 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.35)' },
   dotActive: { backgroundColor: '#fff' },

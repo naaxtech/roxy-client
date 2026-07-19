@@ -245,41 +245,45 @@ export default function GrowScreen() {
     screenSubtitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-end' },
 
-    // Roxy Hero card
+    // Roxy Hero — flat section on screen bg: avatar + speech-bubble greeting,
+    // then a compact self-sizing gradient pill + ghost mic button below.
     roxyHero: {
-      backgroundColor: '#E81C8E', // fallback for LinearGradient
-      borderRadius: 22, padding: 17,
-      overflow: 'hidden',
+      marginBottom: 2,
     },
-    rhTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 0 },
+    rhRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
     rhAvRing: {
       width: 56, height: 56, borderRadius: 28,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)',
       alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      shadowColor: '#E81C8E', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
     },
-    rhName: { color: '#fff', fontSize: 16, fontWeight: '800', lineHeight: 20 },
-    rhBadge: {
-      color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: '700',
-      letterSpacing: 0.4, marginTop: 2,
+    rhBubble: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      borderWidth: 1, borderColor: colors.roxy + '22',
+      paddingHorizontal: 16, paddingVertical: 13,
+      minHeight: 56, justifyContent: 'center',
+      shadowColor: colors.roxy, shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06, shadowRadius: 6, elevation: 1,
     },
     rhMsg: {
-      color: '#fff', fontSize: 17, lineHeight: 25,
-      fontWeight: '500', marginTop: 13, marginBottom: 15,
+      color: colors.textPrimary, fontSize: 15, lineHeight: 21,
+      fontWeight: '500',
     },
-    rhActions: { flexDirection: 'row', gap: 9 },
+    rhActions: { flexDirection: 'row', gap: 10, alignItems: 'center', marginTop: 12 },
     rhBtn: {
-      flex: 1, height: 42, borderRadius: 999,
-      backgroundColor: '#fff',
+      minHeight: 44, borderRadius: 999, paddingHorizontal: 22,
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.16, shadowRadius: 8,
+      overflow: 'hidden',
+      shadowColor: '#E81C8E', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25, shadowRadius: 8, elevation: 3,
     },
-    rhBtnText: { color: colors.roxy, fontWeight: '800', fontSize: 14 },
+    rhBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
     rhBtnGhost: {
-      width: 46, height: 42, borderRadius: 999,
-      backgroundColor: 'rgba(255,255,255,0.16)',
-      borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)',
+      width: 44, height: 44, borderRadius: 22,
+      backgroundColor: colors.surface,
+      borderWidth: 1.5, borderColor: colors.roxy + '30',
       alignItems: 'center', justifyContent: 'center',
     },
 
@@ -488,35 +492,38 @@ export default function GrowScreen() {
           </Text>
         </View>
 
-        {/* Zone 1 — Roxy Hero Card */}
-        <LinearGradient
-          colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0.85 }}
-          style={styles.roxyHero}
-        >
-          <View style={styles.rhTop}>
-            <View style={styles.rhAvRing}>
-              <Ionicons name="sparkles" size={24} color="#fff" />
-            </View>
-            <View>
-              <Text style={styles.rhName}>Roxy</Text>
-              <Text style={styles.rhBadge}>✦ Your daily wingwoman</Text>
+        {/* Zone 1 — Roxy Hero (flat section, de-carded per roxy-home-v1 peg) */}
+        <View style={styles.roxyHero}>
+          <View style={styles.rhRow}>
+            <LinearGradient
+              colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.rhAvRing}
+            >
+              <Ionicons name="sparkles" size={22} color="#fff" />
+            </LinearGradient>
+            <View style={styles.rhBubble}>
+              {greetingLoading ? (
+                <ActivityIndicator color={colors.roxy} style={{ alignSelf: 'flex-start' }} />
+              ) : (
+                <Text style={styles.rhMsg}>{greeting ?? 'Hey — Roxy here. 👋'}</Text>
+              )}
             </View>
           </View>
-          {greetingLoading ? (
-            <ActivityIndicator color="#fff" style={{ marginTop: 14, marginBottom: 15, alignSelf: 'flex-start' }} />
-          ) : (
-            <Text style={styles.rhMsg}>{greeting ?? 'Hey — Roxy here. 👋'}</Text>
-          )}
           <View style={styles.rhActions}>
             <TouchableOpacity
-              style={styles.rhBtn}
               onPress={() => router.push('/(tabs)/grow/roxy-chat' as any)}
               activeOpacity={0.85}
             >
-              <Ionicons name="sparkles" size={16} color={colors.roxy} />
-              <Text style={styles.rhBtnText}>Ask Roxy</Text>
+              <LinearGradient
+                colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.rhBtn}
+              >
+                <Text style={styles.rhBtnText}>✦ Ask Roxy</Text>
+              </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.rhBtnGhost}
@@ -524,10 +531,10 @@ export default function GrowScreen() {
               activeOpacity={0.8}
               accessibilityLabel="Voice message"
             >
-              <Ionicons name="mic" size={17} color="#fff" />
+              <Ionicons name="mic" size={17} color={colors.roxy} />
             </TouchableOpacity>
           </View>
-        </LinearGradient>
+        </View>
 
         {/* Zone NEW — Question of the Day */}
         {user && (
