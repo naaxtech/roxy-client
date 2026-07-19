@@ -21,6 +21,7 @@ import { useCommunityStore } from '../../../store/communityStore';
 import { ChipSearchBar } from '../../../components/build/ChipSearchBar';
 import { BusinessDetailSheet } from '../../../components/build/BusinessDetailSheet';
 import { FeatureVoteCard, FeatureRequest } from '../../../components/build/FeatureVoteCard';
+import { DonateModal } from '../../../components/donations/DonateModal';
 
 const categoryEmoji: Record<string, string> = {
   mutual_aid: '🤝', visibility: '🏳️‍🌈', education: '📚', safety: '🛡️',
@@ -283,6 +284,14 @@ function buildStyles(colors: ReturnType<typeof useThemeColors>) {
 
     // Support Roxy
     supportContainer: { flex: 1 },
+    donateBanner: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      marginHorizontal: 12, marginTop: 12, padding: 12,
+      backgroundColor: colors.surface, borderRadius: 14,
+    },
+    donateBannerEmoji: { fontSize: 24 },
+    donateBannerTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
+    donateBannerSub: { color: colors.textMuted, fontSize: 11.5, marginTop: 2, lineHeight: 16 },
     supportTabRow: {
       flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, gap: 8,
       borderBottomWidth: 1, borderBottomColor: colors.surface,
@@ -360,6 +369,7 @@ export default function BuildScreen() {
   const [pitchModal, setPitchModal] = useState(false);
   const [pitchTitle, setPitchTitle] = useState('');
   const [pitchDesc, setPitchDesc] = useState('');
+  const [showDonateModal, setShowDonateModal] = useState(false);
   const [pitchSubmitting, setPitchSubmitting] = useState(false);
   const [pitchError, setPitchError] = useState<string | null>(null);
 
@@ -637,6 +647,22 @@ export default function BuildScreen() {
 
       {segment === 'support' && (
         <View style={styles.supportContainer}>
+          {/* Keep Roxy alive — donation banner */}
+          <TouchableOpacity
+            style={styles.donateBanner}
+            onPress={() => setShowDonateModal(true)}
+            activeOpacity={0.85}
+            testID="keep-roxy-alive-banner"
+            accessibilityLabel="Keep Roxy alive"
+          >
+            <Text style={styles.donateBannerEmoji}>💜</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.donateBannerTitle}>Keep Roxy alive 💜</Text>
+              <Text style={styles.donateBannerSub}>Roxy is built and owned by WLW — a donation helps keep it that way.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+
           {/* Sub-tab: Planned / Pitched */}
           <View style={styles.supportTabRow}>
             {(['planned', 'pitched'] as const).map((t) => (
@@ -768,6 +794,8 @@ export default function BuildScreen() {
         onClose={() => setSelectedProject(null)}
         styles={styles}
       />
+
+      <DonateModal visible={showDonateModal} onClose={() => setShowDonateModal(false)} />
     </SafeAreaView>
   );
 }

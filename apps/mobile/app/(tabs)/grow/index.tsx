@@ -23,6 +23,7 @@ import { isPresetAvatar, presetEmoji, presetColor, avatarGradient } from '../../
 import { HappeningTonightCard } from '../../../components/grow/HappeningTonightCard';
 import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayCard';
 import { MiniWinsCard } from '../../../components/grow/MiniWinsCard';
+import { DonateModal } from '../../../components/donations/DonateModal';
 
 const CHIP_COLORS = ['#FF6A2E', '#8B5CF6', '#FF2F71', '#F472B6', '#C4476A', '#FF8A3D'];
 
@@ -86,6 +87,7 @@ export default function GrowScreen() {
   const [socialError, setSocialError] = useState(false);
   const [streak, setStreak] = useState<number | null>(null);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [showDonateModal, setShowDonateModal] = useState(false);
 
   // On every focus (not just mount — the tab stays mounted for days):
   // re-record the daily check-in so long-lived sessions keep their streak,
@@ -655,6 +657,22 @@ export default function GrowScreen() {
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </TouchableOpacity>
 
+        {/* Support Roxy — donations, never "subscribe" */}
+        <TouchableOpacity
+          style={[styles.section, styles.sisterCard]}
+          onPress={() => setShowDonateModal(true)}
+          activeOpacity={0.8}
+          testID="support-roxy-card"
+          accessibilityLabel="Support Roxy"
+        >
+          <Text style={styles.sisterEmoji}>💜</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionTitle}>Support Roxy</Text>
+            <Text style={styles.sisterSub}>Help keep this space ours — from $5/month</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+
         {/* Zone 4 — My Journey */}
         <TouchableOpacity style={styles.section} activeOpacity={0.75}>
           <Text style={styles.sectionTitle}>My Journey</Text>
@@ -738,6 +756,8 @@ export default function GrowScreen() {
         )}
 
       </ScrollView>
+
+      <DonateModal visible={showDonateModal} onClose={() => setShowDonateModal(false)} />
     </SafeAreaView>
   );
 }
