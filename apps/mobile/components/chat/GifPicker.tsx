@@ -1,14 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Modal, View, Text, TextInput, TouchableOpacity,
-  FlatList, Image, ActivityIndicator, StyleSheet, Dimensions,
+  FlatList, Image, ActivityIndicator, StyleSheet, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 const GIPHY_KEY = process.env.EXPO_PUBLIC_GIPHY_API_KEY ?? '';
 const GIPHY_BASE = 'https://api.giphy.com/v1/gifs';
-const COL_WIDTH = (Dimensions.get('window').width - 48) / 2;
 
 interface GiphyResult {
   id: string;
@@ -26,6 +25,8 @@ interface GifPickerProps {
 
 export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
   const colors = useThemeColors();
+  const { width: screenWidth } = useWindowDimensions();
+  const COL_WIDTH = (screenWidth - 48) / 2;
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GiphyResult[]>([]);
   const [loading, setLoading] = useState(false);

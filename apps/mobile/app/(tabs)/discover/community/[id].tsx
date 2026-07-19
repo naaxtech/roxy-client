@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  ScrollView, Dimensions, Share,
+  ScrollView, Share, useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,7 +28,6 @@ import { freshChannel } from '../../../../lib/realtimeChannel';
 
 type SubTab = 'posts' | 'events' | 'games' | 'rooms';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 const TABS: SubTab[] = ['posts', 'rooms', 'games', 'events'];
 
 
@@ -57,6 +56,7 @@ export default function CommunityDetailScreen() {
   const colors = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
   const { user } = useAuthStore();
   const { joinedIds, allCommunities, joinCommunity, leaveCommunity, fetchAll, fetchJoined } = useCommunityStore();
 
@@ -205,7 +205,7 @@ export default function CommunityDetailScreen() {
   const handleTabPress = (tab: SubTab) => {
     const index = TABS.indexOf(tab);
     setSubTab(tab);
-    pagerRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
+    pagerRef.current?.scrollTo({ x: index * screenWidth, animated: true });
   };
 
   const isJoined = id ? joinedIds.has(id) : false;
@@ -470,12 +470,12 @@ export default function CommunityDetailScreen() {
         scrollEventThrottle={16}
         style={{ flex: 1 }}
         onMomentumScrollEnd={(e) => {
-          const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
           setSubTab(TABS[index]);
         }}
       >
         {/* Page 0 — Posts (shared FeedCard pipeline — identical to Connect feed) */}
-        <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 80 }}>
+        <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 80 }}>
           {posts.length === 0 ? (
             <EmptyState emoji="📝" title="No posts yet" body="Be the first to post!" />
           ) : (
@@ -502,7 +502,7 @@ export default function CommunityDetailScreen() {
         </ScrollView>
 
         {/* Page 1 — Rooms */}
-        <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ padding: 12, paddingBottom: 80 }}>
+        <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ padding: 12, paddingBottom: 80 }}>
           {loadingRooms ? (
             <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
           ) : rooms.length === 0 ? (
@@ -534,7 +534,7 @@ export default function CommunityDetailScreen() {
         </ScrollView>
 
         {/* Page 2 — Games (real data from community_games + games tables) */}
-        <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={styles.gamesContainer}>
+        <ScrollView style={{ width: screenWidth }} contentContainerStyle={styles.gamesContainer}>
           {loadingGames ? (
             <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
           ) : communityGames.length === 0 ? (
@@ -580,7 +580,7 @@ export default function CommunityDetailScreen() {
         </ScrollView>
 
         {/* Page 3 — Events */}
-        <ScrollView style={{ width: SCREEN_WIDTH }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}>
+        <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}>
           <View style={styles.viewToggleRow}>
             {(['list', 'calendar'] as const).map((v) => (
               <TouchableOpacity

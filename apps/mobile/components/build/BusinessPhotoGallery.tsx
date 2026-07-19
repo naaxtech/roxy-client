@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, ScrollView, Image, TouchableOpacity,
-  Modal, StyleSheet, Dimensions, TouchableWithoutFeedback,
+  Modal, StyleSheet, TouchableWithoutFeedback, useWindowDimensions,
 } from 'react-native';
 import { BusinessPhoto } from '../../types';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -15,7 +15,7 @@ interface BusinessPhotoGalleryProps {
 export function BusinessPhotoGallery({ photos }: BusinessPhotoGalleryProps) {
   const colors = useThemeColors();
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const { width } = Dimensions.get('window');
+  const { width } = useWindowDimensions();
 
   const styles = StyleSheet.create({
     row: { paddingHorizontal: 16, gap: 8, paddingVertical: 8 },

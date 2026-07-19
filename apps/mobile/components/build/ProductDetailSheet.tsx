@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, StyleSheet,
-  ScrollView, Image, Dimensions, NativeSyntheticEvent,
-  NativeScrollEvent,
+  ScrollView, Image, NativeSyntheticEvent,
+  NativeScrollEvent, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { CheckoutSheet } from './CheckoutSheet';
 import type { ProductWithVariants, ProductVariant } from '../../types/marketplace';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface ProductDetailSheetProps {
   product: ProductWithVariants;
@@ -30,6 +28,7 @@ export function ProductDetailSheet({
   onAddToCart,
 }: ProductDetailSheetProps) {
   const colors = useThemeColors();
+  const { width: screenWidth } = useWindowDimensions();
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [qty, setQty] = useState(1);
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -45,7 +44,7 @@ export function ProductDetailSheet({
     : product.base_price_cents;
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    const idx = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
     setPhotoIndex(idx);
   };
 
@@ -77,8 +76,8 @@ export function ProductDetailSheet({
       marginBottom: 8,
     },
     closeBtn: { position: 'absolute', top: 16, right: 16, zIndex: 10, padding: 4 },
-    gallery: { width: SCREEN_WIDTH, height: 280 },
-    galleryImage: { width: SCREEN_WIDTH, height: 280 },
+    gallery: { width: screenWidth, height: 280 },
+    galleryImage: { width: screenWidth, height: 280 },
     photoPlaceholder: {
       width: '100%', height: 200,
       backgroundColor: colors.primary + '20',

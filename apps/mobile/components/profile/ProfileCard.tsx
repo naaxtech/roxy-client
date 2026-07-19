@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
@@ -10,8 +10,6 @@ import { supabase } from '../../lib/supabase';
 import type { Profile, Business } from '../../types';
 import type { EarnedBadge } from './BadgeRow';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const PHOTO_SIZE = (SCREEN_WIDTH - 4) / 3;
 const AVATAR_SIZE = 110;
 const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
@@ -45,6 +43,8 @@ export function ProfileCard({
   savedBusinesses, onOpenBusiness,
 }: ProfileCardProps) {
   const colors = useThemeColors();
+  const { width: screenWidth } = useWindowDimensions();
+  const PHOTO_SIZE = (screenWidth - 4) / 3;
   const [tab, setTab] = useState<ProfileTab>('photos');
   const [photos, setPhotos] = useState<MediaPost[]>([]);
 

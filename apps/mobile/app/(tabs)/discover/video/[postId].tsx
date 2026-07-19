@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  Dimensions, StatusBar, Share, PanResponder,
+  StatusBar, Share, PanResponder, useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,8 +15,6 @@ import { supabase } from '../../../../lib/supabase';
 import { fetchPostById } from '../../../../lib/posts';
 import { routeParam } from '../../../../lib/routeParams';
 import { COMMENT_WITH_AUTHOR } from '../../../../lib/supabaseQueries';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 function VideoItem({
   post, isActive, onComment, isLiked, isSaved, onLike, onSave, onShare, styles, colors,
@@ -73,10 +71,10 @@ function VideoItem({
   );
 }
 
-function buildStyles(colors: ReturnType<typeof useThemeColors>) {
+function buildStyles(colors: ReturnType<typeof useThemeColors>, screenWidth: number, screenHeight: number) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: '#000' },
-    videoItem: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, backgroundColor: '#000' },
+    videoItem: { width: screenWidth, height: screenHeight, backgroundColor: '#000' },
     muteBtn: { position: 'absolute', top: 60, right: 16, zIndex: 2 },
     overlay: { position: 'absolute', bottom: 80, left: 16, right: 80, zIndex: 2 },
     overlayAuthor: { color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 4 },
@@ -92,7 +90,8 @@ function buildStyles(colors: ReturnType<typeof useThemeColors>) {
 
 export default function VideoPlayerScreen() {
   const colors = useThemeColors();
-  const styles = buildStyles(colors);
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const styles = buildStyles(colors, screenWidth, screenHeight);
   const params = useLocalSearchParams<{ postId: string | string[] }>();
   const postId = routeParam(params.postId);
   const router = useRouter();
@@ -190,6 +189,7 @@ export default function VideoPlayerScreen() {
     <View style={styles.container} testID="video-player-screen" {...panResponder.panHandlers}>
       <StatusBar hidden />
       <FlatList
+        key={screenHeight}
         data={videoPosts}
         keyExtractor={item => item.id}
         renderItem={({ item, index }) => (
@@ -208,10 +208,10 @@ export default function VideoPlayerScreen() {
         )}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        initialScrollIndex={initialIndexRef.current > 0 ? initialIndexRef.current : undefined}
+        initialScrollIndex={activeIndexRef.current > 0 ? activeIndexRef.current : undefined}
         getItemLayout={(_, index) => ({
-          length: SCREEN_HEIGHT,
-          offset: SCREEN_HEIGHT * index,
+          length: screenHeight,
+          offset: screenHeight * index,
           index,
         })}
         onViewableItemsChanged={onViewableItemsChanged}
