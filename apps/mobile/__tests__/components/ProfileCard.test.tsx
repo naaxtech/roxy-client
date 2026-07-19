@@ -128,4 +128,19 @@ describe('ProfileCard', () => {
     fireEvent.press(getByText('About'));
     expect(getByText('🌸 Bloom · 125 pts')).toBeTruthy();
   });
+
+  it('hides the government-verified badge when gov_verified is false/undefined', () => {
+    const { queryByTestId } = render(
+      <ProfileCard profile={baseProfile} badges={[]} isOwn={false} />
+    );
+    expect(queryByTestId('gov-verified-badge')).toBeNull();
+  });
+
+  it('shows the government-verified badge when gov_verified is true', () => {
+    const { getByTestId } = render(
+      <ProfileCard profile={{ ...baseProfile, gov_verified: true }} badges={[]} isOwn={false} />
+    );
+    const badge = getByTestId('gov-verified-badge');
+    expect(badge.props.accessibilityLabel).toBe('Government verified');
+  });
 });
