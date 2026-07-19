@@ -27,6 +27,7 @@ Deno.serve(async (req) => {
 
   let body: { amount_cents: number; cadence: Cadence };
   try { body = await req.json(); } catch { return errorResponse('Invalid JSON', 400); }
+  if (typeof body !== 'object' || body === null) return errorResponse('Invalid request body', 400);
   const { amount_cents, cadence } = body;
 
   if (
@@ -49,7 +50,6 @@ Deno.serve(async (req) => {
   const supabase = getSupabaseClient();
   const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
   if (!stripeKey) return errorResponse('STRIPE_SECRET_KEY not set', 500);
-  console.log('[create-donation-checkout] stripe key prefix:', stripeKey.slice(0, 7));
 
   const stripe = new Stripe(stripeKey, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
 

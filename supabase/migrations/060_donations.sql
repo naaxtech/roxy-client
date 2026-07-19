@@ -30,3 +30,7 @@ CREATE POLICY "donations_select_own" ON public.donations
 
 -- No INSERT/UPDATE/DELETE policies: clients cannot write rows directly.
 -- Writes happen exclusively via the service-role client in edge functions.
+
+CREATE OR REPLACE FUNCTION public.donations_touch_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END $$;
+DROP TRIGGER IF EXISTS trg_donations_updated_at ON public.donations;
+CREATE TRIGGER trg_donations_updated_at BEFORE UPDATE ON public.donations FOR EACH ROW EXECUTE FUNCTION public.donations_touch_updated_at();
