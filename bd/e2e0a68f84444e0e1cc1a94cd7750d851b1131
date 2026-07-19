@@ -1,0 +1,30 @@
+apps/studio/app/(dashboard)/rooms/[id]/page.tsx
+  s_093307bfc37bee::t_f6a6ad0d8c66f5 50-52
+  s_093307bfc37bee::t_d79003ed7c56b0 14-49,206,291,302,322,326
+  s_093307bfc37bee::t_5851d0deb83459 53-62
+  s_cf94592ecf85b4::t_bdc85b00aa7730 167-169,202-205,207,213-222,281-285,287-290,292-293,298-301,307,309-311,313,319,321,323-325,327,380-392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bde2e0a68f84444e0e1cc1a94cd7750d851b1131",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_cf94592ecf85b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d389dc0-fcc7-4c97-9734-394c9d106793",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
