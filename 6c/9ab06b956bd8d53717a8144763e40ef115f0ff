@@ -1,0 +1,33 @@
+apps/mobile/app/(tabs)/connect/community-room-session.tsx
+  s_093307bfc37bee::t_d488547ae39cea 56-71
+  s_093307bfc37bee::t_c6bdcddaecbc44 298-299,303,305-307,311,316
+apps/mobile/__tests__/callEdgeFunction.test.ts
+  s_093307bfc37bee::t_32d6b220922a81 3-97
+  s_093307bfc37bee::t_46fc55c9ec5154 1-2
+apps/mobile/lib/supabase.ts
+  s_780363e7d85f53::t_df58279aa712cf 26,29-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6c9ab06b956bd8d53717a8144763e40ef115f0ff",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_780363e7d85f53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0f92fb42c75850b1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
