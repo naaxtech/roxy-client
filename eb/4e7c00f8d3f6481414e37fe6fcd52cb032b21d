@@ -1,0 +1,20 @@
+apps/mobile/components/grow/HappeningTonightCard.tsx
+  s_093307bfc37bee::t_aa53c55321db16 4
+  s_093307bfc37bee::t_2ebfe697b84ef5 92-94,172,219-228,230,232-233,242,246,250,252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "eb4e7c00f8d3f6481414e37fe6fcd52cb032b21d",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
