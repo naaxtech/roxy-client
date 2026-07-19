@@ -1,0 +1,28 @@
+apps/mobile/__tests__/globalSearch.test.ts
+  s_093307bfc37bee::t_cb65eeeacca6bd 1-13,17-19,26-76,78,81-91,94-101,113-114
+  s_093307bfc37bee::t_19e8257ba9cdf1 14-16,20-25,77,79-80,92-93,102-112
+apps/mobile/components/ui/RoxyCompanionButton.tsx
+  s_093307bfc37bee::t_ecf272d4b5852a 1-2,4-6,8-9,15-18,22-72,75,80-129,135-138,142-156,158-253
+apps/mobile/__tests__/components/RoxyCompanionButton.test.tsx
+  s_093307bfc37bee::t_d3ace5e62f1bef 5,8,11-13,16-17,22-24,42-48,50,54-56,58-113
+apps/mobile/app/search.tsx
+  s_093307bfc37bee::t_fbb295cda41f95 1-265
+apps/mobile/lib/globalSearch.ts
+  s_093307bfc37bee::t_e6684e677189ec 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "fd4c608374813b3c06c2c22158bfa03c5b13e54f",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
