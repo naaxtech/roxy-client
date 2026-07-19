@@ -1,8 +1,29 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
+
+// Static CSS for subtle overlay scrollbars. Injected at runtime because the
+// app exports in "single" (SPA) web output, where app/+html.tsx is ignored.
+const SCROLLBAR_CSS = `
+* { scrollbar-width: thin; scrollbar-color: rgba(140,120,160,0.35) transparent; }
+*::-webkit-scrollbar { width: 7px; height: 7px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(140,120,160,0.35); border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(140,120,160,0.55); }
+`;
+
+function useWebScrollbarStyles() {
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    if (document.getElementById('roxy-scrollbars')) return;
+    const style = document.createElement('style');
+    style.id = 'roxy-scrollbars';
+    style.textContent = SCROLLBAR_CSS;
+    document.head.appendChild(style);
+  }, []);
+}
 
 /**
  * Desktop-web presentation frame: centers the app as a phone-proportioned
@@ -13,6 +34,7 @@ import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 export function WebAppFrame({ children }: { children: React.ReactNode }) {
   const { width } = useWindowDimensions();
   const colors = useThemeColors();
+  useWebScrollbarStyles();
 
   if (Platform.OS !== 'web' || width <= FRAME_MAX_WIDTH) {
     return <>{children}</>;
