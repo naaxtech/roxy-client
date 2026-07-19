@@ -1,0 +1,28 @@
+apps/mobile/components/ui/popIn.ts
+  s_093307bfc37bee::t_d53e2f81b54c33 5-8,11,15,18-19
+apps/mobile/app/(tabs)/build/index.tsx
+  s_093307bfc37bee::t_0997313d606d77 16
+  s_093307bfc37bee::t_828818615a466a 27-29,70-72,135,150-152,242-246,274,333,743
+apps/mobile/app/(auth)/welcome.tsx
+  s_093307bfc37bee::t_590e40a4671f39 91,95-107,232-234
+apps/mobile/app/(tabs)/_layout.tsx
+  s_093307bfc37bee::t_b8bd9a32d0962a 87-99
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_093307bfc37bee::t_da530c17ce289e 20,317,950
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "25296ef29d9fd42669337d7e55c598b046966411",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
