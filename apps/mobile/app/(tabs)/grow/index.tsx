@@ -275,7 +275,6 @@ export default function GrowScreen() {
     rhBtn: {
       minHeight: 44, borderRadius: 999, paddingHorizontal: 22,
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-      overflow: 'hidden',
       shadowColor: '#E81C8E', shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.25, shadowRadius: 8, elevation: 3,
     },
