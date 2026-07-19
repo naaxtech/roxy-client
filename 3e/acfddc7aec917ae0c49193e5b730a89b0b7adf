@@ -1,0 +1,32 @@
+apps/mobile/app/(tabs)/grow/roxy-chat.tsx
+  s_093307bfc37bee::t_8765d5b3ef3448 4,9,18-31,41,55-68,71,77,95-102,108-114,116-118,121-142,144-161,164-172,176-182,184,186,188,191-193,196-197,211-217,221-222,224,235-276,287-293,304-312,328,334-335,337-339
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_093307bfc37bee::t_b60e3a2f58cfe0 66-70
+  s_cf94592ecf85b4::t_78449d14286a3f 169,221,226-236,251-252,254-257,259-260,263-264,287-288,292,294,296-297,612,616-624,718-724,749-755,758-764,872,879-880,882-888
+apps/mobile/components/chat/TypingIndicator.tsx
+  s_093307bfc37bee::t_52ab26009e7358 45-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3eacfddc7aec917ae0c49193e5b730a89b0b7adf",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_cf94592ecf85b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d389dc0-fcc7-4c97-9734-394c9d106793",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
