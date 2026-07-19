@@ -53,23 +53,23 @@ type AudioStyles = {
   audioBubbleName: object;
 };
 
-/** Friendly copy for known join-failure reasons — the join edge function's exact
- *  error strings (see supabase/functions/join-community-room/index.ts). */
-function joinErrorCopy(error: string | null): { title: string; message: string } {
-  const msg = error ?? '';
-  if (/not started yet|has not started/i.test(msg)) {
-    return { title: 'Not live yet', message: 'This room is scheduled but not open yet.' };
+/** Friendly copy for known join-failure reasons — mapped from the join edge
+ *  function's actual HTTP status codes (see
+ *  supabase/functions/join-community-room/index.ts): 409 room not started,
+ *  410 room closed, 403 not a community member, 404 room not found. */
+function joinErrorCopy(status: number | undefined, message: string | null): { title: string; message: string } {
+  switch (status) {
+    case 409:
+      return { title: 'Not live yet', message: 'This room is scheduled but not open yet.' };
+    case 410:
+      return { title: 'Room closed', message: 'This room has ended.' };
+    case 403:
+      return { title: 'Members only', message: 'Join this community to enter its rooms.' };
+    case 404:
+      return { title: 'Room unavailable', message: 'This room could not be found.' };
+    default:
+      return { title: 'Error', message: message || 'Failed to join room. Please try again.' };
   }
-  if (/closed/i.test(msg)) {
-    return { title: 'Room closed', message: 'This room has ended.' };
-  }
-  if (/not a member/i.test(msg)) {
-    return { title: "Can't join", message: 'You need to be a member of this community to join this room.' };
-  }
-  if (/not found/i.test(msg)) {
-    return { title: 'Room unavailable', message: 'This room no longer exists.' };
-  }
-  return { title: 'Error', message: 'Failed to join room. Please try again.' };
 }
 
 // ─── Video tile for a single participant ────────────────────────────────────
@@ -295,22 +295,25 @@ export default function CommunityRoomSession() {
   useEffect(() => {
     if (!provider.isAvailable) return; // web / Expo Go — friendly fallback renders instead
 
+    let cancelled = false;
+
     if (!room_id) {
       (async () => {
         await showAlert('Room unavailable', "We couldn't find that room.");
-        router.back();
+        if (!cancelled) router.back();
       })();
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    let cancelled = false;
     (async () => {
-      const { data, error } = await callEdgeFunction<RoomInfo>('join-community-room', { room_id });
+      const { data, error, status } = await callEdgeFunction<RoomInfo>('join-community-room', { room_id });
       if (cancelled) return;
 
       if (error || !data?.room_url) {
         logError(new Error(error ?? 'join-community-room: missing room_url'), 'communityRoomSession_join');
-        const { title, message } = joinErrorCopy(error);
+        const { title, message } = joinErrorCopy(status, error);
         await showAlert(title, message);
         if (!cancelled) router.back();
         return;
