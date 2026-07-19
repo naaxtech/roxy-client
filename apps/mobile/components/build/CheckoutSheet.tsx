@@ -228,7 +228,7 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
     summaryBox: { backgroundColor: colors.surface, borderRadius: 10, padding: 14, marginBottom: 12, gap: 2 },
     summaryLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600', marginBottom: 4 },
     summaryValue: { fontSize: 14, color: colors.textPrimary },
-    closeBtn: { position: 'absolute', top: 16, right: 16, padding: 8 },
+    closeBtn: { position: 'absolute', top: 16, right: 16, padding: 8, zIndex: 10 },
   });
 
   return (

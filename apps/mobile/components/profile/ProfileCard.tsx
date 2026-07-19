@@ -53,7 +53,7 @@ export function ProfileCard({
     supabase
       .from('posts')
       .select('id, media_urls, post_type')
-      .eq('user_id', profile.id)
+      .eq('author_id', profile.id)
       .in('post_type', ['photo', 'video'])
       .order('created_at', { ascending: false })
       .limit(30)

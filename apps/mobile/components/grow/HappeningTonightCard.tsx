@@ -160,7 +160,7 @@ export function HappeningTonightCard({ communityIds }: Props) {
 
   const openItem = (item: HappeningItem) => {
     if (item.kind === 'room') {
-      router.push(`/(tabs)/connect/community-room-session?room_id=${item.id}` as any);
+      router.push(`/community-room-session?room_id=${item.id}` as any);
     } else if (item.kind === 'event') {
       router.push(`/event/${item.id}` as any);
     } else {

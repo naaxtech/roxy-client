@@ -375,7 +375,7 @@ export default function PlayScreen() {
                 <TouchableOpacity
                   key={room.id}
                   style={s.liveTile}
-                  onPress={() => router.push(`/(tabs)/connect/community-room-session?room_id=${room.id}` as any)}
+                  onPress={() => router.push(`/community-room-session?room_id=${room.id}` as any)}
                   activeOpacity={0.85}
                   accessibilityLabel={`Join ${room.name}`}
                 >

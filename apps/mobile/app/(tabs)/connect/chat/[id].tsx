@@ -874,6 +874,13 @@ export default function ChatScreen() {
               multiline
               maxLength={2000}
               accessibilityLabel="Message input"
+              // Web: Enter sends, Shift+Enter inserts a newline (chat convention).
+              onKeyPress={(e: any) => {
+                if (Platform.OS === 'web' && e.nativeEvent?.key === 'Enter' && !e.nativeEvent?.shiftKey) {
+                  e.preventDefault?.();
+                  if (inputText.trim() && !sending) void sendMessage(inputText);
+                }
+              }}
             />
 
             <TouchableOpacity

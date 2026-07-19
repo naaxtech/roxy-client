@@ -326,6 +326,13 @@ export default function RoxyChatScreen() {
             editable={!loading}
             returnKeyType="default"
             accessibilityLabel="Message Roxy"
+            // Web: Enter sends, Shift+Enter inserts a newline (chat convention).
+            onKeyPress={(e: any) => {
+              if (Platform.OS === 'web' && e.nativeEvent?.key === 'Enter' && !e.nativeEvent?.shiftKey) {
+                e.preventDefault?.();
+                if (input.trim() && !loading) void handleSend();
+              }
+            }}
           />
           <TouchableOpacity
             style={[styles.sendBtn, (loading || !input.trim()) && styles.sendBtnDisabled]}

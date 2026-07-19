@@ -69,7 +69,9 @@ export function DonateModal({ visible, onClose }: DonateModalProps) {
       shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.3, shadowRadius: 24, elevation: 20,
     },
-    closeBtn: { position: 'absolute', top: 12, right: 12, padding: 6 },
+    // zIndex: sibling text renders later in DOM order and would otherwise
+    // intercept clicks on web, making the modal impossible to close via X.
+    closeBtn: { position: 'absolute', top: 12, right: 12, padding: 6, zIndex: 10 },
     title: { color: colors.textPrimary, fontWeight: '800', fontSize: 19, marginTop: 4 },
     sub: { color: colors.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 10, lineHeight: 18 },
     cadenceRow: {

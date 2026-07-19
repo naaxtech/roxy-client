@@ -45,7 +45,7 @@ export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
     eventType: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.5 },
     eventDesc: { fontSize: 13, color: colors.textPrimary },
     eventDate: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
-    closeBtn: { position: 'absolute', top: 16, right: 16, padding: 8 },
+    closeBtn: { position: 'absolute', top: 16, right: 16, padding: 8, zIndex: 10 },
   });
 
   if (!order) return null;

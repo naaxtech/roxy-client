@@ -1,13 +1,19 @@
 import React from 'react';
 import type { VideoCallProvider, VideoCallState, RemoteParticipant } from './VideoCallProvider';
 
-// Guarded import — never crashes Expo Go
+// Guarded import — never crashes Expo Go.
+// On web, metro resolves this package to an EMPTY module ({}), which is
+// truthy — so `mod.default ?? mod` must not be trusted as-is. Validate the
+// shape: without createCallObject it is not a usable Daily module, and
+// isAvailable must be false so the friendly "native-only" screen renders
+// instead of a join attempt that throws.
 let DailyCall: any = null;
 let DailyMediaView: any = null;
 try {
   const mod = require('@daily-co/react-native-daily-js');
-  DailyCall = mod.default ?? mod;
-  DailyMediaView = mod.DailyMediaView ?? null;
+  const candidate = mod?.default ?? mod;
+  DailyCall = typeof candidate?.createCallObject === 'function' ? candidate : null;
+  DailyMediaView = mod?.DailyMediaView ?? null;
 } catch {}
 
 function makeRemoteParticipant(p: any): RemoteParticipant {
