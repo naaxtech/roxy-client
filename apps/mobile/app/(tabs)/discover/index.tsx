@@ -285,7 +285,9 @@ export default function PlayScreen() {
     || g.name.toLowerCase().includes(q)
     || (g.short_description ?? '').toLowerCase().includes(q)
     || ('community_name' in g && (g.community_name ?? '').toLowerCase().includes(q));
-  const shownOriginals = displayOriginals.filter(matchesGame);
+  // Speed Dating already owns the featured hero above — listing it again here
+  // is the "same game over and over" problem. Show only the other originals.
+  const shownOriginals = displayOriginals.filter((g) => g.name !== 'Speed Dating').filter(matchesGame);
   const shownCommunityGames = communityGames.filter(matchesGame);
 
   return (
@@ -333,8 +335,7 @@ export default function PlayScreen() {
             style={s.heroInner}
           >
             <View style={s.heroTags}>
-              <View style={s.heroTag}><Text style={s.heroTagText}>⚡ Featured</Text></View>
-              <View style={s.heroTag}><Text style={s.heroTagText}>Roxy Original</Text></View>
+              <View style={s.heroTag}><Text style={s.heroTagText}>ROXY ORIGINAL</Text></View>
             </View>
             <Text style={s.heroEmoji}>⚡</Text>
             <Text style={s.heroTitle}>Speed Dating</Text>
@@ -411,22 +412,24 @@ export default function PlayScreen() {
         )}
 
         {/* Roxy Originals */}
-        <View style={s.section}>
-          <SectionHeader title="Roxy Originals" icon="sparkles" />
-          <View style={s.gameGrid}>
-            {shownOriginals.slice(0, 4).map((g, i) => (
-              <View key={g.id} style={{ width: '50%' }}>
-                <GameTile
-                  emoji={CATEGORY_EMOJI[g.category] ?? '🎮'}
-                  name={g.name}
-                  sub={g.short_description}
-                  grad={TILE_GRADS[i % TILE_GRADS.length]}
-                  onPress={() => navigateToGame(g)}
-                />
-              </View>
-            ))}
+        {shownOriginals.length > 0 && (
+          <View style={s.section}>
+            <SectionHeader title="Roxy Originals" icon="sparkles" />
+            <View style={s.gameGrid}>
+              {shownOriginals.slice(0, 4).map((g, i) => (
+                <View key={g.id} style={{ width: '50%' }}>
+                  <GameTile
+                    emoji={CATEGORY_EMOJI[g.category] ?? '🎮'}
+                    name={g.name}
+                    sub={g.short_description}
+                    grad={TILE_GRADS[i % TILE_GRADS.length]}
+                    onPress={() => navigateToGame(g)}
+                  />
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* From Your Communities */}
         <View style={s.section}>

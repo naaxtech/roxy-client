@@ -14,7 +14,6 @@ import { useProfileStore } from '../../../store/profileStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useFeedStore } from '../../../store/feedStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
-import { GAME_ROUTES } from '../../../lib/games';
 import { logError } from '../../../lib/errorLogger';
 import { normalizePost } from '../../../lib/posts';
 import { contentDetailPath, linkedEntityPath } from '../../../lib/contentNavigation';
@@ -40,11 +39,6 @@ type EventRow = {
   id: string; title: string; starts_at: string; ends_at: string | null;
   location_text: string | null; community_id: string;
   is_paid: boolean; communities: { name: string } | null;
-};
-
-type GameRow = {
-  id: string; slug: string; name: string; description: string | null;
-  emoji: string; is_active: boolean;
 };
 
 type CommunityRoomRow = {
@@ -106,7 +100,6 @@ export default function ConnectScreen() {
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [datingMode, setDatingMode] = useState(profile?.is_dating_mode ?? false);
 
-  const [games, setGames] = useState<GameRow[]>([]);
   const [rooms, setRooms] = useState<CommunityRoomRow[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
 
@@ -247,13 +240,6 @@ export default function ConnectScreen() {
     roomSectionBar: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
     roomSectionTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 15 },
     roomEmpty: { color: colors.textMuted, fontSize: 13, paddingVertical: 8 },
-    gameCard: {
-      flexDirection: 'row', alignItems: 'center', gap: 10,
-      backgroundColor: colors.surface, borderRadius: 12, padding: 12, marginBottom: 6,
-    },
-    gameEmoji: { fontSize: 24 },
-    gameName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
-    gameDesc: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
   });
 
   // Web: pathname changes are reliable (URL-based). useFocusEffect does NOT
@@ -382,11 +368,7 @@ export default function ConnectScreen() {
     if (selectedCommunityId) {
       roomsQuery = roomsQuery.eq('community_id', selectedCommunityId);
     }
-    const [{ data: gamesData }, { data: roomsData }] = await Promise.all([
-      supabase.from('games').select('*').eq('is_active', true).order('name'),
-      roomsQuery,
-    ]);
-    if (gamesData) setGames(gamesData as GameRow[]);
+    const { data: roomsData } = await roomsQuery;
     if (roomsData) setRooms(roomsData.map((r: any) => ({
       ...r,
       creator_display_name: r.profiles?.display_name ?? null,
@@ -462,12 +444,6 @@ export default function ConnectScreen() {
       || (e.communities?.name ?? '').toLowerCase().includes(q)
       || (e.location_text ?? '').toLowerCase().includes(q)),
     [events, q],
-  );
-  const displayedGames = useMemo(
-    () => games.filter((g) => !q
-      || g.name.toLowerCase().includes(q)
-      || (g.description ?? '').toLowerCase().includes(q)),
-    [games, q],
   );
   const displayedRooms = useMemo(
     () => rooms.filter((r) => !q
@@ -563,7 +539,7 @@ export default function ConnectScreen() {
             placeholder={
               subTab === 'feed' ? 'Search announcements…'
               : subTab === 'events' ? 'Search events…'
-              : 'Search rooms & games…'
+              : 'Search rooms…'
             }
             placeholderTextColor={colors.textMuted}
             value={query}
@@ -780,34 +756,7 @@ export default function ConnectScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Games */}
-          <View style={styles.roomSection}>
-            <View style={styles.roomSectionBar}>
-              <Ionicons name="game-controller" size={15} color={colors.roxy} />
-              <Text style={styles.roomSectionTitle}>Games</Text>
-            </View>
-            {loadingRooms ? (
-              <ActivityIndicator color={colors.roxy} style={{ marginVertical: 16 }} />
-            ) : displayedGames.length === 0 ? (
-              <Text style={styles.roomEmpty}>{q ? 'No games match your search' : 'No games available'}</Text>
-            ) : (
-              displayedGames.map((game) => (
-                <TouchableOpacity
-                  key={game.id}
-                  style={styles.gameCard}
-                  onPress={() => GAME_ROUTES[game.slug] && router.push(GAME_ROUTES[game.slug] as any)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.gameEmoji}>{game.emoji}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.gameName}>{game.name}</Text>
-                    {game.description && <Text style={styles.gameDesc} numberOfLines={1}>{game.description}</Text>}
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
+          {/* Games live in the Play tab — this subtab is rooms only. */}
 
           {/* Community Rooms */}
           <View style={styles.roomSection}>
