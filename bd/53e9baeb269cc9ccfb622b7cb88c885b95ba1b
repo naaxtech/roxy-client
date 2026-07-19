@@ -1,0 +1,25 @@
+apps/mobile/__tests__/globalSearch.test.ts
+  s_093307bfc37bee::t_5b261a78842265 114-151
+apps/mobile/app/search.tsx
+  s_093307bfc37bee::t_18230e1262e5b7 24
+  s_093307bfc37bee::t_0f325e3ef3ee62 48,50-57
+apps/mobile/lib/globalSearch.ts
+  s_093307bfc37bee::t_d90e11fcc9df42 36-48,59
+  s_093307bfc37bee::t_360b125d4eedab 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bd53e9baeb269cc9ccfb622b7cb88c885b95ba1b",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
