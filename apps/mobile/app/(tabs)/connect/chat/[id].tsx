@@ -63,6 +63,11 @@ type MessageWithGroup = Message & {
 const AVA_SIZE = 32;
 const AVA_GAP = 8;
 
+// Roxy's brand identity gradient — reserved for her wingwoman suggestion
+// card and the composer's send button, so it reads as a consistent "modern
+// chat" accent without being confused with either participant's own color.
+const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
+
 export default function ChatScreen() {
   const { id: conversationId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -161,6 +166,7 @@ export default function ChatScreen() {
     headerAva: {
       width: 38, height: 38, borderRadius: 19,
       alignItems: 'center', justifyContent: 'center',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2,
     },
     headerAvaText: { color: '#fff', fontWeight: '800', fontSize: 15 },
     headerOnlineDot: {
@@ -212,15 +218,22 @@ export default function ChatScreen() {
     msgAva: {
       width: AVA_SIZE, height: AVA_SIZE, borderRadius: AVA_SIZE / 2,
       alignItems: 'center', justifyContent: 'center',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1,
     },
     msgAvaText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
     // Bubbles
-    bubble: { maxWidth: '76%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
-    bubbleOwn: { backgroundColor: colors.primary },
-    bubbleOther: { backgroundColor: colors.surface },
-    bubbleOwnLast: { borderBottomRightRadius: 4 },
-    bubbleOtherLast: { borderBottomLeftRadius: 4 },
+    bubble: { maxWidth: '76%', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10 },
+    bubbleOwn: {
+      backgroundColor: colors.primary,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 1,
+    },
+    bubbleOther: {
+      backgroundColor: colors.surface,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1,
+    },
+    bubbleOwnLast: { borderBottomRightRadius: 6 },
+    bubbleOtherLast: { borderBottomLeftRadius: 6 },
     bubbleHighlighted: { borderWidth: 2, borderColor: colors.primary + '80' },
 
     bubbleText: { fontSize: 15, lineHeight: 21 },
@@ -235,19 +248,20 @@ export default function ChatScreen() {
     readTick: { fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '700' },
     readTickRead: { color: 'rgba(255,255,255,0.95)' },
 
-    // Roxy suggestion
+    // Roxy suggestion — distinct wingwoman identity via a brand-gradient
+    // accent bar + gradient CTA, so it never reads as a plain human bubble.
     roxyBubble: {
-      alignSelf: 'center', backgroundColor: colors.roxy + '14',
-      borderRadius: 16, borderWidth: 1, borderColor: colors.roxy + '40',
-      padding: 14, marginVertical: 6, width: '88%',
+      alignSelf: 'center', backgroundColor: colors.roxy + '12',
+      borderRadius: 20, overflow: 'hidden',
+      padding: 14, paddingTop: 17, marginVertical: 6, width: '88%',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 1,
     },
-    roxyLabel: { color: colors.roxy, fontSize: 11, fontWeight: '700', marginBottom: 6 },
+    roxyAccentBar: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
+    roxyLabel: { color: colors.roxy, fontSize: 11, fontWeight: '700', marginBottom: 6, letterSpacing: 0.2 },
     roxyText: { color: colors.textPrimary, fontSize: 14, lineHeight: 20, fontStyle: 'italic' },
     roxyUseBtnRow: { marginTop: 10 },
-    roxyUseBtn: {
-      alignSelf: 'flex-start', backgroundColor: colors.roxy,
-      borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7,
-    },
+    roxyUseBtn: { alignSelf: 'flex-start', borderRadius: 12, overflow: 'hidden' },
+    roxyUseBtnGradient: { paddingHorizontal: 16, paddingVertical: 8 },
     roxyUseBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
     emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: 40, fontSize: 14 },
@@ -270,15 +284,17 @@ export default function ChatScreen() {
     roxyBtnActive: { backgroundColor: colors.roxy + '18', borderColor: colors.roxy },
     inlineEmojiContainer: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.surfaceLight },
     input: {
-      flex: 1, backgroundColor: colors.surface, borderRadius: 20,
-      paddingHorizontal: 16, paddingVertical: 10,
+      flex: 1, backgroundColor: colors.surface, borderRadius: 22,
+      paddingHorizontal: 16, paddingVertical: 10, minHeight: 40,
       color: colors.textPrimary, fontSize: 15, maxHeight: 120,
     },
     sendBtn: {
-      width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary,
+      width: 38, height: 38, borderRadius: 19,
       alignItems: 'center', justifyContent: 'center', marginBottom: 2,
+      overflow: 'hidden',
     },
-    sendBtnDisabled: { backgroundColor: colors.surfaceLight },
+    sendBtnGradient: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' },
+    sendBtnDisabled: { opacity: 0.4 },
 
     // Reaction overlay
     reactOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
@@ -593,11 +609,19 @@ export default function ChatScreen() {
           {timeSep}
           <Pressable onLongPress={() => handleLongPress(item.id)} delayLongPress={400}>
             <View style={[styles.roxyBubble, isHighlighted && styles.bubbleHighlighted]}>
+              <LinearGradient colors={BRAND_GRADIENT} style={styles.roxyAccentBar} />
               <Text style={styles.roxyLabel}>✨ Roxy suggests</Text>
               <Text style={styles.roxyText}>{item.content}</Text>
               <View style={styles.roxyUseBtnRow}>
-                <TouchableOpacity style={styles.roxyUseBtn} onPress={() => setInputText(item.content ?? '')}>
-                  <Text style={styles.roxyUseBtnText}>Use this</Text>
+                <TouchableOpacity
+                  style={styles.roxyUseBtn}
+                  onPress={() => setInputText(item.content ?? '')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Use Roxy's suggestion"
+                >
+                  <LinearGradient colors={BRAND_GRADIENT} style={styles.roxyUseBtnGradient}>
+                    <Text style={styles.roxyUseBtnText}>Use this</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             </View>
@@ -691,7 +715,13 @@ export default function ChatScreen() {
         </View>
       ) : (
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
             <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
 
@@ -716,10 +746,22 @@ export default function ChatScreen() {
           </TouchableOpacity>
 
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.headerBtn} onPress={() => setSearchActive(true)}>
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => setSearchActive(true)}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Search messages"
+            >
               <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerBtn} onPress={() => setMenuVisible(true)}>
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => setMenuVisible(true)}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Conversation options"
+            >
               <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -827,18 +869,23 @@ export default function ChatScreen() {
               onFocus={() => setShowEmojiKeyboard(false)}
               multiline
               maxLength={2000}
+              accessibilityLabel="Message input"
             />
 
             <TouchableOpacity
               style={[styles.sendBtn, (!inputText.trim() || sending) && styles.sendBtnDisabled]}
               onPress={() => void sendMessage(inputText)}
               disabled={!inputText.trim() || sending}
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
             >
-              {sending ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons name="send" size={17} color="#fff" />
-              )}
+              <LinearGradient colors={BRAND_GRADIENT} style={styles.sendBtnGradient}>
+                {sending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="send" size={17} color="#fff" />
+                )}
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
