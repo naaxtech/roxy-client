@@ -1,0 +1,28 @@
+apps/mobile/__tests__/components/ProfileCard.test.tsx
+  s_093307bfc37bee::t_0c01d310ac708b 23
+  s_668609fe765732::t_8f11a678e03f60 147-252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "95a4d80fcf5cbb83283ef551fcd577458fa40a97",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_668609fe765732": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aba72703f14364ab8",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
