@@ -12,6 +12,7 @@ import { supabase } from '../../../lib/supabase';
 import { ProfileCard } from '../../../components/profile/ProfileCard';
 import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
+import { SavedPosts } from '../../../components/profile/SavedPosts';
 import { BusinessDetailSheet } from '../../../components/build/BusinessDetailSheet';
 import { OrderDetailSheet } from '../../../components/build/OrderDetailSheet';
 import { logError } from '../../../lib/errorLogger';
@@ -201,6 +202,7 @@ export default function ProfileScreen() {
         {user?.id && (
           <>
             <ProfilePhotoGrid userId={user.id} editable />
+            <SavedPosts userId={user.id} />
             <ProfileFavorites userId={user.id} editable />
           </>
         )}
