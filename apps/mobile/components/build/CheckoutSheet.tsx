@@ -4,6 +4,7 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { showAlert } from '../../lib/confirm';
 import type { ProductWithVariants, ShippingAddress } from '../../types/marketplace';
 
@@ -198,7 +199,7 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
 
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, maxHeight: '92%' },
+    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, maxHeight: '92%', width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center' },
     handle: { width: 40, height: 4, backgroundColor: colors.textMuted, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
     steps: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, marginBottom: 20 },
     stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 
 interface CartDrawerProps {
   businessId: string;
@@ -21,7 +22,7 @@ export function CartDrawer({ businessId, businessName, visible, onClose, onCheck
 
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingBottom: 32 },
+    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingBottom: 32, width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center' },
     handle: { width: 40, height: 4, backgroundColor: colors.textMuted, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
     title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },

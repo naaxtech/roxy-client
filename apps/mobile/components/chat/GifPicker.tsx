@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Modal, View, Text, TextInput, TouchableOpacity,
-  FlatList, Image, ActivityIndicator, StyleSheet, useWindowDimensions,
+  FlatList, Image, ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useAppWidth, FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 
 const GIPHY_KEY = process.env.EXPO_PUBLIC_GIPHY_API_KEY ?? '';
 const GIPHY_BASE = 'https://api.giphy.com/v1/gifs';
@@ -25,8 +26,8 @@ interface GifPickerProps {
 
 export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
   const colors = useThemeColors();
-  const { width: screenWidth } = useWindowDimensions();
-  const COL_WIDTH = (screenWidth - 48) / 2;
+  const appWidth = useAppWidth();
+  const COL_WIDTH = (appWidth - 48) / 2;
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GiphyResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,6 +71,7 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       maxHeight: '70%',
+      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
     },
     header: {
       flexDirection: 'row',

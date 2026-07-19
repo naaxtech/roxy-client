@@ -4,6 +4,7 @@ import {
   Modal, ScrollView, ActivityIndicator, Animated,
 } from 'react-native';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { PRESET_AVATARS, PRESET_COLORS } from '../../lib/avatars';
 
 type Tab = 'photo' | 'avatar';
@@ -21,7 +22,7 @@ export function AvatarPickerSheet({
 }: AvatarPickerSheetProps) {
   const colors = useThemeColors();
   const [tab, setTab] = useState<Tab>('photo');
-  const slideAnim = useRef(new Animated.Value(300)).current;
+  const popAnim = useRef(new Animated.Value(0.94)).current; // pop, not slide-from-below
 
   const styles = StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
@@ -29,6 +30,7 @@ export function AvatarPickerSheet({
       backgroundColor: colors.background,
       borderTopLeftRadius: 20, borderTopRightRadius: 20,
       paddingBottom: 40, paddingTop: 12, maxHeight: '60%',
+      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
     },
     handle: {
       width: 36, height: 4, borderRadius: 2,
@@ -65,22 +67,22 @@ export function AvatarPickerSheet({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (visible) {
-      slideAnim.setValue(300);
-      Animated.spring(slideAnim, {
-        toValue: 0,
+      popAnim.setValue(0.94);
+      Animated.spring(popAnim, {
+        toValue: 1,
         useNativeDriver: true,
-        bounciness: 4,
-        speed: 14,
+        friction: 8,
+        tension: 220,
       }).start();
     }
   }, [visible]);
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       {/* Backdrop appears instantly */}
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      {/* Only the sheet slides up */}
-      <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
+      {/* The sheet pops in — no slide-from-below */}
+      <Animated.View style={[styles.sheet, { opacity: popAnim, transform: [{ scale: popAnim }] }]}>
         <View style={styles.handle} />
 
         <View style={styles.tabs}>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  StatusBar, FlatList, ScrollView, useWindowDimensions,
+  StatusBar, FlatList, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { useVideoCall } from '../../../hooks/useVideoCall';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { logError } from '../../../lib/errorLogger';
 import { showAlert, confirmAction } from '../../../lib/confirm';
+import { useAppWidth } from '../../../hooks/useAppWidth';
 import type { RemoteParticipant } from '../../../lib/video/VideoCallProvider';
 
 // Always-dark video-stage palette — this screen stays visually consistent
@@ -148,8 +149,8 @@ export default function CommunityRoomSession() {
   const { room_id } = useLocalSearchParams<{ room_id: string }>();
   const router = useRouter();
   const colors = useThemeColors();
-  const { width: screenWidth } = useWindowDimensions();
-  const TILE_SIZE = (screenWidth - 36) / 2; // 2-col grid, 12px padding each side + 12px gap
+  const appWidth = useAppWidth();
+  const TILE_SIZE = (appWidth - 36) / 2; // 2-col grid, 12px padding each side + 12px gap
 
   const [provider] = useState(() => new DailyProvider());
   const { state, remoteParticipants, localVideoVersion, localMediaState } = useVideoCall(provider);

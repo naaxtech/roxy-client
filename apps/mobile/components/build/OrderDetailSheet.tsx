@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import type { OrderWithItems } from '../../types/marketplace';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -21,7 +22,7 @@ export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
   const colors = useThemeColors();
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, maxHeight: '90%' },
+    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, maxHeight: '90%', width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center' },
     handle: { width: 40, height: 4, backgroundColor: colors.textMuted, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 16 },
     title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },

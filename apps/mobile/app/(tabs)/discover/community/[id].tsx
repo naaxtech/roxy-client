@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  ScrollView, Share, useWindowDimensions,
+  ScrollView, Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,6 +25,7 @@ import { contentDetailPath, linkedEntityPath } from '../../../../lib/contentNavi
 import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../../lib/supabaseQueries';
 import { EventsCalendar } from '../../../../components/events/EventsCalendar';
 import { freshChannel } from '../../../../lib/realtimeChannel';
+import { useAppWidth } from '../../../../hooks/useAppWidth';
 
 type SubTab = 'posts' | 'events' | 'games' | 'rooms';
 
@@ -56,7 +57,7 @@ export default function CommunityDetailScreen() {
   const colors = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { width: screenWidth } = useWindowDimensions();
+  const screenWidth = useAppWidth();
   const { user } = useAuthStore();
   const { joinedIds, allCommunities, joinCommunity, leaveCommunity, fetchAll, fetchJoined } = useCommunityStore();
 

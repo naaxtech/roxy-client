@@ -5,6 +5,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { Business, BusinessPhoto } from '../../types';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { BusinessPhotoGallery } from './BusinessPhotoGallery';
 import { ProductCard } from './ProductCard';
 import { CartDrawer } from './CartDrawer';
@@ -91,6 +92,7 @@ export function BusinessDetailSheet({
       borderRadius: 24,
       paddingTop: 8,
       maxHeight: '94%',
+      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
       shadowColor: '#000', shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.35, shadowRadius: 28, elevation: 24,
     },

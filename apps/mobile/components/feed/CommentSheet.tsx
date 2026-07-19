@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { CommentThread } from './CommentThread';
 import { submitComment } from '../../lib/comments';
 import { showAlert } from '../../lib/confirm';
@@ -38,6 +39,7 @@ export function CommentSheet({
       backgroundColor: colors.background,
       borderTopLeftRadius: 24, borderTopRightRadius: 24,
       maxHeight: '75%', paddingTop: 12,
+      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
     },
     handle: {
       width: 40, height: 4, backgroundColor: colors.textMuted,

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useCommunityFilterStore } from '../store/communityFilterStore';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { FRAME_MAX_WIDTH } from '../hooks/useAppWidth';
 
 type CommunityOption = { id: string; name: string };
 
@@ -17,7 +18,7 @@ export function CommunityContextSwitcher({ communities }: Props) {
   const { selectedCommunityId, setSelectedCommunity } = useCommunityFilterStore();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const slideAnim = useRef(new Animated.Value(300)).current; // starts off-screen below
+  const popAnim = useRef(new Animated.Value(0.94)).current; // pop, not slide-from-below
 
   const styles = StyleSheet.create({
     btn: {
@@ -43,6 +44,7 @@ export function CommunityContextSwitcher({ communities }: Props) {
       backgroundColor: colors.background,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
+      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
       padding: 20,
       paddingBottom: 40,
       maxHeight: '70%',
@@ -94,16 +96,16 @@ export function CommunityContextSwitcher({ communities }: Props) {
     },
   });
 
-  // Slide the sheet up when the modal opens
+  // Pop the sheet in when the modal opens (no slide-from-below drawers)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (open) {
-      slideAnim.setValue(300);
-      Animated.spring(slideAnim, {
-        toValue: 0,
+      popAnim.setValue(0.94);
+      Animated.spring(popAnim, {
+        toValue: 1,
         useNativeDriver: true,
-        bounciness: 4,
-        speed: 14,
+        friction: 8,
+        tension: 220,
       }).start();
     }
   }, [open]);
@@ -150,7 +152,7 @@ export function CommunityContextSwitcher({ communities }: Props) {
           onPress={() => { setOpen(false); setSearch(''); }}
         >
           <Animated.View
-            style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}
+            style={[styles.sheet, { opacity: popAnim, transform: [{ scale: popAnim }] }]}
             onStartShouldSetResponder={() => true}
           >
             <View style={styles.handle} />

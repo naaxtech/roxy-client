@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 
 interface PrivacyGateSheetProps {
   visible: boolean;
@@ -20,6 +21,7 @@ export function PrivacyGateSheet({
       backgroundColor: colors.background,
       borderTopLeftRadius: 24, borderTopRightRadius: 24,
       padding: 28, alignItems: 'center',
+      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
     },
     handle: {
       width: 40, height: 4, backgroundColor: colors.textMuted,

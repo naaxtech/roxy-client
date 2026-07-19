@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import type { LinkType } from '../../types';
 
 export interface RoxyLinkSelection {
@@ -35,6 +36,7 @@ export function RoxyLinkPicker({ visible, onSelect, onClose }: RoxyLinkPickerPro
       backgroundColor: colors.background,
       borderTopLeftRadius: 24, borderTopRightRadius: 24,
       maxHeight: '75%', paddingBottom: 40,
+      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
     },
     handle: {
       width: 40, height: 4, backgroundColor: colors.textMuted,

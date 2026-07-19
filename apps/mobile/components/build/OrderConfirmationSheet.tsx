@@ -13,7 +13,7 @@ export function OrderConfirmationSheet({ visible, orderId, onClose, onViewOrders
   const colors = useThemeColors();
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-    card: { backgroundColor: colors.background, borderRadius: 20, padding: 28, alignItems: 'center', width: '100%', gap: 8 },
+    card: { backgroundColor: colors.background, borderRadius: 20, padding: 28, alignItems: 'center', width: '100%', maxWidth: 400, gap: 8 },
     emoji: { fontSize: 56 },
     title: { fontSize: 24, fontWeight: '700', color: colors.textPrimary },
     subtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },

@@ -15,6 +15,7 @@ import { supabase } from '../../../../lib/supabase';
 import { fetchPostById } from '../../../../lib/posts';
 import { routeParam } from '../../../../lib/routeParams';
 import { COMMENT_WITH_AUTHOR } from '../../../../lib/supabaseQueries';
+import { useAppWidth } from '../../../../hooks/useAppWidth';
 
 function VideoItem({
   post, isActive, onComment, isLiked, isSaved, onLike, onSave, onShare, styles, colors,
@@ -90,7 +91,8 @@ function buildStyles(colors: ReturnType<typeof useThemeColors>, screenWidth: num
 
 export default function VideoPlayerScreen() {
   const colors = useThemeColors();
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { height: screenHeight } = useWindowDimensions();
+  const screenWidth = useAppWidth();
   const styles = buildStyles(colors, screenWidth, screenHeight);
   const params = useLocalSearchParams<{ postId: string | string[] }>();
   const postId = routeParam(params.postId);

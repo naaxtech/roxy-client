@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 
 const MAX_LEN = 500;
 
@@ -95,6 +96,7 @@ const a = StyleSheet.create({
   sheet: {
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
     padding: 20, paddingBottom: 36, gap: 12,
+    width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
   },
   handle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 4 },
   sheetTitle: { fontSize: 17, fontWeight: '700' },

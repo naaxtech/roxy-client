@@ -13,6 +13,7 @@ import { Analytics } from '../lib/analytics';
 import { logError, logBreadcrumb, setCrashlyticsUser } from '../lib/errorLogger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useThemeStore } from '../store/themeStore';
+import { WebAppFrame } from '../components/ui/WebAppFrame';
 
 
 function AppNavigator() {
@@ -130,9 +131,11 @@ function AppNavigator() {
   const inner = (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ErrorBoundary>
-          <Stack screenOptions={{ headerShown: false }} />
-        </ErrorBoundary>
+        <WebAppFrame>
+          <ErrorBoundary>
+            <Stack screenOptions={{ headerShown: false }} />
+          </ErrorBoundary>
+        </WebAppFrame>
         {__DEV__ && <DevPanel />}
       </SafeAreaProvider>
     </GestureHandlerRootView>

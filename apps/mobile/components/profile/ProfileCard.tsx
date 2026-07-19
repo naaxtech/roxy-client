@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useAppWidth } from '../../hooks/useAppWidth';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../lib/avatars';
 import { BadgeRow } from './BadgeRow';
 import { supabase } from '../../lib/supabase';
@@ -43,8 +44,8 @@ export function ProfileCard({
   savedBusinesses, onOpenBusiness,
 }: ProfileCardProps) {
   const colors = useThemeColors();
-  const { width: screenWidth } = useWindowDimensions();
-  const PHOTO_SIZE = (screenWidth - 4) / 3;
+  const appWidth = useAppWidth();
+  const PHOTO_SIZE = (appWidth - 4) / 3;
   const [tab, setTab] = useState<ProfileTab>('photos');
   const [photos, setPhotos] = useState<MediaPost[]>([]);
 

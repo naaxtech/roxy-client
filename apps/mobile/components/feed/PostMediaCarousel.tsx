@@ -1,11 +1,12 @@
 import React, { useRef, useState } from 'react';
 import {
-  View, ScrollView, TouchableOpacity, StyleSheet, Platform, useWindowDimensions,
+  View, ScrollView, TouchableOpacity, StyleSheet, Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { getPostImageUrl } from '../../lib/media';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useAppWidth } from '../../hooks/useAppWidth';
 
 const FEED_HEIGHT = 300;
 const DETAIL_HEIGHT = 400;
@@ -19,7 +20,7 @@ interface Props {
 
 export function PostMediaCarousel({ urls, blurhash, variant, onOpen }: Props) {
   const colors = useThemeColors();
-  const { width: SLIDE_WIDTH } = useWindowDimensions();
+  const SLIDE_WIDTH = useAppWidth();
   const [index, setIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const height = variant === 'detail' ? DETAIL_HEIGHT : FEED_HEIGHT;
