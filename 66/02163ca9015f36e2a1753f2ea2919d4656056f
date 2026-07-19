@@ -1,0 +1,71 @@
+apps/mobile/components/build/OrderConfirmationSheet.tsx
+  s_093307bfc37bee::t_4a412e611a6b9c 2-3,30,32
+  s_093307bfc37bee::t_8e2a0f8ab6c0cc 15,43
+apps/mobile/components/feed/PrivacyGateSheet.tsx
+  s_093307bfc37bee::t_4a412e611a6b9c 2-3,53,55
+  s_093307bfc37bee::t_8e2a0f8ab6c0cc 18,68
+apps/mobile/components/ui/popIn.ts
+  s_093307bfc37bee::t_435fd6d9a84b19 25-28
+apps/mobile/app/(tabs)/build/index.tsx
+  s_093307bfc37bee::t_1a356741d73d65 5,7,125,137,143,183,746,754,793
+  s_093307bfc37bee::t_f23b9ba2bdbb80 384
+apps/mobile/components/build/ProductDetailSheet.tsx
+  s_093307bfc37bee::t_ab0a969ab4a98d 146
+  s_093307bfc37bee::t_389869a6821127 34
+  s_093307bfc37bee::t_a1328581b06d7e 302
+  s_093307bfc37bee::t_9a66eb4ae73836 151
+  s_093307bfc37bee::t_894d8eb4dce9ba 5,10
+apps/mobile/components/donations/DonateModal.tsx
+  s_093307bfc37bee::t_d8f560672e9798 110
+apps/mobile/components/feed/PostActionRow.tsx
+  s_093307bfc37bee::t_fdc8e0df009316 5
+  s_093307bfc37bee::t_572f3376a3a47e 38,190,192,203
+apps/mobile/components/build/OrderDetailSheet.tsx
+  s_093307bfc37bee::t_4a412e611a6b9c 2-3,56,58
+  s_093307bfc37bee::t_8e2a0f8ab6c0cc 24,132
+apps/mobile/components/build/CartDrawer.tsx
+  s_093307bfc37bee::t_8e2a0f8ab6c0cc 19,118
+  s_093307bfc37bee::t_4a412e611a6b9c 2-3,56,58
+apps/mobile/components/build/BusinessDetailSheet.tsx
+  s_093307bfc37bee::t_d8f560672e9798 194
+apps/mobile/components/chat/GifPicker.tsx
+  s_093307bfc37bee::t_4a412e611a6b9c 4,6,109,111
+  s_093307bfc37bee::t_8e2a0f8ab6c0cc 30,159
+  s_093307bfc37bee::t_21618cc51560a2 152-154
+apps/mobile/components/feed/RoxyLinkPicker.tsx
+  s_093307bfc37bee::t_8e2a0f8ab6c0cc 31,137
+  s_093307bfc37bee::t_4a412e611a6b9c 4,6,101,103
+apps/mobile/components/feed/CommentSheet.tsx
+  s_093307bfc37bee::t_8e2a0f8ab6c0cc 33,133
+  s_093307bfc37bee::t_4a412e611a6b9c 4,6,87,93
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_093307bfc37bee::t_c47bd2c7e8f31a 908,928,957
+apps/mobile/components/build/CheckoutSheet.tsx
+  s_093307bfc37bee::t_4a412e611a6b9c 2,8,237,239
+  s_093307bfc37bee::t_96e93455fb6b09 266
+  s_093307bfc37bee::t_8e2a0f8ab6c0cc 28
+apps/mobile/components/build/BusinessPhotoGallery.tsx
+  s_093307bfc37bee::t_d8f560672e9798 66
+apps/mobile/components/profile/AvatarPickerSheet.tsx
+  s_093307bfc37bee::t_d8f560672e9798 81
+apps/mobile/components/grow/AnswerSheet.tsx
+  s_093307bfc37bee::t_575f359b2b756e 89
+  s_093307bfc37bee::t_4a412e611a6b9c 4,6,46
+  s_093307bfc37bee::t_8e2a0f8ab6c0cc 22,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6602163ca9015f36e2a1753f2ea2919d4656056f",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
