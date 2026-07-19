@@ -1,0 +1,29 @@
+supabase/migrations/062_engagement_user_id_defaults.sql
+  s_093307bfc37bee::t_cd7d48b3088e2b 1-18
+apps/mobile/app/(tabs)/connect/index.tsx
+  s_093307bfc37bee::t_ec5fb759e6a321 474,784
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_093307bfc37bee::t_328e6760eb7e06 384-390,394,408,538
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_093307bfc37bee::t_4ffa80887aafae 590
+apps/mobile/app/search.tsx
+  s_093307bfc37bee::t_a486c154c4edb6 172
+apps/mobile/components/community/CommunitiesBrowser.tsx
+  s_093307bfc37bee::t_3420c56e57b9ff 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "767cdd069c7f45452735a23121d7ca20f3d90a04",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
