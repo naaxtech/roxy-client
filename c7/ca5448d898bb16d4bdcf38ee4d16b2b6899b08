@@ -1,0 +1,21 @@
+docs/superpowers/plans/2026-07-19-session-25-subagent-batch.md
+  s_093307bfc37bee::t_86e0d16119e48a 1-121
+  s_093307bfc37bee::t_674677378340ba 122-124
+  s_093307bfc37bee::t_288139e6d81f46 125-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c7ca5448d898bb16d4bdcf38ee4d16b2b6899b08",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
