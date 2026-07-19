@@ -1,0 +1,36 @@
+apps/mobile/app/(tabs)/build/index.tsx
+  s_093307bfc37bee::t_fe42ca7f6826e7 24
+  s_5b85733ce3c03c::t_c6aa457dd25bb8 287-294,372,650-665,797-798
+apps/mobile/components/donations/DonateModal.tsx
+  s_093307bfc37bee::t_02a0aa8378a7c3 1-190
+apps/mobile/lib/donations.ts
+  s_093307bfc37bee::t_e33fe7501b760e 1-38
+apps/mobile/__tests__/donations.test.ts
+  s_093307bfc37bee::t_11ac84e706f479 1-71
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_5b85733ce3c03c::t_a69985cf1bc45c 26,90,660-675,759-760
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2b40900bc24743c78e64c3007ef2fb92e47a19d1",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_5b85733ce3c03c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-adea587ec7fe282ed",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
