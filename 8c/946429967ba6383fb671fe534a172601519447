@@ -1,0 +1,80 @@
+apps/mobile/components/feed/RoxyLinkPicker.tsx
+  s_093307bfc37bee::t_0641935df6873c 9
+  s_093307bfc37bee::t_4d8138e1ab91ac 39
+apps/mobile/components/profile/AvatarPickerSheet.tsx
+  s_093307bfc37bee::t_334e81482e0938 33
+  s_093307bfc37bee::t_5753a752dbd1a1 70-72,74-75,81,84-85
+  s_093307bfc37bee::t_385761f6ae4c31 7
+  s_093307bfc37bee::t_e1586ef91dcaa4 25
+apps/mobile/components/feed/PrivacyGateSheet.tsx
+  s_093307bfc37bee::t_c570bf308da39f 24
+  s_093307bfc37bee::t_36181eabaf6754 4
+apps/mobile/components/chat/GifPicker.tsx
+  s_093307bfc37bee::t_0ebc4891a5ff40 4
+  s_093307bfc37bee::t_845c46be0fda46 74
+  s_093307bfc37bee::t_4af6702b8f840c 8
+  s_093307bfc37bee::t_2bdc224b37fc73 29-30
+apps/mobile/components/profile/ProfileCard.tsx
+  s_093307bfc37bee::t_634685fbd2a575 2
+  s_093307bfc37bee::t_ea91077d0d6c9a 7,47-48
+apps/mobile/components/feed/PostMediaCarousel.tsx
+  s_093307bfc37bee::t_5dfc56eb320ff5 23
+  s_093307bfc37bee::t_7468308182b13f 3,9
+apps/mobile/components/build/OrderDetailSheet.tsx
+  s_093307bfc37bee::t_705357d53f90f8 25
+  s_093307bfc37bee::t_7d7dafcddd12fd 5
+apps/mobile/components/CommunityContextSwitcher.tsx
+  s_093307bfc37bee::t_bc4d7f4af2df80 47
+  s_093307bfc37bee::t_99de9bada08278 8
+  s_093307bfc37bee::t_902a3de25ccede 99,103-105,107-108
+  s_093307bfc37bee::t_5cd0ae8ad0456e 155
+  s_093307bfc37bee::t_f76009e51f8a06 21
+apps/mobile/components/ui/WebAppFrame.tsx
+  s_093307bfc37bee::t_8dacaf1a404538 1-62
+apps/mobile/app/+html.tsx
+  s_093307bfc37bee::t_653f8c39a1974e 1-47
+apps/mobile/components/build/OrderConfirmationSheet.tsx
+  s_093307bfc37bee::t_3db0a55c6c356c 16
+apps/mobile/app/(tabs)/connect/community-room-session.tsx
+  s_093307bfc37bee::t_4cc50724cbe755 4
+  s_093307bfc37bee::t_88b1818c59dd18 15,152-153
+apps/mobile/components/build/ProductDetailSheet.tsx
+  s_093307bfc37bee::t_9f2eb4692e7ad1 71-74
+  s_093307bfc37bee::t_111feecd527dae 5
+  s_093307bfc37bee::t_dacc5c16504c2c 32
+  s_093307bfc37bee::t_3584d53ed52e59 9
+apps/mobile/hooks/useAppWidth.ts
+  s_093307bfc37bee::t_d0aae52f163626 1-16
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_093307bfc37bee::t_e501ef44d21342 4,28,60
+apps/mobile/app/(tabs)/discover/video/[postId].tsx
+  s_093307bfc37bee::t_2c445d1b0610d8 18,94-95
+apps/mobile/app/_layout.tsx
+  s_093307bfc37bee::t_8df89d1f528885 16,134-138
+apps/mobile/components/build/BusinessDetailSheet.tsx
+  s_093307bfc37bee::t_114864398da9cf 8,95
+apps/mobile/components/build/CartDrawer.tsx
+  s_093307bfc37bee::t_9f93edfee22559 6,25
+apps/mobile/components/build/CheckoutSheet.tsx
+  s_093307bfc37bee::t_58d44ee0f83605 7,202
+apps/mobile/components/feed/CommentSheet.tsx
+  s_093307bfc37bee::t_1629a6b988ca9e 8,42
+apps/mobile/components/grow/AnswerSheet.tsx
+  s_093307bfc37bee::t_9b940fd26f2d81 8,99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8c946429967ba6383fb671fe534a172601519447",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
