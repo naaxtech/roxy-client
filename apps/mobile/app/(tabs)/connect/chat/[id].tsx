@@ -435,6 +435,7 @@ export default function ChatScreen() {
         'Message not sent',
         'Could not deliver your message.',
         'Retry',
+        false,
       );
       if (retry) void sendMessage(content, type, mediaUrl);
     } else if (inserted?.id) {

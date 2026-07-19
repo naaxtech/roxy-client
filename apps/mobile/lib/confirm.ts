@@ -7,12 +7,14 @@ import { Alert, Platform } from 'react-native';
  * Use this for every destructive/confirm flow instead of Alert.alert.
  */
 /** Web-safe info alert — react-native-web's Alert.alert is a stub. */
-export function showAlert(title: string, message: string): void {
+export function showAlert(title: string, message: string): Promise<void> {
   if (Platform.OS === 'web') {
     (globalThis as { alert?: (msg: string) => void }).alert?.(`${title}\n\n${message}`);
-    return;
+    return Promise.resolve();
   }
-  Alert.alert(title, message);
+  return new Promise((resolve) => {
+    Alert.alert(title, message, [{ text: 'OK', onPress: () => resolve() }]);
+  });
 }
 
 export function confirmAction(

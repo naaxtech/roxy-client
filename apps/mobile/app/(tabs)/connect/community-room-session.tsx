@@ -220,7 +220,7 @@ export default function CommunityRoomSession() {
         );
 
         if (!data?.room_url) {
-          showAlert('Room unavailable', 'This room is not live right now.');
+          await showAlert('Room unavailable', 'This room is not live right now.');
           router.back();
           return;
         }
@@ -235,13 +235,13 @@ export default function CommunityRoomSession() {
         logError(e, 'communityRoomSession_join');
         const status = e?.status ?? e?.statusCode;
         if (status === 409) {
-          showAlert('Not live yet', 'This room is scheduled but not open yet.');
+          await showAlert('Not live yet', 'This room is scheduled but not open yet.');
           router.back();
         } else if (status === 410) {
-          showAlert('Room closed', 'This room has ended.');
+          await showAlert('Room closed', 'This room has ended.');
           router.back();
         } else {
-          showAlert('Error', 'Failed to join room. Please try again.');
+          await showAlert('Error', 'Failed to join room. Please try again.');
           router.back();
         }
       }
