@@ -1,0 +1,29 @@
+apps/mobile/app/(tabs)/discover/index.tsx
+  s_093307bfc37bee::t_32f046d5fabde5 3
+  s_093307bfc37bee::t_df0ac901c75172 5
+  s_093307bfc37bee::t_4238b85555bf0d 161,258-261,489,493,495-497,526
+apps/mobile/app/(tabs)/connect/sister-button/index.tsx
+  s_093307bfc37bee::t_0e5dff1ddca2de 16,47-55,65,67,70-71,91-106,136-137,140-141,145,232-233,237-240,331-333,335-336,349-352,356-362,374-379,381-387,393,459-464,471,473-475
+  s_093307bfc37bee::t_937bbbe74bad65 107-108,110,112-113,116
+apps/mobile/components/feed/PostActionRow.tsx
+  s_093307bfc37bee::t_1c9e1967bba414 1-2
+  s_093307bfc37bee::t_0d8020523b2f3e 74-75,85-91
+apps/mobile/store/feedStore.ts
+  s_093307bfc37bee::t_44afd6b27ad30e 169-171,174-177,202-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "837447886b755949c2bbf5a904251223742893e2",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
