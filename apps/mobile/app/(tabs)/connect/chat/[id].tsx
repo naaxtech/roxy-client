@@ -211,9 +211,16 @@ export default function ChatScreen() {
     },
 
     // Message rows
-    msgRow: { flexDirection: 'row', alignItems: 'flex-end', marginVertical: 1 },
+    msgRow: { flexDirection: 'row', alignItems: 'flex-end', marginVertical: 1, gap: 4 },
     msgRowOwn: { justifyContent: 'flex-end' },
     msgRowOther: { justifyContent: 'flex-start' },
+    // Regular, always-visible react affordance — no hidden long-press.
+    // Sits on the outer edge of the bubble, opposite the avatar.
+    reactBtn: {
+      width: 26, height: 26, borderRadius: 13,
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: 2,
+    },
 
     avaSlot: { width: AVA_SIZE + AVA_GAP, alignItems: 'flex-start' },
     msgAva: {
@@ -260,7 +267,7 @@ export default function ChatScreen() {
     roxyAccentBar: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
     roxyLabel: { color: colors.roxy, fontSize: 11, fontWeight: '700', marginBottom: 6, letterSpacing: 0.2 },
     roxyText: { color: colors.textPrimary, fontSize: 14, lineHeight: 20, fontStyle: 'italic' },
-    roxyUseBtnRow: { marginTop: 10 },
+    roxyUseBtnRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
     roxyUseBtn: { alignSelf: 'flex-start', borderRadius: 12, overflow: 'hidden' },
     roxyUseBtnGradient: { paddingHorizontal: 16, paddingVertical: 8 },
     roxyUseBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
@@ -566,7 +573,9 @@ export default function ChatScreen() {
     }
   };
 
-  const handleLongPress = (messageId: string) => setReactingToMessage(messageId);
+  // Opens the reaction picker — reachable via the visible react button (regular
+  // tap) or, for muscle memory, a long-press on the bubble itself.
+  const openReactionPicker = (messageId: string) => setReactingToMessage(messageId);
 
   const handleReact = async (emoji: string) => {
     if (!reactingToMessage || !user) return;
@@ -609,7 +618,7 @@ export default function ChatScreen() {
       return (
         <View>
           {timeSep}
-          <Pressable onLongPress={() => handleLongPress(item.id)} delayLongPress={400}>
+          <Pressable onLongPress={() => openReactionPicker(item.id)} delayLongPress={400}>
             <View style={[styles.roxyBubble, isHighlighted && styles.bubbleHighlighted]}>
               <LinearGradient colors={BRAND_GRADIENT} style={styles.roxyAccentBar} />
               <Text style={styles.roxyLabel}>✨ Roxy suggests</Text>
@@ -624,6 +633,14 @@ export default function ChatScreen() {
                   <LinearGradient colors={BRAND_GRADIENT} style={styles.roxyUseBtnGradient}>
                     <Text style={styles.roxyUseBtnText}>Use this</Text>
                   </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.reactBtn}
+                  onPress={() => openReactionPicker(item.id)}
+                  hitSlop={8}
+                  accessibilityLabel="React to message"
+                >
+                  <Ionicons name="happy-outline" size={18} color={colors.roxy} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -642,7 +659,7 @@ export default function ChatScreen() {
     return (
       <View>
         {timeSep}
-        <Pressable onLongPress={() => handleLongPress(item.id)} delayLongPress={400}>
+        <Pressable onLongPress={() => openReactionPicker(item.id)} delayLongPress={400}>
           <View style={[styles.msgRow, isOwn ? styles.msgRowOwn : styles.msgRowOther]}>
             {/* Avatar slot on left for partner messages; shown only for last in group */}
             {!isOwn && (
@@ -655,6 +672,19 @@ export default function ChatScreen() {
                   </LinearGradient>
                 )}
               </View>
+            )}
+
+            {/* React — a regular, always-visible tap target. Long-press on
+                the bubble still works too, but nothing requires it. */}
+            {isOwn && (
+              <TouchableOpacity
+                style={styles.reactBtn}
+                onPress={() => openReactionPicker(item.id)}
+                hitSlop={8}
+                accessibilityLabel="React to message"
+              >
+                <Ionicons name="happy-outline" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
             )}
 
             <View style={[
@@ -682,6 +712,17 @@ export default function ChatScreen() {
                 )}
               </View>
             </View>
+
+            {!isOwn && (
+              <TouchableOpacity
+                style={styles.reactBtn}
+                onPress={() => openReactionPicker(item.id)}
+                hitSlop={8}
+                accessibilityLabel="React to message"
+              >
+                <Ionicons name="happy-outline" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
           </View>
 
           {reactions.length > 0 && (

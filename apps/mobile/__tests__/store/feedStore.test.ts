@@ -126,8 +126,8 @@ describe('feedStore.init', () => {
 
 describe('feedStore.toggleLike', () => {
   it('optimistically adds likedPostId and increments like_count', async () => {
-    const insertChain = makeQueryChain(null);
-    supabase.from.mockReturnValue({ insert: jest.fn(() => insertChain) });
+    const upsertChain = makeQueryChain(null);
+    supabase.from.mockReturnValue({ upsert: jest.fn(() => upsertChain) });
 
     useFeedStore.setState({
       posts: [makePost('p1', { like_count: 5 })],
@@ -144,7 +144,7 @@ describe('feedStore.toggleLike', () => {
   it('rolls back on DB error', async () => {
     const failChain = makeQueryChain(null, { message: 'db error' });
     supabase.from.mockReturnValue({
-      insert: jest.fn(() => failChain),
+      upsert: jest.fn(() => failChain),
       delete: jest.fn(() => failChain),
     });
 
@@ -163,8 +163,8 @@ describe('feedStore.toggleLike', () => {
 
 describe('feedStore.toggleSave', () => {
   it('optimistically adds savedPostId and increments save_count', async () => {
-    const insertChain = makeQueryChain(null);
-    supabase.from.mockReturnValue({ insert: jest.fn(() => insertChain) });
+    const upsertChain = makeQueryChain(null);
+    supabase.from.mockReturnValue({ upsert: jest.fn(() => upsertChain) });
 
     useFeedStore.setState({
       posts: [makePost('p1', { save_count: 2 })],
@@ -181,7 +181,7 @@ describe('feedStore.toggleSave', () => {
   it('rolls back toggleSave on DB error', async () => {
     const failChain = makeQueryChain(null, { message: 'db error' });
     supabase.from.mockReturnValue({
-      insert: jest.fn(() => failChain),
+      upsert: jest.fn(() => failChain),
       delete: jest.fn(() => failChain),
     });
 
