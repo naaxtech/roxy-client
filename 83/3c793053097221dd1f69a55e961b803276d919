@@ -1,0 +1,24 @@
+apps/mobile/app/(tabs)/build/index.tsx
+  s_093307bfc37bee::t_f4b81bfeb0606d 605
+  s_093307bfc37bee::t_89dba9d5625b72 11,19
+  s_093307bfc37bee::t_ef20739557b460 359,366
+apps/mobile/app/business/[id].tsx
+  s_093307bfc37bee::t_11a32ffece2b84 1-84,92-97,99-101,106-580
+  s_093307bfc37bee::t_c7b684aaaa1edb 85-91,98,102-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "833c793053097221dd1f69a55e961b803276d919",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
