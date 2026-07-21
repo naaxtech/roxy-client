@@ -1,0 +1,21 @@
+docs/ARCHITECTURE.md
+  s_093307bfc37bee::t_99d726c2e8d12d 1-114,118-120,122-128,130-300
+  s_093307bfc37bee::t_e31aade8f655fc 115-116,121,129
+  s_093307bfc37bee::t_5ec3e29f55ff7f 117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a468a96a8ff30be3c7c7c56169d5da6cf6cb336d",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
