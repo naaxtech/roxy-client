@@ -127,7 +127,11 @@ export default function EditProfileScreen() {
       const uri = result.assets[0].uri;
       const response = await fetch(uri);
       const blob = await response.blob();
-      const path = `${user.id}.jpg`;
+      // Path MUST live under a `${user.id}/` folder: the avatars bucket RLS
+      // checks `auth.uid() = foldername(name)[1]`, so a root-level file (no
+      // folder) yields NULL and every upload/upsert is denied. Matches the
+      // path onboarding already uses.
+      const path = `${user.id}/avatar.jpg`;
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
