@@ -1,0 +1,38 @@
+apps/mobile/components/build/ProductDetailSheet.tsx
+  s_093307bfc37bee::t_db95cbc086ec9e 210
+  s_093307bfc37bee::t_e5bfdb3d87ce4d 239
+  s_093307bfc37bee::t_d76f6c46f0cd2e 12
+apps/mobile/components/build/CheckoutSheet.tsx
+  s_093307bfc37bee::t_090095002ab6a3 10
+  s_093307bfc37bee::t_b75d9b780706b0 116
+  s_093307bfc37bee::t_1683f3a4847cef 122
+  s_093307bfc37bee::t_8fff9e31f033d5 181,183,197
+  s_093307bfc37bee::t_b920a550b8645e 223
+apps/mobile/components/build/ProductCard.tsx
+  s_093307bfc37bee::t_bfd5fa2d69a819 74
+  s_093307bfc37bee::t_cc1c1a137abba0 5
+apps/mobile/components/build/CartDrawer.tsx
+  s_093307bfc37bee::t_92d6b5aeee0c3f 8
+  s_093307bfc37bee::t_309a080ba9b433 104
+  s_093307bfc37bee::t_8f649c62fb97c4 82
+apps/mobile/components/build/OrderDetailSheet.tsx
+  s_093307bfc37bee::t_616aefcba8e3ee 7
+  s_093307bfc37bee::t_e71f257b7566dc 82,86,91,97
+  s_093307bfc37bee::t_73ec9f084b96e3 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c5fff0c539c229321149e4584f40f2e2b054a991",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
