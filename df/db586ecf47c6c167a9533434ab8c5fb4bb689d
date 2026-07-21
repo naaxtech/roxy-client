@@ -1,0 +1,21 @@
+apps/mobile/lib/currency.ts
+  s_093307bfc37bee::t_289a43ad3cf452 1-60
+apps/mobile/__tests__/lib/currency.test.ts
+  s_093307bfc37bee::t_3893f70cb1f79f 1-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "dfdb586ecf47c6c167a9533434ab8c5fb4bb689d",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
