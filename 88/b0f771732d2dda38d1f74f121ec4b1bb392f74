@@ -1,0 +1,23 @@
+CHANGELOG.md
+  s_093307bfc37bee::t_35f659f5399373 1-95
+apps/mobile/app.json
+  s_093307bfc37bee::t_6c47979f23b202 5
+apps/mobile/package.json
+  s_093307bfc37bee::t_e725ee29068a4f 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "88b0f771732d2dda38d1f74f121ec4b1bb392f74",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
