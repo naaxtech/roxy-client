@@ -1,7 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { usePopIn } from '../ui/popIn';
 import { useThemeColors } from '../../hooks/useThemeColors';
+
+const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
 interface OrderConfirmationSheetProps {
   visible: boolean;
@@ -16,7 +20,10 @@ export function OrderConfirmationSheet({ visible, orderId, onClose, onViewOrders
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', padding: 24 },
     card: { backgroundColor: colors.background, borderRadius: 20, padding: 28, alignItems: 'center', width: '100%', maxWidth: 400, gap: 8 },
-    emoji: { fontSize: 56 },
+    iconPlate: {
+      width: 64, height: 64, borderRadius: 32,
+      alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+    },
     title: { fontSize: 24, fontWeight: '700', color: colors.textPrimary },
     subtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
     orderId: { fontSize: 13, color: colors.textMuted, fontFamily: 'monospace', marginTop: 4 },
@@ -30,7 +37,9 @@ export function OrderConfirmationSheet({ visible, orderId, onClose, onViewOrders
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Animated.View style={[styles.card, pop]}>
-          <Text style={styles.emoji}>🎉</Text>
+          <LinearGradient colors={BRAND_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconPlate}>
+            <Ionicons name="checkmark-circle" size={34} color="#fff" />
+          </LinearGradient>
           <Text style={styles.title}>Order Placed!</Text>
           <Text style={styles.subtitle}>Your order has been confirmed. You'll receive an email confirmation shortly.</Text>
           {orderId && <Text style={styles.orderId}>Order #{orderId.slice(-8).toUpperCase()}</Text>}

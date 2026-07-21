@@ -155,7 +155,7 @@ export default function BusinessStorefrontScreen() {
 
   const handleViewOrders = () => {
     setConfirmedOrderId(null);
-    router.push('/(tabs)/profile' as any);
+    router.push({ pathname: '/(tabs)/profile', params: { orders: '1' } } as any);
   };
 
   // 2-col grid math derives from useAppWidth() (not raw window width) so the
@@ -460,7 +460,10 @@ export default function BusinessStorefrontScreen() {
         {/* Shop */}
         {activeTab === 'shop' && (
           <View style={styles.shopGrid}>
-            {isLoadingProducts ? (
+            {isLoadingProducts || !productsByBusiness[businessId] ? (
+              // Until the store has actually fetched this business's products,
+              // treat it as loading — otherwise the first paint (products=[],
+              // loading=false) briefly flashes the "No products yet" empty state.
               <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
             ) : products.length === 0 ? (
               renderSectionEmpty('storefront-outline', 'No products yet', "This shop hasn't listed products yet.")

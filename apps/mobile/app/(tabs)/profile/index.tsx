@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, ActivityIndicator, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
@@ -16,6 +16,7 @@ import { SavedPosts } from '../../../components/profile/SavedPosts';
 import { OrderDetailSheet } from '../../../components/build/OrderDetailSheet';
 import { logError } from '../../../lib/errorLogger';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { formatMoney } from '../../../lib/currency';
 import type { UserBadgeProgress, Badge, Business } from '../../../types';
 import type { OrderWithItems } from '../../../types/marketplace';
 
@@ -36,12 +37,15 @@ export default function ProfileScreen() {
   const { orders, loadingOrders, fetchOrders } = useMarketplaceStore();
   const router = useRouter();
   const colors = useThemeColors();
+  // A post-checkout "View My Orders" link arrives with ?orders=1 so the orders
+  // list starts expanded instead of collapsed behind its accordion.
+  const { orders: ordersParam } = useLocalSearchParams<{ orders?: string }>();
 
   const [badges, setBadges] = useState<EarnedBadge[]>([]);
   const [badgeLoadError, setBadgeLoadError] = useState(false);
   const [savedBusinesses, setSavedBusinesses] = useState<Business[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
-  const [showOrders, setShowOrders] = useState(false);
+  const [showOrders, setShowOrders] = useState(ordersParam === '1');
 
   useEffect(() => {
     if (!user?.id) return;
@@ -257,7 +261,7 @@ export default function ProfileScreen() {
                     </View>
                     <View style={styles.orderRowRight}>
                       <Text style={styles.orderRowTotal}>
-                        ${(order.total_cents / 100).toFixed(2)}
+                        {formatMoney(order.total_cents, order.currency)}
                       </Text>
                       <View style={[
                         styles.statusBadge,

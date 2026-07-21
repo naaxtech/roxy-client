@@ -153,13 +153,16 @@ export default function ProductDetailScreen() {
     setQty((q) => Math.min(q, v.stock));
   };
 
-  // Mirrors ProductDetailSheet.handleAddToCart (addToCart + close) — closing
-  // this full-screen route means returning to the shop, where the cart bar
-  // (live in useMarketplaceStore) immediately reflects the new item.
+  // Land on the seller's storefront after adding — that's where the live cart
+  // bar (useMarketplaceStore) confirms the item. back() returns there when we
+  // came from it; a cold deep link (no history) replaces INTO the storefront
+  // rather than falling back to /build, where no cart bar would be visible.
   const handleAddToCart = () => {
     if (!product || ctaDisabled) return;
-    void addToCart(product.business_id, product, selectedVariant?.id ?? null, qty);
-    goBack();
+    const businessId = product.business_id;
+    void addToCart(businessId, product, selectedVariant?.id ?? null, qty);
+    if (router.canGoBack()) router.back();
+    else router.replace(`/business/${businessId}` as any);
   };
 
   const handleBuyNow = () => {
@@ -174,7 +177,7 @@ export default function ProductDetailScreen() {
 
   const handleViewOrders = () => {
     setConfirmedOrderId(null);
-    router.push('/(tabs)/profile' as any);
+    router.push({ pathname: '/(tabs)/profile', params: { orders: '1' } } as any);
   };
 
   const galleryHeight = screenWidth;
