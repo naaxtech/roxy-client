@@ -8,6 +8,7 @@ import { usePopIn } from '../../../components/ui/popIn';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { callEdgeFunction } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
@@ -15,13 +16,12 @@ import { useBuildStore } from '../../../store/buildStore';
 import { REGISTER_BUSINESS_URL } from '../../../lib/constants';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../../hooks/useAppWidth';
-import { Business, BusinessPhoto, ImpactProject } from '../../../types';
+import { Business, ImpactProject } from '../../../types';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
 import { ScreenHeader } from '../../../components/ui/ScreenHeader';
 import { useCommunityStore } from '../../../store/communityStore';
 import { ChipSearchBar } from '../../../components/build/ChipSearchBar';
-import { BusinessDetailSheet } from '../../../components/build/BusinessDetailSheet';
 import { FeatureVoteCard, FeatureRequest } from '../../../components/build/FeatureVoteCard';
 import { DonateModal } from '../../../components/donations/DonateModal';
 
@@ -356,13 +356,14 @@ function buildStyles(colors: ReturnType<typeof useThemeColors>) {
 export default function BuildScreen() {
   const colors = useThemeColors();
   const styles = buildStyles(colors);
+  const router = useRouter();
   const { user } = useAuthStore();
   const {
     businesses, impactProjects, loading,
     setImpactProjects, setLoading,
     bookmarkedBusinessIds, supportedProjectIds,
     searchChips, addSearchChip, removeSearchChip,
-    loadBookmarks, loadSupports, toggleBookmark, supportProject, loadBusinesses,
+    loadBookmarks, loadSupports, supportProject, loadBusinesses,
   } = useBuildStore();
   const { selectedCommunityId } = useCommunityFilterStore();
   const { joinedCommunities } = useCommunityStore();
@@ -372,8 +373,6 @@ export default function BuildScreen() {
   const [wlwOnly, setWlwOnly] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ImpactProject | null>(null);
-  const [selectedBiz, setSelectedBiz] = useState<Business | null>(null);
-  const [bizPhotos, setBizPhotos] = useState<BusinessPhoto[]>([]);
 
   // Support Roxy — feature voting
   const [supportTab, setSupportTab] = useState<'planned' | 'pitched'>('planned');
@@ -530,16 +529,6 @@ export default function BuildScreen() {
     await supportProject(projectId, user.id);
   };
 
-  const handleOpenBiz = async (biz: Business) => {
-    setSelectedBiz(biz);
-    const { data } = await supabase
-      .from('business_photos')
-      .select('*')
-      .eq('business_id', biz.id)
-      .order('sort_order');
-    setBizPhotos((data as BusinessPhoto[]) ?? []);
-  };
-
   const displayedBiz = bizView === 'saved'
     ? businesses.filter((b) => bookmarkedBusinessIds.has(b.id))
     : businesses;
@@ -613,7 +602,7 @@ export default function BuildScreen() {
             numColumns={2}
             estimatedItemSize={180}
             renderItem={({ item }) => (
-              <BusinessCard biz={item} onPress={() => handleOpenBiz(item)} styles={styles} />
+              <BusinessCard biz={item} onPress={() => router.push(`/business/${item.id}` as any)} styles={styles} />
             )}
             contentContainerStyle={styles.gridContent}
             refreshControl={
@@ -793,14 +782,6 @@ export default function BuildScreen() {
           </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
-
-      <BusinessDetailSheet
-        business={selectedBiz}
-        photos={bizPhotos}
-        isBookmarked={selectedBiz ? bookmarkedBusinessIds.has(selectedBiz.id) : false}
-        onBookmarkToggle={() => selectedBiz && user?.id && toggleBookmark(selectedBiz.id, user.id)}
-        onClose={() => { setSelectedBiz(null); setBizPhotos([]); }}
-      />
 
       <ImpactDetailSheet
         project={selectedProject}
