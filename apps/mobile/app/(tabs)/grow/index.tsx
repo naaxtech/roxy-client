@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image,
 } from 'react-native';
@@ -201,7 +201,15 @@ export default function GrowScreen() {
     })();
   }, [user?.id]);
 
-  const communityIds = communities.map((row) => row.community_id);
+  // Referentially stable across renders: `communities.map(...)` alone returns a
+  // NEW array every render, which made QuestionOfTheDayCard and
+  // HappeningTonightCard (whose load() effects depend on communityIds) refetch
+  // on EVERY GrowScreen render — ~10 duplicate questions_of_the_day /
+  // community_rooms / events queries per screen open. communityKey is the
+  // stable string form of the same ids, so the memo only recomputes when the
+  // community set actually changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const communityIds = useMemo(() => communities.map((row) => row.community_id), [communityKey]);
   const firstName = profile?.display_name?.split(' ')[0] ?? 'you';
   const buzzingCount = Object.keys(communityActivity).length;
   const avatarUrl = profile?.avatar_url ?? null;
