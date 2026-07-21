@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
+import { formatMoney } from '../../lib/currency';
 
 interface CartDrawerProps {
   businessId: string;
@@ -78,7 +79,7 @@ export function CartDrawer({ businessId, businessName, visible, onClose, onCheck
                     <View style={styles.itemInfo}>
                       <Text style={styles.itemName} numberOfLines={1}>{item.product?.name ?? 'Product'}</Text>
                       {variantLabel ? <Text style={styles.itemVariant}>{variantLabel}</Text> : null}
-                      <Text style={styles.itemPrice}>${(price / 100).toFixed(2)} each</Text>
+                      <Text style={styles.itemPrice}>{formatMoney(price, 'usd')} each</Text>
                     </View>
                     <View style={styles.qtyRow}>
                       <TouchableOpacity onPress={() => updateQuantity(businessId, item.id, item.quantity - 1)} style={styles.qtyBtn}>
@@ -100,7 +101,7 @@ export function CartDrawer({ businessId, businessName, visible, onClose, onCheck
           <View style={styles.footer}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal</Text>
-              <Text style={styles.totalAmount}>${(total / 100).toFixed(2)}</Text>
+              <Text style={styles.totalAmount}>{formatMoney(total, 'usd')}</Text>
             </View>
             <Text style={styles.shippingNote}>+ shipping calculated at checkout</Text>
             <TouchableOpacity

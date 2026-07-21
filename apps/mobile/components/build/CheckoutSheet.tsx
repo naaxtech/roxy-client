@@ -7,6 +7,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { usePopIn } from '../ui/popIn';
 import { showAlert } from '../../lib/confirm';
+import { formatMoney, currencyCode } from '../../lib/currency';
 import type { ProductWithVariants, ShippingAddress } from '../../types/marketplace';
 
 type Step = 'review' | 'shipping' | 'payment';
@@ -112,13 +113,13 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
         return (
           <View key={item.id} style={styles.reviewItem}>
             <Text style={styles.reviewItemName} numberOfLines={1}>{item.product?.name ?? 'Product'} × {item.quantity}</Text>
-            <Text style={styles.reviewItemPrice}>${(price * item.quantity / 100).toFixed(2)}</Text>
+            <Text style={styles.reviewItemPrice}>{formatMoney(price * item.quantity, 'usd')}</Text>
           </View>
         );
       })}
       <View style={styles.totalRow}>
         <Text style={styles.totalLabel}>Subtotal</Text>
-        <Text style={styles.totalAmount}>${(subtotal / 100).toFixed(2)}</Text>
+        <Text style={styles.totalAmount}>{formatMoney(subtotal, 'usd')}</Text>
       </View>
       <Text style={styles.shippingNote}>Shipping calculated at next step</Text>
       <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep('shipping')}>
@@ -177,8 +178,9 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
       </View>
       <View style={styles.totalRow}>
         <Text style={styles.totalLabel}>Total</Text>
-        <Text style={[styles.totalAmount, { fontSize: 22 }]}>${(subtotal / 100).toFixed(2)}</Text>
+        <Text style={[styles.totalAmount, { fontSize: 22 }]}>{formatMoney(subtotal, 'usd')}</Text>
       </View>
+      <Text style={styles.intlNote}>Prices in {currencyCode('usd')} · Secure checkout via Stripe</Text>
       <View style={styles.rowBtns}>
         <TouchableOpacity style={styles.backBtn} onPress={() => setStep('shipping')}>
           <Text style={styles.backBtnText}>← Back</Text>
@@ -192,7 +194,7 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
           {paymentLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.primaryBtnText}>Pay ${(subtotal / 100).toFixed(2)} →</Text>
+            <Text style={styles.primaryBtnText}>Pay {formatMoney(subtotal, 'usd')} →</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -218,6 +220,7 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
     totalLabel: { fontSize: 15, color: colors.textSecondary },
     totalAmount: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
     shippingNote: { fontSize: 12, color: colors.textMuted, marginBottom: 16 },
+    intlNote: { fontSize: 12, color: colors.textMuted, marginTop: 4, marginBottom: 8 },
     primaryBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
     primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
     btnDisabled: { opacity: 0.4 },

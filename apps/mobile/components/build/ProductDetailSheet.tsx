@@ -9,6 +9,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useAppWidth } from '../../hooks/useAppWidth';
 import { usePopIn } from '../ui/popIn';
 import { CheckoutSheet } from './CheckoutSheet';
+import { formatMoney } from '../../lib/currency';
 import type { ProductWithVariants, ProductVariant } from '../../types/marketplace';
 
 interface ProductDetailSheetProps {
@@ -206,7 +207,7 @@ export function ProductDetailSheet({
               <View style={styles.body}>
                 <Text style={styles.category}>{product.category}</Text>
                 <Text style={styles.name}>{product.name}</Text>
-                <Text style={styles.price}>${(displayPrice / 100).toFixed(2)}</Text>
+                <Text style={styles.price}>{formatMoney(displayPrice, 'usd')}</Text>
 
                 {product.description ? (
                   <Text style={styles.description}>{product.description}</Text>
@@ -235,7 +236,7 @@ export function ProductDetailSheet({
                           >
                             <Text style={styles.variantLabel}>{label}</Text>
                             <Text style={styles.variantPrice}>
-                              ${(v.price_cents / 100).toFixed(2)}
+                              {formatMoney(v.price_cents, 'usd')}
                             </Text>
                           </TouchableOpacity>
                         );

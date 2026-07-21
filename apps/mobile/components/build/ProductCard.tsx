@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { ProductDetailSheet } from './ProductDetailSheet';
+import { formatMoney } from '../../lib/currency';
 import type { ProductWithVariants } from '../../types/marketplace';
 
 interface ProductCardProps {
@@ -70,7 +71,7 @@ export function ProductCard({ product, businessId, businessName, onAddToCart }: 
         <View style={styles.body}>
           <Text style={styles.category}>{product.category}</Text>
           <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
-          <Text style={styles.price}>${(product.base_price_cents / 100).toFixed(2)}</Text>
+          <Text style={styles.price}>{formatMoney(product.base_price_cents, 'usd')}</Text>
           {isOutOfStock && <Text style={styles.outOfStock}>Out of stock</Text>}
         </View>
       </TouchableOpacity>

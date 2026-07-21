@@ -4,6 +4,7 @@ import { usePopIn } from '../ui/popIn';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
+import { formatMoney } from '../../lib/currency';
 import type { OrderWithItems } from '../../types/marketplace';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -71,29 +72,29 @@ export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
             {order.order_items.map((item) => (
               <View key={item.id} style={styles.itemRow}>
                 <Text style={styles.itemName} numberOfLines={1}>{item.product_name} × {item.quantity}</Text>
-                <Text style={styles.itemPrice}>${(item.total_price_cents / 100).toFixed(2)}</Text>
+                <Text style={styles.itemPrice}>{formatMoney(item.total_price_cents, order.currency)}</Text>
               </View>
             ))}
             {/* Totals */}
             <View style={styles.divider} />
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal</Text>
-              <Text style={styles.totalValue}>${(order.subtotal_cents / 100).toFixed(2)}</Text>
+              <Text style={styles.totalValue}>{formatMoney(order.subtotal_cents, order.currency)}</Text>
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Shipping</Text>
-              <Text style={styles.totalValue}>${(order.shipping_cost_cents / 100).toFixed(2)}</Text>
+              <Text style={styles.totalValue}>{formatMoney(order.shipping_cost_cents, order.currency)}</Text>
             </View>
             {order.tax_cents > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Tax</Text>
-                <Text style={styles.totalValue}>${(order.tax_cents / 100).toFixed(2)}</Text>
+                <Text style={styles.totalValue}>{formatMoney(order.tax_cents, order.currency)}</Text>
               </View>
             )}
             <View style={styles.totalRow}>
               <Text style={[styles.totalLabel, { fontWeight: '700', color: colors.textPrimary }]}>Total</Text>
               <Text style={[styles.totalValue, { fontWeight: '700', color: colors.textPrimary }]}>
-                ${(order.total_cents / 100).toFixed(2)}
+                {formatMoney(order.total_cents, order.currency)}
               </Text>
             </View>
             {/* Shipping address */}
