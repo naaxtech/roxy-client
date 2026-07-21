@@ -2,7 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Linking, Share } from 'react-native';
 
-// Mock marketplaceStore (BusinessDetailSheet now imports it)
+// Mock marketplaceStore (the Build tab reads cart/products from it)
 jest.mock('../../store/marketplaceStore', () => ({
   useMarketplaceStore: jest.fn(() => ({
     productsByBusiness: {},

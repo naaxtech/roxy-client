@@ -13,11 +13,10 @@ import { ProfileCard } from '../../../components/profile/ProfileCard';
 import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
 import { SavedPosts } from '../../../components/profile/SavedPosts';
-import { BusinessDetailSheet } from '../../../components/build/BusinessDetailSheet';
 import { OrderDetailSheet } from '../../../components/build/OrderDetailSheet';
 import { logError } from '../../../lib/errorLogger';
 import { useThemeColors } from '../../../hooks/useThemeColors';
-import type { UserBadgeProgress, Badge, Business, BusinessPhoto } from '../../../types';
+import type { UserBadgeProgress, Badge, Business } from '../../../types';
 import type { OrderWithItems } from '../../../types/marketplace';
 
 type EarnedBadge = UserBadgeProgress & { badges: Badge | null };
@@ -33,7 +32,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function ProfileScreen() {
   const { user } = useAuthStore();
   const { profile } = useProfileStore();
-  const { bookmarkedBusinessIds, loadBookmarks, toggleBookmark } = useBuildStore();
+  const { bookmarkedBusinessIds, loadBookmarks } = useBuildStore();
   const { orders, loadingOrders, fetchOrders } = useMarketplaceStore();
   const router = useRouter();
   const colors = useThemeColors();
@@ -41,8 +40,6 @@ export default function ProfileScreen() {
   const [badges, setBadges] = useState<EarnedBadge[]>([]);
   const [badgeLoadError, setBadgeLoadError] = useState(false);
   const [savedBusinesses, setSavedBusinesses] = useState<Business[]>([]);
-  const [selectedBiz, setSelectedBiz] = useState<Business | null>(null);
-  const [bizPhotos, setBizPhotos] = useState<BusinessPhoto[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
   const [showOrders, setShowOrders] = useState(false);
 
@@ -82,14 +79,11 @@ export default function ProfileScreen() {
     })();
   }, [bookmarkedBusinessIds]);
 
-  const handleOpenBiz = async (biz: Business) => {
-    setSelectedBiz(biz);
-    const { data } = await supabase
-      .from('business_photos')
-      .select('*')
-      .eq('business_id', biz.id)
-      .order('sort_order');
-    setBizPhotos((data as BusinessPhoto[]) ?? []);
+  // Saved businesses open the full storefront route — the same detail view the
+  // Build tab uses — so the marketplace has ONE consistent open path, never a
+  // popup here and a page there.
+  const handleOpenBiz = (biz: Business) => {
+    router.push(`/business/${biz.id}` as any);
   };
 
   const styles = StyleSheet.create({
@@ -284,17 +278,6 @@ export default function ProfileScreen() {
           )}
         </View>
       </ScrollView>
-
-      <BusinessDetailSheet
-        business={selectedBiz}
-        photos={bizPhotos}
-        isBookmarked={selectedBiz ? bookmarkedBusinessIds.has(selectedBiz.id) : false}
-        onBookmarkToggle={() =>
-          selectedBiz && user?.id && toggleBookmark(selectedBiz.id, user.id)
-        }
-        onClose={() => { setSelectedBiz(null); setBizPhotos([]); }}
-        onViewOrders={() => setShowOrders(true)}
-      />
 
       <OrderDetailSheet
         order={selectedOrder}
