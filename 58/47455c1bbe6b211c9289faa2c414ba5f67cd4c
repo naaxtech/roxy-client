@@ -1,0 +1,21 @@
+apps/mobile/app/(tabs)/profile/index.tsx
+  s_093307bfc37bee::t_925896c6f205ba 19
+  s_093307bfc37bee::t_b8be965e25795b 82-86
+  s_093307bfc37bee::t_8e76967ae4a70e 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5847455c1bbe6b211c9289faa2c414ba5f67cd4c",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
