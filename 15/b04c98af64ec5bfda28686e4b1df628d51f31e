@@ -1,0 +1,21 @@
+supabase/migrations/066_checkin_attendee_rpc.sql
+  s_f93f52ad807728::t_bcb52afda13721 1-42
+apps/studio/app/api/events/[id]/checkin/route.ts
+  s_f93f52ad807728::t_8589baac0eed77 23-28,31-35,38-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "15b04c98af64ec5bfda28686e4b1df628d51f31e",
+  "prompts": {},
+  "sessions": {
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
