@@ -88,13 +88,12 @@ Deno.serve(async (req) => {
   if (oneSignalKey && oneSignalAppId && refundsQueued > 0) {
     const uniqueBuyerIds = [...new Set((logsToRefund ?? []).map((r: any) => r.buyer_id))];
 
-    const { data: buyerProfiles } = await supabase
-      .from('profiles')
-      .select('push_token')
-      .in('id', uniqueBuyerIds)
-      .not('push_token', 'is', null);
+    const { data: buyerTokens } = await supabase
+      .from('push_tokens')
+      .select('token')
+      .in('user_id', uniqueBuyerIds);
 
-    const tokens = (buyerProfiles ?? []).map((p: any) => p.push_token).filter(Boolean);
+    const tokens = (buyerTokens ?? []).map((p: any) => p.token).filter(Boolean);
 
     if (tokens.length > 0) {
       await fetch('https://onesignal.com/api/v1/notifications', {

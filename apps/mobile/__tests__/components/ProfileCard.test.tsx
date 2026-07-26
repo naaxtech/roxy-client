@@ -43,7 +43,6 @@ const baseProfile: Profile = {
   last_seen_at: '2026-01-01T00:00:00Z',
   gamification_points: 125,
   badge_ids: [],
-  push_token: null,
   notification_preferences: {},
   is_ghost: false,
   created_at: '2026-01-01T00:00:00Z',

@@ -32,12 +32,13 @@ Deno.serve(async (req) => {
       pronouns: [],
       identity_labels: [],
       is_active: false,
-      push_token: null,
       deleted_at: new Date().toISOString(),
     })
     .eq('id', auth.userId);
 
   if (profileError) return errorResponse(profileError.message, 500);
+
+  await supabase.from('push_tokens').delete().eq('user_id', auth.userId);
 
   // NOTE: We do NOT call supabase.auth.admin.deleteUser here.
   // The auth user is deactivated when the profile is marked deleted_at.

@@ -20,10 +20,15 @@ export interface Profile {
   last_seen_at: string;
   gamification_points: number;
   badge_ids: string[];
-  push_token: string | null;
   notification_preferences: Record<string, boolean>;
   is_ghost: boolean;
   created_at: string;
+  updated_at: string;
+}
+
+export interface PushToken {
+  user_id: string;
+  token: string;
   updated_at: string;
 }
 
