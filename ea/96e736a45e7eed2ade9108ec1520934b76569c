@@ -1,0 +1,75 @@
+apps/mobile/components/ErrorBoundary.tsx
+  s_f93f52ad807728::t_4d75c79eb0917f 3,29-30,33-42,52-53
+  s_f93f52ad807728::t_ef410187588af8 54
+apps/studio/app/(dashboard)/staff/feedback/FeedbackClient.tsx
+  s_f93f52ad807728::t_a2ed202f81540e 1-86,88-145,147-162
+  s_f93f52ad807728::t_07d9ae50b556a7 87,146
+CHANGELOG.md
+  s_f93f52ad807728::t_22b8203ac7574e 15-36,39-42,45-51
+  s_f93f52ad807728::t_02a3f86e6a64c2 52
+supabase/migrations/064_event_attendees_select_fix.sql
+  s_f93f52ad807728::t_c4c6afcff4db1b 1-28
+supabase/migrations/063_app_feedback.sql
+  s_f93f52ad807728::t_d929299630f602 1-59
+apps/mobile/app/_layout.tsx
+  s_f93f52ad807728::t_fa31c854df0970 49
+  s_f93f52ad807728::t_20dfa11e8e35a0 13
+apps/mobile/__tests__/lib/errorLogger.test.ts
+  s_f93f52ad807728::t_cd7e464bff9c80 1-21
+apps/mobile/types/index.ts
+  s_f93f52ad807728::t_2257ea935fe590 294-321
+apps/mobile/lib/errorLogger.ts
+  s_f93f52ad807728::t_40591bde771241 54-57,59-60
+  s_f93f52ad807728::t_525d6a99ba79e2 110-125,127
+apps/studio/components/AppSidebar.tsx
+  s_f93f52ad807728::t_a36780ebe33009 10
+  s_f93f52ad807728::t_722bccd21beb82 40
+apps/mobile/lib/analytics.ts
+  s_f93f52ad807728::t_50d95afc866ac7 20,26-28
+  s_f93f52ad807728::t_8b14ac4b8f4ada 3
+apps/mobile/app/(auth)/onboarding/step1-identity.tsx
+  s_f93f52ad807728::t_60d932c63c2ce5 42
+apps/studio/app/(dashboard)/staff/feedback/page.tsx
+  s_f93f52ad807728::t_c690bef130cec8 19
+  s_f93f52ad807728::t_70374c928a1192 1-18,20-25
+supabase/functions/cloudflare-video-webhook/index.ts
+  s_f93f52ad807728::t_3f479115ec38df 13-16
+  s_f93f52ad807728::t_92dc4591e437e1 11-12,17-19,21
+apps/studio/app/(dashboard)/staff/feedback/actions.ts
+  s_f93f52ad807728::t_69bed506665788 1-24
+apps/mobile/app/(tabs)/profile/settings.tsx
+  s_f93f52ad807728::t_fffa01a2b6c9d2 174-184
+apps/mobile/__tests__/store/feedbackStore.test.ts
+  s_f93f52ad807728::t_397cbb244a99c9 1-133
+supabase/functions/_shared/claude.ts
+  s_f93f52ad807728::t_b1309627221818 29-33,39,49
+apps/mobile/app/(auth)/onboarding/step4-status.tsx
+  s_f93f52ad807728::t_cce3904d4d2de6 10
+  s_f93f52ad807728::t_0df61800f576d2 49
+apps/mobile/app/(tabs)/profile/feedback.tsx
+  s_f93f52ad807728::t_bbaf80b63138e4 1-29,37-338,340-353
+  s_f93f52ad807728::t_3fcce22285d204 339
+  s_f93f52ad807728::t_588ad8c5c7b258 30-36
+apps/mobile/store/feedbackStore.ts
+  s_f93f52ad807728::t_9d91b26f09b70e 130
+  s_f93f52ad807728::t_3b64c9e598057a 109
+  s_f93f52ad807728::t_343b5250f4f146 1-108,110-129,131-142
+supabase/functions/create-payment-intent/index.ts
+  s_f93f52ad807728::t_2b6e8ac393473b 18-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ea96e736a45e7eed2ade9108ec1520934b76569c",
+  "prompts": {},
+  "sessions": {
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
