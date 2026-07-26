@@ -39,7 +39,7 @@ export default function Step1Identity() {
   const handleNext = async () => {
     if (!user) return;
     if (!usernameAvailable || !displayName || labels.length === 0) return;
-    logBreadcrumb('onboarding_step1_submit', { username: username.toLowerCase(), label_count: String(labels.length) });
+    logBreadcrumb('onboarding_step1_submit', { label_count: String(labels.length) });
     setLoading(true);
     const { error } = await supabase.from('profiles').upsert({
       id: user!.id,

@@ -51,9 +51,13 @@ export function logError(e: unknown, context?: string): void {
  * Call this at meaningful navigation/action boundaries so crash reports have
  * a clear trail of what the user did.
  *
+ * Never pass a tier-1 field (email, phone, display_name, username, bio,
+ * identity_labels, pronouns, location, avatar_url, message/post content) —
+ * strip it instead. Always hash a user_id with `hashUserId()` first.
+ *
  * @example
- *   logBreadcrumb('onboarding_step1_submit', { username });
- *   logBreadcrumb('profile_fetch', { user_id: user.id });
+ *   logBreadcrumb('onboarding_step1_submit', { label_count: String(labels.length) });
+ *   logBreadcrumb('profile_fetch', { user_id: hashUserId(user.id) });
  */
 export function logBreadcrumb(
   message: string,
@@ -103,6 +107,22 @@ export function logBoundaryError(error: Error, componentStack: string): void {
   } catch {}
 }
 
+/**
+ * Hash a user_id to an 8-char hex string before it reaches any third-party
+ * log/analytics call — required by CLAUDE.md §10 ("LOG ANONYMISED: user_id").
+ * Not for security, only for de-identification — a stable, non-reversible-
+ * enough correlation key so support can group events by user without ever
+ * transmitting the real id to Crashlytics/PostHog/Firebase.
+ */
+export function hashUserId(userId: string): string {
+  let hash = 0x811c9dc5; // FNV-1a 32-bit offset basis
+  for (let i = 0; i < userId.length; i++) {
+    hash ^= userId.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
 export function setCrashlyticsUser(userId: string | null): void {
-  crashlytics().setUserId(userId ?? '');
+  crashlytics().setUserId(userId ? hashUserId(userId) : '');
 }

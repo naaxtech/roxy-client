@@ -171,6 +171,17 @@ export default function SettingsScreen() {
           <Text style={styles.signOutText}>Sign out</Text>
         </TouchableOpacity>
 
+        {/* Support section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>Support</Text>
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => router.push('/(tabs)/profile/feedback')}
+          >
+            <Text style={styles.actionRowLabel}>Send feedback / report a bug</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Data & Privacy section */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Data & Privacy</Text>

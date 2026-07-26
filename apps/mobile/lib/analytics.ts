@@ -1,5 +1,6 @@
 import analytics from '@react-native-firebase/analytics';
 import { posthog } from './posthog';
+import { hashUserId } from './errorLogger';
 
 function safe(fn: () => Promise<void>): void {
   fn().catch(() => {});
@@ -16,14 +17,15 @@ export const Analytics = {
   },
 
   setUser: (userId: string | null) => {
-    safe(() => analytics().setUserId(userId));
+    safe(() => analytics().setUserId(userId ? hashUserId(userId) : null));
     // PostHog identify handled via posthog.identify() in _layout.tsx
   },
 
   // Friends
   friendRequestSent: (targetUserId: string) => {
-    safe(() => analytics().logEvent('friend_request_sent', { target_user_id: targetUserId }));
-    ph('friend_request_sent', { target_user_id: targetUserId });
+    const hashed = hashUserId(targetUserId);
+    safe(() => analytics().logEvent('friend_request_sent', { target_user_id: hashed }));
+    ph('friend_request_sent', { target_user_id: hashed });
   },
   friendRequestAccepted: (friendshipId: string) => {
     safe(() => analytics().logEvent('friend_request_accepted', { friendship_id: friendshipId }));

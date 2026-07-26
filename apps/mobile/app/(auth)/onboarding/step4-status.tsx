@@ -7,7 +7,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { callEdgeFunction } from '../../../lib/supabase';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { RoxyWordmark } from '../../../components/ui/RoxyWordmark';
-import { logError, logBreadcrumb } from '../../../lib/errorLogger';
+import { logError, logBreadcrumb, hashUserId } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
 
 const GOALS = [
@@ -46,7 +46,7 @@ export default function Step4Status() {
       showAlert('Setup error', 'Could not finish setup. Please try again.');
       return;
     }
-    logBreadcrumb('onboarding_complete', { user_id: user.id });
+    logBreadcrumb('onboarding_complete', { user_id: hashUserId(user.id) });
     router.replace('/(tabs)/grow');
   };
 

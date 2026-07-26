@@ -291,6 +291,34 @@ export interface Report {
   created_at: string;
 }
 
+export interface AppFeedback {
+  id: string;
+  user_id: string;
+  category: 'bug' | 'broken' | 'other';
+  rating: number | null;
+  message: string;
+  screen_context: string | null;
+  app_version: string | null;
+  platform: string | null;
+  status: 'open' | 'in_review' | 'resolved' | 'wontfix';
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export type FeatureRequestType = 'planned' | 'pitched';
+export type FeatureRequestStatus = 'open' | 'in_progress' | 'done' | 'rejected';
+
+export interface FeatureRequest {
+  id: string;
+  title: string;
+  description: string | null;
+  type: FeatureRequestType;
+  status: FeatureRequestStatus;
+  vote_count: number;
+  created_by: string | null;
+  created_at: string;
+}
+
 export interface EdgeFnResponse<T = unknown> {
   success: boolean;
   data: T | null;

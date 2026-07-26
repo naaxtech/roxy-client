@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Calendar, Video, Gamepad2, Users, Wallet,
   ShoppingBag, Package, ShoppingCart, DollarSign, Settings,
   Shield, CheckSquare, Mail, RefreshCw, AlertTriangle, Building2,
-  ChevronRight, LogOut, Lightbulb,
+  ChevronRight, LogOut, Lightbulb, Bug,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOutAction } from '@/app/auth/signout-action';
@@ -37,6 +37,7 @@ const staffNav = [
   { href: '/staff/businesses',             label: 'Business Approvals', icon: Building2 },
   { href: '/staff/products',               label: 'Product Approval',   icon: CheckSquare },
   { href: '/staff/feature-requests',       label: 'Feature Requests',   icon: Lightbulb },
+  { href: '/staff/feedback',               label: 'Feedback',           icon: Bug },
   { href: '/staff/email-queue',            label: 'Email Queue',        icon: Mail },
   { href: '/staff/reconciliation',         label: 'Reconciliation',     icon: RefreshCw },
   { href: '/staff/disputes',               label: 'Disputes',           icon: AlertTriangle },

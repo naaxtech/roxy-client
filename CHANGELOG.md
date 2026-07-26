@@ -12,14 +12,43 @@ finer-grained engineering log lives in `.claude/log.md`.
 
 ## [Unreleased]
 
+### Added
+- **In-app feedback loop** — a "Report a problem" form (`app_feedback` table,
+  migration 063) reachable from Settings and from the error boundary's "Report
+  this" button, plus wiring the mobile app to the `feature_requests`/
+  `feature_votes` backend (migration 041) that existed with zero client UI
+  until now: an Ideas & Roadmap tab to pitch and vote on features. Staff
+  triage for both lives in Studio (`/staff/feedback`, `/staff/feature-requests`).
+
+### Fixed
+- **QA audit findings (2026-07-26):** hardcoded `claude-sonnet-4-6` (not a real
+  Anthropic model id) replaced with a `claude-haiku-4-5-20251001` default and
+  an overridable `model` param in `_shared/claude.ts` — every AI touchpoint was
+  silently degrading to mock copy on the API error this caused. `event_attendees`
+  SELECT policy was `USING(true)` (any user could scrape any event's ticket_code,
+  the sole check-in credential) — narrowed to own-row + host + staff.
+  `create-payment-intent`'s rate limit call didn't match the shared helper's
+  signature and its result was never checked — was a silent no-op, now enforced.
+  `cloudflare-video-webhook` failed OPEN when its secret was unset — now fails
+  closed. Raw, unhashed `user_id` and a raw `username` (an explicitly banned
+  field) were reaching Crashlytics/PostHog from onboarding and the root layout —
+  added `hashUserId()` and applied it at every affected call site.
+
 ### Planned
 - Architecture documentation with data-flow / tenancy / module-boundary diagrams.
-- Scale hardening: de-duplicate the Grow screen's repeated `questions_of_the_day` /
-  `community_rooms` fetches (observed ~10× per load), feed pagination review,
-  realtime channel budgets for high-concurrency content.
-- Seed marketplace products so the storefront checkout path can be exercised
-  end-to-end (currently code-reviewed, not live-tested — no products in the DB).
+- Feed pagination review, realtime channel budgets for high-concurrency content.
+- Subscription monetization (Free/Plus/Pro/Super, CLAUDE.md §16) does not exist
+  in code yet — needs a Google Play Billing decision before Android build, per
+  Play's payments policy for dating-category apps.
 - `EXPO_PUBLIC_GIPHY_API_KEY` in the app + EAS env to enable GIF search in chat.
+
+### Note
+- Grow screen's duplicate `questions_of_the_day`/`community_rooms` fetches
+  (previously listed here as planned work) were already fixed 2026-07-21
+  (`bbaaaeb`) — this file just hadn't caught up. Marketplace seed data
+  (migration 038) is conditional on a `profiles` row existing at migration-run
+  time and silently no-ops otherwise — confirmed still unseeded on the live
+  project as of this audit; seeding needs a non-silent path, not just a retry.
 
 ## [1.1.0] - 2026-07-21 — Sellable-state push
 

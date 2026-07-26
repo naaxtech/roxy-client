@@ -10,7 +10,7 @@ import { useProfileStore } from '../store/profileStore';
 import { supabase } from '../lib/supabase';
 import { DevPanel } from '../components/dev/DevPanel';
 import { Analytics } from '../lib/analytics';
-import { logError, logBreadcrumb, setCrashlyticsUser } from '../lib/errorLogger';
+import { logError, logBreadcrumb, setCrashlyticsUser, hashUserId } from '../lib/errorLogger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useThemeStore } from '../store/themeStore';
 import { WebAppFrame } from '../components/ui/WebAppFrame';
@@ -46,7 +46,7 @@ function AppNavigator() {
     Analytics.setUser(user?.id ?? null);
     setCrashlyticsUser(user?.id ?? null);
     if (user?.id) {
-      posthog?.identify(user.id);
+      posthog?.identify(hashUserId(user.id));
     } else {
       posthog?.reset();
     }

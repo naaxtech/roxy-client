@@ -15,7 +15,13 @@ Deno.serve(async (req) => {
   const { user, errorResponse: authErr } = verifyJWT(req);
   if (authErr) return authErr;
 
-  await checkRateLimit(user.id, 'create-payment-intent', 'daily', 10);
+  const { allowed } = await checkRateLimit({
+    userId: user.id,
+    fnName: 'create-payment-intent',
+    maxCount: 10,
+    windowType: 'daily',
+  });
+  if (!allowed) return errorResponse('Too many payment attempts today — try again tomorrow', 429);
 
   const body = await req.json().catch(() => ({}));
   const { event_id } = body;
