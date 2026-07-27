@@ -65,6 +65,7 @@ export default function Step4Status() {
     btn: { backgroundColor: colors.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 'auto' },
     btnDisabled: { opacity: 0.5 },
     btnText: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
+    disclosure: { color: colors.textMuted, fontSize: 12, textAlign: 'center', marginTop: 10, lineHeight: 17 },
   });
 
   return (
@@ -92,6 +93,9 @@ export default function Step4Status() {
         >
           <Text style={styles.btnText}>{loading ? 'Setting up...' : 'Meet Roxy →'}</Text>
         </TouchableOpacity>
+        <Text style={styles.disclosure}>
+          Roxy is your AI wingwoman — her messages are generated, not sent by a real person.
+        </Text>
       </View>
     </SafeAreaView>
   );
