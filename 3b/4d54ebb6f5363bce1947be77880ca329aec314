@@ -1,0 +1,24 @@
+apps/mobile/app/(auth)/onboarding/step4-status.tsx
+  s_f93f52ad807728::t_e89bcf218bea48 96-98
+  s_f93f52ad807728::t_4412636c1a9840 68
+apps/mobile/app/(auth)/onboarding/step1-identity.tsx
+  s_f93f52ad807728::t_09bb3922e9572b 71
+  s_f93f52ad807728::t_2a5b17e31cafea 113,117
+  s_f93f52ad807728::t_1cb49b661a8619 114-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3b4d54ebb6f5363bce1947be77880ca329aec314",
+  "prompts": {},
+  "sessions": {
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
