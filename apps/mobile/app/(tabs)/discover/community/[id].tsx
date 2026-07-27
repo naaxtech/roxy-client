@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  ScrollView, Share,
+  ScrollView, Share, Platform,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, usePathname } from 'expo-router';
 import { format } from 'date-fns';
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
@@ -179,7 +180,37 @@ export default function CommunityDetailScreen() {
     loadRsvps();
     loadRooms();
     loadGames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
+  // Bug fix: publishing a post (or RSVPing to an event) from a screen pushed
+  // on top of this one returned here with no refetch — the new content
+  // looked like it never posted. Native: this screen stays mounted in the
+  // stack, so useFocusEffect fires on return. Web: useFocusEffect does NOT
+  // fire on web navigation via the root Stack (see connect/index.tsx for the
+  // same caveat), so fall back to a pathname-change effect there.
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'web') return;
+      loadPosts();
+      loadEvents();
+      loadRsvps();
+    }, [loadPosts, loadEvents, loadRsvps])
+  );
+
+  const pathname = usePathname();
+  const prevPathnameRef = useRef('');
+  useEffect(() => {
+    const prev = prevPathnameRef.current;
+    prevPathnameRef.current = pathname;
+    if (Platform.OS !== 'web' || !prev || prev === pathname) return;
+    loadPosts();
+    loadEvents();
+    loadRsvps();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  useEffect(() => {
     if (!id) return;
     // Realtime: keep participant_count and status live while on this screen
     const channel = freshChannel(`community-rooms-${id}`)

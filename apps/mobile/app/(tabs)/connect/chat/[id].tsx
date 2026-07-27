@@ -388,16 +388,21 @@ export default function ChatScreen() {
     setLoadingInitial(true);
     setLoadError(false);
     try {
+      // Bug fix: this used to order ascending + limit(100), which returns the
+      // OLDEST 100 messages ever sent -- any conversation past 100 messages
+      // showed frozen ancient history, never anything recent. Fetch the most
+      // recent 100 (descending) then reverse for chronological display.
       const { data, error } = await supabase
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(100);
       if (error) throw error;
       if (data) {
-        setInitialMessages(data as Message[]);
-        const icebreakerMsg = data.find((m) => m.message_type === 'roxy_suggestion');
+        const chronological = [...data].reverse() as Message[];
+        setInitialMessages(chronological);
+        const icebreakerMsg = chronological.find((m) => m.message_type === 'roxy_suggestion');
         if (icebreakerMsg) setIcebreaker(icebreakerMsg.content);
       }
       if (user && data) {
@@ -442,19 +447,35 @@ export default function ChatScreen() {
     appendMessage(optimisticMsg);
     setInputText('');
 
-    const { data: inserted, error } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        sender_id: user.id,
-        content: content.trim() || null,
-        media_url: mediaUrl ?? null,
-        message_type: type,
-      })
-      .select('id')
-      .single();
+    // Bug fix: this previously had no try/catch, unlike handleWingwoman/
+    // handleNudge -- if .insert() threw instead of resolving with { error },
+    // setSending(false) below would never run and the send button would
+    // stay disabled/spinning until the screen remounted.
+    try {
+      const { data: inserted, error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: user.id,
+          content: content.trim() || null,
+          media_url: mediaUrl ?? null,
+          message_type: type,
+        })
+        .select('id')
+        .single();
 
-    if (error) {
+      if (error) throw error;
+
+      if (inserted?.id) {
+        replaceMessageId(optimisticMsg.id, inserted.id);
+        Analytics.messageSent(conversationId);
+        supabase
+          .from('conversations')
+          .update({ last_message_at: new Date().toISOString() })
+          .eq('id', conversationId)
+          .then(null, () => {});
+      }
+    } catch {
       removeMessage(optimisticMsg.id);
       const retry = await confirmAction(
         'Message not sent',
@@ -462,17 +483,15 @@ export default function ChatScreen() {
         'Retry',
         false,
       );
-      if (retry) void sendMessage(content, type, mediaUrl);
-    } else if (inserted?.id) {
-      replaceMessageId(optimisticMsg.id, inserted.id);
-      Analytics.messageSent(conversationId);
-      supabase
-        .from('conversations')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('id', conversationId)
-        .then(null, () => {});
+      if (retry) {
+        void sendMessage(content, type, mediaUrl);
+      } else {
+        // Restore the typed text instead of losing it silently.
+        setInputText(content);
+      }
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   const handleGifSelected = async (url: string) => {

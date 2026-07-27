@@ -9,11 +9,17 @@ Deno.serve(async (req) => {
   const corsRes = handleCors(req);
   if (corsRes) return corsRes;
 
-  const authResult = await verifyJWT(req);
-  if (!authResult.valid) return errorResponse('Unauthorized', 401);
+  // Bug fix: verifyJWT is synchronous and returns { userId } | null -- this
+  // previously checked a nonexistent `.valid` property, which made every
+  // call (valid token or not) either return 401 or throw on `null.valid`.
+  const auth = verifyJWT(req);
+  if (!auth) return errorResponse('Unauthorized', 401);
 
-  const { postId, maxDurationSeconds = 180 } = await req.json();
+  const { postId, maxDurationSeconds = 180, fileSize } = await req.json();
   if (!postId) return errorResponse('postId required', 400);
+  if (!fileSize || typeof fileSize !== 'number' || fileSize <= 0) {
+    return errorResponse('fileSize (bytes) required', 400);
+  }
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
   if (DEV_MOCK) {
@@ -30,7 +36,11 @@ Deno.serve(async (req) => {
       headers: {
         Authorization: `Bearer ${CF_API_TOKEN}`,
         'Tus-Resumable': '1.0.0',
-        'Upload-Length': '0',
+        // Bug fix: this was hardcoded to '0', which per the TUS spec tells
+        // Cloudflare the upload is already complete at zero bytes -- the
+        // client's subsequent PATCH with real bytes would never match.
+        // Upload-Length must be the actual file size, sent by the caller.
+        'Upload-Length': String(fileSize),
         'Upload-Metadata': [
           `maxDurationSeconds ${btoa(String(maxDurationSeconds))}`,
           `name ${btoa(postId)}`,

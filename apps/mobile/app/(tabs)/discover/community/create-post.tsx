@@ -9,7 +9,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../../../lib/supabase';
+import { supabase, callEdgeFunction } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { RoxyLinkPicker, RoxyLinkSelection } from '../../../../components/feed/RoxyLinkPicker';
@@ -18,6 +18,7 @@ import { logError } from '../../../../lib/errorLogger';
 import type { PostType } from '../../../../types';
 
 const MAX_PHOTOS = 10;
+const MAX_VIDEO_SECONDS = 180;
 
 type Step = 'type-picker' | 'composer';
 
@@ -34,6 +35,8 @@ export default function CreatePostScreen() {
   const [showLinkPicker, setShowLinkPicker] = useState(false);
   const [roxyLink, setRoxyLink] = useState<RoxyLinkSelection | null>(null);
   const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
+  const [video, setVideo] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
 
   const TYPE_OPTIONS: { type: PostType; icon: keyof typeof Ionicons.glyphMap; grad: readonly [string, string]; label: string; sub: string }[] = [
     { type: 'standard',  icon: 'create',   grad: ['#8E7CF7', '#C86DD7'], label: 'Text',            sub: "Share what's on your mind" },
@@ -48,6 +51,8 @@ export default function CreatePostScreen() {
       setShowLinkPicker(true);
     } else if (type === 'photo') {
       void handlePickPhoto();
+    } else if (type === 'video') {
+      void handlePickVideo();
     } else {
       setStep('composer');
     }
@@ -78,6 +83,82 @@ export default function CreatePostScreen() {
 
   const removePhoto = (uri: string) => setPhotos((prev) => prev.filter((p) => p.uri !== uri));
 
+  const handlePickVideo = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      allowsMultipleSelection: false,
+      quality: 1,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    const asset = result.assets[0];
+    const durationSeconds = asset.duration ? asset.duration / 1000 : 0;
+    if (durationSeconds > MAX_VIDEO_SECONDS) {
+      showAlert('Video too long', `Videos are capped at ${MAX_VIDEO_SECONDS / 60} minutes.`);
+      return;
+    }
+    setVideo(asset);
+    setStep('composer');
+  };
+
+  const removeVideo = () => setVideo(null);
+
+  // Upload the picked video to Cloudflare Stream via a TUS upload session.
+  // 1. Insert the post row first (need a real id — Cloudflare's upload
+  //    session is tagged with it as metadata so cloudflare-video-webhook
+  //    can find the right row once processing finishes).
+  // 2. Get a TUS uploadURL scoped to that postId from get-video-upload-url.
+  // 3. PATCH the raw video bytes to that URL per the TUS protocol (single
+  //    request: Upload-Offset 0, Content-Type application/offset+octet-stream).
+  const uploadVideoAndCreatePost = async (): Promise<{ error: string | null }> => {
+    if (!user?.id || !communityId || !video) return { error: 'Missing video' };
+
+    setUploadStatus('Creating post…');
+    const { data: newPost, error: insertErr } = await supabase
+      .from('posts')
+      .insert({
+        author_id: user.id,
+        community_id: communityId,
+        content: content.trim(),
+        post_type: 'video',
+      })
+      .select('id')
+      .single();
+
+    if (insertErr || !newPost) return { error: insertErr?.message ?? 'Could not create post' };
+
+    try {
+      setUploadStatus('Preparing upload…');
+      const blob = await (await fetch(video.uri)).blob();
+
+      const { data: uploadInfo, error: urlErr } = await callEdgeFunction<{ uploadURL: string; videoId: string }>(
+        'get-video-upload-url',
+        { postId: newPost.id, maxDurationSeconds: MAX_VIDEO_SECONDS, fileSize: blob.size },
+      );
+      if (urlErr || !uploadInfo) throw new Error(urlErr ?? 'Could not get upload URL');
+
+      setUploadStatus('Uploading video…');
+      const uploadRes = await fetch(uploadInfo.uploadURL, {
+        method: 'PATCH',
+        headers: {
+          'Tus-Resumable': '1.0.0',
+          'Upload-Offset': '0',
+          'Content-Type': 'application/offset+octet-stream',
+        },
+        body: blob,
+      });
+      if (!uploadRes.ok) throw new Error(`Upload failed (${uploadRes.status})`);
+
+      return { error: null };
+    } catch (e) {
+      // Don't leave an orphaned post with no video attached.
+      await supabase.from('posts').delete().eq('id', newPost.id);
+      const message = e instanceof Error ? e.message : 'Upload failed';
+      return { error: message };
+    } finally {
+      setUploadStatus(null);
+    }
+  };
+
   // Upload picked photos to post-media/<userId>/... and return their public
   // URLs. Path folder MUST be the user id — the bucket RLS checks
   // auth.uid() = foldername(name)[1].
@@ -101,9 +182,14 @@ export default function CreatePostScreen() {
   const handleSubmit = async () => {
     if (!user?.id || !communityId || submitting) return;
     // Per-type validation: a photo post needs a photo (caption optional);
-    // text/standard needs text; roxy_link needs a linked entity.
+    // a video post needs a video; text/standard needs text; roxy_link needs
+    // a linked entity.
     if (postType === 'photo' && photos.length === 0) {
       showAlert('Add a photo', 'Pick at least one photo for a photo post.');
+      return;
+    }
+    if (postType === 'video' && !video) {
+      showAlert('Add a video', 'Pick a video for a video post.');
       return;
     }
     if (postType === 'standard' && !content.trim()) {
@@ -111,6 +197,21 @@ export default function CreatePostScreen() {
       return;
     }
     setSubmitting(true);
+
+    // Video posts go through Cloudflare Stream (insert-first, then upload)
+    // rather than the shared payload-insert path below — the video isn't
+    // ready to attach at insert time, it arrives later via
+    // cloudflare-video-webhook once processing finishes.
+    if (postType === 'video') {
+      const { error } = await uploadVideoAndCreatePost();
+      setSubmitting(false);
+      if (error) {
+        showAlert('Upload failed', error);
+        return;
+      }
+      router.back();
+      return;
+    }
 
     const payload: Record<string, unknown> = {
       author_id: user.id,
@@ -197,6 +298,12 @@ export default function CreatePostScreen() {
       borderWidth: 1.5, borderColor: colors.primary + '55', borderStyle: 'dashed',
       alignItems: 'center', justifyContent: 'center',
     },
+    videoPreview: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      margin: 16, padding: 12, borderRadius: 12, backgroundColor: colors.surface,
+    },
+    videoPreviewText: { color: colors.textPrimary, fontSize: 14, flex: 1 },
+    uploadStatus: { color: colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: 8 },
   });
 
   if (step === 'type-picker') {
@@ -299,12 +406,25 @@ export default function CreatePostScreen() {
         </ScrollView>
       )}
 
+      {postType === 'video' && video && (
+        <View style={styles.videoPreview}>
+          <Ionicons name="videocam" size={24} color={colors.primary} />
+          <Text style={styles.videoPreviewText} numberOfLines={1}>
+            {video.fileName ?? 'Video selected'}
+            {video.duration ? ` · ${Math.round(video.duration / 1000)}s` : ''}
+          </Text>
+          <TouchableOpacity onPress={removeVideo} hitSlop={6} accessibilityLabel="Remove video">
+            <Ionicons name="close" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <TextInput
         style={styles.captionInput}
         placeholder={
           postType === 'roxy_link'
             ? 'Add a caption (optional)…'
-            : postType === 'photo'
+            : postType === 'photo' || postType === 'video'
               ? 'Add a caption (optional)…'
               : "What's on your mind?"
         }
@@ -312,9 +432,11 @@ export default function CreatePostScreen() {
         value={content}
         onChangeText={setContent}
         multiline
-        autoFocus={postType !== 'photo'}
+        autoFocus={postType !== 'photo' && postType !== 'video'}
         maxLength={1000}
       />
+
+      {uploadStatus && <Text style={styles.uploadStatus}>{uploadStatus}</Text>}
     </SafeAreaView>
   );
 }
