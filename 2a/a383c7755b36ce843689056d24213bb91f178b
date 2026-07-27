@@ -1,0 +1,29 @@
+CLAUDE.md
+  s_f93f52ad807728::t_0df0d0483af1c8 10-15
+  s_f93f52ad807728::t_90ac0b313a96be 99
+  s_1d3ead2081fc23::t_358926932093ce 8-9,16-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2aa383c7755b36ce843689056d24213bb91f178b",
+  "prompts": {},
+  "sessions": {
+    "s_1d3ead2081fc23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8dcb4e40-66f6-4795-9a04-eaf079850fcc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
