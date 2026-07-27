@@ -1,0 +1,19 @@
+CHANGELOG.md
+  s_f93f52ad807728::t_ad2bef2082f159 22-29,43-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a76402c1fa49e9b0970862806ae7eeb1f7b31538",
+  "prompts": {},
+  "sessions": {
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
