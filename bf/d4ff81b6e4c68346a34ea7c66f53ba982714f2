@@ -1,0 +1,42 @@
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  s_f93f52ad807728::t_8038edb7466172 409-421,427,435,438-439
+  s_f93f52ad807728::t_f6ea93a500dde8 185-186,191-194,201-214
+  s_f93f52ad807728::t_cc52c93fd6e63d 12,215
+  s_f93f52ad807728::t_e11683ca7ba357 21
+  s_f93f52ad807728::t_63d8b686b6a2e6 86-161
+  s_f93f52ad807728::t_015c715eefe276 38-39
+  s_f93f52ad807728::t_67c2e23c0defc8 54-55
+  s_f93f52ad807728::t_3ba786b0908bf7 301-306
+supabase/functions/get-video-upload-url/index.ts
+  s_f93f52ad807728::t_68029f8ff23e9c 12-16,18,20-22
+  s_f93f52ad807728::t_d664d3e50bb5d8 39-43
+apps/mobile/hooks/useReactions.ts
+  s_f93f52ad807728::t_9d83ece021e90c 22-33,35,50
+  s_f93f52ad807728::t_b2bd78bdafa99b 97,102-110,112-120,135,141-143,148-150
+  s_f93f52ad807728::t_ef6d09733dda4e 123-133,144-147,155
+apps/mobile/__tests__/hooks/useReactions.test.ts
+  s_f93f52ad807728::t_0ae3b736a07e5a 171-232
+  s_f93f52ad807728::t_fa9d116b5ccc22 56,61-65,67-70,72,80
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_f93f52ad807728::t_fbef0b4999df5d 183-184,186-213
+  s_f93f52ad807728::t_e60a97258ba8c4 4,6,10
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_f93f52ad807728::t_e0327bbebba242 391-394,399,403-405
+  s_f93f52ad807728::t_26e9c658eb816b 450-478,486-493
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bfd4ff81b6e4c68346a34ea7c66f53ba982714f2",
+  "prompts": {},
+  "sessions": {
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
