@@ -12,7 +12,7 @@ import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
 
 export default function SpeedDateResult() {
-  const { session_id: _session_id, liked: likedParam, partner_id } = useLocalSearchParams<{
+  const { session_id, liked: likedParam, partner_id } = useLocalSearchParams<{
     session_id: string;
     liked: string;
     partner_id: string;
@@ -22,8 +22,9 @@ export default function SpeedDateResult() {
   const colors = useThemeColors();
 
   const liked = likedParam === '1';
-  const [processing, setProcessing] = useState(liked);
+  const [processing, setProcessing] = useState(true);
   const [matchCreated, setMatchCreated] = useState(false);
+  const [waitingOnPartner, setWaitingOnPartner] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,72 +46,98 @@ export default function SpeedDateResult() {
     }
   }, [matchCreated]);
 
-  // Create match + conversation if liked
+  // Submit this participant's like decision and resolve the match — a match
+  // only forms when BOTH sides have said yes (submit_speed_date_like,
+  // 068_speed_date_mutual_match.sql). We submit even a "no" so the other
+  // participant's side isn't left waiting forever.
   useEffect(() => {
-    if (!liked || !user || !partner_id) {
+    if (!user || !partner_id || !session_id) {
       setProcessing(false);
       return;
     }
 
+    let cancelled = false;
+
+    const resolve = async (currentLiked: boolean) => {
+      const { data, error: rpcErr } = await supabase
+        .rpc('submit_speed_date_like', { p_session_id: session_id, p_liked: currentLiked });
+      if (cancelled) return null;
+      if (rpcErr) throw new Error(rpcErr.message);
+      return data as { status: 'waiting' | 'matched' | 'no_match'; conversation_id: string | null };
+    };
+
+    const fireIcebreakerOnce = (convId: string) => {
+      callEdgeFunction('roxy-icebreaker', {
+        conversation_id: convId,
+        user_a_name: user.id,
+        user_b_name: partner_id,
+        shared_interests: [],
+      }).catch(() => {});
+    };
+
     (async () => {
       setProcessing(true);
       try {
-        // 1. Insert match row
-        const { error: matchErr } = await supabase.from('matches').insert({
-          user_a_id: user.id,
-          user_b_id: partner_id,
-          source: 'speed_date',
-        });
+        const result = await resolve(liked);
+        if (!result) return;
 
-        if (matchErr && !matchErr.message.includes('duplicate')) {
-          throw new Error(matchErr.message);
+        if (result.status === 'matched' && result.conversation_id) {
+          setConversationId(result.conversation_id);
+          setMatchCreated(true);
+          fireIcebreakerOnce(result.conversation_id);
+        } else if (result.status === 'waiting') {
+          setWaitingOnPartner(true);
         }
-
-        // 2. Create (or reuse) a speed_date conversation for this pair
-        let convId: string | null = null;
-        const { data: existing } = await supabase
-          .from('conversations')
-          .select('id')
-          .eq('conversation_type', 'speed_date')
-          .contains('participant_ids', [user.id, partner_id])
-          .single();
-
-        if (existing) {
-          convId = existing.id;
-        } else {
-          const { data: newConv, error: convErr } = await supabase
-            .from('conversations')
-            .insert({
-              participant_ids: [user.id, partner_id],
-              conversation_type: 'speed_date',
-            })
-            .select('id')
-            .single();
-
-          if (convErr) throw new Error(convErr.message);
-          convId = newConv?.id ?? null;
-
-          // 3. Fire roxy-icebreaker (non-blocking — ignore errors)
-          if (convId) {
-            callEdgeFunction('roxy-icebreaker', {
-              conversation_id: convId,
-              user_a_name: user.id,
-              user_b_name: partner_id,
-              shared_interests: [],
-            }).catch(() => {});
-          }
-        }
-
-        setConversationId(convId);
-        setMatchCreated(true);
+        // 'no_match' — falls through to the default no-match UI state.
       } catch (e: any) {
-        logError(e, 'speedDateResult_createMatch');
+        logError(e, 'speedDateResult_resolveMatch');
         setError(e?.message ?? 'Something went wrong.');
       } finally {
-        setProcessing(false);
+        if (!cancelled) setProcessing(false);
       }
     })();
-  }, [liked, user, partner_id]);
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, partner_id, session_id]);
+
+  // While waiting on the partner's decision, listen for their row landing
+  // and re-resolve (idempotent — resubmits our own already-recorded choice).
+  useEffect(() => {
+    if (!waitingOnPartner || !user || !partner_id || !session_id) return;
+
+    const channel = supabase
+      .channel(`speed-date-likes:${session_id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'speed_date_likes', filter: `session_id=eq.${session_id}` },
+        async (payload) => {
+          if (payload.new?.user_id === user.id) return; // our own row
+          try {
+            const { data, error: rpcErr } = await supabase
+              .rpc('submit_speed_date_like', { p_session_id: session_id, p_liked: liked });
+            if (rpcErr) throw new Error(rpcErr.message);
+            const result = data as { status: 'waiting' | 'matched' | 'no_match'; conversation_id: string | null };
+            setWaitingOnPartner(false);
+            if (result.status === 'matched' && result.conversation_id) {
+              setConversationId(result.conversation_id);
+              setMatchCreated(true);
+              callEdgeFunction('roxy-icebreaker', {
+                conversation_id: result.conversation_id,
+                user_a_name: user.id,
+                user_b_name: partner_id,
+                shared_interests: [],
+              }).catch(() => {});
+            }
+          } catch (e) {
+            logError(e, 'speedDateResult_partnerLikeReceived');
+          }
+        },
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [waitingOnPartner, user, partner_id, session_id, liked]);
 
   const handleChat = () => {
     if (conversationId) {
@@ -190,6 +217,16 @@ export default function SpeedDateResult() {
               <Text style={styles.laterBtnText}>Later</Text>
             </TouchableOpacity>
           </Animated.View>
+        </View>
+      ) : waitingOnPartner ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.roxy} />
+          <Text style={styles.processingText}>
+            Waiting to see if it's mutual — we'll let you know either way.
+          </Text>
+          <TouchableOpacity style={styles.laterBtn} onPress={handleExplore}>
+            <Text style={styles.laterBtnText}>Keep exploring meanwhile</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.centered}>

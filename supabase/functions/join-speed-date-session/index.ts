@@ -1,5 +1,6 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
+import { generateSpeedDatePrompts } from '../_shared/speedDatePrompts.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 
 async function getOrCreateDailyRoom(sessionId: string): Promise<string> {
@@ -170,6 +171,7 @@ Deno.serve(async (req) => {
 
   // 3. No open session — create a new one and wait
   const scheduledAt = new Date().toISOString();
+  const prompts = await generateSpeedDatePrompts();
   const { data: newSession, error: createError } = await supabase
     .from('speed_date_sessions')
     .insert({
@@ -178,13 +180,7 @@ Deno.serve(async (req) => {
       participant_ids: [auth.userId],
       status: 'scheduled',
       community_id: scopeCommunityId,
-      prompts: [
-        "What's something you're really proud of this year?",
-        "What does your ideal weekend look like?",
-        "What's a place you've always wanted to visit?",
-        "What's something unexpected about you?",
-        "What are you looking for in a connection?",
-      ],
+      prompts,
     })
     .select('id')
     .single();

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
+import { CreateCommunityForm } from './CreateCommunityForm';
 
 export default async function CommunityPage() {
   const supabase = await createClient();
@@ -26,7 +27,7 @@ export default async function CommunityPage() {
       </div>
 
       {communities.length === 0 ? (
-        <p className="text-muted-foreground text-sm">You are not an admin of any community.</p>
+        <p className="text-muted-foreground text-sm">You are not an admin of any community yet.</p>
       ) : (
         <ul className="space-y-4">
           {communities.map((c: any) => (
@@ -42,6 +43,8 @@ export default async function CommunityPage() {
           ))}
         </ul>
       )}
+
+      <CreateCommunityForm />
     </div>
   );
 }
