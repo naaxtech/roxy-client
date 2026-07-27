@@ -19,6 +19,14 @@ finer-grained engineering log lives in `.claude/log.md`.
   `feature_votes` backend (migration 041) that existed with zero client UI
   until now: an Ideas & Roadmap tab to pitch and vote on features. Staff
   triage for both lives in Studio (`/staff/feedback`, `/staff/feature-requests`).
+- **Self-serve community creation** — hosts previously had no way to start a
+  community anywhere (mobile or Studio), even though the RLS already allowed
+  it. `create_community()` RPC creates the community and makes the caller its
+  admin atomically; Studio's Community page gets a Create Community form.
+- **Speed Date Prompt AI is live in production** — `join-speed-date-session`
+  hardcoded the same 5 static questions for every session even though a real
+  Claude prompt generator already existed; both now share one generator
+  (`_shared/speedDatePrompts.ts`).
 
 ### Fixed
 - **QA audit findings (2026-07-26):** hardcoded `claude-sonnet-4-6` (not a real
@@ -32,7 +40,18 @@ finer-grained engineering log lives in `.claude/log.md`.
   `cloudflare-video-webhook` failed OPEN when its secret was unset — now fails
   closed. Raw, unhashed `user_id` and a raw `username` (an explicitly banned
   field) were reaching Crashlytics/PostHog from onboarding and the root layout —
-  added `hashUserId()` and applied it at every affected call site.
+  added `hashUserId()` and applied it at every affected call site. `push_token`
+  (a device push credential) was publicly readable on `profiles` — moved to its
+  own `push_tokens` table with own-row-only RLS. Ticket check-in
+  (`host_checkin_attendees`) allowed any column to change on any attendee of a
+  host's own event via a direct SDK call — moved to a column-restricted
+  `checkin_attendee()` RPC.
+- **Speed dating matches were never actually mutual** — the result screen
+  created a match and started a conversation the instant ONE participant
+  tapped "like," telling them "You both felt the connection" (false), and
+  paired two strangers into a live chat with zero consent from whichever side
+  never indicated interest. `submit_speed_date_like()` now requires both
+  sides to say yes before a match/conversation exists.
 
 ### Planned
 - Architecture documentation with data-flow / tenancy / module-boundary diagrams.
