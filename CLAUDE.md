@@ -5,6 +5,27 @@
 
 ---
 
+## WORKSPACE INTEGRATION (added 2026-07-25 by bootstrap)
+
+Roxy sits under the **JoNicole** workspace (`Thinqer/roxy/roxy-client/`). Thinqer is the product **brand**;
+as of 2026-07-28, Roxy is registered/billed under **Naaxtech Corp** (PH-registered) — Play Console/App Store
+Connect developer account, RevenueCat merchant, tax/revenue. That's a billing/legal-entity change only:
+infra, codebase, secrets, and the Supabase project stay separate from Naaxtech's own apps. Shared build
+doctrine (ship gate, research protocol, 13-layers, cloud-stages) lives in `../../../_kernel/`; this file
+stays the Roxy source of truth.
+
+**Open bootstrap-flagged items (tracked in `_kernel/INBOX.md`):**
+- **Model id:** `supabase/functions/_shared/claude.ts:43` hardcodes `claude-sonnet-4-6`, which is **not a
+  current Anthropic id** (and §4/§6 below claim haiku). Route haiku-4-5 → sonnet-5 → opus-4-8; verify with `/model`.
+- **Prompts in DB:** the 8 edge-function system prompts are hardcoded; doctrine requires a versioned
+  `agent_versions` table (active/staging/archived) so rollback is a row update.
+- **Secret hygiene:** rotate the service-role key + PAT sitting in the untracked local `.env`.
+- This file is ~370 lines (over the 150-line context cap). Recommend a slimming slice: move the migration
+  table, session table, and anti-patterns into `docs/` and keep the rules here. **Not auto-trimmed** —
+  it's your master brain; slim it deliberately, don't let a bootstrap gut it.
+
+---
+
 ## 0. WHAT THIS FILE IS
 
 This is the persistent brain for Claude Code across all Roxy development.
@@ -75,7 +96,7 @@ Do not suggest alternatives. These are final.
 | Lists | `@shopify/flash-list` |
 | Dates | `date-fns` |
 | Web | Vercel · Next.js 16 (Turbopack) · shadcn/ui |
-| Push | OneSignal |
+| Push | Expo Push Notifications (`expo-notifications`) — replaced OneSignal 2026-07-28: OneSignal was never actually installed (no SDK, no plugin, no registration code), and Expo's own push service is free, already a dependency, and needs no separate vendor account/native module — lowest-hassle option that's also lowest cost. |
 | Builds | EAS Build |
 | Payments | Stripe Connect Express |
 | Analytics | PostHog |
