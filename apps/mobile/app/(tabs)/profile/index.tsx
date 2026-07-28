@@ -187,7 +187,10 @@ export default function ProfileScreen() {
           <Ionicons name="settings-outline" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      {/* Bug fix: no bottom padding meant the last section (My Orders) scrolled
+          in right under the fixed tab bar + Roxy FAB with nothing protecting
+          it -- other screens in this app already reserve ~80px for this. */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         <ProfileCard
           profile={profile}
           badges={badges}

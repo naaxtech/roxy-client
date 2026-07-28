@@ -30,6 +30,10 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
     chipIcon: { fontSize: 14 },
     chipText: { color: colors.textPrimary, fontSize: 13, fontWeight: '600', flexShrink: 1 },
     hint: { color: colors.textMuted, fontSize: 13 },
+    emptyCard: {
+      backgroundColor: colors.surface, borderRadius: 16,
+      padding: 16, width: '100%',
+    },
   });
 
   const load = useCallback(async () => {
@@ -82,6 +86,20 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
   if (loading) return <ActivityIndicator color={colors.primary} style={{ margin: 16 }} />;
   if (!items.length && !editable) return null;
 
+  // Empty state used to be bare text with no visual container, floating
+  // inconspicuously below the styled Photos grid -- looked unstyled/broken
+  // next to it. Give it the same card treatment as the rest of the sections.
+  if (!items.length && editable) {
+    return (
+      <View style={styles.wrap}>
+        <Text style={styles.label}>Favourites</Text>
+        <View style={styles.emptyCard}>
+          <Text style={styles.hint}>Save events and games from Roxy to show them here.</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>Favourites</Text>
@@ -97,9 +115,6 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
             )}
           </TouchableOpacity>
         ))}
-        {!items.length && editable && (
-          <Text style={styles.hint}>Save events and games from Roxy to show them here.</Text>
-        )}
       </ScrollView>
     </View>
   );

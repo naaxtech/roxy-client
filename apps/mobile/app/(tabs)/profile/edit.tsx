@@ -55,7 +55,8 @@ export default function EditProfileScreen() {
     },
     backBtn: { width: 40 },
     headerTitle: { flex: 1, textAlign: 'center', color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
-    scroll: { padding: 16, gap: 14, alignItems: 'center' },
+    // Bottom padding clears the fixed tab bar + Roxy FAB, same fix as profile/index.tsx.
+    scroll: { padding: 16, paddingBottom: 100, gap: 14, alignItems: 'center' },
 
     avatarSection: { alignItems: 'center', gap: 8 },
     avatarCircle: {
