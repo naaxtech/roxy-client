@@ -110,16 +110,16 @@ reads as one system.
 │                                         │
 │            [ full-bleed media ]         │
 │                                         │
-│                                     ◍   │  ← author avatar + follow ⊕
+│                                   ◍ ⊕   │  ← author avatar + follow
 │                                     ♡   │     like     1.2k
 │                                     💬  │     comment    48
 │                                     ⚑   │     save
 │                                     ↗   │     share
-│                                         │
-│  @mara                                  │
-│  sunday market with the girls 🌻        │  ← caption, 2 lines then "more"
-│  #TheSapphicClub  #ManilaWLW  +2        │  ← community tags
-│                                         │
+│                                  ╭────╮ │
+│  @mara                           │ ✿  │ │  ← COMMUNITY CREST. Takes
+│  sunday market with the          ╰────╯ │     TikTok's sound-disc slot
+│  girls 🌻                               │     and rotation; tap opens
+│  ✿ The Sapphic Club · Manila WLW        │     the community.
 └─────────────────────────────────────────┘
 ```
 
@@ -238,9 +238,9 @@ TikTok has none of this; it is Roxy's. It surfaces without a tab of its own:
 │   ┌─────────────────────────────────┐   │
 │   │        Message      Follow      │   │
 │   └─────────────────────────────────┘   │
-├──────────┬──────────┬───────────────────┤
-│  ▦ Posts │  ♡ Liked │  ⬡ Badges         │
-├──────────┴──────────┴───────────────────┤
+├────────┬─────────────┬─────────┬────────┤
+│ ▦ Posts│ ✿Communities│ ♡ Liked │⬡ Badges│
+├────────┴─────────────┴─────────┴────────┤
 │ ┌──────┐┌──────┐┌──────┐                │
 │ │      ││      ││      │                │
 │ │  ▶   ││      ││  ▶   │                │  ← 3-col grid, ▶ + view count
@@ -328,31 +328,53 @@ ToS gate** and demonstrable ongoing moderation.
 
 ---
 
-## 9. What could not be verified — and why it matters
+## 9. TikTok's model — verified 2026-08-06
 
-You said "exact same formula". The research made five distinct attempts at TikTok's current interface
-and **failed to obtain authoritative, dated sources**: `support.tiktok.com` and `tiktok.com/support`
-return JS shells with no content, the newsroom index carries nothing relevant, and open-web teardowns
-are undated SEO filler.
+The first research pass failed because it only tried TikTok's own support pages, which serve empty JS
+shells. Approaching from teardowns and TikTok's own advertiser documentation worked.
 
-Worse, there is positive evidence the answer moved: multiple 2026 sources report TikTok **changed the
-profile layout in April 2026**, including a new "Grid" feature. Anything written from memory predates
-that.
+**Bottom navigation is five slots:** Home · Discover · **+** (centre) · Inbox · Profile. Slot 2 is the
+unstable one — it swaps between Discover, Friends and Shop by region and experiment, so it is the slot
+to spend on Roxy's own thing.
+`// src: https://www.tamidy.com/blog/the-ui-ux-of-tiktok-first-impressions · read 2026-08-06`
 
-**Unverified, and deliberately not guessed:**
-- the exact five bottom-nav destinations and their order (slot 2 varies by region and experiment
-  between Discover, Friends and Shop)
-- the profile tab set and order — *known* to have changed April 2026
-- whether the profile pager opens positioned at the tapped item (strongly implied by the ads doc, never
-  stated)
-- how hashtags render on a cell and where a tap routes
-- the right-rail action order
+**The feed cell.** Right rail top→bottom: creator avatar carrying a **+** to follow, then like, comment,
+share, then the sound disc. Bottom-left: username, caption, hashtags, sound name. TikTok's ad specs cap
+captions at **4 lines** and tell advertisers to keep artwork clear of the regions where *"buttons,
+usernames, and captions may appear"* — their own statement of where the chrome sits.
+`// src: https://ads.tiktok.com/help/article/tiktok-auction-in-feed-ads · read 2026-08-06`
 
-**The cheapest fix is you, with your phone, for ten minutes.** Screenshot current TikTok — a For You
-cell, a profile, and a hashtag tap — date them, drop them in `docs/tiktok-reference/`. That is strictly
-more reliable than anything on the open web, and the sketches above get corrected against it before any
-of them is built. The right rail in §2 and the tab set in §6 are my best reconstruction, not verified
-fact.
+**The profile was redesigned and the rollout is live right now** — began **July 2026**, server-side and
+gradual: *"for several weeks, you may see some profiles with the old design and others with the new
+one."* Cleaner spacing, more whitespace, a clearer hierarchy between username / statistics / bio, the
+content-type icon row below the bio **reorganized** (video grid, private, saved, liked all retained),
+action buttons redesigned, and TikTok Studio reachable from the profile. The April 2026 "Grid" feature
+is a separate thing.
+`// src: https://giovanniperilli.com/en/blog/new-tiktok-profile-2026/ · 2026-07-27 · read 2026-08-06`
+
+**Profile is a feed, not a detail view** — TikTok sells "Profile Feed placement", describing ads
+appearing *"within a profile page… after scrolling through several organic videos"*, which only works if
+tapping a grid item drops you into a pager.
+`// src: https://ads.tiktok.com/help/article/about-profile-feed-placement · read 2026-08-06`
+
+**Still unverified, and low-stakes:** the exact new order of the profile icon row (every source says
+"reorganized", none gives the order), and where bookmark/save sits in the rail. Neither blocks a slice.
+
+### The one deliberate divergence
+
+TikTok's identity anchor is **the sound** — the spinning disc bottom-right is how a video belongs to
+something larger than its author, and it is the engine of that culture. Roxy has no sounds. It has
+**rooms**.
+
+So the community crest takes the disc's exact slot and its slow rotation. Same position, same gesture,
+same muscle memory for anyone who has used TikTok — but it opens the community the poster is standing
+in rather than a sound page. Everything around it stays TikTok-identical so the app is instantly
+familiar; the single element that carries meaning is the one that is swapped.
+
+Roxy's profile icon row likewise substitutes **Communities** and **Badges** for TikTok's private and
+saved (saved moves into the ☰ menu): on a product whose thesis is belonging, "which rooms is she in" is
+the question a stranger actually arrives with. Captions cap at **2 lines**, not TikTok's 4, because the
+community tag row needs the space beneath them.
 
 ---
 
