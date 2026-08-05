@@ -1,0 +1,687 @@
+supabase/migrations/081_gate_hardening.sql
+  s_f93f52ad807728::t_6e06575da202db 1-499
+supabase/functions/kyc-create-session/index.ts
+  s_f93f52ad807728::t_23f83f052625f4 46-71
+  s_f93f52ad807728::t_e34cc4b7be34d0 1-15,17-45,72-103
+  s_f93f52ad807728::t_23fd4a2bc1ca15 16
+supabase/functions/refund-order/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 13
+apps/studio/lib/schema-availability.ts
+  s_f93f52ad807728::t_406d157515455a 1-30
+apps/mobile/types/index.ts
+  s_f93f52ad807728::t_60f5f9183f0430 120,122
+  s_f93f52ad807728::t_05b6243d586c4d 119,121,123-124
+  s_f93f52ad807728::t_c0bf62ae8181f2 159-166
+  s_f93f52ad807728::t_5cef16daa37d9a 6-11
+apps/mobile/app/_layout.tsx
+  s_f93f52ad807728::t_aabbe8d53cfa5f 6
+  s_f93f52ad807728::t_54e9ef334fb28d 88-91
+  s_f93f52ad807728::t_8d390a4c4419d6 45-55
+  s_f93f52ad807728::t_9d40547feb593b 114-126
+  s_f93f52ad807728::t_6fdb5f71fe1a79 151-153,155-157
+  s_f93f52ad807728::t_bd166a8ce8db10 154
+  s_f93f52ad807728::t_f17716a6bb2aed 108-110
+  s_f93f52ad807728::t_3c623a1f063d1d 104-107,111-113
+  s_f93f52ad807728::t_b5965ee484caff 18-19
+apps/studio/app/(dashboard)/community/members/MembersClient.tsx
+  s_f93f52ad807728::t_c9063a6aa719b0 1-378
+apps/mobile/app/(tabs)/connect/speed-dating/waiting-room.tsx
+  s_f93f52ad807728::t_59135d0d20ae00 230,233-234,259-264
+  s_f93f52ad807728::t_72f0651e8ecf17 96-99,102-107
+  s_f93f52ad807728::t_5b7bf9ca6e67d6 1,7,16-19,22-44,46-50,58-59,62-65,100-101,110-184,198,214,222-229,231-232,235-243,245-247,251,255-258,289-307,317-318,321-323,346
+  s_f93f52ad807728::t_0674543fa65e57 9
+  s_f93f52ad807728::t_0b389fd53a5408 308-316,319-320,324-338,340-344,347-350
+  s_f93f52ad807728::t_54a7b4b02f030a 13-15,20-21,55-57
+  s_f93f52ad807728::t_d18d38959fa06b 270-275
+  s_abbe96006f0da4::t_035b48e2cc1cbc 265
+apps/studio/app/(dashboard)/layout.tsx
+  s_f93f52ad807728::t_7242bbb6202ee0 35-46,50
+apps/studio/app/layout.tsx
+  s_f93f52ad807728::t_48c67e66ff3b44 34-35
+supabase/tests/083_gate_profile_bootstrap_check.sql
+  s_f93f52ad807728::t_2ec8be90d31073 1-162
+apps/mobile/app/business/[id].tsx
+  s_f93f52ad807728::t_65675cde16f3ae 578-580
+  s_f93f52ad807728::t_627992c96c4ed9 62-64
+  s_f93f52ad807728::t_b219f1204090e3 153,155,159
+supabase/migrations/077_speed_date_queue_integrity.sql
+  s_f93f52ad807728::t_d7c9d6f2fb392e 73-75,77
+  s_f93f52ad807728::t_fa15ff7368622d 2-72,76,78-509
+  s_f93f52ad807728::t_afc7f3fee3c0db 1,510
+apps/mobile/__tests__/lib/announcements.test.ts
+  s_f93f52ad807728::t_620b57c59bd7e5 1-91
+apps/mobile/lib/giphy.ts
+  s_f93f52ad807728::t_e7eb4d608a43ca 1-29
+supabase/functions/roxy-wingwoman/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 13
+supabase/functions/_shared/auth.ts
+  s_f93f52ad807728::t_6a0821ba1cb3e2 14-16,37-47,49,51,57-62,64-69,71,77
+  s_f93f52ad807728::t_2ac0c11aba5a41 1,12-13,17-30,33-36,48,50,52-53,55-56,63,70,72-73,76,78-79
+apps/mobile/app/product/[id].tsx
+  s_f93f52ad807728::t_b5467ab7016e41 175,177,181
+  s_f93f52ad807728::t_277a168269ec41 521-523
+  s_f93f52ad807728::t_860314f8637d43 49-51
+apps/mobile/__tests__/lib/idempotency.test.ts
+  s_f93f52ad807728::t_62eac769e48d63 1-48
+supabase/tests/077_speed_date_queue_check.sql
+  s_f93f52ad807728::t_e0353ed81e92dc 1-282
+supabase/functions/kyc-webhook/index.ts
+  s_f93f52ad807728::t_94f8eb1c56e69c 13
+  s_f93f52ad807728::t_a05a939f2ab47f 49-53,55,60-61,67,69-105
+  s_f93f52ad807728::t_2d024e92cfd3f3 1-12,14-48,54,56-59,62-66,68,106-142
+apps/studio/lib/dates.ts
+  s_f93f52ad807728::t_03de216671c068 1-57
+apps/mobile/app/(auth)/onboarding/step3-photo.tsx
+  s_f93f52ad807728::t_b0a29a5f7ff9f3 15-19
+  s_f93f52ad807728::t_4672e0c73a78e1 40-43,47
+  s_f93f52ad807728::t_83c74817e37858 9
+  s_f93f52ad807728::t_2863d3318ae2e2 31,36,44-46,48-52,58
+supabase/functions/create-donation-checkout/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 20
+apps/mobile/components/feed/FeedVideoPlayer.tsx
+  s_f93f52ad807728::t_9c997a03ba5ca0 1,3-5,10-21,26-38,41-43,45-58,61-71,74-78,90-92,102-106,122-151,155-156,158
+supabase/functions/update-order-shipped/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 10
+apps/mobile/components/profile/ProfilePhotoGrid.tsx
+  s_f93f52ad807728::t_36ecf066276817 11
+  s_f93f52ad807728::t_edfc6cffdc5656 73-82,86
+supabase/migrations/076_fix_posts_select_author.sql
+  s_f93f52ad807728::t_7bb5df797dff01 1-62
+supabase/functions/_shared/kyc.ts
+  s_f93f52ad807728::t_e4764d35911d2c 148-155,157-174
+  s_f93f52ad807728::t_a1c81be9219664 1-147,156,175-217
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_f93f52ad807728::t_1762f5a7f6a6c9 414-430
+  s_f93f52ad807728::t_be354945b10f2c 614-620,624,626
+  s_f93f52ad807728::t_92ddad218349c5 103-106
+  s_f93f52ad807728::t_98e7fe13fe8219 22
+  s_f93f52ad807728::t_296a101e4ee222 994-1000
+  s_f93f52ad807728::t_132784163b6a93 1006-1024
+apps/studio/lib/daily/callObject.ts
+  s_f93f52ad807728::t_6816a1064b78e4 1-74
+apps/studio/app/globals.css
+  s_f93f52ad807728::t_d931502ff2cbbd 6-9
+  s_f93f52ad807728::t_05db34b388caab 45-60
+apps/mobile/app/(tabs)/profile/index.tsx
+  s_f93f52ad807728::t_92d0df291d7674 137
+  s_f93f52ad807728::t_9a7f4d7cf5e9d2 37
+  s_f93f52ad807728::t_61d15ab88b1af4 244-250
+supabase/migrations/071_invite_gate_scoring.sql
+  s_f93f52ad807728::t_b5641dba9b412d 433,443-453,455,458-459
+  s_f93f52ad807728::t_4b0121bdcde2d1 300-313
+  s_f93f52ad807728::t_fa4bcfcd0c5c1c 525-557
+  s_f93f52ad807728::t_80de9a03eee3d7 1-292,294-299,314-412,414,416,422-432,434-442,454,456-457,460-497,499-524,558
+  s_f93f52ad807728::t_b74d1dc51e5245 413,415,417-421
+  s_f93f52ad807728::t_3272e80b91b172 498
+  s_f93f52ad807728::t_ca782c987b4f2c 293
+apps/mobile/app/(tabs)/connect/index.tsx
+  s_f93f52ad807728::t_b40e7cdcf6b0ac 545-580
+  s_f93f52ad807728::t_cafdeea27a08dd 100-102,105,108
+  s_f93f52ad807728::t_ba1238316d8172 86
+  s_f93f52ad807728::t_8d0e2a888584aa 115
+  s_f93f52ad807728::t_ee622d20b7418d 374-377,380,387-396,404
+  s_f93f52ad807728::t_95dd77c78f8823 478-482,488
+  s_f93f52ad807728::t_3e920ef4913967 465-469
+  s_f93f52ad807728::t_b86db073c54217 710,713-714
+  s_f93f52ad807728::t_d853bea7a08352 715
+  s_f93f52ad807728::t_a839977b711a4c 61-64,70
+  s_f93f52ad807728::t_83a8c1adb514bb 33-41
+  s_f93f52ad807728::t_ede54eccc6f3bf 133
+  s_f93f52ad807728::t_e31b0a02d02547 29
+  s_f93f52ad807728::t_597d27882dbf8c 651,654-655,657
+  s_f93f52ad807728::t_3560915d0eb990 42
+  s_f93f52ad807728::t_ff70aa7c141797 645-650,652-653
+  s_f93f52ad807728::t_a66ae5bac2b703 20
+  s_f93f52ad807728::t_d415db148561c8 461-463
+  s_f93f52ad807728::t_97d399a3acd237 89
+  s_f93f52ad807728::t_7e83bcf6bd207d 397-403
+  s_f93f52ad807728::t_8cd623350921fb 620-621
+  s_f93f52ad807728::t_a537c68d371914 65-69,71-78
+  s_f93f52ad807728::t_1dc2f082533e44 856-861,877-878
+  s_f93f52ad807728::t_cd99ab77f0f932 604
+  s_f93f52ad807728::t_4f458b995cdc48 694-695
+  s_f93f52ad807728::t_bfd8e3ae7ac1f1 19
+  s_f93f52ad807728::t_6daeda54cac567 471-475,486-487
+  s_f93f52ad807728::t_584232257d40de 418-420,422-423
+  s_f93f52ad807728::t_e32f3f137238ca 318-332,336-341,344,347
+  s_f93f52ad807728::t_44e5866de1ef23 464
+  s_f93f52ad807728::t_519139c075cbca 708
+  s_f93f52ad807728::t_3b0697b7ec2ed6 671-681
+  s_f93f52ad807728::t_b637df44afc1fa 586
+  s_f93f52ad807728::t_ed1ccf813ef9bc 618-619
+supabase/functions/create-payment-intent/index.ts
+  s_f93f52ad807728::t_cd1407f0088dc3 19,64,97,99,107
+  s_f93f52ad807728::t_390b4ad88308ec 15-16
+apps/studio/app/(dashboard)/rooms/RoomModal.tsx
+  s_f93f52ad807728::t_a57fb2f41f6ecc 10
+  s_f93f52ad807728::t_47033778189283 85-98,101-105,107,113
+  s_f93f52ad807728::t_1709a0ea4cf124 14-27
+supabase/tests/069_community_visibility_check.sql
+  s_f93f52ad807728::t_dfb9f14c0f93b5 1-127
+apps/mobile/__tests__/screens/SpeedDateSession.test.tsx
+  s_f93f52ad807728::t_6ce53904ce991a 1-77,86,92,101-126
+  s_f93f52ad807728::t_b2704cd24da2fd 78-85,87-91,93-100
+apps/mobile/lib/inviteCode.ts
+  s_f93f52ad807728::t_52bc7c5964e6de 1-44
+supabase/migrations/084_bootstrap_founding_reviewers.sql
+  s_f93f52ad807728::t_7cf6444f7ed3d0 1-82
+apps/mobile/components/build/OrderDetailSheet.tsx
+  s_f93f52ad807728::t_69d4918b770a73 86-89
+  s_f93f52ad807728::t_d5ada72d34d7ff 8,18-29
+  s_f93f52ad807728::t_01d7ff68e6c1bd 134-135
+supabase/functions/get-video-upload-url/index.ts
+  s_f93f52ad807728::t_2f1e5122488e59 15
+apps/mobile/app/(tabs)/connect/speed-dating/session.tsx
+  s_f93f52ad807728::t_a557a36897ffcf 80-83
+  s_f93f52ad807728::t_b81efc23e564a9 164-179
+  s_f93f52ad807728::t_35d7f8d47955be 192-196,199-201,203-222,225,227
+  s_f93f52ad807728::t_a1c85de0e3a123 202
+  s_f93f52ad807728::t_d1a93674f72f3d 4
+  s_f93f52ad807728::t_9b02065ffe6241 246
+  s_f93f52ad807728::t_969faa615aa866 285-310
+apps/mobile/components/build/CheckoutSheet.tsx
+  s_f93f52ad807728::t_bce3ff61e557ab 177-180
+  s_f93f52ad807728::t_9e072c6cb74b0f 240-248,250-254
+  s_f93f52ad807728::t_8c864e05d0474f 342-347
+  s_f93f52ad807728::t_207b859c356259 89-104,106-107,109-110,112-119,122-124,126-128,130-139,142-148,150-158
+  s_f93f52ad807728::t_b58516a93faae1 293-299
+  s_f93f52ad807728::t_07dcc5fecb79a2 1,10-11,17-25,31-32,41-44,50-58,129,140
+supabase/functions/roxy-nudge/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 13
+apps/studio/lib/supabase/invokeFunction.ts
+  s_f93f52ad807728::t_94b33d3806a704 1-56
+apps/mobile/__tests__/lib/authRouting.test.ts
+  s_f93f52ad807728::t_88fd6951964ac4 6-74,119-135
+  s_f93f52ad807728::t_ee279b7ca531a3 1-5
+  s_f93f52ad807728::t_8f2539e596007a 75-118
+apps/mobile/lib/idempotency.ts
+  s_f93f52ad807728::t_8e60a564a6e1da 1-46
+apps/studio/app/(dashboard)/applications/ReviewQueueClient.tsx
+  s_f93f52ad807728::t_7be878aa03af79 1-319
+apps/mobile/__tests__/components/chat/ReactionBar.test.tsx
+  s_f93f52ad807728::t_011ca60afab6a7 27,34
+  s_f93f52ad807728::t_85a44a81e5152b 19
+  s_f93f52ad807728::t_70b6a24c66fff9 38-46
+apps/mobile/__tests__/screens/SpeedDateResult.test.tsx
+  s_f93f52ad807728::t_b6b0a0721239a5 75,81,83-84,87-88
+  s_f93f52ad807728::t_e6603a26e7205c 89-90
+  s_f93f52ad807728::t_8ce81f5afb36a0 69-74,76-80,82,85-86,91-96
+apps/mobile/__tests__/screens/SpeedDateWaitingRoom.test.tsx
+  s_f93f52ad807728::t_e8ae52f17b0d83 1-27,29-32,34-51,56-60,70-121,225-229
+  s_f93f52ad807728::t_e818ff99b13ed0 28,33,52-55,61-69,122-224
+supabase/functions/staff-approve-business/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 10
+apps/mobile/lib/contentNavigation.ts
+  s_f93f52ad807728::t_780230e393f840 26-29
+apps/mobile/__tests__/store/gamesStore.test.ts
+  s_f93f52ad807728::t_37b0261ebd6061 3-41,44-49,63-84
+apps/mobile/app/(auth)/pending.tsx
+  s_f93f52ad807728::t_21d83aabfb0cbd 1-236
+apps/mobile/types/marketplace.ts
+  s_f93f52ad807728::t_4bd6937db49f65 69-75
+  s_f93f52ad807728::t_879c243ca11972 86-96,113,126,130-134,137-146,150-151,153
+supabase/functions/join-speed-date-session/index.ts
+  s_f93f52ad807728::t_011436c46796d7 3,7-8,21-39,51,77,81,85,89,91-94,96,98-120,123-125,129,131,148,153-156,159-164,167,169-178,181-183,194-198,201,205,216-235,237-238,257-261,265,272,277,285,291-293
+  s_f93f52ad807728::t_2f1e5122488e59 86
+  s_f93f52ad807728::t_7e3fc542ec9ab0 9-20
+  s_f93f52ad807728::t_f16ee9908a58ba 239-256
+  s_f93f52ad807728::t_e26094075465bb 294
+apps/mobile/lib/posts.ts
+  s_f93f52ad807728::t_51e06c7cbf2f3e 47-53
+supabase/migrations/085_block_user_and_read_receipts.sql
+  s_f93f52ad807728::t_c26cc338558a81 1-171
+apps/studio/app/(dashboard)/rooms/RoomsClient.tsx
+  s_f93f52ad807728::t_61fff79d8ffe2d 88-91,93-96,98,104,106-108,110-116
+  s_f93f52ad807728::t_fb2706fd4e1f1e 6
+  s_f93f52ad807728::t_db4f7be8cb8166 42-59
+apps/mobile/lib/uploads.ts
+  s_f93f52ad807728::t_a5322afb33d012 1-161
+apps/mobile/store/gamesStore.ts
+  s_f93f52ad807728::t_5f529568b65287 32,44-59
+  s_f93f52ad807728::t_494cb28c8b6028 5-7,13-18,60
+supabase/functions/roxy-chat/index.ts
+  s_f93f52ad807728::t_0ad7d3a11e2438 56-65
+  s_f93f52ad807728::t_23fd4a2bc1ca15 13
+  s_f93f52ad807728::t_29fbd4f42e67cc 30-43,45
+supabase/tests/082_anon_policy_lockdown_check.sql
+  s_f93f52ad807728::t_f6082bdaedabf3 1-335
+supabase/functions/roxy-onboarding/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 16
+supabase/functions/staff-approve-product/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 10
+apps/studio/package.json
+  s_f93f52ad807728::t_dd4bdf2fbe8281 23-24
+supabase/migrations/082_anon_policy_lockdown.sql
+  s_f93f52ad807728::t_d6c0131c168d27 1-204
+supabase/migrations/078_community_role_management.sql
+  s_f93f52ad807728::t_c35afee328cf2d 118-127,130-146,149
+  s_f93f52ad807728::t_162958105cf6d2 1-117,128-129,147-148,150-197
+apps/mobile/__tests__/lib/inviteCode.test.ts
+  s_f93f52ad807728::t_69ecbc8d76a56e 1-80
+supabase/functions/gdpr-export/index.ts
+  s_f93f52ad807728::t_61e7dcf694647d 41-50,58-62
+  s_f93f52ad807728::t_23fd4a2bc1ca15 10
+apps/mobile/lib/video/DailyProvider.ts
+  s_f93f52ad807728::t_8c3c479088057f 116-121,123,125-136
+  s_f93f52ad807728::t_5614bd99855742 75-77
+  s_f93f52ad807728::t_42450fdf62e5a7 19-45
+CLAUDE.md
+  s_f93f52ad807728::t_4fe6a32c371b83 188-190
+  s_f93f52ad807728::t_4a4012737530de 336-337,339-343,346-347,350-354
+apps/mobile/store/gateStore.ts
+  s_f93f52ad807728::t_49cc7009a8dcbc 90
+  s_f93f52ad807728::t_02762b98c800f7 115,118-127
+  s_f93f52ad807728::t_eea4148096b792 325-353,356,363-364,366,369,371,373-377,379-380,390
+  s_f93f52ad807728::t_3ab67ef82f69c0 237-239
+  s_f93f52ad807728::t_a3258ffb51658d 1-17,25-30,33-35,55-64,67-74,76-89,91-111,113-114,116-117,128-131,146-169,176,179-231,233-236,240-249,269-278,290-324,354-355,357-362,365,367-368,370,372,378,381-389,391-404,425-453
+  s_f93f52ad807728::t_007a3f74868e81 232
+  s_f93f52ad807728::t_aeda9a26a7127b 170-175,177-178
+  s_f93f52ad807728::t_d5cd86b22f18d8 251
+  s_f93f52ad807728::t_fe16cd459a692d 36-54
+  s_f93f52ad807728::t_3ec63dd6601d5c 18-24,31-32
+  s_f93f52ad807728::t_c05e35c3fac4e5 112
+  s_f93f52ad807728::t_fc0e04b5eba537 405-424
+  s_f93f52ad807728::t_afa0ee77bd1f20 279-289
+  s_f93f52ad807728::t_38bbf6cc8056d2 132-145
+  s_f93f52ad807728::t_bc20c830c8cbb6 263
+  s_f93f52ad807728::t_41c81901751c10 250,252-262,264-268
+  s_f93f52ad807728::t_257a8f6e7e5cd8 65-66,75
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_f93f52ad807728::t_8851d83562f997 33-42,44,80-88,122-133,136-138,142-144,147-155,218-223,231,444-461,464,499-523,600,608-630,654-668,700,750
+  s_f93f52ad807728::t_4ec1a5406a9ce6 27
+  s_f93f52ad807728::t_088b7369c76c45 22
+  s_f93f52ad807728::t_d0da5eab6f4327 712-715,721-722,724
+apps/studio/components/CopyButton.tsx
+  s_f93f52ad807728::t_df8c54c5c88d79 1,3-6,8,10-16,18-28,30-34,37-46,48-69
+supabase/functions/gdpr-delete/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 10
+  s_f93f52ad807728::t_248f85ccb6059f 43-59
+apps/mobile/lib/announcements.ts
+  s_f93f52ad807728::t_5503dd556776ee 1-168
+  s_f93f52ad807728::t_0d1031ba66086b 169-200
+apps/studio/components/AppSidebar.tsx
+  s_f93f52ad807728::t_0ad8cddfabbc4c 98
+  s_f93f52ad807728::t_4ebbc8637cff2f 32-34
+  s_f93f52ad807728::t_fe327ffc06fe58 174
+  s_f93f52ad807728::t_f1855ba558f840 180
+  s_f93f52ad807728::t_ae49e2eeb9bbf6 18
+  s_f93f52ad807728::t_fc75c7dc8d7d7e 10
+  s_f93f52ad807728::t_7de82310665f6a 128
+  s_f93f52ad807728::t_abcc95ef14c3c7 176
+  s_f93f52ad807728::t_6592c5ab43444f 25-31
+  s_f93f52ad807728::t_fcfe78fabd1c48 63-64,67-69
+apps/studio/app/(dashboard)/invites/page.tsx
+  s_f93f52ad807728::t_fb929a731aaa03 1-145
+supabase/migrations/080_profiles_privilege_and_anon_lockdown.sql
+  s_f93f52ad807728::t_ae1a4e9e6e1ae7 1-217
+apps/mobile/__tests__/store/gateStore.test.ts
+  s_f93f52ad807728::t_6bbb9e07603bce 1-14,16-18,21-26,28-39,41-52,54-62,89-95,97-99,136-277
+  s_f93f52ad807728::t_03836c4f4a504f 63-88,96
+  s_f93f52ad807728::t_856c01f12dcbe8 15
+  s_f93f52ad807728::t_4de14bb05f219c 100-135
+  s_f93f52ad807728::t_2b94cebcc9b244 19-20,27,40,53
+apps/mobile/components/feed/ReelsFeed.tsx
+  s_f93f52ad807728::t_292ca408b117c9 1,6,12-13,15-18,22,24,28-39,59,64-70,82-84,89-90,98,100-121,136-145,170-172,212-227,230,232,282-283,286,293-294,296,305-312,315-332,334-341,343-346,352-355,357-358,363-364,368-372,377-378,385-435,438
+  s_f93f52ad807728::t_23f8d212ad9525 123-132,134
+  s_f93f52ad807728::t_4077516a9a5dff 243-244
+  s_f93f52ad807728::t_11107cdb09266f 2-5,7-11,14,20-21,23,25-27,71-81,85,87-88,91-97,99,122,133,135,160,162-169,228-229,231,234,236-237,239,267,284-285,287-288,290-292,295,299-301,303-304,333,342,347-351,359-362,365-367,373-376,379-381,383-384,436-437,439
+  s_f93f52ad807728::t_0c23839642da87 289
+  s_f93f52ad807728::t_2c2c927e3d0344 161,173-211
+  s_f93f52ad807728::t_c40350f1dfdcd7 297-298,302,313-314
+  s_f93f52ad807728::t_443593cdfce371 255-258,265
+  s_f93f52ad807728::t_c559da392e08a0 233
+  s_f93f52ad807728::t_7bd01665c53876 19
+  s_f93f52ad807728::t_12bdc9229ec0d0 40-58,60-63,86
+  s_f93f52ad807728::t_71ab1b115a6676 235,238,240-242,245-254,259-264,266,268-281
+  s_f93f52ad807728::t_0c1c93b2a4d1a0 356
+  s_f93f52ad807728::t_a26d4ea9941076 382
+  s_f93f52ad807728::t_73a95ce8300fd8 146-159
+apps/mobile/__tests__/types.test.ts
+  s_f93f52ad807728::t_047cf3721b2ece 10
+apps/mobile/__tests__/VideoPostCard.test.tsx
+  s_f93f52ad807728::t_047cf3721b2ece 15
+apps/mobile/__tests__/RoxyLinkCard.test.tsx
+  s_f93f52ad807728::t_047cf3721b2ece 14
+supabase/migrations/074_processor_agreements_and_consent.sql
+  s_f93f52ad807728::t_6109cd767b14b2 1-287
+supabase/functions/get-orders-buyer/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 10
+apps/mobile/lib/video/VideoCallProvider.ts
+  s_f93f52ad807728::t_a8fffe6449cda6 17
+apps/studio/components/theme-switcher.tsx
+  s_f93f52ad807728::t_5ac5c95ef3be66 14-21,26-29,34-35,39-40,42-43,45,47-48,51,55,59
+  s_f93f52ad807728::t_69dddd67f3bda9 41
+supabase/functions/stripe-connect-onboard/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 13
+apps/mobile/__tests__/lib/gameUrl.test.ts
+  s_f93f52ad807728::t_5f64c56d6f9c8c 1-28
+apps/mobile/hooks/useReducedMotion.ts
+  s_f93f52ad807728::t_5631eacce3e69a 1-36
+supabase/functions/roxy-icebreaker/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 11
+supabase/migrations/073_community_announcements.sql
+  s_f93f52ad807728::t_a764241a5feae5 1-207
+apps/mobile/__tests__/lib/dailyProvider.test.ts
+  s_f93f52ad807728::t_85874e286e1b86 1-8,13,15-18,20-134
+  s_f93f52ad807728::t_b56e21e4fb2211 9,14,19
+  s_f93f52ad807728::t_5370edf6e4580c 10-12
+apps/mobile/app/(tabs)/discover/games/[gameId].tsx
+  s_f93f52ad807728::t_1be818f3f86364 59,62-70,77
+  s_f93f52ad807728::t_27805549fd4fc5 1,9,22,24,28-39,60-61
+apps/mobile/__tests__/posts.test.ts
+  s_f93f52ad807728::t_253c5337947dfa 30-54
+supabase/functions/join-community-room/index.ts
+  s_f93f52ad807728::t_b1dc05a18de6c5 129-132
+  s_f93f52ad807728::t_b5071743f7dd52 51,59-65,67-69,74-86
+  s_f93f52ad807728::t_347db864897aac 66,70-73
+  s_f93f52ad807728::t_2f1e5122488e59 17
+  s_f93f52ad807728::t_0f42ac4be26cc5 38-39,41-44
+  s_f93f52ad807728::t_2b5aef5dd56927 4-9
+apps/mobile/app/(tabs)/connect/speed-dating/index.tsx
+  s_f93f52ad807728::t_81fd61d9e2209c 115-117,120-124
+supabase/tests/080_profiles_privilege_check.sql
+  s_f93f52ad807728::t_68fafea506998d 202-204,206,208-219,221-225
+  s_f93f52ad807728::t_89d54cef6b3157 1-201,205,207,220,226-287
+apps/mobile/__tests__/marketplaceStore.test.ts
+  s_f93f52ad807728::t_7352e341f18bdd 23
+  s_f93f52ad807728::t_b5c48abd297217 18-22,24-26,33-36,40-45
+  s_f93f52ad807728::t_0f822733553a0a 125-127,130,157-178,180-196,202-203
+  s_f93f52ad807728::t_183b265551f3fd 267,269-276
+  s_f93f52ad807728::t_4b995f8a168c9d 298
+  s_f93f52ad807728::t_4c9430dded9024 313
+  s_f93f52ad807728::t_79cb0e13100405 322
+  s_f93f52ad807728::t_aafe31bcef8d7d 179
+  s_f93f52ad807728::t_0eb8ff9567ae22 124
+  s_f93f52ad807728::t_77a316a71f1ec0 6-7,9,12-17,27-32,37-39,46-64,67,75,84,105,114-123,128-129,131-132,134-145,147,149-156,197-201,204-218,220-230,232-266,268,277-292,295-297,299-312,314-321,324-327
+  s_f93f52ad807728::t_4d2afd7a4d864a 219,231,323
+supabase/config.toml
+  s_f93f52ad807728::t_10510587cd1d6e 357-372,380,382-385,387,399-400
+  s_f93f52ad807728::t_ea9aee8ac7eaab 388-396,398
+  s_f93f52ad807728::t_58a2c3faa3a4eb 373-379
+apps/mobile/__tests__/StaticPostCard.test.tsx
+  s_f93f52ad807728::t_047cf3721b2ece 15
+apps/mobile/__tests__/store/feedStore.test.ts
+  s_f93f52ad807728::t_279aa40e39ea9f 207-271,273-278,281-286
+  s_f93f52ad807728::t_66e0d6b7ec6fda 272,279-280
+  s_f93f52ad807728::t_754d5539644c2b 17,19
+  s_f93f52ad807728::t_047cf3721b2ece 36-37
+  s_f93f52ad807728::t_4d97c26f5d6398 78,81
+supabase/functions/speed-date-prompts/index.ts
+  s_f93f52ad807728::t_2f1e5122488e59 10
+apps/mobile/lib/reels.ts
+  s_f93f52ad807728::t_72154894beac53 4-9
+  s_f93f52ad807728::t_d32192bd6d1004 42-82
+  s_f93f52ad807728::t_3a98d2786fa160 1-3,10-41
+apps/studio/components/Header.tsx
+  s_f93f52ad807728::t_f2c03bbf273f73 43,47
+supabase/migrations/083_gate_profile_bootstrap.sql
+  s_f93f52ad807728::t_26a8c7e3a774a1 1-379
+supabase/functions/cancel-event/index.ts
+  s_f93f52ad807728::t_fa6d0bed188ed6 13-14
+  s_f93f52ad807728::t_5345a49e8f5790 39,50,66,82
+  s_f93f52ad807728::t_f474a5b6e5003d 25-31
+apps/mobile/store/marketplaceStore.ts
+  s_f93f52ad807728::t_dfd0484f1c807c 2-33,58,60-63,67,73-186,196,290-295,297,299-302,304-317,323-356,359-364,370,373-374
+apps/mobile/store/feedStore.ts
+  s_f93f52ad807728::t_d5ddaaa84b1430 6
+  s_f93f52ad807728::t_ba01ea2cef6ad1 172,178,180
+  s_f93f52ad807728::t_193b3eab629099 71
+  s_f93f52ad807728::t_83cea17d830a66 197,199
+  s_f93f52ad807728::t_693f85efb5bae1 234-242
+  s_f93f52ad807728::t_691ae87787a568 23-31
+apps/mobile/lib/video/index.ts
+  s_f93f52ad807728::t_70446601ed706e 5-12
+docs/superpowers/specs/2026-08-01-invite-gate-vetting-design.md
+  s_f93f52ad807728::t_eacdd96a9a9746 1-56,58,93-293
+  s_f93f52ad807728::t_69a5c8857c8c60 57,81-92
+  s_f93f52ad807728::t_ddee6137b174c5 59-80
+apps/mobile/app/(tabs)/_layout.tsx
+  s_f93f52ad807728::t_fc17cb7340d996 11
+  s_f93f52ad807728::t_69d3b79798994c 33-42
+supabase/migrations/072_invite_gate_enforcement.sql
+  s_f93f52ad807728::t_c03609890d2fba 1-238
+supabase/functions/roxy-greeting/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 11
+apps/studio/app/(dashboard)/invites/InviteCodesClient.tsx
+  s_f93f52ad807728::t_59797b20b2a706 521-523
+  s_f93f52ad807728::t_e68eab11aa8f67 77-83
+  s_f93f52ad807728::t_9041e0715d42c8 1-76,84-520,524-548,554-596,599-614
+  s_f93f52ad807728::t_d27c803af5b769 597-598
+  s_f93f52ad807728::t_867dabc3741049 549,551
+  s_f93f52ad807728::t_027da8d3ea3502 550,552-553
+apps/mobile/__tests__/lib/reels.test.ts
+  s_f93f52ad807728::t_395a48b0903d19 4-79
+  s_f93f52ad807728::t_ecc6a7d730a54c 80-131
+  s_f93f52ad807728::t_df5a2914e1a9e1 1-3
+apps/studio/app/(dashboard)/community/members/loading.tsx
+  s_f93f52ad807728::t_5b5409b1cb4bbd 1-30
+supabase/migrations/070_invite_gate_core.sql
+  s_f93f52ad807728::t_db2d69bd78c881 155-170,175-185
+  s_f93f52ad807728::t_d6fbda715e3dd6 1-28,34-154,171-174,186-575
+  s_f93f52ad807728::t_9bd17157dab2f4 29-33
+apps/mobile/app/(auth)/welcome.tsx
+  s_f93f52ad807728::t_0faaefe836f754 56-65,70,72,74-95
+  s_f93f52ad807728::t_5d709968771f2e 331-334,337-344,348-351,354-361
+  s_f93f52ad807728::t_18993df7079593 96-116,118-123
+  s_f93f52ad807728::t_5753f02944e381 305-309
+  s_f93f52ad807728::t_59a953e11d49f1 18,22
+  s_f93f52ad807728::t_87f92c6159b6a3 40
+  s_f93f52ad807728::t_e62b2a6a5f4456 142-143
+  s_f93f52ad807728::t_a434be4ac1898a 30,32,34-36
+  s_f93f52ad807728::t_cdbb9469887a73 420,427
+supabase/migrations/079_restore_vetting_default.sql
+  s_f93f52ad807728::t_eea617d2f6f853 1-49
+supabase/functions/_shared/daily.ts
+  s_f93f52ad807728::t_dd5c872e42d6af 1-133
+supabase/tests/081_gate_hardening_check.sql
+  s_f93f52ad807728::t_fe7f00f5c2e517 1-183,192-302,328-479
+  s_f93f52ad807728::t_799c9e711b5114 184-191
+  s_f93f52ad807728::t_ad80d9edd902c7 303-327
+apps/mobile/store/safetyStore.ts
+  s_f93f52ad807728::t_eff1f394335b7f 3
+  s_f93f52ad807728::t_2ecdf7f6a99f69 30-31,35-61,64-67
+  s_f93f52ad807728::t_dce195ea9a6a26 8-10
+apps/mobile/components/chat/ReactionBar.tsx
+  s_f93f52ad807728::t_e4849efb79a08b 48-53,64-65,70-78
+  s_f93f52ad807728::t_c4a336f0e258dc 3,7-15,20-21,24
+apps/mobile/app/(tabs)/profile/edit.tsx
+  s_f93f52ad807728::t_102e30a51944fb 129-143,145
+  s_f93f52ad807728::t_37e90cba9654f6 18
+supabase/functions/_shared/auth.test.ts
+  s_f93f52ad807728::t_574febcd0c1a2c 1-17,26-146
+  s_f93f52ad807728::t_ef18f62b3310cb 18-25
+supabase/functions/validate-invite-code/index.ts
+  s_f93f52ad807728::t_a659b0eea401cf 41-46,48-54
+  s_f93f52ad807728::t_7240b41c6bc231 77-79
+  s_f93f52ad807728::t_4828eed1deda7c 14
+  s_f93f52ad807728::t_aa5b2f79ccc381 1-13,15-40,47,55-76,80-107
+apps/mobile/app/(auth)/code.tsx
+  s_f93f52ad807728::t_0432992c8216ab 32-36
+  s_f93f52ad807728::t_797fc8e58f5a59 1-12,14-31,37-144,146-149,151-155,157-214
+  s_f93f52ad807728::t_68bc00c4715d3f 145
+  s_f93f52ad807728::t_09ce4aed96354e 150
+  s_f93f52ad807728::t_1d4bd54435b0b9 13
+  s_f93f52ad807728::t_1bb66faff7d44a 156
+apps/mobile/app/(tabs)/connect/speed-dating/result.tsx
+  s_f93f52ad807728::t_8eb151bbf59222 14-23
+  s_f93f52ad807728::t_7cbb936c815429 59-61,65-96,98,106-108,110,116,118,120,127-129,135-156
+  s_f93f52ad807728::t_5a870566ea892c 1
+supabase/functions/feature-vote/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 17
+apps/mobile/__tests__/components/chat/GifPicker.test.tsx
+  s_f93f52ad807728::t_6ae94a44e3082d 8-21,39,127,132-165
+CHANGELOG.md
+  s_f93f52ad807728::t_ebecd71510dbc0 41-111
+  s_f93f52ad807728::t_284aab457b99ef 40,112-164
+  s_f93f52ad807728::t_d5548a2a73b667 15-39
+  s_f93f52ad807728::t_b65e4359fe2f97 165-184,186-206
+  s_f93f52ad807728::t_7177fed2b8549e 342-356
+  s_f93f52ad807728::t_d8a6b0ae47a60c 437-441
+  s_f93f52ad807728::t_16f1fd6b086195 303-332
+  s_f93f52ad807728::t_e70acef9543f76 378-394
+  s_f93f52ad807728::t_f8e7319771d6b2 263,333-341,357,395-420
+  s_f93f52ad807728::t_9d6c7ba0030ec3 185,207-262
+  s_f93f52ad807728::t_5b461fecce1d85 264-302
+  s_f93f52ad807728::t_5bed6c9bbe9f09 358-376
+  s_f93f52ad807728::t_e937e9329aabd1 465-499
+apps/mobile/app/(tabs)/profile/delete-account.tsx
+  s_f93f52ad807728::t_61c4868593499f 29-38,40-43,46
+apps/mobile/__tests__/contentNavigation.test.ts
+  s_f93f52ad807728::t_9c8d8061c2f996 1-21,33-72
+  s_abbe96006f0da4::t_addf4250799bf2 73
+apps/mobile/__tests__/components/ProfileCard.test.tsx
+  s_f93f52ad807728::t_702b7c1f61a362 34
+supabase/functions/get-orders-business/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 10
+apps/studio/app/(dashboard)/applications/page.tsx
+  s_f93f52ad807728::t_0ad97f5329c77d 1-133
+supabase/functions/kick-participant/index.ts
+  s_f93f52ad807728::t_82cb9662ddc68c 43-46,48-50,58-64
+  s_f93f52ad807728::t_23fd4a2bc1ca15 10,47
+apps/mobile/__tests__/components/build/CheckoutSheet.test.tsx
+  s_f93f52ad807728::t_95973e0c509219 1-136
+apps/mobile/components/feed/ReelCell.tsx
+  s_f93f52ad807728::t_ddeca528af1e45 1-292
+apps/studio/app/(dashboard)/community/members/page.tsx
+  s_f93f52ad807728::t_83d8672b8a73bf 1-190
+.claude/log.md
+  s_f93f52ad807728::t_c2a552956b03d8 71
+  s_f93f52ad807728::t_85d32217c5d6f3 72
+apps/mobile/lib/gameUrl.ts
+  s_f93f52ad807728::t_94df607a89e622 1-14
+apps/mobile/app/(auth)/application.tsx
+  s_f93f52ad807728::t_a73dfd20d7fbb9 218-228
+  s_f93f52ad807728::t_7f810e2337cfb7 33-38
+  s_f93f52ad807728::t_f79c339f44ce3f 168
+  s_f93f52ad807728::t_5f2cfe8ba2693b 26,28
+  s_f93f52ad807728::t_20ad30fc720590 99-107,112-115
+  s_f93f52ad807728::t_66554db768c1c4 1,3-4,7,9-12,14,16-17,19,21-25,27,29-32,39-50,59-62,93-98,109-111,116-135,137-139,141-143,145-155,157-160,163-164,167,169-172,175-178,181-188,190,192-206,208-217,229,231-242,244-247,249-251,253,255,258-269,271-282,284-295,297-300,302-311,344,348-365,367,369-371,373-380,382-390
+  s_f93f52ad807728::t_382449f33d5719 51-58,63-71,73-90,92
+  s_f93f52ad807728::t_8a93dd6de7f9f6 165-166
+  s_f93f52ad807728::t_cd79f8ddefb2f0 312-343
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  s_f93f52ad807728::t_e4c70745d39004 65,71,79,84
+  s_f93f52ad807728::t_c43d7916b693f9 216-217
+  s_f93f52ad807728::t_573abca107bcd6 18
+  s_f93f52ad807728::t_247be92ce64085 300
+  s_f93f52ad807728::t_d295b14a6d5c98 1,4
+  s_f93f52ad807728::t_bb185dacdf487a 26-44
+  s_f93f52ad807728::t_0a051375982af5 175-181,185-190,192
+  s_f93f52ad807728::t_5777ee273c3e76 309-319
+  s_f93f52ad807728::t_1f20fa97b18b5a 333-339
+  s_f93f52ad807728::t_3b5c891e26d99d 225-227,233-241
+  s_f93f52ad807728::t_c278953976e025 285
+  s_f93f52ad807728::t_6ef2fe7fc0c5be 521-543
+  s_f93f52ad807728::t_7e5a1bf4c5f60f 60-64,66-70,72-78,80-83,85-87
+apps/mobile/lib/authRouting.ts
+  s_f93f52ad807728::t_df59ae95250c2f 1,8-11,38,41
+  s_f93f52ad807728::t_3c034505a52437 50-89
+  s_f93f52ad807728::t_1e9bde3583b961 2-7,12-37,39-40,42-49
+apps/studio/app/(dashboard)/rooms/[id]/page.tsx
+  s_f93f52ad807728::t_e0d83307c64d0b 186,199,210-211,225
+  s_f93f52ad807728::t_4e19ed3d6d6c07 235-236
+  s_f93f52ad807728::t_c41ace6e5d9741 22-25,32-71
+  s_f93f52ad807728::t_343f0637f4dd67 168
+  s_f93f52ad807728::t_42615b9350c10d 198,350,362
+  s_f93f52ad807728::t_416c9d8c9237e8 241
+  s_f93f52ad807728::t_fc53780ebae945 183-184
+  s_f93f52ad807728::t_64ecb9240415a0 5,8
+  s_f93f52ad807728::t_fc46f52b78698f 72-73,262-269
+  s_f93f52ad807728::t_eba43c27ac3e6d 272-276,288-290,294,299-300,306-308
+  s_f93f52ad807728::t_8a88be36510a8d 277-287
+  s_f93f52ad807728::t_60880798b7d79b 7
+  s_f93f52ad807728::t_135568b24093ff 188-192,194-196,201-207
+supabase/functions/connect-business-stripe/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 14
+supabase/functions/create-product-order/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 13
+supabase/functions/submit-report/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 10
+apps/mobile/__tests__/hooks/useReducedMotion.test.ts
+  s_f93f52ad807728::t_2dc0dfbd7e8b38 32,36-38
+  s_f93f52ad807728::t_1e51d549352277 1-31,33-35,39-73
+supabase/functions/manage-room/index.ts
+  s_f93f52ad807728::t_06b48558b0282f 141-147,149-154,156-163,170-171
+  s_f93f52ad807728::t_8080e5a0b611e2 120
+  s_f93f52ad807728::t_800b7f05ca3558 16-21,33
+  s_f93f52ad807728::t_2f1e5122488e59 11,155
+  s_f93f52ad807728::t_57a7d7ee577a2f 5
+  s_f93f52ad807728::t_28da24ac41ea1d 183-201
+apps/studio/app/(dashboard)/invites/loading.tsx
+  s_f93f52ad807728::t_79e5850a26bb4d 1-39
+apps/mobile/app/community-room-session.tsx
+  s_f93f52ad807728::t_fe765fbc468523 16-23
+  s_f93f52ad807728::t_fab3ef491ae435 1-7
+  s_f93f52ad807728::t_b7e4452f4f7136 331,410-428
+  s_f93f52ad807728::t_d2c5c8d1d48745 8-15,24-330,332-409,429-600
+supabase/functions/roxy-sister/index.ts
+  s_f93f52ad807728::t_23fd4a2bc1ca15 26
+apps/mobile/app/(tabs)/discover/index.tsx
+  s_f93f52ad807728::t_eb49c555b1ca4f 26-28
+  s_f93f52ad807728::t_4e5b64a124a814 19-20
+  s_f93f52ad807728::t_74f9e6c4c44a02 53-56
+  s_f93f52ad807728::t_d9bf388953a54c 128-133
+  s_f93f52ad807728::t_13bf8c81d9ec35 308-312
+  s_f93f52ad807728::t_234776d671d5ef 117
+  s_f93f52ad807728::t_39956c633eb366 179-183,185,188,190,192
+  s_f93f52ad807728::t_bb9827e9305424 372
+  s_f93f52ad807728::t_07bda9f52968cc 110
+  s_f93f52ad807728::t_ad573ce6845544 435-437,440-468
+supabase/migrations/069_community_content_visibility_rls.sql
+  s_f93f52ad807728::t_45933dbefd3a4b 1-153,169,173,178,180-185,188-197,201,206,208-218
+  s_f93f52ad807728::t_8ec22fbfd237fb 154-168,170-172,174-177,179,186-187,198-200,202-205,207
+apps/mobile/components/chat/GifPicker.tsx
+  s_f93f52ad807728::t_cb96edb0130c74 34-37,41,43-50,53,60-61,64,67
+  s_f93f52ad807728::t_b529410512d096 106-108
+  s_f93f52ad807728::t_be6de4907911c8 128-136,138
+  s_f93f52ad807728::t_7b6e3588d7b91c 139-178
+  s_f93f52ad807728::t_0a129279b35825 179
+  s_f93f52ad807728::t_adff880efad2fb 10
+supabase/functions/dev-control/index.ts
+  s_f93f52ad807728::t_b9529f2e5d3e3f 107-113
+  s_f93f52ad807728::t_23fd4a2bc1ca15 22
+apps/mobile/components/build/OrderConfirmationSheet.tsx
+  s_f93f52ad807728::t_0ec13c62606a34 12-15
+  s_f93f52ad807728::t_b993a479e79b22 47-52
+supabase/functions/stripe-dashboard-link/index.ts
+  s_f93f52ad807728::t_4488372cac0ab8 36
+  s_f93f52ad807728::t_9abefcb8f9a8d6 14-15,18-24
+apps/mobile/tsconfig.json
+  s_4fbccfddd99b3f::t_02253a1a7e9ca2 14-15
+apps/studio/package-lock.json
+  s_abbe96006f0da4::t_f69e7ec751f328 17-18,2336,3767,3777,5509,9644,9663
+deno.lock
+  s_f93f52ad807728::t_6fd531dbb7035b 1-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "9f9800597388f82df9f12de94232a977c9fe385f",
+  "prompts": {},
+  "sessions": {
+    "s_4fbccfddd99b3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b13b173f-9940-4857-ab47-48f71837a656",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_abbe96006f0da4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f6adeb1-8e93-4b92-945d-16b3d3f69ff5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
