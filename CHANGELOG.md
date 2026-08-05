@@ -99,6 +99,24 @@ finer-grained engineering log lives in `.claude/log.md`.
   RN 0.74 was archived. Citations in the touched files were repointed at tagged source.
 
 ### Added
+- **Mixed cell types in the pager** — slice 2. `PhotoCell` (multi-image gets a direction-locked
+  horizontal pager with dots and per-slide states), `TextCell`, `PollCell`, `ResourceCell`, and
+  `FeedCell` as the router, which also exports `feedItemType` — so the recycling-pool key and
+  the component choice come from one function and cannot drift apart. `FeedCellChrome` holds
+  the furniture every cell shares: the right rail in TikTok's verified order (author, like,
+  comment, save, share), the 2-line caption, and `CommunityCrest` in the sound-disc slot.
+  `FeedPager` needed no change — its slice-1 interface carried every cell type unmodified.
+  **Contrast was solved with numbers, not vibes**, and one of them is a brand finding:
+  `#FF6A2E` on white is **2.86:1**, which fails even the 3:1 large-text bar, so a raw brand
+  gradient behind white type is not shippable. Under a `rgba(26,10,46,0.42)` veil that stop
+  reaches 6.38:1 and `#E81C8E` reaches 8.35:1; the text scrim composites to 15.9:1 against a
+  worst-case pure-white photo; poll fills run at 0.55 over the track for 7.08:1. The caption
+  cap of 2 lines is load-bearing rather than stylistic — a third line pushes the first out of
+  the scrim's opaque band. A text post is promoted out of the caption slot into a centred
+  display composition (40/31/25/18px, weight 800→600, measure capped) on its own canvas, with
+  the chrome's caption suppressed so the words appear once at display scale instead of twice.
+  The crest rotates **only on the active cell** — five discs turning off-screen is wasted work
+  on a list whose job is holding 60fps through a swipe — and reduced motion stops it entirely.
 - **`components/feed/FeedPager.tsx`** — slice 1 of the redesign. The paging machinery
   (FlashList setup, snap paging, viewport measurement, viewability, active-item derivation,
   decoder-window arithmetic, scroll-position fallback) is now a reusable component;

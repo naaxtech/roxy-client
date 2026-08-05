@@ -16,7 +16,7 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { EmptyState } from '../ui/EmptyState';
 import { FeedPager } from './FeedPager';
 import type { FeedPagerCell } from './FeedPager';
-import { ReelCell } from './ReelCell';
+import { FeedCell, feedItemType } from './FeedCell';
 
 const PAGE_SIZE = 10;
 
@@ -275,19 +275,10 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
   );
 
   /**
-   * One recycling pool per post type.
-   *
-   * "FlashList will now use separate recycling pools based on `item.type`. That
-   * means we will never recycle items of different types, making the re-render
-   * faster." A single constant collapses every type into one pool, so the moment
-   * this pager carries anything but video — the next slice — FlashList would
-   * recycle a game cell's view into a video cell and rebuild the whole render
-   * tree on every swipe. Keying on `post_type` costs nothing today and is the
-   * difference between a smooth mixed feed and a stuttering one.
-   *
-   * src: https://shopify.github.io/flash-list/docs/1.x/fundamentals/performant-components · @shopify/flash-list 1.6.4 · 2026-08-05
+   * One recycling pool per post type — the router's own function, so the pool
+   * key and the component choice can never drift apart. See `feedItemType`.
    */
-  const getItemType = useCallback((item: ReelRow) => item.post_type, []);
+  const getItemType = useCallback((item: ReelRow) => feedItemType(item), []);
   const keyExtractor = useCallback((item: ReelRow) => item.id, []);
   const handleEndReached = useCallback(() => { void loadMore(); }, [loadMore]);
 
@@ -303,14 +294,16 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
 
   /**
-   * Every reel is a `ReelCell` today. Slice 2 switches on `item.post_type` here
-   * and returns a different component per kind — which is the whole reason the
-   * pager takes a render callback rather than owning the cell.
+   * `FeedCell` picks the body from `post_type`; this list keeps supplying the
+   * data and the callbacks. Every cell type is reachable through here, so a
+   * caller that hands this pager a mixed page gets a mixed feed with no further
+   * work — what this particular list still fetches is video, because widening
+   * the query is a feed-source change and not a cell change.
    */
   const renderCell = useCallback(({
     item, index, activeIndex, activeItemId, width, height,
   }: FeedPagerCell<ReelRow>) => (
-    <ReelCell
+    <FeedCell
       post={item}
       index={index}
       activeIndex={activeIndex}
@@ -325,9 +318,10 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
       onToggleMute={toggleMute}
       onLike={() => void toggleLike(item.id)}
       onSave={() => void toggleSave(item.id)}
-      // Video detail lives at /community/video/:id — the old
-      // /discover/post/:id route does not render a video post.
-      onOpenComments={() => router.push(contentDetailPath(item.id, 'video') as never)}
+      // The detail route follows the post's type: video lives at
+      // /community/video/:id and everything else at /community/post/:id.
+      onOpenComments={() => router.push(contentDetailPath(item.id, item.post_type) as never)}
+      onOpenPost={() => router.push(contentDetailPath(item.id, item.post_type) as never)}
       onOpenAuthor={() => router.push(`/user/${item.author_id}` as never)}
       onOpenCommunity={() => router.push(`/community/${item.community_id}` as never)}
     />

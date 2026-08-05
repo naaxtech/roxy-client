@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Share } from 'react-native';
+import type { ReactElement } from 'react';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Linking from 'expo-linking';
 import { FeedVideoPlayer } from './FeedVideoPlayer';
-import type { ReelRow } from '../../lib/reels';
+import { FeedCellChrome } from './FeedCellChrome';
+import type { FeedCellChromeProps } from './FeedCellChrome';
+import { CHROME_SHADOW } from './feedChromeTokens';
 
-interface ReelCellProps {
-  post: ReelRow;
+export interface ReelCellProps
+  extends Omit<FeedCellChromeProps, 'playbackControl' | 'showCaption' | 'active'> {
   /**
    * This cell's position in the list. Drives the decoder window ONLY — distance
    * from the active cell is inherently positional. It must never decide
@@ -24,35 +25,34 @@ interface ReelCellProps {
    * The id of the item the pager is currently on.
    *
    * Playback keys on this rather than on `index === activeIndex`, because a bare
-   * index carries no identity and no type. The pager is becoming mixed-media, so
-   * an index match would cheerfully tell a photo, a poll or a game cell to start
-   * playing; and an index is stale the moment a page is spliced in ahead of this
-   * cell, which `ReelsFeed.load` does whenever a viewer arrives on a specific
-   * video. An id survives both.
+   * index carries no identity and no type. The pager is mixed-media, so an index
+   * match would cheerfully tell a photo, a poll or a game cell to start playing;
+   * and an index is stale the moment a page is spliced in ahead of this cell,
+   * which `ReelsFeed.load` does whenever a viewer arrives on a specific video.
+   * An id survives both.
    */
   activeItemId: string | null;
   width: number;
   height: number;
   muted: boolean;
-  liked: boolean;
-  saved: boolean;
-  /** Store-adjusted count, so a tap on the rail moves the number. */
-  likeCount: number;
-  /** OS "Reduce Motion": suppresses autoplay and the heart burst. */
-  reducedMotion: boolean;
   onToggleMute: () => void;
-  onLike: () => void;
-  onSave: () => void;
-  onOpenComments: () => void;
-  onOpenAuthor: () => void;
-  onOpenCommunity: () => void;
 }
 
+/**
+ * The video cell.
+ *
+ * Owns the video surface and nothing else a viewer would recognise as chrome:
+ * the rail, the crest, the scrim and the identity block are `FeedCellChrome`,
+ * shared with every other kind of cell, so a video and a poll are furnished
+ * identically and the feed reads as one system. What is left here is the part
+ * that is genuinely about video — the player, the tap-to-pause gesture, the
+ * double-tap like, the mute toggle and the transport control.
+ */
 export function ReelCell({
   post, index, activeIndex, activeItemId, width, height,
-  muted, liked, saved, likeCount, reducedMotion,
-  onToggleMute, onLike, onSave, onOpenComments, onOpenAuthor, onOpenCommunity,
-}: ReelCellProps) {
+  muted, reducedMotion, liked, onToggleMute, onLike,
+  ...chrome
+}: ReelCellProps): ReactElement {
   const isActive = post.id === activeItemId;
   const isVideo = post.post_type === 'video';
 
@@ -114,27 +114,29 @@ export function ReelCell({
     return Gesture.Exclusive(doubleTap, singleTap);
   }, [handleDoubleTap, togglePlay]);
 
-  const handleShare = useCallback(() => {
-    // Every other Share.share in this app sends a bare sentence with nothing to
-    // open. createURL resolves to the app's own scheme, so the link actually
-    // lands on this video.
-    // The versioned docs.expo.dev/versions/v51.0.0/** paths now 404; cite the
-    // tagged source instead, which is what actually ships.
-    // src: https://github.com/expo/expo/blob/sdk-51/packages/expo-linking/src/createURL.ts · expo-linking 6.3.1 · 2026-08-05
-    const url = Linking.createURL(`/community/video/${post.id}`);
-    const who = post.profiles?.display_name;
-    // Android's share sheet reads `message` only, iOS prefers `url` — so the
-    // link goes in both or half the platforms share nothing.
-    void Share.share({
-      message: who ? `${who} posted this on Roxy — ${url}` : `Check this out on Roxy — ${url}`,
-      url,
-    }).catch(() => { /* viewer dismissed the sheet */ });
-  }, [post.id, post.profiles?.display_name]);
-
-  const authorName = post.profiles?.display_name ?? '';
+  /**
+   * The pause mechanism WCAG 2.2 SC 2.2.2 requires. Tap-anywhere does the same
+   * thing but is invisible to a screen reader.
+   *
+   * It hangs above the shared rail rather than inside it: the rail's five slots
+   * are the social actions every cell has, and a control that exists on one
+   * cell type would move the other four's icons under a viewer's thumb.
+   */
+  const transport = isVideo ? (
+    <TouchableOpacity
+      testID="reel-transport"
+      style={s.transportBtn}
+      onPress={togglePlay}
+      accessibilityRole="button"
+      accessibilityLabel={playing ? 'Pause video' : 'Play video'}
+      hitSlop={8}
+    >
+      <Ionicons name={playing ? 'pause' : 'play'} size={22} color="#fff" style={CHROME_SHADOW} />
+    </TouchableOpacity>
+  ) : undefined;
 
   return (
-    <View style={[s.page, { width, height }]}>
+    <View testID="reel-cell" style={[s.page, { width, height }]}>
       <FeedVideoPlayer
         videoUrl={post.video_url}
         posterUrl={post.video_thumbnail_url}
@@ -152,15 +154,6 @@ export function ReelCell({
         <View style={StyleSheet.absoluteFill} collapsable={false} />
       </GestureDetector>
 
-      {/* Keeps white text legible over a bright frame. */}
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.65)']}
-        start={{ x: 0.5, y: 0.45 }}
-        end={{ x: 0.5, y: 1 }}
-        style={s.veil}
-        pointerEvents="none"
-      />
-
       <Animated.View style={[s.burst, burstStyle]} pointerEvents="none">
         <Ionicons name="heart" size={110} color="rgba(255,255,255,0.92)" />
       </Animated.View>
@@ -176,110 +169,29 @@ export function ReelCell({
         </View>
       ) : null}
 
-      <TouchableOpacity
-        style={s.muteBtn}
-        onPress={onToggleMute}
-        accessibilityRole="button"
-        accessibilityLabel={muted ? 'Unmute video' : 'Mute video'}
-        accessibilityState={{ selected: !muted }}
-        hitSlop={8}
-      >
-        <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={18} color="#fff" />
-      </TouchableOpacity>
-
-      <View style={s.rail}>
-        {/* The pause mechanism WCAG 2.2 SC 2.2.2 requires. Tap-anywhere does the
-            same thing but is invisible to a screen reader. It belongs to the
-            video subsystem, so it follows `isVideo` — its label says "video",
-            and announcing that over a still would be a lie to a screen reader. */}
-        {isVideo ? (
-          <TouchableOpacity
-            style={s.railBtn}
-            onPress={togglePlay}
-            accessibilityRole="button"
-            accessibilityLabel={playing ? 'Pause video' : 'Play video'}
-            hitSlop={6}
-          >
-            <Ionicons name={playing ? 'pause' : 'play'} size={26} color="#fff" />
-          </TouchableOpacity>
-        ) : null}
-
+      {isVideo ? (
         <TouchableOpacity
-          style={s.railBtn}
-          onPress={onLike}
+          testID="reel-mute"
+          style={s.muteBtn}
+          onPress={onToggleMute}
           accessibilityRole="button"
-          accessibilityLabel={
-            liked ? `Unlike video, ${likeCount} likes` : `Like video, ${likeCount} likes`
-          }
-          accessibilityState={{ selected: liked }}
-          hitSlop={6}
+          accessibilityLabel={muted ? 'Unmute video' : 'Mute video'}
+          accessibilityState={{ selected: !muted }}
+          hitSlop={8}
         >
-          <Ionicons
-            name={liked ? 'heart' : 'heart-outline'}
-            size={30}
-            color={liked ? '#E81C8E' : '#fff'}
-          />
-          <Text style={s.railCount}>{likeCount}</Text>
+          <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={18} color="#fff" />
         </TouchableOpacity>
+      ) : null}
 
-        <TouchableOpacity
-          style={s.railBtn}
-          onPress={onOpenComments}
-          accessibilityRole="button"
-          accessibilityLabel={`View comments, ${post.comment_count} comments`}
-          hitSlop={6}
-        >
-          <Ionicons name="chatbubble-outline" size={27} color="#fff" />
-          <Text style={s.railCount}>{post.comment_count}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={s.railBtn}
-          onPress={handleShare}
-          accessibilityRole="button"
-          accessibilityLabel="Share video"
-          hitSlop={6}
-        >
-          <Ionicons name="arrow-redo-outline" size={27} color="#fff" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={s.railBtn}
-          onPress={onSave}
-          accessibilityRole="button"
-          accessibilityLabel={saved ? 'Remove video from saved' : 'Save video'}
-          accessibilityState={{ selected: saved }}
-          hitSlop={6}
-        >
-          <Ionicons
-            name={saved ? 'bookmark' : 'bookmark-outline'}
-            size={26}
-            color={saved ? '#FFB020' : '#fff'}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <View style={s.overlay} pointerEvents="box-none">
-        <TouchableOpacity
-          onPress={onOpenCommunity}
-          accessibilityRole="button"
-          accessibilityLabel={`Open ${post.communities?.name ?? 'community'}`}
-        >
-          <Text style={s.community}>{post.communities?.name ?? 'Roxy'}</Text>
-        </TouchableOpacity>
-        {authorName ? (
-          <TouchableOpacity
-            onPress={onOpenAuthor}
-            accessibilityRole="button"
-            accessibilityLabel={`Open ${authorName}'s profile`}
-          >
-            <Text style={s.author}>{authorName}</Text>
-          </TouchableOpacity>
-        ) : null}
-        {post.content ? (
-          <Text style={s.caption} numberOfLines={3}>{post.content}</Text>
-        ) : null}
-      </View>
+      <FeedCellChrome
+        post={post}
+        liked={liked}
+        reducedMotion={reducedMotion}
+        onLike={onLike}
+        active={isActive}
+        playbackControl={transport}
+        {...chrome}
+      />
     </View>
   );
 }
@@ -288,7 +200,6 @@ export function ReelCell({
 // theme, and rebuilding this per cell would allocate on every swipe.
 const s = StyleSheet.create({
   page: { backgroundColor: '#000' },
-  veil: { ...StyleSheet.absoluteFillObject },
   burst: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
@@ -299,19 +210,11 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  overlay: {
-    position: 'absolute', left: 0, right: 0, bottom: 0,
-    padding: 18, paddingBottom: 34, gap: 8,
-    paddingRight: 76,
+  transportBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  community: { color: 'rgba(255,255,255,0.9)', fontWeight: '800', fontSize: 13 },
-  author: { color: 'rgba(255,255,255,0.75)', fontSize: 12 },
-  caption: { color: '#fff', fontSize: 14.5, lineHeight: 20 },
-  rail: {
-    position: 'absolute', right: 12, bottom: 110, gap: 20, alignItems: 'center',
-  },
-  railBtn: { alignItems: 'center', gap: 3 },
-  railCount: { color: '#fff', fontSize: 11, fontWeight: '700' },
   muteBtn: {
     position: 'absolute', top: 16, right: 14,
     width: 38, height: 38, borderRadius: 19,
