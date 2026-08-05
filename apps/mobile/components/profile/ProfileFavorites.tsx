@@ -19,7 +19,13 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
   const [loading, setLoading] = useState(true);
 
   const styles = StyleSheet.create({
-    wrap: { marginTop: 16, paddingHorizontal: 16 },
+    // width:'100%' is load-bearing, not decoration. profile/edit.tsx lays its
+    // ScrollView content out with alignItems:'center', which replaces the
+    // default 'stretch' and makes every direct child hug its own content
+    // width. The row below is a HORIZONTAL ScrollView, which has no intrinsic
+    // width, so without this the whole section collapsed and stretched on the
+    // edit screen while looking fine on profile/index.tsx.
+    wrap: { marginTop: 16, paddingHorizontal: 16, width: '100%' },
     label: { color: colors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 8 },
     row: { gap: 8, paddingBottom: 4 },
     chip: {
@@ -91,7 +97,7 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
   // next to it. Give it the same card treatment as the rest of the sections.
   if (!items.length && editable) {
     return (
-      <View style={styles.wrap}>
+      <View style={styles.wrap} testID="profile-favorites">
         <Text style={styles.label}>Favourites</Text>
         <View style={styles.emptyCard}>
           <Text style={styles.hint}>Save events and games from Roxy to show them here.</Text>
@@ -101,7 +107,7 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
   }
 
   return (
-    <View style={styles.wrap}>
+    <View style={styles.wrap} testID="profile-favorites">
       <Text style={styles.label}>Favourites</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {items.map((f) => (

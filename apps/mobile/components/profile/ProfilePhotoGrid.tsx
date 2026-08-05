@@ -27,7 +27,10 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
   const [uploading, setUploading] = useState(false);
 
   const styles = StyleSheet.create({
-    wrap: { marginTop: 20, paddingHorizontal: 16 },
+    // See ProfileFavorites: profile/edit.tsx centers its ScrollView children,
+    // so a width-less wrapper hugs its content and this fixed-slot wrapping
+    // grid can no longer work out how many slots fit per row.
+    wrap: { marginTop: 20, paddingHorizontal: 16, width: '100%' },
     label: { color: colors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 10 },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     slot: { width: SLOT, height: SLOT, borderRadius: 10, overflow: 'hidden' },
@@ -114,7 +117,7 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
   const slots = Array.from({ length: MAX_PHOTOS }, (_, i) => photos[i] ?? null);
 
   return (
-    <View style={styles.wrap}>
+    <View style={styles.wrap} testID="profile-photo-grid">
       <Text style={styles.label}>Photos</Text>
       <View style={styles.grid}>
         {slots.map((p, i) => (

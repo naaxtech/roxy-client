@@ -38,6 +38,29 @@ finer-grained engineering log lives in `.claude/log.md`.
   membership-aware empty states.
 
 ### Fixed
+- **Favourites collapsed and stretched on the Edit Profile screen.**
+  `profile/edit.tsx` lays its `ScrollView` content out with
+  `alignItems: 'center'`, which replaces flexbox's default `stretch` and makes
+  every direct child hug its own content width instead of filling the row. Every
+  block written for that screen already defended against it —
+  `styles.section` carries an explicit `width: '100%'` — but the two *shared*
+  components mounted there, `ProfileFavorites` and `ProfilePhotoGrid`, did not.
+  `ProfileFavorites` renders a **horizontal** `ScrollView`, which has no
+  intrinsic width at all, so it collapsed and stretched unpredictably; the
+  photo grid's fixed-108px wrapping slots likewise could not work out how many
+  fit per row. Both now declare `width: '100%'`, which is a no-op on
+  `profile/index.tsx` (whose container still stretches them) and makes them safe
+  to drop into any parent. The giveaway all along: `ProfileFavorites`' *empty*
+  state already had `width: '100%'`, which is why only the populated row broke.
+
+### Changed
+- **Edit Profile now reads picture → bio → photos → the rest.** Photos sat below
+  the avatar but behind the read-only Display Name and Bio blocks, so the two
+  most expressive fields were separated by admin chores. Bio moves directly under
+  the avatar and the photo grid follows it; display name, favourites, pronouns,
+  identity and badges keep their previous relative order below.
+
+### Fixed
 - **The marketplace could not take a single payment.** The client posted
   `{business_id, items, shipping_address}` to `create-product-order`, which has
   always required `{cart_id, shipping_address, idempotency_key}` — every checkout

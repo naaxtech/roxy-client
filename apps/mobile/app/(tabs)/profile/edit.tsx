@@ -213,16 +213,9 @@ export default function EditProfileScreen() {
           <Text style={styles.editPhotoText}>Change Photo</Text>
         </TouchableOpacity>
 
-        <ProfilePhotoGrid userId={user.id} editable />
-        <ProfileFavorites userId={user.id} editable />
-
-        {/* Display name (read-only) */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Display Name</Text>
-          <Text style={styles.readOnlyText}>{profile.display_name}</Text>
-          <Text style={styles.hint}>Set during onboarding — contact support to change</Text>
-        </View>
-
+        {/* Order is deliberate: picture → bio → photos → everything else. Who
+            she is reads top-to-bottom before the editing chores (display name,
+            pronouns, identity, badges) start. */}
         {/* Bio */}
         <View style={styles.section}>
           <Text style={styles.label}>Bio</Text>
@@ -240,6 +233,16 @@ export default function EditProfileScreen() {
             numberOfLines={3}
             textAlignVertical="top"
           />
+        </View>
+
+        <ProfilePhotoGrid userId={user.id} editable />
+        <ProfileFavorites userId={user.id} editable />
+
+        {/* Display name (read-only) */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Display Name</Text>
+          <Text style={styles.readOnlyText}>{profile.display_name}</Text>
+          <Text style={styles.hint}>Set during onboarding — contact support to change</Text>
         </View>
 
         {/* Pronouns */}
