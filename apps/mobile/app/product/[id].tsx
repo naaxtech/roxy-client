@@ -22,18 +22,13 @@ import type { ProductWithVariants, ProductVariant } from '../../types/marketplac
 
 const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
-// Products (like businesses — see app/business/[id].tsx) have no currency
-// column yet. Every price on this route defaults to USD until the schema
-// grows a real per-product (or per-order) currency source.
-const DEFAULT_CURRENCY = 'usd';
-
 export default function ProductDetailScreen() {
   const colors = useThemeColors();
   const screenWidth = useAppWidth();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { businesses } = useBuildStore();
-  const { productsByBusiness, addToCart } = useMarketplaceStore();
+  const { productsByBusiness, addToCart, businessCurrency, fetchBusinessCurrency } = useMarketplaceStore();
 
   const productId = id ?? '';
 
@@ -139,6 +134,15 @@ export default function ProductDetailScreen() {
     })();
     return () => { cancelled = true; };
   }, [product?.business_id, businesses]);
+
+  // Warm the seller's currency. This route never calls fetchProducts (it loads
+  // one product directly), so on a cold deep link nothing else populates the
+  // cache and every price would silently fall back to the placeholder — which
+  // is the bug this route already had, just relocated. Cheap and idempotent.
+  useEffect(() => {
+    if (!product?.business_id) return;
+    void fetchBusinessCurrency(product.business_id);
+  }, [product?.business_id, fetchBusinessCurrency]);
 
   const handleShare = () => {
     if (!product) return;
@@ -379,7 +383,7 @@ export default function ProductDetailScreen() {
         <View style={styles.body}>
           <Text style={styles.category}>{product.category}</Text>
           <Text style={styles.name}>{product.name}</Text>
-          <Text style={styles.price}>{formatMoney(displayPrice, DEFAULT_CURRENCY)}</Text>
+          <Text style={styles.price}>{formatMoney(displayPrice, businessCurrency(product.business_id))}</Text>
 
           {isOutOfStock && (
             <View style={styles.stockPill}>
@@ -416,7 +420,7 @@ export default function ProductDetailScreen() {
                       accessibilityLabel={`Select variant ${label}`}
                     >
                       <Text style={styles.variantLabel}>{label}</Text>
-                      <Text style={styles.variantPrice}>{formatMoney(v.price_cents, DEFAULT_CURRENCY)}</Text>
+                      <Text style={styles.variantPrice}>{formatMoney(v.price_cents, businessCurrency(product.business_id))}</Text>
                     </TouchableOpacity>
                   );
                 })

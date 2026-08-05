@@ -38,6 +38,80 @@ finer-grained engineering log lives in `.claude/log.md`.
   membership-aware empty states.
 
 ### Fixed
+- **The GDPR data export delivered nothing.** `gdpr-export` has always assembled a complete
+  Art. 15(3) copy — profile, message and post counts, and the entire invite-gate record
+  (legal name, answers, verification outcomes, appeals, processors), with the reviewer audit
+  log withheld under Art. 15(4) and *named* as withheld. `settings.tsx` then destructured
+  that payload into `_data`, discarded it, and told her *"Download will be available
+  shortly."* Nothing was ever scheduled to arrive. It now writes
+  `roxy-data-export-YYYY-MM-DD.json` and hands it to the OS share sheet. `expo-sharing`
+  resolves through a shape-checked guarded `require`, because `expo-sharing@12.0.1` calls
+  `requireNativeModule` at import time and would otherwise take down the whole Settings
+  screen on any binary built before the dependency existed; on an older build it degrades
+  to writing the file and saying where it is. Written to the cache directory, not documents
+  — a file carrying her legal name should not persist after she has saved a copy.
+- **An abandoned checkout held stock hostage, and a declined card oversold it.**
+  `create-product-order` decremented stock before the PaymentIntent existed, and only
+  `payment_intent.payment_failed` ever gave it back. Two failures, not one. A shopper who
+  walked away held inventory until the intent expired — and worse, a *decline* leaves the
+  intent retryable, so stock was returned, the buyer retried the same intent with another
+  card, and the unit shipped having never left stock. Reservation now lives on the
+  PaymentIntent itself (`metadata.stock_held`: `held → sold | released`), which is the one
+  object with exactly one row per checkout attempt and the authority on whether payment can
+  still happen — Stripe refuses to cancel a succeeded intent, so a successful cancel is the
+  processor's own proof the units can never be paid for. All four paths close: success,
+  cancellation, client-reported abandonment, and a 30-minute sweep. The decrement moved
+  after intent creation, and idempotent replays no longer double-decrement.
+- **Prices showed in dollars for sellers who do not price in dollars.** `businesses.currency`
+  has existed since migration 031 (`NOT NULL DEFAULT 'usd'`); two route files carried a
+  comment asserting the column did not exist and hardcoded `DEFAULT_CURRENCY = 'usd'` on the
+  strength of it. Storefront, product, cart and checkout now all read the seller's real
+  currency. The product route additionally warms the currency cache itself, since it loads a
+  single product directly and never calls `fetchProducts` — on a cold deep link nothing else
+  would populate it and every price would have fallen back to the placeholder.
+- **The feed never released a video decoder.** `FeedVideoPlayer` set `source={undefined}` for
+  out-of-window cells under a comment claiming that unloads the clip. It does not, and the
+  cited file does not say it does — verified three levels down: `Video.tsx` has no
+  `componentDidUpdate` so the only JS unload is `componentWillUnmount`; Android's `source`
+  prop is a non-nullable `ReadableMap`; and `VideoView#setSource` early-returns on a null uri
+  *without* calling `mPlayerData.release()`. Live ExoPlayer instances therefore equalled
+  mounted cells, not the five `DECODER_WINDOW = 2` implied. Out-of-window cells now unmount
+  `<Video>` and render the poster instead, which takes the JS *and* native release paths at
+  once; the window is 1. Concurrent-decoder limits are device-specific via
+  `getMaxSupportedInstances()`, so the old "commonly 4–8" comment was replaced with what the
+  javadoc and the Android CDD actually say.
+- **Video lifecycle was keyed on a bare list index**, which carries no type information and
+  would have told a non-video cell to play the moment the feed became mixed-media. It now
+  derives the active *item id* and requires the cell to be a video. The play/pause control
+  and paused glyph are gated on the same thing — that label over a still image was a
+  screen-reader lie.
+- **One recycling pool for every cell** (`getItemType={() => 'reel'}`) meant FlashList would
+  recycle one post type's view into another as soon as the feed stopped being all-video. Now
+  keyed on `post_type`.
+- **Viewability used the fragile threshold.** `itemVisiblePercentThreshold` divides by the
+  *item*, so a cell taller than the viewport can never become viewable — verified in both
+  RN 0.74.5's and flash-list 1.6.4's own `ViewabilityHelper`. Switched to
+  `viewAreaCoveragePercentThreshold`, which is viewport-denominated. Recycled `expo-image`
+  instances gained the `recyclingKey` that stops the previous cell's photo flashing on the
+  next one.
+- **Dead documentation citations.** `docs.expo.dev/versions/v51.0.0/**` and
+  `reactnative.dev/docs/0.74/**` both 404 now — Expo dropped SDK 51 from the live site and
+  RN 0.74 was archived. Citations in the touched files were repointed at tagged source.
+
+### Added
+- **`docs/superpowers/plans/2026-08-05-tiktok-redesign.md`** — the UX plan and sketches for
+  the single-feed TikTok-formula redesign on `version2`: five-slot navigation, one pager
+  carrying every content type, community tags with private communities hidden from
+  non-members, the TikTok profile grid, events and games as in-feed cells, and gamification
+  retained. Records what could not be verified about TikTok's current interface rather than
+  guessing it.
+- **`supabase/migrations/086_public_earned_badges.sql`** — earned badges readable by approved
+  members, in-progress rows still private, and the three `ubp_owner_*` policies pinned to
+  `TO authenticated` (they had been implicitly `TO PUBLIC`, i.e. reachable by `anon`, since
+  007). **Not applied**: nothing in this product has ever awarded a badge, and members can
+  currently write their own rows, so publishing earned badges would publish forgeries. It
+  ships with the award RPC and `REVOKE`, not before.
+
 - **Favourites collapsed and stretched on the Edit Profile screen.**
   `profile/edit.tsx` lays its `ScrollView` content out with
   `alignItems: 'center'`, which replaces flexbox's default `stretch` and makes

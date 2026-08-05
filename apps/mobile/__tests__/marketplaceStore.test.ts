@@ -70,6 +70,7 @@ describe('marketplaceStore', () => {
       cartIds: {},
       productsByBusiness: {},
       loadingProducts: {},
+      currencyByBusiness: {},
       orders: [],
       loadingOrders: false,
       ordersError: null,
@@ -111,6 +112,39 @@ describe('marketplaceStore', () => {
     expect(useMarketplaceStore.getState().cartItems['b1']).toHaveLength(0);
   });
 
+  /**
+   * `businesses.currency` (migration 031, NOT NULL DEFAULT 'usd') is the currency
+   * create-product-order hands Stripe when it opens the PaymentIntent. Anything the
+   * client shows that disagrees with it quotes the buyer a price nobody will charge.
+   */
+  describe('seller currency', () => {
+    it('reads the seller currency from the businesses row instead of assuming USD', async () => {
+      supabase.from.mockImplementation((table: string) => {
+        if (table !== 'businesses') throw new Error(`unexpected table ${table}`);
+        return queryStub({ result: { data: { currency: 'php' }, error: null } });
+      });
+
+      await useMarketplaceStore.getState().fetchBusinessCurrency('biz-ph');
+
+      expect(useMarketplaceStore.getState().businessCurrency('biz-ph')).toBe('php');
+    });
+
+    it('falls back to the schema default while the row is still loading', () => {
+      expect(useMarketplaceStore.getState().businessCurrency('not-loaded-yet')).toBe('usd');
+    });
+
+    it('keeps the currency it already knows when a refetch fails', async () => {
+      useMarketplaceStore.setState({ currencyByBusiness: { 'biz-ph': 'php' } });
+      supabase.from.mockImplementation(() =>
+        queryStub({ result: { data: null, error: { message: 'network down' } } })
+      );
+
+      await useMarketplaceStore.getState().fetchBusinessCurrency('biz-ph');
+
+      expect(useMarketplaceStore.getState().businessCurrency('biz-ph')).toBe('php');
+    });
+  });
+
   describe('checkout', () => {
     // create-product-order takes { cart_id, shipping_address, idempotency_key } and
     // re-derives prices from the cart server-side. Sending { business_id, items }
@@ -131,13 +165,17 @@ describe('marketplaceStore', () => {
         }
         throw new Error(`unexpected table ${table}`);
       });
-      callEdgeFunction.mockResolvedValue({ data: { client_secret: 'pi_1_secret_abc' }, error: null });
+      callEdgeFunction.mockResolvedValue({
+        data: { client_secret: 'pi_1_secret_abc', payment_intent_id: 'pi_1' },
+        error: null,
+      });
 
       const result = await useMarketplaceStore
         .getState()
         .buyNow('biz-1', product, null, 2, shipping, 'idem-key-1');
 
-      expect(result).toEqual({ ok: true, clientSecret: 'pi_1_secret_abc' });
+      // The intent id comes back so an abandoned checkout can hand its stock hold back.
+      expect(result).toEqual({ ok: true, clientSecret: 'pi_1_secret_abc', paymentIntentId: 'pi_1' });
       expect(callEdgeFunction).toHaveBeenCalledWith('create-product-order', {
         cart_id: 'cart-9',
         shipping_address: {
@@ -212,6 +250,32 @@ describe('marketplaceStore', () => {
         'insert',
         [{ cart_id: 'cart-3', product_id: 'prod-1', variant_id: null, quantity: 4 }],
       ]);
+    });
+
+    // The client can ship before create-product-order is redeployed. A missing intent id
+    // must mean "nothing to release", never a release call with `undefined` in it.
+    it('reports no releasable intent when the server does not return one', async () => {
+      signedIn();
+      supabase.from.mockImplementation(() =>
+        queryStub({ result: { data: null, error: null }, maybeSingle: futureCart('cart-1') })
+      );
+      callEdgeFunction.mockResolvedValue({ data: { client_secret: 'cs' }, error: null });
+
+      const result = await useMarketplaceStore
+        .getState()
+        .buyNow('biz-1', product, null, 1, shipping, 'idem-old-server');
+
+      expect(result).toEqual({ ok: true, clientSecret: 'cs', paymentIntentId: null });
+    });
+
+    it('asks the server to release the hold on an abandoned checkout', async () => {
+      callEdgeFunction.mockResolvedValue({ data: { released: true }, error: null });
+
+      await useMarketplaceStore.getState().releaseCheckout('pi_abandoned');
+
+      expect(callEdgeFunction).toHaveBeenCalledWith('create-product-order', {
+        release_payment_intent_id: 'pi_abandoned',
+      });
     });
 
     it('passes a 4xx server message to the buyer', async () => {

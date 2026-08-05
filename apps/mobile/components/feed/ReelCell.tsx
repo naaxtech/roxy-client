@@ -12,9 +12,25 @@ import type { ReelRow } from '../../lib/reels';
 
 interface ReelCellProps {
   post: ReelRow;
-  /** This cell's position in the list — drives the decoder window. */
+  /**
+   * This cell's position in the list. Drives the decoder window ONLY — distance
+   * from the active cell is inherently positional. It must never decide
+   * playback: see `activeItemId`.
+   */
   index: number;
+  /** The active cell's position, for the same distance maths. */
   activeIndex: number;
+  /**
+   * The id of the item the pager is currently on.
+   *
+   * Playback keys on this rather than on `index === activeIndex`, because a bare
+   * index carries no identity and no type. The pager is becoming mixed-media, so
+   * an index match would cheerfully tell a photo, a poll or a game cell to start
+   * playing; and an index is stale the moment a page is spliced in ahead of this
+   * cell, which `ReelsFeed.load` does whenever a viewer arrives on a specific
+   * video. An id survives both.
+   */
+  activeItemId: string | null;
   width: number;
   height: number;
   muted: boolean;
@@ -33,11 +49,12 @@ interface ReelCellProps {
 }
 
 export function ReelCell({
-  post, index, activeIndex, width, height,
+  post, index, activeIndex, activeItemId, width, height,
   muted, liked, saved, likeCount, reducedMotion,
   onToggleMute, onLike, onSave, onOpenComments, onOpenAuthor, onOpenCommunity,
 }: ReelCellProps) {
-  const isActive = index === activeIndex;
+  const isActive = post.id === activeItemId;
+  const isVideo = post.post_type === 'video';
 
   // Reduce Motion turns autoplay off: WCAG 2.2 SC 2.2.2 treats a clip running
   // past five seconds as moving content that needs a pause mechanism, and a
@@ -45,7 +62,9 @@ export function ReelCell({
   const autoplay = !reducedMotion;
   // null = follow the mode's default; true/false = the viewer tapped.
   const [playOverride, setPlayOverride] = useState<boolean | null>(null);
-  const playing = isActive && (playOverride ?? autoplay);
+  // Two independent conditions, both required: this cell is the one being
+  // looked at, AND this cell is something that plays.
+  const playing = isActive && isVideo && (playOverride ?? autoplay);
 
   // A cell scrolled away from is a cell whose pause was about the old clip;
   // recycled or returned to, it should behave like a fresh one.
@@ -76,7 +95,10 @@ export function ReelCell({
 
   // runOnJS(true) keeps these callbacks off the UI thread so they can touch
   // React state and the Zustand store directly.
-  // src: https://docs.swmansion.com/react-native-gesture-handler/docs/2.16.2/gestures/gesture · react-native-gesture-handler 2.16.2 · 2026-08-02
+  // "when `true`, all the callbacks will be run on the JS thread instead of the
+  // UI thread, regardless of whether they are worklets or not." The versioned
+  // docs.swmansion.com path for 2.16.2 now 404s, so this cites the tag.
+  // src: https://github.com/software-mansion/react-native-gesture-handler/blob/2.16.2/src/handlers/gestures/gesture.ts · react-native-gesture-handler 2.16.2 · 2026-08-05
   const tapGesture = useMemo(() => {
     const doubleTap = Gesture.Tap()
       .numberOfTaps(2)
@@ -96,7 +118,9 @@ export function ReelCell({
     // Every other Share.share in this app sends a bare sentence with nothing to
     // open. createURL resolves to the app's own scheme, so the link actually
     // lands on this video.
-    // src: https://docs.expo.dev/versions/v51.0.0/sdk/linking/#linkingcreateurlpath-namedparameters · expo-linking 6.3.1 · 2026-08-02
+    // The versioned docs.expo.dev/versions/v51.0.0/** paths now 404; cite the
+    // tagged source instead, which is what actually ships.
+    // src: https://github.com/expo/expo/blob/sdk-51/packages/expo-linking/src/createURL.ts · expo-linking 6.3.1 · 2026-08-05
     const url = Linking.createURL(`/community/video/${post.id}`);
     const who = post.profiles?.display_name;
     // Android's share sheet reads `message` only, iOS prefers `url` — so the
@@ -114,6 +138,7 @@ export function ReelCell({
       <FeedVideoPlayer
         videoUrl={post.video_url}
         posterUrl={post.video_thumbnail_url}
+        postId={post.id}
         isActive={playing}
         isMuted={muted}
         index={index}
@@ -140,7 +165,7 @@ export function ReelCell({
         <Ionicons name="heart" size={110} color="rgba(255,255,255,0.92)" />
       </Animated.View>
 
-      {isActive && !playing ? (
+      {isVideo && isActive && !playing ? (
         <View
           style={s.pausedGlyph}
           pointerEvents="none"
@@ -164,16 +189,20 @@ export function ReelCell({
 
       <View style={s.rail}>
         {/* The pause mechanism WCAG 2.2 SC 2.2.2 requires. Tap-anywhere does the
-            same thing but is invisible to a screen reader. */}
-        <TouchableOpacity
-          style={s.railBtn}
-          onPress={togglePlay}
-          accessibilityRole="button"
-          accessibilityLabel={playing ? 'Pause video' : 'Play video'}
-          hitSlop={6}
-        >
-          <Ionicons name={playing ? 'pause' : 'play'} size={26} color="#fff" />
-        </TouchableOpacity>
+            same thing but is invisible to a screen reader. It belongs to the
+            video subsystem, so it follows `isVideo` — its label says "video",
+            and announcing that over a still would be a lie to a screen reader. */}
+        {isVideo ? (
+          <TouchableOpacity
+            style={s.railBtn}
+            onPress={togglePlay}
+            accessibilityRole="button"
+            accessibilityLabel={playing ? 'Pause video' : 'Play video'}
+            hitSlop={6}
+          >
+            <Ionicons name={playing ? 'pause' : 'play'} size={26} color="#fff" />
+          </TouchableOpacity>
+        ) : null}
 
         <TouchableOpacity
           style={s.railBtn}

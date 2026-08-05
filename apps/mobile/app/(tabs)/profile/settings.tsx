@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Switch,
   ScrollView, StyleSheet, ActivityIndicator,
@@ -7,7 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
-import { supabase, callEdgeFunction } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
+import { exportUserData, describeExportResult } from '../../../lib/dataExport';
 import { confirmAction, showAlert } from '../../../lib/confirm';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { useThemeStore } from '../../../store/themeStore';
@@ -19,6 +20,8 @@ export default function SettingsScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const { theme } = useThemeStore();
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   if (!user || !profile) {
     return (
@@ -37,12 +40,15 @@ export default function SettingsScreen() {
   };
 
   const handleExportData = async () => {
-    const { data: _data, error } = await callEdgeFunction('gdpr-export', {});
-    if (error) {
-      showAlert('Error', error ?? 'Could not export data. Please try again.');
-    } else {
-      showAlert('Export ready', 'Your data has been compiled. Download will be available shortly.');
-    }
+    if (exporting) return;
+    setExporting(true);
+    setExportError(null);
+    const outcome = await exportUserData();
+    setExporting(false);
+
+    const { title, body } = describeExportResult(outcome);
+    if (outcome.status === 'error') setExportError(body);
+    showAlert(title, body);
   };
 
   const handleDeleteAccount = () => {
@@ -78,7 +84,10 @@ export default function SettingsScreen() {
     rowValue: { color: colors.textMuted, fontSize: 14 },
     separator: { height: 1, backgroundColor: colors.textMuted + '30', marginHorizontal: -16 },
     actionRow: { paddingVertical: 14 },
+    actionRowBusy: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     actionRowLabel: { color: colors.textPrimary, fontSize: 15, fontWeight: '500' },
+    actionRowLabelDisabled: { color: colors.textMuted },
+    actionRowError: { color: colors.error, fontSize: 12, marginTop: 6 },
     signOutButton: {
       width: '100%', backgroundColor: colors.surface, borderRadius: 16,
       padding: 16, alignItems: 'center',
@@ -186,8 +195,23 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Data & Privacy</Text>
 
-          <TouchableOpacity style={styles.actionRow} onPress={handleExportData}>
-            <Text style={styles.actionRowLabel}>Export my data</Text>
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={handleExportData}
+            disabled={exporting}
+            accessibilityRole="button"
+            accessibilityLabel="Export my data"
+            accessibilityState={{ disabled: exporting, busy: exporting }}
+          >
+            <View style={styles.actionRowBusy}>
+              {exporting && <ActivityIndicator size="small" color={colors.roxy} />}
+              <Text style={[styles.actionRowLabel, exporting && styles.actionRowLabelDisabled]}>
+                {exporting ? 'Preparing your file…' : 'Export my data'}
+              </Text>
+            </View>
+            {exportError !== null && (
+              <Text style={styles.actionRowError}>{exportError}</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.separator} />

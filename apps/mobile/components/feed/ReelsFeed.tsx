@@ -103,13 +103,13 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
    *
    * This list mounts below a header and a sub-tab row and above the tab bar, so
    * the window is 150–200dp taller than the space it actually gets. Sizing a
-   * page to the window made every cell overflow its own viewport, and FlashList
-   * computes `itemVisiblePercentThreshold` as visible-pixels ÷ ITEM height — so
-   * the best any cell could score was ~76%, and on shorter devices nothing ever
-   * crossed the threshold, no item was ever "viewable", and no video played at
-   * all. The action rail went off-screen for the same reason.
+   * page to the window overflowed every cell past its own viewport, which put
+   * the action rail off-screen and dragged viewability down with it.
    *
-   * 60% is correct once a page is exactly one viewport tall.
+   * Viewability no longer depends on this being right — `viewabilityConfig`
+   * below is viewport-denominated now — but the measurement stays, because the
+   * snap interval and `estimatedItemSize` still have to agree with the height a
+   * cell is actually given.
    */
   const [pageH, setPageH] = useState(0);
   const [pageW, setPageW] = useState(0);
@@ -290,9 +290,29 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
 
   useEffect(() => { void load(); }, [load]);
 
-  // One video plays at a time. 60% visibility rather than 50% so a half-scrolled
-  // pair never both count as active and play over each other.
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  /**
+   * One video plays at a time, and the threshold is measured against the
+   * VIEWPORT, not the item.
+   *
+   * Both implementations pick their denominator off which key you set —
+   * `viewAreaMode ? pixelsVisible / listMainSize : pixelsVisible / itemSize` in
+   * flash-list, `viewAreaMode ? pixels / viewportHeight : pixels / itemLength`
+   * in React Native. Visible pixels can never exceed the viewport, so under
+   * `itemVisiblePercentThreshold` the best score a cell taller than the viewport
+   * can ever reach is `viewport / itemSize`: it stops being able to hit 100% the
+   * moment it overflows, and it drops under a threshold T once it grows past
+   * `viewport ÷ T`. Nothing is then viewable and no video ever plays. Under
+   * `viewAreaCoveragePercentThreshold` a cell filling the viewport scores 100%
+   * however tall it is, so the config is correct on its own rather than correct
+   * only for as long as a cell keeps fitting.
+   *
+   * Exactly one of the two may be set: flash-list throws
+   * `multipleViewabilityThresholdTypesNotSupported` when it sees both.
+   *
+   * src: https://github.com/Shopify/flash-list/blob/v1.6.4/src/viewability/ViewabilityHelper.ts · @shopify/flash-list 1.6.4 · 2026-08-05
+   * src: https://github.com/facebook/react-native/blob/v0.74.5/packages/virtualized-lists/Lists/ViewabilityHelper.js · react-native 0.74.5 · 2026-08-05
+   */
+  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 60 }).current;
   // Must keep a stable identity — FlashList/VirtualizedList throws on a changing
   // onViewableItemsChanged. Safe to close over applyActiveIndex: it is itself
   // stable for the life of the component.
@@ -304,31 +324,57 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
   ).current;
 
   /**
-   * Viewability alone loses the active index: on a fast flick it fires with an
-   * EMPTY `viewableItems`, leaving `activeIndex` on the video the viewer already
-   * swept past — its audio keeps playing under the new cell's black frame. The
-   * scroll offset never lies, so it is the fallback.
+   * Viewability alone loses the active index, so the scroll offset backs it up.
+   *
+   * `minimumViewTime` is not the cleaner replacement it looks like: flash-list
+   * already applies one whether or not you ask for it —
+   * `const minimumViewTime = this.viewabilityConfig?.minimumViewTime ?? 250`,
+   * with the comment "Default of 0 can impact performance when user scrolls
+   * fast." So every viewability callback on this list is ALREADY debounced a
+   * quarter of a second, which is precisely why a fast flick leaves
+   * `activeIndex` on the video the viewer already swept past, its audio playing
+   * under the new cell's frame. Raising `minimumViewTime` makes that worse and
+   * dropping it to 0 trades it for dropped frames. The scroll offset never lies
+   * and costs nothing, so it stays as the fallback.
+   *
+   * src: https://github.com/Shopify/flash-list/blob/v1.6.4/src/viewability/ViewabilityHelper.ts · @shopify/flash-list 1.6.4 · 2026-08-05
    */
   const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     applyActiveIndex(activeIndexFromScroll(e.nativeEvent.contentOffset.y, pageH, reels.length));
   }, [pageH, reels.length, applyActiveIndex]);
 
+  /**
+   * WHICH POST is active, not merely which slot.
+   *
+   * A bare index says nothing about what lives there, and it is stale the moment
+   * the array shifts — `load` splices a directly-opened video onto the front of
+   * the page, and every `loadMore` appends. Cells key their playback off this
+   * id; the index is left to do the one job that genuinely is positional, which
+   * is measuring distance for the decoder window.
+   */
+  const activeItemId = reels[activeIndex]?.id ?? null;
+
   // Marking seen follows activeIndex rather than viewability, so a flick still
   // records what was watched. The ref keeps a re-render from re-upserting.
   const lastSeenRef = useRef<string | null>(null);
   useEffect(() => {
-    const item = reels[activeIndex];
-    if (!item || lastSeenRef.current === item.id) return;
-    lastSeenRef.current = item.id;
-    markSeen(item.id);
-  }, [activeIndex, reels, markSeen]);
+    if (!activeItemId || lastSeenRef.current === activeItemId) return;
+    lastSeenRef.current = activeItemId;
+    markSeen(activeItemId);
+  }, [activeItemId, markSeen]);
 
   // FlashList recycles cells. Without this it has no reason to re-render one
   // when the active video, the mute state, or a like changes, so a recycled cell
   // keeps the previous post's play state and icons.
   const extraData = useMemo(
-    () => ({ activeIndex, muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion }),
-    [activeIndex, muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion],
+    () => ({
+      activeIndex, activeItemId, muted,
+      likedPostIds, savedPostIds, likeCountDeltas, reducedMotion,
+    }),
+    [
+      activeIndex, activeItemId, muted,
+      likedPostIds, savedPostIds, likeCountDeltas, reducedMotion,
+    ],
   );
 
   // Exact page size, so FlashList never guesses a cell's height and the snap
@@ -337,7 +383,20 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
     (layout: { span?: number; size?: number }) => { layout.size = pageH; },
     [pageH],
   );
-  const getItemType = useCallback(() => 'reel', []);
+  /**
+   * One recycling pool per post type.
+   *
+   * "FlashList will now use separate recycling pools based on `item.type`. That
+   * means we will never recycle items of different types, making the re-render
+   * faster." A single constant collapses every type into one pool, so the moment
+   * this pager carries anything but video — the next slice — FlashList would
+   * recycle a game cell's view into a video cell and rebuild the whole render
+   * tree on every swipe. Keying on `post_type` costs nothing today and is the
+   * difference between a smooth mixed feed and a stuttering one.
+   *
+   * src: https://shopify.github.io/flash-list/docs/1.x/fundamentals/performant-components · @shopify/flash-list 1.6.4 · 2026-08-05
+   */
+  const getItemType = useCallback((item: ReelRow) => item.post_type, []);
 
   const s = StyleSheet.create({
     fill: { flex: 1, backgroundColor: '#000' },
@@ -414,6 +473,7 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
             post={item}
             index={index}
             activeIndex={activeIndex}
+            activeItemId={activeItemId}
             width={pageW > 0 ? pageW : windowWidth}
             height={pageH}
             muted={muted}
@@ -435,5 +495,5 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
     );
   }
 
-  return <View style={s.fill} onLayout={handleLayout}>{body}</View>;
+  return <View testID="reels-feed" style={s.fill} onLayout={handleLayout}>{body}</View>;
 }

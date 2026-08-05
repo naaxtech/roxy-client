@@ -22,6 +22,9 @@ const mockStoreState = {
   latestOrderId: jest.fn(),
   awaitNewOrderId: jest.fn(),
   fetchOrders: jest.fn().mockResolvedValue(undefined),
+  businessCurrency: jest.fn(() => 'usd'),
+  fetchBusinessCurrency: jest.fn().mockResolvedValue(undefined),
+  releaseCheckout: jest.fn().mockResolvedValue(undefined),
 };
 
 jest.mock('../../../store/marketplaceStore', () => ({
@@ -37,17 +40,20 @@ const product: ProductWithVariants = {
 };
 
 function renderSheet(onSuccess = jest.fn()) {
-  const utils = render(
-    <CheckoutSheet
-      businessId="biz-1"
-      businessName="NaaxTech"
-      visible
-      onClose={jest.fn()}
-      onSuccess={onSuccess}
-      buyNowItem={{ product, variantId: null, quantity: 2 }}
-    />
-  );
-  return { ...utils, onSuccess };
+  const props = {
+    businessId: 'biz-1',
+    businessName: 'NaaxTech',
+    onClose: jest.fn(),
+    onSuccess,
+    buyNowItem: { product, variantId: null, quantity: 2 },
+  };
+  const utils = render(<CheckoutSheet {...props} visible />);
+  return {
+    ...utils,
+    onSuccess,
+    /** What the buyer does when they walk away: the sheet stops being visible. */
+    close: () => utils.rerender(<CheckoutSheet {...props} visible={false} />),
+  };
 }
 
 /** Walks review → shipping → payment with a valid address. */
@@ -64,11 +70,53 @@ function fillAddressAndAdvance(utils: ReturnType<typeof renderSheet>) {
 describe('CheckoutSheet', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockStoreState.buyNow.mockResolvedValue({ ok: true, clientSecret: 'pi_1_secret_x' });
+    mockStoreState.buyNow.mockResolvedValue({ ok: true, clientSecret: 'pi_1_secret_x', paymentIntentId: 'pi_1' });
     mockStoreState.latestOrderId.mockResolvedValue(null);
     mockStoreState.awaitNewOrderId.mockResolvedValue('order-123');
+    mockStoreState.businessCurrency.mockReturnValue('usd');
     mockInitPaymentSheet.mockResolvedValue({ error: null });
     mockPresentPaymentSheet.mockResolvedValue({ error: null });
+  });
+
+  /**
+   * `businesses.currency` is what create-product-order hands Stripe. A sheet that says
+   * $19.98 over a PaymentIntent denominated in PHP quotes a price nobody is charged —
+   * and this app sells for a Philippines-registered business.
+   */
+  it('prices the sheet in the seller currency, not USD', async () => {
+    mockStoreState.businessCurrency.mockReturnValue('php');
+    const utils = renderSheet();
+    fillAddressAndAdvance(utils);
+
+    expect(utils.getByText('Pay ₱19.98 →')).toBeTruthy();
+    expect(utils.getByText('Prices in PHP · Secure checkout via Stripe')).toBeTruthy();
+    expect(utils.queryByText('Pay $19.98 →')).toBeNull();
+  });
+
+  // An abandoned sheet is holding stock nobody else can buy. Saying so immediately beats
+  // waiting for the server sweep to notice half an hour later.
+  it('releases the open PaymentIntent when the buyer closes the sheet unpaid', async () => {
+    mockPresentPaymentSheet.mockResolvedValue({ error: { code: 'Canceled', message: 'cancelled' } });
+    const utils = renderSheet();
+    fillAddressAndAdvance(utils);
+    fireEvent.press(utils.getByLabelText('Pay now'));
+    await waitFor(() => expect(mockPresentPaymentSheet).toHaveBeenCalled());
+
+    utils.close();
+
+    await waitFor(() => expect(mockStoreState.releaseCheckout).toHaveBeenCalledWith('pi_1'));
+  });
+
+  // Releasing a paid intent would hand its units back to the shelf after they sold.
+  it('never releases a PaymentIntent the buyer paid', async () => {
+    const utils = renderSheet();
+    fillAddressAndAdvance(utils);
+    fireEvent.press(utils.getByLabelText('Pay now'));
+    await waitFor(() => expect(utils.onSuccess).toHaveBeenCalledWith('order-123'));
+
+    utils.close();
+
+    expect(mockStoreState.releaseCheckout).not.toHaveBeenCalled();
   });
 
   it('opens a PaymentIntent with an idempotency key and hands the order id back', async () => {

@@ -2,6 +2,7 @@
 import { handleCors } from '../_shared/cors.ts';
 import { getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
+import { markHold, releaseHold } from '../_shared/stockHold.ts';
 import Stripe from 'npm:stripe@14';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
@@ -49,6 +50,17 @@ Deno.serve(async (req) => {
 
         // Guard: only handle marketplace payments (have our metadata)
         if (!meta?.buyer_id || !meta?.items_json) break;
+
+        // The stock this intent was holding is now the sale. Flipped before anything
+        // else, and before the already-created short-circuit below, because it is true
+        // the moment payment lands regardless of what happens to the order row.
+        // Non-fatal: Stripe refuses to cancel a succeeded intent, so even a failed flip
+        // leaves the reaper unable to hand these units back.
+        try {
+          await markHold(stripe, pi.id, 'sold');
+        } catch (err) {
+          console.error(`[stripe-product-webhook] could not mark ${pi.id} sold:`, err instanceof Error ? err.message : String(err));
+        }
 
         // Idempotency: order may already exist if webhook retried
         const { data: existingOrder } = await supabase
@@ -156,23 +168,35 @@ Deno.serve(async (req) => {
         const meta = pi.metadata;
         if (!meta?.buyer_id || !meta?.items_json) break;
 
-        // Release stock
-        const items: Array<{ variant_id: string | null; quantity: number }> =
-          JSON.parse(meta.items_json);
-
-        for (const item of items) {
-          if (!item.variant_id) continue;
-          await supabase.rpc('increment_variant_stock', {
-            p_variant_id: item.variant_id,
-            p_qty: item.quantity,
-          });
-        }
-
-        // Log failure details (no order created)
+        // The stock hold deliberately survives a declined card. A failed attempt does
+        // not end the intent — it returns to requires_payment_method and the buyer pays
+        // again with another card on the same intent, which emits no second decrement.
+        // Releasing here (what this handler used to do) therefore oversold: decline → +1
+        // → retry succeeds → the unit ships having never left stock. The hold is given
+        // back on payment_intent.canceled, or by the sweep in create-product-order.
         const failureReason = pi.last_payment_error?.message ?? 'Unknown';
         await supabase
           .from('webhook_events')
           .update({ failure_reason: failureReason, amount_cents: pi.amount, stripe_payment_intent_id: pi.id })
+          .eq('stripe_event_id', event.id);
+
+        break;
+      }
+
+      case 'payment_intent.canceled': {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        if (!pi.metadata?.buyer_id || !pi.metadata?.items_json) break;
+
+        // Read the intent fresh rather than trusting the event payload: the payload is a
+        // snapshot from cancellation time, and create-product-order releases its own
+        // holds inline the moment it cancels one. A stale `stock_held: held` here would
+        // hand the same units back a second time and invent stock the seller never had.
+        const current = await stripe.paymentIntents.retrieve(pi.id);
+        await releaseHold(stripe, supabase, current);
+
+        await supabase
+          .from('webhook_events')
+          .update({ amount_cents: pi.amount, stripe_payment_intent_id: pi.id })
           .eq('stripe_event_id', event.id);
 
         break;

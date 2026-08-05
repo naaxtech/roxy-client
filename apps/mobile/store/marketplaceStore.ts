@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase, callEdgeFunction } from '../lib/supabase';
 import { logError } from '../lib/errorLogger';
+import { DEFAULT_CURRENCY } from '../lib/currency';
 import type {
   ProductWithVariants, CartItem, OrderWithItems, ShippingAddress, CheckoutLine,
 } from '../types/marketplace';
@@ -27,7 +28,16 @@ const ORDER_SELECT = `
 
 /** Result of asking the server to open a payment. Never throws at the call site. */
 export type CheckoutStart =
-  | { ok: true; clientSecret: string }
+  | {
+      ok: true;
+      clientSecret: string;
+      /**
+       * The intent now holding this basket's stock, so an abandoned checkout can hand it
+       * straight back. Null when the deployed create-product-order predates returning it —
+       * the server's own hold sweep is then the only reaper, never a wrong release.
+       */
+      paymentIntentId: string | null;
+    }
   | { ok: false; message: string };
 
 const GENERIC_CHECKOUT_ERROR = "We couldn't start this payment. Please try again.";
@@ -43,6 +53,18 @@ interface MarketplaceStore extends CartState {
   productsByBusiness: Record<string, ProductWithVariants[]>;
   loadingProducts: Record<string, boolean>;
   fetchProducts: (businessId: string) => Promise<void>;
+
+  /**
+   * businessId -> ISO code from `businesses.currency` (migration 031).
+   *
+   * Sellers price in their own currency and create-product-order opens the PaymentIntent
+   * in it, so this is the only currency any marketplace surface may quote. Hardcoding USD
+   * shows a Philippine seller's ₱1,200 candle as $1,200 — off by a factor of 55 and
+   * charged in a currency the buyer never agreed to.
+   */
+  currencyByBusiness: Record<string, string>;
+  fetchBusinessCurrency: (businessId: string) => Promise<void>;
+  businessCurrency: (businessId: string) => string;
 
   // Cart operations
   addToCart: (businessId: string, product: ProductWithVariants, variantId: string | null, quantity: number) => Promise<void>;
@@ -64,6 +86,12 @@ interface MarketplaceStore extends CartState {
 
   // Checkout
   checkoutLoading: boolean;
+  /**
+   * Tells the server the buyer walked away, so the stock the intent is holding goes back
+   * on the shelf now rather than when the server's hold window expires. Best-effort
+   * cleanup — it never surfaces to a buyer who has already left the screen.
+   */
+  releaseCheckout: (paymentIntentId: string) => Promise<void>;
   createOrder: (businessId: string, shipping: ShippingAddress, idempotencyKey: string) => Promise<CheckoutStart>;
   buyNow: (
     businessId: string,
@@ -161,7 +189,7 @@ async function startCheckout(
     return { ok: false, message: "We couldn't prepare your order. Please try again." };
   }
 
-  const res = await callEdgeFunction<{ client_secret: string }>('create-product-order', {
+  const res = await callEdgeFunction<{ client_secret: string; payment_intent_id?: string }>('create-product-order', {
     cart_id: cartId,
     shipping_address: {
       name: shipping.name,
@@ -183,12 +211,17 @@ async function startCheckout(
     return { ok: false, message: buyerSafe ?? GENERIC_CHECKOUT_ERROR };
   }
 
-  return { ok: true, clientSecret: res.data.client_secret };
+  return {
+    ok: true,
+    clientSecret: res.data.client_secret,
+    paymentIntentId: typeof res.data.payment_intent_id === 'string' ? res.data.payment_intent_id : null,
+  };
 }
 
 export const useMarketplaceStore = create<MarketplaceStore>((set, get) => ({
   productsByBusiness: {},
   loadingProducts: {},
+  currencyByBusiness: {},
   cartItems: {},
   cartIds: {},
   orders: [],
@@ -198,6 +231,9 @@ export const useMarketplaceStore = create<MarketplaceStore>((set, get) => ({
 
   fetchProducts: async (businessId: string) => {
     if (get().loadingProducts[businessId]) return;
+    // Warmed alongside the catalogue so prices render in the seller's currency on first
+    // paint instead of flipping symbol once the business row lands.
+    void get().fetchBusinessCurrency(businessId);
     set(s => ({ loadingProducts: { ...s.loadingProducts, [businessId]: true } }));
     try {
       const { data, error } = await supabase
@@ -214,6 +250,27 @@ export const useMarketplaceStore = create<MarketplaceStore>((set, get) => ({
       set(s => ({ loadingProducts: { ...s.loadingProducts, [businessId]: false } }));
     }
   },
+
+  fetchBusinessCurrency: async (businessId) => {
+    const { data, error } = await supabase
+      .from('businesses')
+      .select('currency')
+      .eq('id', businessId)
+      .maybeSingle();
+
+    if (error) {
+      // Whatever is already known stays put. A stale-but-real currency beats dropping
+      // back to the placeholder and repricing a seller's whole catalogue mid-session.
+      logError(error, 'marketplace_fetchBusinessCurrency');
+      return;
+    }
+
+    const currency = data?.currency;
+    if (typeof currency !== 'string' || currency.length === 0) return;
+    set(s => ({ currencyByBusiness: { ...s.currencyByBusiness, [businessId]: currency } }));
+  },
+
+  businessCurrency: (businessId) => get().currencyByBusiness[businessId] ?? DEFAULT_CURRENCY,
 
   addToCart: async (businessId, product, variantId, quantity) => {
     const variant = variantId
@@ -351,6 +408,17 @@ export const useMarketplaceStore = create<MarketplaceStore>((set, get) => ({
       await delay(1000);
     }
     return null;
+  },
+
+  releaseCheckout: async (paymentIntentId) => {
+    const res = await callEdgeFunction<{ released: boolean }>('create-product-order', {
+      release_payment_intent_id: paymentIntentId,
+    });
+    if (!res.data) {
+      // Nothing to tell the buyer — they have already left the sheet. The server's hold
+      // sweep is the backstop, so a failure here delays the release rather than losing it.
+      logError(new Error(res.error ?? 'create-product-order did not confirm the release'), 'marketplace_releaseCheckout');
+    }
   },
 
   createOrder: async (businessId, shipping, idempotencyKey) => {

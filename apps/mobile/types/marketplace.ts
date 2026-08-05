@@ -2,11 +2,23 @@ export type ProductCategory = 'apparel' | 'accessories' | 'beauty' | 'art' | 'fo
 export type ProductStatus = 'pending' | 'approved' | 'rejected' | 'archived';
 export type OrderStatus = 'paid' | 'shipped' | 'delivered' | 'refunded' | 'cancelled';
 
+/**
+ * Product and variant prices are integer minor units and carry no currency of their own.
+ * The denomination lives one level up, on `businesses.currency` (migration 031, NOT NULL
+ * DEFAULT 'usd'), and that is exactly what create-product-order hands Stripe when it opens
+ * the PaymentIntent — so it is the only currency a pre-purchase price may be shown in.
+ *
+ * Read it with `useMarketplaceStore().businessCurrency(businessId)`. Never re-declare a
+ * local `DEFAULT_CURRENCY = 'usd'` next to a screen: that is how the marketplace ended up
+ * quoting dollars for sellers who charge pesos. After checkout, `Order.currency` is the
+ * record of what was actually charged and takes over.
+ */
 export interface Product {
   id: string;
   business_id: string;
   name: string;
   description: string | null;
+  /** Minor units (centavos/cents). Denominated by the seller's `businesses.currency`. */
   base_price_cents: number;
   category: ProductCategory;
   status: ProductStatus;

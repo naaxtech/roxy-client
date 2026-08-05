@@ -25,11 +25,6 @@ import type { ProductWithVariants } from '../../types/marketplace';
 
 const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
-// The `businesses` table has no currency column yet (confirmed against
-// types/index.ts). Every price on this route defaults to USD until the
-// schema grows a real per-business (or per-order) currency source.
-const DEFAULT_CURRENCY = 'usd';
-
 type StorefrontTab = 'shop' | 'about' | 'photos' | 'policies';
 const TABS: StorefrontTab[] = ['shop', 'about', 'photos', 'policies'];
 const TAB_LABEL: Record<StorefrontTab, string> = {
@@ -45,7 +40,7 @@ export default function BusinessStorefrontScreen() {
   const { businesses, bookmarkedBusinessIds, toggleBookmark } = useBuildStore();
   const {
     productsByBusiness, loadingProducts, fetchProducts,
-    getCartCount, getCartTotal,
+    getCartCount, getCartTotal, businessCurrency,
   } = useMarketplaceStore();
 
   const businessId = id ?? '';
@@ -328,7 +323,7 @@ export default function BusinessStorefrontScreen() {
         <View style={styles.productBody}>
           <Text style={styles.productCategory}>{product.category}</Text>
           <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
-          <Text style={styles.productPrice}>{formatMoney(product.base_price_cents, DEFAULT_CURRENCY)}</Text>
+          <Text style={styles.productPrice}>{formatMoney(product.base_price_cents, businessCurrency(businessId))}</Text>
           {isOutOfStock && <Text style={styles.outOfStock}>Out of stock</Text>}
         </View>
       </TouchableOpacity>
@@ -535,7 +530,7 @@ export default function BusinessStorefrontScreen() {
           <View style={styles.policiesSection}>
             {renderPolicyRow('airplane-outline', 'Ships internationally where the seller allows')}
             {renderPolicyRow('lock-closed-outline', 'Secure checkout via Stripe')}
-            {renderPolicyRow('pricetag-outline', `Prices shown in ${currencyCode(DEFAULT_CURRENCY)}`)}
+            {renderPolicyRow('pricetag-outline', `Prices shown in ${currencyCode(businessCurrency(businessId))}`)}
             {renderPolicyRow('arrow-undo-outline', 'Returns handled by the seller — contact before buying')}
           </View>
         )}
@@ -552,7 +547,7 @@ export default function BusinessStorefrontScreen() {
             <View style={styles.cartCountBadge}>
               <Text style={styles.cartCountText}>{cartCount}</Text>
             </View>
-            <Text style={styles.cartBarTotal}>{formatMoney(getCartTotal(businessId), DEFAULT_CURRENCY)}</Text>
+            <Text style={styles.cartBarTotal}>{formatMoney(getCartTotal(businessId), businessCurrency(businessId))}</Text>
           </View>
           <Text style={styles.cartBarCta}>View cart →</Text>
         </TouchableOpacity>

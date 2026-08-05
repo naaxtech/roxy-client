@@ -43,7 +43,18 @@ export default function UserProfileScreen() {
           setNotFound(true);
         } else {
           setProfile(profileRes.data as Profile);
-          if (badgesRes.data) setBadges(badgesRes.data as EarnedBadge[]);
+          // The badge query is already scoped to the profile being viewed, so
+          // it needs no change now that 086 lets one member read another's
+          // earned badges. What it did need was a voice: a PostgREST failure
+          // here returns { data: null, error } without throwing, so it never
+          // reached the .catch below and an empty strip was indistinguishable
+          // from "she has no badges" -- which is most of why the RLS bug this
+          // screen was built on top of went unnoticed for so long.
+          if (badgesRes.error) {
+            logError(badgesRes.error, 'userProfile_fetchBadges');
+          } else if (badgesRes.data) {
+            setBadges(badgesRes.data as EarnedBadge[]);
+          }
         }
       })
       .catch((e) => { logError(e, 'userProfile_fetch'); setNotFound(true); })

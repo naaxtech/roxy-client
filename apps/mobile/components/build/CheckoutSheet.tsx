@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, TextInput, ActivityIndicator, Animated } from 'react-native';
 import { useStripe } from '@stripe/stripe-react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,7 +41,10 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
   const {
     cartItems, getCartTotal, createOrder, clearCart, buyNow,
     latestOrderId, awaitNewOrderId, fetchOrders,
+    businessCurrency, fetchBusinessCurrency, releaseCheckout,
   } = useMarketplaceStore();
+  /** The seller's own currency — the one create-product-order opens the intent in. */
+  const currency = businessCurrency(businessId);
 
   const [step, setStep] = useState<Step>('review');
   const [shipping, setShipping] = useState<ShippingAddress>({
@@ -53,8 +56,11 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
    * The PaymentIntent already opened for this exact basket + address. Reused when the
    * buyer dismisses the Stripe sheet and taps Pay again: asking the server for a second
    * PaymentIntent would decrement stock a second time for the same purchase.
+   *
+   * A ref, not state — nothing renders from it, and the close and unmount paths both
+   * have to read whatever is current at the moment they fire.
    */
-  const [openIntent, setOpenIntent] = useState<{ clientSecret: string; signature: string } | null>(null);
+  const openIntent = useRef<{ clientSecret: string; paymentIntentId: string | null; signature: string } | null>(null);
   const paymentLoading = phase !== 'idle';
 
   // When buyNowItem is set, use it instead of cart
@@ -92,6 +98,15 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
     quantity: item.quantity,
   }));
 
+  // An intent still open at this point belongs to a buyer who has gone, and it is holding
+  // stock nobody else can buy. Handing it back here turns most abandonment into an
+  // immediate release instead of waiting out the server's hold window.
+  const abandonOpenIntent = async (): Promise<void> => {
+    const abandoned = openIntent.current;
+    openIntent.current = null;
+    if (abandoned?.paymentIntentId) await releaseCheckout(abandoned.paymentIntentId);
+  };
+
   // Closing the sheet ends the attempt: the next open starts at review with a fresh
   // PaymentIntent, never a stale client secret for a basket the buyer has since changed.
   useEffect(() => {
@@ -99,18 +114,36 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
     setStep('review');
     setPhase('idle');
     setError(null);
-    setOpenIntent(null);
+    void abandonOpenIntent();
+    // Deliberately keyed on `visible` alone: abandonOpenIntent reads a ref and a stable
+    // Zustand action, so listing it would re-run this reset on every render.
   }, [visible]);
+
+  // Navigating away mid-checkout is the same abandonment without the visibility change
+  // that would otherwise report it. Cleanup only, so it runs once on unmount.
+  useEffect(() => () => { void abandonOpenIntent(); }, []);
+
+  // Self-sufficient rather than relying on whichever screen opened the sheet: a deep link
+  // into a product reaches checkout without the business page ever mounting.
+  useEffect(() => {
+    if (!visible) return;
+    void fetchBusinessCurrency(businessId);
+  }, [visible, businessId, fetchBusinessCurrency]);
 
   const handlePayment = async () => {
     if (!isShippingValid || phase !== 'idle') return;
     setError(null);
 
     const signature = checkoutSignature(lines, shipping);
-    let clientSecret = openIntent?.signature === signature ? openIntent.clientSecret : null;
+    let clientSecret = openIntent.current?.signature === signature ? openIntent.current.clientSecret : null;
 
     if (!clientSecret) {
       setPhase('creating');
+      // A basket or address change makes the previous intent dead weight. Awaited, not
+      // fired and forgotten: the units it is holding are frequently the very units the
+      // new basket needs, and on a one-of-a-kind item the buyer would be told they were
+      // out of stock by their own abandoned reservation.
+      await abandonOpenIntent();
       const started = buyNowItem
         ? await buyNow(businessId, buyNowItem.product, buyNowItem.variantId, buyNowItem.quantity, shipping, newIdempotencyKey())
         : await createOrder(businessId, shipping, newIdempotencyKey());
@@ -120,7 +153,7 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
         return;
       }
       clientSecret = started.clientSecret;
-      setOpenIntent({ clientSecret, signature });
+      openIntent.current = { clientSecret, paymentIntentId: started.paymentIntentId, signature };
     }
 
     // Captured before payment so the order the webhook writes is identifiable
@@ -151,7 +184,9 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
     // Paid. The order row arrives via the Stripe webhook a moment later.
     setPhase('confirming');
     if (!buyNowItem) clearCart(businessId);
-    setOpenIntent(null);
+    // Cleared without releasing: these units are sold, and handing them back would put
+    // stock on the shelf that has already shipped.
+    openIntent.current = null;
     const orderId = await awaitNewOrderId(businessId, previousOrderId);
     await fetchOrders();
     setPhase('idle');
@@ -166,13 +201,13 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
         return (
           <View key={item.id} style={styles.reviewItem}>
             <Text style={styles.reviewItemName} numberOfLines={1}>{item.product?.name ?? 'Product'} × {item.quantity}</Text>
-            <Text style={styles.reviewItemPrice}>{formatMoney(price * item.quantity, 'usd')}</Text>
+            <Text style={styles.reviewItemPrice}>{formatMoney(price * item.quantity, currency)}</Text>
           </View>
         );
       })}
       <View style={styles.totalRow}>
         <Text style={styles.totalLabel}>Subtotal</Text>
-        <Text style={styles.totalAmount}>{formatMoney(subtotal, 'usd')}</Text>
+        <Text style={styles.totalAmount}>{formatMoney(subtotal, currency)}</Text>
       </View>
       {/* create-product-order defaults shipping_cost_cents to 0, so the total on the
           payment step IS the subtotal. Saying "calculated at next step" promised a
@@ -234,9 +269,9 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
       </View>
       <View style={styles.totalRow}>
         <Text style={styles.totalLabel}>Total</Text>
-        <Text style={[styles.totalAmount, { fontSize: 22 }]}>{formatMoney(subtotal, 'usd')}</Text>
+        <Text style={[styles.totalAmount, { fontSize: 22 }]}>{formatMoney(subtotal, currency)}</Text>
       </View>
-      <Text style={styles.intlNote}>Prices in {currencyCode('usd')} · Secure checkout via Stripe</Text>
+      <Text style={styles.intlNote}>Prices in {currencyCode(currency)} · Secure checkout via Stripe</Text>
       {error && (
         <View style={styles.errorBox}>
           <Ionicons name="alert-circle" size={16} color={colors.error} />
@@ -263,7 +298,7 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
           {paymentLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.primaryBtnText}>Pay {formatMoney(subtotal, 'usd')} →</Text>
+            <Text style={styles.primaryBtnText}>Pay {formatMoney(subtotal, currency)} →</Text>
           )}
         </TouchableOpacity>
       </View>

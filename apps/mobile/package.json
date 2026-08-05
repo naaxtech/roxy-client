@@ -48,6 +48,7 @@
     "expo-localization": "~15.0.3",
     "expo-notifications": "~0.28.0",
     "expo-router": "~3.5.0",
+    "expo-sharing": "~12.0.1",
     "expo-status-bar": "~1.12.1",
     "posthog-react-native": "^4.39.4",
     "react": "18.2.0",

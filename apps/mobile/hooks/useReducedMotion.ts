@@ -12,7 +12,10 @@ import { AccessibilityInfo } from 'react-native';
  * would blank the first frame of every animation for users who never asked for
  * that.
  *
- * src: https://reactnative.dev/docs/0.74/accessibilityinfo · react-native 0.74.5 · 2026-08-02
+ * reactnative.dev no longer serves the 0.74 docs — every /docs/0.74/** path 404s
+ * — so the version-pinned citation points at the archive that still does.
+ *
+ * src: https://reactnative-archive-august-2025.netlify.app/docs/0.74/accessibilityinfo · react-native 0.74.5 · 2026-08-05
  * src: https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide.html · WCAG 2.2 · 2026-08-02
  */
 export function useReducedMotion(): boolean {
