@@ -15,6 +15,7 @@ import { PRONOUNS, IDENTITY_LABELS } from '../../../lib/constants';
 import { logError } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
+import { uploadImageAsset } from '../../../lib/uploads';
 import { AvatarPickerSheet } from '../../../components/profile/AvatarPickerSheet';
 import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
@@ -125,23 +126,23 @@ export default function EditProfileScreen() {
     if (result.canceled || !result.assets?.[0]) return;
     setAvatarUploading(true);
     try {
-      const uri = result.assets[0].uri;
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      // Path MUST live under a `${user.id}/` folder: the avatars bucket RLS
-      // checks `auth.uid() = foldername(name)[1]`, so a root-level file (no
-      // folder) yields NULL and every upload/upsert is denied. Matches the
-      // path onboarding already uses.
-      const path = `${user.id}/avatar.jpg`;
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
-      if (uploadError) { showAlert('Upload failed', uploadError.message); return; }
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      await updateProfile({ avatar_url: data.publicUrl });
-    } catch (e: any) {
+      // pathPrefix MUST be `${user.id}`: the avatars bucket RLS checks
+      // `auth.uid() = foldername(name)[1]`, so a root-level file (no folder)
+      // yields NULL and every upload/upsert is denied. Matches the path
+      // onboarding already uses. Bytes go via uploadImageAsset because handing
+      // storage-js a Blob on React Native uploads 0 bytes on iOS and throws on
+      // Android (see lib/uploads.ts).
+      const publicUrl = await uploadImageAsset({
+        bucket: 'avatars',
+        pathPrefix: user.id,
+        fileName: 'avatar.jpg',
+        asset: result.assets[0],
+        upsert: true,
+      });
+      await updateProfile({ avatar_url: publicUrl });
+    } catch (e) {
       logError(e, 'editProfile_uploadPhoto');
-      showAlert('Upload failed', e?.message ?? 'Unknown error');
+      showAlert('Upload failed', 'Could not upload your photo. Check your connection and try again.');
     } finally {
       setAvatarUploading(false);
     }

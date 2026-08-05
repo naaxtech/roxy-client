@@ -19,7 +19,7 @@ Deno.serve(async (req: Request) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
-  const auth = verifyJWT(req);
+  const auth = await verifyJWT(req);
   if (!auth) return errorResponse('Unauthorized', 401);
 
   // Block in production
@@ -104,7 +104,13 @@ Deno.serve(async (req: Request) => {
 
   // ── seed_speed_date_session ─────────────────────────────────────────────────
   if (action === 'seed_speed_date_session') {
-    const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+    // Due now, exactly like a real queue join (join-speed-date-session stamps
+    // scheduled_at with the moment of the insert). This used to seed two
+    // minutes into the future, which since migration 077 means "an advance
+    // booking, not a queue entry" -- claim_speed_date_partner would skip it and
+    // the seeded session could never be paired with, which is the one thing
+    // this action exists to let us test.
+    const scheduledAt = new Date().toISOString();
     const { data, error } = await supabase
       .from('speed_date_sessions')
       .insert({

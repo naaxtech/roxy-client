@@ -34,7 +34,7 @@ export default function ProfileScreen() {
   const { user } = useAuthStore();
   const { profile } = useProfileStore();
   const { bookmarkedBusinessIds, loadBookmarks } = useBuildStore();
-  const { orders, loadingOrders, fetchOrders } = useMarketplaceStore();
+  const { orders, loadingOrders, ordersError, fetchOrders } = useMarketplaceStore();
   const router = useRouter();
   const colors = useThemeColors();
   // A post-checkout "View My Orders" link arrives with ?orders=1 so the orders
@@ -134,6 +134,7 @@ export default function ProfileScreen() {
     ordersEmpty: { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 8, alignItems: 'center', gap: 4 },
     ordersEmptyText: { color: colors.textMuted, fontSize: 14, fontWeight: '600' },
     ordersEmptySubtext: { color: colors.textMuted, fontSize: 12, textAlign: 'center' },
+    ordersRetryText: { color: colors.primary, fontSize: 13, fontWeight: '700', paddingVertical: 6 },
     orderRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -239,6 +240,13 @@ export default function ProfileScreen() {
               {loadingOrders ? (
                 <View style={styles.ordersLoading}>
                   <ActivityIndicator color={colors.primary} />
+                </View>
+              ) : ordersError ? (
+                <View style={styles.ordersEmpty}>
+                  <Text style={styles.ordersEmptyText}>{ordersError}</Text>
+                  <TouchableOpacity onPress={() => void fetchOrders()} accessibilityLabel="Retry loading orders">
+                    <Text style={styles.ordersRetryText}>Try again</Text>
+                  </TouchableOpacity>
                 </View>
               ) : sortedOrders.length === 0 ? (
                 <View style={styles.ordersEmpty}>

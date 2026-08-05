@@ -66,6 +66,34 @@ describe('SpeedDateResult — mutual match resolution', () => {
     expect(queryByText("It's a match!")).toBeNull();
   });
 
+  it('re-checks on a timer so a missed realtime insert cannot strand the waiting state', async () => {
+    // The speed_date_likes subscription is only created once the RPC has
+    // already answered 'waiting'. A partner decision landing inside that
+    // window fires before the channel exists, and with no fallback the user
+    // sat on "Waiting to see if it's mutual" forever — never learning they
+    // had matched.
+    jest.useFakeTimers();
+    try {
+      mockRpc
+        .mockResolvedValueOnce({ data: { status: 'waiting', conversation_id: null }, error: null })
+        .mockResolvedValue({ data: { status: 'matched', conversation_id: 'conv-9' }, error: null });
+
+      const { findByText } = render(<SpeedDateResult />);
+
+      // First answer parks the screen in the waiting state...
+      expect(await findByText(/Waiting to see if it's mutual/i)).toBeTruthy();
+      expect(mockRpc).toHaveBeenCalledTimes(1);
+
+      // ...and the fallback re-check, not any realtime event, is what gets it
+      // out again.
+      // Timer is virtual, so the 5s re-check costs no real wall time.
+      expect(await findByText("It's a match!", {}, { timeout: 8_000 })).toBeTruthy();
+      expect(mockRpc.mock.calls.length).toBeGreaterThan(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('submits liked:false when this user did not like the partner', async () => {
     mockSearchParams = { session_id: 'sess-1', liked: '0', partner_id: 'partner-1' };
     mockRpc.mockResolvedValue({ data: { status: 'no_match', conversation_id: null }, error: null });

@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   const corsRes = handleCors(req);
   if (corsRes) return corsRes;
 
-  const auth = verifyJWT(req);
+  const auth = await verifyJWT(req);
   if (!auth) return errorResponse('Unauthorized', 401);
 
   let roomId: string, sessionId: string;
@@ -40,7 +40,14 @@ Deno.serve(async (req) => {
   if (!canManage) return errorResponse('Access denied', 403);
 
   const dailyApiKey = Deno.env.get('DAILY_API_KEY');
-  if (!dailyApiKey) return errorResponse('DAILY_API_KEY not configured', 503);
+  if (!dailyApiKey) {
+    console.error('kick-participant: DAILY_API_KEY is not set — no participant can be removed');
+    return errorResponse('Live rooms are not configured (DAILY_API_KEY is unset)', 503);
+  }
+
+  if (!room.daily_room_name) {
+    return errorResponse('This room has no active video session', 409);
+  }
 
   const res = await fetch(`https://api.daily.co/v1/rooms/${room.daily_room_name}/eject`, {
     method: 'POST',
@@ -48,6 +55,12 @@ Deno.serve(async (req) => {
     body: JSON.stringify({ ids: [sessionId] }),
   });
 
-  if (!res.ok) return errorResponse(`Kick failed: ${await res.text()}`, 500);
+  if (!res.ok) {
+    // Daily's body can echo request detail — log it, don't return it.
+    console.error(
+      `kick-participant: eject failed room_id=${roomId} status=${res.status} body=${await res.text()}`,
+    );
+    return errorResponse('Could not remove that participant', 502);
+  }
   return successResponse({ kicked: true });
 });

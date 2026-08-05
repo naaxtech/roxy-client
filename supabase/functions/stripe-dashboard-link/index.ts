@@ -11,11 +11,17 @@ Deno.serve(async (req) => {
   const corsRes = handleCors(req);
   if (corsRes) return corsRes;
 
-  const { user, errorResponse: authErr } = verifyJWT(req);
-  if (authErr) return authErr;
+  const auth = await verifyJWT(req);
+  if (!auth) return errorResponse('Unauthorized', 401);
 
   // Rate limit: 50 login link requests per day
-  await checkRateLimit(user.id, 'stripe-dashboard-link', 'daily', 50);
+  const { allowed } = await checkRateLimit({
+    userId: auth.userId,
+    fnName: 'stripe-dashboard-link',
+    maxCount: 50,
+    windowType: 'daily',
+  });
+  if (!allowed) return errorResponse('Rate limit exceeded', 429);
 
   if (DEV_MOCK) {
     return successResponse({ url: 'https://dashboard.stripe.com/test/dashboard' });
@@ -27,7 +33,7 @@ Deno.serve(async (req) => {
   const { data: account } = await supabase
     .from('host_stripe_accounts')
     .select('stripe_account_id, onboarding_complete')
-    .eq('user_id', user.id)
+    .eq('user_id', auth.userId)
     .maybeSingle();
 
   if (!account?.stripe_account_id) {

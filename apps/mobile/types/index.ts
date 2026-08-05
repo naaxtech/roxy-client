@@ -3,6 +3,12 @@ export interface Profile {
   username: string;
   display_name: string;
   onboarding_completed: boolean;
+  /**
+   * Invite gate (migration 070). 'unvetted' is the grandfathered population
+   * from before the gate — they keep full access, which is why the enforcement
+   * predicate accepts it alongside 'approved'.
+   */
+  vetting_status: 'unvetted' | 'pending' | 'approved' | 'rejected';
   bio: string | null;
   avatar_url: string | null;
   pronouns: string[];
@@ -110,6 +116,12 @@ export interface SpeedDateSession {
   daily_room_url: string | null;
   prompts: string[];
   created_at: string;
+  /**
+   * Server instant the session went active (migration 077). Both participants
+   * derive elapsed time from this so the two handsets agree on when the date
+   * ends. Null on sessions created before 077.
+   */
+  started_at: string | null;
 }
 
 export interface Match {
@@ -144,6 +156,14 @@ export interface Post {
   feed_score: number;
   blurhash: string | null;
   deleted_at: string | null;
+  /**
+   * Published under the community's own name and avatar rather than the
+   * admin who wrote it (migration 073). Announcements are public — readable
+   * without joining — which is what makes them a discovery surface. Capped at
+   * one per community per day by a unique index.
+   */
+  posted_as_community: boolean;
+  post_tags: string[];
   // video
   video_url: string | null;
   video_thumbnail_url: string | null;

@@ -31,6 +31,7 @@ const baseProfile: Profile = {
   pronouns: ['she/her'],
   identity_labels: ['lesbian'],
   onboarding_completed: true,
+  vetting_status: 'approved',
   is_dating_mode: false,
   interests: [],
   dating_looking_for: [],

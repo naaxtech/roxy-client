@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  Animated, PanResponder, StatusBar,
+  Animated, PanResponder, StatusBar, AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -77,6 +77,10 @@ export default function SpeedDateSession() {
   const [partnerLeft, setPartnerLeft] = useState(false);
   const [provider] = useState(() => new DailyProvider());
   const { state: _callState, remoteParticipant } = useVideoCall(provider);
+  // Expo Go and the web bundle resolve @daily-co/react-native-daily-js to
+  // nothing, so join() is impossible there. Read it once: the value is fixed
+  // for the lifetime of the bundle.
+  const [videoAvailable] = useState(() => provider.isAvailable);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasEnded = useRef(false);
@@ -157,6 +161,22 @@ export default function SpeedDateSession() {
     partnerLeftEmoji: { fontSize: 52 },
     partnerLeftTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
     partnerLeftSub: { color: colors.textMuted, fontSize: 15 },
+    unavailableWrap: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      paddingHorizontal: 32, gap: 12,
+    },
+    unavailableEmoji: { fontSize: 52 },
+    unavailableTitle: {
+      color: '#fff', fontSize: 21, fontWeight: '800', textAlign: 'center',
+    },
+    unavailableBody: {
+      color: colors.textMuted, fontSize: 15, textAlign: 'center', lineHeight: 22,
+    },
+    unavailableBtn: {
+      marginTop: 8, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 28,
+      backgroundColor: colors.primary,
+    },
+    unavailableBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   });
 
   // Load session (prompts)
@@ -169,24 +189,42 @@ export default function SpeedDateSession() {
     }).catch(() => {});
   }, [session_id]);
 
-  // Start timer when session loads
+  // Round clock. Anchored to the server's started_at rather than counted in
+  // local ticks: React Native suspends JS timers while the app is backgrounded,
+  // and each handset mounts at a different instant, so a tick counter let the
+  // two sides of the same date disagree about when it ended — and a user who
+  // backgrounded the app came back to a date that had not moved.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!session) return;
-    timerRef.current = setInterval(() => {
-      setElapsed((prev) => {
-        const next = prev + 1;
-        if (next >= session.duration_seconds && !hasEnded.current) {
-          hasEnded.current = true;
-          handleEnd();
-        }
-        return next;
-      });
-    }, 1000);
+    if (!session || !videoAvailable) return;
+
+    const parsed = session.started_at ? Date.parse(session.started_at) : NaN;
+    // Sessions created before migration 077 have no started_at; fall back to
+    // this client's mount so an old row still gets a bounded date.
+    const baseMs = Number.isFinite(parsed) ? parsed : Date.now();
+
+    const tick = () => {
+      const next = Math.max(0, Math.floor((Date.now() - baseMs) / 1000));
+      setElapsed(next);
+      if (next >= session.duration_seconds && !hasEnded.current) {
+        hasEnded.current = true;
+        handleEnd();
+      }
+    };
+
+    tick();
+    timerRef.current = setInterval(tick, 1000);
+    // Returning from the background re-reads the wall clock immediately, so a
+    // date that expired while away ends on resume instead of running long.
+    const appStateSub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') tick();
+    });
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      appStateSub.remove();
     };
-  }, [session]);
+  }, [session, videoAvailable]);
 
   // Detect when partner leaves mid-session
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -205,7 +243,7 @@ export default function SpeedDateSession() {
   // Join via provider
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!provider.isAvailable || !room_url) return;
+    if (!videoAvailable || !room_url) return;
     provider.join({ roomUrl: room_url }).then(() => {
       Analytics.speedDateJoined();
     }).catch((e: any) => {
@@ -243,6 +281,32 @@ export default function SpeedDateSession() {
   const duration = session?.duration_seconds ?? 300;
   const prompts = session?.prompts ?? [];
   const currentPrompt = prompts[promptIndex] ?? '✨ Get to know each other!';
+
+  // Declared after every hook so hook order stays identical across renders.
+  if (!videoAvailable) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+          <View style={styles.unavailableWrap}>
+            <Text style={styles.unavailableEmoji}>📵</Text>
+            <Text style={styles.unavailableTitle}>Video isn't available here</Text>
+            <Text style={styles.unavailableBody}>
+              Speed dating runs on video, which needs the installed Roxy app — it can&apos;t run in
+              the web preview. Open Roxy on your phone and your date will be waiting.
+            </Text>
+            <TouchableOpacity
+              style={styles.unavailableBtn}
+              onPress={() => router.back()}
+              accessibilityLabel="Back to the speed dating lobby"
+            >
+              <Text style={styles.unavailableBtnText}>Back to lobby</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

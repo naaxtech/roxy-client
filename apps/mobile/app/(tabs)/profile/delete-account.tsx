@@ -26,16 +26,24 @@ export default function DeleteAccountScreen() {
   const handleDelete = async () => {
     if (!confirmed || loading) return;
     setLoading(true);
-    try {
-      await callEdgeFunction('gdpr-delete', {});
-    } catch (e: unknown) {
-      logError(e, 'handleDelete');
+    // callEdgeFunction RESOLVES on failure -- it catches internally and returns
+    // { data, error } (lib/supabase.ts:23-57). The try/catch that used to guard
+    // this call was therefore unreachable and the returned error was never
+    // read, so a 429 (gdpr-delete caps at 3/day), a 500 from erase_gate_data,
+    // or simply being offline signed her out and sent her to the welcome screen
+    // exactly as though the account had been erased. It had not. The edge
+    // function's contract is "fail loudly, nothing partially removed"; honour it.
+    const { error } = await callEdgeFunction('gdpr-delete', {});
+    if (error) {
+      logError(error, 'handleDelete');
       setLoading(false);
-      const message = e instanceof Error ? e.message : 'Could not delete account. Please try again.';
-      showAlert('Error', message);
+      showAlert(
+        'Account not deleted',
+        `${error} Your account is still here — nothing has been removed. Please try again.`,
+      );
       return;
     }
-    // GDPR delete succeeded — best-effort sign out, always redirect
+    // Deletion confirmed by the server — best-effort sign out, always redirect.
     try { await supabase.auth.signOut(); } catch {}
     useAuthStore.getState().signOut();
     router.replace('/(auth)/welcome');

@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   // Bug fix: verifyJWT is synchronous and returns { userId } | null -- this
   // previously checked a nonexistent `.valid` property, which made every
   // call (valid token or not) either return 401 or throw on `null.valid`.
-  const auth = verifyJWT(req);
+  const auth = await verifyJWT(req);
   if (!auth) return errorResponse('Unauthorized', 401);
 
   const { postId, maxDurationSeconds = 180, fileSize } = await req.json();

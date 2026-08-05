@@ -112,10 +112,16 @@ export default function SpeedDatingLobby() {
         params: { session_id: data.session_id, room_url: data.room_url },
       } as any);
     } else {
-      // Waiting for a match — go to waiting room
+      // Waiting for a match — go to waiting room. communityId travels with it:
+      // if the queue ever drops her place, the waiting room has to rejoin the
+      // same pool she chose, not the open one.
       router.push({
         pathname: '/speed-dating/waiting-room',
-        params: { session_id: data.session_id, communityName: communityName ?? '' },
+        params: {
+          session_id: data.session_id,
+          communityId: communityId ?? '',
+          communityName: communityName ?? '',
+        },
       } as any);
     }
   };

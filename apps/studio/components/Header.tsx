@@ -40,11 +40,11 @@ export function Header() {
 
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm flex-1">
-        <span className="text-muted-foreground/60 font-medium">Studio</span>
+        <span className="text-muted-foreground font-medium">Studio</span>
         {page.section && (
           <>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40" />
-            <span className="text-muted-foreground/60">{page.section}</span>
+            <span className="text-muted-foreground">{page.section}</span>
           </>
         )}
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40" />

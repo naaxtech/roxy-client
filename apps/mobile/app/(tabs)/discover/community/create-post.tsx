@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, StyleSheet,
+  ActivityIndicator, StyleSheet, Switch,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,12 +15,32 @@ import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { RoxyLinkPicker, RoxyLinkSelection } from '../../../../components/feed/RoxyLinkPicker';
 import { showAlert } from '../../../../lib/confirm';
 import { logError } from '../../../../lib/errorLogger';
+import { uploadImageAsset, assetExtension, UploadError } from '../../../../lib/uploads';
 import type { PostType } from '../../../../types';
 
 const MAX_PHOTOS = 10;
 const MAX_VIDEO_SECONDS = 180;
 
 type Step = 'type-picker' | 'composer';
+
+/**
+ * Turn an upload failure into something worth reading, without putting a
+ * storage path (which starts with the user's id) in front of the user.
+ * The underlying error still goes to logError with its reason code intact.
+ */
+function uploadFailureMessage(e: unknown): string {
+  if (e instanceof UploadError) {
+    switch (e.reason) {
+      case 'read_failed':
+        return 'We could not read that file from your device. Pick it again and retry.';
+      case 'empty_file':
+        return 'That file came back empty. Pick it again, or choose a different one.';
+      case 'storage_rejected':
+        return 'The upload was rejected. Check your connection and try again.';
+    }
+  }
+  return 'Could not upload your photos. Please try again.';
+}
 
 export default function CreatePostScreen() {
   const colors = useThemeColors();
@@ -37,6 +57,34 @@ export default function CreatePostScreen() {
   const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [video, setVideo] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  // Announcements (migration 073): published under the community's own name,
+  // readable without joining, capped at one per community per day.
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [postAsCommunity, setPostAsCommunity] = useState(false);
+  const [slotUsed, setSlotUsed] = useState(false);
+  const [communityName, setCommunityName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id || !communityId) return;
+    let cancelled = false;
+    void (async () => {
+      const [{ data: membership }, { data: used }, { data: community }] = await Promise.all([
+        supabase
+          .from('community_members')
+          .select('role')
+          .eq('community_id', communityId)
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        supabase.rpc('announcement_slot_used', { p_community_id: communityId }),
+        supabase.from('communities').select('name').eq('id', communityId).maybeSingle(),
+      ]);
+      if (cancelled) return;
+      setIsAdmin(['admin', 'border_patrol'].includes((membership as { role?: string } | null)?.role ?? ''));
+      setSlotUsed(used === true);
+      setCommunityName((community as { name?: string } | null)?.name ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, communityId]);
 
   const TYPE_OPTIONS: { type: PostType; icon: keyof typeof Ionicons.glyphMap; grad: readonly [string, string]; label: string; sub: string }[] = [
     { type: 'standard',  icon: 'create',   grad: ['#8E7CF7', '#C86DD7'], label: 'Text',            sub: "Share what's on your mind" },
@@ -124,11 +172,24 @@ export default function CreatePostScreen() {
       .select('id')
       .single();
 
-    if (insertErr || !newPost) return { error: insertErr?.message ?? 'Could not create post' };
+    if (insertErr || !newPost) {
+      // The raw Postgres text ("new row violates row-level security policy for
+      // table \"posts\"") is a debugging aid, not a sentence to show a user.
+      // Keep it in the log, hand back something actionable.
+      logError(insertErr ?? new Error('posts insert returned no row'), 'createPost_videoInsert');
+      return { error: 'Could not create the post. Please try again.' };
+    }
 
     try {
       setUploadStatus('Preparing upload…');
+      // Deliberately a Blob here, unlike the photo path: this PATCH goes
+      // through React Native's own fetch, which handles Blob request bodies
+      // natively. An ArrayBuffer body is base64-encoded across the bridge and
+      // would materialise a 3-minute video in memory several times over. The
+      // storage-js FormData trap that breaks photo uploads cannot apply — no
+      // FormData is involved in this request.
       const blob = await (await fetch(video.uri)).blob();
+      if (blob.size === 0) throw new Error('video read as 0 bytes');
 
       const { data: uploadInfo, error: urlErr } = await callEdgeFunction<{ uploadURL: string; videoId: string }>(
         'get-video-upload-url',
@@ -152,8 +213,8 @@ export default function CreatePostScreen() {
     } catch (e) {
       // Don't leave an orphaned post with no video attached.
       await supabase.from('posts').delete().eq('id', newPost.id);
-      const message = e instanceof Error ? e.message : 'Upload failed';
-      return { error: message };
+      logError(e, 'createPost_videoUpload');
+      return { error: 'Your video could not be uploaded. Check your connection and try again.' };
     } finally {
       setUploadStatus(null);
     }
@@ -161,20 +222,23 @@ export default function CreatePostScreen() {
 
   // Upload picked photos to post-media/<userId>/... and return their public
   // URLs. Path folder MUST be the user id — the bucket RLS checks
-  // auth.uid() = foldername(name)[1].
+  // auth.uid() = foldername(name)[1]. Bytes go through uploadImageAsset:
+  // handing storage-js a Blob on React Native uploads 0 bytes on iOS and
+  // throws on Android (see lib/uploads.ts).
   const uploadPhotos = async (): Promise<string[]> => {
     if (!user?.id) return [];
     const urls: string[] = [];
     for (let i = 0; i < photos.length; i++) {
       const asset = photos[i];
-      const ext = asset.uri.split('.').pop()?.split('?')[0]?.toLowerCase() || 'jpg';
-      const path = `${user.id}/${Date.now()}-${i}.${ext}`;
-      const blob = await (await fetch(asset.uri)).blob();
-      const { error: upErr } = await supabase.storage
-        .from('post-media')
-        .upload(path, blob, { contentType: asset.mimeType ?? 'image/jpeg', upsert: false });
-      if (upErr) throw upErr;
-      urls.push(supabase.storage.from('post-media').getPublicUrl(path).data.publicUrl);
+      urls.push(
+        await uploadImageAsset({
+          bucket: 'post-media',
+          pathPrefix: user.id,
+          fileName: `${Date.now()}-${i}.${assetExtension(asset)}`,
+          asset,
+          upsert: false,
+        }),
+      );
     }
     return urls;
   };
@@ -218,6 +282,7 @@ export default function CreatePostScreen() {
       community_id: communityId,
       content: content.trim(),
       post_type: postType,
+      posted_as_community: postAsCommunity,
     };
 
     if (postType === 'roxy_link' && roxyLink) {
@@ -232,7 +297,7 @@ export default function CreatePostScreen() {
       } catch (e) {
         logError(e, 'createPost_uploadPhotos');
         setSubmitting(false);
-        showAlert('Upload failed', 'Could not upload your photos. Please try again.');
+        showAlert('Upload failed', uploadFailureMessage(e));
         return;
       }
     }
@@ -241,7 +306,17 @@ export default function CreatePostScreen() {
     setSubmitting(false);
 
     if (error) {
-      showAlert('Post failed', 'Could not publish. Please try again.');
+      // The daily cap is a unique index, so hitting it surfaces as 23505. The
+      // raw text is "duplicate key value violates unique constraint
+      // uq_community_announcement_per_day" — not something to show an organiser.
+      const isDailyCap =
+        error.code === '23505' && error.message.includes('announcement_per_day');
+      showAlert(
+        isDailyCap ? 'Already posted today' : 'Post failed',
+        isDailyCap
+          ? 'Your community has already published its announcement for today. Post it as yourself, or try again tomorrow.'
+          : 'Could not publish. Please try again.',
+      );
       return;
     }
     router.back();
@@ -255,6 +330,13 @@ export default function CreatePostScreen() {
       borderBottomWidth: 1, borderBottomColor: colors.surface,
     },
     cancelBtn: { color: colors.primary, fontSize: 15 },
+    announceRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      marginHorizontal: 16, marginTop: 4, marginBottom: 12,
+      padding: 14, borderRadius: 14, backgroundColor: colors.surface,
+    },
+    announceTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 14 },
+    announceBody: { color: colors.textMuted, fontSize: 12, lineHeight: 17, marginTop: 3 },
     headerTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
     publishBtn: {
       backgroundColor: colors.primary, paddingHorizontal: 16,
@@ -435,6 +517,29 @@ export default function CreatePostScreen() {
         autoFocus={postType !== 'photo' && postType !== 'video'}
         maxLength={1000}
       />
+
+      {/* Only admins and border patrol see this: posting under the community's
+          name and avatar is a more convincing impersonation than any
+          display-name trick, so RLS enforces it too (migration 073). */}
+      {isAdmin && (
+        <View style={styles.announceRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.announceTitle}>Post as {communityName ?? 'the community'}</Text>
+            <Text style={styles.announceBody}>
+              {slotUsed
+                ? 'Today’s announcement has already gone out. One per day keeps the feed worth reading.'
+                : 'Published under the community’s name. Visible to everyone, including women who haven’t joined yet.'}
+            </Text>
+          </View>
+          <Switch
+            value={postAsCommunity}
+            onValueChange={setPostAsCommunity}
+            disabled={slotUsed}
+            trackColor={{ false: colors.surface, true: colors.roxy }}
+            accessibilityLabel="Post as the community"
+          />
+        </View>
+      )}
 
       {uploadStatus && <Text style={styles.uploadStatus}>{uploadStatus}</Text>}
     </SafeAreaView>

@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StripeProvider } from '@stripe/stripe-react-native';
+import { Audio } from 'expo-av';
 import { PostHogProvider, usePostHog } from 'posthog-react-native';
 import { posthog } from '../lib/posthog';
 import { useAuth } from '../hooks/useAuth';
@@ -14,6 +15,8 @@ import { logError, logBreadcrumb, setCrashlyticsUser, hashUserId } from '../lib/
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useThemeStore } from '../store/themeStore';
 import { WebAppFrame } from '../components/ui/WebAppFrame';
+import { shouldRedirectToPending, shouldRedirectToApplication } from '../lib/authRouting';
+import { useGateStore } from '../store/gateStore';
 
 
 function AppNavigator() {
@@ -39,6 +42,17 @@ function AppNavigator() {
       logError(error, isFatal ? 'fatal_js_error' : 'unhandled_js_error');
       previous?.(error, isFatal);
     });
+
+    // Reels audio is silent on an iPhone whose ring switch is flipped without
+    // this: expo-av defaults playsInSilentModeIOS to false, so unmuting a video
+    // plays nothing. staysActiveInBackground stays false — a social feed has no
+    // business holding the audio session once the app is backgrounded.
+    // Never at module scope: it touches the native audio session.
+    // src: https://github.com/expo/expo/blob/sdk-51/packages/expo-av/src/Audio.ts · expo-av 14.0.7 · 2026-08-02
+    void Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+    }).catch((e: unknown) => logError(e, 'layout_audio_mode'));
   }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -71,7 +85,10 @@ function AppNavigator() {
       segments.some((s) => s === 'onboarding') || pathname.includes('/onboarding');
 
     if (!user && !inAuth) {
-      router.replace('/(auth)/welcome');
+      // The code gate, not welcome. Roxy is invite-only: an account cannot be
+      // created without a code a community issued, so code entry is the first
+      // screen and sign-in is reached from it.
+      router.replace('/(auth)/code');
       return;
     }
 
@@ -84,6 +101,29 @@ function AppNavigator() {
         .then(({ data, error }) => {
           fetchingForUserRef.current = null;
           if (error) { logError(error, 'layout_profile_fetch'); return; }
+          // The gate outranks onboarding. An applicant awaiting a decision can
+          // read nothing (RLS denies it), so walking her through identity and
+          // interests would collect data against an account that may never
+          // exist. She waits, and completes onboarding once a human says yes.
+          // Exempts /(auth)/application, which an applicant must be able to open
+          // while 'pending' — see shouldRedirectToPending.
+          if (shouldRedirectToPending(data?.vetting_status, segments, pathname)) {
+            router.replace('/(auth)/pending');
+            return;
+          }
+          // A held code outranks onboarding for the same reason the gate does.
+          // OAuth signs up through a redirect, so the code is still unredeemed
+          // when we land here and only loadApplication() on the application
+          // screen can redeem it — see shouldRedirectToApplication.
+          if (shouldRedirectToApplication(
+            !!data,
+            useGateStore.getState().validatedCode !== null,
+            segments,
+            pathname,
+          )) {
+            router.replace('/(auth)/application');
+            return;
+          }
           // Route to tabs only when onboarding is fully complete.
           if (!data || !data.onboarding_completed) {
             router.replace('/(auth)/onboarding/step1-identity');
@@ -108,6 +148,13 @@ function AppNavigator() {
         .then(({ data, error }) => {
           fetchingForUserRef.current = null;
           if (error) { logError(error, 'layout_profile_reload'); return; }
+          // Same precedence as above: a decision that lands while the app is
+          // open (or an account rejected after admission) pulls the user out of
+          // the tabs rather than leaving her on a screen RLS has emptied.
+          if (shouldRedirectToPending(data?.vetting_status, segments, pathname)) {
+            router.replace('/(auth)/pending');
+            return;
+          }
           if (data?.onboarding_completed) {
             setProfile(data);
             void useThemeStore.getState().init(data.theme_preference ?? null);

@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { logError } from '../../lib/errorLogger';
 import { showAlert } from '../../lib/confirm';
+import { uploadImageAsset, assetExtension } from '../../lib/uploads';
 
 const MAX_PHOTOS = 6;
 const SLOT = 108;
@@ -69,18 +70,20 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
     setUploading(true);
     try {
       const asset = result.assets[0];
-      const ext = asset.uri.split('.').pop()?.split('?')[0] ?? 'jpg';
-      const path = `${userId}/${Date.now()}.${ext}`;
-      const blob = await (await fetch(asset.uri)).blob();
-      const { error: upErr } = await supabase.storage
-        .from('profile-photos')
-        .upload(path, blob, { contentType: asset.mimeType ?? 'image/jpeg', upsert: true });
-      if (upErr) throw upErr;
+      // uploadImageAsset, not a Blob: storage-js wraps a Blob in FormData,
+      // which React Native cannot serialise — 0 bytes on iOS, a hard error on
+      // Android (see lib/uploads.ts).
+      const publicUrl = await uploadImageAsset({
+        bucket: 'profile-photos',
+        pathPrefix: userId,
+        fileName: `${Date.now()}.${assetExtension(asset)}`,
+        asset,
+        upsert: true,
+      });
 
-      const { data: pub } = supabase.storage.from('profile-photos').getPublicUrl(path);
       const { error } = await supabase.from('profile_photos').insert({
         user_id: userId,
-        photo_url: pub.publicUrl,
+        photo_url: publicUrl,
         sort_order: photos.length,
       });
       if (error) throw error;

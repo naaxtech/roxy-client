@@ -10,8 +10,8 @@ Deno.serve(async (req) => {
   const corsRes = handleCors(req);
   if (corsRes) return corsRes;
 
-  const { user, errorResponse: authErr } = verifyJWT(req);
-  if (authErr) return authErr;
+  const auth = await verifyJWT(req);
+  if (!auth) return errorResponse('Unauthorized', 401);
 
   const body = await req.json().catch(() => ({}));
   const { event_id } = body;
@@ -22,7 +22,13 @@ Deno.serve(async (req) => {
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
-  await checkRateLimit(user.id, 'cancel-event', 'daily', 5);
+  const { allowed } = await checkRateLimit({
+    userId: auth.userId,
+    fnName: 'cancel-event',
+    maxCount: 5,
+    windowType: 'daily',
+  });
+  if (!allowed) return errorResponse('Rate limit exceeded', 429);
 
   const supabase = getSupabaseClient();
 
@@ -30,7 +36,7 @@ Deno.serve(async (req) => {
   const { data: profile } = await supabase
     .from('profiles')
     .select('is_staff')
-    .eq('id', user.id)
+    .eq('id', auth.userId)
     .maybeSingle();
 
   const { data: event } = await supabase
@@ -41,7 +47,7 @@ Deno.serve(async (req) => {
 
   if (!event) return errorResponse('Event not found', 404);
   if (event.status !== 'active') return errorResponse('Event is not active', 400);
-  if (event.host_id !== user.id && !(profile as any)?.is_staff) {
+  if (event.host_id !== auth.userId && !(profile as any)?.is_staff) {
     return errorResponse('Forbidden', 403);
   }
 
@@ -57,7 +63,7 @@ Deno.serve(async (req) => {
       status: 'cancelled',
       payout_blocked: true,
       cancelled_at: now,
-      cancelled_by: user.id,
+      cancelled_by: auth.userId,
     })
     .eq('id', event_id);
 
@@ -73,7 +79,7 @@ Deno.serve(async (req) => {
   // Write audit log if staff action
   if ((profile as any)?.is_staff) {
     await supabase.from('audit_log').insert({
-      staff_id: user.id,
+      staff_id: auth.userId,
       action: 'cancel_event',
       target_type: 'event',
       target_id: event_id,

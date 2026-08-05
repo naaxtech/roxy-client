@@ -15,9 +15,9 @@ import { useCommunityStore } from '../../../store/communityStore';
 import { useFeedStore } from '../../../store/feedStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { logError } from '../../../lib/errorLogger';
-import { normalizePost } from '../../../lib/posts';
 import { contentDetailPath, linkedEntityPath } from '../../../lib/contentNavigation';
-import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../lib/supabaseQueries';
+import { displayedLikeCount } from '../../../lib/reels';
+import { fetchAnnouncementPage } from '../../../lib/announcements';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
 import { ScreenHeader } from '../../../components/ui/ScreenHeader';
@@ -26,10 +26,20 @@ import { CommunitiesBrowser } from '../../../components/community/CommunitiesBro
 import { EventsCalendar } from '../../../components/events/EventsCalendar';
 import { CommunityRoomCard } from '../../../components/community/CommunityRoomCard';
 import { FeedCard } from '../../../components/feed/FeedCard';
+import { ReelsFeed } from '../../../components/feed/ReelsFeed';
 import type { Post } from '../../../types';
 
 
-type SubTab = 'feed' | 'events' | 'rooms' | 'communities';
+// Connect is the public square, and it holds exactly one kind of content:
+// community ANNOUNCEMENTS — one per community per UTC day, published under the
+// community's own name (migration 073). What members say to each other lives
+// inside each community and requires joining to read.
+//
+// The two content tabs split that one source by format rather than by scope.
+// Text and photo announcements read as a scannable list; video does not — a
+// 30-second clip in a card is a thumbnail you have to decide to tap. They want
+// different containers, so they get different tabs.
+type SubTab = 'feed' | 'reels' | 'events' | 'rooms' | 'communities';
 
 type PostRow = Post & {
   communities: { name: string } | null;
@@ -48,6 +58,24 @@ type CommunityRoomRow = {
   banner_url: string | null;
   communities: { name: string } | null;
   creator_display_name: string | null; is_active: boolean;
+  participant_count: number; max_participants: number | null;
+};
+
+/**
+ * A PostgREST embed is generated as an array but arrives as a single object
+ * for a to-one foreign key, so both shapes have to be accepted and narrowed.
+ * That mismatch is exactly what the `any` in the map callback used to paper
+ * over -- and with it went any check that the select list matched the fields
+ * the screen reads, which is how participant_count went missing unnoticed.
+ */
+type Embedded<T> = T | T[] | null;
+
+const firstOf = <T,>(value: Embedded<T>): T | null =>
+  Array.isArray(value) ? value[0] ?? null : value ?? null;
+
+type CommunityRoomSelectRow = Omit<CommunityRoomRow, 'creator_display_name' | 'communities'> & {
+  communities: Embedded<{ name: string }>;
+  profiles: Embedded<{ display_name: string | null }>;
 };
 
 
@@ -55,10 +83,10 @@ export default function ConnectScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { profile, setProfile } = useProfileStore();
-  const { joinedIds, joinedCommunities, allCommunities, hydrated, hydrate, joinCommunity } = useCommunityStore();
+  const { joinedIds, joinedCommunities, allCommunities, hydrate, joinCommunity } = useCommunityStore();
   const { selectedCommunityId } = useCommunityFilterStore();
   const {
-    likedPostIds, savedPostIds, connectScrollOffset,
+    likedPostIds, savedPostIds, likeCountDeltas, connectScrollOffset,
     init: initFeed, toggleLike, toggleSave, setConnectScrollOffset,
   } = useFeedStore();
   const colors = useThemeColors();
@@ -69,27 +97,27 @@ export default function ConnectScreen() {
   const scrollOffsetRef = useRef(connectScrollOffset);
 
   const [subTab, setSubTab] = useState<SubTab>('feed');
+  // Set when the viewer taps a video card in the announcements feed: Reels then
+  // opens on that video instead of at the top. Cleared by any other tab switch.
+  const [reelsInitialPostId, setReelsInitialPostId] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const switchTab = (tab: SubTab) => {
+  const switchTab = (tab: SubTab, reelPostId: string | null = null) => {
     fadeAnim.setValue(0);
     setSubTab(tab);
+    setReelsInitialPostId(reelPostId);
     Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
   };
 
   // Deep links (/communities shim, cross-tab CTAs) land on a specific subtab.
   const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
   useEffect(() => {
-    if (tabParam && ['feed', 'events', 'rooms', 'communities'].includes(tabParam)) {
+    if (tabParam && ['feed', 'reels', 'events', 'rooms', 'communities'].includes(tabParam)) {
       setSubTab(tabParam as SubTab);
     }
   }, [tabParam]);
 
   const [posts, setPosts] = useState<PostRow[]>([]);
-  // "communityId:userId" pairs for admins/moderators of joined communities —
-  // the Connect feed is the admins' promotion surface; member posts live
-  // inside each community.
-  const [adminPairs, setAdminPairs] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [eventsView, setEventsView] = useState<'list' | 'calendar'>('list');
   const [feedError, setFeedError] = useState<string | null>(null);
@@ -102,8 +130,7 @@ export default function ConnectScreen() {
 
   const [rooms, setRooms] = useState<CommunityRoomRow[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
-
-  const joinedIdsKey = useMemo(() => Array.from(joinedIds).sort().join(','), [joinedIds]);
+  const [roomsError, setRoomsError] = useState(false);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -288,51 +315,36 @@ export default function ConnectScreen() {
     });
   }, []);
 
-  // Connect → Feed: posts from joined communities; filter via CommunityContextSwitcher (spec 2026-04-07)
+  /**
+   * Connect → Feed: announcements, and nothing else.
+   *
+   * `announcement_feed` (migration 073) reaches EVERY community, not just the
+   * joined ones — membership is worth +2 on the rank, never a WHERE clause.
+   * That is deliberate: this is the surface where she finds communities she has
+   * not met, so scoping it to what she already joined would close the only door
+   * a brand-new account has. Ranking is interest-overlap × 8 + feed_score +
+   * recency decay, so a first screen is populated and relevant on day one.
+   *
+   * Membership scoping used to be the filter here, paired with an adminPairs
+   * heuristic that guessed at "is this an announcement?" by looking up who was
+   * an admin. Both are gone: `posted_as_community` is now explicit, and the RPC
+   * applies it server-side.
+   */
   const loadFeed = useCallback(async () => {
-    if (!hydrated) return;
-    const ids = Array.from(joinedIds);
-    if (ids.length === 0) {
-      setPosts([]);
-      setFeedError(null);
-      return;
-    }
     setLoadingFeed(true);
     setFeedError(null);
-    let postsQuery = supabase
-      .from('posts')
-      .select(POST_WITH_AUTHOR_AND_COMMUNITY)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    if (selectedCommunityId) {
-      postsQuery = postsQuery.eq('community_id', selectedCommunityId);
-    } else {
-      postsQuery = postsQuery.in('community_id', ids);
-    }
-    const [{ data, error }, { data: adminRows }] = await Promise.all([
-      postsQuery,
-      supabase
-        .from('community_members')
-        .select('community_id, user_id')
-        .in('community_id', ids)
-        .in('role', ['admin', 'moderator']),
-    ]);
-    setAdminPairs(new Set((adminRows ?? []).map((r: { community_id: string; user_id: string }) => `${r.community_id}:${r.user_id}`)));
-    if (error) {
-      logError(error, 'connect.loadFeed');
-      setFeedError(error.message);
+    const { page, error } = await fetchAnnouncementPage();
+    if (error || !page) {
+      logError(error ?? new Error('announcement_feed returned no page'), 'connect.loadFeed');
+      // The raw PostgREST message names tables and columns — log it, never
+      // render it.
+      setFeedError('Could not load announcements.');
       setPosts([]);
     } else {
-      setPosts(
-        (data ?? []).map((row: Record<string, unknown> & { communities?: { name: string } | null }) => ({
-          ...normalizePost(row),
-          communities: row.communities ?? null,
-        })),
-      );
+      setPosts(page.rows);
     }
     setLoadingFeed(false);
-  }, [hydrated, joinedIdsKey, selectedCommunityId, joinedIds]);
+  }, []);
 
   // Load upcoming events from joined communities
   const loadEvents = useCallback(async () => {
@@ -359,20 +371,37 @@ export default function ConnectScreen() {
   // Load games and community rooms
   const loadRooms = useCallback(async () => {
     setLoadingRooms(true);
+    setRoomsError(false);
+    // participant_count and max_participants were missing from this select,
+    // so CommunityRoomCard fell back to its `participant_count = 0` default
+    // and every live room advertised "0 in" no matter how busy it was.
     let roomsQuery = supabase
       .from('community_rooms')
-      .select('id, name, description, room_type, status, scheduled_at, community_id, banner_url, communities(name), profiles!created_by(display_name), is_active')
+      .select('id, name, description, room_type, status, scheduled_at, community_id, banner_url, communities(name), profiles!created_by(display_name), is_active, participant_count, max_participants')
       .neq('status', 'closed')
       .eq('is_active', true)
       .order('name');
     if (selectedCommunityId) {
       roomsQuery = roomsQuery.eq('community_id', selectedCommunityId);
     }
-    const { data: roomsData } = await roomsQuery;
-    if (roomsData) setRooms(roomsData.map((r: any) => ({
-      ...r,
-      creator_display_name: r.profiles?.display_name ?? null,
-    })) as CommunityRoomRow[]);
+    const { data: roomsData, error } = await roomsQuery;
+    if (error) {
+      // Previously discarded, which rendered an outage as "No rooms active
+      // right now" -- the one message guaranteed to stop her looking.
+      logError(error, 'connect_loadRooms');
+      setRoomsError(true);
+      setLoadingRooms(false);
+      return;
+    }
+    setRooms(
+      ((roomsData ?? []) as CommunityRoomSelectRow[]).map(
+        ({ profiles, communities, ...room }) => ({
+          ...room,
+          communities: firstOf(communities),
+          creator_display_name: firstOf(profiles)?.display_name ?? null,
+        }),
+      ),
+    );
     setLoadingRooms(false);
   }, [selectedCommunityId]);
 
@@ -386,9 +415,12 @@ export default function ConnectScreen() {
     if (data) setRsvpIds(new Set(data.map((r: any) => r.event_id)));
   }, [user]);
 
+  // No `hydrated` gate: the announcement feed does not read the joined-community
+  // list, so waiting on it would only delay the one screen that must be
+  // populated for an account that has joined nothing.
   useEffect(() => {
-    if (subTab === 'feed' && hydrated) void loadFeed();
-  }, [subTab, loadFeed, hydrated]);
+    if (subTab === 'feed') void loadFeed();
+  }, [subTab, loadFeed]);
   useEffect(() => { if (subTab === 'events') { loadEvents(); loadRsvps(); } }, [subTab, loadEvents, loadRsvps]);
   useEffect(() => { if (subTab === 'rooms') loadRooms(); }, [subTab, loadRooms]);
 
@@ -426,17 +458,34 @@ export default function ConnectScreen() {
 
   const hasJoinedCommunities = joinedIds.size > 0;
 
-  // Feed shows admin/moderator posts only (community promotion surface);
-  // the search box filters whichever subtab is active.
+  // Every row here is already an announcement — the RPC filters
+  // `posted_as_community` server-side — so what is left to apply is the
+  // viewer's own narrowing: the community switcher and the search box.
+  //
+  // Video is NOT excluded. It used to be — "a post appears in exactly one of the
+  // two tabs" — but that silently swallowed any community announcement posted as
+  // video: it vanished from announcements and only ever reappeared mixed into
+  // Reels. Instagram keeps video in the home feed AND in a Reels tab, and so do
+  // we: the card is the announcement, tapping it opens the player.
   const q = query.trim().toLowerCase();
+  // This list fetches and holds its own rows, so `feedStore.toggleLike` — which
+  // adjusts the copies inside `feedStore.posts` — never reaches them and the
+  // count stayed frozen at fetch time while the heart filled. The store
+  // publishes the net per-post delta for exactly this case; applying it here is
+  // the contract described in `lib/reels.displayedLikeCount`.
   const displayedPosts = useMemo(
     () => posts
-      .filter((p) => adminPairs.has(`${p.community_id}:${p.author_id}`))
+      // The switcher narrows the square to one community. Filtering the ranked
+      // page rather than re-querying keeps the RPC's ordering intact — and the
+      // switcher only ever lists communities she has joined, so the rows it can
+      // select are always present in the page it filters.
+      .filter((p) => !selectedCommunityId || p.community_id === selectedCommunityId)
       .filter((p) => !q
         || (p.content ?? '').toLowerCase().includes(q)
         || (p.profiles?.display_name ?? '').toLowerCase().includes(q)
-        || (p.communities?.name ?? '').toLowerCase().includes(q)),
-    [posts, adminPairs, q],
+        || (p.communities?.name ?? '').toLowerCase().includes(q))
+      .map((p) => ({ ...p, like_count: displayedLikeCount(p, likeCountDeltas) })),
+    [posts, selectedCommunityId, q, likeCountDeltas],
   );
   const displayedEvents = useMemo(
     () => events.filter((e) => !q
@@ -493,12 +542,48 @@ export default function ConnectScreen() {
     </View>
   ) : null;
 
+  /**
+   * Four distinct reasons the square can be empty, and each one gets its own
+   * exit. The one that matters most is the last: a brand-new account with no
+   * communities lands here, and "nothing to see" with no way forward is how she
+   * decides Roxy is dead.
+   */
+  const selectedCommunityName = selectedCommunityId
+    ? joinedCommunities.find((c) => c.id === selectedCommunityId)?.name ?? 'this community'
+    : null;
+
+  const FeedEmpty = feedError ? (
+    <EmptyState
+      emoji="📣"
+      title="Could not load announcements"
+      body="Pull down to refresh and try again."
+    />
+  ) : q ? (
+    <EmptyState emoji="🔍" title="No matches" body="Try a different search." />
+  ) : selectedCommunityId ? (
+    <EmptyState
+      emoji="📣"
+      title={`Nothing from ${selectedCommunityName} yet`}
+      body="Communities post their news here once a day. Open it to see what members are talking about inside."
+      ctaLabel="Open community →"
+      onCtaPress={() => router.push(`/community/${selectedCommunityId}` as any)}
+    />
+  ) : (
+    <EmptyState
+      emoji="📣"
+      title="No announcements yet"
+      body="This is where communities share their news — one post each, once a day. Browse communities to find your people."
+      ctaLabel="Find your communities →"
+      onCtaPress={() => switchTab('communities')}
+    />
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <ScreenHeader
         title="Connect"
-        eyebrow="Your communities"
+        eyebrow="What communities are sharing"
         actions={
           <>
             <CommunityContextSwitcher communities={joinedCommunities} />
@@ -516,7 +601,7 @@ export default function ConnectScreen() {
 
       {/* Sub-tabs */}
       <View style={styles.subTabRow}>
-        {(['feed', 'events', 'rooms', 'communities'] as SubTab[]).map((tab) => (
+        {(['feed', 'reels', 'events', 'rooms', 'communities'] as SubTab[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             testID={`connect-tab-${tab}`}
@@ -530,8 +615,10 @@ export default function ConnectScreen() {
         ))}
       </View>
 
-      {/* Quick search — filters the active subtab (Communities has its own) */}
-      {subTab !== 'communities' && (
+      {/* Quick search — filters the active subtab (Communities has its own).
+          Reels is a full-bleed vertical player: a search bar above it would eat
+          the frame and there is nothing on screen to filter. */}
+      {subTab !== 'communities' && subTab !== 'reels' && (
         <View style={styles.searchRow}>
           <Ionicons name="search-outline" size={16} color={colors.textMuted} />
           <TextInput
@@ -555,16 +642,19 @@ export default function ConnectScreen() {
       )}
 
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-      {/* Feed */}
+      {/* Reels must mount INSIDE this flex:1 box, not beside it. As a sibling of
+          an empty flex:1 sibling it got no height of its own, so it sized its
+          pages off the window — 150–200dp taller than the space below the header
+          and above the tab bar — and on shorter devices no cell ever cleared the
+          viewability threshold and no video played at all. */}
+      {subTab === 'reels' && (
+        <ReelsFeed scope="announcements" initialPostId={reelsInitialPostId} />
+      )}
+
+      {/* Feed — no membership gate. An account that has joined nothing is
+          exactly who this ranking exists for. */}
       {subTab === 'feed' && (
-        !hasJoinedCommunities ? (
-          <EmptyState
-            emoji="🌸"
-            title="Join communities to see their posts here"
-            ctaLabel="Find your communities →"
-            onCtaPress={() => switchTab('communities')}
-          />
-        ) : loadingFeed ? (
+        loadingFeed ? (
           <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
         ) : (
           <FlashList
@@ -578,7 +668,17 @@ export default function ConnectScreen() {
             refreshing={loadingFeed}
             contentContainerStyle={{ paddingVertical: 8 }}
             ListHeaderComponent={SuggestionRail}
-            renderItem={({ item }) => (
+            renderItem={({ item }) => {
+              const openDetail = () => {
+                setConnectScrollOffset(scrollOffsetRef.current);
+                router.push(contentDetailPath(item.id, item.post_type) as any);
+              };
+              // A video card opens the player it was shot for, positioned on
+              // itself — not a detail screen with a thumbnail on it.
+              const openPrimary = item.post_type === 'video'
+                ? () => switchTab('reels', item.id)
+                : openDetail;
+              return (
               <View>
                 <View style={styles.postMetaRow}>
                   <TouchableOpacity
@@ -591,6 +691,8 @@ export default function ConnectScreen() {
                   <Text style={styles.postTime}>{format(new Date(item.created_at), 'dd MMM')}</Text>
                 </View>
                 <FeedCard
+                  // `item` already carries the like delta — displayedPosts
+                  // applies it once in the memo above. Do not apply it here too.
                   post={item}
                   linkEntityName={item.link_entity_id ? gameNames[item.link_entity_id] : undefined}
                   onLinkPress={() => {
@@ -603,29 +705,14 @@ export default function ConnectScreen() {
                   isSaved={savedPostIds.has(item.id)}
                   onLike={() => void toggleLike(item.id)}
                   onSave={() => void toggleSave(item.id)}
-                  onComment={() => {
-                    setConnectScrollOffset(scrollOffsetRef.current);
-                    router.push(contentDetailPath(item.id, item.post_type) as any);
-                  }}
+                  onComment={openDetail}
                   onShare={() => void Share.share({ message: 'Check this out on Roxy!' })}
-                  onPress={() => {
-                    setConnectScrollOffset(scrollOffsetRef.current);
-                    router.push(contentDetailPath(item.id, item.post_type) as any);
-                  }}
+                  onPress={openPrimary}
                 />
               </View>
-            )}
-            ListEmptyComponent={
-              <EmptyState
-                emoji="📣"
-                title={feedError ? 'Could not load feed' : q ? 'No matches' : 'No announcements yet'}
-                body={feedError
-                  ? 'Pull to refresh or try again.'
-                  : q
-                    ? 'Try a different search.'
-                    : 'Admins post community news here. Open a community to see all member posts.'}
-              />
-            }
+              );
+            }}
+            ListEmptyComponent={FeedEmpty}
           />
         )
       )}
@@ -766,6 +853,12 @@ export default function ConnectScreen() {
             </View>
             {loadingRooms ? (
               <ActivityIndicator color={colors.roxy} style={{ marginVertical: 16 }} />
+            ) : roomsError ? (
+              <TouchableOpacity onPress={() => void loadRooms()} accessibilityRole="button">
+                <Text style={styles.roomEmpty}>
+                  Couldn&apos;t load rooms just now. Tap to try again.
+                </Text>
+              </TouchableOpacity>
             ) : displayedRooms.length === 0 ? (
               <Text style={styles.roomEmpty}>{q ? 'No rooms match your search' : 'No rooms active right now'}</Text>
             ) : (
@@ -781,6 +874,8 @@ export default function ConnectScreen() {
                   banner_url={room.banner_url}
                   community_name={room.communities?.name ?? null}
                   creator_display_name={room.creator_display_name}
+                  participant_count={room.participant_count}
+                  max_participants={room.max_participants}
                   onPress={() => router.push(`/community-room-session?room_id=${room.id}` as any)}
                 />
               ))

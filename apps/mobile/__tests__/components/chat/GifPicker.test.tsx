@@ -5,6 +5,20 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { GifPicker } from '../../../components/chat/GifPicker';
 
+// EXPO_PUBLIC_* vars are inlined by babel at transform time (see jest.setup.env.js),
+// so the key cannot be flipped at runtime — the picker reads it through lib/giphy,
+// which a test can mock for both the configured and unconfigured builds.
+jest.mock('../../../lib/giphy', () => ({
+  isGiphyConfigured: jest.fn(() => true),
+  giphyEndpoint: jest.fn((q: string) =>
+    q.trim()
+      ? `https://api.giphy.com/v1/gifs/search?api_key=k&q=${encodeURIComponent(q.trim())}`
+      : 'https://api.giphy.com/v1/gifs/trending?api_key=k'
+  ),
+}));
+
+const { isGiphyConfigured } = jest.requireMock('../../../lib/giphy');
+
 const makeGiphyResult = (id: string) => ({
   id,
   title: `GIF ${id}`,
@@ -22,6 +36,7 @@ const mockGiphyResponse = (results: ReturnType<typeof makeGiphyResult>[]) => {
 describe('GifPicker', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    isGiphyConfigured.mockReturnValue(true);
     jest.useFakeTimers();
   });
 
@@ -109,18 +124,45 @@ describe('GifPicker', () => {
     expect(getByText('Powered by GIPHY')).toBeTruthy();
   });
 
-  // GIPHY_KEY is read once at module load from EXPO_PUBLIC_GIPHY_API_KEY,
-  // which is unset in this test environment (same as prod today) — so the
-  // empty-results state renders the "no key configured" copy, not a bare
-  // "No GIFs found". Once a key is set, GifPicker.tsx's ternary switches
-  // this back automatically; no test change needed at that point.
-  it('shows the "warming up" fallback when results are empty and no GIPHY key is configured', async () => {
+  it('says so when GIPHY returns nothing for a search', async () => {
     mockGiphyResponse([]);
     const { findByText } = render(
       <GifPicker visible={true} onGifSelected={jest.fn()} onClose={jest.fn()} />
     );
-    await waitFor(async () => {
-      expect(await findByText('GIF search is warming up — check back soon 🌸')).toBeTruthy();
+    expect(await findByText('No GIFs found')).toBeTruthy();
+  });
+
+  it('reports a failed GIPHY call instead of showing an empty grid', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('network down'));
+    const { findByText } = render(
+      <GifPicker visible={true} onGifSelected={jest.fn()} onClose={jest.fn()} />
+    );
+    expect(await findByText("GIF search isn't responding right now — try again in a moment")).toBeTruthy();
+  });
+
+  // EXPO_PUBLIC_GIPHY_API_KEY is in neither .env nor any eas.json profile, so this
+  // is the state of every build shipping today: say it plainly, and never fire a
+  // request that can only come back 403.
+  describe('when no GIPHY key was bundled', () => {
+    beforeEach(() => isGiphyConfigured.mockReturnValue(false));
+
+    it('shows an honest unavailable state and makes no request', async () => {
+      const { getByText, queryByPlaceholderText } = render(
+        <GifPicker visible={true} onGifSelected={jest.fn()} onClose={jest.fn()} />
+      );
+
+      expect(getByText("GIFs aren't set up yet")).toBeTruthy();
+      expect(queryByPlaceholderText('Search GIFs...')).toBeNull();
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('still closes cleanly', () => {
+      const onClose = jest.fn();
+      const { getByLabelText } = render(
+        <GifPicker visible={true} onGifSelected={jest.fn()} onClose={onClose} />
+      );
+      fireEvent.press(getByLabelText('Close GIF picker'));
+      expect(onClose).toHaveBeenCalled();
     });
   });
 });

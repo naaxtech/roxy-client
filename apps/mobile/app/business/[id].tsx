@@ -59,7 +59,9 @@ export default function BusinessStorefrontScreen() {
   const [activeTab, setActiveTab] = useState<StorefrontTab>('shop');
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
+  // Set once payment succeeds. orderId inside is null while the Stripe webhook is
+  // still writing the row, so visibility can't hang off the id itself.
+  const [checkoutResult, setCheckoutResult] = useState<{ orderId: string | null } | null>(null);
 
   const products = productsByBusiness[businessId] ?? [];
   const isLoadingProducts = loadingProducts[businessId] ?? false;
@@ -148,13 +150,13 @@ export default function BusinessStorefrontScreen() {
     Share.share({ message: `Check out ${business.name} on Roxy!` }).catch(() => {});
   };
 
-  const handleCheckoutSuccess = (orderId: string) => {
+  const handleCheckoutSuccess = (orderId: string | null) => {
     setShowCheckout(false);
-    setConfirmedOrderId(orderId);
+    setCheckoutResult({ orderId });
   };
 
   const handleViewOrders = () => {
-    setConfirmedOrderId(null);
+    setCheckoutResult(null);
     router.push({ pathname: '/(tabs)/profile', params: { orders: '1' } } as any);
   };
 
@@ -573,9 +575,9 @@ export default function BusinessStorefrontScreen() {
       />
 
       <OrderConfirmationSheet
-        visible={confirmedOrderId !== null}
-        orderId={confirmedOrderId}
-        onClose={() => setConfirmedOrderId(null)}
+        visible={checkoutResult !== null}
+        orderId={checkoutResult?.orderId ?? null}
+        onClose={() => setCheckoutResult(null)}
         onViewOrders={handleViewOrders}
       />
     </SafeAreaView>

@@ -8,7 +8,7 @@ Deno.serve(async (req: Request) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
-  const auth = verifyJWT(req);
+  const auth = await verifyJWT(req);
   if (!auth) return errorResponse('Unauthorized', 401);
 
   const userId = auth.userId;

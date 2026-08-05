@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ActivityIndicator, Animated,
@@ -10,6 +10,16 @@ import { useAuthStore } from '../../../../store/authStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
+
+interface ResolveResult {
+  status: 'waiting' | 'matched' | 'no_match';
+  conversation_id: string | null;
+}
+
+const PARTNER_RECHECK_MS = 5_000;
+// Stop re-checking after two minutes. By then the partner has closed the app
+// and the notification path, not this screen, is the right way to tell them.
+const PARTNER_RECHECK_GIVE_UP_MS = 120_000;
 
 export default function SpeedDateResult() {
   const { session_id, liked: likedParam, partner_id } = useLocalSearchParams<{
@@ -46,98 +56,104 @@ export default function SpeedDateResult() {
     }
   }, [matchCreated]);
 
+  const userId = user?.id ?? null;
+  const icebreakerFired = useRef(false);
+
   // Submit this participant's like decision and resolve the match — a match
   // only forms when BOTH sides have said yes (submit_speed_date_like,
   // 068_speed_date_mutual_match.sql). We submit even a "no" so the other
-  // participant's side isn't left waiting forever.
+  // participant's side isn't left waiting forever. Idempotent: the RPC upserts
+  // our row, so calling it again just re-reads the current verdict.
+  const resolveMatch = useCallback(async (): Promise<void> => {
+    if (!userId || !partner_id || !session_id) return;
+
+    const { data, error: rpcErr } = await supabase
+      .rpc('submit_speed_date_like', { p_session_id: session_id, p_liked: liked });
+    if (rpcErr) throw new Error(rpcErr.message);
+
+    const result = data as ResolveResult;
+
+    if (result.status === 'matched' && result.conversation_id) {
+      setWaitingOnPartner(false);
+      setConversationId(result.conversation_id);
+      setMatchCreated(true);
+      if (!icebreakerFired.current) {
+        icebreakerFired.current = true;
+        callEdgeFunction('roxy-icebreaker', {
+          conversation_id: result.conversation_id,
+          user_a_name: userId,
+          user_b_name: partner_id,
+          shared_interests: [],
+        }).catch(() => {});
+      }
+    } else if (result.status === 'waiting') {
+      setWaitingOnPartner(true);
+    } else {
+      // 'no_match' — falls through to the default no-match UI state.
+      setWaitingOnPartner(false);
+    }
+  }, [userId, partner_id, session_id, liked]);
+
   useEffect(() => {
-    if (!user || !partner_id || !session_id) {
+    if (!userId || !partner_id || !session_id) {
       setProcessing(false);
       return;
     }
-
     let cancelled = false;
-
-    const resolve = async (currentLiked: boolean) => {
-      const { data, error: rpcErr } = await supabase
-        .rpc('submit_speed_date_like', { p_session_id: session_id, p_liked: currentLiked });
-      if (cancelled) return null;
-      if (rpcErr) throw new Error(rpcErr.message);
-      return data as { status: 'waiting' | 'matched' | 'no_match'; conversation_id: string | null };
-    };
-
-    const fireIcebreakerOnce = (convId: string) => {
-      callEdgeFunction('roxy-icebreaker', {
-        conversation_id: convId,
-        user_a_name: user.id,
-        user_b_name: partner_id,
-        shared_interests: [],
-      }).catch(() => {});
-    };
-
     (async () => {
       setProcessing(true);
       try {
-        const result = await resolve(liked);
-        if (!result) return;
-
-        if (result.status === 'matched' && result.conversation_id) {
-          setConversationId(result.conversation_id);
-          setMatchCreated(true);
-          fireIcebreakerOnce(result.conversation_id);
-        } else if (result.status === 'waiting') {
-          setWaitingOnPartner(true);
-        }
-        // 'no_match' — falls through to the default no-match UI state.
-      } catch (e: any) {
+        await resolveMatch();
+      } catch (e) {
+        if (cancelled) return;
         logError(e, 'speedDateResult_resolveMatch');
-        setError(e?.message ?? 'Something went wrong.');
+        setError(e instanceof Error ? e.message : 'Something went wrong.');
       } finally {
         if (!cancelled) setProcessing(false);
       }
     })();
-
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, partner_id, session_id]);
+  }, [userId, partner_id, session_id, resolveMatch]);
 
-  // While waiting on the partner's decision, listen for their row landing
-  // and re-resolve (idempotent — resubmits our own already-recorded choice).
+  // While waiting on the partner's decision, listen for their row landing.
   useEffect(() => {
-    if (!waitingOnPartner || !user || !partner_id || !session_id) return;
+    if (!waitingOnPartner || !userId || !partner_id || !session_id) return;
 
     const channel = supabase
       .channel(`speed-date-likes:${session_id}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'speed_date_likes', filter: `session_id=eq.${session_id}` },
-        async (payload) => {
-          if (payload.new?.user_id === user.id) return; // our own row
-          try {
-            const { data, error: rpcErr } = await supabase
-              .rpc('submit_speed_date_like', { p_session_id: session_id, p_liked: liked });
-            if (rpcErr) throw new Error(rpcErr.message);
-            const result = data as { status: 'waiting' | 'matched' | 'no_match'; conversation_id: string | null };
-            setWaitingOnPartner(false);
-            if (result.status === 'matched' && result.conversation_id) {
-              setConversationId(result.conversation_id);
-              setMatchCreated(true);
-              callEdgeFunction('roxy-icebreaker', {
-                conversation_id: result.conversation_id,
-                user_a_name: user.id,
-                user_b_name: partner_id,
-                shared_interests: [],
-              }).catch(() => {});
-            }
-          } catch (e) {
-            logError(e, 'speedDateResult_partnerLikeReceived');
-          }
+        (payload) => {
+          if ((payload.new as { user_id?: string } | null)?.user_id === userId) return; // our own row
+          resolveMatch().catch((e) => logError(e, 'speedDateResult_partnerLikeReceived'));
         },
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [waitingOnPartner, user, partner_id, session_id, liked]);
+  }, [waitingOnPartner, userId, partner_id, session_id, resolveMatch]);
+
+  // Fallback re-check. The subscription above is only created once the RPC has
+  // already answered 'waiting', so a partner decision landing inside that
+  // window fires before the channel exists and is lost. Without this the user
+  // sits on "waiting to see if it's mutual" forever and never learns they
+  // matched.
+  useEffect(() => {
+    if (!waitingOnPartner || !userId || !partner_id || !session_id) return;
+
+    let elapsed = 0;
+    const id = setInterval(() => {
+      elapsed += PARTNER_RECHECK_MS;
+      if (elapsed >= PARTNER_RECHECK_GIVE_UP_MS) {
+        clearInterval(id);
+        return;
+      }
+      resolveMatch().catch((e) => logError(e, 'speedDateResult_recheck'));
+    }, PARTNER_RECHECK_MS);
+
+    return () => clearInterval(id);
+  }, [waitingOnPartner, userId, partner_id, session_id, resolveMatch]);
 
   const handleChat = () => {
     if (conversationId) {

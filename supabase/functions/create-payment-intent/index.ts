@@ -12,11 +12,11 @@ Deno.serve(async (req) => {
   const corsRes = handleCors(req);
   if (corsRes) return corsRes;
 
-  const { user, errorResponse: authErr } = verifyJWT(req);
-  if (authErr) return authErr;
+  const auth = await verifyJWT(req);
+  if (!auth) return errorResponse('Unauthorized', 401);
 
   const { allowed } = await checkRateLimit({
-    userId: user.id,
+    userId: auth.userId,
     fnName: 'create-payment-intent',
     maxCount: 10,
     windowType: 'daily',
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       .from('community_members')
       .select('user_id')
       .eq('community_id', event.community_id)
-      .eq('user_id', user.id)
+      .eq('user_id', auth.userId)
       .maybeSingle();
     if (!membership) return errorResponse('You must be a community member to purchase this ticket', 403);
   }
@@ -94,9 +94,9 @@ Deno.serve(async (req) => {
       amount: event.price_cents,
       currency: event.currency ?? 'usd',
       automatic_payment_methods: { enabled: true },
-      metadata: { event_id, host_id: event.host_id, user_id: user.id },
+      metadata: { event_id, host_id: event.host_id, user_id: auth.userId },
     },
-    { idempotencyKey: `${event_id}:${user.id}` },
+    { idempotencyKey: `${event_id}:${auth.userId}` },
   );
 
   // Insert pending payment_logs row — buyer_id from JWT (never from Stripe metadata)
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     {
       payment_intent_id: pi.id,
       event_id,
-      buyer_id: user.id,
+      buyer_id: auth.userId,
       host_id: event.host_id,
       amount_cents: event.price_cents,
       fee_cents: feeCents,

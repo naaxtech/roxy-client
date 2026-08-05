@@ -19,6 +19,7 @@ import { useSafetyStore } from '../../../../store/safetyStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../../../hooks/useAppWidth';
 import { showAlert, confirmAction } from '../../../../lib/confirm';
+import { logError } from '../../../../lib/errorLogger';
 import { Analytics } from '../../../../lib/analytics';
 import { Message } from '../../../../types';
 import EmojiKeyboard from 'rn-emoji-keyboard';
@@ -99,6 +100,10 @@ export default function ChatScreen() {
   const [searchActive, setSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [reactingToMessage, setReactingToMessage] = useState<string | null>(null);
+  // Message id awaiting a reaction from the full emoji keyboard. Held
+  // separately from reactingToMessage because opening the picker closes the
+  // quick bar, and the id has to survive that.
+  const [reactWithAnyEmojiFor, setReactWithAnyEmojiFor] = useState<string | null>(null);
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
@@ -406,13 +411,23 @@ export default function ChatScreen() {
         if (icebreakerMsg) setIcebreaker(icebreakerMsg.content);
       }
       if (user && data) {
-        await supabase
-          .from('messages')
-          .update({ is_read: true })
-          .eq('conversation_id', conversationId)
-          .neq('sender_id', user.id)
-          .eq('is_read', false);
-        clearUnread(conversationId);
+        // Via RPC, not a direct UPDATE. The only UPDATE policy on messages is
+        // messages_update_own, USING (auth.uid() = sender_id) -- so the
+        // recipient, the one person who can know a message has been read, was
+        // the one person excluded. RLS filters rows rather than erroring, so
+        // PostgREST answered 204 and this looked like it worked while is_read
+        // stayed false: read ticks never advanced and the unread badge, which
+        // the Messages tab recomputes from the database on every load, came
+        // back forever. mark_conversation_read (085) is SECURITY DEFINER and
+        // checks participation itself.
+        const { error: readError } = await supabase.rpc('mark_conversation_read', {
+          p_conversation_id: conversationId,
+        });
+        // A failed receipt is not worth interrupting her reading for -- the
+        // messages are already on screen. Log it and leave the badge alone
+        // rather than clearing an unread count the server still holds.
+        if (readError) logError(readError, 'chat_markConversationRead');
+        else clearUnread(conversationId);
       }
     } catch {
       setLoadError(true);
@@ -596,15 +611,19 @@ export default function ChatScreen() {
   // tap) or, for muscle memory, a long-press on the bubble itself.
   const openReactionPicker = (messageId: string) => setReactingToMessage(messageId);
 
-  const handleReact = async (emoji: string) => {
-    if (!reactingToMessage || !user) return;
-    const existing = (reactionsMap[reactingToMessage] ?? []).find(
+  // targetId is passed explicitly by the full emoji keyboard, which opens after
+  // the quick bar has already cleared reactingToMessage. The quick bar itself
+  // still relies on the state, so the parameter is optional.
+  const handleReact = async (emoji: string, targetId?: string) => {
+    const messageId = targetId ?? reactingToMessage;
+    if (!messageId || !user) return;
+    const existing = (reactionsMap[messageId] ?? []).find(
       (r) => r.user_id === user.id && r.emoji === emoji
     );
     if (existing) {
-      await removeReaction(reactingToMessage, emoji, user.id);
+      await removeReaction(messageId, emoji, user.id);
     } else {
-      await addReaction(reactingToMessage, emoji, user.id);
+      await addReaction(messageId, emoji, user.id);
     }
     setReactingToMessage(null);
   };
@@ -972,10 +991,35 @@ export default function ChatScreen() {
             onPress={() => setReactingToMessage(null)}
           >
             <View style={styles.reactBarContainer}>
-              <QuickReactBar onReact={(emoji) => void handleReact(emoji)} />
+              <QuickReactBar
+                onReact={(emoji) => void handleReact(emoji)}
+                // Keep the target message: dismissing the quick bar clears
+                // reactingToMessage, and the picker opens on the next frame with
+                // nothing to attach the reaction to.
+                onMore={() => setReactWithAnyEmojiFor(reactingToMessage)}
+              />
             </View>
           </TouchableOpacity>
         </Modal>
+      )}
+
+      {/* Any emoji, not just the six shortcuts. Same keyboard the composer
+          uses — there was never a reason reactions had a smaller vocabulary
+          than messages. */}
+      {reactWithAnyEmojiFor && (
+        <EmojiKeyboard
+          open
+          onClose={() => {
+            setReactWithAnyEmojiFor(null);
+            setReactingToMessage(null);
+          }}
+          onEmojiSelected={({ emoji }: { emoji: string }) => {
+            const targetId = reactWithAnyEmojiFor;
+            setReactWithAnyEmojiFor(null);
+            setReactingToMessage(null);
+            if (targetId) void handleReact(emoji, targetId);
+          }}
+        />
       )}
 
       <GifPicker

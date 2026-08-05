@@ -16,10 +16,15 @@ import { useThemeColors } from '../../../hooks/useThemeColors';
 import { ScreenHeader } from '../../../components/ui/ScreenHeader';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { isPlayableGameUrl } from '../../../lib/gameUrl';
+import { logError } from '../../../lib/errorLogger';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   dating: '⚡', icebreaker: '💞', party: '🃏', trivia: '🎯', other: '🎮',
 };
+
+/** The one Roxy original that runs as a native flow rather than a hosted URL. */
+const SPEED_DATING = 'Speed Dating';
 
 const GRAD_COLORS = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 const TILE_GRADS = [
@@ -44,6 +49,10 @@ type LiveRoom = {
   community_name: string; status: string;
   room_type: 'video' | 'audio'; banner_url: string | null;
 };
+
+const isSpeedDating = (g: Game): boolean => g.name === SPEED_DATING;
+/** Openable right now: the native Speed Dating flow, or an https game the WebView host can load. */
+const isPlayable = (g: Game): boolean => isSpeedDating(g) || isPlayableGameUrl(g.url);
 
 function GameTile({
   emoji, name, sub, grad, badge, onPress,
@@ -98,12 +107,14 @@ export default function PlayScreen() {
   const [communityGames, setCommunityGames] = useState<CommunityGame[]>([]);
   const [liveRooms, setLiveRooms] = useState<LiveRoom[]>([]);
   const [loading, setLoading] = useState(true);
+  const [gamesError, setGamesError] = useState(false);
   const [query, setQuery] = useState('');
 
   useEffect(() => { void hydrate(user?.id); }, [user?.id]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setGamesError(false);
     const [origRes, liveRes] = await Promise.all([
       supabase.from('games').select('*').eq('publisher_type', 'roxy').order('name'),
       supabase
@@ -114,7 +125,12 @@ export default function PlayScreen() {
         .order('participant_count', { ascending: false })
         .limit(6),
     ]);
-    if (origRes.data) setOriginals(origRes.data as Game[]);
+    if (origRes.error) {
+      logError(origRes.error, 'playScreen_loadGames');
+      setGamesError(true);
+    } else {
+      setOriginals((origRes.data ?? []) as Game[]);
+    }
     if (liveRes.data) {
       setLiveRooms(liveRes.data.map((r: any) => ({
         id: r.id, name: r.name,
@@ -160,15 +176,20 @@ export default function PlayScreen() {
   const [speedDatingOptions, setSpeedDatingOptions] = useState<{ id: string; name: string }[] | null>(null);
   const sdPop = usePopIn(speedDatingOptions !== null);
 
+  /**
+   * `games.url` is an absolute https address, not an app route — pushing it into
+   * expo-router made the router treat it as an in-app path and dead-end. External
+   * games are hosted in the WebView launch route, which injects the Roxy SDK.
+   */
   const navigateToGame = (game: Game | CommunityGame) => {
-    if (game.name === 'Speed Dating' || game.url === null) {
+    if (isSpeedDating(game)) {
       const offeredBy = 'offeredBy' in game && game.offeredBy.length > 0
         ? game.offeredBy
-        : communityGames.find((g) => g.name === 'Speed Dating')?.offeredBy ?? [];
+        : communityGames.find(isSpeedDating)?.offeredBy ?? [];
       setSpeedDatingOptions(offeredBy);
-    } else if (game.url) {
-      router.push(game.url as any);
+      return;
     }
+    router.push(`/(tabs)/discover/games/${game.id}` as never);
   };
 
   const s = StyleSheet.create({
@@ -277,14 +298,6 @@ export default function PlayScreen() {
     popCancel: { color: colors.textMuted, fontWeight: '700', fontSize: 13, paddingVertical: 10 },
   });
 
-  // Fallback Roxy Originals in case DB is empty
-  const displayOriginals: Game[] = originals.length > 0 ? originals : [
-    { id: 'sd', name: 'Speed Dating', short_description: '1-on-1, 5 min each', category: 'dating', publisher_type: 'roxy', url: null, thumbnail_url: null },
-    { id: 'tt', name: 'Two Truths & a Lie', short_description: 'Break the ice', category: 'icebreaker', publisher_type: 'roxy', url: null, thumbnail_url: null },
-    { id: 'wyr', name: 'Would You Rather', short_description: 'Spicy or sweet', category: 'party', publisher_type: 'roxy', url: null, thumbnail_url: null },
-    { id: 'tot', name: 'This or That', short_description: 'Rapid-fire taste check', category: 'trivia', publisher_type: 'roxy', url: null, thumbnail_url: null },
-  ];
-
   const q = query.trim().toLowerCase();
   const matchesGame = (g: Game | CommunityGame) => !q
     || g.name.toLowerCase().includes(q)
@@ -292,8 +305,11 @@ export default function PlayScreen() {
     || ('community_name' in g && (g.community_name ?? '').toLowerCase().includes(q));
   // Speed Dating already owns the featured hero above — listing it again here
   // is the "same game over and over" problem. Show only the other originals.
-  const shownOriginals = displayOriginals.filter((g) => g.name !== 'Speed Dating').filter(matchesGame);
-  const shownCommunityGames = communityGames.filter(matchesGame);
+  // Everything on the grid is playable: a tile that cannot open anything is a lie,
+  // which is exactly what the four hardcoded placeholder games used to be — none of
+  // them existed in `games`, and every one of them opened Speed Dating.
+  const shownOriginals = originals.filter((g) => !isSpeedDating(g)).filter(isPlayable).filter(matchesGame);
+  const shownCommunityGames = communityGames.filter(isPlayable).filter(matchesGame);
 
   return (
     <SafeAreaView style={s.container}>
@@ -353,7 +369,7 @@ export default function PlayScreen() {
               <TouchableOpacity
                 style={s.heroPlayBtn}
                 onPress={() => setSpeedDatingOptions(
-                  communityGames.find((g) => g.name === 'Speed Dating')?.offeredBy ?? []
+                  communityGames.find(isSpeedDating)?.offeredBy ?? []
                 )}
                 activeOpacity={0.85}
               >
@@ -416,23 +432,40 @@ export default function PlayScreen() {
           </View>
         )}
 
-        {/* Roxy Originals */}
-        {shownOriginals.length > 0 && (
+        {/* Roxy Originals — real rows only. An empty grid says so rather than
+            filling itself with placeholder tiles that open the wrong game. */}
+        {!loading && (
           <View style={s.section}>
             <SectionHeader title="Roxy Originals" icon="sparkles" />
-            <View style={s.gameGrid}>
-              {shownOriginals.slice(0, 4).map((g, i) => (
-                <View key={g.id} style={{ width: '50%' }}>
-                  <GameTile
-                    emoji={CATEGORY_EMOJI[g.category] ?? '🎮'}
-                    name={g.name}
-                    sub={g.short_description}
-                    grad={TILE_GRADS[i % TILE_GRADS.length]}
-                    onPress={() => navigateToGame(g)}
-                  />
-                </View>
-              ))}
-            </View>
+            {gamesError ? (
+              <EmptyState
+                emoji="🎮"
+                title="Couldn't load games"
+                body="Check your connection and try again."
+                ctaLabel="Retry"
+                onCtaPress={() => void loadData()}
+              />
+            ) : shownOriginals.length === 0 ? (
+              <EmptyState
+                emoji="✨"
+                title={q ? 'No originals match your search' : 'Speed Dating is the only original — for now'}
+                body={q ? 'Try a different search.' : 'More Roxy games are on the way. Play Speed Dating above in the meantime.'}
+              />
+            ) : (
+              <View style={s.gameGrid}>
+                {shownOriginals.slice(0, 4).map((g, i) => (
+                  <View key={g.id} style={{ width: '50%' }}>
+                    <GameTile
+                      emoji={CATEGORY_EMOJI[g.category] ?? '🎮'}
+                      name={g.name}
+                      sub={g.short_description}
+                      grad={TILE_GRADS[i % TILE_GRADS.length]}
+                      onPress={() => navigateToGame(g)}
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 

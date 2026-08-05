@@ -15,9 +15,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { RoxyWordmark } from '../../components/ui/RoxyWordmark';
 import { useAuth } from '../../hooks/useAuth';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useGateStore } from '../../store/gateStore';
 import { showAlert } from '../../lib/confirm';
 
 // Roxy brand gradient — same 3 stops as the Grow hero card.
@@ -25,12 +27,17 @@ const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
 export default function WelcomeScreen() {
   const colors = useThemeColors();
+  const router = useRouter();
   const { height } = useWindowDimensions();
+  const { validatedCode, validatedCommunityName, submitApplicationForCode } = useGateStore();
   const [showEmail, setShowEmail] = useState(false);
-  const [isSignIn, setIsSignIn] = useState(false);
+  // Arriving without a code means she tapped "I already have an account" on the
+  // gate, so open in sign-in mode rather than making her switch.
+  const [isSignIn, setIsSignIn] = useState(!validatedCode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [oauthPending, setOauthPending] = useState<'apple' | 'google' | null>(null);
   const [resetSent, setResetSent] = useState(false);
   const { signUp, signInWithPassword, resetPassword, signInWithApple, signInWithGoogle } = useAuth();
 
@@ -46,14 +53,74 @@ export default function WelcomeScreen() {
       showAlert('Error', 'Password must be at least 6 characters.');
       return;
     }
+
+    // Signing up without a validated code would create an account the gate can
+    // never resolve — no application, no reviewer, no way in. Send her back to
+    // collect one rather than stranding her.
+    if (!isSignIn && !validatedCode) {
+      setLoading(false);
+      router.replace('/(auth)/code');
+      return;
+    }
+
     setLoading(true);
     const { error } = isSignIn
       ? await signInWithPassword(email.trim(), password)
       : await signUp(email.trim(), password);
-    setLoading(false);
+
     if (error) {
+      setLoading(false);
       showAlert('Error', error.message);
+      return;
     }
+
+    if (!isSignIn) {
+      // Binds the new account to the code that admitted her: this is what makes
+      // every member permanently attributable to a community that vouched.
+      const applicationId = await submitApplicationForCode();
+      setLoading(false);
+      if (!applicationId) {
+        showAlert(
+          'Almost there',
+          "Your account exists, but we couldn't attach your invite code. Sign in and try again.",
+        );
+        return;
+      }
+      router.replace('/(auth)/application');
+      return;
+    }
+
+    setLoading(false);
+  };
+
+  /**
+   * Apple and Google are a single call that both signs in and signs up —
+   * supabase-js creates the account on first use and offers no way to refuse.
+   * An account created this way without a code lands on
+   * profiles.vetting_status = 'unvetted', which migration 070 defines as the
+   * grandfather state with full access: no application row, no reviewer, no
+   * gate, and nothing downstream that would ever catch it. So the code has to
+   * be in hand BEFORE the provider opens — the same requirement handleSubmit
+   * enforces on the email signup path, applied to the only two buttons that
+   * were skipping it.
+   *
+   * The code is deliberately NOT redeemed here. OAuth completes through a
+   * redirect, so this screen is gone before a session exists to redeem it
+   * against. gateStore.loadApplication() already redeems a held code when it
+   * finds no application row — this guarantees the precondition that recovery
+   * path depends on rather than duplicating it.
+   */
+  const handleOAuth = async (provider: 'apple' | 'google') => {
+    if (!validatedCode) {
+      router.replace('/(auth)/code');
+      return;
+    }
+    setOauthPending(provider);
+    const { error } = provider === 'apple'
+      ? await signInWithApple()
+      : await signInWithGoogle();
+    setOauthPending(null);
+    if (error) showAlert('Error', error.message);
   };
 
   const handleForgotPassword = async () => {
@@ -72,6 +139,8 @@ export default function WelcomeScreen() {
   };
 
   const compactHero = showEmail && height < 760;
+  // One auth attempt at a time — two concurrent flows race to set a session.
+  const busy = loading || oauthPending !== null;
 
   const styles = StyleSheet.create({
     container: { flex: 1 },
@@ -233,7 +302,11 @@ export default function WelcomeScreen() {
             <RoxyWordmark variant="primary" height={compactHero ? 64 : 96} />
           </View>
           {!compactHero && (
-            <Text style={styles.tagline}>Your community. Your story.</Text>
+            <Text style={styles.tagline}>
+              {validatedCommunityName
+                ? `Invited by ${validatedCommunityName}`
+                : 'Your community. Your story.'}
+            </Text>
           )}
         </Animated.View>
 
@@ -255,21 +328,37 @@ export default function WelcomeScreen() {
             ) : (
               <>
                 <TouchableOpacity
-                  style={[styles.btn, styles.btnApple]}
-                  onPress={signInWithApple}
+                  testID="oauth-apple-btn"
+                  style={[styles.btn, styles.btnApple, busy && styles.btnDisabled]}
+                  onPress={() => void handleOAuth('apple')}
+                  disabled={busy}
                   accessibilityLabel="Continue with Apple"
                 >
-                  <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
-                  <Text style={styles.btnAppleText}>Continue with Apple</Text>
+                  {oauthPending === 'apple' ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
+                      <Text style={styles.btnAppleText}>Continue with Apple</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.btn, styles.btnGoogle]}
-                  onPress={signInWithGoogle}
+                  testID="oauth-google-btn"
+                  style={[styles.btn, styles.btnGoogle, busy && styles.btnDisabled]}
+                  onPress={() => void handleOAuth('google')}
+                  disabled={busy}
                   accessibilityLabel="Continue with Google"
                 >
-                  <Ionicons name="logo-google" size={18} color={colors.textPrimary} />
-                  <Text style={styles.btnGoogleText}>Continue with Google</Text>
+                  {oauthPending === 'google' ? (
+                    <ActivityIndicator color={colors.textPrimary} />
+                  ) : (
+                    <>
+                      <Ionicons name="logo-google" size={18} color={colors.textPrimary} />
+                      <Text style={styles.btnGoogleText}>Continue with Google</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
 
                 {!showEmail ? (
@@ -328,14 +417,14 @@ export default function WelcomeScreen() {
                     <TouchableOpacity
                       testID="auth-submit-btn"
                       onPress={handleSubmit}
-                      disabled={loading}
+                      disabled={busy}
                       accessibilityLabel={isSignIn ? 'Sign In' : 'Sign Up'}
                     >
                       <LinearGradient
                         colors={BRAND_GRADIENT}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
-                        style={[styles.btn, loading && styles.btnDisabled]}
+                        style={[styles.btn, busy && styles.btnDisabled]}
                       >
                         {loading ? (
                           <ActivityIndicator color="#FFFFFF" />

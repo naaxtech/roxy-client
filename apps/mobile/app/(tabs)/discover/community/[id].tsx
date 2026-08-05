@@ -19,18 +19,29 @@ import { showAlert } from '../../../../lib/confirm';
 import { CommunityRoomCard } from '../../../../components/community/CommunityRoomCard';
 import { CommunityRoom, Post } from '../../../../types';
 import { FeedCard } from '../../../../components/feed/FeedCard';
+import { ReelsFeed } from '../../../../components/feed/ReelsFeed';
 import { EmptyState } from '../../../../components/ui/EmptyState';
 import { useFeedStore } from '../../../../store/feedStore';
 import { normalizePost } from '../../../../lib/posts';
 import { contentDetailPath, linkedEntityPath } from '../../../../lib/contentNavigation';
+import { isPlayableGameUrl } from '../../../../lib/gameUrl';
 import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../../lib/supabaseQueries';
 import { EventsCalendar } from '../../../../components/events/EventsCalendar';
 import { freshChannel } from '../../../../lib/realtimeChannel';
 import { useAppWidth } from '../../../../hooks/useAppWidth';
 
-type SubTab = 'posts' | 'events' | 'games' | 'rooms';
+/**
+ * Inside a community is where member content lives — this is the "what's going
+ * on inside" half of the product, and joining is what unlocks it. Connect
+ * carries the other half: announcements, which are public by design.
+ *
+ * Both content formats therefore exist twice, at two different scopes. Posts
+ * and Reels here are the community's own; the same two tabs in Connect are the
+ * public square.
+ */
+type SubTab = 'posts' | 'reels' | 'events' | 'games' | 'rooms';
 
-const TABS: SubTab[] = ['posts', 'rooms', 'games', 'events'];
+const TABS: SubTab[] = ['posts', 'reels', 'rooms', 'games', 'events'];
 
 
 type EventRow = {
@@ -66,6 +77,15 @@ export default function CommunityDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [subTab, setSubTab] = useState<SubTab>('posts');
   const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsError, setPostsError] = useState(false);
+  /**
+   * The pager's own viewport, measured. The reels list sizes each page to the
+   * box it is given, and a horizontal pager page has no intrinsic height to
+   * hand it — an unmeasured page would leave the video list waiting on a
+   * layout that never arrives.
+   */
+  const [pagerHeight, setPagerHeight] = useState(0);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [eventsView, setEventsView] = useState<'list' | 'calendar'>('list');
   const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
@@ -99,18 +119,40 @@ export default function CommunityDetailScreen() {
     }
   }, [id, allCommunities]);
 
-  // Same query + normalizer as the Connect feed — one post pipeline app-wide.
+  const isJoined = id ? joinedIds.has(id) : false;
+
+  /**
+   * Same query + normalizer as the rest of the app — one post pipeline.
+   *
+   * A member sees everything. A non-member sees the community's public face
+   * only: its announcements. `posts_select` (migration 073) already draws that
+   * line server-side — `posted_as_community = true OR is_community_member(...)`
+   * — so this filter is not what protects the content. It is here so the screen
+   * asks for exactly what it is entitled to, and so the empty state below can
+   * tell the truth about why a tab is short.
+   */
   const loadPosts = useCallback(async () => {
     if (!id) return;
-    const { data } = await supabase
+    setPostsLoading(true);
+    setPostsError(false);
+    let query = supabase
       .from('posts')
       .select(POST_WITH_AUTHOR_AND_COMMUNITY)
       .eq('community_id', id)
-      .is('deleted_at', null)
+      .is('deleted_at', null);
+    if (!isJoined) query = query.eq('posted_as_community', true);
+    const { data, error } = await query
       .order('created_at', { ascending: false })
       .limit(30);
-    if (data) setPosts((data as Record<string, unknown>[]).map(normalizePost));
-  }, [id]);
+    if (error) {
+      logError(error, 'community.loadPosts');
+      setPostsError(true);
+      setPosts([]);
+    } else {
+      setPosts((data as Record<string, unknown>[]).map(normalizePost));
+    }
+    setPostsLoading(false);
+  }, [id, isJoined]);
 
   const loadEvents = useCallback(async () => {
     if (!id) return;
@@ -173,7 +215,12 @@ export default function CommunityDetailScreen() {
     setLoadingGames(false);
   }, [id]);
 
-  // Load all tab content upfront so swiping is instant
+  // Load all tab content upfront so swiping is instant.
+  //
+  // `isJoined` belongs in here: joining changes what every one of these queries
+  // is allowed to return, so without it the screen keeps showing the
+  // non-member's view of a community she just joined until she navigates away
+  // and back.
   useEffect(() => {
     loadPosts();
     loadEvents();
@@ -181,7 +228,7 @@ export default function CommunityDetailScreen() {
     loadRooms();
     loadGames();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, isJoined]);
 
   // Bug fix: publishing a post (or RSVPing to an event) from a screen pushed
   // on top of this one returned here with no refetch — the new content
@@ -239,8 +286,6 @@ export default function CommunityDetailScreen() {
     setSubTab(tab);
     pagerRef.current?.scrollTo({ x: index * screenWidth, animated: true });
   };
-
-  const isJoined = id ? joinedIds.has(id) : false;
 
   const handleJoinLeave = async () => {
     if (!user || !id) return;
@@ -396,8 +441,27 @@ export default function CommunityDetailScreen() {
       shadowOpacity: 0.3, shadowRadius: 6, elevation: 8,
     },
 
+    // Non-member notice — a community's public face, and the way in
+    joinNotice: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      backgroundColor: colors.secondary + '18',
+      borderRadius: 14, marginHorizontal: 12, marginBottom: 10, padding: 12,
+    },
+    joinNoticeEmoji: { fontSize: 20 },
+    joinNoticeTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 13.5, marginBottom: 2 },
+    joinNoticeText: { color: colors.textSecondary, fontSize: 12.5, lineHeight: 17 },
+    joinNoticeBtn: {
+      backgroundColor: colors.roxy, borderRadius: 16, paddingHorizontal: 14,
+      minHeight: 34, alignItems: 'center', justifyContent: 'center',
+    },
+    joinNoticeBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+
+    // Reels page — the pager gives it an explicit box; ReelsFeed measures it
+    reelsPage: { backgroundColor: colors.background },
+
     // Error / empty
     errorText: { color: colors.textMuted, textAlign: 'center', marginTop: 48, fontSize: 16 },
+    retryLink: { color: colors.roxy, fontWeight: '700', fontSize: 15 },
     emptyCenter: { alignItems: 'center', padding: 40, gap: 12 },
     emptyIcon: { fontSize: 48 },
     emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center' },
@@ -431,6 +495,31 @@ export default function CommunityDetailScreen() {
   }
 
   const level = getCommunityLevel(community.member_count);
+
+  /**
+   * What a non-member gets instead of member content: the community's public
+   * face, named as such, with the door held open. Not a blank tab, not an
+   * error, and never a silent trim of the list she is looking at.
+   */
+  const joinNotice = (
+    <View style={styles.joinNotice}>
+      <Text style={styles.joinNoticeEmoji}>🌸</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.joinNoticeTitle}>You&apos;re seeing the public side</Text>
+        <Text style={styles.joinNoticeText}>
+          Announcements are open to everyone. Join to see what members are sharing inside.
+        </Text>
+      </View>
+      <TouchableOpacity
+        style={styles.joinNoticeBtn}
+        onPress={handleJoinLeave}
+        accessibilityRole="button"
+        accessibilityLabel={`Join ${community.name}`}
+      >
+        <Text style={styles.joinNoticeBtnText}>Join</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -508,6 +597,7 @@ export default function CommunityDetailScreen() {
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
         style={{ flex: 1 }}
+        onLayout={(e) => setPagerHeight(e.nativeEvent.layout.height)}
         onMomentumScrollEnd={(e) => {
           const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
           setSubTab(TABS[index]);
@@ -515,8 +605,29 @@ export default function CommunityDetailScreen() {
       >
         {/* Page 0 — Posts (shared FeedCard pipeline — identical to Connect feed) */}
         <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 80 }}>
-          {posts.length === 0 ? (
-            <EmptyState emoji="📝" title="No posts yet" body="Be the first to post!" />
+          {isJoined ? null : joinNotice}
+          {postsLoading ? (
+            <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
+          ) : postsError ? (
+            <View style={styles.emptyCenter}>
+              <Text style={styles.emptyIcon}>📡</Text>
+              <Text style={styles.emptyTitle}>Could not load posts</Text>
+              <TouchableOpacity
+                onPress={() => void loadPosts()}
+                accessibilityRole="button"
+                accessibilityLabel="Try loading posts again"
+              >
+                <Text style={styles.retryLink}>Try again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : posts.length === 0 ? (
+            <EmptyState
+              emoji="📝"
+              title={isJoined ? 'No posts yet' : 'No announcements yet'}
+              body={isJoined
+                ? 'Be the first to post!'
+                : `${community.name} hasn't posted publicly yet. Join to see what members are sharing inside.`}
+            />
           ) : (
             posts.map((post) => (
               <FeedCard
@@ -540,7 +651,21 @@ export default function CommunityDetailScreen() {
           )}
         </ScrollView>
 
-        {/* Page 1 — Rooms */}
+        {/* Page 1 — Reels: this community's video.
+            Mounted only while its tab is active. A vertical video list mounted
+            off-screen in a pager still autoplays, so leaving it permanently
+            mounted means audio from a tab she is not looking at. */}
+        <View style={[styles.reelsPage, { width: screenWidth, height: pagerHeight || undefined }]}>
+          {isJoined ? null : joinNotice}
+          {subTab === 'reels' ? (
+            <ReelsFeed
+              scope={isJoined ? 'community' : 'community-announcements'}
+              communityIds={[id]}
+            />
+          ) : null}
+        </View>
+
+        {/* Page 2 — Rooms */}
         <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ padding: 12, paddingBottom: 80 }}>
           {loadingRooms ? (
             <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
@@ -572,7 +697,7 @@ export default function CommunityDetailScreen() {
           )}
         </ScrollView>
 
-        {/* Page 2 — Games (real data from community_games + games tables) */}
+        {/* Page 3 — Games (real data from community_games + games tables) */}
         <ScrollView style={{ width: screenWidth }} contentContainerStyle={styles.gamesContainer}>
           {loadingGames ? (
             <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
@@ -584,15 +709,19 @@ export default function CommunityDetailScreen() {
             </View>
           ) : (
             communityGames.map((game) => {
-              const canPlay = game.url !== null || game.name === 'Speed Dating';
+              // `games.url` is an external https address, not a route: pushing it into
+              // expo-router dead-ended. Hosted games open in the WebView launch route.
+              const isSpeedDating = game.name === 'Speed Dating';
+              const canPlay = isSpeedDating || isPlayableGameUrl(game.url);
               return (
                 <TouchableOpacity
                   key={game.id}
                   style={styles.gameCard}
                   onPress={() => {
-                    if (game.name === 'Speed Dating') router.push('/speed-dating' as any);
-                    else if (game.url) router.push(game.url as any);
+                    if (isSpeedDating) { router.push('/speed-dating' as any); return; }
+                    if (canPlay) router.push(`/(tabs)/discover/games/${game.id}` as never);
                   }}
+                  disabled={!canPlay}
                   activeOpacity={canPlay ? 0.8 : 1}
                 >
                   <Text style={styles.gameEmoji}>
@@ -618,7 +747,7 @@ export default function CommunityDetailScreen() {
           )}
         </ScrollView>
 
-        {/* Page 3 — Events */}
+        {/* Page 4 — Events */}
         <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}>
           <View style={styles.viewToggleRow}>
             {(['list', 'calendar'] as const).map((v) => (

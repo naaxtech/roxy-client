@@ -8,6 +8,7 @@ import { useFriendStore } from '../../store/friendStore';
 import { useConnectStore } from '../../store/connectStore';
 import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
+import { useSafetyStore } from '../../store/safetyStore';
 import { supabase } from '../../lib/supabase';
 import { freshChannel } from '../../lib/realtimeChannel';
 
@@ -28,6 +29,16 @@ export default function TabLayout() {
       router.replace('/(auth)/onboarding/step1-identity');
     }
   }, [profile?.onboarding_completed]);
+
+  // Who she has blocked is session-independent state, so it is loaded once
+  // here rather than by whichever screen happens to need it. safetyStore
+  // checks this list before issuing a block, and it used to start empty on
+  // every launch with nothing ever refilling it.
+  const loadBlockedUsers = useSafetyStore((s) => s.loadBlockedUsers);
+  useEffect(() => {
+    if (!user?.id) return;
+    void loadBlockedUsers();
+  }, [user?.id, loadBlockedUsers]);
 
   const unreadCounts = useConnectStore((s) => s.unreadCounts);
   const totalUnread = Object.values(unreadCounts).reduce((sum, n) => sum + n, 0);

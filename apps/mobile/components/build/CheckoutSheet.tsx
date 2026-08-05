@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, TextInput, ActivityIndicator, Animated } from 'react-native';
 import { useStripe } from '@stripe/stripe-react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,20 +6,30 @@ import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { usePopIn } from '../ui/popIn';
-import { showAlert } from '../../lib/confirm';
 import { formatMoney, currencyCode } from '../../lib/currency';
-import type { ProductWithVariants, ShippingAddress } from '../../types/marketplace';
+import { newIdempotencyKey, checkoutSignature } from '../../lib/idempotency';
+import type { ProductWithVariants, ShippingAddress, CheckoutLine } from '../../types/marketplace';
 
 type Step = 'review' | 'shipping' | 'payment';
 
 const STEPS: Step[] = ['review', 'shipping', 'payment'];
+
+/** idle → creating (server opens the PaymentIntent) → paying (Stripe sheet) → confirming (webhook writes the order). */
+type Phase = 'idle' | 'creating' | 'paying' | 'confirming';
+
+const PHASE_LABEL: Record<Exclude<Phase, 'idle'>, string> = {
+  creating: 'Preparing your order…',
+  paying: 'Opening secure checkout…',
+  confirming: 'Confirming your order…',
+};
 
 interface CheckoutSheetProps {
   businessId: string;
   businessName: string;
   visible: boolean;
   onClose: () => void;
-  onSuccess: (orderId: string) => void;
+  /** orderId is null when payment succeeded but the order row has not landed yet. */
+  onSuccess: (orderId: string | null) => void;
   /** When set, bypasses the cart and checks out this single item directly. Cart is not cleared on success. */
   buyNowItem?: { product: ProductWithVariants; variantId: string | null; quantity: number };
 }
@@ -28,13 +38,24 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
   const colors = useThemeColors();
   const pop = usePopIn(visible);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const { cartItems, getCartTotal, createOrder, clearCart, buyNow } = useMarketplaceStore();
+  const {
+    cartItems, getCartTotal, createOrder, clearCart, buyNow,
+    latestOrderId, awaitNewOrderId, fetchOrders,
+  } = useMarketplaceStore();
 
   const [step, setStep] = useState<Step>('review');
   const [shipping, setShipping] = useState<ShippingAddress>({
     name: '', line1: '', line2: '', city: '', state: '', postal_code: '', country: 'US',
   });
-  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [error, setError] = useState<string | null>(null);
+  /**
+   * The PaymentIntent already opened for this exact basket + address. Reused when the
+   * buyer dismisses the Stripe sheet and taps Pay again: asking the server for a second
+   * PaymentIntent would decrement stock a second time for the same purchase.
+   */
+  const [openIntent, setOpenIntent] = useState<{ clientSecret: string; signature: string } | null>(null);
+  const paymentLoading = phase !== 'idle';
 
   // When buyNowItem is set, use it instead of cart
   const cartItemsList = cartItems[businessId] ?? [];
@@ -65,44 +86,76 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
 
   const isShippingValid = !!(shipping.name && shipping.line1 && shipping.city && shipping.state && shipping.postal_code);
 
+  const lines: CheckoutLine[] = items.map((item) => ({
+    product_id: item.product_id,
+    variant_id: item.variant_id,
+    quantity: item.quantity,
+  }));
+
+  // Closing the sheet ends the attempt: the next open starts at review with a fresh
+  // PaymentIntent, never a stale client secret for a basket the buyer has since changed.
+  useEffect(() => {
+    if (visible) return;
+    setStep('review');
+    setPhase('idle');
+    setError(null);
+    setOpenIntent(null);
+  }, [visible]);
+
   const handlePayment = async () => {
-    if (!isShippingValid) return;
-    setPaymentLoading(true);
-    try {
-      const result = buyNowItem
-        ? await buyNow(businessId, buyNowItem.product, buyNowItem.variantId, buyNowItem.quantity, shipping)
-        : await createOrder(businessId, shipping);
+    if (!isShippingValid || phase !== 'idle') return;
+    setError(null);
 
-      if (!result) {
-        showAlert('Error', 'Failed to create order. Please try again.');
+    const signature = checkoutSignature(lines, shipping);
+    let clientSecret = openIntent?.signature === signature ? openIntent.clientSecret : null;
+
+    if (!clientSecret) {
+      setPhase('creating');
+      const started = buyNowItem
+        ? await buyNow(businessId, buyNowItem.product, buyNowItem.variantId, buyNowItem.quantity, shipping, newIdempotencyKey())
+        : await createOrder(businessId, shipping, newIdempotencyKey());
+      if (!started.ok) {
+        setError(started.message);
+        setPhase('idle');
         return;
       }
-      const { clientSecret, orderId } = result;
-
-      const { error: initError } = await initPaymentSheet({
-        paymentIntentClientSecret: clientSecret,
-        merchantDisplayName: `Roxy × ${businessName}`,
-        allowsDelayedPaymentMethods: false,
-      });
-      if (initError) {
-        showAlert('Payment Error', initError.message);
-        return;
-      }
-
-      const { error: payError } = await presentPaymentSheet();
-      if (payError) {
-        if (payError.code !== 'Canceled') {
-          showAlert('Payment Failed', payError.message);
-        }
-        return;
-      }
-
-      // Payment succeeded — only clear cart for normal checkout, not buy now
-      if (!buyNowItem) clearCart(businessId);
-      onSuccess(orderId);
-    } finally {
-      setPaymentLoading(false);
+      clientSecret = started.clientSecret;
+      setOpenIntent({ clientSecret, signature });
     }
+
+    // Captured before payment so the order the webhook writes is identifiable
+    // without trusting the device clock.
+    const previousOrderId = await latestOrderId(businessId);
+
+    setPhase('paying');
+    const { error: initError } = await initPaymentSheet({
+      paymentIntentClientSecret: clientSecret,
+      merchantDisplayName: `Roxy × ${businessName}`,
+      allowsDelayedPaymentMethods: false,
+    });
+    if (initError) {
+      setError(initError.message);
+      setPhase('idle');
+      return;
+    }
+
+    const { error: payError } = await presentPaymentSheet();
+    if (payError) {
+      // Dismissing the sheet is not a failure — the PaymentIntent stays open and
+      // the next Pay tap reuses it.
+      if (payError.code !== 'Canceled') setError(payError.message);
+      setPhase('idle');
+      return;
+    }
+
+    // Paid. The order row arrives via the Stripe webhook a moment later.
+    setPhase('confirming');
+    if (!buyNowItem) clearCart(businessId);
+    setOpenIntent(null);
+    const orderId = await awaitNewOrderId(businessId, previousOrderId);
+    await fetchOrders();
+    setPhase('idle');
+    onSuccess(orderId);
   };
 
   const renderReview = () => (
@@ -121,7 +174,10 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
         <Text style={styles.totalLabel}>Subtotal</Text>
         <Text style={styles.totalAmount}>{formatMoney(subtotal, 'usd')}</Text>
       </View>
-      <Text style={styles.shippingNote}>Shipping calculated at next step</Text>
+      {/* create-product-order defaults shipping_cost_cents to 0, so the total on the
+          payment step IS the subtotal. Saying "calculated at next step" promised a
+          step that never runs. */}
+      <Text style={styles.shippingNote}>No separate shipping charge — the total on the next step is what you pay.</Text>
       <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep('shipping')}>
         <Text style={styles.primaryBtnText}>Continue to Shipping →</Text>
       </TouchableOpacity>
@@ -181,8 +237,21 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
         <Text style={[styles.totalAmount, { fontSize: 22 }]}>{formatMoney(subtotal, 'usd')}</Text>
       </View>
       <Text style={styles.intlNote}>Prices in {currencyCode('usd')} · Secure checkout via Stripe</Text>
+      {error && (
+        <View style={styles.errorBox}>
+          <Ionicons name="alert-circle" size={16} color={colors.error} />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+      {phase !== 'idle' && (
+        <Text style={styles.phaseText} accessibilityLiveRegion="polite">{PHASE_LABEL[phase]}</Text>
+      )}
       <View style={styles.rowBtns}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => setStep('shipping')}>
+        <TouchableOpacity
+          style={[styles.backBtn, paymentLoading && styles.btnDisabled]}
+          onPress={() => setStep('shipping')}
+          disabled={paymentLoading}
+        >
           <Text style={styles.backBtnText}>← Back</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -221,6 +290,13 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
     totalAmount: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
     shippingNote: { fontSize: 12, color: colors.textMuted, marginBottom: 16 },
     intlNote: { fontSize: 12, color: colors.textMuted, marginTop: 4, marginBottom: 8 },
+    errorBox: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+      backgroundColor: colors.error + '18', borderRadius: 10,
+      paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8,
+    },
+    errorText: { flex: 1, color: colors.error, fontSize: 13, lineHeight: 18, fontWeight: '600' },
+    phaseText: { color: colors.textMuted, fontSize: 12, marginBottom: 8 },
     primaryBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
     primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
     btnDisabled: { opacity: 0.4 },
@@ -263,7 +339,12 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
             {step === 'shipping' && renderShipping()}
             {step === 'payment' && renderPayment()}
           </View>
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose} accessibilityLabel="Close checkout">
+          <TouchableOpacity
+            style={[styles.closeBtn, paymentLoading && styles.btnDisabled]}
+            onPress={onClose}
+            disabled={paymentLoading}
+            accessibilityLabel="Close checkout"
+          >
             <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </Animated.View>

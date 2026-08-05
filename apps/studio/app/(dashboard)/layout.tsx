@@ -32,11 +32,22 @@ export default async function DashboardLayout({
       : 'R';
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    // `relative` on both the shell and <main> is load-bearing, not decoration.
+    // An absolutely positioned descendant with no positioned ancestor resolves its
+    // containing block to the initial containing block, so it escapes BOTH the
+    // shell's overflow-hidden and <main>'s overflow-y-auto and extends the document
+    // instead — the page then scrolls past the 100vh shell into empty space.
+    // Radix form primitives ship exactly such a node: <Checkbox> inside a <form>
+    // renders a hidden bubble input with
+    // `position:absolute; opacity:0; transform:translateX(-100%)`
+    // (@radix-ui/react-checkbox 1.3.3), which is why /settings, /invites,
+    // /applications and /products were affected. Making <main> a containing block
+    // keeps such nodes clipped to the scroll container on every dashboard route.
+    <div className="relative flex h-screen overflow-hidden bg-background">
       <AppSidebar isStaff={isStaff} userEmail={userEmail} userInitials={initials} />
       <div className="flex flex-1 flex-col min-h-0">
         <Header />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="relative flex-1 overflow-y-auto p-6">
           {children}
         </main>
       </div>

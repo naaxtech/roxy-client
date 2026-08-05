@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  /* :root IS the dark theme — there is deliberately no `.dark` block. next-themes
+     writes `class="dark"` or `class="light"` on <html>; `dark` simply leaves these
+     values in place, while `.light` below overrides them. Adding a `.dark` block
+     would duplicate this one, so change dark-mode colours here. */
   :root {
     --background: 268 64% 11%;
     --foreground: 0 0% 100%;
@@ -38,7 +42,22 @@
     --muted-foreground: 300 20% 45%;
     --border: 340 40% 88%;
     --input: 340 40% 88%;
-    /* primary, secondary, accent, ring, radius unchanged — brand is consistent */
+
+    /* Brand hues are kept; only lightness drops so the same colours stay legible
+       ON a near-white surface. The dark-mode values are tuned for a #1a0a2e
+       background and fail WCAG AA when reused here — measured against
+       --background 340 100% 98%: primary 2.5:1, destructive 3.5:1, and white on
+       secondary 3.4:1, all below the 4.5:1 floor for body text. These land at
+       6.7:1, 6.2:1 and 8.4:1 respectively, in both directions (as text, and as a
+       fill carrying --*-foreground). accent/accent-foreground already pass, so
+       they stay on the shared :root values. */
+    --primary: 330 73% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 258 60% 45%;
+    --secondary-foreground: 0 0% 100%;
+    --destructive: 0 72% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 330 73% 38%;
   }
 }
 

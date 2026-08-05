@@ -23,7 +23,10 @@ export async function linkedEntityPath(post: Post): Promise<string | null> {
   if (!entityId) return null;
   switch (post.link_type) {
     case 'room':
-      return `/(tabs)/connect/community-room-session?room_id=${entityId}`;
+      // Root route, not the Connect stack — the call stage overlays the current
+      // tab. Pushing it inside Connect stranded a dead call screen as that
+      // stack's top route. Every other caller already uses this path.
+      return `/community-room-session?room_id=${entityId}`;
     case 'event':
       return `/event/${entityId}`;
     case 'game': {

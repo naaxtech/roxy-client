@@ -185,7 +185,9 @@ cd apps/mobile && eas build --profile production                    # production
 6. **pgBouncer Transaction mode** — required before public launch.
 7. **EAS Build** — no Expo Go in production.
 8. **All secrets in environment variables** — never hardcoded.
-9. **Daily.co guarded import** — never module-level import. Use `isDailyAvailable()`. See anti-patterns.
+9. **Daily.co guarded import** — never module-level import. Check `provider.isAvailable`. See anti-patterns.
+    Daily.co is the ONLY video provider. The LiveKit stub and `livekit-token` edge function were deleted
+    2026-08-02 (never wired, no `@livekit/*` package) — do not re-add a second provider without a caller.
 10. **claude-haiku-4-5-20251001** for edge function AI calls. claude-sonnet-4-6 for complex tasks only.
 11. **Observability** — Sentry + PostHog via shared `@roxy/observability` package. Never raw Sentry/PostHog calls from components.
 12. **PII masking** — non-negotiable. Strip before any log call. See observability rules.
@@ -331,16 +333,25 @@ const { supabase } = jest.requireMock('../../lib/supabase');
 
 ### 3. Daily.co guarded import
 Never import `@daily-co/react-native-daily-js` at module level — crashes Expo Go.
+The one guarded import lives in `lib/video/DailyProvider.ts`; check
+`provider.isAvailable` before rendering any video component or attempting a join.
 ```ts
-// CORRECT — in lib/daily.ts
-let DailyIframe: any = null;
+// CORRECT — lib/video/DailyProvider.ts
+// On web, metro resolves this package to an EMPTY module ({}), which is truthy.
+// Validate the SHAPE — a truthiness check alone reports Daily as available on
+// web and the join then throws.
+let DailyCall: any = null;
 try {
   const mod = require('@daily-co/react-native-daily-js');
-  DailyIframe = mod.default ?? mod.DailyIframe ?? null;
+  const candidate = mod?.default ?? mod;
+  DailyCall = typeof candidate?.createCallObject === 'function' ? candidate : null;
 } catch {}
-export const isDailyAvailable = () => DailyIframe !== null;
-// Always check isDailyAvailable() before rendering any video component.
 ```
+**One call object per process.** `createCallObject()` THROWS
+`Duplicate DailyIframe instances are not allowed` if one is already live, and
+`destroy()` is async. Both apps serialise this through a module-scoped teardown
+barrier — `lib/video/DailyProvider.ts` (mobile) and `lib/daily/callObject.ts`
+(studio). Never call `createCallObject()` directly from a screen.
 
 ### 4. Expo web peer deps
 Web bundling requires: `npm install expo-status-bar@~1.12.1 expo-linking expo-constants expo-font expo-asset --legacy-peer-deps`

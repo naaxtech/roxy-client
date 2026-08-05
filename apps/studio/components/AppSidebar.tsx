@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Calendar, Video, Gamepad2, Users, Wallet,
   ShoppingBag, Package, ShoppingCart, DollarSign, Settings,
   Shield, CheckSquare, Mail, RefreshCw, AlertTriangle, Building2,
-  ChevronRight, LogOut, Lightbulb, Bug,
+  ChevronRight, LogOut, Lightbulb, Bug, UserCheck, Ticket, UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOutAction } from '@/app/auth/signout-action';
@@ -15,13 +15,23 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 
 const mainNav = [
   { href: '/dashboard',   label: 'Dashboard',     icon: LayoutDashboard },
   { href: '/events',      label: 'Events',         icon: Calendar },
   { href: '/rooms',       label: 'Rooms',          icon: Video },
   { href: '/games',       label: 'Games',          icon: Gamepad2 },
-  { href: '/community',   label: 'Community',      icon: Users },
+  // `exact` because /community now has a child route in this list; without it
+  // both entries highlight at once.
+  { href: '/community',   label: 'Community',      icon: Users, exact: true },
+  { href: '/community/members', label: 'Members',  icon: UserCog },
+  // The invite gate, in the order it happens: issue a code, then decide on the
+  // application it produces. Both are community-admin work, not staff work.
+  { href: '/invites',     label: 'Invite codes',   icon: Ticket },
+  // Community admins and border patrol both land here. The page itself resolves
+  // capability -- RLS decides which applications, if any, are visible.
+  { href: '/applications', label: 'Applications',  icon: UserCheck },
 ];
 
 const sellerNav = [
@@ -50,10 +60,13 @@ interface NavItemProps {
   icon: React.ElementType;
   pathname: string;
   indent?: boolean;
+  /** Set on a parent whose own child route is also in the nav, so only one lights up. */
+  exact?: boolean;
 }
 
-function NavItem({ href, label, icon: Icon, pathname, indent }: NavItemProps) {
-  const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+function NavItem({ href, label, icon: Icon, pathname, indent, exact }: NavItemProps) {
+  const isActive =
+    pathname === href || (!exact && href !== '/dashboard' && pathname.startsWith(href));
   return (
     <Link
       href={href}
@@ -82,7 +95,7 @@ function NavItem({ href, label, icon: Icon, pathname, indent }: NavItemProps) {
 function NavSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+      <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
         {title}
       </p>
       {children}
@@ -112,7 +125,7 @@ export function AppSidebar({ isStaff = false, userEmail, userInitials = 'R' }: A
             priority
             className="h-8 w-auto"
           />
-          <p className="text-[10px] text-muted-foreground/70 leading-none">Host dashboard</p>
+          <p className="text-[10px] text-muted-foreground leading-none">Host dashboard</p>
         </div>
 
         {/* Nav */}
@@ -158,12 +171,13 @@ export function AppSidebar({ isStaff = false, userEmail, userInitials = 'R' }: A
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-foreground truncate">{userEmail ?? 'Host'}</p>
-              <p className="text-[10px] text-muted-foreground/60 leading-none mt-0.5">Signed in</p>
+              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Signed in</p>
             </div>
+            <ThemeSwitcher />
             <Tooltip>
               <TooltipTrigger asChild>
                 <form action={signOutAction}>
-                  <button type="submit" className="rounded p-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors">
+                  <button type="submit" aria-label="Sign out" className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                     <LogOut className="h-3.5 w-3.5" />
                   </button>
                 </form>
