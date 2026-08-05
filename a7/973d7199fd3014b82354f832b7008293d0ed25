@@ -1,0 +1,33 @@
+apps/mobile/__tests__/components/ProfilePhotoGrid.test.tsx
+  s_f93f52ad807728::t_693d9b77754c46 1-35
+apps/mobile/components/profile/ProfileFavorites.tsx
+  s_f93f52ad807728::t_627c2b1d74917c 22-28
+  s_f93f52ad807728::t_925f2de42ca6c3 100
+  s_f93f52ad807728::t_28d5fa4b777b34 110
+apps/mobile/__tests__/components/ProfileFavorites.test.tsx
+  s_f93f52ad807728::t_31813032351587 1-48
+apps/mobile/components/profile/ProfilePhotoGrid.tsx
+  s_f93f52ad807728::t_9be0e5b1801e12 120
+  s_f93f52ad807728::t_d603e431ca63a4 30-33
+apps/mobile/app/(tabs)/profile/edit.tsx
+  s_f93f52ad807728::t_653120e6e38032 216-218,238-247
+CHANGELOG.md
+  s_f93f52ad807728::t_ec8d1ce83551bd 41-62
+  s_f93f52ad807728::t_39409670b13d71 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a7973d7199fd3014b82354f832b7008293d0ed25",
+  "prompts": {},
+  "sessions": {
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
