@@ -121,6 +121,24 @@ finer-grained engineering log lives in `.claude/log.md`.
   non-members, the TikTok profile grid, events and games as in-feed cells, and gamification
   retained. Records what could not be verified about TikTok's current interface rather than
   guessing it.
+- **`supabase/migrations/087_server_authoritative_badges.sql`** — the awarder, and the lockdown
+  that makes it the only way in. Badges have been unearnable for the life of this product:
+  nothing ever wrote `user_badge_progress` except a dev seed, while Supabase's default
+  `GRANT ALL ... TO authenticated` plus 007's owner policies let any member POST herself an
+  earned badge and PATCH `earned_at` — firing the SECURITY DEFINER points trigger and
+  inflating her own `gamification_points`. Writes are now revoked from `PUBLIC`, `anon` and
+  `authenticated` (naming `PUBLIC` matters: a privilege held by PUBLIC is held by every role,
+  so revoking the two by name would leave it in place), with `SELECT` re-granted so the owner
+  policy and 086's two-audience read still work. The same treatment for the `badges` catalog,
+  because `points_value` is the multiplier every award is computed from — a member who could
+  write that table wouldn't need to forge a badge, only to raise the price of one she'd
+  earned. Progress is **derived** from the source tables, never accepted from a caller;
+  `sync_my_badges()` takes no arguments at all, so identity is `auth.uid()` and there is
+  nothing in the call to falsify. "Community Builder" is wired to a real trigger on
+  `community_members`. `reconcile_forged_badges()` cleans up rows minted before the lockdown,
+  dry-run by default. Also closes 086's stated residual — every count is taken through
+  `LIMIT requirement_threshold`, so `current_value` can never exceed the threshold and an
+  earned row discloses nothing the badge doesn't. Ships **with** 086, never before it.
 - **`supabase/migrations/086_public_earned_badges.sql`** — earned badges readable by approved
   members, in-progress rows still private, and the three `ubp_owner_*` policies pinned to
   `TO authenticated` (they had been implicitly `TO PUBLIC`, i.e. reachable by `anon`, since
