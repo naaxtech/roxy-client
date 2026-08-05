@@ -1,0 +1,147 @@
+apps/mobile/__tests__/components/ReelCell.test.tsx
+  s_f93f52ad807728::t_55186a786f3904 1-158
+docs/superpowers/plans/2026-08-05-tiktok-redesign.md
+  s_f93f52ad807728::t_c93fef20cb979a 1-45,55-376
+  s_f93f52ad807728::t_ec17a2b93f0e85 46-54
+apps/mobile/store/marketplaceStore.ts
+  s_f93f52ad807728::t_8efd6f58414ad6 57-68
+  s_f93f52ad807728::t_4518d114d80c47 413-423
+  s_f93f52ad807728::t_83b6d11384e378 254-274
+  s_f93f52ad807728::t_42da2b9f32191a 224,234-236
+  s_f93f52ad807728::t_8804819af2750b 4
+  s_f93f52ad807728::t_37410c7eb72ecc 214-218
+  s_f93f52ad807728::t_2d8a6b1bf2333a 89-94
+  s_f93f52ad807728::t_861ddc045acee4 31-40
+  s_f93f52ad807728::t_61fcbcd4a3db15 192
+apps/mobile/__tests__/components/build/CheckoutSheet.test.tsx
+  s_f93f52ad807728::t_f91b937d110f7f 43-56
+  s_f93f52ad807728::t_34567503f8e2d7 73,76,81-119
+  s_f93f52ad807728::t_f33ac83fdd16fd 25-27,120-121
+apps/mobile/components/feed/ReelsFeed.tsx
+  s_f93f52ad807728::t_89647640a25fd7 386-399
+  s_f93f52ad807728::t_a6459433c85918 476
+  s_f93f52ad807728::t_321f70b9523953 498
+  s_f93f52ad807728::t_ce699a3f10f8c7 106-107,109-112
+  s_f93f52ad807728::t_25141d4c037249 293-299,308-315,327-340
+  s_f93f52ad807728::t_bb679c407a7aab 346-356,361-364,370-377
+  s_f93f52ad807728::t_f821c0af8f5dd9 300-307
+supabase/functions/_shared/stockHold.ts
+  s_f93f52ad807728::t_2b4d04efd5390c 1-178
+apps/mobile/app/(tabs)/profile/[userId].tsx
+  s_f93f52ad807728::t_49598885cbebc5 46-57
+apps/mobile/__tests__/lib/dataExport.test.ts
+  s_f93f52ad807728::t_9583f7bee839cd 33
+  s_f93f52ad807728::t_ff48519a2ba43d 1-32,34-94,116-303
+  s_f93f52ad807728::t_01fa243c4839f5 95-115
+apps/mobile/types/marketplace.ts
+  s_f93f52ad807728::t_5ec315d5c64720 5-15,21
+apps/mobile/lib/currency.ts
+  s_f93f52ad807728::t_714cc569dbe651 10-19
+CHANGELOG.md
+  s_f93f52ad807728::t_5242c2e91ea6c3 41-114
+supabase/migrations/086_public_earned_badges.sql
+  s_f93f52ad807728::t_ebfa45bc646e46 1-104,115-203
+  s_f93f52ad807728::t_a7b1cd7c407e6d 105-114
+apps/mobile/__tests__/components/build/CartDrawer.test.tsx
+  s_f93f52ad807728::t_3114df65e9a79c 1-75
+apps/mobile/components/build/CartDrawer.tsx
+  s_f93f52ad807728::t_bae1857a32430e 1
+  s_f93f52ad807728::t_77bd94b53a03d5 94
+  s_f93f52ad807728::t_b0261c232eea1c 21-24,28-36
+  s_f93f52ad807728::t_659447b2395ae5 116
+apps/mobile/app/business/[id].tsx
+  s_f93f52ad807728::t_514419bcd03332 43
+  s_f93f52ad807728::t_8862c0433e4913 326
+  s_f93f52ad807728::t_64c2e9b4fa8def 533
+  s_f93f52ad807728::t_936145d22ad4f8 550
+supabase/functions/stripe-product-webhook/index.ts
+  s_f93f52ad807728::t_e216d3c3d52846 54-64
+  s_f93f52ad807728::t_01b170959f47eb 171-176,181-199
+  s_f93f52ad807728::t_bfd16b719e0ff0 5
+apps/mobile/components/build/CheckoutSheet.tsx
+  s_f93f52ad807728::t_adb41e07d1df16 104,107,117,124
+  s_f93f52ad807728::t_317de21b6212c3 142-146
+  s_f93f52ad807728::t_4ff6efa304eb42 1,44,46-47,59-61,63,101-103,105-106,108-109,118-119,122-123,125-132,138,156,187-189,204,210,272,274,301
+apps/mobile/components/feed/FeedVideoPlayer.tsx
+  s_f93f52ad807728::t_c3ff04a6fdd6e4 15-30,34,36,49-53,63,71,78-80,91,93-96,99,114-137,140-165,181-208,210-219,222-224
+  s_f93f52ad807728::t_497c665a9df257 31-33
+apps/mobile/__tests__/components/FeedVideoPlayer.test.tsx
+  s_f93f52ad807728::t_54e51a2c5e1877 230
+  s_f93f52ad807728::t_5058115dc86f97 195
+  s_f93f52ad807728::t_8ec65da39d97b5 222
+  s_f93f52ad807728::t_6d9fc58d0717e0 1-34,48-64,72-194,196-221,223-229,231-234
+  s_f93f52ad807728::t_edacb0d8046e69 35-47
+  s_f93f52ad807728::t_2a1ae480ac88b0 65-71
+apps/mobile/__tests__/components/ReelsFeed.test.tsx
+  s_f93f52ad807728::t_5a41d201100f89 1-192
+apps/mobile/__tests__/marketplaceStore.test.ts
+  s_f93f52ad807728::t_d740025c814a2a 168-171,177-178
+  s_f93f52ad807728::t_be4dca0f73e4f5 115-147
+  s_f93f52ad807728::t_82a8241de492c6 255-280
+  s_f93f52ad807728::t_9f3b5bcf3531ed 73
+apps/mobile/hooks/useReducedMotion.ts
+  s_f93f52ad807728::t_2124d85dc4ba87 15-18
+apps/mobile/components/feed/ReelCell.tsx
+  s_f93f52ad807728::t_4c037f875a272f 121-123
+  s_f93f52ad807728::t_52c4d1c6fe8aed 52,56-57,65-67
+  s_f93f52ad807728::t_e94e79635f7ae8 98-101
+  s_f93f52ad807728::t_de3005867f0deb 141
+  s_f93f52ad807728::t_fc587fe23b7151 168
+  s_f93f52ad807728::t_cd2bf66fac74cc 192-205
+  s_f93f52ad807728::t_34a90e00db4200 15-19,21,23-33
+supabase/functions/create-product-order/index.ts
+  s_f93f52ad807728::t_caef5c8e1d48a9 5-7,9,27-28,50-53,121-134,152,154,156-157,162-171,173,175-186,188,190,193-195,197-199,201-207,221,237,249-253,257,270,272,284,286-287,299-303,312-313,318-319,322,324-330,333,336,355-359,361,370,376-379,383-384,388,392-393,397,399,408-429,439-442
+  s_f93f52ad807728::t_ed6b849edbeec9 13-26,29-49,54-64,66-109,111-120,141-151,153,155,158-161,210,225-226,229-233,240,254-256,264-269,271,275-277,288-289,291,295,337-338,360,362-369,371-373,375,380-382,385-387,389-391,394-396,398,400-407
+  s_f93f52ad807728::t_85ba2bf5d09f86 430-438,443-447,450-452
+  s_f93f52ad807728::t_be67c6cb4b3e57 339-354
+  s_f93f52ad807728::t_fa9220d7a40776 135-140
+apps/mobile/app/(tabs)/profile/settings.tsx
+  s_f93f52ad807728::t_381bef668cbfdf 198-214
+  s_f93f52ad807728::t_629ba3bdd74cd9 23-24
+  s_f93f52ad807728::t_b0fea036ea076a 43-51
+  s_f93f52ad807728::t_8aaefe51111796 1,10-11
+  s_f93f52ad807728::t_7f0890601eb75d 87,89-90
+supabase/tests/086_public_earned_badges_check.sql
+  s_f93f52ad807728::t_416ce965d324cc 394
+  s_f93f52ad807728::t_aaf1a1a5076b2e 365-367,372-376
+  s_f93f52ad807728::t_f4eb09bc138eaa 175
+  s_f93f52ad807728::t_37577a19f8f601 1-174,176-364,368-371,377-393,395-433
+apps/mobile/lib/dataExport.ts
+  s_f93f52ad807728::t_6b163b35fc21fd 158-160,164
+  s_f93f52ad807728::t_8e4f2e7db0a58d 30-42,47-48,52
+  s_f93f52ad807728::t_a8f1b77d54d453 1-29,43-46,49-51,53-79,83-87,89,93-94,99-104,108,110-157,161-163,165-199
+  s_f93f52ad807728::t_316bd3d18db926 80-82,88,90-92,95-98,105-107,109
+apps/mobile/app/product/[id].tsx
+  s_f93f52ad807728::t_7d4678708dcb45 423
+  s_f93f52ad807728::t_da95a681c2d530 138-146
+  s_f93f52ad807728::t_461f84b8b5c98e 386
+  s_f93f52ad807728::t_5c8666b34d2da3 31
+apps/mobile/package-lock.json
+  s_9e6aa8048d1497::t_443a0176ded494 3,9,39,12268-12276
+apps/mobile/package.json
+  s_9e6aa8048d1497::t_4461b3b5c689e4 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6d3d958ad60bae4b95e7951bcea465a7a2b9b8c5",
+  "prompts": {},
+  "sessions": {
+    "s_9e6aa8048d1497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a234b5c5b69ea9835",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
