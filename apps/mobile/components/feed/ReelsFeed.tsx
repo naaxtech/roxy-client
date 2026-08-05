@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  useWindowDimensions, ViewToken,
-} from 'react-native';
-import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -12,15 +7,15 @@ import { logError } from '../../lib/errorLogger';
 import { normalizePost } from '../../lib/posts';
 import { contentDetailPath } from '../../lib/contentNavigation';
 import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../lib/supabaseQueries';
-import {
-  excludeSeenReels, displayedLikeCount, activeIndexFromScroll, initialReelIndex,
-} from '../../lib/reels';
+import { excludeSeenReels, displayedLikeCount, initialReelIndex } from '../../lib/reels';
 import type { ReelRow } from '../../lib/reels';
 import { fetchAnnouncementVideos } from '../../lib/announcements';
 import { useFeedStore } from '../../store/feedStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { EmptyState } from '../ui/EmptyState';
+import { FeedPager } from './FeedPager';
+import type { FeedPagerCell } from './FeedPager';
 import { ReelCell } from './ReelCell';
 
 const PAGE_SIZE = 10;
@@ -70,7 +65,12 @@ interface ReelsFeedProps {
 }
 
 /**
- * The vertical video feed.
+ * The vertical video feed: a data source for `FeedPager`.
+ *
+ * The paging machinery — measurement, snap, viewability, which item is active —
+ * belongs to `FeedPager` and is shared with every other surface that pages
+ * full-screen content. What is left here is the part that is actually about
+ * reels: the query, the cursor, the scopes, and the cell.
  *
  * Owns its own query and its own cursor rather than reading feedStore's. That
  * is deliberate: feedStore has a single `cursor`, and two lists paginating
@@ -86,7 +86,6 @@ interface ReelsFeedProps {
 export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: ReelsFeedProps) {
   const colors = useThemeColors();
   const router = useRouter();
-  const { width: windowWidth } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
 
   const [reels, setReels] = useState<ReelRow[]>([]);
@@ -94,31 +93,8 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
   const [initialIndex, setInitialIndex] = useState(0);
   const [muted, setMuted] = useState(true);
-
-  /**
-   * The real viewport, measured — NOT `useWindowDimensions().height`.
-   *
-   * This list mounts below a header and a sub-tab row and above the tab bar, so
-   * the window is 150–200dp taller than the space it actually gets. Sizing a
-   * page to the window overflowed every cell past its own viewport, which put
-   * the action rail off-screen and dragged viewability down with it.
-   *
-   * Viewability no longer depends on this being right — `viewabilityConfig`
-   * below is viewport-denominated now — but the measurement stays, because the
-   * snap interval and `estimatedItemSize` still have to agree with the height a
-   * cell is actually given.
-   */
-  const [pageH, setPageH] = useState(0);
-  const [pageW, setPageW] = useState(0);
-
-  const handleLayout = useCallback((e: LayoutChangeEvent) => {
-    const { height, width } = e.nativeEvent.layout;
-    setPageH((prev) => (Math.abs(prev - height) < 1 ? prev : height));
-    setPageW((prev) => (Math.abs(prev - width) < 1 ? prev : width));
-  }, []);
 
   /**
    * Callers pass `[id]` or a store-derived array, and a fresh array literal on
@@ -142,20 +118,6 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
   const toggleLike = useFeedStore((st) => st.toggleLike);
   const toggleSave = useFeedStore((st) => st.toggleSave);
   const markSeen = useFeedStore((st) => st.markSeen);
-
-  /**
-   * Both sources of the active index funnel through here, and the ref makes the
-   * write idempotent. `onScroll` fires around 60 times a second; without the
-   * guard every frame would call `setActiveIndex`, and even a same-value setState
-   * re-runs `renderItem` for every mounted cell — on a video list that is a
-   * dropped-frame machine. Now state moves once per page, not once per frame.
-   */
-  const activeIndexRef = useRef(0);
-  const applyActiveIndex = useCallback((next: number) => {
-    if (activeIndexRef.current === next) return;
-    activeIndexRef.current = next;
-    setActiveIndex(next);
-  }, []);
 
   const load = useCallback(async () => {
     if (scope !== 'announcements' && !ids.length) {
@@ -227,12 +189,14 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
       if (spliced.length) rows = [...spliced, ...rows];
     }
 
+    // The pager seeds its active slot from `initialIndex` every time it rebuilds
+    // the list, which is exactly what happens when this loader puts the
+    // placeholder up and takes it down again.
     const startAt = initialReelIndex(rows, initialPostId);
     setReels(rows);
     setInitialIndex(startAt);
-    applyActiveIndex(startAt);
     setLoading(false);
-  }, [scope, ids, initialPostId, applyActiveIndex]);
+  }, [scope, ids, initialPostId]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
@@ -291,98 +255,25 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
   useEffect(() => { void load(); }, [load]);
 
   /**
-   * One video plays at a time, and the threshold is measured against the
-   * VIEWPORT, not the item.
-   *
-   * Both implementations pick their denominator off which key you set —
-   * `viewAreaMode ? pixelsVisible / listMainSize : pixelsVisible / itemSize` in
-   * flash-list, `viewAreaMode ? pixels / viewportHeight : pixels / itemLength`
-   * in React Native. Visible pixels can never exceed the viewport, so under
-   * `itemVisiblePercentThreshold` the best score a cell taller than the viewport
-   * can ever reach is `viewport / itemSize`: it stops being able to hit 100% the
-   * moment it overflows, and it drops under a threshold T once it grows past
-   * `viewport ÷ T`. Nothing is then viewable and no video ever plays. Under
-   * `viewAreaCoveragePercentThreshold` a cell filling the viewport scores 100%
-   * however tall it is, so the config is correct on its own rather than correct
-   * only for as long as a cell keeps fitting.
-   *
-   * Exactly one of the two may be set: flash-list throws
-   * `multipleViewabilityThresholdTypesNotSupported` when it sees both.
-   *
-   * src: https://github.com/Shopify/flash-list/blob/v1.6.4/src/viewability/ViewabilityHelper.ts · @shopify/flash-list 1.6.4 · 2026-08-05
-   * src: https://github.com/facebook/react-native/blob/v0.74.5/packages/virtualized-lists/Lists/ViewabilityHelper.js · react-native 0.74.5 · 2026-08-05
+   * Marking seen follows the pager's active item rather than viewability, so a
+   * flick still records what was watched. The ref keeps a re-render from
+   * re-upserting the same row.
    */
-  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 60 }).current;
-  // Must keep a stable identity — FlashList/VirtualizedList throws on a changing
-  // onViewableItemsChanged. Safe to close over applyActiveIndex: it is itself
-  // stable for the life of the component.
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      const first = viewableItems[0];
-      if (first?.index != null) applyActiveIndex(first.index);
-    },
-  ).current;
-
-  /**
-   * Viewability alone loses the active index, so the scroll offset backs it up.
-   *
-   * `minimumViewTime` is not the cleaner replacement it looks like: flash-list
-   * already applies one whether or not you ask for it —
-   * `const minimumViewTime = this.viewabilityConfig?.minimumViewTime ?? 250`,
-   * with the comment "Default of 0 can impact performance when user scrolls
-   * fast." So every viewability callback on this list is ALREADY debounced a
-   * quarter of a second, which is precisely why a fast flick leaves
-   * `activeIndex` on the video the viewer already swept past, its audio playing
-   * under the new cell's frame. Raising `minimumViewTime` makes that worse and
-   * dropping it to 0 trades it for dropped frames. The scroll offset never lies
-   * and costs nothing, so it stays as the fallback.
-   *
-   * src: https://github.com/Shopify/flash-list/blob/v1.6.4/src/viewability/ViewabilityHelper.ts · @shopify/flash-list 1.6.4 · 2026-08-05
-   */
-  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    applyActiveIndex(activeIndexFromScroll(e.nativeEvent.contentOffset.y, pageH, reels.length));
-  }, [pageH, reels.length, applyActiveIndex]);
-
-  /**
-   * WHICH POST is active, not merely which slot.
-   *
-   * A bare index says nothing about what lives there, and it is stale the moment
-   * the array shifts — `load` splices a directly-opened video onto the front of
-   * the page, and every `loadMore` appends. Cells key their playback off this
-   * id; the index is left to do the one job that genuinely is positional, which
-   * is measuring distance for the decoder window.
-   */
-  const activeItemId = reels[activeIndex]?.id ?? null;
-
-  // Marking seen follows activeIndex rather than viewability, so a flick still
-  // records what was watched. The ref keeps a re-render from re-upserting.
   const lastSeenRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!activeItemId || lastSeenRef.current === activeItemId) return;
-    lastSeenRef.current = activeItemId;
-    markSeen(activeItemId);
-  }, [activeItemId, markSeen]);
+  const handleActiveItemChange = useCallback((itemId: string) => {
+    if (lastSeenRef.current === itemId) return;
+    lastSeenRef.current = itemId;
+    markSeen(itemId);
+  }, [markSeen]);
 
   // FlashList recycles cells. Without this it has no reason to re-render one
-  // when the active video, the mute state, or a like changes, so a recycled cell
-  // keeps the previous post's play state and icons.
+  // when the mute state or a like changes, so a recycled cell keeps the previous
+  // post's icons. The pager merges its own active-item state into this.
   const extraData = useMemo(
-    () => ({
-      activeIndex, activeItemId, muted,
-      likedPostIds, savedPostIds, likeCountDeltas, reducedMotion,
-    }),
-    [
-      activeIndex, activeItemId, muted,
-      likedPostIds, savedPostIds, likeCountDeltas, reducedMotion,
-    ],
+    () => ({ muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion }),
+    [muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion],
   );
 
-  // Exact page size, so FlashList never guesses a cell's height and the snap
-  // interval and viewability maths agree with what is on screen.
-  const overrideItemLayout = useCallback(
-    (layout: { span?: number; size?: number }) => { layout.size = pageH; },
-    [pageH],
-  );
   /**
    * One recycling pool per post type.
    *
@@ -397,9 +288,10 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
    * src: https://shopify.github.io/flash-list/docs/1.x/fundamentals/performant-components · @shopify/flash-list 1.6.4 · 2026-08-05
    */
   const getItemType = useCallback((item: ReelRow) => item.post_type, []);
+  const keyExtractor = useCallback((item: ReelRow) => item.id, []);
+  const handleEndReached = useCallback(() => { void loadMore(); }, [loadMore]);
 
   const s = StyleSheet.create({
-    fill: { flex: 1, backgroundColor: '#000' },
     centred: {
       flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12,
       backgroundColor: colors.background,
@@ -410,17 +302,52 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
 
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
 
-  // The list is measured before it is built: rendering it against an unmeasured
-  // page would bake a zero item size into FlashList's layout cache.
-  let body: JSX.Element;
-  if (loading || pageH <= 0) {
-    body = (
+  /**
+   * Every reel is a `ReelCell` today. Slice 2 switches on `item.post_type` here
+   * and returns a different component per kind — which is the whole reason the
+   * pager takes a render callback rather than owning the cell.
+   */
+  const renderCell = useCallback(({
+    item, index, activeIndex, activeItemId, width, height,
+  }: FeedPagerCell<ReelRow>) => (
+    <ReelCell
+      post={item}
+      index={index}
+      activeIndex={activeIndex}
+      activeItemId={activeItemId}
+      width={width}
+      height={height}
+      muted={muted}
+      liked={likedPostIds.has(item.id)}
+      saved={savedPostIds.has(item.id)}
+      likeCount={displayedLikeCount(item, likeCountDeltas)}
+      reducedMotion={reducedMotion}
+      onToggleMute={toggleMute}
+      onLike={() => void toggleLike(item.id)}
+      onSave={() => void toggleSave(item.id)}
+      // Video detail lives at /community/video/:id — the old
+      // /discover/post/:id route does not render a video post.
+      onOpenComments={() => router.push(contentDetailPath(item.id, 'video') as never)}
+      onOpenAuthor={() => router.push(`/user/${item.author_id}` as never)}
+      onOpenCommunity={() => router.push(`/community/${item.community_id}` as never)}
+    />
+  ), [
+    muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion,
+    toggleMute, toggleLike, toggleSave, router,
+  ]);
+
+  // The three states this surface owes a viewer. Non-null means the pager shows
+  // this instead of the list — while still measuring its frame behind it, so the
+  // list is ready to build the moment the placeholder clears.
+  let placeholder: JSX.Element | null = null;
+  if (loading) {
+    placeholder = (
       <View style={s.centred}>
         <ActivityIndicator color={colors.roxy} />
       </View>
     );
   } else if (error) {
-    body = (
+    placeholder = (
       <View style={s.centred}>
         <Ionicons name="cloud-offline-outline" size={36} color={colors.textMuted} />
         <Text style={s.errorText}>{error}</Text>
@@ -434,66 +361,27 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
       </View>
     );
   } else if (reels.length === 0) {
-    body = (
+    placeholder = (
       <EmptyState
         emoji="🎬"
         title="No videos yet"
         body={EMPTY_BODY[scope]}
       />
     );
-  } else {
-    body = (
-      <FlashList
-        data={reels}
-        keyExtractor={(item) => item.id}
-        extraData={extraData}
-        estimatedItemSize={pageH}
-        overrideItemLayout={overrideItemLayout}
-        getItemType={getItemType}
-        // Default is 250dp — under half a page, so the next cell had not been
-        // drawn when the swipe landed on it and the viewer got a black frame.
-        drawDistance={pageH * 2}
-        initialScrollIndex={initialIndex}
-        // No `pagingEnabled`: snapToInterval overrides it, and pairing the two
-        // on Android with flash-list 1.6.x + RN 0.74 jumps the list to the last
-        // index. src: https://github.com/Shopify/flash-list/issues/1200 · @shopify/flash-list 1.6.4 · 2026-08-02
-        snapToInterval={pageH}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        disableIntervalMomentum
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        onEndReached={() => void loadMore()}
-        onEndReachedThreshold={0.6}
-        viewabilityConfig={viewabilityConfig}
-        onViewableItemsChanged={onViewableItemsChanged}
-        renderItem={({ item, index }) => (
-          <ReelCell
-            post={item}
-            index={index}
-            activeIndex={activeIndex}
-            activeItemId={activeItemId}
-            width={pageW > 0 ? pageW : windowWidth}
-            height={pageH}
-            muted={muted}
-            liked={likedPostIds.has(item.id)}
-            saved={savedPostIds.has(item.id)}
-            likeCount={displayedLikeCount(item, likeCountDeltas)}
-            reducedMotion={reducedMotion}
-            onToggleMute={toggleMute}
-            onLike={() => void toggleLike(item.id)}
-            onSave={() => void toggleSave(item.id)}
-            // Video detail lives at /community/video/:id — the old
-            // /discover/post/:id route does not render a video post.
-            onOpenComments={() => router.push(contentDetailPath(item.id, 'video') as never)}
-            onOpenAuthor={() => router.push(`/user/${item.author_id}` as never)}
-            onOpenCommunity={() => router.push(`/community/${item.community_id}` as never)}
-          />
-        )}
-      />
-    );
   }
 
-  return <View testID="reels-feed" style={s.fill} onLayout={handleLayout}>{body}</View>;
+  return (
+    <FeedPager<ReelRow>
+      testID="reels-feed"
+      items={reels}
+      keyExtractor={keyExtractor}
+      getItemType={getItemType}
+      renderCell={renderCell}
+      extraData={extraData}
+      initialIndex={initialIndex}
+      placeholder={placeholder}
+      onActiveItemChange={handleActiveItemChange}
+      onEndReached={handleEndReached}
+    />
+  );
 }

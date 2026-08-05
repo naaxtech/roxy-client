@@ -99,6 +99,22 @@ finer-grained engineering log lives in `.claude/log.md`.
   RN 0.74 was archived. Citations in the touched files were repointed at tagged source.
 
 ### Added
+- **`components/feed/FeedPager.tsx`** — slice 1 of the redesign. The paging machinery
+  (FlashList setup, snap paging, viewport measurement, viewability, active-item derivation,
+  decoder-window arithmetic, scroll-position fallback) is now a reusable component;
+  `ReelsFeed` keeps its data fetching and scopes and became a thin caller, 499 → 388 lines.
+  No user-visible change — the acceptance bar was that `ReelsFeed.test.tsx`,
+  `ReelCell.test.tsx` and `FeedVideoPlayer.test.tsx` all pass **unmodified**, and they do.
+  `renderCell` is a callback rather than a type→component map so each cell can take the
+  domain callbacks it actually needs instead of a uniform props bag; `getItemType` is
+  required and supplied by the caller, which is how the pager gets a domain value without
+  knowing the domain — and makes it impossible to reintroduce the single-recycling-pool
+  defect by omission. `keyExtractor` defines identity, so the pager never touches `.id`.
+  Two behaviours needed care: `initialIndex` is applied during render rather than in an
+  effect, because an effect lets one render escape with the wrong slot active and a video
+  cell acts immediately on that; and the pager re-seeds its active slot when the list is
+  rebuilt behind a placeholder, which is a live path — `discover/community/[id].tsx` flips
+  scope when a viewer joins, and the error state's "Try again" reloads.
 - **`docs/superpowers/plans/2026-08-05-tiktok-redesign.md`** — the UX plan and sketches for
   the single-feed TikTok-formula redesign on `version2`: five-slot navigation, one pager
   carrying every content type, community tags with private communities hidden from
