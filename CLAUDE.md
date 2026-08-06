@@ -15,8 +15,10 @@ doctrine (ship gate, research protocol, 13-layers, cloud-stages) lives in `../..
 stays the Roxy source of truth.
 
 **Open bootstrap-flagged items (tracked in `_kernel/INBOX.md`):**
-- **Model id:** `supabase/functions/_shared/claude.ts:43` hardcodes `claude-sonnet-4-6`, which is **not a
-  current Anthropic id** (and §4/§6 below claim haiku). Route haiku-4-5 → sonnet-5 → opus-4-8; verify with `/model`.
+- ~~**Model id:** `_shared/claude.ts` hardcodes `claude-sonnet-4-6`.~~ **Fixed.** `DEFAULT_MODEL` is
+  `claude-haiku-4-5-20251001` and call sites pass `claude-sonnet-5` when they need more. §4 and §6 below
+  went on naming the dead id for another week after the code was right — corrected 2026-08-07. Route
+  haiku-4-5 → sonnet-5 → opus-4-8; verify with `/model` before writing any id anywhere.
 - **Prompts in DB:** the 8 edge-function system prompts are hardcoded; doctrine requires a versioned
   `agent_versions` table (active/staging/archived) so rollback is a row update.
 - **Secret hygiene:** rotate the service-role key + PAT sitting in the untracked local `.env`.
@@ -90,7 +92,7 @@ Do not suggest alternatives. These are final.
 | Mobile | Expo 51, Expo Router v3, React Native 0.74, TypeScript strict |
 | State | Zustand: `authStore`, `profileStore`, `roxyChatStore`, `connectStore`, `feedStore`, `buildStore` |
 | Backend | Supabase (Postgres + Auth + Realtime + Edge Functions + Storage) |
-| AI model | `claude-haiku-4-5-20251001` (edge functions) · `claude-sonnet-4-6` (complex tasks) |
+| AI model | `claude-haiku-4-5-20251001` (edge functions) · `claude-sonnet-5` (complex tasks) |
 | Orchestration | n8n (self-hosted) |
 | Video | `@daily-co/react-native-daily-js` (guarded import — see anti-patterns) |
 | Lists | `@shopify/flash-list` |
@@ -188,7 +190,8 @@ cd apps/mobile && eas build --profile production                    # production
 9. **Daily.co guarded import** — never module-level import. Check `provider.isAvailable`. See anti-patterns.
     Daily.co is the ONLY video provider. The LiveKit stub and `livekit-token` edge function were deleted
     2026-08-02 (never wired, no `@livekit/*` package) — do not re-add a second provider without a caller.
-10. **claude-haiku-4-5-20251001** for edge function AI calls. claude-sonnet-4-6 for complex tasks only.
+10. **claude-haiku-4-5-20251001** for edge function AI calls. `claude-sonnet-5` for complex tasks only.
+    Never hardcode an id at a call site — `_shared/claude.ts` owns the default and takes a `model` override.
 11. **Observability** — Sentry + PostHog via shared `@roxy/observability` package. Never raw Sentry/PostHog calls from components.
 12. **PII masking** — non-negotiable. Strip before any log call. See observability rules.
 
