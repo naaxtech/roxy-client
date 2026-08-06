@@ -38,6 +38,30 @@ finer-grained engineering log lives in `.claude/log.md`.
   membership-aware empty states.
 
 ### Fixed
+- **Colour contrast was enforced by a comment, so it wasn't enforced.** `lib/theme.ts`
+  carried `textMuted: '#8B7AA8', // soft purple — design text-3 (AA Large ✓)`. The note was
+  true — 3.6:1 clears the 3:1 large-text bar — and the token was then used as 12px body copy
+  on every card in the app, at 3.49–3.86:1 in light and 3.19–3.95:1 in dark. A DOM audit of
+  `/grow`, `/connect` and `/code` under `expo start --web` found the same failure eight times
+  on one screen. Every failing light-theme ink token was corrected by holding hue and
+  saturation and solving for luminance: `textMuted` `#8B7AA8` → `#6B5A88` (3.61 → 5.71:1 on
+  background), `primary` `#C4476A` → `#BD3D60` (4.41 → 4.91:1), `secondary` `#8B5CF6` →
+  `#7B45F5` (3.96 → 4.90:1), `roxy` `#C24A85` → `#B83E7A` (4.26 → 4.90:1). Dark `textMuted`
+  went `#8B7AA8` → `#A699BC` (3.19 → 4.63:1 at its worst surface) — the audit reported dark
+  as clean, but it renders on `surface` on every card and was failing there too.
+  White-on-brand was fixed by flipping the ink rather than touching a brand hue: the gradient
+  icon plates, the Ask Roxy CTA, the Sister message bubbles and the dev FAB now carry
+  `BRAND_INK` (`#1A0A2E`, already `THEMES.dark.background`), taking `#FF6A2E` from 2.86:1 to
+  6.53:1, `#F7B42C` from 1.82:1 to 10.22:1, `#C86DD7` from 3.17:1 to 5.88:1 and `#FF1493`
+  from 3.64:1 to 5.12:1. `inkOn(fill)` picks between dark and white ink by measurement, so
+  `roxy` — which inverts between themes — no longer needs a hardcoded `'#fff'` guess.
+  `__tests__/theme.contrast.test.ts` now asserts every real ink/surface pairing in **both**
+  themes at 4.5:1, names the two documented gaps in the test titles rather than a comment,
+  and fails the build if any declared pair regresses.
+- **The end of the Grow list lived under the companion FAB.** `contentContainerStyle` had
+  12pt of bottom padding; the FAB is a 56pt circle at `bottom: 90` on the tab-layout root and
+  reaches 78pt up into the ScrollView, so the last card was permanently under an opaque
+  gradient. Bottom padding is now 96pt.
 - **The GDPR data export delivered nothing.** `gdpr-export` has always assembled a complete
   Art. 15(3) copy — profile, message and post counts, and the entire invite-gate record
   (legal name, answers, verification outcomes, appeals, processors), with the reviewer audit

@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { callEdgeFunction } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { BRAND_INK } from '../../lib/theme';
 
 interface DevStatus {
   ai_enabled: boolean;
@@ -58,7 +59,7 @@ function DevPanelInner() {
       backgroundColor: colors.devPanel, borderRadius: 8,
       paddingHorizontal: 10, paddingVertical: 6, zIndex: 9999,
     },
-    fabText: { color: '#fff', fontWeight: '800', fontSize: 11 },
+    fabText: { color: BRAND_INK, fontWeight: '800', fontSize: 11 },
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
     panel: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
     title: { fontSize: 16, fontWeight: '800', color: colors.textPrimary },

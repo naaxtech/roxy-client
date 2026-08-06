@@ -18,6 +18,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useProfile } from '../../../hooks/useProfile';
 import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { BRAND_INK, COMMUNITY_CHIP_COLORS, inkOn } from '../../../lib/theme';
 import { Analytics } from '../../../lib/analytics';
 import { isPresetAvatar, presetEmoji, presetColor, avatarGradient } from '../../../lib/avatars';
 import { HappeningTonightCard } from '../../../components/grow/HappeningTonightCard';
@@ -25,7 +26,7 @@ import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayC
 import { MiniWinsCard } from '../../../components/grow/MiniWinsCard';
 import { DonateModal } from '../../../components/donations/DonateModal';
 
-const CHIP_COLORS = ['#FF6A2E', '#8B5CF6', '#FF2F71', '#F472B6', '#C4476A', '#FF8A3D'];
+const CHIP_COLORS = COMMUNITY_CHIP_COLORS;
 
 type CommunityRow = { community_id: string; communities: { id: string; name: string; category: string } | null };
 
@@ -218,7 +219,12 @@ export default function GrowScreen() {
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    scroll: { padding: 12, gap: 10 },
+    // The companion FAB (components/ui/RoxyCompanionButton) is a 56pt circle at
+    // `bottom: 90` on the tab layout root, i.e. it reaches 78pt up into this
+    // ScrollView's box and paints over whatever is there — with only 12pt of
+    // bottom padding the last card ends its life under an opaque gradient.
+    // 78 of overlap + 18 of breathing room.
+    scroll: { padding: 12, gap: 10, paddingBottom: 96 },
 
     header: {
       flexDirection: 'row',
@@ -289,7 +295,10 @@ export default function GrowScreen() {
       shadowColor: '#E81C8E', shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.25, shadowRadius: 8, elevation: 3,
     },
-    rhBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+    // The brand ramp is light: white on its #FF6A2E end is 2.86:1, which fails
+    // even the 3:1 non-text bar. Dark ink reads on every stop (6.53:1 at the
+    // orange end, 4.43:1 at the deepest pink) — see __tests__/theme.contrast.
+    rhBtnText: { color: BRAND_INK, fontWeight: '800', fontSize: 14 },
     rhBtnGhost: {
       width: 44, height: 44, borderRadius: 22,
       backgroundColor: colors.surface,
@@ -311,7 +320,7 @@ export default function GrowScreen() {
       width: 36, height: 36, borderRadius: 11,
       alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    cchipAvaText: { fontSize: 17, color: '#fff' },
+    cchipAvaText: { fontSize: 17 },
     cchipName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13.5, letterSpacing: -0.2 },
     cchipSub: { color: colors.textMuted, fontSize: 11, fontWeight: '600', marginTop: 1 },
     cchipAdd: {
@@ -532,7 +541,7 @@ export default function GrowScreen() {
               end={{ x: 1, y: 1 }}
               style={styles.rhAvRing}
             >
-              <Ionicons name="sparkles" size={22} color="#fff" />
+              <Ionicons name="sparkles" size={22} color={BRAND_INK} />
             </LinearGradient>
             <View style={styles.rhBubble}>
               {greetingLoading ? (
@@ -623,7 +632,9 @@ export default function GrowScreen() {
                     activeOpacity={0.8}
                   >
                     <View style={[styles.cchipAva, { backgroundColor: chipColor }]}>
-                      <Text style={styles.cchipAvaText}>{name[0]?.toUpperCase() ?? '🌸'}</Text>
+                      <Text style={[styles.cchipAvaText, { color: inkOn(chipColor) }]}>
+                        {name[0]?.toUpperCase() ?? '🌸'}
+                      </Text>
                     </View>
                     <View>
                       <Text style={styles.cchipName} numberOfLines={1}>{name}</Text>
@@ -688,7 +699,7 @@ export default function GrowScreen() {
           activeOpacity={0.8}
         >
           <LinearGradient colors={['#8E7CF7', '#C86DD7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.rowPlate}>
-            <Ionicons name="moon" size={20} color="#fff" />
+            <Ionicons name="moon" size={20} color={BRAND_INK} />
           </LinearGradient>
           <View style={{ flex: 1 }}>
             <Text style={styles.rowTitle}>Need to talk?</Text>
@@ -706,7 +717,7 @@ export default function GrowScreen() {
           accessibilityLabel="Support Roxy"
         >
           <LinearGradient colors={['#FF6A2E', '#FF2F71', '#E81C8E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.rowPlate}>
-            <Ionicons name="heart" size={20} color="#fff" />
+            <Ionicons name="heart" size={20} color={BRAND_INK} />
           </LinearGradient>
           <View style={{ flex: 1 }}>
             <Text style={styles.rowTitle}>Support Roxy</Text>
@@ -726,7 +737,7 @@ export default function GrowScreen() {
           </View>
           <View style={styles.levelRow}>
             <LinearGradient colors={['#FF6A2E', '#E81C8E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.rowPlate}>
-              <Ionicons name={level.icon} size={20} color="#fff" />
+              <Ionicons name={level.icon} size={20} color={BRAND_INK} />
             </LinearGradient>
             <View style={{ flex: 1 }}>
               <Text style={styles.levelLabel}>{level.label}</Text>
@@ -755,7 +766,7 @@ export default function GrowScreen() {
         >
           <View style={styles.badgeHeader}>
             <LinearGradient colors={['#F7B42C', '#FC575E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.rowPlate}>
-              <Ionicons name="trophy" size={20} color="#fff" />
+              <Ionicons name="trophy" size={20} color={BRAND_INK} />
             </LinearGradient>
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle}>Badges</Text>
