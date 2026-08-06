@@ -117,6 +117,7 @@ function cell(post: ReelRow, activeItemId: string | null = null) {
       onOpenComments={noop}
       onOpenAuthor={noop}
       onOpenCommunity={noop}
+      onOpenSafety={noop}
       onOpenPost={noop}
     />,
   );

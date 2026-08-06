@@ -9,6 +9,9 @@ supabase/.env
 dist/
 web-build/
 
+# Vercel (roxy-web static deploy links live inside dist/, but never commit one)
+.vercel/
+
 # Native
 ios/
 android/
@@ -45,3 +48,6 @@ supabase/.temp
 docs/Roxy-handoff/
 /*.png
 AGENTS.md
+
+# Impeccable critique snapshots (tool output, not source)
+.impeccable/

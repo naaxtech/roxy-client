@@ -1,7 +1,10 @@
 import React from 'react';
-import { Share, Text } from 'react-native';
+import { Share, StyleSheet, Text } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { FeedCellChrome } from '../../components/feed/FeedCellChrome';
+import {
+  MEDIA_SCRIM_FADE, MEDIA_SCRIM_MIN_BODY, RAIL_BACKING,
+} from '../../components/feed/feedChromeTokens';
 import type { ReelRow } from '../../lib/reels';
 
 jest.mock('expo-linear-gradient', () => {
@@ -63,6 +66,7 @@ function chrome(overrides: Partial<ChromeProps> = {}) {
       onOpenComments={noop}
       onOpenAuthor={noop}
       onOpenCommunity={noop}
+      onOpenSafety={noop}
       {...overrides}
     />,
   );
@@ -94,12 +98,26 @@ function railOrder(view: ReturnType<typeof chrome>): string[] {
 }
 
 describe('FeedCellChrome right rail', () => {
-  it('draws the rail in TikTok order: author, like, comment, save, share', () => {
+  it('draws the rail in TikTok order, with the way out last', () => {
     const view = chrome();
 
     expect(railOrder(view)).toEqual([
-      'rail-avatar', 'rail-like', 'rail-comment', 'rail-save', 'rail-share',
+      'rail-avatar', 'rail-like', 'rail-comment', 'rail-save', 'rail-share', 'rail-more',
     ]);
+  });
+
+  it('always offers a negative action, whatever else is wired', () => {
+    // The rail shipped with five positive actions and no way to report, block
+    // or hide. `onOpenSafety` is required rather than optional so a new surface
+    // cannot be built without one.
+    const onOpenSafety = jest.fn();
+    const view = chrome({ onOpenSafety });
+
+    const more = view.getByTestId('rail-more');
+    expect(more.props.accessibilityLabel).toBe('Report, block or hide this video');
+    expect(more.props.accessibilityRole).toBe('button');
+    fireEvent.press(more);
+    expect(onOpenSafety).toHaveBeenCalledTimes(1);
   });
 
   it('hangs the follow affordance off the avatar when a follow graph is wired', () => {
@@ -107,7 +125,8 @@ describe('FeedCellChrome right rail', () => {
     const view = chrome({ onFollowAuthor, following: false });
 
     expect(railOrder(view)).toEqual([
-      'rail-avatar', 'rail-follow', 'rail-like', 'rail-comment', 'rail-save', 'rail-share',
+      'rail-avatar', 'rail-follow', 'rail-like', 'rail-comment', 'rail-save',
+      'rail-share', 'rail-more',
     ]);
     fireEvent.press(view.getByTestId('rail-follow'));
     expect(onFollowAuthor).toHaveBeenCalledTimes(1);
@@ -279,19 +298,60 @@ describe('FeedCellChrome identity block', () => {
 });
 
 describe('FeedCellChrome legibility', () => {
-  it('lays a scrim under the chrome, because white on an unknown photo is a coin flip', () => {
+  it('anchors the scrim in dp from the bottom, never as a share of the page', () => {
     const view = chrome();
 
-    // Bottom-anchored and opaque enough at the bottom that white text clears
-    // 4.5:1 even against a pure-white frame: #fff under rgba(0,0,0,0.85)
-    // composites to (38,38,38), which is 15.9:1.
-    const scrim = view.getByTestId('feed-cell-scrim');
-    expect(scrim.props.colors[0]).toBe('transparent');
-    expect(scrim.props.colors[scrim.props.colors.length - 1]).toBe('rgba(0,0,0,0.85)');
-    expect(scrim.props.pointerEvents).toBe('none');
+    // The defect: `locations={[0.35, 0.62, 1]}` on an absoluteFill gradient
+    // means the alpha under the text is a function of page height, while the
+    // text itself is placed in fixed dp. Over a white photo that put the handle
+    // at 1.86:1 on Connect's 320dp page and 4.63:1 at 620dp.
+    const scrim = StyleSheet.flatten(view.getByTestId('feed-cell-scrim').props.style);
+    expect(scrim.bottom).toBe(0);
+    expect(scrim.top).toBeUndefined();
+    expect(scrim.height).toBeUndefined();
+
+    const fade = StyleSheet.flatten(view.getByTestId('feed-cell-scrim-fade').props.style);
+    expect(fade.height).toBe(MEDIA_SCRIM_FADE);
   });
 
-  it('shadows every white glyph so the rail reads above the scrim too', () => {
+  it('sizes the dark band by the chrome it backs, so a long caption grows it', () => {
+    const view = chrome();
+
+    // The identity block is the band's CONTENT. That is what makes the
+    // guarantee hold for an expanded caption as well as a two-line one: the
+    // backing cannot be outgrown by the thing it backs.
+    const body = view.getByTestId('feed-cell-scrim-body') as unknown as Node;
+    const inside = body.findAll((n) => n.props.testID === 'feed-cell-identity');
+    expect(inside.length).toBeGreaterThan(0);
+
+    const style = StyleSheet.flatten(view.getByTestId('feed-cell-scrim-body').props.style);
+    expect(style.minHeight).toBe(MEDIA_SCRIM_MIN_BODY);
+    expect(style.height).toBeUndefined();
+  });
+
+  it('renders the interest prompt inside the band, so its own backing grows too', () => {
+    const view = chrome({ interestPrompt: <Text testID="prompt">is this for you?</Text> });
+
+    const body = view.getByTestId('feed-cell-scrim-body') as unknown as Node;
+    expect(body.findAll((n) => n.props.testID === 'prompt').length).toBeGreaterThan(0);
+  });
+
+  it('backs every rail control rather than trusting a shadow', () => {
+    const view = chrome();
+
+    // WCAG defines no method for scoring a text shadow, so `CHROME_SHADOW` is
+    // never the defence. The rail sits ~358dp above the bottom — far outside
+    // any scrim that would not veil the whole frame — so each control carries
+    // its own plate. The ratios are checked in feedChromeContrast.test.ts.
+    for (const id of ['rail-like', 'rail-comment', 'rail-save', 'rail-share', 'rail-more']) {
+      expect(StyleSheet.flatten(view.getByTestId(id).props.style).backgroundColor)
+        .toBe(RAIL_BACKING);
+    }
+    expect(StyleSheet.flatten(view.getByTestId('rail-avatar').props.style).backgroundColor)
+      .toBe(RAIL_BACKING);
+  });
+
+  it('keeps the shadow as well, as help rather than as proof', () => {
     const view = chrome();
 
     const caption = view.getByTestId('feed-cell-caption');

@@ -1,35 +1,123 @@
 import type { TextStyle } from 'react-native';
 
 /**
- * The one legibility problem every full-bleed cell has, and the three answers.
+ * The one legibility problem every full-bleed cell has, and how it is actually
+ * solved.
  *
  * Chrome sits over media the app has never seen. TikTok's own ad specs tell
  * advertisers to keep artwork clear of the regions where "buttons, usernames,
- * and captions may appear" — which is an admission that white-on-anything is a
- * coin flip, not a solution. So the contrast is built rather than hoped for:
+ * and captions may appear" — an admission that white-on-anything is a coin
+ * flip, not a solution. So the contrast is built rather than hoped for.
  *
- *  1. `MEDIA_SCRIM` — a bottom-anchored wash that reaches 0.85 alpha exactly
- *     where the handle, caption and community line sit. Against the worst case,
- *     a pure-white frame, `#fff` under `rgba(0,0,0,0.85)` composites to
- *     (38,38,38) and white text on that is 15.9:1. Every small text run in the
- *     chrome lives inside that band, which is why the caption is capped at two
- *     lines: three would push the first line out of it.
- *  2. `CHROME_SHADOW` — a tight dark halo on every white glyph. The rail's top
- *     reaches up past the scrim's opaque band, and a shadow is the only
- *     treatment that works without knowing what is behind it. WCAG 2.2 SC 1.4.11
- *     asks 3:1 of a graphical object against *adjacent* colour, and the halo IS
- *     the adjacent colour.
- *  3. `BRAND_VEIL` — for the cells that supply their own background. The brand
+ * ## Why the old scrim did not work
+ *
+ * It was `['transparent', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.85)']` at
+ * `[0.35, 0.62, 1]` over `StyleSheet.absoluteFill` — stops expressed as a share
+ * of the PAGE, laid under an identity block positioned in fixed dp from the
+ * bottom. The alpha the text sat on was therefore a function of how tall the
+ * page happened to be. Over a white photo that measured:
+ *
+ *   page   handle   caption   "more"
+ *   320dp  1.86:1   2.40:1    3.63:1
+ *   400dp  2.62:1   3.25:1    4.31:1
+ *   620dp  4.63:1   5.28:1    5.54:1
+ *
+ * all against a 4.5:1 bar. Connect's feed — under a header AND a sub-tab row
+ * AND above a 68dp tab bar — is the shortest page in the app and so the worst
+ * case. The headline the old comment claimed, "15.9:1", was also wrong on its
+ * own terms: `255 × 0.15` is 38.25, not 34, which is 15.08:1.
+ *
+ * ## The three answers now
+ *
+ *  1. **A dp-anchored scrim.** The dark band is not a share of the page: it is
+ *     the identity block's own backing, sized by the block, with a fixed
+ *     `MEDIA_SCRIM_FADE` ramp above it. Every glyph in the block is therefore at
+ *     or below `MEDIA_SCRIM_TOP_ALPHA` whatever the page height and however long
+ *     the caption — 6.20:1 for `#fff` over a white frame at the very top of the
+ *     band, better everywhere below it. `MEDIA_SCRIM_MIN_BODY` keeps the crest
+ *     inside the band on a post with no handle, caption or community line.
+ *  2. **`RAIL_BACKING` — the rail's own plate.** The rail's top sits ~358dp above
+ *     the page bottom; a scrim tall enough to reach it would veil the whole
+ *     frame. So each rail control carries its own backing instead. 0.82 is not
+ *     decoration: it is the lowest alpha at which the LIKED heart (`#E81C8E`,
+ *     luminance 0.199) still clears 3:1 against its own plate over a white
+ *     frame. At 0.80 it lands on exactly 3.00 with no margin; at 0.55 it is
+ *     1.13:1 and the state is invisible.
+ *  3. **`BRAND_VEIL` — for cells that supply their own background.** The brand
  *     gradient cannot carry white text unhelped: `#FF6A2E` against white is
- *     2.86:1, which fails even the 3:1 large-text bar. Under a 42% `#1a0a2e`
- *     veil that stop becomes (159,66,46) → 6.38:1, and `#E81C8E` → 8.35:1. So
- *     the gradient stays the brand and the veil makes it legal.
+ *     2.86:1, failing even the 3:1 large-text bar. Under a 42% `#1a0a2e` veil
+ *     that stop becomes (159,66,46) → 6.38:1, and `#E81C8E` → 8.35:1.
+ *
+ * `CHROME_SHADOW` is NOT one of the answers and must never be counted as one.
+ * WCAG defines no method for scoring a text shadow — there is no algorithm that
+ * takes a blur radius and returns a ratio — so a halo can look like help and
+ * prove nothing. It stays because it genuinely helps a glyph read against a
+ * busy frame, and every ratio in `__tests__/components/feedChromeContrast.test.ts`
+ * is computed as though it were not there.
  *
  * src: https://ads.tiktok.com/help/article/tiktok-auction-in-feed-ads · read 2026-08-06
- * src: https://www.w3.org/TR/WCAG22/#contrast-minimum · WCAG 2.2 SC 1.4.3, 1.4.11 · 2026-08-06
+ * src: https://www.w3.org/TR/WCAG22/#contrast-minimum · WCAG 2.2 SC 1.4.3, 1.4.11 · 2026-08-07
  */
-export const MEDIA_SCRIM = ['transparent', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.85)'] as const;
-export const MEDIA_SCRIM_LOCATIONS = [0.35, 0.62, 1] as const;
+
+/** Alpha of the scrim at the TOP of the identity block — its lightest point. */
+export const MEDIA_SCRIM_TOP_ALPHA = 0.62;
+
+/** Alpha at the very bottom of the page. */
+export const MEDIA_SCRIM_BOTTOM_ALPHA = 0.88;
+
+/**
+ * The ramp above the block, in dp.
+ *
+ * Fixed rather than proportional for the same reason the band is: a ramp
+ * expressed as a share of the page is a different ramp on every device. It sits
+ * entirely ABOVE the text, so its length is a matter of taste and never of
+ * contrast.
+ */
+export const MEDIA_SCRIM_FADE = 96;
+
+/**
+ * Floor on the dark band, in dp.
+ *
+ * A post whose author and community both failed to join, with no caption,
+ * renders an empty identity block — and the crest, which is absolutely
+ * positioned and always drawn, would then hang above the band with nothing
+ * behind its ring. `CHROME_BOTTOM + CREST_SIZE + 12` covers it.
+ */
+export const MEDIA_SCRIM_MIN_BODY = 96;
+
+/** Gradient stops for the ramp above the block. */
+export const MEDIA_SCRIM_FADE_COLORS = [
+  'rgba(0,0,0,0)',
+  `rgba(0,0,0,${MEDIA_SCRIM_TOP_ALPHA})`,
+] as const;
+
+/** Gradient stops for the band the chrome actually sits on. */
+export const MEDIA_SCRIM_BODY_COLORS = [
+  `rgba(0,0,0,${MEDIA_SCRIM_TOP_ALPHA})`,
+  `rgba(0,0,0,${MEDIA_SCRIM_BOTTOM_ALPHA})`,
+] as const;
+
+/**
+ * The scrim's alpha at a point `dpAboveBottom` above the bottom of the page,
+ * given the height the dark band was laid out at.
+ *
+ * Note what is NOT a parameter: the page height. That is the fix — the model
+ * and the render agree that this geometry is measured in dp from the bottom
+ * edge, so a cell in Connect's short frame and a cell in a full-screen pager
+ * put their text on exactly the same backing.
+ */
+export function scrimAlphaAt(dpAboveBottom: number, bodyHeight: number): number {
+  if (dpAboveBottom <= 0) return MEDIA_SCRIM_BOTTOM_ALPHA;
+  if (bodyHeight <= 0) return 0;
+  if (dpAboveBottom <= bodyHeight) {
+    const fromTop = (bodyHeight - dpAboveBottom) / bodyHeight;
+    return MEDIA_SCRIM_TOP_ALPHA
+      + (MEDIA_SCRIM_BOTTOM_ALPHA - MEDIA_SCRIM_TOP_ALPHA) * fromTop;
+  }
+  const intoFade = dpAboveBottom - bodyHeight;
+  if (intoFade >= MEDIA_SCRIM_FADE) return 0;
+  return MEDIA_SCRIM_TOP_ALPHA * (1 - intoFade / MEDIA_SCRIM_FADE);
+}
 
 export const CHROME_SHADOW: TextStyle = {
   textShadowColor: 'rgba(0,0,0,0.65)',
@@ -44,6 +132,15 @@ export const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 export const BRAND_VEIL = 'rgba(26,10,46,0.42)';
 
 /**
+ * Alpha of the plate behind each rail control. See note 2 above — this number
+ * is set by the liked heart, not by taste.
+ */
+export const RAIL_BACKING_ALPHA = 0.82;
+
+/** The plate itself. */
+export const RAIL_BACKING = `rgba(0,0,0,${RAIL_BACKING_ALPHA})`;
+
+/**
  * How much of the page's right edge the rail owns.
  *
  * Body content is padded clear of it rather than sliding under it, because a
@@ -54,3 +151,6 @@ export const RAIL_GUTTER = 78;
 
 /** Below the bottom of the rail, above the safe-area inset. */
 export const CHROME_BOTTOM = 34;
+
+/** The community crest's diameter. Shared so the scrim can guarantee it cover. */
+export const CREST_SIZE = 50;

@@ -11,7 +11,9 @@ import type { ReelRow } from '../../lib/reels';
 import type { PostType } from '../../types';
 import { CommunityCrest } from './CommunityCrest';
 import {
-  CHROME_BOTTOM, CHROME_SHADOW, MEDIA_SCRIM, MEDIA_SCRIM_LOCATIONS, RAIL_GUTTER,
+  CHROME_BOTTOM, CHROME_SHADOW, CREST_SIZE,
+  MEDIA_SCRIM_BODY_COLORS, MEDIA_SCRIM_FADE, MEDIA_SCRIM_FADE_COLORS, MEDIA_SCRIM_MIN_BODY,
+  RAIL_BACKING, RAIL_GUTTER,
 } from './feedChromeTokens';
 
 /**
@@ -66,6 +68,19 @@ export interface FeedCellChromeProps {
   onOpenAuthor: () => void;
   onOpenCommunity: () => void;
   /**
+   * Opens report / block / hide for this post.
+   *
+   * REQUIRED, unlike every other optional affordance here. The rail shipped
+   * with five positive actions and no negative one, and neither detail route
+   * carried a report or a block either — so a woman who was frightened by
+   * something in the feed had nowhere to go. Safety is this product's stated
+   * promise and, since a TikTok-formula feed makes Roxy "primary purpose UGC",
+   * it is also Google Play policy. An optional prop is an invitation to build
+   * the next surface without it.
+   * src: https://support.google.com/googleplay/android-developer/answer/9876937 · read 2026-08-05
+   */
+  onOpenSafety: () => void;
+  /**
    * Wire this and the avatar grows its follow badge. Left out, the badge is not
    * rendered at all: there is no follow graph in this schema yet — only
    * `friendships`, which is a mutual, notifying relationship and not the same
@@ -75,11 +90,21 @@ export interface FeedCellChromeProps {
   onFollowAuthor?: () => void;
   /**
    * A video cell's transport control. It hangs above the rail rather than in it,
-   * because the rail's five slots are the social actions every cell shares and a
+   * because the rail's slots are the social actions every cell shares and a
    * control that exists on one cell type would break the muscle memory of the
-   * other four.
+   * others.
    */
   playbackControl?: ReactNode;
+  /**
+   * The low-stakes "is this for you?" card, when the feed decides to offer it.
+   *
+   * It renders INSIDE the scrim's band, above the identity block, which is why
+   * the band is sized by its content rather than given a fixed height: adding
+   * the card grows its own backing with it and the contrast guarantee holds
+   * unchanged. See `FeedInterestCard` for why this is a separate control from
+   * the `⋯` sheet.
+   */
+  interestPrompt?: ReactNode;
 }
 
 /**
@@ -105,13 +130,23 @@ export interface FeedBodyCellProps
  * recognises.
  *
  * Right rail, top to bottom: author avatar carrying a follow affordance, like,
- * comment, save, share.
+ * comment, save, share, and the `⋯` that opens report / block / hide.
  * src: https://www.tamidy.com/blog/the-ui-ux-of-tiktok-first-impressions · read 2026-08-06
+ *
+ * ## The scrim is the identity block's own backing
+ *
+ * It is NOT a wash over a share of the page. The dark band below is laid out
+ * bottom-anchored with the identity block as its CONTENT, so its height is the
+ * block's height plus `CHROME_BOTTOM`, in dp, on every device — and every glyph
+ * in the block therefore sits at or below `MEDIA_SCRIM_TOP_ALPHA` whether the
+ * page is 320dp in Connect or 620dp full-screen, and whether the caption is one
+ * line or expanded. The previous fraction-anchored gradient put the handle at
+ * 1.86:1 on a short page. See `feedChromeTokens` for the measurements.
  */
 export function FeedCellChrome({
   post, liked, saved, likeCount, reducedMotion, handle, active = false,
-  showCaption = true, following, playbackControl,
-  onLike, onSave, onOpenComments, onOpenAuthor, onOpenCommunity, onFollowAuthor,
+  showCaption = true, following, playbackControl, interestPrompt,
+  onLike, onSave, onOpenComments, onOpenAuthor, onOpenCommunity, onOpenSafety, onFollowAuthor,
 }: FeedCellChromeProps): ReactElement {
   const [expanded, setExpanded] = useState(false);
 
@@ -170,15 +205,79 @@ export function FeedCellChrome({
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <LinearGradient
-        testID="feed-cell-scrim"
-        colors={MEDIA_SCRIM}
-        locations={MEDIA_SCRIM_LOCATIONS}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
+      {/*
+        Drawn first, because it is the backdrop: the rail's lowest control sits
+        inside this band's y-range, and a band painted after the rail would
+        cover it.
+      */}
+      <View testID="feed-cell-scrim" style={s.bottomBlock} pointerEvents="box-none">
+        <LinearGradient
+          testID="feed-cell-scrim-fade"
+          colors={MEDIA_SCRIM_FADE_COLORS}
+          style={s.scrimFade}
+          pointerEvents="none"
+        />
+        <LinearGradient
+          testID="feed-cell-scrim-body"
+          colors={MEDIA_SCRIM_BODY_COLORS}
+          style={s.scrimBody}
+          pointerEvents="box-none"
+        >
+          {interestPrompt}
+
+          <View testID="feed-cell-identity" style={s.identity} pointerEvents="box-none">
+            {handleLabel ? (
+              <TouchableOpacity
+                onPress={onOpenAuthor}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${authorName || 'the author'}'s profile`}
+              >
+                <Text testID="feed-cell-handle" style={[s.handle, CHROME_SHADOW]}>
+                  {handleLabel}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {caption ? (
+              <>
+                <Text
+                  testID="feed-cell-caption"
+                  style={[s.caption, CHROME_SHADOW]}
+                  numberOfLines={expanded ? undefined : 2}
+                >
+                  {caption}
+                </Text>
+                {!expanded && caption.length > CAPTION_CAP ? (
+                  <TouchableOpacity
+                    testID="feed-cell-more"
+                    onPress={() => setExpanded(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Show the full caption"
+                    hitSlop={6}
+                  >
+                    <Text style={[s.more, CHROME_SHADOW]}>more</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </>
+            ) : null}
+
+            {communityName ? (
+              <TouchableOpacity
+                style={s.communityRow}
+                onPress={onOpenCommunity}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${communityName}`}
+                hitSlop={6}
+              >
+                <Ionicons name="people" size={13} color="#fff" style={CHROME_SHADOW} />
+                <Text testID="feed-cell-community" style={[s.community, CHROME_SHADOW]}>
+                  {communityName}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </LinearGradient>
+      </View>
 
       {/* One column, so the video transport sits directly above the rail on
           every page size rather than at a hardcoded offset that collides with
@@ -190,7 +289,7 @@ export function FeedCellChrome({
           <View style={s.author}>
             <TouchableOpacity
               testID="rail-avatar"
-              style={s.avatar}
+              style={s.avatarPlate}
               onPress={onOpenAuthor}
               accessibilityRole="button"
               accessibilityLabel={
@@ -198,7 +297,9 @@ export function FeedCellChrome({
               }
               hitSlop={6}
             >
-              {avatarFace}
+              {/* The white ring is adjacent to the plate, not to the frame:
+                  ring-on-white-photo measured 1.00:1. */}
+              <View style={s.avatarRing}>{avatarFace}</View>
             </TouchableOpacity>
             {onFollowAuthor ? (
               <TouchableOpacity
@@ -282,6 +383,21 @@ export function FeedCellChrome({
           >
             <Ionicons name="arrow-redo-outline" size={27} color="#fff" style={CHROME_SHADOW} />
           </TouchableOpacity>
+
+          {/* Last, where an overflow belongs — and named for what is behind it
+              rather than "More options", so a screen reader user learns there
+              is a way out without opening it first. */}
+          <TouchableOpacity
+            testID="rail-more"
+            style={s.railBtn}
+            onPress={onOpenSafety}
+            accessibilityRole="button"
+            accessibilityLabel={`Report, block or hide this ${noun}`}
+            accessibilityHint="Opens safety options for this post"
+            hitSlop={6}
+          >
+            <Ionicons name="ellipsis-horizontal" size={24} color="#fff" style={CHROME_SHADOW} />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -295,58 +411,6 @@ export function FeedCellChrome({
           onPress={onOpenCommunity}
         />
       </View>
-
-      <View testID="feed-cell-identity" style={s.identity} pointerEvents="box-none">
-        {handleLabel ? (
-          <TouchableOpacity
-            onPress={onOpenAuthor}
-            accessibilityRole="button"
-            accessibilityLabel={`Open ${authorName || 'the author'}'s profile`}
-          >
-            <Text testID="feed-cell-handle" style={[s.handle, CHROME_SHADOW]}>
-              {handleLabel}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
-
-        {caption ? (
-          <>
-            <Text
-              testID="feed-cell-caption"
-              style={[s.caption, CHROME_SHADOW]}
-              numberOfLines={expanded ? undefined : 2}
-            >
-              {caption}
-            </Text>
-            {!expanded && caption.length > CAPTION_CAP ? (
-              <TouchableOpacity
-                testID="feed-cell-more"
-                onPress={() => setExpanded(true)}
-                accessibilityRole="button"
-                accessibilityLabel="Show the full caption"
-                hitSlop={6}
-              >
-                <Text style={[s.more, CHROME_SHADOW]}>more</Text>
-              </TouchableOpacity>
-            ) : null}
-          </>
-        ) : null}
-
-        {communityName ? (
-          <TouchableOpacity
-            style={s.communityRow}
-            onPress={onOpenCommunity}
-            accessibilityRole="button"
-            accessibilityLabel={`Open ${communityName}`}
-            hitSlop={6}
-          >
-            <Ionicons name="people" size={13} color="#fff" style={CHROME_SHADOW} />
-            <Text testID="feed-cell-community" style={[s.community, CHROME_SHADOW]}>
-              {communityName}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
     </View>
   );
 }
@@ -355,12 +419,27 @@ export function FeedCellChrome({
 // never reads the theme, and rebuilding it per cell would allocate on every
 // swipe of a recycled list.
 const s = StyleSheet.create({
+  /**
+   * The scrim, bottom-anchored with an auto height.
+   *
+   * No `top`, no `height`, no percentage: the band's height is whatever its
+   * content needs, which is the identity block (plus the interest card when one
+   * is offered) plus `CHROME_BOTTOM`. That is the entire fix for the
+   * page-height-dependent contrast — see `feedChromeTokens`.
+   */
+  bottomBlock: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  scrimFade: { height: MEDIA_SCRIM_FADE },
+  scrimBody: { minHeight: MEDIA_SCRIM_MIN_BODY, justifyContent: 'flex-end' },
+
   railColumn: {
-    position: 'absolute', right: 12, bottom: 96, gap: 18, alignItems: 'center',
+    position: 'absolute', right: 12, bottom: 96, gap: 14, alignItems: 'center',
   },
-  rail: { gap: 18, alignItems: 'center' },
+  rail: { gap: 14, alignItems: 'center' },
   author: { alignItems: 'center', marginBottom: 6 },
-  avatar: {
+  avatarPlate: {
+    padding: 3, borderRadius: 26, backgroundColor: RAIL_BACKING,
+  },
+  avatarRing: {
     width: 46, height: 46, borderRadius: 23,
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.9)',
     overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.35)',
@@ -375,16 +454,26 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: 'rgba(26,10,46,0.9)',
   },
-  railBtn: { alignItems: 'center', gap: 3, minWidth: 44 },
+  /**
+   * Each control carries its own plate.
+   *
+   * The rail's top reaches ~358dp above the page bottom; a scrim tall enough to
+   * cover that would veil the whole frame, so the rail is backed per control
+   * instead. The alpha is set by the liked heart — see `RAIL_BACKING`.
+   */
+  railBtn: {
+    alignItems: 'center', gap: 2, minWidth: 46,
+    paddingVertical: 6, paddingHorizontal: 6, borderRadius: 20,
+    backgroundColor: RAIL_BACKING,
+  },
   railCount: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  crest: { position: 'absolute', right: 14, bottom: CHROME_BOTTOM },
+  crest: { position: 'absolute', right: 14, bottom: CHROME_BOTTOM, width: CREST_SIZE },
   identity: {
-    position: 'absolute', left: 0, bottom: CHROME_BOTTOM, right: RAIL_GUTTER,
-    paddingLeft: 18, gap: 5,
+    paddingLeft: 18, paddingRight: RAIL_GUTTER, paddingBottom: CHROME_BOTTOM, gap: 5,
   },
   handle: { color: '#fff', fontWeight: '800', fontSize: 15, letterSpacing: -0.2 },
   caption: { color: 'rgba(255,255,255,0.95)', fontSize: 14.5, lineHeight: 20 },
-  more: { color: 'rgba(255,255,255,0.72)', fontSize: 13, fontWeight: '700' },
+  more: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '700' },
   communityRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   community: { color: 'rgba(255,255,255,0.9)', fontWeight: '700', fontSize: 12.5 },
 });

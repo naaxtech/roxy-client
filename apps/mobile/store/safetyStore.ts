@@ -76,14 +76,29 @@ export const useSafetyStore = create<SafetyState>((set, get) => ({
   submitReport: async (reason, detail) => {
     const { reportTarget } = get();
     if (!reportTarget) throw new Error('No report target');
-    // Modal stays open on failure so the user can retry
-    await callEdgeFunction('submit-report', {
+
+    // `callEdgeFunction` CATCHES and returns `{ data, error }` — it never throws
+    // (lib/supabase.ts:23-26). This function used to await it, discard the
+    // envelope, and close the modal, so a refused write resolved exactly like an
+    // accepted one. Every caller wraps this in try/catch and announces success
+    // when it does not reject: connect/chat/[id].tsx:602 showed "Report
+    // submitted. Thank you for keeping our community safe 💜" over a report that
+    // did not exist. On a safety product that is worse than no report button —
+    // she stops looking for another way to be heard.
+    //
+    // Reading the envelope and throwing is what the comment below always
+    // claimed, and what the callers were already written for.
+    const { error } = await callEdgeFunction('submit-report', {
       userId: reportTarget.userId,
       contentType: reportTarget.contentType,
       contentId: reportTarget.contentId,
       reason,
       detail,
     });
+
+    // Modal stays open on failure so the user can retry.
+    if (error) throw new Error(error);
+
     get().closeReportModal();
   },
 }));

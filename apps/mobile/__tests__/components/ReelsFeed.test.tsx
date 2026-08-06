@@ -51,7 +51,17 @@ jest.mock('../../lib/supabase', () => {
   chain.is = jest.fn(() => chain);
   chain.order = jest.fn(() => chain);
   chain.limit = jest.fn(() => Promise.resolve({ data: rows, error: null }));
-  return { supabase: { from: jest.fn(() => chain) } };
+  return {
+    supabase: { from: jest.fn(() => chain) },
+    callEdgeFunction: jest.fn(() => Promise.resolve({ data: { ok: true }, error: null })),
+  };
+});
+
+jest.mock('../../store/safetyStore', () => {
+  const state = { blockUser: jest.fn(() => Promise.resolve()) };
+  const useSafetyStore = (selector: (s: typeof state) => unknown): unknown => selector(state);
+  useSafetyStore.getState = (): typeof state => state;
+  return { useSafetyStore };
 });
 
 jest.mock('../../store/feedStore', () => {
@@ -78,6 +88,8 @@ interface ReelCellSpyProps {
   index: number;
   activeIndex: number;
   activeItemId: string | null;
+  onOpenSafety: () => void;
+  interestPrompt?: React.ReactElement;
 }
 
 interface CapturedListProps {
@@ -105,16 +117,45 @@ function captured(): CapturedListProps[] {
 
 /** Mount the feed and give it a measured viewport, which gates the list. */
 async function mountFeed(): Promise<CapturedListProps> {
+  return (await mountFeedView()).list;
+}
+
+/** The same, keeping the rendered tree — the safety sheet lives outside the list. */
+async function mountFeedView(): Promise<{
+  view: ReturnType<typeof render>;
+  list: CapturedListProps;
+}> {
   const view = render(<ReelsFeed scope="community" communityIds={['c1']} />);
   fireEvent(view.getByTestId('reels-feed'), 'layout', {
     nativeEvent: { layout: { height: 800, width: 400 } },
   });
   await waitFor(() => expect(captured().length).toBeGreaterThan(0));
+  return { view, list: captured()[captured().length - 1] };
+}
+
+/** The newest props the list was handed. */
+function latestList(): CapturedListProps {
   return captured()[captured().length - 1];
+}
+
+function feedStoreMock(): { markSeen: jest.Mock } {
+  return (jest.requireMock('../../store/feedStore') as {
+    useFeedStore: { getState: () => { markSeen: jest.Mock } };
+  }).useFeedStore.getState();
+}
+
+function safetyStoreMock(): { blockUser: jest.Mock } {
+  return (jest.requireMock('../../store/safetyStore') as {
+    useSafetyStore: { getState: () => { blockUser: jest.Mock } };
+  }).useSafetyStore.getState();
 }
 
 beforeEach(() => {
   captured().length = 0;
+  // The store mocks are module-scoped, so a "was never called with" assertion
+  // would otherwise read the previous test's calls.
+  feedStoreMock().markSeen.mockClear();
+  safetyStoreMock().blockUser.mockClear();
 });
 
 describe('ReelsFeed recycling pools', () => {
@@ -188,5 +229,135 @@ describe('ReelsFeed active item', () => {
 
     const cell = latest.renderItem({ item: latest.data[1], index: 1 });
     expect(cell.props.activeItemId).toBe(PHOTO_ID);
+  });
+});
+
+describe('ReelsFeed safety', () => {
+  it('opens the sheet on the post the ⋯ was tapped on, not on the active one', async () => {
+    const { view, list } = await mountFeedView();
+
+    expect(view.queryByTestId('safety-sheet')).toBeNull();
+
+    const cell = list.renderItem({ item: list.data[1], index: 1 });
+    act(() => { cell.props.onOpenSafety(); });
+
+    expect(view.getByTestId('safety-sheet')).toBeTruthy();
+    // Ivy owns r-photo; Mara owns the active video. The sheet must be about the
+    // post whose rail was tapped.
+    expect(view.getByTestId('safety-block').props.accessibilityLabel).toBe('Block Ivy');
+  });
+
+  it('hides a post from this page and records it so it does not come back', async () => {
+    const { view, list } = await mountFeedView();
+
+    const cell = list.renderItem({ item: list.data[1], index: 1 });
+    act(() => { cell.props.onOpenSafety(); });
+    fireEvent.press(view.getByTestId('safety-hide'));
+
+    // `seen_posts` is what both feed queries already filter on, so the hide
+    // survives a reload rather than being a local trick.
+    expect(feedStoreMock().markSeen).toHaveBeenCalledWith(PHOTO_ID);
+    await waitFor(() => expect(latestList().data.map((r) => r.id)).toEqual([VIDEO_ID]));
+    expect(view.queryByTestId('safety-sheet')).toBeNull();
+  });
+
+  it('blocks through the block_user RPC and clears everything of hers', async () => {
+    const { view, list } = await mountFeedView();
+
+    const cell = list.renderItem({ item: list.data[0], index: 0 });
+    act(() => { cell.props.onOpenSafety(); });
+    fireEvent.press(view.getByTestId('safety-block'));
+    fireEvent.press(view.getByTestId('safety-block-confirm'));
+
+    // safetyStore.blockUser is the one entry point to migration 085's RPC —
+    // not a second blocks table, which 008 explicitly did not create.
+    await waitFor(() => expect(safetyStoreMock().blockUser).toHaveBeenCalledWith('u1'));
+    // A block that leaves her next four videos in the pager is not a block.
+    await waitFor(() => expect(latestList().data.map((r) => r.id)).toEqual([PHOTO_ID]));
+  });
+
+  it('reports through the reports table, not through a second path', async () => {
+    const { view, list } = await mountFeedView();
+    const { callEdgeFunction } = jest.requireMock('../../lib/supabase') as {
+      callEdgeFunction: jest.Mock;
+    };
+    callEdgeFunction.mockClear();
+
+    const cell = list.renderItem({ item: list.data[0], index: 0 });
+    act(() => { cell.props.onOpenSafety(); });
+    fireEvent.press(view.getByTestId('safety-report'));
+    fireEvent.press(view.getByTestId('safety-reason-harassment'));
+    fireEvent.press(view.getByTestId('safety-report-submit'));
+
+    await waitFor(() => expect(callEdgeFunction).toHaveBeenCalledWith('submit-report', {
+      userId: 'u1',
+      contentType: 'post',
+      contentId: VIDEO_ID,
+      reason: 'harassment',
+      detail: undefined,
+    }));
+    await waitFor(() => expect(view.queryByTestId('safety-done')).not.toBeNull());
+  });
+
+  it('says a report did not send when the write is refused', async () => {
+    const { view, list } = await mountFeedView();
+    const { callEdgeFunction } = jest.requireMock('../../lib/supabase') as {
+      callEdgeFunction: jest.Mock;
+    };
+    callEdgeFunction.mockResolvedValueOnce({ data: null, error: 'Rate limit exceeded' });
+
+    const cell = list.renderItem({ item: list.data[0], index: 0 });
+    act(() => { cell.props.onOpenSafety(); });
+    fireEvent.press(view.getByTestId('safety-report'));
+    fireEvent.press(view.getByTestId('safety-reason-spam'));
+    fireEvent.press(view.getByTestId('safety-report-submit'));
+
+    // `callEdgeFunction` RETURNS its error rather than throwing, which is how
+    // safetyStore.submitReport came to thank a woman for a report that never
+    // landed. The feed reads the envelope.
+    await waitFor(() => expect(view.queryByTestId('safety-error')).not.toBeNull());
+    expect(view.queryByTestId('safety-done')).toBeNull();
+  });
+});
+
+describe('ReelsFeed interest prompt', () => {
+  it('offers the question on a cadence rather than on every post', async () => {
+    const list = await mountFeed();
+
+    expect(list.renderItem({ item: list.data[0], index: 0 }).props.interestPrompt)
+      .toBeUndefined();
+    expect(list.renderItem({ item: list.data[1], index: 5 }).props.interestPrompt)
+      .toBeDefined();
+  });
+
+  it('drops the post on "not for me" and stops asking about it', async () => {
+    const { view, list } = await mountFeedView();
+
+    const cell = list.renderItem({ item: list.data[1], index: 5 });
+    const offered = cell.props.interestPrompt;
+    expect(offered).toBeDefined();
+    const prompt = render(offered as React.ReactElement);
+    fireEvent.press(prompt.getByTestId('interest-not-for-me'));
+
+    expect(feedStoreMock().markSeen).toHaveBeenCalledWith(PHOTO_ID);
+    await waitFor(() => expect(latestList().data.map((r) => r.id)).toEqual([VIDEO_ID]));
+    expect(view.queryByTestId('safety-sheet')).toBeNull();
+  });
+
+  it('keeps the post on "more of this", and stops asking', async () => {
+    const { list } = await mountFeedView();
+
+    const cell = list.renderItem({ item: list.data[1], index: 5 });
+    const offered = cell.props.interestPrompt;
+    expect(offered).toBeDefined();
+    const prompt = render(offered as React.ReactElement);
+    fireEvent.press(prompt.getByTestId('interest-more-of-this'));
+
+    // "More of this" is not a hide, and it is not a report either — the two
+    // sentences do not share a control.
+    expect(feedStoreMock().markSeen).not.toHaveBeenCalledWith(PHOTO_ID);
+    await waitFor(() => expect(latestList().data.map((r) => r.id)).toEqual([VIDEO_ID, PHOTO_ID]));
+    expect(latestList().renderItem({ item: latestList().data[1], index: 5 }).props.interestPrompt)
+      .toBeUndefined();
   });
 });

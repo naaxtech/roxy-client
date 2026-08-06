@@ -63,6 +63,7 @@ function photo(post: ReelRow = BASE) {
       onOpenComments={noop}
       onOpenAuthor={noop}
       onOpenCommunity={noop}
+      onOpenSafety={noop}
       onOpenPost={noop}
     />,
   );

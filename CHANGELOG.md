@@ -123,6 +123,20 @@ finer-grained engineering log lives in `.claude/log.md`.
   RN 0.74 was archived. Citations in the touched files were repointed at tagged source.
 
 ### Added
+- **Hosted web build of the mobile app** at https://roxy-web-red.vercel.app (Vercel project
+  `roxy-web`), for design and flow review on any machine — the same role `roxy-studio` already
+  plays for the host dashboard. `npm run web:deploy` from `apps/mobile` runs `expo export
+  --platform web`, copies `vercel.dist.json` → `dist/vercel.json` and `vercelignore.dist` →
+  `dist/.vercelignore`, then links and ships the prebuilt `dist/` — no build step on Vercel's
+  side. The `vercel.json` carries the SPA rewrite Expo Router needs (everything that is not
+  `_expo/`, `assets/`, `favicon.ico`, or `metadata.json` falls back to `/index.html`), so a
+  deep route survives a refresh instead of 404ing. The `.vercelignore` exists for one reason:
+  the Vercel CLI drops every path containing `node_modules`, and `expo export` writes the icon
+  fonts to `dist/assets/node_modules/@expo/vector-icons/…` — without `!node_modules` those
+  files never upload and every icon 404s on the deployed build while a local `serve dist` looks
+  perfect. `EXPO_PUBLIC_*` values are inlined at export time from `apps/mobile/.env`; the
+  Supabase anon key therefore ships in the bundle, which is expected — RLS is the boundary.
+  Video (Daily.co), `expo-av` playback, and push do not work on web by design.
 - **Mixed cell types in the pager** — slice 2. `PhotoCell` (multi-image gets a direction-locked
   horizontal pager with dots and per-slide states), `TextCell`, `PollCell`, `ResourceCell`, and
   `FeedCell` as the router, which also exports `feedItemType` — so the recycling-pool key and

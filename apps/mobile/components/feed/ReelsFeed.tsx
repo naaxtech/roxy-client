@@ -11,14 +11,29 @@ import { excludeSeenReels, displayedLikeCount, initialReelIndex } from '../../li
 import type { ReelRow } from '../../lib/reels';
 import { fetchAnnouncementVideos } from '../../lib/announcements';
 import { useFeedStore } from '../../store/feedStore';
+import { useSafetyStore } from '../../store/safetyStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { EmptyState } from '../ui/EmptyState';
 import { FeedPager } from './FeedPager';
 import type { FeedPagerCell } from './FeedPager';
 import { FeedCell, feedItemType } from './FeedCell';
+import { FeedInterestCard } from './FeedInterestCard';
+import { FeedSafetySheet } from './FeedSafetySheet';
+import { reportPost } from './feedSafety';
+import type { ReportReason } from './feedSafety';
 
 const PAGE_SIZE = 10;
+
+/**
+ * How often the "Are you interested in this?" card is offered.
+ *
+ * Often enough that a woman who wants out of a thread of content finds the
+ * control without hunting for it, rare enough that it is not a toll booth
+ * between posts. Offset by one so the very first page she ever sees is the
+ * feed, not a question about the feed.
+ */
+const INTEREST_PROMPT_EVERY = 6;
 
 /**
  * `normalizePost` returns a bare `Post` — it drops the embedded `communities`
@@ -118,6 +133,12 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
   const toggleLike = useFeedStore((st) => st.toggleLike);
   const toggleSave = useFeedStore((st) => st.toggleSave);
   const markSeen = useFeedStore((st) => st.markSeen);
+
+  // The one entry point for blocking anywhere in the app: it calls the
+  // `block_user` RPC migration 085 added and keeps `blockedUserIds` — which
+  // the chat surfaces read — in step. A second path would be a second list of
+  // who is blocked, and one of them would be wrong.
+  const blockUser = useSafetyStore((st) => st.blockUser);
 
   const load = useCallback(async () => {
     if (scope !== 'announcements' && !ids.length) {
@@ -266,12 +287,58 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
     markSeen(itemId);
   }, [markSeen]);
 
+  /**
+   * The negative half of the feed, which it shipped without entirely.
+   *
+   * `safetyPost` is the post the `⋯` was tapped on — one sheet for the whole
+   * list rather than one per cell, because a modal per mounted cell is ten
+   * modals. `answeredPrompts` remembers which posts have already been asked
+   * "are you interested in this?", so a swipe back does not ask again.
+   */
+  const [safetyPost, setSafetyPost] = useState<ReelRow | null>(null);
+  const [answeredPrompts, setAnsweredPrompts] = useState<ReadonlySet<string>>(new Set());
+
+  /**
+   * Drop a post from this viewer's feed, now and in future.
+   *
+   * `markSeen` upserts `seen_posts`, which is what both feed queries already
+   * filter on — so this is durable rather than a local hide that comes back on
+   * the next launch. Removing the row here as well is what makes it immediate:
+   * the pager is holding this page, and the exclusion only applies to pages
+   * fetched later.
+   */
+  const dropPost = useCallback((postId: string) => {
+    markSeen(postId);
+    setReels((prev) => prev.filter((r) => r.id !== postId));
+  }, [markSeen]);
+
+  const handleBlock = useCallback(async (post: ReelRow) => {
+    await blockUser(post.author_id);
+    // Everything of hers goes, not merely the post that prompted it — a block
+    // that leaves her next four videos in the pager is not a block.
+    setReels((prev) => prev.filter((r) => r.author_id !== post.author_id));
+  }, [blockUser]);
+
+  const handleReport = useCallback(
+    (post: ReelRow) => (reason: ReportReason, detail: string) =>
+      reportPost({ postId: post.id, authorId: post.author_id, reason, detail }),
+    [],
+  );
+
+  const answerPrompt = useCallback((postId: string) => {
+    setAnsweredPrompts((prev) => {
+      const next = new Set(prev);
+      next.add(postId);
+      return next;
+    });
+  }, []);
+
   // FlashList recycles cells. Without this it has no reason to re-render one
   // when the mute state or a like changes, so a recycled cell keeps the previous
   // post's icons. The pager merges its own active-item state into this.
   const extraData = useMemo(
-    () => ({ muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion }),
-    [muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion],
+    () => ({ muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion, answeredPrompts }),
+    [muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion, answeredPrompts],
   );
 
   /**
@@ -283,6 +350,7 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
   const handleEndReached = useCallback(() => { void loadMore(); }, [loadMore]);
 
   const s = StyleSheet.create({
+    frame: { flex: 1 },
     centred: {
       flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12,
       backgroundColor: colors.background,
@@ -302,32 +370,46 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
    */
   const renderCell = useCallback(({
     item, index, activeIndex, activeItemId, width, height,
-  }: FeedPagerCell<ReelRow>) => (
-    <FeedCell
-      post={item}
-      index={index}
-      activeIndex={activeIndex}
-      activeItemId={activeItemId}
-      width={width}
-      height={height}
-      muted={muted}
-      liked={likedPostIds.has(item.id)}
-      saved={savedPostIds.has(item.id)}
-      likeCount={displayedLikeCount(item, likeCountDeltas)}
-      reducedMotion={reducedMotion}
-      onToggleMute={toggleMute}
-      onLike={() => void toggleLike(item.id)}
-      onSave={() => void toggleSave(item.id)}
-      // The detail route follows the post's type: video lives at
-      // /community/video/:id and everything else at /community/post/:id.
-      onOpenComments={() => router.push(contentDetailPath(item.id, item.post_type) as never)}
-      onOpenPost={() => router.push(contentDetailPath(item.id, item.post_type) as never)}
-      onOpenAuthor={() => router.push(`/user/${item.author_id}` as never)}
-      onOpenCommunity={() => router.push(`/community/${item.community_id}` as never)}
-    />
-  ), [
-    muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion,
-    toggleMute, toggleLike, toggleSave, router,
+  }: FeedPagerCell<ReelRow>) => {
+    // Offered on a cadence rather than on every cell, and only once per post.
+    const asks = index % INTEREST_PROMPT_EVERY === INTEREST_PROMPT_EVERY - 1
+      && !answeredPrompts.has(item.id);
+
+    return (
+      <FeedCell
+        post={item}
+        index={index}
+        activeIndex={activeIndex}
+        activeItemId={activeItemId}
+        width={width}
+        height={height}
+        muted={muted}
+        liked={likedPostIds.has(item.id)}
+        saved={savedPostIds.has(item.id)}
+        likeCount={displayedLikeCount(item, likeCountDeltas)}
+        reducedMotion={reducedMotion}
+        onToggleMute={toggleMute}
+        onLike={() => void toggleLike(item.id)}
+        onSave={() => void toggleSave(item.id)}
+        // The detail route follows the post's type: video lives at
+        // /community/video/:id and everything else at /community/post/:id.
+        onOpenComments={() => router.push(contentDetailPath(item.id, item.post_type) as never)}
+        onOpenPost={() => router.push(contentDetailPath(item.id, item.post_type) as never)}
+        onOpenAuthor={() => router.push(`/user/${item.author_id}` as never)}
+        onOpenCommunity={() => router.push(`/community/${item.community_id}` as never)}
+        onOpenSafety={() => setSafetyPost(item)}
+        interestPrompt={asks ? (
+          <FeedInterestCard
+            onNotForMe={() => { answerPrompt(item.id); dropPost(item.id); }}
+            onMoreOfThis={() => answerPrompt(item.id)}
+            onDismiss={() => answerPrompt(item.id)}
+          />
+        ) : undefined}
+      />
+    );
+  }, [
+    muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion, answeredPrompts,
+    toggleMute, toggleLike, toggleSave, router, answerPrompt, dropPost,
   ]);
 
   // The three states this surface owes a viewer. Non-null means the pager shows
@@ -365,17 +447,41 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
   }
 
   return (
-    <FeedPager<ReelRow>
-      testID="reels-feed"
-      items={reels}
-      keyExtractor={keyExtractor}
-      getItemType={getItemType}
-      renderCell={renderCell}
-      extraData={extraData}
-      initialIndex={initialIndex}
-      placeholder={placeholder}
-      onActiveItemChange={handleActiveItemChange}
-      onEndReached={handleEndReached}
-    />
+    <View style={s.frame}>
+      <FeedPager<ReelRow>
+        testID="reels-feed"
+        items={reels}
+        keyExtractor={keyExtractor}
+        getItemType={getItemType}
+        renderCell={renderCell}
+        extraData={extraData}
+        initialIndex={initialIndex}
+        placeholder={placeholder}
+        onActiveItemChange={handleActiveItemChange}
+        onEndReached={handleEndReached}
+      />
+
+      {/* One sheet for the whole list. It reads `safetyPost` rather than being
+          rendered per cell, so opening it never depends on which cells happen
+          to be mounted. */}
+      <FeedSafetySheet
+        post={safetyPost}
+        onClose={() => setSafetyPost(null)}
+        onReport={safetyPost ? handleReport(safetyPost) : noReport}
+        onBlock={safetyPost ? () => handleBlock(safetyPost) : noBlock}
+        onHide={safetyPost ? () => dropPost(safetyPost.id) : noHide}
+      />
+    </View>
   );
 }
+
+/**
+ * Stand-ins for the closed sheet.
+ *
+ * `FeedSafetySheet` renders nothing without a post, so these are never called;
+ * they exist so the props stay non-optional — a safety action that is allowed
+ * to be undefined is a safety action somebody forgets to pass.
+ */
+const noReport = (): Promise<void> => Promise.resolve();
+const noBlock = (): Promise<void> => Promise.resolve();
+const noHide = (): void => undefined;

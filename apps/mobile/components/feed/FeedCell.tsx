@@ -46,17 +46,53 @@ export function feedItemType(post: Pick<ReelRow, 'post_type'>): PostType {
 /**
  * One post, one page — whatever kind of post it is.
  *
+ * ## The one line that makes recycling safe
+ *
+ * FlashList does not mount a cell per post: it keeps a pool per `getItemType`
+ * and re-renders the SAME component instance with the next post's data. Every
+ * `useState` inside a cell therefore survives the swipe unless something clears
+ * it, and because the pools are keyed on `post_type` a poll only ever recycles
+ * into another poll — the case where the carry-over is invisible to the code and
+ * unmistakable to the viewer. She votes on poll A, swipes, and poll B opens
+ * with results showing, a tick on an option she never chose, a tally carrying a
+ * phantom vote of hers, and no way to answer.
+ *
+ * `key={post.id}` on the body is the whole fix. Two reasons it is preferred to
+ * a per-cell `useEffect` reset:
+ *
+ *  - A key cannot be forgotten. It sits at the router, above every cell type
+ *    that exists and every one that does not exist yet, so the next cell author
+ *    inherits it by writing a `case`. Four of the five cells written so far
+ *    forgot the reset; only `ReelCell` remembered.
+ *  - A key is not late. An effect runs AFTER the commit, so a reset-by-effect
+ *    still paints one frame of the previous post's state — one frame of poll A's
+ *    result over poll B's question. State that is never created cannot be shown.
+ *
+ * The cost is that the body subtree re-mounts on recycle rather than
+ * re-rendering. FlashList's native view container is still reused and the pools
+ * still keep a game cell's tree out of a video cell's, so what is paid is one
+ * React mount of a small tree per swipe — against a class of defect that
+ * misreports a viewer's own answer to a question like "are you out to your
+ * family".
+ *
  * The pager takes a render callback rather than owning its cell precisely so
- * this switch can live in one place and hand each component the props that
+ * the switch below can live in one place and hand each component the props that
  * component actually wants. Everything the viewer recognises as chrome is
- * shared underneath, so switching here changes the body and nothing else.
+ * shared underneath, so switching there changes the body and nothing else.
+ */
+export function FeedCell(props: FeedCellProps): ReactElement {
+  return <FeedCellBody key={props.post.id} {...props} />;
+}
+
+/**
+ * The type switch. Never rendered without the key above.
  *
  * An unrecognised type falls through to the text treatment rather than
  * rendering nothing: `event` and `game` cells are a later slice, and until they
  * exist the pager still has to be able to page past one without showing a black
  * screen.
  */
-export function FeedCell({
+function FeedCellBody({
   post, index, activeIndex, activeItemId, width, height,
   muted, onToggleMute, onOpenPost, onVote,
   ...chrome

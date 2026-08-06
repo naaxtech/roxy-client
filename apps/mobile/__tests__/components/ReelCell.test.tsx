@@ -117,6 +117,7 @@ function renderCell(post: ReelRow, activeItemId: string | null, index = 0, activ
       onOpenComments={noop}
       onOpenAuthor={noop}
       onOpenCommunity={noop}
+      onOpenSafety={noop}
     />,
   );
 }

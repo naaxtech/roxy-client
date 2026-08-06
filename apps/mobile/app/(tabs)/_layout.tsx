@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Tabs, usePathname, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { RoxyCompanionButton } from '../../components/ui/RoxyCompanionButton';
-import { useThemeColors } from '../../hooks/useThemeColors';
+import { FloatingTabBar } from '../../components/nav/FloatingTabBar';
+import { CreateSheet } from '../../components/nav/CreateSheet';
 import { useFriendStore } from '../../store/friendStore';
 import { useConnectStore } from '../../store/connectStore';
 import { useAuthStore } from '../../store/authStore';
@@ -12,10 +12,20 @@ import { useSafetyStore } from '../../store/safetyStore';
 import { supabase } from '../../lib/supabase';
 import { freshChannel } from '../../lib/realtimeChannel';
 
+/**
+ * The companion FAB pins itself 90pt above its parent's bottom edge, a number
+ * tuned to the old 68pt full-width bar. The floating pill is taller than that
+ * once a home indicator is in play, so the FAB's parent is inset by this much
+ * instead — lifting the button without editing it. The ceiling is 12: the FAB's
+ * own pop-out sheet anchors at 158pt from the screen bottom, and the button's
+ * top edge reaches 146 + lift. Roxy moving into Inbox (plan §1) retires this.
+ */
+const FAB_LIFT = 8;
+
 export default function TabLayout() {
-  const colors = useThemeColors();
   const pathname = usePathname();
   const showFab = !pathname.includes('roxy-chat');
+  const [createOpen, setCreateOpen] = useState(false);
   const pendingCount = useFriendStore((s) => s.pendingCount);
   const { user } = useAuthStore();
   const profile = useProfileStore((s) => s.profile);
@@ -73,96 +83,64 @@ export default function TabLayout() {
     return () => { supabase.removeChannel(channel); };
   }, [user?.id]);
 
+  // Route folders are deliberately untouched. `Rooms` is the `connect` folder,
+  // `You` is `profile`, and `discover`/`build` keep their routes and reach Home
+  // through the category pills instead of a bar slot. Renaming Expo Router
+  // directories is a separate, breakage-prone change.
   return (
     <View style={{ flex: 1 }}>
       <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: colors.background,
-            borderTopWidth: 0,
-            height: 68,
-            paddingTop: 8,
-            paddingBottom: 10,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 10,
-            elevation: 12,
-          },
-          tabBarActiveTintColor: colors.roxy,
-          tabBarInactiveTintColor: colors.textMuted,
-          tabBarActiveBackgroundColor: colors.roxy + '16',
-          tabBarItemStyle: { borderRadius: 16, marginHorizontal: 6, marginVertical: 2 },
-          tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 0 },
-          // Keep the phone layout at every width — wide web viewports otherwise
-          // switch to icon-beside-label and the badge collides with the icon.
-          tabBarLabelPosition: 'below-icon',
-          tabBarBadgeStyle: {
-            backgroundColor: '#E81C8E',
-            color: '#fff',
-            fontSize: 10,
-            fontWeight: '800',
-            minWidth: 16,
-            height: 16,
-            borderRadius: 8,
-            lineHeight: 15,
-          },
-        }}
+        screenOptions={{ headerShown: false }}
+        tabBar={(props) => (
+          <FloatingTabBar
+            state={props.state}
+            descriptors={props.descriptors}
+            onTabPress={(route, isFocused) => {
+              const event = props.navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
+              if (!isFocused && !event.defaultPrevented) {
+                props.navigation.navigate(route.name);
+              }
+            }}
+            onCreatePress={() => setCreateOpen(true)}
+          />
+        )}
       >
         <Tabs.Screen
           name="grow"
           options={{
-            title: 'Grow',
-            tabBarIcon: ({ color, size, focused }) => (
-              <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
-            ),
+            title: 'Home',
             tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
           }}
         />
-        <Tabs.Screen
-          name="connect"
-          options={{
-            title: 'Connect',
-            tabBarIcon: ({ color, size, focused }) => (
-              <Ionicons name={focused ? 'heart' : 'heart-outline'} size={size} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="discover"
-          options={{
-            title: 'Play',
-            tabBarIcon: ({ color, size, focused }) => (
-              <Ionicons name={focused ? 'game-controller' : 'game-controller-outline'} size={size} color={color} />
-            ),
-          }}
-        />
+        <Tabs.Screen name="connect" options={{ title: 'Rooms' }} />
+        <Tabs.Screen name="discover" options={{ title: 'Games' }} />
         <Tabs.Screen
           name="messages"
           options={{
-            title: 'Messages',
-            tabBarIcon: ({ color, size, focused }) => (
-              <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={size} color={color} />
-            ),
+            title: 'Inbox',
             tabBarBadge: totalUnread > 0 ? totalUnread : undefined,
           }}
         />
-        <Tabs.Screen
-          name="build"
-          options={{
-            title: 'Build',
-            tabBarIcon: ({ color, size, focused }) => (
-              <Ionicons name={focused ? 'hammer' : 'hammer-outline'} size={size} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{ href: null }}
-        />
+        <Tabs.Screen name="build" options={{ title: 'Build' }} />
+        <Tabs.Screen name="profile" options={{ title: 'You' }} />
       </Tabs>
-      <RoxyCompanionButton visible={showFab} />
+
+      <View
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: FAB_LIFT }}
+        pointerEvents="box-none"
+      >
+        <RoxyCompanionButton visible={showFab} />
+      </View>
+
+      <CreateSheet
+        visible={createOpen}
+        userId={user?.id ?? null}
+        onClose={() => setCreateOpen(false)}
+      />
     </View>
   );
 }

@@ -64,6 +64,7 @@ function text(post: ReelRow = BASE, onOpenPost: () => void = noop) {
       onOpenComments={noop}
       onOpenAuthor={noop}
       onOpenCommunity={noop}
+      onOpenSafety={noop}
       onOpenPost={onOpenPost}
     />,
   );

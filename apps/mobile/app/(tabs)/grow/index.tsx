@@ -24,6 +24,7 @@ import { isPresetAvatar, presetEmoji, presetColor, avatarGradient } from '../../
 import { HappeningTonightCard } from '../../../components/grow/HappeningTonightCard';
 import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayCard';
 import { MiniWinsCard } from '../../../components/grow/MiniWinsCard';
+import { HomeCategoryPills } from '../../../components/nav/HomeCategoryPills';
 import { DonateModal } from '../../../components/donations/DonateModal';
 
 const CHIP_COLORS = COMMUNITY_CHIP_COLORS;
@@ -515,6 +516,10 @@ export default function GrowScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Category pills — Events, Games, live rooms and Build reach Home
+            from here rather than from a navigation slot (Netflix's pattern). */}
+        <HomeCategoryPills />
 
         {/* Greeting */}
         <View style={styles.greet}>

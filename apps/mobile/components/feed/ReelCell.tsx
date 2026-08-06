@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FeedVideoPlayer } from './FeedVideoPlayer';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedCellChromeProps } from './FeedCellChrome';
-import { CHROME_SHADOW } from './feedChromeTokens';
+import { CHROME_SHADOW, RAIL_BACKING } from './feedChromeTokens';
 
 export interface ReelCellProps
   extends Omit<FeedCellChromeProps, 'playbackControl' | 'showCaption' | 'active'> {
@@ -210,15 +210,19 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Both sit over media the app has never seen and neither is inside the
+  // bottom scrim, so both carry the rail's plate rather than a lighter one of
+  // their own: at 0.4 a white glyph over a white frame is 2.85:1, under the 3:1
+  // that SC 1.4.11 asks of a control.
   transportBtn: {
     width: 40, height: 40, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: RAIL_BACKING,
   },
   muteBtn: {
     position: 'absolute', top: 16, right: 14,
     width: 38, height: 38, borderRadius: 19,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: RAIL_BACKING,
   },
 });

@@ -77,6 +77,7 @@ function poll(o: PollOptions = {}) {
       onOpenComments={noop}
       onOpenAuthor={noop}
       onOpenCommunity={noop}
+      onOpenSafety={noop}
       onOpenPost={noop}
       onVote={o.onVote ?? ((): Promise<boolean> => Promise.resolve(true))}
     />,
