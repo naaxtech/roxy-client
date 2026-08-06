@@ -1,0 +1,21 @@
+CLAUDE.md
+  s_abbe96006f0da4::t_c77c50fc895bfd 18-21
+  s_abbe96006f0da4::t_e162cdf7832ca1 193-194
+  s_abbe96006f0da4::t_abc5a1e7329689 95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a75778f3ca45eee30bdefce4d6193314109c46c3",
+  "prompts": {},
+  "sessions": {
+    "s_abbe96006f0da4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f6adeb1-8e93-4b92-945d-16b3d3f69ff5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
