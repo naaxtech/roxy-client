@@ -396,3 +396,67 @@ Each slice ships working software and passes the gate on its own.
 
 Slice 0 can start immediately — it is pure defect repair against verified sources and depends on none
 of the open decisions.
+
+---
+
+## 11. Peg review — 2026-08-07
+
+Nicole supplied `resources/Roxy Client UX Pegs`: **Instagram ×6, Discord ×2, Netflix ×2**. No TikTok,
+despite the folder being described as such — and the substitution is more useful than the request.
+
+### Two pegs independently corroborate the 2026-08-06 audit
+
+- **Instagram Reels shows a video progress bar.** Roxy has none. `FeedVideoPlayer` exposes `onProgress`
+  and `ReelCell` never passes it, so a viewer cannot tell a 6-second loop from a 4-minute clip. This was
+  already Nielsen #1's deduction; the peg makes it a competitive gap rather than a nitpick.
+- **Instagram pins a persistent "Add comment…" composer to every reel.** Roxy pushes a full route,
+  leaving the immersive surface — and `components/feed/CommentSheet.tsx` sits unused in the same
+  directory. Instagram's answer beats a sheet: always visible, zero navigation.
+
+### Corrections to §2's cell
+
+1. **The author leaves the rail.** Instagram Reels keeps the rail purely verbs and puts avatar + handle
+   + Follow + overflow in a **bottom bar under the video**. Better for Roxy: it groups the person with
+   her words and her room instead of making her the first icon in a column of verbs.
+2. **Saves carry counts** (29.1K / 845K / 418K observed). For a community product a save is a better
+   quality signal than a like — "I will come back to this" over "I reacted."
+3. **Repost is a first-class slot**, and for Roxy it must be an **in-product reshare into another room
+   she belongs to**. That also closes the P2 the audit raised against the OS share sheet, which leaks a
+   member's display name and the word "Roxy" into WhatsApp.
+4. **Two treatments, one content type.** Instagram's feed-embedded reels use a *horizontal* action row;
+   the dedicated Reels surface uses the vertical rail. Maps onto Roxy: Connect announcements read as
+   cards, community reels read full-bleed.
+5. **The negative signal is offered proactively.** Instagram renders an inline dismissible card — *"Are
+   you interested in this post?" · Not interested · Interested*. Stronger than the overflow sheet §7
+   specified. Report and block still live under `⋯`: "not for me" and "this frightened me" are
+   different sentences and must not share a control.
+
+### Corrections to §1's navigation
+
+**Rooms replaces Discover**, because the destination is always a community and discovery is a mode
+inside it, not a peer of it. **Events and Games become category pills at the top of Home** — Netflix's
+pattern for giving Games first-class placement without spending a nav slot. Both Netflix and Discord use
+a **floating pill nav** rather than a full-width bar; adopt it.
+
+Netflix also confirms the community-tag treatment already drawn in §3: a dot-separated descriptor row
+(`Witty · Exciting · Family · Twists & Turns`).
+
+### DECIDED 2026-08-07 — one global identity
+
+Discord's **per-server profiles** (display name, avatar, bio and pronouns varying per server, with a
+main profile as default) is the strongest idea in the folder. For a woman out in one room and closeted
+in another it is safety architecture, not a feature, and it is a better answer than §3's tag-hiding
+because it protects her even in a public room.
+
+**It is deferred.** Nicole's call: ship the feed redesign as drawn and solve safety with the §3
+visibility rules. Per-room identity goes on the roadmap, not into this build — it is a schema change
+(`community_profiles` + RLS) that would block every slice behind it.
+
+The §3 rule therefore stands and is now load-bearing rather than belt-and-braces: **a private
+community's tag renders only to fellow members, with no "+N" tell.**
+
+### Also noted, not yet sliced
+
+Discord ships **Orbs · Quests · Shop**. Roxy has points and badges with nowhere to spend them — a
+scoreboard, not an economy. Migration 087 finally made badges earnable; a sink is what makes them
+matter. Its own slice, after the feed.
