@@ -1,0 +1,93 @@
+apps/mobile/components/feed/PhotoCell.tsx
+  s_f93f52ad807728::t_5199f4f6f3bf6e 147-150
+  s_f93f52ad807728::t_7150c878bafc9e 10
+  s_f93f52ad807728::t_9e9f8be9cac681 108
+apps/mobile/app/(tabs)/connect/sister-button/index.tsx
+  s_f93f52ad807728::t_22df0103d4644a 146,334,352,476
+apps/mobile/components/feed/FeedInterestCard.tsx
+  s_f93f52ad807728::t_89a78b74afd747 127
+  s_f93f52ad807728::t_4dda70f51e666d 64
+  s_f93f52ad807728::t_0bf6ad079dbd43 4
+  s_f93f52ad807728::t_51262b72428a95 110-123
+apps/mobile/components/feed/ReelCell.tsx
+  s_f93f52ad807728::t_d9c0272d92c518 9
+  s_f93f52ad807728::t_3614a30ed68544 216-218,220,226
+apps/mobile/components/feed/ResourceCell.tsx
+  s_f93f52ad807728::t_c884de1f6c8131 171-173,176-177
+  s_f93f52ad807728::t_d60ce27b956d34 8
+  s_f93f52ad807728::t_2f12518e719e3e 114
+apps/mobile/components/nav/FloatingTabBar.tsx
+  s_f93f52ad807728::t_197daea334ff9e 34,265
+  s_f93f52ad807728::t_f26335e2314fb8 146
+  s_f93f52ad807728::t_f886674f82ed41 8
+apps/mobile/__tests__/components/nav/FloatingTabBar.test.tsx
+  s_f93f52ad807728::t_e7f5e352d4a359 19,21
+  s_f93f52ad807728::t_6a532d5356a2c7 139-153,155
+supabase/migrations/088_blocking_enforcement.sql
+  s_f93f52ad807728::t_e7f345dfec6ed7 1-471
+apps/mobile/components/feed/FeedCellChrome.tsx
+  s_f93f52ad807728::t_51d1ed08e33ea0 548-551
+  s_f93f52ad807728::t_4f7fecf0553854 10
+  s_f93f52ad807728::t_f737281b19227c 168-178,180,183
+  s_f93f52ad807728::t_1cc6b62eca0382 473-482,484
+  s_f93f52ad807728::t_497499e3270948 495-505
+  s_f93f52ad807728::t_81c2a705d57afd 520-521,527-532,534,536-544
+  s_f93f52ad807728::t_6fc6a48a958496 327-342,345,355-361
+  s_f93f52ad807728::t_2d156874685262 241-242
+  s_f93f52ad807728::t_29b3ae4d6cf557 278
+  s_f93f52ad807728::t_22db51cb86d607 265
+  s_f93f52ad807728::t_f0cea6fea874ba 301-308,310
+  s_f93f52ad807728::t_4281640c6e9ace 309,311-312
+apps/mobile/components/nav/navTokens.ts
+  s_f93f52ad807728::t_1a3a9b87ab81d2 2
+  s_f93f52ad807728::t_693bad3c7bb17b 17-20,22-25,27
+apps/mobile/components/nav/CreateSheet.tsx
+  s_f93f52ad807728::t_f886674f82ed41 9
+  s_f93f52ad807728::t_197daea334ff9e 154
+apps/mobile/components/feed/TextCell.tsx
+  s_f93f52ad807728::t_796b6d926f96db 130-132
+  s_f93f52ad807728::t_59a6f9c9de5c59 5
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_f93f52ad807728::t_197daea334ff9e 302,640
+  s_f93f52ad807728::t_f26335e2314fb8 21
+  s_f93f52ad807728::t_22df0103d4644a 549,707,725,745,774
+apps/mobile/components/feed/PollCell.tsx
+  s_f93f52ad807728::t_78c3bb1af20b61 7
+  s_f93f52ad807728::t_27c29a5cc80f8c 211-214
+  s_f93f52ad807728::t_22ab2a80331d6a 180
+apps/mobile/lib/touchTargets.ts
+  s_f93f52ad807728::t_3b57485ad9d995 1-56
+apps/mobile/components/dev/DevPanel.tsx
+  s_f93f52ad807728::t_197daea334ff9e 61
+apps/mobile/__tests__/components/feedTouchTargets.test.tsx
+  s_f93f52ad807728::t_29f82789f82e12 183
+  s_f93f52ad807728::t_b36595a4c30876 238-243,245-247
+  s_f93f52ad807728::t_f18b5e51139d70 268-270
+  s_f93f52ad807728::t_04b6dcdc073404 1-116,120-182,184-237,244,248-267,271-274
+  s_f93f52ad807728::t_5a3c05e8a58cc4 117-119
+apps/mobile/components/feed/FeedSafetySheet.tsx
+  s_f93f52ad807728::t_883e4ba23452c0 168
+  s_f93f52ad807728::t_9958037a5bd037 377-383
+  s_f93f52ad807728::t_b7a46d9df839bc 414-416
+  s_f93f52ad807728::t_eba637d247ea47 10
+apps/mobile/components/feed/CommunityCrest.tsx
+  s_f93f52ad807728::t_f92c8ba7a9d4f3 9
+apps/mobile/components/grow/MiniWinsCard.tsx
+  s_f93f52ad807728::t_22df0103d4644a 83,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "83629c0e360cabaf230eb3d306ad806df06c79f7",
+  "prompts": {},
+  "sessions": {
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
