@@ -97,6 +97,17 @@ Deno.serve(async (req) => {
           unit_price_cents: number; quantity: number;
         }> = JSON.parse(meta.items_json);
 
+        // Migration 032 calls these columns "populated from Stripe webhook, never
+        // client-computed". Read that as a guarantee about this metadata and it is
+        // wrong: the values are not Stripe's, they are whatever create-product-order
+        // wrote into `metadata` when it opened the intent, round-tripped back here.
+        // Stripe stores them verbatim and attests to none of them. They are safe only
+        // because that function derives every one of them server-side — the subtotal
+        // from the cart rows, the fee from marketplace_settings, the shipping from a
+        // constant. `shipping_cost_cents` was the exception until 2026-08-07: it came
+        // off the request body unchecked, so a negative one landed here and generated
+        // a `total_cents` below the subtotal. Anything added to this metadata inherits
+        // that same requirement.
         const subtotalCents = Number(meta.subtotal_cents);
         const shippingCents = Number(meta.shipping_cost_cents);
         const platformFeeCents = Number(meta.platform_fee_cents);

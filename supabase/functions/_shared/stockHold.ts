@@ -21,15 +21,51 @@ export const HOLD_KEY = 'stock_held';
  */
 export type HoldState = 'held' | 'released' | 'sold';
 
-/** How long a buyer may sit on reserved stock before another checkout reaps the hold. */
+/** How long an IDLE checkout may sit on reserved stock before a sweep reaps the hold. */
 export const HOLD_WINDOW_MINUTES = 30;
+
+/**
+ * How long a checkout the buyer is actively paying through may sit on reserved stock.
+ *
+ * The sweep used to reap on `created < cutoff` alone — intent AGE, not idle time. A buyer
+ * 35 minutes into a 3DS challenge (banking-app hop, SMS that takes its time, a card that
+ * wants a call) had her live intent cancelled out from under her by an unrelated buyer's
+ * checkout, and `cancelAndRelease`'s "Stripe refuses to cancel" safety net does not save
+ * her: `requires_action` is perfectly cancellable. Age cannot tell "walked away" from
+ * "still paying"; status can, so the two get different clocks.
+ *
+ * Generous, but not infinite: a challenge nobody came back to still has to give the units
+ * up, or an app killed mid-3DS parks them forever.
+ */
+export const IN_FLIGHT_GRACE_MINUTES = 90;
 
 /** Stale holds inspected per sweep. One Search page is plenty at this marketplace's volume. */
 const SWEEP_LIMIT = 20;
 
+/** One page of a buyer's own recent intents — far more than a real shopper opens in 90 minutes. */
+const LIST_LIMIT = 100;
+
+/** The buyer is mid-payment: a payment method is attached and the processor is engaged. */
+const IN_FLIGHT_STATUSES: ReadonlySet<string> = new Set(['requires_confirmation', 'requires_action']);
+
+/**
+ * Statuses in which a hold is still reserving stock for a checkout that could still be
+ * paid. `succeeded` and `requires_capture` are the sale itself, `canceled` is over — none
+ * of the three should stand between this buyer and her next basket.
+ */
+const LIVE_STATUSES: ReadonlySet<string> = new Set([
+  'requires_payment_method', 'requires_confirmation', 'requires_action', 'processing',
+]);
+
 interface HeldLine {
   variant_id: string | null;
   quantity: number;
+}
+
+/** The conflicting checkout, and how long until a sweep would free it. */
+export interface ConflictingHold {
+  paymentIntentId: string;
+  retryAfterSeconds: number;
 }
 
 function describe(err: unknown): string {
@@ -62,6 +98,25 @@ function heldLines(pi: Stripe.PaymentIntent): HeldLine[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * When a sweep may take this hold back, or null if age must never decide.
+ *
+ * `processing` and `requires_capture` belong to the processor — an answer is coming and
+ * the webhook resolves the hold. `succeeded` is the sale. `canceled` is handled directly,
+ * with no clock at all: Stripe has already confirmed the units can never be paid for.
+ */
+function reapableAt(pi: Stripe.PaymentIntent): number | null {
+  if (pi.status === 'requires_payment_method') return pi.created + HOLD_WINDOW_MINUTES * 60;
+  if (IN_FLIGHT_STATUSES.has(pi.status)) return pi.created + IN_FLIGHT_GRACE_MINUTES * 60;
+  return null;
+}
+
+/** Whether a sweep is free to cancel this intent and hand its units back. */
+export function isReapable(pi: Stripe.PaymentIntent, nowSeconds: number): boolean {
+  const at = reapableAt(pi);
+  return at !== null && nowSeconds >= at;
 }
 
 /** Records the reservation state on the intent. */
@@ -149,18 +204,25 @@ export async function cancelAndRelease(
 /**
  * Reaps holds nobody is coming back for, platform-wide.
  *
+ * Age gets an intent onto the list; `isReapable` decides whether it actually goes. The
+ * query can only ask for `created<cutoff`, and Stripe forbids mixing AND with OR in one
+ * search, so the status rule cannot live in the query and is applied per row instead.
+ * src: https://docs.stripe.com/search#search-query-language · 2026-08-07
+ *
  * Search filters on a cached copy of the intent but returns the current object, so the
- * `holdState` re-check inside cancelAndRelease sees fresh metadata even when the index
- * is behind — and the cancel gate stops a since-succeeded intent from being released.
+ * `holdState` and status re-checks here see fresh data even when the index is behind —
+ * and the cancel gate stops a since-succeeded intent from being released.
  * src: https://docs.stripe.com/search#data-mismatches · 2026-08-05
  *
  * Never throws: a sweep is housekeeping and must not fail a buyer's checkout.
  */
 export async function sweepAbandonedHolds(
   stripe: Stripe,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  nowSeconds?: number
 ): Promise<number> {
-  const cutoff = Math.floor(Date.now() / 1000) - HOLD_WINDOW_MINUTES * 60;
+  const now = nowSeconds ?? Math.floor(Date.now() / 1000);
+  const cutoff = now - HOLD_WINDOW_MINUTES * 60;
   try {
     const stale = await stripe.paymentIntents.search({
       query: `metadata["${HOLD_KEY}"]:"held" AND created<${cutoff}`,
@@ -168,6 +230,19 @@ export async function sweepAbandonedHolds(
     });
     let released = 0;
     for (const pi of stale.data) {
+      if (holdState(pi) !== 'held') continue;
+
+      // Terminal, so there is nothing to cancel and no clock to wait out. Routing this
+      // through cancelAndRelease would throw on the cancel and leave the hold standing —
+      // which is exactly what happens today to any intent whose
+      // `payment_intent.canceled` webhook was never enabled or never delivered. Reaping
+      // it here is what stops the sweep depending on that webhook at all.
+      if (pi.status === 'canceled') {
+        if (await releaseHold(stripe, supabase, pi)) released++;
+        continue;
+      }
+
+      if (!isReapable(pi, now)) continue;
       if (await cancelAndRelease(stripe, supabase, pi)) released++;
     }
     return released;
@@ -175,4 +250,81 @@ export async function sweepAbandonedHolds(
     console.error(`[stockHold] sweep failed: ${describe(err)}`);
     return 0;
   }
+}
+
+/**
+ * This buyer's own recent intents, newest first, or null if Stripe could not be reached.
+ *
+ * `list`, deliberately not `search`. Search filters on an index that is up to a minute
+ * behind ("Don't use search for read-after-write flows... data is searchable in under 1
+ * minute"), so a burst of checkouts fired seconds apart would each search and each see
+ * nothing — the exact case a concurrency cap exists to catch. The list APIs are the
+ * documented answer for read-after-write, and scoping by customer keeps it to one page.
+ * src: https://docs.stripe.com/search#data-freshness · stripe-node 14.25.0 · 2026-08-07
+ */
+async function recentIntentsFor(
+  stripe: Stripe,
+  customerId: string,
+  createdSince: number
+): Promise<Stripe.PaymentIntent[] | null> {
+  try {
+    const page = await stripe.paymentIntents.list({
+      customer: customerId,
+      created: { gte: createdSince },
+      limit: LIST_LIMIT,
+    });
+    return page.data;
+  } catch (err) {
+    console.error(`[stockHold] concurrency check skipped: ${describe(err)}`);
+    return null;
+  }
+}
+
+/**
+ * The live hold, if any, that should stop this buyer opening another checkout.
+ *
+ * A daily rate limit bounds how many checkouts one member may open; this bounds how much
+ * stock she may have reserved at any one instant. Without it she can still open her daily
+ * maximum, never release a single one, and — on a marketplace of one-of-a-kind handmade
+ * items — leave every product she touched reading "out of stock" for the full window.
+ *
+ * Three things deliberately do NOT conflict:
+ *   same cart      Replaying an idempotency key is how this function hands a buyer back
+ *                  her own client_secret after an app reload. Refusing that would lock
+ *                  her out of the checkout she is already paying for.
+ *   reapable holds A hold the sweep may already take back is not stock she is holding in
+ *                  any meaningful sense; the next checkout frees it.
+ *   another buyer  Belt and braces against a customer record shared by a bug: identity
+ *                  comes from the JWT, and the intent must agree.
+ *
+ * Fails OPEN. A Stripe outage must not stop the marketplace selling, and the daily limit
+ * is the backstop that still bounds abuse while this check is blind.
+ */
+export async function findConflictingHold(
+  stripe: Stripe,
+  params: { customerId: string; buyerId: string; cartId: string; nowSeconds?: number }
+): Promise<ConflictingHold | null> {
+  const now = params.nowSeconds ?? Math.floor(Date.now() / 1000);
+
+  // Nothing older than the longest grace can still be unreapable, so nothing older can conflict.
+  const intents = await recentIntentsFor(stripe, params.customerId, now - IN_FLIGHT_GRACE_MINUTES * 60);
+  if (intents === null) return null;
+
+  for (const pi of intents) {
+    if (holdState(pi) !== 'held') continue;
+    if (pi.metadata?.buyer_id !== params.buyerId) continue;
+    if (pi.metadata?.cart_id === params.cartId) continue;
+    if (!LIVE_STATUSES.has(pi.status)) continue;
+    if (isReapable(pi, now)) continue;
+
+    const at = reapableAt(pi);
+    return {
+      paymentIntentId: pi.id,
+      // `processing` has no age clock — the processor answers in seconds and the webhook
+      // resolves it, so quote the ordinary window rather than an honest "unknown".
+      retryAfterSeconds: at === null ? HOLD_WINDOW_MINUTES * 60 : Math.max(0, at - now),
+    };
+  }
+
+  return null;
 }

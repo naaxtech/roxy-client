@@ -38,6 +38,27 @@ finer-grained engineering log lives in `.claude/log.md`.
   membership-aware empty states.
 
 ### Fixed
+- **A buyer could set her own price at marketplace checkout.**
+  `create-product-order` derived the subtotal from the cart server-side, then added a
+  `shipping_cost_cents` taken straight off the request body. `asCheckoutRequest`
+  type-checked it and range-checked nothing, `orders.shipping_cost_cents` is
+  `integer NOT NULL DEFAULT 0` with no `CHECK` (migration 032), and `total_cents` is
+  `GENERATED ALWAYS AS (subtotal + shipping + tax)`. Posting
+  `shipping_cost_cents: -8000` against a ₱100.00 cart opened the PaymentIntent for
+  ₱20.00. Stripe accepted it, because `application_fee_amount` is computed from the
+  subtotal alone and 1000 ≤ 2000 still held; the seller shipped a ₱100 item and netted
+  ₱10. Nothing alerted, because the order row that landed was internally consistent —
+  `subtotal_cents: 10000`, `shipping_cost_cents: -8000`, generated `total_cents: 2000`.
+  The field is now **gone from the request shape** rather than clamped: an unused input
+  a client can still set is one refactor away from being read again. Shipping is a
+  server-side constant (`SHIPPING_COST_CENTS = 0`) beside a note on how to make it real
+  — a rate table keyed on origin, destination and parcel, never a body field. This
+  matches what `CheckoutSheet` already promises the buyer: no separate shipping charge.
+  The request parser and the constant moved to `create-product-order/checkout.ts`, free
+  of Deno/Stripe/Supabase imports, so the jest suite can assert on the deployed
+  function's own money math instead of a copy of it. **Requires an edge-function
+  deploy.** Two `CHECK` constraints on `orders` (`shipping_cost_cents >= 0`,
+  `total_cents > 0`) are pending, as defence in depth.
 - **Colour contrast was enforced by a comment, so it wasn't enforced.** `lib/theme.ts`
   carried `textMuted: '#8B7AA8', // soft purple — design text-3 (AA Large ✓)`. The note was
   true — 3.6:1 clears the 3:1 large-text bar — and the token was then used as 12px body copy

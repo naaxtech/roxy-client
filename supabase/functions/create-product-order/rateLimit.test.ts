@@ -1,0 +1,247 @@
+// Regression test for the per-buyer checkout limit on create-product-order.
+//
+// Run from supabase/functions/:
+//   deno test --allow-net --allow-env create-product-order/rateLimit.test.ts
+//
+// Why this exists: this function opened a Stripe PaymentIntent and decremented
+// every variant in the cart with NO per-user limit of any kind, while the other
+// twelve authenticated functions in this project all call checkRateLimit. Each
+// request with a fresh idempotency_key took more stock. Holds come back only via
+// the buyer's own release call, a payment_intent.canceled webhook, or a sweep
+// that runs only when somebody else checks out, reaps at most 20 intents, and
+// ignores anything younger than 30 minutes — so holds accrued far faster than
+// they were reaped, and on a marketplace of one-of-a-kind handmade items one
+// member could make every product on the platform read "out of stock" for free.
+//
+// The second assertion here matters as much as the first. checkRateLimit counts
+// rows in ai_call_log; nothing else writes them. Six functions in this project
+// (cancel-event, create-payment-intent, gdpr-delete, gdpr-export,
+// stripe-dashboard-link, submit-report) call checkRateLimit and never call
+// logAiCall, so their counter is permanently 0 and their limit has never once
+// refused a request. A guard added without its matching log would be exactly
+// that: decorative.
+//
+// The handler is exercised for real. With SUPABASE_URL on localhost the module's
+// DEV_MOCK is on, so the checkout returns its mock body without touching Stripe —
+// and per CLAUDE.md section 7 the rate limit still runs, which is precisely the
+// path under test.
+
+// NOTE: the handler module is imported dynamically, far below. A static import
+// here would be hoisted above the Deno.serve stub and the module would bind a
+// real port at load time instead of handing over its handler.
+
+function assertEquals(actual: unknown, expected: unknown, label: string): void {
+  const a = JSON.stringify(actual);
+  const e = JSON.stringify(expected);
+  if (a !== e) throw new Error(`${label}: expected ${e}, got ${a}`);
+}
+
+const BUYER = '11111111-2222-3333-4444-555555555555';
+const OTHER_BUYER = '99999999-8888-7777-6666-555555555555';
+const KID = 'test-signing-key';
+
+const enc = new TextEncoder();
+const b64url = (bytes: Uint8Array) =>
+  btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64urlJson = (value: unknown) => b64url(enc.encode(JSON.stringify(value)));
+
+const KEY_PARAMS = { name: 'ECDSA', namedCurve: 'P-256' } as const;
+const SIGN_PARAMS = { name: 'ECDSA', hash: 'SHA-256' } as const;
+
+const projectKey = await crypto.subtle.generateKey(KEY_PARAMS, true, ['sign', 'verify']);
+const publicJwk = await crypto.subtle.exportKey('jwk', projectKey.publicKey);
+
+interface LogRow {
+  user_id: string;
+  function_name: string;
+  called_at: string;
+}
+
+// Stands in for the project's Auth origin and its PostgREST endpoint. ai_call_log
+// is kept in memory so the real checkRateLimit/logAiCall pair does real counting.
+const rows: LogRow[] = [];
+
+function countMatching(url: URL): number {
+  const eq = (param: string): string | null => {
+    const raw = url.searchParams.get(param);
+    return raw !== null && raw.startsWith('eq.') ? raw.slice('eq.'.length) : null;
+  };
+  const gte = url.searchParams.get('called_at');
+  const since = gte !== null && gte.startsWith('gte.') ? gte.slice('gte.'.length) : null;
+
+  return rows.filter((row) => {
+    const userId = eq('user_id');
+    const fnName = eq('function_name');
+    if (userId !== null && row.user_id !== userId) return false;
+    if (fnName !== null && row.function_name !== fnName) return false;
+    if (since !== null && row.called_at < since) return false;
+    return true;
+  }).length;
+}
+
+const abort = new AbortController();
+const server = Deno.serve({ port: 0, signal: abort.signal, onListen: () => {} }, async (req) => {
+  const url = new URL(req.url);
+
+  if (url.pathname.endsWith('/.well-known/jwks.json')) {
+    return Response.json({ keys: [{ ...publicJwk, kid: KID, alg: 'ES256', use: 'sig' }] });
+  }
+
+  if (url.pathname === '/rest/v1/ai_call_log') {
+    if (req.method === 'HEAD' || req.method === 'GET') {
+      // PostgREST reports an exact count in Content-Range; supabase-js reads the
+      // value after the slash. Anything else and the count silently reads as null.
+      return new Response(null, { status: 200, headers: { 'content-range': `*/${countMatching(url)}` } });
+    }
+    if (req.method === 'POST') {
+      const inserted = await req.json() as LogRow | LogRow[];
+      for (const row of Array.isArray(inserted) ? inserted : [inserted]) {
+        rows.push({ ...row, called_at: new Date().toISOString() });
+      }
+      return new Response(null, { status: 201 });
+    }
+  }
+
+  return Response.json({ message: 'unexpected request' }, { status: 500 });
+});
+
+const origin = `http://localhost:${(server.addr as Deno.NetAddr).port}`;
+
+// Must be set before the handler module is imported: DEV_MOCK is evaluated at
+// module scope, and `localhost` is what turns it on.
+Deno.env.set('SUPABASE_URL', origin);
+Deno.env.set('SUPABASE_ANON_KEY', 'test-anon-key');
+Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+
+// Capture the handler instead of letting the module bind a port.
+let handler: ((req: Request) => Response | Promise<Response>) | null = null;
+const realServe = Deno.serve;
+Deno.serve = ((first: unknown, second?: unknown) => {
+  handler = (typeof first === 'function' ? first : second) as (req: Request) => Promise<Response>;
+  return { finished: Promise.resolve(), shutdown: () => Promise.resolve(), addr: server.addr, ref() {}, unref() {} };
+}) as unknown as typeof Deno.serve;
+
+const { CHECKOUT_ATTEMPTS_PER_DAY } = await import('./index.ts');
+Deno.serve = realServe;
+
+function call(req: Request): Promise<Response> {
+  if (handler === null) throw new Error('create-product-order never registered a handler');
+  return Promise.resolve(handler(req));
+}
+
+async function token(userId: string): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64urlJson({ alg: 'ES256', typ: 'JWT', kid: KID });
+  const body = b64urlJson({
+    sub: userId,
+    role: 'authenticated',
+    aud: 'authenticated',
+    iss: `${origin}/auth/v1`,
+    iat: now,
+    exp: now + 3600,
+  });
+  const signature = new Uint8Array(
+    await crypto.subtle.sign(SIGN_PARAMS, projectKey.privateKey, enc.encode(`${header}.${body}`)),
+  );
+  return `${header}.${body}.${b64url(signature)}`;
+}
+
+async function checkout(userId: string, n: number): Promise<Response> {
+  return await call(new Request('https://roxy.test/functions/v1/create-product-order', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await token(userId)}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      cart_id: `cart-${n}`,
+      idempotency_key: `key-${userId}-${n}`,
+      shipping_address: {
+        name: 'A Buyer', line1: '1 Test Street', city: 'Manila',
+        state: 'NCR', postal_code: '1000', country: 'PH',
+      },
+    }),
+  }));
+}
+
+function reset(): void {
+  rows.length = 0;
+}
+
+Deno.test('create-product-order refuses checkouts past the daily cap', async () => {
+  reset();
+
+  for (let n = 0; n < CHECKOUT_ATTEMPTS_PER_DAY; n++) {
+    assertEquals((await checkout(BUYER, n)).status, 200, `attempt ${n + 1} within the cap`);
+  }
+
+  const refused = await checkout(BUYER, CHECKOUT_ATTEMPTS_PER_DAY);
+  assertEquals(refused.status, 429, 'the attempt past the cap');
+
+  const payload = await refused.json() as { success: boolean; error: string };
+  assertEquals(payload.success, false, 'refusal is an error response');
+  assertEquals(
+    payload.error.includes('cart-') || payload.error.includes(BUYER),
+    false,
+    'the refusal must not echo cart ids or the buyer id back',
+  );
+});
+
+Deno.test('every accepted checkout consumes exactly one unit of quota', async () => {
+  reset();
+
+  for (let n = 0; n < 3; n++) await checkout(BUYER, n);
+
+  // Without this, checkRateLimit counts an empty table forever and the cap above
+  // can never be reached — the bug five other functions in this project have.
+  assertEquals(rows.length, 3, 'attempts recorded in ai_call_log');
+  assertEquals(rows.every((r) => r.function_name === 'create-product-order'), true, 'logged under this function');
+  assertEquals(rows.every((r) => r.user_id === BUYER), true, 'logged against the caller from the JWT');
+});
+
+Deno.test('a refused checkout does not consume further quota', async () => {
+  reset();
+
+  for (let n = 0; n <= CHECKOUT_ATTEMPTS_PER_DAY; n++) await checkout(BUYER, n);
+  const afterFirstRefusal = rows.length;
+  await checkout(BUYER, 999);
+
+  assertEquals(rows.length, afterFirstRefusal, 'a 429 must not bill the buyer another attempt');
+});
+
+Deno.test('one buyer cannot exhaust another buyer’s quota', async () => {
+  reset();
+
+  for (let n = 0; n <= CHECKOUT_ATTEMPTS_PER_DAY; n++) await checkout(BUYER, n);
+
+  assertEquals((await checkout(OTHER_BUYER, 0)).status, 200, 'an unrelated buyer is unaffected');
+});
+
+Deno.test('handing a hold back is never rate limited', async () => {
+  reset();
+
+  for (let n = 0; n <= CHECKOUT_ATTEMPTS_PER_DAY; n++) await checkout(BUYER, n);
+
+  // A buyer who has hit the cap must still be able to give stock back — rate
+  // limiting the release would keep her holds standing for the full window and
+  // make the marketplace's inventory problem worse, not better.
+  const release = await call(new Request('https://roxy.test/functions/v1/create-product-order', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await token(BUYER)}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ release_payment_intent_id: 'pi_whatever' }),
+  }));
+
+  assertEquals(release.status, 200, 'release accepted while checkout is capped');
+});
+
+Deno.test('an unauthenticated caller is refused before any quota is touched', async () => {
+  reset();
+
+  const res = await call(new Request('https://roxy.test/functions/v1/create-product-order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cart_id: 'cart-x', idempotency_key: 'k', shipping_address: {} }),
+  }));
+
+  assertEquals(res.status, 401, 'no token, no checkout');
+  assertEquals(rows.length, 0, 'an anonymous request must not be able to burn anyone’s quota');
+});
+
+globalThis.addEventListener('unload', () => abort.abort());

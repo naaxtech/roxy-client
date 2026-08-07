@@ -73,6 +73,28 @@ jobs:
       - name: ESLint
         run: npx eslint . --ext .ts,.tsx --max-warnings 0
 
+  edge-functions:
+    name: Edge Function Tests (Deno)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supabase/functions
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # --no-check: stripe-node 14.25.0 pins `apiVersion` in its types to
+      # '2023-10-16', while create-product-order and create-payment-intent both
+      # pass '2024-06-20' (valid at runtime — it is just the Stripe-Version
+      # header). Type-checking here would fail on that pre-existing mismatch and
+      # tell us nothing about the tests. Drop this flag once the pin is resolved.
+      - name: Run edge function tests
+        run: deno test --no-check --allow-net --allow-env .
+
   studio-e2e:
     name: Studio E2E (Playwright)
     runs-on: ubuntu-latest

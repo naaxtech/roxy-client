@@ -209,9 +209,9 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
         <Text style={styles.totalLabel}>Subtotal</Text>
         <Text style={styles.totalAmount}>{formatMoney(subtotal, currency)}</Text>
       </View>
-      {/* create-product-order defaults shipping_cost_cents to 0, so the total on the
-          payment step IS the subtotal. Saying "calculated at next step" promised a
-          step that never runs. */}
+      {/* create-product-order hardcodes shipping to 0 server-side — it is a constant
+          there, not a field this client may send — so the total on the payment step IS
+          the subtotal. Saying "calculated at next step" promised a step that never runs. */}
       <Text style={styles.shippingNote}>No separate shipping charge — the total on the next step is what you pay.</Text>
       <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep('shipping')}>
         <Text style={styles.primaryBtnText}>Continue to Shipping →</Text>

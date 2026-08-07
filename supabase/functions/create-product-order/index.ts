@@ -1,10 +1,15 @@
 // supabase/functions/create-product-order/index.ts
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
+import { checkRateLimit, logAiCall } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 import {
-  HOLD_WINDOW_MINUTES, cancelAndRelease, holdState, markHold, sweepAbandonedHolds,
+  HOLD_WINDOW_MINUTES, cancelAndRelease, findConflictingHold, holdState, markHold, sweepAbandonedHolds,
 } from '../_shared/stockHold.ts';
+import {
+  SHIPPING_COST_CENTS, asCheckoutRequest, asString,
+  type CheckoutRequest,
+} from './checkout.ts';
 import Stripe from 'npm:stripe@14';
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -108,22 +113,35 @@ interface CartRow {
   business: BusinessRow | null;
 }
 
-interface ShippingAddress {
-  name: string;
-  line1: string;
-  line2?: string;
-  city: string;
-  state: string;
-  postal_code: string;
-  country: string;
-}
+const FN_NAME = 'create-product-order';
 
-interface CheckoutRequest {
-  cartId: string;
-  shipping: ShippingAddress;
-  idempotencyKey: string;
-  shippingCostCents: number;
-}
+/**
+ * Postgres names the offending key in its error text, so a failed ai_call_log insert can
+ * carry the buyer's user_id into the log line. The alarm is worth keeping — a counter that
+ * stops incrementing silently disarms the rate limit below — but not at the cost of a
+ * user id in plaintext.
+ */
+const UUID_ANYWHERE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+
+/**
+ * Checkout attempts one member may open per day.
+ *
+ * Every attempt opens a PaymentIntent and takes stock out of `product_variants.stock`, so
+ * an unlimited endpoint is an unlimited inventory weapon: one member could hold every
+ * product on the platform at "out of stock" for free. This function shipped with no limit
+ * at all while the other twelve authenticated functions all take one.
+ *
+ * 20 is roughly four times what the busiest honest shopper does. Carts here are scoped to
+ * one business, so a real buyer ordering from three sellers in a day opens three checkouts,
+ * plus abandonments and a re-open after changing an address — call it five. A retry of the
+ * same basket replays its idempotency key and is handed the same intent, so declines do not
+ * multiply attempts.
+ *
+ * It also sits below what the concurrency cap alone would allow: at one live hold per buyer
+ * and a 30-minute window, a day holds 48 windows. The daily cap is the burst ceiling, the
+ * concurrency cap is the binding constraint, and neither is load-bearing on its own.
+ */
+export const CHECKOUT_ATTEMPTS_PER_DAY = 20;
 
 /** Statuses in which an intent can still be paid, so its stock hold is still meaningful. */
 const PAYABLE_STATUSES = new Set(['requires_payment_method', 'requires_confirmation', 'requires_action']);
@@ -136,40 +154,6 @@ function stripeClient(): Stripe | null {
   const key = Deno.env.get('STRIPE_SECRET_KEY');
   if (!key) return null;
   return new Stripe(key, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
-}
-
-function asString(value: unknown): string | null {
-  return typeof value === 'string' && value.length > 0 ? value : null;
-}
-
-function asShippingAddress(value: unknown): ShippingAddress | null {
-  if (typeof value !== 'object' || value === null) return null;
-  const raw = value as Record<string, unknown>;
-  const name = asString(raw.name);
-  const line1 = asString(raw.line1);
-  const city = asString(raw.city);
-  const state = asString(raw.state);
-  const postalCode = asString(raw.postal_code);
-  const country = asString(raw.country);
-  if (!name || !line1 || !city || !state || !postalCode || !country) return null;
-  return {
-    name, line1, city, state, country,
-    postal_code: postalCode,
-    line2: typeof raw.line2 === 'string' ? raw.line2 : undefined,
-  };
-}
-
-function asCheckoutRequest(body: Record<string, unknown>): CheckoutRequest | null {
-  const cartId = asString(body.cart_id);
-  const shipping = asShippingAddress(body.shipping_address);
-  const idempotencyKey = asString(body.idempotency_key);
-  if (!cartId || !shipping || !idempotencyKey) return null;
-  return {
-    cartId,
-    shipping,
-    idempotencyKey,
-    shippingCostCents: typeof body.shipping_cost_cents === 'number' ? body.shipping_cost_cents : 0,
-  };
 }
 
 /**
@@ -204,7 +188,7 @@ async function openCheckout(
   userId: string,
   request: CheckoutRequest
 ): Promise<Response> {
-  const { cartId, shipping, idempotencyKey, shippingCostCents } = request;
+  const { cartId, shipping, idempotencyKey } = request;
 
   // 1. Load cart + items + products + variants
   const { data: cartData, error: cartErr } = await supabase
@@ -272,6 +256,24 @@ async function openCheckout(
     return errorResponse(`Stripe error: ${describe(err)}`, 500);
   }
 
+  // 3b. One live hold per buyer, checked after the sweep has had its chance to free
+  //     whatever it could and before a single unit moves. The daily limit caps how many
+  //     checkouts she may open; this caps how much stock she may sit on at once. Without
+  //     it she can open the daily maximum, release none of them, and leave every product
+  //     she touched reading "out of stock" for the whole window.
+  const conflict = await findConflictingHold(stripe, {
+    customerId: stripeCustomerId,
+    buyerId: userId,
+    cartId,
+  });
+  if (conflict !== null) {
+    const minutes = Math.max(1, Math.ceil(conflict.retryAfterSeconds / 60));
+    return errorResponse(
+      `You already have a checkout open. Finish it, or close it and try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`,
+      409,
+    );
+  }
+
   // 4. Calculate totals
   const subtotalCents = items.reduce((sum: number, item: CartItemRow) => {
     const price = item.variant ? item.variant.price_cents : (item.product?.base_price_cents ?? 0);
@@ -281,7 +283,10 @@ async function openCheckout(
   const { data: settings } = await supabase.from('marketplace_settings').select('product_fee_percent').single();
   const feePercent = Number(settings?.product_fee_percent ?? 10);
   const platformFeeCents = Math.floor(subtotalCents * (feePercent / 100));
-  const totalCents = subtotalCents + shippingCostCents;
+  // Every term is server-derived: the subtotal from the cart rows, the fee from
+  // marketplace_settings, the shipping from a constant. Nothing on the request body
+  // reaches this line. See SHIPPING_COST_CENTS in ./checkout.ts before changing it.
+  const totalCents = subtotalCents + SHIPPING_COST_CENTS;
 
   // 5. Price snapshots for the webhook. This is also what a hold is read back from when
   //    it is released, so it has to carry variant_id and quantity for every line.
@@ -319,7 +324,7 @@ async function openCheckout(
           idempotency_key: idempotencyKey,
           items_json: JSON.stringify(itemsMeta),
           subtotal_cents: String(subtotalCents),
-          shipping_cost_cents: String(shippingCostCents),
+          shipping_cost_cents: String(SHIPPING_COST_CENTS),
           platform_fee_cents: String(platformFeeCents),
           shipping_name: shipping.name,
           shipping_line1: shipping.line1,
@@ -437,6 +442,30 @@ Deno.serve(async (req) => {
   const checkout = asCheckoutRequest(body);
   if (checkout === null) {
     return errorResponse('Missing required fields: cart_id, shipping_address, idempotency_key', 400);
+  }
+
+  // Rate limit before anything can move stock, and before the DEV_MOCK return so the limit
+  // is exercised in development too (CLAUDE.md section 7). The release branch above is
+  // deliberately left unlimited: a buyer who has hit her cap must still be able to hand
+  // stock back, and refusing that would keep her holds standing for the full window.
+  const { allowed } = await checkRateLimit({
+    userId,
+    fnName: FN_NAME,
+    maxCount: CHECKOUT_ATTEMPTS_PER_DAY,
+    windowType: 'daily',
+  });
+  if (!allowed) {
+    return errorResponse('Too many checkout attempts today — please try again tomorrow', 429);
+  }
+
+  // checkRateLimit counts rows in ai_call_log and nothing else writes them, so the limit
+  // above only ever refuses anything because of this line. Six other functions in this
+  // project call checkRateLimit without it — cancel-event, create-payment-intent,
+  // gdpr-delete, gdpr-export, stripe-dashboard-link, submit-report — and every one of
+  // them has a cap that has never once fired.
+  const { error: logErr } = await logAiCall({ userId, fnName: FN_NAME, wasMock: DEV_MOCK });
+  if (logErr) {
+    console.error(`[${FN_NAME}] rate-limit counter not incremented: ${logErr.replace(UUID_ANYWHERE, '<uuid>')}`);
   }
 
   if (DEV_MOCK) {
