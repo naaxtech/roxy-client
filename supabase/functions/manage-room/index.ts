@@ -2,7 +2,7 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
-import { dailyRoomName, deleteDailyRoom, ensureDailyRoom } from '../_shared/daily.ts';
+import { RoomClaimError, deleteDailyRoom, ensureDailyRoom } from '../_shared/daily.ts';
 
 Deno.serve(async (req) => {
   const corsRes = handleCors(req);
@@ -151,14 +151,22 @@ Deno.serve(async (req) => {
     // on Daily even though the row still holds its URL, and a room that DOES
     // still exist makes a blind create fail — Daily refuses a duplicate name,
     // which surfaced as a 500 on the host's second "Go Live".
-    const roomName = (room.daily_room_name as string | null) ?? dailyRoomName(roomId);
-
+    //
+    // storedName is deliberately null: a room only reaches here when it is NOT
+    // already live (the live case returned above), so there is no call in
+    // progress to keep together. ensureDailyRoom therefore always resolves the
+    // canonical full-id name, which is what migrates a pre-fix room off its
+    // collision-prone short name the next time a host goes live.
     let ensured: { url: string; name: string };
     try {
-      ensured = await ensureDailyRoom(roomName, room.max_participants as number | null, dailyApiKey);
+      ensured = await ensureDailyRoom(
+        { roomId: room.id as string, storedName: null },
+        room.max_participants as number | null,
+        dailyApiKey,
+      );
     } catch (e) {
       console.error(
-        `manage-room: could not provision room_id=${roomId} reason=${e instanceof Error ? e.message : 'unknown'}`,
+        `manage-room: could not provision room reason=${e instanceof Error ? e.message : 'unknown'}`,
       );
       return errorResponse('Could not reach the video service', 502);
     }
@@ -188,14 +196,21 @@ Deno.serve(async (req) => {
     if (!DEV_MOCK && room.daily_room_name) {
       if (!dailyApiKey) {
         console.error(
-          `manage-room: DAILY_API_KEY is not set — room_id=${roomId} marked closed but participants were NOT ejected`,
+          'manage-room: DAILY_API_KEY is not set — room marked closed but participants were NOT ejected',
         );
       } else {
         try {
-          await deleteDailyRoom(room.daily_room_name as string, dailyApiKey);
+          // Identity, not a bare name: deleting an unverified stored name is how
+          // ending one community's room could have torn down another's live call.
+          await deleteDailyRoom(
+            { roomId: room.id as string, storedName: room.daily_room_name as string },
+            dailyApiKey,
+          );
         } catch (e) {
           console.error(
-            `manage-room: could not delete daily room for room_id=${roomId} reason=${e instanceof Error ? e.message : 'unknown'}`,
+            e instanceof RoomClaimError
+              ? 'manage-room: refused to delete a daily room this row has no claim to'
+              : `manage-room: could not delete daily room reason=${e instanceof Error ? e.message : 'unknown'}`,
           );
         }
       }

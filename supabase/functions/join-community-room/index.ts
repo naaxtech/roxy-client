@@ -2,8 +2,8 @@ import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 import {
+  RoomClaimError,
   createMeetingToken,
-  dailyRoomName,
   ensureDailyRoom,
   roomNameFromUrl,
 } from '../_shared/daily.ts';
@@ -57,33 +57,50 @@ Deno.serve(async (req) => {
   if (room.status === 'closed')    return errorResponse('Room is closed', 410);
 
   // Resolve the Daily room, confirming it still exists rather than trusting the
-  // stored URL. Prefer the stored name, then the name inside a stored URL, then
-  // the shared fallback — so this and manage-room always land on one room.
+  // stored URL. ensureDailyRoom derives the name from the row id itself, so this
+  // and manage-room always land on one room and can never land on another row's.
   const storedName = room.daily_room_name as string | null;
   const storedUrl  = room.daily_room_url  as string | null;
-  const roomName = storedName
-    ?? (storedUrl ? roomNameFromUrl(storedUrl) : null)
-    ?? dailyRoomName(room_id);
 
-  let roomUrl: string;
+  // Only follow a stored name while a call is actually in progress. A room that
+  // is not live has nobody to keep together, so there is nothing to preserve and
+  // ensureDailyRoom mints the collision-free canonical name instead — which is
+  // what retires the pre-fix short names without cutting anyone off mid-call.
+  const offeredName = room.status === 'live'
+    ? (storedName ?? (storedUrl ? roomNameFromUrl(storedUrl) : null))
+    : null;
+
+  // room.id, not the request body: the row is the authority for its own name.
+  const identity = { roomId: room.id as string, storedName: offeredName };
+
+  let ensured: { url: string; name: string };
   try {
-    const ensured = await ensureDailyRoom(
-      roomName, room.max_participants as number | null, dailyApiKey,
+    ensured = await ensureDailyRoom(
+      identity, room.max_participants as number | null, dailyApiKey,
     );
-    roomUrl = ensured.url;
   } catch (e) {
-    // Legible server-side cause; no key, no token, no user identifiers.
+    if (e instanceof RoomClaimError) {
+      // The row points at a Daily room it cannot prove is its own. Joining it
+      // could put her in another community's call, so refuse and make a host
+      // reopen — never retry, and never fall back to the stored name.
+      console.error('join-community-room: refused a daily room this row has no claim to');
+      return errorResponse('This room needs to be reopened by a host', 409);
+    }
+    // Legible server-side cause; no key, no token, no identifiers.
     console.error(
-      `join-community-room: could not provision room_id=${room_id} reason=${e instanceof Error ? e.message : 'unknown'}`,
+      `join-community-room: could not provision room reason=${e instanceof Error ? e.message : 'unknown'}`,
     );
     return errorResponse('Could not reach the video service', 502);
   }
+
+  const roomUrl = ensured.url;
+  const roomName = ensured.name;
 
   if (roomUrl !== storedUrl || roomName !== storedName) {
     await supabase
       .from('community_rooms')
       .update({ daily_room_url: roomUrl, daily_room_name: roomName })
-      .eq('id', room_id);
+      .eq('id', room.id);
   }
 
   // Determine if joining user is admin/moderator
@@ -127,7 +144,7 @@ Deno.serve(async (req) => {
     token = await createMeetingToken(roomName, displayName, auth.userId, isOwner, dailyApiKey);
   } catch (e) {
     console.error(
-      `join-community-room: token mint failed room_id=${room_id} reason=${e instanceof Error ? e.message : 'unknown'}`,
+      `join-community-room: token mint failed reason=${e instanceof Error ? e.message : 'unknown'}`,
     );
     return errorResponse('Could not reach the video service', 502);
   }

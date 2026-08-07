@@ -2,6 +2,7 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
+import { RoomClaimError, ejectParticipants } from '../_shared/daily.ts';
 
 Deno.serve(async (req) => {
   const corsRes = handleCors(req);
@@ -22,7 +23,7 @@ Deno.serve(async (req) => {
   const supabase = getSupabaseClient();
   const { data: room } = await supabase
     .from('community_rooms')
-    .select('created_by, daily_room_name, community_id')
+    .select('id, created_by, daily_room_name, community_id')
     .eq('id', roomId)
     .single();
 
@@ -49,16 +50,23 @@ Deno.serve(async (req) => {
     return errorResponse('This room has no active video session', 409);
   }
 
-  const res = await fetch(`https://api.daily.co/v1/rooms/${room.daily_room_name}/eject`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${dailyApiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ids: [sessionId] }),
-  });
-
-  if (!res.ok) {
-    // Daily's body can echo request detail — log it, don't return it.
+  // Identity, not a bare name. Without the claim check a moderator of one
+  // community could eject members of another whenever the two rows' Daily room
+  // names coincided.
+  try {
+    await ejectParticipants(
+      { roomId: room.id as string, storedName: room.daily_room_name as string },
+      [sessionId],
+      dailyApiKey,
+    );
+  } catch (e) {
+    if (e instanceof RoomClaimError) {
+      console.error('kick-participant: refused to eject from a room this row has no claim to');
+      return errorResponse('This room has no active video session', 409);
+    }
+    // Daily's body can echo request detail — never return it.
     console.error(
-      `kick-participant: eject failed room_id=${roomId} status=${res.status} body=${await res.text()}`,
+      `kick-participant: eject failed reason=${e instanceof Error ? e.message : 'unknown'}`,
     );
     return errorResponse('Could not remove that participant', 502);
   }

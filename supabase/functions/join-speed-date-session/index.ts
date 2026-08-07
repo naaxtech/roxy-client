@@ -3,6 +3,7 @@ import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { checkRateLimit, logAiCall } from '../_shared/rateLimit.ts';
 import { generateSpeedDatePrompts } from '../_shared/speedDatePrompts.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
+import { dailySpeedDateRoomName } from '../_shared/daily.ts';
 
 const FN_NAME = 'join-speed-date-session';
 
@@ -41,7 +42,13 @@ async function getOrCreateDailyRoom(sessionId: string): Promise<string> {
   const dailyApiKey = Deno.env.get('DAILY_API_KEY');
   if (!dailyApiKey) throw new Error('DAILY_API_KEY not configured');
 
-  const roomName = `roxy-speed-date-${sessionId.slice(0, 8)}`;
+  // Derived from the FULL session id. This was
+  // `roxy-speed-date-${sessionId.slice(0, 8)}` — 32 bits, and the GET below
+  // adopts whatever already exists under the name, so a birthday collision put
+  // two strangers into somebody else's 1:1 date rather than failing. Only this
+  // session id can produce this name, so the adoption below is now provably its
+  // own room.
+  const roomName = dailySpeedDateRoomName(sessionId);
 
   const getRes = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
     headers: { Authorization: `Bearer ${dailyApiKey}` },
@@ -70,8 +77,9 @@ async function getOrCreateDailyRoom(sessionId: string): Promise<string> {
   });
 
   if (!createRes.ok) {
-    const err = await createRes.text();
-    throw new Error(`Daily.co room creation failed: ${err}`);
+    // Status only: this message is returned to the client below, and Daily's
+    // body echoes request detail.
+    throw new Error(`Daily.co room creation failed (HTTP ${createRes.status})`);
   }
   const room = await createRes.json();
   return room.url as string;

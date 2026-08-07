@@ -1,10 +1,15 @@
 name: CI
 
+# `version*` matters: all Roxy work moved to `version2` on 2026-08-05 (standing
+# order), and that branch matched neither trigger — so every job here, including
+# the edge-function Deno suite, sat idle through an entire day of commits while
+# the only thing actually gating anything was a human running npx by hand.
+# A workflow that never fires is not CI.
 on:
   push:
-    branches: [main, 'session-*']
+    branches: [main, 'session-*', 'version*']
   pull_request:
-    branches: [main]
+    branches: [main, 'version*']
 
 jobs:
   test:
