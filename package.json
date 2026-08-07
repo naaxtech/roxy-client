@@ -15,13 +15,11 @@
     "migration:list": "supabase migration list",
     "db:admin": "node scripts/supabase-admin.mjs"
   },
+  "_comment": "This root is NOT an npm workspaces root — there is deliberately no `workspaces` field, and apps/mobile and apps/studio each carry their own package-lock.json. So anything listed here is installed into the root node_modules and is reachable from BOTH apps by Node's parent-directory fallback, without appearing in either app's lockfile. It held expo ^55.0.24, react-dom 19.2.0 and @types/react ~19.2.10 against an app pinned to expo 51.0.39 / React 18.2.0 — four majors adrift. Nothing at root imported them (the scripts here are Supabase-only) and apps/mobile carries its own copies, so nothing resolved to them; but `npx expo` run from the repo root picked Expo 55, and the day apps/mobile lost a package it would have silently fallen back to a React 19 type tree. Keep this list to what the root scripts actually import.",
   "dependencies": {
-    "@supabase/supabase-js": "^2.43.0",
-    "expo": "^55.0.24",
-    "react-dom": "19.2.0"
+    "@supabase/supabase-js": "^2.43.0"
   },
   "devDependencies": {
-    "@types/react": "~19.2.10",
     "supabase": "^2.99.0",
     "typescript": "~5.9.2"
   }
