@@ -97,7 +97,15 @@ function makePost(overrides: Partial<ReelRow> = {}): ReelRow {
 
 const noop = (): void => undefined;
 
-function cell(post: ReelRow, activeItemId: string | null = null) {
+/**
+ * `activeItemId` defaults to this post: an inactive cell is now hidden from the
+ * accessibility tree, and RNTL 12 excludes hidden subtrees from every query by
+ * default — so a routing test rendered inactive would find nothing at all.
+ * The tests that care about inactivity say so, and read through
+ * `includeHiddenElements`.
+ * src: https://callstack.github.io/react-native-testing-library/docs/api/queries#includehiddenelements-option · @testing-library/react-native 12.9.0 · 2026-08-07
+ */
+function cell(post: ReelRow, activeItemId: string | null = post.id) {
   return render(
     <FeedCell
       post={post}
@@ -225,6 +233,78 @@ describe('FeedCell video lifecycle', () => {
     );
 
     expect(videoCalls().every((call) => call.isActive === false)).toBe(true);
+  });
+});
+
+/**
+ * The shape of a rendered node this file needs. `react-test-renderer` ships no
+ * types and is not a declared dependency, so the instance is described here
+ * rather than imported.
+ */
+interface Node {
+  type: unknown;
+  props: Record<string, unknown>;
+  findAll: (predicate: (node: Node) => boolean) => Node[];
+}
+
+describe('FeedCell accessibility window', () => {
+  const ALL: PostType[] = [
+    'video', 'photo', 'gallery', 'standard', 'poll', 'resource', 'roxy_link', 'event',
+  ];
+
+  /** Everything a cell needs to render its richest form, whatever type it is. */
+  const FURNISHED: Partial<ReelRow> = {
+    video_url: 'https://cdn.example.test/a.m3u8',
+    media_urls: ['a.jpg', 'b.jpg'],
+    content: 'Next event?\n• Film night\n• Day hike',
+  };
+
+  it('keeps every cell the viewer is not on out of the accessibility tree', () => {
+    // `drawDistance = pageH * 2` mounts about five cells, each carrying ~12
+    // accessible nodes. Without this a TalkBack user swiping right from the top
+    // of the visible post walks sixty controls — five "Like video", five
+    // "Report, block or hide" — with no cue which post any of them belongs to,
+    // and no way to reach the next post, because the pager only advances on a
+    // real scroll.
+    for (const post_type of ALL) {
+      // `includeHiddenElements` is required HERE and nowhere else in this file,
+      // and that asymmetry is the assertion. RNTL 12 excludes elements hidden
+      // from accessibility by default, so an inactive cell is unreachable to the
+      // same query that finds an active one — the library is confirming the gate
+      // works before a single prop is inspected.
+      // src: https://callstack.github.io/react-native-testing-library/docs/api/queries#includehiddenelements · @testing-library/react-native 12.9.0 · 2026-08-07
+      const root = cell(makePost({ post_type, ...FURNISHED }), 'someone-else')
+        .getByTestId('feed-cell-a11y', { includeHiddenElements: true });
+
+      expect(root.props.accessibilityElementsHidden).toBe(true);
+      expect(root.props.importantForAccessibility).toBe('no-hide-descendants');
+    }
+  });
+
+  it('exposes the cell the viewer is actually on', () => {
+    for (const post_type of ALL) {
+      const root = cell(makePost({ post_type, ...FURNISHED }), 'p1')
+        .getByTestId('feed-cell-a11y');
+
+      expect(root.props.accessibilityElementsHidden).toBe(false);
+      expect(root.props.importantForAccessibility).toBe('yes');
+    }
+  });
+
+  it('gates the whole cell, chrome included — not merely the body', () => {
+    // The rail is where the sixty nodes come from, and it is drawn by shared
+    // chrome rather than by any one cell, so the gate has to sit above both.
+    const root = cell(makePost({ post_type: 'video', ...FURNISHED }), 'someone-else')
+      .getByTestId('feed-cell-a11y', { includeHiddenElements: true }) as unknown as Node;
+
+    expect(root.findAll((n) => n.props.testID === 'feed-rail').length).toBeGreaterThan(0);
+    expect(root.findAll((n) => n.props.testID === 'reel-cell').length).toBeGreaterThan(0);
+  });
+
+  it('sizes the gate to the page, so it cannot collapse the cell it wraps', () => {
+    const root = cell(makePost(), 'p1').getByTestId('feed-cell-a11y');
+
+    expect(root.props.style).toEqual(expect.objectContaining({ width: 400, height: 800 }));
   });
 });
 

@@ -143,16 +143,37 @@ describe('PhotoCell gallery', () => {
     expect(view.queryByTestId('photo-cell-dots')).toBeNull();
   });
 
-  it('announces which image of how many, and follows the swipe', () => {
+  it('makes every photo its own focus target, so the pager can be traversed', () => {
+    // The label used to sit on the ScrollView, which is not `accessible` and so
+    // is not a focus target at all — and `expo-image`'s own `accessible` prop
+    // defaults to false, so the images were not targets either. A three-photo
+    // post was functionally one photo.
+    // src: https://github.com/expo/expo/blob/sdk-51/packages/expo-image/src/Image.types.ts · expo-image 1.13.0 · 2026-08-07
     const view = photo(gallery);
 
-    expect(view.getByTestId('photo-cell-pager').props.accessibilityLabel)
-      .toBe('Photo 1 of 3');
+    expect(view.getByTestId('photo-cell-pager').props.accessible).toBe(false);
+
+    for (const i of [0, 1, 2]) {
+      const image = view.getByTestId(`photo-cell-image-${i}`);
+      expect(image.props.accessible).toBe(true);
+      expect(image.props.accessibilityRole).toBe('image');
+      expect(image.props.accessibilityLabel).toBe(`Photo ${i + 1} of 3`);
+    }
+  });
+
+  it('announces which image of how many, and follows the swipe', () => {
+    const view = photo(gallery);
+    const dots = (): Record<string, unknown> => view.getByTestId('photo-cell-dots').props;
+
+    // A label that never re-announces is a label read once and then wrong, so
+    // the count lives in a live region rather than on a static container.
+    expect(dots().accessibilityLiveRegion).toBe('polite');
+    expect(dots().accessible).toBe(true);
+    expect(dots().accessibilityLabel).toBe('Photo 1 of 3');
 
     scrollTo(view, 2);
 
-    expect(view.getByTestId('photo-cell-pager').props.accessibilityLabel)
-      .toBe('Photo 3 of 3');
+    expect(dots().accessibilityLabel).toBe('Photo 3 of 3');
   });
 
   it('moves the active dot with the swipe', () => {
@@ -194,6 +215,14 @@ describe('PhotoCell async states', () => {
 
     expect(view.queryByTestId('photo-cell-error')).not.toBeNull();
     expect(view.queryByTestId('photo-cell-loading')).toBeNull();
+  });
+
+  it('speaks the failure rather than only drawing it', () => {
+    const view = photo();
+
+    fireEvent(view.getByTestId('photo-cell-image-0'), 'error');
+
+    expect(view.getByTestId('photo-cell-error').props.accessibilityLiveRegion).toBe('assertive');
   });
 
   it('keeps one slide failing from blanking the rest of the gallery', () => {

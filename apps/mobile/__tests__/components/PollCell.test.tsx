@@ -178,6 +178,19 @@ describe('PollCell optimistic vote', () => {
     expect(view.getByTestId('poll-option-0').props.accessibilityState.disabled).toBe(false);
   });
 
+  it('speaks the failure instead of rolling back in silence', async () => {
+    // She taps, the optimistic tick disappears, and without a live region the
+    // screen reader says nothing at all — so the only signal that her answer
+    // was lost is one she cannot see.
+    const onVote = jest.fn(() => Promise.resolve(false));
+    const view = poll({ onVote });
+
+    fireEvent.press(view.getByTestId('poll-option-0'));
+    await waitFor(() => expect(view.queryByTestId('poll-error')).not.toBeNull());
+
+    expect(view.getByTestId('poll-error').props.accessibilityLiveRegion).toBe('assertive');
+  });
+
   it('rolls back a rejected write the same way it rolls back a refused one', async () => {
     const onVote = jest.fn(() => Promise.reject(new Error('offline')));
     const view = poll({ onVote });

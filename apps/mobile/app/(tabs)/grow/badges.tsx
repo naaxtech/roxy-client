@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
+import { syncMyBadges } from '../../../lib/badges';
 import { useAuthStore } from '../../../store/authStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 
@@ -32,24 +33,55 @@ export default function BadgesScreen() {
   const [badges, setBadges] = useState<BadgeProgressRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [syncFailed, setSyncFailed] = useState(false);
 
-  useEffect(() => {
-    if (!user?.id) return;
-    supabase
+  const userId = user?.id;
+
+  // Returns the rows rather than setting state, so the effect below owns every
+  // write and can drop a response that landed after unmount.
+  const fetchBadges = useCallback(async (): Promise<BadgeProgressRow[] | null> => {
+    if (!userId) return null;
+    const { data, error } = await supabase
       .from('user_badge_progress')
       .select('*, badges(*)')
-      .eq('user_id', user.id)
-      .order('earned_at', { ascending: false, nullsFirst: false })
-      .then(({ data, error }) => {
-        if (error) {
-          setFetchError('Failed to load badges');
-          setLoading(false);
-          return;
-        }
-        if (data) setBadges(data as BadgeProgressRow[]);
-        setLoading(false);
-      });
-  }, [user?.id]);
+      .eq('user_id', userId)
+      .order('earned_at', { ascending: false, nullsFirst: false });
+    if (error) return null;
+    return (data ?? []) as BadgeProgressRow[];
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+
+    void (async () => {
+      // 1. Paint what the server already knows. The sync must never be able to
+      //    hold this screen on a spinner.
+      const rows = await fetchBadges();
+      if (cancelled) return;
+      if (rows === null) setFetchError('Failed to load badges');
+      else setBadges(rows);
+      setLoading(false);
+
+      // 2. Only `community_joins` is trigger-awarded (migration 087 §6);
+      //    connections, messages and speed_dates are earned here or nowhere.
+      //    Forced: opening this screen is an explicit "show me where I am", and
+      //    its rate is bounded by navigation.
+      const result = await syncMyBadges(userId, { force: true });
+      if (cancelled) return;
+      setSyncFailed(result.status === 'failed');
+      if (result.status !== 'synced') return;
+
+      // 3. Re-read so anything the sync just awarded — or any progress bar it
+      //    moved — shows up in this visit, not the next one.
+      const fresh = await fetchBadges();
+      if (cancelled || fresh === null) return;
+      setBadges(fresh);
+      setFetchError(null);
+    })();
+
+    return () => { cancelled = true; };
+  }, [userId, fetchBadges]);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -61,10 +93,17 @@ export default function BadgesScreen() {
     backBtn: { width: 60, flexDirection: 'row', alignItems: 'center' },
     backLabel: { fontSize: 15, color: colors.textPrimary, marginLeft: 2 },
     headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800', color: colors.textPrimary },
-    centreWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+    centreWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 32 },
     emptyIcon: { fontSize: 48 },
-    emptyTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
-    emptySub: { color: colors.textMuted, fontSize: 14 },
+    emptyTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700', textAlign: 'center' },
+    emptySub: { color: colors.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+    syncNote: {
+      color: colors.textMuted,
+      fontSize: 12,
+      textAlign: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 10,
+    },
     listContent: { padding: 16 },
     badgeCard: {
       flex: 1,
@@ -97,7 +136,12 @@ export default function BadgesScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           <Text style={styles.backLabel}>Back</Text>
         </TouchableOpacity>
@@ -105,19 +149,30 @@ export default function BadgesScreen() {
         <View style={styles.backBtn} />
       </View>
 
+      {/* A failed sync never hides the badges she already has — it says so and
+          gets out of the way. The detail is in Crashlytics, not on her screen. */}
+      {syncFailed && !loading && (
+        <Text style={styles.syncNote} testID="badge-sync-note">
+          Roxy could not check for new badges just now — anything you have earned is safe.
+        </Text>
+      )}
+
       {loading ? (
         <View style={styles.centreWrap}>
-          <ActivityIndicator size="large" color={colors.roxy} />
+          <ActivityIndicator size="large" color={colors.roxy} accessibilityLabel="Loading badges" />
         </View>
       ) : fetchError ? (
         <View style={styles.centreWrap}>
           <Text style={styles.emptySub}>{fetchError}</Text>
         </View>
       ) : badges.length === 0 ? (
-        <View style={styles.centreWrap}>
+        <View style={styles.centreWrap} testID="badges-empty">
           <Text style={styles.emptyIcon}>🏅</Text>
-          <Text style={styles.emptyTitle}>No badges yet</Text>
-          <Text style={styles.emptySub}>Complete actions to earn badges!</Text>
+          <Text style={styles.emptyTitle}>Your first badge is waiting</Text>
+          <Text style={styles.emptySub}>
+            Roxy is keeping score. Join a community, send a first message, make a friend or try a
+            speed date — your badge lands here the moment you do.
+          </Text>
         </View>
       ) : (
         <FlashList
@@ -154,4 +209,3 @@ export default function BadgesScreen() {
     </SafeAreaView>
   );
 }
-

@@ -22,6 +22,9 @@ import React from 'react';
 import { Linking } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { FeedCell } from '../../components/feed/FeedCell';
+import {
+  CAPTION_COLLAPSED_LINES, CAPTION_EXPANDED_LINES,
+} from '../../components/feed/feedChromeTokens';
 import type { ReelRow } from '../../lib/reels';
 
 jest.mock('../../components/feed/FeedVideoPlayer', () => {
@@ -261,7 +264,9 @@ describe('PhotoCell recycling', () => {
     // A gallery that opens on slide 3 with dot 3 lit shows the wrong image with
     // a confident indicator under it.
     expect(litDot(view)).toBe(0);
-    expect(view.getByTestId('photo-cell-pager').props.accessibilityLabel)
+    // The count lives on the dots, which are the live region — the ScrollView
+    // carried it while not being `accessible`, so nothing ever read it.
+    expect(view.getByTestId('photo-cell-dots').props.accessibilityLabel)
       .toBe('Photo 1 of 3');
   });
 
@@ -315,11 +320,14 @@ describe('FeedCellChrome recycling', () => {
     const { view, swipe } = recycle(CHROME_A, CHROME_B);
 
     fireEvent.press(view.getByTestId('feed-cell-more'));
-    expect(view.getByTestId('feed-cell-caption').props.numberOfLines).toBeUndefined();
+    expect(view.getByTestId('feed-cell-caption').props.numberOfLines)
+      .toBe(CAPTION_EXPANDED_LINES);
 
     swipe();
 
-    expect(view.getByTestId('feed-cell-caption').props.numberOfLines).toBe(2);
+    expect(view.getByTestId('feed-cell-caption').props.numberOfLines)
+      .toBe(CAPTION_COLLAPSED_LINES);
     expect(view.queryByTestId('feed-cell-more')).not.toBeNull();
+    expect(view.queryByTestId('feed-cell-less')).toBeNull();
   });
 });

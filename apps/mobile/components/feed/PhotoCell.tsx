@@ -64,7 +64,16 @@ export function PhotoCell({
           scrollEnabled={urls.length > 1}
           scrollEventThrottle={16}
           onScroll={handleScroll}
-          accessibilityLabel={`Photo ${index + 1} of ${urls.length}`}
+          // NOT a focus target, and NOT where the count lives.
+          //
+          // It used to carry `accessibilityLabel="Photo 1 of 3"` while being a
+          // plain `ScrollView` — which is not `accessible`, so nothing ever read
+          // that label, and the images below carried no label, no role and no
+          // `accessible` of their own. A three-photo post was functionally one
+          // photo. Grouping the pager instead would be worse: `accessible` on a
+          // container collapses its children into one element, which is exactly
+          // the traversal the gallery needs.
+          accessible={false}
           style={{ width, height }}
         >
           {urls.map((path, i) => (
@@ -74,6 +83,19 @@ export function PhotoCell({
               source={{ uri: getPostImageUrl(path, 'detail') }}
               placeholder={post.blurhash ?? undefined}
               contentFit="cover"
+              // Each still is its own stop, so focus traversal walks the
+              // gallery and the pager scrolls to follow it.
+              //
+              // `accessible` has to be set explicitly: "When true, indicates
+              // that the view is an accessibility element… On Android, the
+              // `accessible` property will be translated into the native
+              // `isScreenReaderFocusable`" — and its documented default is
+              // FALSE, unlike a React Native `View`. Verified against the
+              // installed version's own types rather than assumed.
+              // src: https://github.com/expo/expo/blob/sdk-51/packages/expo-image/src/Image.types.ts · expo-image 1.13.0 · 2026-08-07
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel={`Photo ${i + 1} of ${urls.length}`}
               // "Changing this prop resets the image view content to blank or a
               // placeholder before loading and rendering the final image. This
               // is especially useful for any kinds of recycling views like
@@ -96,7 +118,9 @@ export function PhotoCell({
       ) : null}
 
       {urls.length > 0 && active === 'error' ? (
-        <View testID="photo-cell-error" style={s.state}>
+        // Announced, not merely drawn. A screen reader user gets no signal at
+        // all from a frame that stayed dark.
+        <View testID="photo-cell-error" style={s.state} accessibilityLiveRegion="assertive">
           <Ionicons name="cloud-offline-outline" size={36} color="rgba(255,255,255,0.6)" />
           <Text style={s.stateText}>This photo could not be loaded</Text>
           {/* A dead image is not a dead post: the detail screen still has the
@@ -113,8 +137,26 @@ export function PhotoCell({
         </View>
       ) : null}
 
+      {/*
+        The dots are the count, so they carry it for a screen reader too.
+
+        A label that is never re-read is a label that is right once and wrong
+        from the second photo onwards, so the position lives in a live region
+        that re-announces whenever the index changes — the same
+        `accessibilityLiveRegion` pattern `FeedSafetySheet` uses for its errors.
+        `accessible` groups the row into one element rather than exposing six
+        anonymous dots. It stays `pointerEvents="none"`: that governs touch, not
+        accessibility focus, and the swipe belongs to the pager underneath.
+      */}
       {urls.length > 1 ? (
-        <View testID="photo-cell-dots" style={s.dots} pointerEvents="none">
+        <View
+          testID="photo-cell-dots"
+          style={s.dots}
+          pointerEvents="none"
+          accessible
+          accessibilityLiveRegion="polite"
+          accessibilityLabel={`Photo ${index + 1} of ${urls.length}`}
+        >
           {urls.map((path, i) => (
             <View
               key={`${path}-${i}`}
@@ -132,7 +174,7 @@ export function PhotoCell({
         </View>
       ) : null}
 
-      <FeedCellChrome post={post} {...chrome} />
+      <FeedCellChrome post={post} onOpenPost={onOpenPost} {...chrome} />
     </View>
   );
 }

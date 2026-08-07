@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import type { ReactElement } from 'react';
+import { View } from 'react-native';
 import type { ReelRow } from '../../lib/reels';
 import type { PostType } from '../../types';
 import type { FeedCellChromeProps } from './FeedCellChrome';
@@ -21,8 +22,6 @@ export interface FeedCellProps
   height: number;
   muted: boolean;
   onToggleMute: () => void;
-  /** Opens this post's own detail surface. */
-  onOpenPost: () => void;
   /** Records a poll vote. Defaults to the shared tally write. */
   onVote?: (postId: string, optionKey: string) => Promise<boolean>;
 }
@@ -79,13 +78,52 @@ export function feedItemType(post: Pick<ReelRow, 'post_type'>): PostType {
  * the switch below can live in one place and hand each component the props that
  * component actually wants. Everything the viewer recognises as chrome is
  * shared underneath, so switching there changes the body and nothing else.
+ *
+ * ## The other thing the router owns: who is in the accessibility tree
+ *
+ * `drawDistance = pageH * 2` keeps about five cells mounted, and each carries
+ * roughly a dozen accessible nodes — an avatar, five rail controls with counts,
+ * a handle, a caption, a "more", a community line, a crest. All of them used to
+ * be in the accessibility tree at once. A TalkBack user swiping right from the
+ * top of the post she could see walked sixty controls: five "Open Mara's
+ * profile", five "Like video, 3 likes", five "Report, block or hide", nothing to
+ * say which post any of them belonged to, and no way to reach the next post —
+ * the pager advances on a real scroll, and linear accessibility traversal is not
+ * one.
+ *
+ * The gate wraps the whole cell, chrome included, for the same reason `key`
+ * lives here: it is inherited by writing a `case`, so the `event` and `game`
+ * cells of a later slice cannot ship without it. Putting it on five cell roots
+ * would be five chances to forget — and four of the five cells written so far
+ * did forget the recycling reset.
+ *
+ * `accessibilityElementsHidden` is the iOS half, `importantForAccessibility` the
+ * Android half. Both are needed; neither covers the other platform.
+ * src: https://reactnative-archive-august-2025.netlify.app/docs/0.74/accessibility · react-native 0.74.5 · 2026-08-07
  */
 export function FeedCell(props: FeedCellProps): ReactElement {
-  return <FeedCellBody key={props.post.id} {...props} />;
+  // Identity, never `index === activeIndex`: an index carries neither identity
+  // nor type, and it is stale the moment a page is spliced in ahead of a cell.
+  const active = props.post.id === props.activeItemId;
+
+  return (
+    <View
+      testID="feed-cell-a11y"
+      // The page's own size, so the gate is a frame around the cell rather than
+      // a shrink-wrap that could collapse an absolutely-positioned child.
+      style={{ width: props.width, height: props.height }}
+      accessibilityElementsHidden={!active}
+      importantForAccessibility={active ? 'yes' : 'no-hide-descendants'}
+    >
+      {/* Keyed INSIDE the gate: the gate is the recycled instance's stable
+          root, and the body is what has to be thrown away per post. */}
+      <FeedCellBody key={props.post.id} {...props} active={active} />
+    </View>
+  );
 }
 
 /**
- * The type switch. Never rendered without the key above.
+ * The type switch. Never rendered without the key and the gate above.
  *
  * An unrecognised type falls through to the text treatment rather than
  * rendering nothing: `event` and `game` cells are a later slice, and until they
@@ -93,13 +131,10 @@ export function FeedCell(props: FeedCellProps): ReactElement {
  * screen.
  */
 function FeedCellBody({
-  post, index, activeIndex, activeItemId, width, height,
+  post, index, activeIndex, activeItemId, width, height, active,
   muted, onToggleMute, onOpenPost, onVote,
   ...chrome
-}: FeedCellProps): ReactElement {
-  // Identity, never `index === activeIndex`: an index carries neither identity
-  // nor type, and it is stale the moment a page is spliced in ahead of a cell.
-  const active = post.id === activeItemId;
+}: FeedCellProps & { active: boolean }): ReactElement {
   const body = { post, width, height, onOpenPost, active, ...chrome };
 
   const vote = useCallback(
@@ -119,6 +154,7 @@ function FeedCellBody({
           height={height}
           muted={muted}
           onToggleMute={onToggleMute}
+          onOpenPost={onOpenPost}
           {...chrome}
         />
       );

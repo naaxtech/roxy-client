@@ -118,6 +118,7 @@ function renderCell(post: ReelRow, activeItemId: string | null, index = 0, activ
       onOpenAuthor={noop}
       onOpenCommunity={noop}
       onOpenSafety={noop}
+      onOpenPost={noop}
     />,
   );
 }

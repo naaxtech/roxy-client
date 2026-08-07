@@ -139,6 +139,17 @@ describe('ResourceCell open action', () => {
     spy.mockRestore();
   });
 
+  it('speaks the failure rather than only drawing it', async () => {
+    const spy = jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('no handler'));
+    const view = resource();
+
+    fireEvent.press(view.getByTestId('resource-open'));
+    await waitFor(() => expect(view.queryByTestId('resource-error')).not.toBeNull());
+
+    expect(view.getByTestId('resource-error').props.accessibilityLiveRegion).toBe('assertive');
+    spy.mockRestore();
+  });
+
   it('clears the error when the viewer tries again and it works', async () => {
     const spy = jest.spyOn(Linking, 'openURL')
       .mockRejectedValueOnce(new Error('no handler'))

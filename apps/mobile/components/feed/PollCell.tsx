@@ -169,7 +169,10 @@ export function PollCell({
         )}
 
         {failed ? (
-          <View testID="poll-error" style={s.error}>
+          // Announced, not merely drawn. She taps, the optimistic tick rolls
+          // back, and without this the only signal that her answer was lost is
+          // one she cannot see. Same pattern as `FeedSafetySheet`.
+          <View testID="poll-error" style={s.error} accessibilityLiveRegion="assertive">
             <Ionicons name="alert-circle-outline" size={16} color="#fff" />
             <Text style={s.errorText}>Your vote did not save. Tap an option to try again.</Text>
           </View>
@@ -186,7 +189,7 @@ export function PollCell({
         </TouchableOpacity>
       </View>
 
-      <FeedCellChrome post={post} showCaption={false} {...chrome} />
+      <FeedCellChrome post={post} showCaption={false} onOpenPost={onOpenPost} {...chrome} />
     </View>
   );
 }

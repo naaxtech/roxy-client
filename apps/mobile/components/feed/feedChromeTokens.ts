@@ -154,3 +154,45 @@ export const CHROME_BOTTOM = 34;
 
 /** The community crest's diameter. Shared so the scrim can guarantee it cover. */
 export const CREST_SIZE = 50;
+
+/**
+ * The caption's line budgets — and why an expanded caption still has one.
+ *
+ * The band is bottom-anchored with the identity block as its content, so its
+ * height is whatever the block needs. That is the fix for contrast (see above)
+ * and it is also the reason the caption cannot be allowed to grow without a
+ * ceiling: `numberOfLines={undefined}` over uncapped `post.content` made the
+ * band's height a function of what somebody typed. A 600-character caption is
+ * about fifteen lines — `15 × CAPTION_LINE_HEIGHT` = 300dp — against Connect's
+ * ~320dp page. The scrim then stretched over the whole frame, the text ran off
+ * the top, and there was no "less" to undo it.
+ *
+ * Expanded is therefore capped at `CAPTION_EXPANDED_LINES`, which is
+ * `6 × 20` = 120dp of text: with the handle, the community line and
+ * `CHROME_BOTTOM` the band lands around 210dp, still under two thirds of the
+ * shortest page in the app. Anything longer is not truncated in silence — it is
+ * handed to the detail surface, the same trade `TextCell` makes at its own
+ * `READ_MORE_CAP`.
+ *
+ * The character counts are the stand-in for measuring. `numberOfLines`
+ * truncates but reports nothing back, so the affordance has to be offered on
+ * length; ~40 characters is what a line holds at `caption`'s size once the rail
+ * has taken `RAIL_GUTTER`. `CAPTION_CAP` was already 80 for exactly this reason
+ * — it is now written as the product it always was.
+ */
+export const CAPTION_LINE_CHARS = 40;
+
+/** `s.caption`'s leading, exported so the dp maths above is checkable. */
+export const CAPTION_LINE_HEIGHT = 20;
+
+/** Collapsed. Two, not TikTok's four: the community row needs the space. */
+export const CAPTION_COLLAPSED_LINES = 2;
+
+/** Expanded, and bounded. */
+export const CAPTION_EXPANDED_LINES = 6;
+
+/** Longer than this and the collapsed caption is being cut, so offer "more". */
+export const CAPTION_CAP = CAPTION_COLLAPSED_LINES * CAPTION_LINE_CHARS;
+
+/** Longer than this and expanding would not show it all either. */
+export const CAPTION_EXPANDED_CAP = CAPTION_EXPANDED_LINES * CAPTION_LINE_CHARS;

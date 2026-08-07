@@ -111,7 +111,7 @@ export function TextCell({
         handle and the community line, so the cell still reads as one of the
         family.
       */}
-      <FeedCellChrome post={post} showCaption={false} {...chrome} />
+      <FeedCellChrome post={post} showCaption={false} onOpenPost={onOpenPost} {...chrome} />
     </View>
   );
 }

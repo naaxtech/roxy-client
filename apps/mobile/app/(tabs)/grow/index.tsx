@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
 import { useFocusEffect } from '@react-navigation/native';
 import { recordDailyCheckin } from '../../../lib/streaks';
+import { syncMyBadges } from '../../../lib/badges';
 import { fetchUnreadNotificationCount } from '../../../lib/notifications';
 import { freshChannel } from '../../../lib/realtimeChannel';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
@@ -166,12 +167,39 @@ export default function GrowScreen() {
     })();
   }, [communityKey]);
 
-  useEffect(() => {
+  const loadBadges = useCallback(async (): Promise<void> => {
     if (!user?.id) return;
-    void Promise.resolve(
-      supabase.from('user_badge_progress').select('*, badges(*)').eq('user_id', user.id).order('earned_at', { ascending: false, nullsFirst: false })
-    ).then(({ data }) => { if (data) setBadges(data as BadgeProgressRow[]); }).catch(() => {});
+    const { data, error } = await supabase
+      .from('user_badge_progress')
+      .select('*, badges(*)')
+      .eq('user_id', user.id)
+      .order('earned_at', { ascending: false, nullsFirst: false });
+    if (error || !data) return;
+    setBadges(data as BadgeProgressRow[]);
   }, [user?.id]);
+
+  useEffect(() => { void loadBadges(); }, [loadBadges]);
+
+  // Only `community_joins` is trigger-awarded (migration 087 §6). Connections,
+  // messages and speed dates are earned by this RPC or not at all, so the Grow
+  // home has to ask — a member who never opens the Badges screen would
+  // otherwise watch this card say "earn your first badge" forever.
+  //
+  // On focus rather than mount: this tab root stays mounted for days. Not on
+  // EVERY focus — syncMyBadges holds a five-minute floor per member, so tab
+  // hopping costs nothing. Fire-and-forget: a gamification failure is logged
+  // inside syncMyBadges and never reaches this screen's render path.
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id) return;
+      void syncMyBadges(user.id).then((result) => {
+        // Re-read on any completed sync, not only when something was earned:
+        // the same call also moves current_value, which this card counts as
+        // "in progress".
+        if (result.status === 'synced') void loadBadges();
+      });
+    }, [user?.id, loadBadges])
+  );
 
   const points = profile?.gamification_points ?? 0;
   const level = getLevelInfo(points);
@@ -775,8 +803,11 @@ export default function GrowScreen() {
             </LinearGradient>
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle}>Badges</Text>
-              {badges.length === 0 ? (
-                <Text style={styles.sisterSub}>Complete actions to earn your first badge</Text>
+              {/* Keyed on what she has EARNED, not on how many progress rows
+                  the server happens to have created — a synced member with
+                  nothing earned yet must not be told "0 earned · 0 in progress". */}
+              {earnedCount === 0 ? (
+                <Text style={styles.sisterSub}>Roxy is keeping score — earn your first badge</Text>
               ) : (
                 <Text style={styles.sisterSub}>{earnedCount} earned · {inProgressCount} in progress</Text>
               )}

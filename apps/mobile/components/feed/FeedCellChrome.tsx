@@ -1,6 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
-import { Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  AccessibilityInfo, Share, StyleSheet, Text, TouchableOpacity, View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
@@ -12,18 +14,12 @@ import type { ReelRow } from '../../lib/reels';
 import type { PostType } from '../../types';
 import { CommunityCrest } from './CommunityCrest';
 import {
+  CAPTION_CAP, CAPTION_COLLAPSED_LINES, CAPTION_EXPANDED_CAP, CAPTION_EXPANDED_LINES,
+  CAPTION_LINE_HEIGHT,
   CHROME_BOTTOM, CHROME_SHADOW, CREST_SIZE,
   MEDIA_SCRIM_BODY_COLORS, MEDIA_SCRIM_FADE, MEDIA_SCRIM_FADE_COLORS, MEDIA_SCRIM_MIN_BODY,
   RAIL_BACKING, RAIL_GUTTER,
 } from './feedChromeTokens';
-
-/**
- * Roughly two lines at the width the identity block gets once the rail has
- * taken its gutter. `numberOfLines` truncates but tells nobody it did, so the
- * "more" affordance is offered on length rather than on measurement — the same
- * trade `StaticPostCard` already makes.
- */
-const CAPTION_CAP = 80;
 
 /** What the rail's labels call this thing. A screen reader should not say "video" over a poll. */
 const POST_NOUN: Record<PostType, string> = {
@@ -82,6 +78,16 @@ export interface FeedCellChromeProps {
    */
   onOpenSafety: () => void;
   /**
+   * Opens this post's own detail surface.
+   *
+   * REQUIRED here, not only on the body cells, because the chrome is where a
+   * caption too long for the band has to go. Expanding is bounded — see
+   * `CAPTION_EXPANDED_LINES` — so without somewhere to send the remainder the
+   * cap would truncate a woman's words without telling her, which is the one
+   * outcome worse than the unbounded band it replaced.
+   */
+  onOpenPost: () => void;
+  /**
    * Wire this and the avatar grows its follow badge. Left out, the badge is not
    * rendered at all: there is no follow graph in this schema yet — only
    * `friendships`, which is a mutual, notifying relationship and not the same
@@ -117,8 +123,6 @@ export interface FeedBodyCellProps
   /** Measured page size from the pager. Never the window: a page is not a screen. */
   width: number;
   height: number;
-  /** Opens this post's own detail surface. */
-  onOpenPost: () => void;
 }
 
 /**
@@ -147,7 +151,8 @@ export interface FeedBodyCellProps
 export function FeedCellChrome({
   post, liked, saved, likeCount, reducedMotion, handle, active = false,
   showCaption = true, following, playbackControl, interestPrompt,
-  onLike, onSave, onOpenComments, onOpenAuthor, onOpenCommunity, onOpenSafety, onFollowAuthor,
+  onLike, onSave, onOpenComments, onOpenAuthor, onOpenCommunity, onOpenSafety, onOpenPost,
+  onFollowAuthor,
 }: FeedCellChromeProps): ReactElement {
   const [expanded, setExpanded] = useState(false);
 
@@ -155,6 +160,41 @@ export function FeedCellChrome({
   const authorName = post.profiles?.display_name ?? '';
   const communityName = post.communities?.name ?? '';
   const caption = showCaption ? post.content.trim() : '';
+
+  /**
+   * What the viewer landed on, said out loud when she lands on it.
+   *
+   * The pager only advances on a real scroll, and every cell she is not on is
+   * out of the accessibility tree (see `FeedCell`) — so the node she was
+   * focused on vanishes from under her when the page turns and nothing else
+   * would tell her the post had changed. `announceForAccessibility` is a no-op
+   * when no screen reader is running, so a sighted viewer is unaffected.
+   *
+   * src: https://reactnative-archive-august-2025.netlify.app/docs/0.74/accessibilityinfo#announceforaccessibility · react-native 0.74.5 · 2026-08-07
+   */
+  const arrival = `${noun} by ${authorName || 'a member'}${
+    communityName ? ` in ${communityName}` : ''}`;
+  useEffect(() => {
+    if (!active) return;
+    AccessibilityInfo.announceForAccessibility(arrival);
+  }, [active, arrival]);
+
+  /**
+   * Three states, not two, because a bounded expansion needs somewhere to put
+   * the overflow:
+   *
+   *  - `fits`     — two lines hold it. No affordance at all.
+   *  - `expands`  — six lines hold it. "more" opens it, "less" closes it again.
+   *  - `overflows`— nothing on this page holds it. "Read more" opens the post,
+   *                 and the caption never expands, so the band's height is
+   *                 known before anybody types anything.
+   */
+  const captionFit = caption.length <= CAPTION_CAP
+    ? 'fits'
+    : (caption.length <= CAPTION_EXPANDED_CAP ? 'expands' : 'overflows');
+  const captionLines = expanded && captionFit === 'expands'
+    ? CAPTION_EXPANDED_LINES
+    : CAPTION_COLLAPSED_LINES;
 
   const handleShare = useCallback(() => {
     // Every other Share.share in this app sends a bare sentence with nothing to
@@ -255,11 +295,12 @@ export function FeedCellChrome({
                 <Text
                   testID="feed-cell-caption"
                   style={[s.caption, CHROME_SHADOW]}
-                  numberOfLines={expanded ? undefined : 2}
+                  numberOfLines={captionLines}
                 >
                   {caption}
                 </Text>
-                {!expanded && caption.length > CAPTION_CAP ? (
+
+                {captionFit === 'expands' && !expanded ? (
                   <TouchableOpacity
                     testID="feed-cell-more"
                     style={s.inlineHit}
@@ -268,6 +309,30 @@ export function FeedCellChrome({
                     accessibilityLabel="Show the full caption"
                   >
                     <Text style={[s.more, CHROME_SHADOW]}>more</Text>
+                  </TouchableOpacity>
+                ) : null}
+
+                {captionFit === 'expands' && expanded ? (
+                  <TouchableOpacity
+                    testID="feed-cell-less"
+                    style={s.inlineHit}
+                    onPress={() => setExpanded(false)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Show less of the caption"
+                  >
+                    <Text style={[s.more, CHROME_SHADOW]}>less</Text>
+                  </TouchableOpacity>
+                ) : null}
+
+                {captionFit === 'overflows' ? (
+                  <TouchableOpacity
+                    testID="feed-cell-read-more"
+                    style={s.inlineHit}
+                    onPress={onOpenPost}
+                    accessibilityRole="button"
+                    accessibilityLabel="Read the full post"
+                  >
+                    <Text style={[s.more, CHROME_SHADOW]}>Read more</Text>
                   </TouchableOpacity>
                 ) : null}
               </>
@@ -543,7 +608,9 @@ const s = StyleSheet.create({
    */
   inlineHit: { justifyContent: 'center', minHeight: MIN_INLINE_TOUCH_TARGET },
   handle: { color: '#fff', fontWeight: '800', fontSize: 15, letterSpacing: -0.2 },
-  caption: { color: 'rgba(255,255,255,0.95)', fontSize: 14.5, lineHeight: 20 },
+  caption: {
+    color: 'rgba(255,255,255,0.95)', fontSize: 14.5, lineHeight: CAPTION_LINE_HEIGHT,
+  },
   more: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '700' },
   communityRow: {
     flexDirection: 'row', alignItems: 'center', gap: 5,

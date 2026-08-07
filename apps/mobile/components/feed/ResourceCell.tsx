@@ -133,7 +133,10 @@ export function ResourceCell({
           </TouchableOpacity>
 
           {failed ? (
-            <View testID="resource-error" style={s.error}>
+            // Announced, not merely drawn: nothing else changes when
+            // `Linking.openURL` rejects, so a screen reader user is left
+            // believing the tap worked. Same pattern as `FeedSafetySheet`.
+            <View testID="resource-error" style={s.error} accessibilityLiveRegion="assertive">
               <Ionicons name="alert-circle-outline" size={16} color="#fff" />
               <Text style={s.errorText}>That link could not be opened. Try again.</Text>
             </View>
@@ -141,7 +144,7 @@ export function ResourceCell({
         </View>
       </View>
 
-      <FeedCellChrome post={post} showCaption={false} {...chrome} />
+      <FeedCellChrome post={post} showCaption={false} onOpenPost={onOpenPost} {...chrome} />
     </View>
   );
 }

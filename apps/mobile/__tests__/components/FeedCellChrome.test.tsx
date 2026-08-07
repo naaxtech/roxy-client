@@ -1,8 +1,9 @@
 import React from 'react';
-import { Share, StyleSheet, Text } from 'react-native';
+import { AccessibilityInfo, Share, StyleSheet, Text } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { FeedCellChrome } from '../../components/feed/FeedCellChrome';
 import {
+  CAPTION_COLLAPSED_LINES, CAPTION_EXPANDED_CAP, CAPTION_EXPANDED_LINES,
   MEDIA_SCRIM_FADE, MEDIA_SCRIM_MIN_BODY, RAIL_BACKING,
 } from '../../components/feed/feedChromeTokens';
 import type { ReelRow } from '../../lib/reels';
@@ -67,6 +68,7 @@ function chrome(overrides: Partial<ChromeProps> = {}) {
       onOpenAuthor={noop}
       onOpenCommunity={noop}
       onOpenSafety={noop}
+      onOpenPost={noop}
       {...overrides}
     />,
   );
@@ -258,12 +260,51 @@ describe('FeedCellChrome identity block', () => {
       .queryByTestId('feed-cell-more')).not.toBeNull();
   });
 
-  it('uncaps the caption once the viewer asks for more', () => {
+  it('bounds the expanded caption instead of letting it outgrow the page', () => {
+    // `numberOfLines={undefined}` over uncapped `post.content` is unbounded. A
+    // 600-character caption is ~15 lines ≈ 300dp, and Connect's page is ~320dp:
+    // the band covered the whole frame, the text ran off the top, and the only
+    // escape was to swipe away and come back.
     const view = chrome({ post: makePost({ content: 'x'.repeat(200) }) });
 
     fireEvent.press(view.getByTestId('feed-cell-more'));
 
-    expect(view.getByTestId('feed-cell-caption').props.numberOfLines).toBeUndefined();
+    expect(view.getByTestId('feed-cell-caption').props.numberOfLines)
+      .toBe(CAPTION_EXPANDED_LINES);
+  });
+
+  it('gives the viewer a way back once she has expanded it', () => {
+    const view = chrome({ post: makePost({ content: 'x'.repeat(200) }) });
+
+    fireEvent.press(view.getByTestId('feed-cell-more'));
+    expect(view.queryByTestId('feed-cell-more')).toBeNull();
+
+    const less = view.getByTestId('feed-cell-less');
+    expect(less.props.accessibilityRole).toBe('button');
+    fireEvent.press(less);
+
+    expect(view.getByTestId('feed-cell-caption').props.numberOfLines)
+      .toBe(CAPTION_COLLAPSED_LINES);
+    expect(view.queryByTestId('feed-cell-less')).toBeNull();
+    expect(view.queryByTestId('feed-cell-more')).not.toBeNull();
+  });
+
+  it('hands a caption too long for the band to the detail surface, never expanding it', () => {
+    // The alternative to a silent truncation. `TextCell` already makes this
+    // trade at `READ_MORE_CAP`; the chrome makes the same one so the rest of
+    // the words are always reachable rather than clipped without a word.
+    const onOpenPost = jest.fn();
+    const view = chrome({
+      post: makePost({ content: 'x'.repeat(CAPTION_EXPANDED_CAP + 1) }),
+      onOpenPost,
+    });
+
+    expect(view.queryByTestId('feed-cell-more')).toBeNull();
+    fireEvent.press(view.getByTestId('feed-cell-read-more'));
+
+    expect(onOpenPost).toHaveBeenCalledTimes(1);
+    expect(view.getByTestId('feed-cell-caption').props.numberOfLines)
+      .toBe(CAPTION_COLLAPSED_LINES);
   });
 
   it('names the community under the caption', () => {
@@ -294,6 +335,43 @@ describe('FeedCellChrome identity block', () => {
     expect(view.queryByTestId('feed-cell-caption')).toBeNull();
     expect(view.getByTestId('rail-avatar').props.accessibilityLabel)
       .toBe("Open the author's profile");
+  });
+});
+
+describe('FeedCellChrome active announcement', () => {
+  /**
+   * The pager only advances on a real scroll, and once an off-screen cell is
+   * out of the accessibility tree the node a TalkBack user was on disappears
+   * from under her when she swipes. Something has to say what she landed on.
+   */
+  it('says what the viewer landed on when a cell becomes the active one', () => {
+    const spy = jest.spyOn(AccessibilityInfo, 'announceForAccessibility')
+      .mockImplementation(() => undefined);
+
+    chrome({ active: true, post: makePost({ post_type: 'poll' }) });
+
+    expect(spy).toHaveBeenCalledWith('poll by Mara in The Sapphic Club');
+    spy.mockRestore();
+  });
+
+  it('announces nothing for a cell the viewer is not on', () => {
+    const spy = jest.spyOn(AccessibilityInfo, 'announceForAccessibility')
+      .mockImplementation(() => undefined);
+
+    chrome({ active: false });
+
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('survives a post whose author and community failed to join', () => {
+    const spy = jest.spyOn(AccessibilityInfo, 'announceForAccessibility')
+      .mockImplementation(() => undefined);
+
+    chrome({ active: true, post: makePost({ profiles: undefined, communities: null }) });
+
+    expect(spy).toHaveBeenCalledWith('video by a member');
+    spy.mockRestore();
   });
 });
 
