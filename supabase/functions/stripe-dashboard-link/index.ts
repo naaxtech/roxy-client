@@ -1,7 +1,7 @@
 // supabase/functions/stripe-dashboard-link/index.ts
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
-import { checkRateLimit } from '../_shared/rateLimit.ts';
+import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 import Stripe from 'npm:stripe@14';
 
@@ -15,11 +15,15 @@ Deno.serve(async (req) => {
   if (!auth) return errorResponse('Unauthorized', 401);
 
   // Rate limit: 50 login link requests per day
-  const { allowed } = await checkRateLimit({
+  // Was checkRateLimit, which counted ai_call_log rows that this function never
+  // wrote — so this cap has never fired. 'deny' on limiter failure: this mints a
+  // Stripe Express login link, and she can retry a moment later.
+  const { allowed } = await consumeRateLimit({
     userId: auth.userId,
     fnName: 'stripe-dashboard-link',
     maxCount: 50,
     windowType: 'daily',
+    onLimiterFailure: 'deny',
   });
   if (!allowed) return errorResponse('Rate limit exceeded', 429);
 

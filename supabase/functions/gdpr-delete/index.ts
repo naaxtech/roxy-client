@@ -1,6 +1,6 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
-import { checkRateLimit } from '../_shared/rateLimit.ts';
+import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 
 Deno.serve(async (req) => {
@@ -12,7 +12,16 @@ Deno.serve(async (req) => {
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
-  const rateLimitResult = await checkRateLimit({ userId: auth.userId, fnName: 'gdpr-delete', windowType: 'daily', maxCount: 3 });
+  // Was checkRateLimit, which counted ai_call_log rows that this function never
+  // wrote — so this cap has never fired. 'deny' on limiter failure: deletion is
+  // the most destructive action in the product and it is retryable in a moment.
+  const rateLimitResult = await consumeRateLimit({
+    userId: auth.userId,
+    fnName: 'gdpr-delete',
+    windowType: 'daily',
+    maxCount: 3,
+    onLimiterFailure: 'deny',
+  });
   if (!rateLimitResult.allowed) {
     return errorResponse('Rate limit exceeded', 429);
   }

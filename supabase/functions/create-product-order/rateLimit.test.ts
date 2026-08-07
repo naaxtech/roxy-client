@@ -52,8 +52,10 @@ const projectKey = await crypto.subtle.generateKey(KEY_PARAMS, true, ['sign', 'v
 const publicJwk = await crypto.subtle.exportKey('jwk', projectKey.publicKey);
 
 interface LogRow {
+  id: string;
   user_id: string;
   function_name: string;
+  conversation_id: string | null;
   called_at: string;
 }
 
@@ -61,22 +63,54 @@ interface LogRow {
 // is kept in memory so the real checkRateLimit/logAiCall pair does real counting.
 const rows: LogRow[] = [];
 
-function countMatching(url: URL): number {
-  const eq = (param: string): string | null => {
-    const raw = url.searchParams.get(param);
-    return raw !== null && raw.startsWith('eq.') ? raw.slice('eq.'.length) : null;
-  };
-  const gte = url.searchParams.get('called_at');
-  const since = gte !== null && gte.startsWith('gte.') ? gte.slice('gte.'.length) : null;
+interface ConsumeArgs {
+  p_user_id: string;
+  p_fn_name: string;
+  p_max_count: number;
+  p_window_type: 'daily' | 'lifetime' | 'conversation';
+  p_conversation_id: string | null;
+  p_was_mock: boolean;
+}
 
-  return rows.filter((row) => {
-    const userId = eq('user_id');
-    const fnName = eq('function_name');
-    if (userId !== null && row.user_id !== userId) return false;
-    if (fnName !== null && row.function_name !== fnName) return false;
-    if (since !== null && row.called_at < since) return false;
+/**
+ * Stands in for `consume_rate_limit` (migration 091).
+ *
+ * The window predicates are reimplemented here rather than approximated,
+ * because a stub that counts differently from the database proves nothing about
+ * the cap. The one thing it cannot reproduce is the advisory lock — that
+ * serialises concurrent callers, and this harness issues requests in sequence.
+ *
+ * Note it both COUNTS and WRITES, which is the whole point of the function it
+ * mirrors: there is no way to ask it "am I under the cap" without consuming.
+ */
+function consumeRateLimit(args: ConsumeArgs): {
+  allowed: boolean;
+  current_count: number;
+  call_id: string | null;
+} {
+  const midnightUtc = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
+
+  const count = rows.filter((row) => {
+    if (row.user_id !== args.p_user_id) return false;
+    if (row.function_name !== args.p_fn_name) return false;
+    if (args.p_window_type === 'daily' && row.called_at < midnightUtc) return false;
+    if (args.p_window_type === 'conversation' && row.conversation_id !== args.p_conversation_id) {
+      return false;
+    }
     return true;
   }).length;
+
+  if (count >= args.p_max_count) return { allowed: false, current_count: count, call_id: null };
+
+  const id = crypto.randomUUID();
+  rows.push({
+    id,
+    user_id: args.p_user_id,
+    function_name: args.p_fn_name,
+    conversation_id: args.p_conversation_id,
+    called_at: new Date().toISOString(),
+  });
+  return { allowed: true, current_count: count + 1, call_id: id };
 }
 
 const abort = new AbortController();
@@ -87,21 +121,25 @@ const server = Deno.serve({ port: 0, signal: abort.signal, onListen: () => {} },
     return Response.json({ keys: [{ ...publicJwk, kid: KID, alg: 'ES256', use: 'sig' }] });
   }
 
-  if (url.pathname === '/rest/v1/ai_call_log') {
-    if (req.method === 'HEAD' || req.method === 'GET') {
-      // PostgREST reports an exact count in Content-Range; supabase-js reads the
-      // value after the slash. Anything else and the count silently reads as null.
-      return new Response(null, { status: 200, headers: { 'content-range': `*/${countMatching(url)}` } });
-    }
-    if (req.method === 'POST') {
-      const inserted = await req.json() as LogRow | LogRow[];
-      for (const row of Array.isArray(inserted) ? inserted : [inserted]) {
-        rows.push({ ...row, called_at: new Date().toISOString() });
-      }
-      return new Response(null, { status: 201 });
-    }
+  // A function RETURNS TABLE, so PostgREST answers an RPC with an array of rows.
+  // `consumeRateLimit` reads `data[0]` and treats an empty array as a limiter
+  // failure, so returning a bare object here would silently exercise the
+  // failure-policy branch instead of the cap.
+  if (url.pathname === '/rest/v1/rpc/consume_rate_limit' && req.method === 'POST') {
+    return Response.json([consumeRateLimit(await req.json() as ConsumeArgs)]);
   }
 
+  if (url.pathname === '/rest/v1/rpc/refund_rate_limit' && req.method === 'POST') {
+    const { p_user_id, p_call_id } = await req.json() as { p_user_id: string; p_call_id: string };
+    const at = rows.findIndex((r) => r.id === p_call_id && r.user_id === p_user_id);
+    if (at !== -1) rows.splice(at, 1);
+    return Response.json(at !== -1);
+  }
+
+  // No `/rest/v1/ai_call_log` route on purpose. The table is the rate-limit
+  // ledger and consume_rate_limit is the only thing allowed to write it, so a
+  // direct read or write from a handler should fail loudly here rather than
+  // quietly work — that split is the defect this whole change removes.
   return Response.json({ message: 'unexpected request' }, { status: 500 });
 });
 

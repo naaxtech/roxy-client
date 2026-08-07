@@ -1,14 +1,14 @@
 // supabase/functions/create-product-order/index.ts
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
-import { checkRateLimit, logAiCall } from '../_shared/rateLimit.ts';
+import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 import {
   HOLD_WINDOW_MINUTES, cancelAndRelease, findConflictingHold, holdState, markHold, sweepAbandonedHolds,
 } from '../_shared/stockHold.ts';
 import {
-  SHIPPING_COST_CENTS, asCheckoutRequest, asString,
-  type CheckoutRequest,
+  SHIPPING_COST_CENTS, asCheckoutRequest, asString, priceCart,
+  type CartItemRow, type CheckoutRequest,
 } from './checkout.ts';
 import Stripe from 'npm:stripe@14';
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -68,33 +68,9 @@ const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
  * checkout, anywhere on the platform, runs the sweep.
  */
 
-interface VariantRow {
-  id: string;
-  price_cents: number;
-  stock: number;
-  is_active: boolean;
-  option1_name: string | null;
-  option1_value: string | null;
-  option2_name: string | null;
-  option2_value: string | null;
-}
-
-interface ProductRow {
-  id: string;
-  name: string;
-  status: string;
-  is_active: boolean;
-  has_variants: boolean;
-  base_price_cents: number;
-  business_id: string;
-}
-
-interface CartItemRow {
-  id: string;
-  quantity: number;
-  product: ProductRow | null;
-  variant: VariantRow | null;
-}
+// The cart row shapes, the rules that validate them and the subtotal that comes out
+// live in ./checkout.ts — free of Deno, Stripe and Supabase imports so the jest suite
+// in apps/mobile can assert the money instead of reasoning about it.
 
 interface BusinessRow {
   id: string;
@@ -198,7 +174,7 @@ async function openCheckout(
       cart_items (
         id, quantity,
         product:products ( id, name, status, is_active, has_variants, base_price_cents, business_id ),
-        variant:product_variants ( id, price_cents, stock, is_active, option1_name, option1_value, option2_name, option2_value )
+        variant:product_variants ( id, product_id, price_cents, stock, is_active, option1_name, option1_value, option2_name, option2_value )
       ),
       business:businesses ( id, stripe_account_id, can_sell, payout_schedule_set, currency )
     `)
@@ -220,15 +196,13 @@ async function openCheckout(
   if (!business.payout_schedule_set) return errorResponse('Business payout schedule not configured', 403);
   const destinationAccount = business.stripe_account_id;
 
-  // 2. Validate all products
-  for (const item of items) {
-    const product = item.product;
-    if (!product) return errorResponse(`Product not found for cart item ${item.id}`, 400);
-    if (product.status !== 'approved') return errorResponse(`Product "${product.name}" is not approved`, 400);
-    if (!product.is_active) return errorResponse(`Product "${product.name}" is not active`, 400);
-    if (product.has_variants && !item.variant) return errorResponse(`Variant required for "${product.name}"`, 400);
-    if (item.variant && !item.variant.is_active) return errorResponse(`Selected variant is not available`, 400);
-  }
+  // 2. Validate the cart AND price it, in that one step. The rules and the subtotal are
+  //    the same expression so a line can never be priced by a rule that did not pass it —
+  //    the gap a mismatched variant used to walk through. `business.id` is the account
+  //    that gets paid, so it is what every product in the basket must belong to.
+  const priced = priceCart({ businessId: business.id, items });
+  if (!priced.ok) return errorResponse(priced.rejection.message, priced.rejection.status);
+  const { lines, subtotalCents } = priced.cart;
 
   // 3. Ensure a Stripe customer, and reap abandoned holds while that round trip is in
   //    flight. The freed units have to be back in stock before this buyer's own
@@ -261,10 +235,14 @@ async function openCheckout(
   //     checkouts she may open; this caps how much stock she may sit on at once. Without
   //     it she can open the daily maximum, release none of them, and leave every product
   //     she touched reading "out of stock" for the whole window.
+  //
+  //     Keyed on the idempotency key, NEVER on cartId: `carts` is
+  //     UNIQUE (buyer_id, business_id), so the cart id is stable per seller for the life
+  //     of the account and would exempt every attempt she ever makes. See findConflictingHold.
   const conflict = await findConflictingHold(stripe, {
     customerId: stripeCustomerId,
     buyerId: userId,
-    cartId,
+    idempotencyKey,
   });
   if (conflict !== null) {
     const minutes = Math.max(1, Math.ceil(conflict.retryAfterSeconds / 60));
@@ -274,32 +252,23 @@ async function openCheckout(
     );
   }
 
-  // 4. Calculate totals
-  const subtotalCents = items.reduce((sum: number, item: CartItemRow) => {
-    const price = item.variant ? item.variant.price_cents : (item.product?.base_price_cents ?? 0);
-    return sum + price * item.quantity;
-  }, 0);
-
+  // 4. Calculate totals. The subtotal came out of priceCart above, so it is the sum of
+  //    prices the SELLER set on rows that passed validation.
   const { data: settings } = await supabase.from('marketplace_settings').select('product_fee_percent').single();
   const feePercent = Number(settings?.product_fee_percent ?? 10);
   const platformFeeCents = Math.floor(subtotalCents * (feePercent / 100));
-  // Every term is server-derived: the subtotal from the cart rows, the fee from
-  // marketplace_settings, the shipping from a constant. Nothing on the request body
-  // reaches this line. See SHIPPING_COST_CENTS in ./checkout.ts before changing it.
+  // No term here is client-supplied. The fee comes from marketplace_settings and the
+  // shipping from a constant; the subtotal comes from the cart rows, which the buyer DOES
+  // author (cart_items is written from the client under the `cart_items_owner` policy) —
+  // so "server-derived" is earned by priceCart refusing every row shape that would let her
+  // choose a price, not by the rows being trustworthy. Migration 090's composite foreign
+  // key is what makes the mismatched pair unrepresentable at rest.
+  // See SHIPPING_COST_CENTS in ./checkout.ts before changing the shipping term.
   const totalCents = subtotalCents + SHIPPING_COST_CENTS;
 
   // 5. Price snapshots for the webhook. This is also what a hold is read back from when
   //    it is released, so it has to carry variant_id and quantity for every line.
-  const itemsMeta = items.map((item: CartItemRow) => ({
-    product_id: item.product?.id ?? null,
-    variant_id: item.variant?.id ?? null,
-    product_name: item.product?.name ?? 'Product',
-    variant_label: item.variant
-      ? [item.variant.option1_value, item.variant.option2_value].filter(Boolean).join(' / ')
-      : null,
-    unit_price_cents: item.variant ? item.variant.price_cents : (item.product?.base_price_cents ?? 0),
-    quantity: item.quantity,
-  }));
+  const itemsMeta = lines;
 
   // 6. Open the PaymentIntent BEFORE taking stock. Every decremented unit is then
   //    attached to an intent whose lifecycle emits the events that give it back. The old
@@ -365,17 +334,21 @@ async function openCheckout(
     const taken: Array<{ variantId: string; qty: number }> = [];
     let failure: string | null = null;
 
-    for (const item of items) {
-      if (!item.variant) continue;
+    // Iterates the PRICED lines, not the raw cart rows, so the units taken are always the
+    // units charged for. When a cart could hold a variant belonging to another product,
+    // this loop decremented that decoy — the item actually being bought never left stock,
+    // so the same attack ran again immediately, and the seller's real inventory never moved.
+    for (const line of lines) {
+      if (line.variant_id === null) continue;
       const { data: updated, error: stockErr } = await supabase.rpc('decrement_variant_stock', {
-        p_variant_id: item.variant.id,
-        p_qty: item.quantity,
+        p_variant_id: line.variant_id,
+        p_qty: line.quantity,
       });
       if (stockErr || !updated) {
-        failure = `"${item.product?.name ?? 'This item'}" is out of stock`;
+        failure = `"${line.product_name}" is out of stock`;
         break;
       }
-      taken.push({ variantId: item.variant.id, qty: item.quantity });
+      taken.push({ variantId: line.variant_id, qty: line.quantity });
     }
 
     // 7. Record the hold before the secret goes back to the buyer. A failure here has to
@@ -448,24 +421,24 @@ Deno.serve(async (req) => {
   // is exercised in development too (CLAUDE.md section 7). The release branch above is
   // deliberately left unlimited: a buyer who has hit her cap must still be able to hand
   // stock back, and refusing that would keep her holds standing for the full window.
-  const { allowed } = await checkRateLimit({
+  // One statement, because the pair this replaces could be — and in six functions
+  // was — half-used. The comment that stood here noted that this function's cap
+  // worked ONLY because the line below it remembered to log, and named the six
+  // that forgot. Remembering is no longer part of it: the write is the count.
+  //
+  // 'deny' on limiter failure. This opens a Stripe PaymentIntent and moves
+  // stock; an uncapped checkout path during a database outage is exactly what
+  // the cap is for, and she can retry in a moment.
+  const { allowed } = await consumeRateLimit({
     userId,
     fnName: FN_NAME,
     maxCount: CHECKOUT_ATTEMPTS_PER_DAY,
     windowType: 'daily',
+    wasMock: DEV_MOCK,
+    onLimiterFailure: 'deny',
   });
   if (!allowed) {
     return errorResponse('Too many checkout attempts today — please try again tomorrow', 429);
-  }
-
-  // checkRateLimit counts rows in ai_call_log and nothing else writes them, so the limit
-  // above only ever refuses anything because of this line. Six other functions in this
-  // project call checkRateLimit without it — cancel-event, create-payment-intent,
-  // gdpr-delete, gdpr-export, stripe-dashboard-link, submit-report — and every one of
-  // them has a cap that has never once fired.
-  const { error: logErr } = await logAiCall({ userId, fnName: FN_NAME, wasMock: DEV_MOCK });
-  if (logErr) {
-    console.error(`[${FN_NAME}] rate-limit counter not incremented: ${logErr.replace(UUID_ANYWHERE, '<uuid>')}`);
   }
 
   if (DEV_MOCK) {

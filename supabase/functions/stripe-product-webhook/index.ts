@@ -41,6 +41,11 @@ Deno.serve(async (req) => {
     status: 'processed',
   });
 
+  // Set when the handler completed the money-moving part but left something a
+  // human has to repair. Reported in the body; see the return at the end for why
+  // it is not a status code.
+  let degraded: string | null = null;
+
   try {
     switch (event.type) {
 
@@ -147,8 +152,23 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Create order items
-        await supabase.from('order_items').insert(
+        // Create order items.
+        //
+        // This result used to be discarded. supabase-js resolves with
+        // `{ data, error }` and never throws, so the try/catch wrapping this
+        // whole switch could not see a failure here -- the same shape as the
+        // report button that said "Report submitted" over a write that never
+        // happened, except on a money path.
+        //
+        // It became reachable with migration 090, which adds a composite FK
+        // making a mismatched (product_id, variant_id) pair unrepresentable. Any
+        // PaymentIntent opened by the OLD checkout carrying such a pair and paid
+        // after 090 lands arrives here with the money already gone: hold marked
+        // sold, charge captured, transfer made, orders row written. Swallowing
+        // the refusal leaves a PAID ORDER WITH NO LINE ITEMS -- nothing for the
+        // seller to ship, and an empty product_description in the dispute
+        // evidence we would later send Stripe.
+        const { error: itemsErr } = await supabase.from('order_items').insert(
           items.map(item => ({
             order_id: order.id,
             product_id: item.product_id,
@@ -159,6 +179,43 @@ Deno.serve(async (req) => {
             quantity: item.quantity,
           }))
         );
+
+        if (itemsErr) {
+          // Do NOT return non-2xx. Stripe would redeliver, and redelivery cannot
+          // help: the orders row is already written and the insert would be
+          // refused identically every time, so the only thing a retry adds is
+          // more noise on a record a human already has to repair. The money has
+          // moved; automatic recovery is not ours to attempt. Refunding or
+          // deleting here would be guessing at intent on somebody's payment.
+          //
+          // The alert carries the order id and nothing about the woman who
+          // placed it -- no name, no address, no raw buyer id (PII rules). The
+          // order id is what makes it actionable and is safe to log.
+          console.error(
+            `[stripe-product-webhook] order_items rejected for order ${order.id}: ` +
+              `${itemsErr.code ?? 'unknown'} ${itemsErr.message}`,
+          );
+
+          await supabase.from('reconciliation_alerts').insert({
+            alert_type: 'order_items_missing',
+            stripe_id: pi.id,
+            order_id: order.id,
+            detail:
+              `Payment captured and order created, but order_items was refused ` +
+              `(${itemsErr.code ?? 'unknown'}: ${itemsErr.message}). The buyer has ` +
+              `paid and the seller has nothing to ship. Repair the line items by ` +
+              `hand, or refund the order.`,
+          });
+
+          // The event is NOT clean, so it must not stay marked processed -- the
+          // dedupe at the top of this handler would otherwise skip it forever.
+          await supabase
+            .from('webhook_events')
+            .update({ status: 'failed' })
+            .eq('stripe_event_id', event.id);
+
+          degraded = `order_items_missing:${order.id}`;
+        }
 
         // Order event
         await supabase.from('order_events').insert({
@@ -470,5 +527,10 @@ Deno.serve(async (req) => {
       .eq('stripe_event_id', event.id);
   }
 
-  return successResponse({ received: true });
+  // `degraded` is deliberately part of the body rather than the status code.
+  // Stripe reads the status and nothing else, so a 200 is what stops a useless
+  // redelivery -- but a body that says only `{ received: true }` over a paid
+  // order with no line items is the handler lying about its own outcome, which
+  // is the defect class this function was audited for.
+  return successResponse(degraded ? { received: true, degraded } : { received: true });
 });

@@ -51,6 +51,16 @@ const CART = 'cart-under-checkout';
 const OTHER_CART = 'cart-somewhere-else';
 const CUSTOMER = 'cus_buyer';
 
+/** The key the checkout under test is replaying. */
+const KEY = 'roxy-key-under-checkout';
+/**
+ * Any other attempt's key. This is the fixture DEFAULT, because "a different
+ * checkout attempt" is the ordinary case — every Pay press mints a fresh key
+ * (`newIdempotencyKey()`), so two attempts sharing a key is the exception that
+ * has to be asked for explicitly.
+ */
+const OTHER_KEY = 'roxy-key-somewhere-else';
+
 const NOW = 1_800_000_000;
 
 type PaymentIntent = Stripe.PaymentIntent;
@@ -63,6 +73,8 @@ interface IntentSpec {
   hold?: string;
   buyerId?: string;
   cartId?: string;
+  /** `null` writes an intent with no idempotency_key at all — one opened before it was recorded. */
+  idempotencyKey?: string | null;
   items?: Array<{ variant_id: string | null; quantity: number }>;
 }
 
@@ -72,6 +84,8 @@ function intent(spec: IntentSpec): PaymentIntent {
     cart_id: spec.cartId ?? CART,
     items_json: JSON.stringify(spec.items ?? [{ variant_id: 'var-1', quantity: 2 }]),
   };
+  const key = spec.idempotencyKey === undefined ? OTHER_KEY : spec.idempotencyKey;
+  if (key !== null) metadata.idempotency_key = key;
   if (spec.hold !== undefined) metadata[HOLD_KEY] = spec.hold;
   return {
     id: spec.id,
@@ -140,7 +154,12 @@ function fakeSupabase(calls: Calls): SupabaseClient {
   } as unknown as SupabaseClient;
 }
 
-const conflictArgs = { customerId: CUSTOMER, buyerId: BUYER, cartId: CART, nowSeconds: NOW };
+const conflictArgs = {
+  customerId: CUSTOMER,
+  buyerId: BUYER,
+  idempotencyKey: KEY,
+  nowSeconds: NOW,
+};
 
 // ── findConflictingHold ──────────────────────────────────────────────────────
 
@@ -174,16 +193,108 @@ Deno.test('findConflictingHold scopes the lookup to this buyer only', async () =
   );
 });
 
-Deno.test('findConflictingHold allows an idempotent retry of the same cart', async () => {
+Deno.test('findConflictingHold allows a replay of the same idempotency key', async () => {
   const calls = newCalls();
   const stripe = fakeStripe(calls, {
-    pool: [intent({ id: 'pi_same', status: 'requires_payment_method', ageMinutes: 5, hold: 'held', cartId: CART })],
+    pool: [intent({
+      id: 'pi_same',
+      status: 'requires_payment_method',
+      ageMinutes: 5,
+      hold: 'held',
+      cartId: CART,
+      idempotencyKey: KEY,
+    })],
   });
 
   // Replaying the same idempotency key is how this function hands a buyer back
   // her own client_secret after an app reload. Refusing it would lock her out
-  // of the checkout she is already paying for.
-  assertEquals(await findConflictingHold(stripe, conflictArgs), null, 'same-cart replay');
+  // of the checkout she is already paying for. The key is the ONLY thing that
+  // earns the exemption — see the test below for why the cart cannot.
+  assertEquals(await findConflictingHold(stripe, conflictArgs), null, 'same-key replay');
+});
+
+/**
+ * THE EXPLOIT. This exemption used to be keyed on `cart_id`, and `carts` is
+ * UNIQUE (buyer_id, business_id) — so a buyer has exactly ONE cart id per seller,
+ * stable for the life of the account, while `newIdempotencyKey()` mints a fresh
+ * key on every Pay press.
+ *
+ * The cap was therefore exempted by the one value every attempt shares. She could
+ * check out cart C (hold A), rewrite C's rows — she owns them under the
+ * `cart_items_owner` RLS policy and writes them from the client — and check out C
+ * again: the cap saw hold A, matched cart_id, skipped it, and opened hold B.
+ * Twenty live holds, every one exempt, on a marketplace of one-of-a-kind handmade
+ * items. The cap did approximately nothing.
+ */
+Deno.test('findConflictingHold blocks a second attempt on the same cart under a fresh key', async () => {
+  const calls = newCalls();
+  const stripe = fakeStripe(calls, {
+    pool: [intent({
+      id: 'pi_first',
+      status: 'requires_payment_method',
+      ageMinutes: 5,
+      hold: 'held',
+      cartId: CART,          // same cart — this is what used to buy the exemption
+      idempotencyKey: OTHER_KEY, // different attempt
+    })],
+  });
+
+  const conflict = await findConflictingHold(stripe, conflictArgs);
+
+  assert(conflict !== null, 'a fresh key against the same cart is a NEW hold and must be refused');
+  assertEquals(conflict?.paymentIntentId, 'pi_first', 'conflicting intent');
+});
+
+/**
+ * The honest half of the same bug. A buyer whose release never fired (app killed,
+ * radio dropped) presses Pay again on the same cart under a fresh key. Under the
+ * cart-keyed exemption she sailed past the cap, reached the decrement, and was
+ * told "…is out of stock" about stock her OWN abandoned intent was holding. She
+ * must get the 409 that names the real problem and tells her when it clears.
+ */
+Deno.test('findConflictingHold reports her own abandoned hold rather than letting her hit "out of stock"', async () => {
+  const calls = newCalls();
+  const stripe = fakeStripe(calls, {
+    pool: [intent({
+      id: 'pi_abandoned',
+      status: 'requires_payment_method',
+      ageMinutes: 10,
+      hold: 'held',
+      cartId: CART,
+      idempotencyKey: OTHER_KEY,
+    })],
+  });
+
+  const conflict = await findConflictingHold(stripe, conflictArgs);
+
+  assertEquals(
+    conflict?.retryAfterSeconds,
+    (HOLD_WINDOW_MINUTES - 10) * 60,
+    'she is told when the sweep frees her own hold, not that the item is gone',
+  );
+});
+
+/**
+ * Fail safe, not open. An intent opened before `idempotency_key` was written into
+ * metadata carries no key, so it can never match — and an unmatchable hold must
+ * COUNT against the cap rather than be waved through. The cost of being wrong is
+ * one 409 the buyer clears by waiting; the cost of the other direction is the
+ * uncapped hold farm above.
+ */
+Deno.test('findConflictingHold does not exempt a hold that carries no idempotency key', async () => {
+  const calls = newCalls();
+  const stripe = fakeStripe(calls, {
+    pool: [intent({
+      id: 'pi_legacy',
+      status: 'requires_payment_method',
+      ageMinutes: 5,
+      hold: 'held',
+      cartId: CART,
+      idempotencyKey: null,
+    })],
+  });
+
+  assert(await findConflictingHold(stripe, conflictArgs) !== null, 'a keyless hold still occupies the cap');
 });
 
 Deno.test('findConflictingHold ignores holds the sweep is already free to reap', async () => {

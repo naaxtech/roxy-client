@@ -12,6 +12,55 @@ finer-grained engineering log lives in `.claude/log.md`.
 
 ## [Unreleased]
 
+### Fixed
+- **Six rate limits had never once refused a request, and the limiter failed
+  open for all twelve.** `checkRateLimit` counted rows in `ai_call_log`;
+  `logAiCall` wrote them; nothing made a caller do both. `cancel-event`,
+  `create-payment-intent`, `gdpr-delete`, `gdpr-export`, `stripe-dashboard-link`
+  and `submit-report` called the first and never the second, and because the
+  count filters on `function_name`, each was counting a set that was empty by
+  construction. Confirmed against production: 78 rows across five function
+  names, none of them those six — every `429` branch under them was unreachable
+  code. Two further fail-opens in the same file: `const { count } = await query`
+  discarded `error`, so any PostgREST failure made the count null, `count ?? 0`
+  zero, and the limiter *allow* — that one hit all twelve; and the check and the
+  write were separate round trips with the guarded work between them, so two
+  concurrent requests both read 9 against a cap of 10 and both proceeded.
+  Replaced by `consume_rate_limit` (migration 091), one `SECURITY DEFINER`
+  statement that counts and records together, serialised per (user, function) by
+  a transaction-scoped advisory lock. Recording is no longer a step a caller can
+  omit — it is how the answer is computed. A `_shared/rateLimit.guard.test.ts`
+  fails the build if the split API ever returns, because CI runs
+  `deno test --no-check` and the type checker never sees these files.
+- **`roxy-sister` reset a woman's turn number to 1 on any query failure.** It
+  ran a second, independent count of `ai_call_log` to derive the turn, read
+  `count ?? 0`, and discarded the error — pushing the crisis resources (turn 7)
+  and the pro directory (turn 10) back out of reach at the moment she most
+  needed them. The turn now comes from the limiter that just recorded it.
+- **A failed AI call could burn a one-shot allowance permanently.**
+  `roxy-onboarding` is capped at one call per lifetime and `roxy-icebreaker` at
+  one per match; because the slot is consumed before the work, a single
+  transient Anthropic error would have locked her out for good with no route
+  back that did not involve editing her row by hand. Both now refund the slot.
+- **`roxy-greeting` had no cap at all** — it only ever wrote the ledger, never
+  read it, the exact mirror of the six above. Its documented "cache 24h" rule
+  lives in the cache check, and a cache is a performance feature, not a spend
+  control. Now capped at 5/day, measured rather than guessed: across all
+  production history, 47 user-days of which 44 were exactly one call, maximum 4
+  — so a cap of 1 would have refused three real requests and 5 refuses none
+  while replacing "unbounded" with a bound on the platform's largest AI cost
+  line.
+- **A paid order could be left with no line items, silently.**
+  `stripe-product-webhook` inserted `order_items` without checking the result,
+  while the `orders` insert immediately above it *was* checked. `supabase-js`
+  returns `{ data, error }` and never throws, so the surrounding `try/catch`
+  could not see it. Migration 090's composite foreign key makes that insert
+  refusable, at a point where the charge is captured and the transfer to the
+  seller is made — leaving the buyer paid, the seller with nothing to ship, and
+  the dispute-evidence builder emitting an empty description. It now raises an
+  `order_items_missing` reconciliation alert naming the order, marks the webhook
+  event failed, and reports `degraded` in the body rather than a clean receipt.
+
 ### Security
 - **`dev-control` was reachable on production by any member with a login, and
   one of its actions is a platform-wide switch.** The gate read

@@ -1,6 +1,6 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
-import { checkRateLimit } from '../_shared/rateLimit.ts';
+import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 
 Deno.serve(async (req) => {
@@ -12,11 +12,15 @@ Deno.serve(async (req) => {
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
-  const { allowed } = await checkRateLimit({
+  // Was checkRateLimit, which counted ai_call_log rows that this function never
+  // wrote — so this cap has never fired. 'deny' on limiter failure: an export
+  // walks most of her data, and she can ask again shortly.
+  const { allowed } = await consumeRateLimit({
     userId: auth.userId,
     fnName: 'gdpr-export',
     maxCount: 5,
     windowType: 'daily',
+    onLimiterFailure: 'deny',
   });
   if (!allowed) return errorResponse('Rate limit exceeded', 429);
 

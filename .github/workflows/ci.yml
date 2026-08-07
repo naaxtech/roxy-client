@@ -97,8 +97,12 @@ jobs:
       # pass '2024-06-20' (valid at runtime — it is just the Stripe-Version
       # header). Type-checking here would fail on that pre-existing mismatch and
       # tell us nothing about the tests. Drop this flag once the pin is resolved.
+      # --allow-read: _shared/rateLimit.guard.test.ts reads the other functions'
+      # source to prove none of them reintroduces the split checkRateLimit /
+      # logAiCall pair. Because --no-check is on, that grep is the ONLY gate on
+      # it — the type checker never sees these files.
       - name: Run edge function tests
-        run: deno test --no-check --allow-net --allow-env .
+        run: deno test --no-check --allow-net --allow-env --allow-read .
 
   studio-e2e:
     name: Studio E2E (Playwright)

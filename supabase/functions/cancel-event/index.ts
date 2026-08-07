@@ -1,7 +1,7 @@
 // supabase/functions/cancel-event/index.ts
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
-import { checkRateLimit } from '../_shared/rateLimit.ts';
+import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -22,11 +22,16 @@ Deno.serve(async (req) => {
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
-  const { allowed } = await checkRateLimit({
+  // Was checkRateLimit, which counted ai_call_log rows that this function never
+  // wrote — so the count was 0 forever and this cap has never refused a request.
+  // 'deny' on limiter failure: cancelling an event is destructive for everyone
+  // holding a ticket, and she can try again in a moment.
+  const { allowed } = await consumeRateLimit({
     userId: auth.userId,
     fnName: 'cancel-event',
     maxCount: 5,
     windowType: 'daily',
+    onLimiterFailure: 'deny',
   });
   if (!allowed) return errorResponse('Rate limit exceeded', 429);
 

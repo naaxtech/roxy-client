@@ -1,7 +1,7 @@
 // supabase/functions/create-payment-intent/index.ts
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
-import { checkRateLimit } from '../_shared/rateLimit.ts';
+import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 import Stripe from 'npm:stripe@14';
 
@@ -15,11 +15,16 @@ Deno.serve(async (req) => {
   const auth = await verifyJWT(req);
   if (!auth) return errorResponse('Unauthorized', 401);
 
-  const { allowed } = await checkRateLimit({
+  // Was checkRateLimit, which counted ai_call_log rows that this function never
+  // wrote — so this cap has never once refused a payment attempt.
+  // 'deny' on limiter failure: an uncapped payment path during an outage is
+  // precisely the scenario the cap exists for.
+  const { allowed } = await consumeRateLimit({
     userId: auth.userId,
     fnName: 'create-payment-intent',
     maxCount: 10,
     windowType: 'daily',
+    onLimiterFailure: 'deny',
   });
   if (!allowed) return errorResponse('Too many payment attempts today — try again tomorrow', 429);
 

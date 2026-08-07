@@ -1,6 +1,6 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
-import { checkRateLimit } from '../_shared/rateLimit.ts';
+import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 
 Deno.serve(async (req) => {
@@ -18,11 +18,21 @@ Deno.serve(async (req) => {
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
-  const { allowed } = await checkRateLimit({
+  // Was checkRateLimit, which counted ai_call_log rows that this function never
+  // wrote — so this cap has never fired.
+  //
+  // 'allow' on limiter failure, and this is the one row in the policy table that
+  // matters most. A woman reporting abuse must never be blocked by our database
+  // having a bad second. A duplicate report costs a moderator ten seconds; a
+  // refused one costs her the report, at the moment she most needed it to work.
+  // Do not "tidy" this to 'deny' for consistency with the other five — the
+  // asymmetry is the decision.
+  const { allowed } = await consumeRateLimit({
     userId: auth.userId,
     fnName: 'submit-report',
     maxCount: 10,
     windowType: 'daily',
+    onLimiterFailure: 'allow',
   });
   if (!allowed) return errorResponse('Rate limit exceeded', 429);
 

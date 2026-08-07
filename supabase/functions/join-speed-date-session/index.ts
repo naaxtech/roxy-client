@@ -1,6 +1,6 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
-import { checkRateLimit, logAiCall } from '../_shared/rateLimit.ts';
+import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { generateSpeedDatePrompts } from '../_shared/speedDatePrompts.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 import { dailySpeedDateRoomName } from '../_shared/daily.ts';
@@ -105,11 +105,16 @@ Deno.serve(async (req) => {
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
   // 5. Rate limit (runs in dev too)
-  const { allowed } = await checkRateLimit({
+  // 'allow' on limiter failure: joining the speed-dating queue is the product
+  // working, and the cap is there to bound AI prompt spend, not to protect
+  // anything a blip could damage.
+  const { allowed } = await consumeRateLimit({
     userId: auth.userId,
     fnName: FN_NAME,
     maxCount: MAX_JOINS_PER_DAY,
     windowType: 'daily',
+    wasMock: DEV_MOCK,
+    onLimiterFailure: 'allow',
   });
   if (!allowed) {
     return errorResponse('You have joined a lot of speed dates today. Try again tomorrow.', 429);
@@ -296,9 +301,10 @@ Deno.serve(async (req) => {
     return errorResponse('Failed to create session', 500);
   }
 
-  // Prompt generation is a real Claude call (CLAUDE.md §8). Logging it is
-  // also what gives checkRateLimit above something to count.
-  await logAiCall({ userId: auth.userId, fnName: FN_NAME, wasMock: false });
+  // Prompt generation is a real Claude call (CLAUDE.md §8). The slot for it was
+  // consumed at the gate above, which is now the same statement that records it
+  // — so this function can no longer be one of the callers that counts a table
+  // it forgot to write.
 
   return successResponse({
     session_id: newSession.id,

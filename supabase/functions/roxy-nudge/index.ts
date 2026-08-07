@@ -1,6 +1,6 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
-import { checkRateLimit, logAiCall } from '../_shared/rateLimit.ts';
+import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { callClaude } from '../_shared/claude.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 
@@ -20,12 +20,15 @@ Deno.serve(async (req) => {
   // DEV_MOCK must be declared before any DB calls (anti-pattern #11)
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
-  const { allowed } = await checkRateLimit({
+  // 'allow' on limiter failure: a nudge is a small AI spend and recoverable.
+  const { allowed } = await consumeRateLimit({
     userId: auth.userId,
     fnName: 'roxy-nudge',
     maxCount: 3,
     windowType: 'conversation',
     conversationId: conversation_id,
+    wasMock: DEV_MOCK,
+    onLimiterFailure: 'allow',
   });
   if (!allowed) return errorResponse('Nudge limit reached — 3 nudges per conversation', 429);
 
@@ -67,12 +70,8 @@ Deno.serve(async (req) => {
     return errorResponse('AI temporarily unavailable, please try again', 503);
   }
 
-  await logAiCall({
-    userId: auth.userId,
-    fnName: 'roxy-nudge',
-    wasMock: false,
-    conversationId: conversation_id,
-  }).catch(() => {});
-
+  // The slot was consumed before the call — the write IS the count now, so there
+  // is nothing to log here. The old `.catch(() => {})` swallowed the very
+  // failure that kept this cap reading zero.
   return successResponse({ nudge });
 });

@@ -289,7 +289,7 @@ async function recentIntentsFor(
  * items — leave every product she touched reading "out of stock" for the full window.
  *
  * Three things deliberately do NOT conflict:
- *   same cart      Replaying an idempotency key is how this function hands a buyer back
+ *   same key       Replaying an idempotency key is how this function hands a buyer back
  *                  her own client_secret after an app reload. Refusing that would lock
  *                  her out of the checkout she is already paying for.
  *   reapable holds A hold the sweep may already take back is not stock she is holding in
@@ -297,12 +297,27 @@ async function recentIntentsFor(
  *   another buyer  Belt and braces against a customer record shared by a bug: identity
  *                  comes from the JWT, and the intent must agree.
  *
+ * THE EXEMPTION IS THE IDEMPOTENCY KEY, NEVER THE CART. This used to compare
+ * `cart_id`, which reads like the same rule and is not: `carts` is
+ * UNIQUE (buyer_id, business_id), so a buyer has exactly ONE cart id per seller and it
+ * never changes, while `newIdempotencyKey()` mints a fresh key on every Pay press. The
+ * cap was therefore exempted by the one value every attempt shares — she could check out
+ * cart C, rewrite C's rows (hers to write under the `cart_items_owner` policy), check out
+ * C again, and open a second hold that the cap skipped. Repeat to the daily limit: twenty
+ * live holds, all exempt. It also misfired for the honest buyer whose release never fired,
+ * who sailed past the cap into the decrement and was told "…is out of stock" about stock
+ * her own abandoned intent was holding.
+ *
+ * An intent with no `idempotency_key` in metadata can never match, so it always counts
+ * against the cap. That is the safe direction: a false 409 costs a buyer a short wait,
+ * while a false exemption is the hold farm above.
+ *
  * Fails OPEN. A Stripe outage must not stop the marketplace selling, and the daily limit
  * is the backstop that still bounds abuse while this check is blind.
  */
 export async function findConflictingHold(
   stripe: Stripe,
-  params: { customerId: string; buyerId: string; cartId: string; nowSeconds?: number }
+  params: { customerId: string; buyerId: string; idempotencyKey: string; nowSeconds?: number }
 ): Promise<ConflictingHold | null> {
   const now = params.nowSeconds ?? Math.floor(Date.now() / 1000);
 
@@ -313,7 +328,7 @@ export async function findConflictingHold(
   for (const pi of intents) {
     if (holdState(pi) !== 'held') continue;
     if (pi.metadata?.buyer_id !== params.buyerId) continue;
-    if (pi.metadata?.cart_id === params.cartId) continue;
+    if (pi.metadata?.idempotency_key === params.idempotencyKey) continue;
     if (!LIVE_STATUSES.has(pi.status)) continue;
     if (isReapable(pi, now)) continue;
 

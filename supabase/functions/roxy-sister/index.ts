@@ -1,6 +1,6 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
-import { checkRateLimit, logAiCall } from '../_shared/rateLimit.ts';
+import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { callClaude } from '../_shared/claude.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 
@@ -32,25 +32,32 @@ Deno.serve(async (req) => {
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
-  const { allowed } = await checkRateLimit({
+  // 'allow' on limiter failure: the Sister Button is reached at a hard moment,
+  // and a database blip is not a reason to refuse her the turn.
+  const { allowed, currentCount } = await consumeRateLimit({
     userId: auth.userId,
     fnName: 'roxy-sister',
     maxCount: 10,
     windowType: 'conversation',
     conversationId: conversation_id,
+    wasMock: DEV_MOCK,
+    onLimiterFailure: 'allow',
   });
   if (!allowed) return errorResponse('Session limit reached — please connect with a professional', 429);
 
   const supabase = getSupabaseClient();
 
-  // Server-authoritative turn number (count logged calls for this conversation)
-  const { count } = await supabase
-    .from('ai_call_log')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', auth.userId)
-    .eq('function_name', 'roxy-sister')
-    .eq('conversation_id', conversation_id);
-  const turnNumber = (count ?? 0) + 1;
+  // Server-authoritative turn number, straight from the limiter that just
+  // recorded this turn. `currentCount` after a successful consume is the count
+  // INCLUDING this call, which is exactly the turn number.
+  //
+  // This replaces a second, independent count of the same table that ran right
+  // here. Two problems with it: it duplicated the limiter's own query, and it
+  // read `count ?? 0`, discarding `error` — so any query failure silently reset
+  // her to turn 1, re-showing the opening prompt and pushing the crisis
+  // resources and the pro directory (turn >= 7 and >= 10 below) back out of
+  // reach at the moment she most needed them.
+  const turnNumber = currentCount;
 
   const isCrisis = CRISIS_KEYWORDS.some((kw) => message.toLowerCase().includes(kw));
   const showResources = isCrisis || turnNumber >= 7;
@@ -71,7 +78,7 @@ Deno.serve(async (req) => {
     mockResponse,
   });
 
-  await logAiCall({ userId: auth.userId, fnName: 'roxy-sister', wasMock: DEV_MOCK, conversationId: conversation_id });
+  // The slot was consumed before the call — the write is the count now.
 
   return successResponse({
     response,

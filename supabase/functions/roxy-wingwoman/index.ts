@@ -1,7 +1,7 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT } from '../_shared/auth.ts';
 import { callClaude } from '../_shared/claude.ts';
-import { checkRateLimit, logAiCall } from '../_shared/rateLimit.ts';
+import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 
 const MOCK_SUGGESTION = "That sounds really interesting — tell me more!";
@@ -21,11 +21,16 @@ Deno.serve(async (req) => {
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
-  const { allowed, currentCount } = await checkRateLimit({
+  // `currentCount` on a REFUSAL is the count that caused it, so the "(n/5)" in
+  // the message below still reads 5/5 — consume writes nothing when it refuses.
+  // 'allow' on limiter failure: AI spend, recoverable.
+  const { allowed, currentCount } = await consumeRateLimit({
     userId: auth.userId,
     fnName: 'roxy-wingwoman',
     maxCount: 5,
     windowType: 'daily',
+    wasMock: DEV_MOCK,
+    onLimiterFailure: 'allow',
   });
   if (!allowed) {
     return errorResponse(`Daily wingwoman limit reached (${currentCount}/5)`, 429);
@@ -58,13 +63,8 @@ Deno.serve(async (req) => {
     return errorResponse('AI temporarily unavailable, please try again', 503);
   }
 
-  // Log call — non-critical, do not fail the request if this errors
-  await logAiCall({
-    userId: auth.userId,
-    fnName: 'roxy-wingwoman',
-    wasMock: false,
-    conversationId: conversation_id,
-  }).catch(() => {});
-
+  // The slot was consumed before the call. The old `.catch(() => {})` here was
+  // "non-critical" only because nothing depended on the row — except the cap,
+  // which read the same table and therefore counted zero forever.
   return successResponse({ suggestion });
 });
