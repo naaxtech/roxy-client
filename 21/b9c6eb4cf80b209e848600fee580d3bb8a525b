@@ -1,0 +1,59 @@
+supabase/functions/_shared/stockHold.ts
+  s_f93f52ad807728::t_aaa54600a7a9c5 69,221-222,224-225,233-245,254-330
+  s_f93f52ad807728::t_8ab7110188f3fe 24,27-41,45-59,65-68
+  s_f93f52ad807728::t_59f231158a5c0c 103-121
+  s_f93f52ad807728::t_3fc868f6b2827d 207-211,213-214
+  s_f93f52ad807728::t_6eb0916888f8f8 70
+supabase/functions/create-product-order/rateLimit.test.ts
+  s_f93f52ad807728::t_091fbaf11fb8f7 1-16,23-28,32-123,125-247
+  s_f93f52ad807728::t_e550d4ec282ac1 29-31
+  s_f93f52ad807728::t_9a2636cba35da9 124
+  s_f93f52ad807728::t_f25c9138f67698 17-22
+supabase/functions/create-product-order/index.ts
+  s_f93f52ad807728::t_73760f5ef48560 10
+  s_f93f52ad807728::t_fe11be4294319e 462-465
+  s_f93f52ad807728::t_f884c0724b98c8 467-469
+  s_f93f52ad807728::t_2ea6cbda3dc243 9,11-12
+  s_f93f52ad807728::t_840e087f6787ea 286-289
+  s_f93f52ad807728::t_61f79ed2b48f7a 119-126
+  s_f93f52ad807728::t_02dab56326dc0f 191
+  s_f93f52ad807728::t_18e6c19947e150 327
+  s_f93f52ad807728::t_3093bd2e182459 116,118,127-144
+  s_f93f52ad807728::t_05aa09d7f6d239 4,7
+  s_f93f52ad807728::t_97f16ebd52829f 259-276
+  s_f93f52ad807728::t_2c2b230193242e 447-461,466,470
+supabase/functions/create-product-order/checkout.ts
+  s_f93f52ad807728::t_ff3a6a2caea0fa 24-47
+  s_f93f52ad807728::t_55009777ced3aa 75-78
+  s_f93f52ad807728::t_fb6b56c68295c7 1-23,48-74,79
+CHANGELOG.md
+  s_f93f52ad807728::t_be6dbd7da17f6e 41-61
+.github/workflows/ci.yml
+  s_f93f52ad807728::t_c83a06690c5030 76-97
+supabase/functions/stripe-product-webhook/index.ts
+  s_f93f52ad807728::t_4f908c67d56e1b 100-110
+apps/mobile/__tests__/createProductOrder.test.ts
+  s_f93f52ad807728::t_b79990c587a517 2
+  s_f93f52ad807728::t_99ab65617a2a06 1,3-61,74-94
+  s_f93f52ad807728::t_635be7e5ca7c3b 62-73
+supabase/functions/_shared/stockHold.test.ts
+  s_f93f52ad807728::t_465eba13f3664e 1-327
+apps/mobile/components/build/CheckoutSheet.tsx
+  s_f93f52ad807728::t_e8ffed68fc80c9 212-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "21b9c6eb4cf80b209e848600fee580d3bb8a525b",
+  "prompts": {},
+  "sessions": {
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
