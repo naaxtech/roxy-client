@@ -7,6 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { THEMES } from '../../lib/theme';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { ReelRow } from '../../lib/reels';
 import { REPORT_DETAIL_MAX, REPORT_REASONS } from './feedSafety';
 import type { ReportReason } from './feedSafety';
@@ -164,10 +165,10 @@ export function FeedSafetySheet({
             </Text>
             <TouchableOpacity
               testID="safety-close"
+              style={s.close}
               onPress={onClose}
               accessibilityRole="button"
               accessibilityLabel="Close safety options"
-              hitSlop={10}
             >
               <Ionicons name="close" size={22} color={DARK.textMuted} />
             </TouchableOpacity>
@@ -373,6 +374,13 @@ const s = StyleSheet.create({
     marginBottom: 10,
   },
   title: { color: DARK.textPrimary, fontSize: 17, fontWeight: '800' },
+  // The sheet has the room a feed cell does not, so the box is spent outright:
+  // 48dp square around a 22dp glyph, minus the sheet's own right padding so it
+  // sits flush with the edge rather than 12dp shy of it.
+  close: {
+    width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, marginRight: -12,
+    alignItems: 'center', justifyContent: 'center',
+  },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     paddingVertical: 14,
@@ -403,7 +411,9 @@ const s = StyleSheet.create({
   primaryOff: { opacity: 0.5 },
   danger: { backgroundColor: '#C62828' },
   primaryText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  secondary: { minHeight: 46, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  secondary: {
+    minHeight: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center', marginTop: 4,
+  },
   secondaryText: { color: DARK.textSecondary, fontSize: 15, fontWeight: '600' },
   error: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

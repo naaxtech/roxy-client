@@ -6,6 +6,7 @@ import Animated, {
   useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { FeedVideoPlayer } from './FeedVideoPlayer';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedCellChromeProps } from './FeedCellChrome';
@@ -129,7 +130,6 @@ export function ReelCell({
       onPress={togglePlay}
       accessibilityRole="button"
       accessibilityLabel={playing ? 'Pause video' : 'Play video'}
-      hitSlop={8}
     >
       <Ionicons name={playing ? 'pause' : 'play'} size={22} color="#fff" style={CHROME_SHADOW} />
     </TouchableOpacity>
@@ -177,7 +177,6 @@ export function ReelCell({
           accessibilityRole="button"
           accessibilityLabel={muted ? 'Unmute video' : 'Mute video'}
           accessibilityState={{ selected: !muted }}
-          hitSlop={8}
         >
           <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={18} color="#fff" />
         </TouchableOpacity>
@@ -214,14 +213,17 @@ const s = StyleSheet.create({
   // bottom scrim, so both carry the rail's plate rather than a lighter one of
   // their own: at 0.4 a white glyph over a white frame is 2.85:1, under the 3:1
   // that SC 1.4.11 asks of a control.
+  // Both were sized to their glyph (40 and 38) and then given 8dp of hitSlop,
+  // which extends nothing a platform can measure. They are 48 now, which is what
+  // ATF's TouchTargetSizeCheck asks of a control. src: lib/touchTargets.ts
   transportBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, borderRadius: MIN_TOUCH_TARGET / 2,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: RAIL_BACKING,
   },
   muteBtn: {
     position: 'absolute', top: 16, right: 14,
-    width: 38, height: 38, borderRadius: 19,
+    width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, borderRadius: MIN_TOUCH_TARGET / 2,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: RAIL_BACKING,
   },

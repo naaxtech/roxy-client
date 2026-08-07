@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { logError } from '../../lib/errorLogger';
 import { THEMES } from '../../lib/theme';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { LinkType } from '../../types';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
@@ -110,6 +111,7 @@ export function ResourceCell({
 
           <TouchableOpacity
             testID="resource-open"
+            style={s.open}
             onPress={open}
             disabled={busy}
             accessibilityRole="button"
@@ -166,9 +168,13 @@ const s = StyleSheet.create({
     fontWeight: '800', letterSpacing: -0.4, ...CHROME_SHADOW,
   },
   meta: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '600' },
+  // The gradient is the button's skin; the touchable above it is what a platform
+  // measures, so the floor is declared on both.
+  open: { minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET },
   cta: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    minHeight: 46, borderRadius: 23, paddingHorizontal: 20, marginTop: 4,
+    minHeight: MIN_TOUCH_TARGET, borderRadius: MIN_TOUCH_TARGET / 2,
+    paddingHorizontal: 20, marginTop: 4,
   },
   ctaText: { color: '#fff', fontSize: 15, fontWeight: '800' },
   error: {

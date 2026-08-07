@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { TextStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
 import { BRAND_GRADIENT, BRAND_VEIL, CHROME_SHADOW } from './feedChromeTokens';
@@ -97,7 +98,6 @@ export function TextCell({
             onPress={onOpenPost}
             accessibilityRole="button"
             accessibilityLabel="Read the full post"
-            hitSlop={8}
           >
             <Text style={s.moreText}>Read more</Text>
           </TouchableOpacity>
@@ -127,7 +127,9 @@ const s = StyleSheet.create({
   body: { color: '#fff', textAlign: 'center', ...CHROME_SHADOW },
   empty: { color: 'rgba(255,255,255,0.7)', fontSize: 20, textAlign: 'center' },
   more: {
-    paddingVertical: 9, paddingHorizontal: 18, borderRadius: 22,
+    minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET,
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 18, borderRadius: MIN_TOUCH_TARGET / 2,
     backgroundColor: 'rgba(255,255,255,0.18)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
   },

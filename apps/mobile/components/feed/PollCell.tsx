@@ -4,6 +4,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEMES } from '../../lib/theme';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
 import { BRAND_GRADIENT, CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
@@ -176,10 +177,10 @@ export function PollCell({
 
         <TouchableOpacity
           testID="poll-open"
+          style={s.open}
           onPress={onOpenPost}
           accessibilityRole="button"
           accessibilityLabel="Open post"
-          hitSlop={8}
         >
           <Text style={s.openText}>See the discussion</Text>
         </TouchableOpacity>
@@ -207,6 +208,10 @@ const s = StyleSheet.create({
     fontWeight: '800', letterSpacing: -0.4, marginBottom: 4, ...CHROME_SHADOW,
   },
   options: { gap: 10 },
+  open: {
+    minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
+  },
   option: {
     minHeight: 52, borderRadius: 14, overflow: 'hidden',
     flexDirection: 'row', alignItems: 'center', gap: 10,

@@ -16,9 +16,9 @@ jest.mock('../../../hooks/useReducedMotion', () => ({
 
 import { FloatingTabBar } from '../../../components/nav/FloatingTabBar';
 import {
-  ACTIVE_TINT_ALPHA, BRAND_GRADIENT, indicatorFadeDuration, TAB_MIN_TOUCH,
+  ACTIVE_TINT_ALPHA, indicatorFadeDuration, TAB_MIN_TOUCH,
 } from '../../../components/nav/navTokens';
-import { BRAND_INK, THEMES, contrastRatio, inkOn } from '../../../lib/theme';
+import { THEMES, contrastRatio } from '../../../lib/theme';
 
 type Route = { key: string; name: string };
 
@@ -136,11 +136,23 @@ describe('FloatingTabBar', () => {
     expect(bg).toMatch(/^#[0-9a-fA-F]{6}$/);
   });
 
-  it('takes the create plate ink from inkOn(), never white on a brand fill', () => {
+  // The create plate carries WHITE, not inkOn()'s dark ink. That is a brand
+  // decision made by the brand owner on 2026-08-07 after seeing dark ink on the
+  // gradient plates: it read as heavy and wrong against the rest of the app.
+  //
+  // The cost is recorded here rather than lost. The glyph is an icon, so the bar
+  // is WCAG 2.2 SC 1.4.11 non-text contrast at 3:1, not 4.5:1. White measures
+  // 4.21:1 on #E81C8E and 3.56:1 on #FF2F71 — both pass 3:1 — and 2.86:1 on
+  // #FF6A2E, which does not. The glyph sits centred, so it renders over the
+  // middle stop rather than the orange end.
+  //
+  // If this needs to satisfy 3:1 at every stop, the fix is NOT dark ink: it is
+  // BRAND_VEIL (rgba(26,10,46,0.42), already in feedChromeTokens), which takes
+  // white on #FF6A2E to 6.38:1 while keeping the ink white.
+  // src: https://www.w3.org/TR/WCAG22/#non-text-contrast · read 2026-08-06
+  it('carries white ink on the create plate, per the brand decision', () => {
     const { getByTestId } = renderBar();
-    const ink = getByTestId('nav-create-icon').props.color;
-    expect(ink).toBe(inkOn(BRAND_GRADIENT[BRAND_GRADIENT.length - 1]));
-    expect(ink).toBe(BRAND_INK);
+    expect(getByTestId('nav-create-icon').props.color).toBe('#fff');
   });
 
   it('clears the home indicator using the live safe-area inset, not a constant', () => {

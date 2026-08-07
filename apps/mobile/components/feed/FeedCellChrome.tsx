@@ -7,6 +7,7 @@ import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import { avatarGradient, isPresetAvatar, presetColor, presetEmoji } from '../../lib/avatars';
 import { contentDetailPath } from '../../lib/contentNavigation';
+import { MIN_INLINE_TOUCH_TARGET, MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { ReelRow } from '../../lib/reels';
 import type { PostType } from '../../types';
 import { CommunityCrest } from './CommunityCrest';
@@ -164,13 +165,22 @@ export function FeedCellChrome({
     const url = Linking.createURL(contentDetailPath(post.id, post.post_type));
     // Android's share sheet reads `message` only, iOS prefers `url` — so the
     // link goes in both or half the platforms share nothing.
+    //
+    // The author's display name is DELIBERATELY absent. This sheet hands the
+    // payload to an arbitrary app — WhatsApp, SMS, a screenshot — and naming a
+    // member there is a WLW-dating-app disclosure about a third party who never
+    // agreed to it. She shared a post; she did not out a poster. The `roxy://`
+    // link resolves for nobody without the app, so the name bought the sharer
+    // nothing and cost someone else their privacy.
+    //
+    // The real fix is the in-product reshare in plan §11 — share INTO a room,
+    // where the walls still apply. Until that exists, share the thing, not the
+    // person.
     void Share.share({
-      message: authorName
-        ? `${authorName} posted this on Roxy — ${url}`
-        : `Check this out on Roxy — ${url}`,
+      message: `Something on Roxy — ${url}`,
       url,
     }).catch(() => { /* viewer dismissed the sheet */ });
-  }, [post.id, post.post_type, authorName]);
+  }, [post.id, post.post_type]);
 
   const avatarUrl = post.profiles?.avatar_url ?? null;
   const grad = avatarGradient(authorName || post.author_id);
@@ -228,6 +238,8 @@ export function FeedCellChrome({
           <View testID="feed-cell-identity" style={s.identity} pointerEvents="box-none">
             {handleLabel ? (
               <TouchableOpacity
+                testID="feed-cell-handle-hit"
+                style={s.inlineHit}
                 onPress={onOpenAuthor}
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${authorName || 'the author'}'s profile`}
@@ -250,10 +262,10 @@ export function FeedCellChrome({
                 {!expanded && caption.length > CAPTION_CAP ? (
                   <TouchableOpacity
                     testID="feed-cell-more"
+                    style={s.inlineHit}
                     onPress={() => setExpanded(true)}
                     accessibilityRole="button"
                     accessibilityLabel="Show the full caption"
-                    hitSlop={6}
                   >
                     <Text style={[s.more, CHROME_SHADOW]}>more</Text>
                   </TouchableOpacity>
@@ -263,11 +275,11 @@ export function FeedCellChrome({
 
             {communityName ? (
               <TouchableOpacity
+                testID="feed-cell-community-hit"
                 style={s.communityRow}
                 onPress={onOpenCommunity}
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${communityName}`}
-                hitSlop={6}
               >
                 <Ionicons name="people" size={13} color="#fff" style={CHROME_SHADOW} />
                 <Text testID="feed-cell-community" style={[s.community, CHROME_SHADOW]}>
@@ -286,7 +298,18 @@ export function FeedCellChrome({
         {playbackControl}
 
         <View testID="feed-rail" style={s.rail}>
-          <View style={s.author}>
+          {/* Not `rail-*`: this is the box that CONTAINS the avatar and its
+              follow badge, not a slot in the rail. The badge hangs below the
+              avatar plate, and RN only descends into a child after the parent
+              has been hit — so without a parent tall enough to hold it, the
+              badge's lower half fell through to the avatar and followed nobody
+              while opening her profile instead. `rail-` is reserved for the
+              actual slots, because FeedCellChrome.test enumerates the rail by
+              that prefix and a container in that list would read as an action. */}
+          <View
+            testID="author-slot"
+            style={[s.author, onFollowAuthor ? s.authorFollowable : null]}
+          >
             <TouchableOpacity
               testID="rail-avatar"
               style={s.avatarPlate}
@@ -295,16 +318,31 @@ export function FeedCellChrome({
               accessibilityLabel={
                 authorName ? `Open ${authorName}'s profile` : "Open the author's profile"
               }
-              hitSlop={6}
             >
               {/* The white ring is adjacent to the plate, not to the frame:
                   ring-on-white-photo measured 1.00:1. */}
               <View style={s.avatarRing}>{avatarFace}</View>
             </TouchableOpacity>
             {onFollowAuthor ? (
+              /*
+                The touch box is 48dp and the pink plate inside it is still 20dp.
+                Both facts matter, and the old badge had neither: it was a bare
+                20dp view at `bottom: -9` inside a parent with no height of its
+                own, so nine of its twenty dp sat OUTSIDE `author`'s bounds — and
+                React Native only descends into a child after the parent is hit.
+                A thumb on the lower half of the `+` therefore fell through to the
+                avatar and opened the author's profile instead of following her,
+                which is a silently wrong action rather than a dead tap. The
+                `hitSlop` that was supposed to cover it could not: hitSlop does
+                not cross a parent boundary either.
+
+                The box is anchored to the bottom of a parent that is now tall
+                enough to contain it, and it overlaps the 52dp avatar plate by
+                exactly 4dp — leaving the avatar its own 48. See `s.author`.
+              */
               <TouchableOpacity
                 testID="rail-follow"
-                style={s.followBadge}
+                style={s.followHit}
                 onPress={onFollowAuthor}
                 accessibilityRole="button"
                 accessibilityLabel={
@@ -313,13 +351,14 @@ export function FeedCellChrome({
                     : `Follow ${authorName || 'this author'}`
                 }
                 accessibilityState={{ selected: following === true }}
-                hitSlop={8}
               >
-                <Ionicons
-                  name={following ? 'checkmark' : 'add'}
-                  size={14}
-                  color="#fff"
-                />
+                <View style={s.followBadge}>
+                  <Ionicons
+                    name={following ? 'checkmark' : 'add'}
+                    size={14}
+                    color="#fff"
+                  />
+                </View>
               </TouchableOpacity>
             ) : null}
           </View>
@@ -333,7 +372,6 @@ export function FeedCellChrome({
               liked ? `Unlike ${noun}, ${likeCount} likes` : `Like ${noun}, ${likeCount} likes`
             }
             accessibilityState={{ selected: liked }}
-            hitSlop={6}
           >
             <Ionicons
               name={liked ? 'heart' : 'heart-outline'}
@@ -350,7 +388,6 @@ export function FeedCellChrome({
             onPress={onOpenComments}
             accessibilityRole="button"
             accessibilityLabel={`View comments, ${post.comment_count} comments`}
-            hitSlop={6}
           >
             <Ionicons name="chatbubble-outline" size={27} color="#fff" style={CHROME_SHADOW} />
             <Text style={[s.railCount, CHROME_SHADOW]}>{post.comment_count}</Text>
@@ -363,7 +400,6 @@ export function FeedCellChrome({
             accessibilityRole="button"
             accessibilityLabel={saved ? `Remove ${noun} from saved` : `Save ${noun}`}
             accessibilityState={{ selected: saved }}
-            hitSlop={6}
           >
             <Ionicons
               name={saved ? 'bookmark' : 'bookmark-outline'}
@@ -379,7 +415,6 @@ export function FeedCellChrome({
             onPress={handleShare}
             accessibilityRole="button"
             accessibilityLabel={`Share ${noun}`}
-            hitSlop={6}
           >
             <Ionicons name="arrow-redo-outline" size={27} color="#fff" style={CHROME_SHADOW} />
           </TouchableOpacity>
@@ -394,7 +429,6 @@ export function FeedCellChrome({
             accessibilityRole="button"
             accessibilityLabel={`Report, block or hide this ${noun}`}
             accessibilityHint="Opens safety options for this post"
-            hitSlop={6}
           >
             <Ionicons name="ellipsis-horizontal" size={24} color="#fff" style={CHROME_SHADOW} />
           </TouchableOpacity>
@@ -436,7 +470,18 @@ const s = StyleSheet.create({
   },
   rail: { gap: 14, alignItems: 'center' },
   author: { alignItems: 'center', marginBottom: 6 },
+  /**
+   * Room for the follow badge's 48dp box, and only when there is one to hold.
+   *
+   * 44 = the box's 48 minus the 4dp it is allowed to overlap the avatar plate.
+   * The plate renders at 52 (46 ring + 3 padding each side), so ceding 4 leaves
+   * it exactly `MIN_TOUCH_TARGET`. Applied conditionally because `onFollowAuthor`
+   * is unwired today — there is no follow graph — and 44dp of empty rail for a
+   * badge that is not drawn would push the rest of the column off a short page.
+   */
+  authorFollowable: { paddingBottom: MIN_TOUCH_TARGET - 4 },
   avatarPlate: {
+    minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET,
     padding: 3, borderRadius: 26, backgroundColor: RAIL_BACKING,
   },
   avatarRing: {
@@ -447,8 +492,18 @@ const s = StyleSheet.create({
   avatarFace: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
   avatarLetter: { color: '#fff', fontWeight: '800', fontSize: 17 },
   avatarEmoji: { fontSize: 20 },
+  /**
+   * The tappable box. Anchored to the bottom of `author`, which
+   * `authorFollowable` has made tall enough to hold all 48dp of it — nothing
+   * hangs outside the parent, so nothing falls through to the avatar.
+   */
+  followHit: {
+    position: 'absolute', bottom: 0,
+    width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET,
+    alignItems: 'center', justifyContent: 'flex-start',
+  },
+  /** The visible plate, unchanged at 20dp and tucked against the plate's edge. */
   followBadge: {
-    position: 'absolute', bottom: -9,
     width: 20, height: 20, borderRadius: 10,
     backgroundColor: '#FF2F71',
     alignItems: 'center', justifyContent: 'center',
@@ -462,18 +517,37 @@ const s = StyleSheet.create({
    * instead. The alpha is set by the liked heart — see `RAIL_BACKING`.
    */
   railBtn: {
-    alignItems: 'center', gap: 2, minWidth: 46,
+    alignItems: 'center', justifyContent: 'center', gap: 2,
+    minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET,
     paddingVertical: 6, paddingHorizontal: 6, borderRadius: 20,
     backgroundColor: RAIL_BACKING,
   },
   railCount: { color: '#fff', fontSize: 11, fontWeight: '700' },
   crest: { position: 'absolute', right: 14, bottom: CHROME_BOTTOM, width: CREST_SIZE },
+  /**
+   * `gap` drops from 5 to 2 because the rhythm now lives inside the targets: the
+   * three text links each carry `inlineHit`'s padding, which both separates them
+   * and makes them tappable. Net cost to the band's height is ~23dp rather than
+   * the ~32 the padding alone would have added.
+   */
   identity: {
-    paddingLeft: 18, paddingRight: RAIL_GUTTER, paddingBottom: CHROME_BOTTOM, gap: 5,
+    paddingLeft: 18, paddingRight: RAIL_GUTTER, paddingBottom: CHROME_BOTTOM, gap: 2,
   },
+  /**
+   * The handle, the "more" affordance and the community line.
+   *
+   * Padded to clear WCAG 2.2 SC 2.5.8's 24dp under its Inline exception rather
+   * than sized to ATF's 48 — see `lib/touchTargets.ts` for why three 48dp boxes
+   * here would veil two thirds of Connect's page. What they do NOT do any more
+   * is lean on `hitSlop`, which bought them nothing measurable.
+   */
+  inlineHit: { justifyContent: 'center', minHeight: MIN_INLINE_TOUCH_TARGET },
   handle: { color: '#fff', fontWeight: '800', fontSize: 15, letterSpacing: -0.2 },
   caption: { color: 'rgba(255,255,255,0.95)', fontSize: 14.5, lineHeight: 20 },
   more: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '700' },
-  communityRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  communityRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    minHeight: MIN_INLINE_TOUCH_TARGET,
+  },
   community: { color: 'rgba(255,255,255,0.9)', fontWeight: '700', fontSize: 12.5 },
 });

@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { avatarGradient } from '../../lib/avatars';
 import { CHROME_SHADOW } from './feedChromeTokens';
 
+/** Already past `MIN_TOUCH_TARGET`, which is why the crest needed no hit box. */
 const SIZE = 50;
 const ROTATION_MS = 9000;
 
@@ -98,7 +99,6 @@ export function CommunityCrest({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Open ${name}`}
-      hitSlop={8}
       activeOpacity={0.8}
     >
       {/*

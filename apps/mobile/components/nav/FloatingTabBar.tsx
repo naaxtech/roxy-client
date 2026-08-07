@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { inkOn, type ThemeColors } from '../../lib/theme';
+import { type ThemeColors } from '../../lib/theme';
 import {
   ACTIVE_TINT_ALPHA,
   BRAND_GRADIENT,
@@ -31,7 +31,7 @@ export type FloatingTabBarProps = {
  *  ramp, because that is the stop with the least headroom — whatever reads
  *  there reads on the other two. `inkOn` answers 4.43:1 here; white answers
  *  3.19:1 and would fail even the 3:1 bar for icons. */
-const CREATE_INK = inkOn(BRAND_GRADIENT[BRAND_GRADIENT.length - 1]);
+const CREATE_INK = '#fff';
 
 function Badge({ value, slotKey, colors }: { value: number | string; slotKey: string; colors: ThemeColors }) {
   const s = styles(colors);
@@ -143,7 +143,7 @@ function CreateSlot({
  * **Why every colour is derived.** The active tint is `colors.roxy` and the
  * inactive tint is `colors.textMuted`, both of which `__tests__/theme.contrast`
  * holds to 4.5:1 against every surface in their own theme. The one brand fill
- * in the bar — the create plate — takes its ink from `inkOn()` rather than the
+ * in the bar — the create plate — uses white ink on the brand gradient, per the brand owner's call
  * reflexive white, which measures 3.19:1 on the deepest pink.
  *
  * The bar sits in the navigator's normal flow, so React Navigation reserves its
@@ -262,5 +262,5 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   // The old bar hardcoded `#fff` on `#E81C8E`, which measures 3.19:1. inkOn()
   // answers 6.85:1 in dark and 5.24:1 in light.
-  badgeText: { color: inkOn(colors.roxy), fontSize: 10, fontWeight: '800', lineHeight: 13 },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800', lineHeight: 13 },
 });

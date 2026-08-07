@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { CHROME_SHADOW } from './feedChromeTokens';
 
 export interface FeedInterestCardProps {
@@ -60,10 +61,10 @@ export function FeedInterestCard({
         </Text>
         <TouchableOpacity
           testID="interest-close"
+          style={s.close}
           onPress={onDismiss}
           accessibilityRole="button"
           accessibilityLabel="Dismiss this question"
-          hitSlop={10}
         >
           <Ionicons name="close" size={16} color="#fff" />
         </TouchableOpacity>
@@ -106,10 +107,24 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)',
   },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  /**
+   * A real 48dp box for a 16dp glyph, without a 48dp row to pay for it.
+   *
+   * The negative margins let the box spend the card's own padding: it reaches
+   * exactly the card's top and right edges and no further, so nothing overflows
+   * for Android to clip and the head grows from ~19dp to 24 rather than to 48.
+   * This card renders inside the scrim's auto-height band on a page that can be
+   * 320dp, and 29dp of extra band for one dismiss control is a bad trade.
+   */
+  close: {
+    width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET,
+    marginVertical: -12, marginRight: -12,
+    alignItems: 'center', justifyContent: 'center',
+  },
   question: { color: '#fff', fontSize: 13.5, fontWeight: '700', flex: 1 },
   answers: { flexDirection: 'row', gap: 8 },
   answer: {
-    flex: 1, minHeight: 38, borderRadius: 10,
+    flex: 1, minHeight: MIN_TOUCH_TARGET, borderRadius: 10,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',

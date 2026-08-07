@@ -7,6 +7,7 @@ import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { getPostImageUrl } from '../../lib/media';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
 
@@ -104,8 +105,8 @@ export function PhotoCell({
             testID="photo-cell-error-open"
             onPress={onOpenPost}
             accessibilityRole="button"
+            style={s.stateActionHit}
             accessibilityLabel="Open post"
-            hitSlop={8}
           >
             <Text style={s.stateAction}>Open post</Text>
           </TouchableOpacity>
@@ -143,6 +144,10 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', gap: 10, padding: 32,
   },
   stateText: { color: 'rgba(255,255,255,0.75)', fontSize: 15, textAlign: 'center' },
+  stateActionHit: {
+    minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16,
+  },
   stateAction: { color: '#fff', fontSize: 15, fontWeight: '700' },
   dots: {
     position: 'absolute', left: 0, right: 0, bottom: 128,

@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { COMMUNITY_CHIP_COLORS, inkOn, type ThemeColors } from '../../lib/theme';
+import { COMMUNITY_CHIP_COLORS, type ThemeColors } from '../../lib/theme';
 import { TAB_MIN_TOUCH } from './navTokens';
 
 type MemberRow = { community_id: string; communities: { id: string; name: string } | null };
@@ -151,7 +151,7 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
                   activeOpacity={0.8}
                 >
                   <View style={[s.crest, { backgroundColor: crest }]}>
-                    <Text style={[s.crestText, { color: inkOn(crest) }]}>
+                    <Text style={[s.crestText, { color: '#fff' }]}>
                       {room.name[0]?.toUpperCase() ?? '?'}
                     </Text>
                   </View>

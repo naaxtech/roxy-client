@@ -17,7 +17,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../../../store/authStore';
 import { callEdgeFunction } from '../../../../lib/supabase';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
-import { BRAND_INK } from '../../../../lib/theme';
 import { showAlert } from '../../../../lib/confirm';
 
 type Message = {
@@ -144,7 +143,7 @@ export default function SisterButtonScreen() {
     messageText: { fontSize: 15, lineHeight: 22 },
     // Her own words sit on the #8E7CF7 → #C86DD7 lilac; white on those is
     // 3.29:1 and 3.17:1. Dark ink is 5.66:1 and 5.88:1.
-    messageTextUser: { color: BRAND_INK },
+    messageTextUser: { color: '#fff' },
     messageTextAssistant: { color: '#EDE7F8' },
 
     thinkingWrap: {
@@ -332,7 +331,7 @@ export default function SisterButtonScreen() {
             <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <LinearGradient colors={['#8E7CF7', '#C86DD7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerPlate}>
-            <Ionicons name="moon" size={18} color={BRAND_INK} />
+            <Ionicons name="moon" size={18} color="#fff" />
           </LinearGradient>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Sister</Text>
@@ -350,7 +349,7 @@ export default function SisterButtonScreen() {
           {messages.length === 0 && (
             <View style={styles.emptyState}>
               <LinearGradient colors={['#8E7CF7', '#C86DD7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.emptyPlate}>
-                <Ionicons name="moon" size={30} color={BRAND_INK} />
+                <Ionicons name="moon" size={30} color="#fff" />
               </LinearGradient>
               <Text style={styles.emptyTitle}>Hi, I'm Sister</Text>
               <Text style={styles.emptyBody}>
@@ -474,7 +473,7 @@ export default function SisterButtonScreen() {
             accessibilityLabel="Send message"
           >
             <LinearGradient colors={['#8E7CF7', '#C86DD7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.sendButtonInner}>
-              <Ionicons name="send" size={16} color={BRAND_INK} />
+              <Ionicons name="send" size={16} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
         </View>

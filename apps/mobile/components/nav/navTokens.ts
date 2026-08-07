@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
 /**
  * The brand ramp. It is duplicated here rather than imported because the two
@@ -13,15 +14,17 @@ export const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 /**
  * Every interactive element in the shell is measured, not padded by hitSlop.
  *
- * React Native's `hitSlop` never extends a touch area past the parent's bounds,
- * and Google's Accessibility Test Framework measures the view's own bounds — so
- * a 32pt icon with 12pt of hitSlop reads as a 32pt target to both the platform
- * and the Play Console pre-launch report. Size the view instead.
+ * The rule, the numbers and their sources now live in `lib/touchTargets.ts`,
+ * because a doctrine stated in one directory and unheard in another is how the
+ * feed shipped fifteen `hitSlop` props under a comment banning them. This alias
+ * stays so the shell's call sites read in the shell's own vocabulary.
  *
- * src: https://reactnative-archive-august-2025.netlify.app/docs/0.74/view#hitslop · react-native 0.74.5 · 2026-08-07
- * src: https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html · WCAG 2.2 SC 2.5.8 · 2026-08-07
+ * It is 48, not the 44 this file used to declare. The 44 was cited to Google's
+ * Accessibility Test Framework, and ATF's `TouchTargetSizeCheck` hardcodes 48;
+ * 44 is Apple's HIG figure and WCAG's Level AAA SC 2.5.5 figure. See
+ * `lib/touchTargets.ts` for the primary sources.
  */
-export const TAB_MIN_TOUCH = 44;
+export const TAB_MIN_TOUCH = MIN_TOUCH_TARGET;
 
 /**
  * The floating pill never sits flush with the screen edge — it is inset on all

@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { BRAND_INK } from '../../lib/theme';
 
 interface Props {
   userId: string;
@@ -81,7 +80,7 @@ export function MiniWinsCard({ userId }: Props) {
     <View style={s.card}>
       <View style={s.header}>
         <LinearGradient colors={['#FF6A2E', '#E81C8E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.headerPlate}>
-          <Ionicons name="flash" size={16} color={BRAND_INK} />
+          <Ionicons name="flash" size={16} color="#fff" />
         </LinearGradient>
         <View style={{ flex: 1 }}>
           <Text style={s.title}>Mini Wins</Text>
@@ -109,7 +108,7 @@ export function MiniWinsCard({ userId }: Props) {
               end={{ x: 1, y: 1 }}
               style={s.iconPlate}
             >
-              <Ionicons name={done ? 'checkmark' : q.icon} size={16} color={BRAND_INK} />
+              <Ionicons name={done ? 'checkmark' : q.icon} size={16} color="#fff" />
             </LinearGradient>
             <View style={{ flex: 1 }}>
               <View style={s.rowHeader}>
