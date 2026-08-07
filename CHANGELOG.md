@@ -12,6 +12,27 @@ finer-grained engineering log lives in `.claude/log.md`.
 
 ## [Unreleased]
 
+### Security
+- **`dev-control` was reachable on production by any member with a login, and
+  one of its actions is a platform-wide switch.** The gate read
+  `if (ENVIRONMENT === 'production') deny`, which describes the intent and
+  implements the opposite: `ENVIRONMENT` was never set on this project (17
+  secrets, none of them that), so `Deno.env.get` returned `undefined`, the
+  equality was false, and the block never fired. The function has been ACTIVE
+  since version 29. What that left open to any invited member: `set_ai_enabled`
+  upserts `dev_config.ai_enabled`, which is **global and unscoped** — one request
+  turns Roxy's AI off for every woman on the platform, and `dev_config` is
+  otherwise unreachable (RLS `FOR ALL USING (false)`), so this function was the
+  only door to it; `reset_counters` deletes the caller's `ai_call_log` rows for
+  the day, clearing every daily cap that does work; `clear_greeting_cache`
+  re-arms the greeting, the largest AI cost line on the platform. The gate now
+  fails closed — only the exact string `development` opens it, so the dangerous
+  state must be configured deliberately rather than reached by forgetting — and
+  `is_staff` is required as a second factor that holds even if a future deploy
+  sets `ENVIRONMENT` somewhere it should not be. Verified live after deploy: all
+  three actions return 403 to a real signed-in member, and `dev_config.ai_enabled`
+  reads `true` — the switch was never flipped.
+
 ### Changed
 - **Two feeds, two scopes: Connect is the public square, communities hold their
   own.** Connect's Feed and Reels tabs now show community *announcements* only —

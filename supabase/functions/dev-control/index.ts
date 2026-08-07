@@ -22,9 +22,32 @@ Deno.serve(async (req: Request) => {
   const auth = await verifyJWT(req);
   if (!auth) return errorResponse('Unauthorized', 401);
 
-  // Block in production
-  if (Deno.env.get('ENVIRONMENT') === 'production') {
-    return errorResponse('Not available in production', 403);
+  // ── The gate used to be `if (ENVIRONMENT === 'production') deny` ────────────
+  //
+  // That reads as "blocked in production" and was the opposite: ENVIRONMENT is
+  // not set on this project at all (`supabase secrets list`, 2026-08-07 -- 17
+  // secrets, no ENVIRONMENT), so `Deno.env.get` returned undefined, the equality
+  // was false, and the block never fired. This function has been ACTIVE on
+  // production since version 29 with no gate on it beyond a valid JWT.
+  //
+  // What that opened, to any invited member with a login:
+  //
+  //   * `set_ai_enabled` upserts dev_config.ai_enabled, which is GLOBAL and
+  //     unscoped -- one request turns Roxy's AI off for every woman on the
+  //     platform. dev_config is otherwise unreachable (RLS `FOR ALL USING
+  //     (false)`, 001:97), so this function was the only door to it, and it was
+  //     open.
+  //   * `reset_counters` deletes her ai_call_log rows for the day, clearing
+  //     every daily cap that DOES work -- a total bypass of the rate limiter.
+  //   * `clear_greeting_cache` re-arms the greeting, which is the single largest
+  //     AI cost line on the platform (53 of 78 logged calls).
+  //
+  // Now fail-closed: a missing, misspelled or unexpected ENVIRONMENT denies.
+  // Only the exact string 'development' opens the door, so the dangerous state
+  // is the one you have to configure deliberately rather than the one you get by
+  // forgetting. An absent secret must never mean "enabled".
+  if (Deno.env.get('ENVIRONMENT') !== 'development') {
+    return errorResponse('Not available in this environment', 403);
   }
 
   let body: { action: string; value?: boolean };
@@ -36,6 +59,19 @@ Deno.serve(async (req: Request) => {
 
   const { action, value } = body;
   const supabase = getSupabaseClient();
+
+  // Second factor, deliberately not folded into the environment check above.
+  // The environment gate is a deploy-time property and it has already been wrong
+  // once, in the direction that opened the door. This one is a property of the
+  // caller and holds even if a future deploy sets ENVIRONMENT=development
+  // somewhere it should not be. `set_ai_enabled` writes global state; it should
+  // never have been reachable by an ordinary member in any environment.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_staff')
+    .eq('id', auth.userId)
+    .maybeSingle();
+  if (!profile?.is_staff) return errorResponse('Staff access required', 403);
 
   // ── get_status ──────────────────────────────────────────────────────────────
   if (action === 'get_status') {
@@ -83,6 +119,11 @@ Deno.serve(async (req: Request) => {
   // ── reset_counters ──────────────────────────────────────────────────────────
   if (action === 'reset_counters') {
     const today = new Date().toISOString().split('T')[0];
+    // rate-limit-ledger-exempt: clearing the caller's own caps is the entire
+    // purpose of this action, and it is staff-only in a development environment
+    // by the two gates above. Until 2026-08-07 it was neither: an unset
+    // ENVIRONMENT left this reachable on production by any member, which made it
+    // a total bypass of every daily cap that works.
     await supabase
       .from('ai_call_log')
       .delete()
