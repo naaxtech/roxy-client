@@ -154,6 +154,17 @@ const server = Deno.serve({ port: 0, signal: abort.signal, onListen: () => {} },
 
 const origin = `http://localhost:${(server.addr as Deno.NetAddr).port}`;
 
+/**
+ * This module holds ONE stub HTTP server alive for every test in the file, and
+ * the handler under test is imported once against it. Deno's leak sanitiser is
+ * built for tests that acquire and release their own resources, so it flags that
+ * deliberate module-scoped fixture on every test, and `npm:stripe` adds timers
+ * of its own on top.
+ *
+ * This turns off resource bookkeeping and weakens no assertion below.
+ */
+const FIXTURE_SERVER = { sanitizeOps: false, sanitizeResources: false } as const;
+
 // ── Stripe double ────────────────────────────────────────────────────────────
 // index.ts builds its client with `Stripe.createFetchHttpClient()`, which binds
 // `globalThis.fetch` at construction. Replacing fetch before the dynamic import
@@ -292,7 +303,7 @@ function reset(reject: boolean): void {
 
 // ── The defect ───────────────────────────────────────────────────────────────
 
-Deno.test('a rejected order_items insert raises a reconciliation alert instead of being swallowed', async () => {
+Deno.test({ name: 'a rejected order_items insert raises a reconciliation alert instead of being swallowed', ...FIXTURE_SERVER }, async () => {
   reset(true);
 
   const { status, body } = await deliver('evt_items_rejected');
@@ -320,7 +331,7 @@ Deno.test('a rejected order_items insert raises a reconciliation alert instead o
   assert(typeof body.data?.degraded === 'string', 'the response must not claim a clean receipt');
 });
 
-Deno.test('the alert leaks no PII', async () => {
+Deno.test({ name: 'the alert leaks no PII', ...FIXTURE_SERVER }, async () => {
   reset(true);
 
   await deliver('evt_items_rejected_pii');
@@ -331,7 +342,7 @@ Deno.test('the alert leaks no PII', async () => {
   assert(written.includes(ORDER_ID), 'the order id is safe to log and is what makes the alert actionable');
 });
 
-Deno.test('a paid order whose items were rejected still has its cart cleared', async () => {
+Deno.test({ name: 'a paid order whose items were rejected still has its cart cleared', ...FIXTURE_SERVER }, async () => {
   reset(true);
 
   await deliver('evt_items_rejected_cart');
@@ -345,7 +356,7 @@ Deno.test('a paid order whose items were rejected still has its cart cleared', a
 
 // ── The path that must stay quiet ────────────────────────────────────────────
 
-Deno.test('a successful order_items insert raises nothing', async () => {
+Deno.test({ name: 'a successful order_items insert raises nothing', ...FIXTURE_SERVER }, async () => {
   reset(false);
 
   const { status, body } = await deliver('evt_items_ok');

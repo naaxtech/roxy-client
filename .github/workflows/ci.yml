@@ -22,9 +22,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 22, not 20. `@supabase/realtime-js` throws at import on any Node
+      # without a global WebSocket — "Node.js 20 detected without native
+      # WebSocket support" — and global WebSocket only became available in Node
+      # 22. So every suite that touches lib/supabase failed here with "Test suite
+      # failed to run" while passing on a developer machine running a newer Node.
+      # Fifteen suites, including the whole feed set, had never once run in CI.
+      # A test that never runs is not a test.
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: apps/mobile/package-lock.json
 
@@ -46,7 +53,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: apps/mobile/package-lock.json
 
@@ -68,7 +75,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: apps/mobile/package-lock.json
 
@@ -101,8 +108,17 @@ jobs:
       # source to prove none of them reintroduces the split checkRateLimit /
       # logAiCall pair. Because --no-check is on, that grep is the ONLY gate on
       # it — the type checker never sees these files.
+      #
+      # --node-modules-dir=auto: two suites import handlers that pull
+      # `npm:stripe@14`. With no deno.json in this repo there is nothing to
+      # resolve npm specifiers from, so those two files failed at IMPORT — before
+      # a single assertion ran — with "Could not find a matching package". They
+      # were reported as a passing suite because the runner counted the other 42.
+      # The flag is used rather than a deno.json because adding one changes what
+      # `supabase functions deploy` picks up as config, and this is a test
+      # concern.
       - name: Run edge function tests
-        run: deno test --no-check --allow-net --allow-env --allow-read .
+        run: deno test --no-check --allow-net --allow-env --allow-read --node-modules-dir=auto .
 
   studio-e2e:
     name: Studio E2E (Playwright)
@@ -121,7 +137,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: apps/studio/package-lock.json
 

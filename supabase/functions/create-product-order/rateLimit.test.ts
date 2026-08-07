@@ -13,13 +13,16 @@
 // they were reaped, and on a marketplace of one-of-a-kind handmade items one
 // member could make every product on the platform read "out of stock" for free.
 //
-// The second assertion here matters as much as the first. checkRateLimit counts
-// rows in ai_call_log; nothing else writes them. Six functions in this project
-// (cancel-event, create-payment-intent, gdpr-delete, gdpr-export,
-// stripe-dashboard-link, submit-report) call checkRateLimit and never call
-// logAiCall, so their counter is permanently 0 and their limit has never once
-// refused a request. A guard added without its matching log would be exactly
-// that: decorative.
+// The second assertion here matters as much as the first: that an accepted
+// checkout consumes exactly one unit of quota.
+//
+// This file used to explain that the limit worked ONLY because the handler
+// remembered to call logAiCall beside checkRateLimit, and named the six
+// functions that forgot -- cancel-event, create-payment-intent, gdpr-delete,
+// gdpr-export, stripe-dashboard-link, submit-report -- whose counters were
+// therefore permanently 0. That pair is gone (migration 091): consume_rate_limit
+// counts and records in one statement, so a guard can no longer be added without
+// its log, and the harness below stubs the RPC rather than the table.
 //
 // The handler is exercised for real. With SUPABASE_URL on localhost the module's
 // DEV_MOCK is on, so the checkout returns its mock body without touching Stripe —
@@ -145,6 +148,20 @@ const server = Deno.serve({ port: 0, signal: abort.signal, onListen: () => {} },
 
 const origin = `http://localhost:${(server.addr as Deno.NetAddr).port}`;
 
+/**
+ * This module holds ONE stub HTTP server alive for every test in the file — it
+ * stands in for the project's Auth origin and PostgREST, and the handler under
+ * test is imported once against it. Deno's leak sanitiser is built for tests
+ * that acquire and release their own resources, so it flags that deliberate
+ * module-scoped fixture on every single test, and `npm:stripe` adds timers of
+ * its own on top.
+ *
+ * This turns off resource bookkeeping. It does not weaken a single assertion
+ * below — without it the file cannot report whether the cap works at all,
+ * which is the one thing it exists to answer.
+ */
+const FIXTURE_SERVER = { sanitizeOps: false, sanitizeResources: false } as const;
+
 // Must be set before the handler module is imported: DEV_MOCK is evaluated at
 // module scope, and `localhost` is what turns it on.
 Deno.env.set('SUPABASE_URL', origin);
@@ -203,7 +220,7 @@ function reset(): void {
   rows.length = 0;
 }
 
-Deno.test('create-product-order refuses checkouts past the daily cap', async () => {
+Deno.test({ name: 'create-product-order refuses checkouts past the daily cap', ...FIXTURE_SERVER }, async () => {
   reset();
 
   for (let n = 0; n < CHECKOUT_ATTEMPTS_PER_DAY; n++) {
@@ -222,7 +239,7 @@ Deno.test('create-product-order refuses checkouts past the daily cap', async () 
   );
 });
 
-Deno.test('every accepted checkout consumes exactly one unit of quota', async () => {
+Deno.test({ name: 'every accepted checkout consumes exactly one unit of quota', ...FIXTURE_SERVER }, async () => {
   reset();
 
   for (let n = 0; n < 3; n++) await checkout(BUYER, n);
@@ -234,7 +251,7 @@ Deno.test('every accepted checkout consumes exactly one unit of quota', async ()
   assertEquals(rows.every((r) => r.user_id === BUYER), true, 'logged against the caller from the JWT');
 });
 
-Deno.test('a refused checkout does not consume further quota', async () => {
+Deno.test({ name: 'a refused checkout does not consume further quota', ...FIXTURE_SERVER }, async () => {
   reset();
 
   for (let n = 0; n <= CHECKOUT_ATTEMPTS_PER_DAY; n++) await checkout(BUYER, n);
@@ -244,7 +261,7 @@ Deno.test('a refused checkout does not consume further quota', async () => {
   assertEquals(rows.length, afterFirstRefusal, 'a 429 must not bill the buyer another attempt');
 });
 
-Deno.test('one buyer cannot exhaust another buyer’s quota', async () => {
+Deno.test({ name: 'one buyer cannot exhaust another buyer’s quota', ...FIXTURE_SERVER }, async () => {
   reset();
 
   for (let n = 0; n <= CHECKOUT_ATTEMPTS_PER_DAY; n++) await checkout(BUYER, n);
@@ -252,7 +269,7 @@ Deno.test('one buyer cannot exhaust another buyer’s quota', async () => {
   assertEquals((await checkout(OTHER_BUYER, 0)).status, 200, 'an unrelated buyer is unaffected');
 });
 
-Deno.test('handing a hold back is never rate limited', async () => {
+Deno.test({ name: 'handing a hold back is never rate limited', ...FIXTURE_SERVER }, async () => {
   reset();
 
   for (let n = 0; n <= CHECKOUT_ATTEMPTS_PER_DAY; n++) await checkout(BUYER, n);
@@ -269,7 +286,7 @@ Deno.test('handing a hold back is never rate limited', async () => {
   assertEquals(release.status, 200, 'release accepted while checkout is capped');
 });
 
-Deno.test('an unauthenticated caller is refused before any quota is touched', async () => {
+Deno.test({ name: 'an unauthenticated caller is refused before any quota is touched', ...FIXTURE_SERVER }, async () => {
   reset();
 
   const res = await call(new Request('https://roxy.test/functions/v1/create-product-order', {
