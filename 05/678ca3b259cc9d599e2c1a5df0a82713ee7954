@@ -1,0 +1,23 @@
+CHANGELOG.md
+  s_f93f52ad807728::t_569eb22fd375ea 15-35
+supabase/functions/dev-control/index.ts
+  s_f93f52ad807728::t_12582e96377b0c 25-50
+  s_f93f52ad807728::t_ee4acf9b338d35 122-126
+  s_f93f52ad807728::t_681c13145822e8 63-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "05678ca3b259cc9d599e2c1a5df0a82713ee7954",
+  "prompts": {},
+  "sessions": {
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
