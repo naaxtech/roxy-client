@@ -3,6 +3,24 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { ReelsFeed } from '../../components/feed/ReelsFeed';
 import type { ReelRow } from '../../lib/reels';
 
+/**
+ * Jest's default is 5s per test, and the FIRST test in this file pays for module
+ * init on top of its own work — React Native, reanimated, gesture-handler and
+ * the whole ReelsFeed tree are loaded inside that budget, where every later test
+ * gets them warm. The file takes ~10s in total on a shared CI runner, so the
+ * opening test times out there while passing comfortably on a dev machine.
+ *
+ * Set for the file rather than on the one test that happened to be first,
+ * because otherwise the failure simply moves the next time somebody reorders a
+ * describe block. Kept well under a minute so a genuine hang still fails fast
+ * rather than sitting in a queue.
+ *
+ * This surfaced only after CI moved to Node 22 — before that, this suite could
+ * not run at all (`@supabase/realtime-js` throws at import without a global
+ * WebSocket) and the timeout was hidden behind "Test suite failed to run".
+ */
+jest.setTimeout(15000);
+
 const VIDEO_ID = 'r-video';
 const PHOTO_ID = 'r-photo';
 
