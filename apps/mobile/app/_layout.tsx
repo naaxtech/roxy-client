@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { View } from 'react-native';
 import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -14,6 +15,8 @@ import { Analytics } from '../lib/analytics';
 import { logError, logBreadcrumb, setCrashlyticsUser, hashUserId } from '../lib/errorLogger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useThemeStore } from '../store/themeStore';
+import { THEMES } from '../lib/theme';
+import { useAppFonts } from '../hooks/useAppFonts';
 import { WebAppFrame } from '../components/ui/WebAppFrame';
 import { shouldRedirectToPending, shouldRedirectToApplication } from '../lib/authRouting';
 import { useGateStore } from '../store/gateStore';
@@ -29,6 +32,9 @@ function AppNavigator() {
   // Tracks which user ID has a profile fetch in flight — prevents concurrent
   // fetches that would issue conflicting router.replace() calls (flicker).
   const fetchingForUserRef = useRef<string | null>(null);
+  // Outfit + Figtree. `ready` also goes true on failure — see useAppFonts.
+  const { ready: fontsReady } = useAppFonts();
+  const themeName = useThemeStore((s) => s.theme);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -174,6 +180,14 @@ function AppNavigator() {
   }, [user?.id, loading, segments, pathname]);
 
   const STRIPE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
+
+  // Every hook above this line runs unconditionally. Holding the tree for a
+  // frame or two while the two families register avoids the flash of a
+  // system-font first paint reflowing into Figtree; the ground is painted in
+  // the active theme so the hold reads as the app, not as a white gap.
+  if (!fontsReady) {
+    return <View style={{ flex: 1, backgroundColor: THEMES[themeName].background }} />;
+  }
 
   const inner = (
     <GestureHandlerRootView style={{ flex: 1 }}>
