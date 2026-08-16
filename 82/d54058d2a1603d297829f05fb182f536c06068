@@ -1,0 +1,68 @@
+apps/mobile/components/feed/feedChromeTokens.ts
+  s_488a1686f9c1af::t_da96967f0f6b54 128-129
+apps/mobile/__tests__/theme.contrast.test.ts
+  s_488a1686f9c1af::t_66f95fdd120a6b 20-21,71-77,89-91,93-115,120-123,125-128,130-133,141-143,156,167-168,173,185,204,210-214,218-233,244-250,267,276-277,285-286
+apps/mobile/__tests__/components/TextCell.test.tsx
+  s_488a1686f9c1af::t_f5101282237f1c 5
+  s_488a1686f9c1af::t_2239ccec79c591 124-136,141-143,147-149,152-163
+apps/mobile/lib/theme.ts
+  s_488a1686f9c1af::t_231c0aa528a276 3-27,29-30,32-34,36-40,42-47,51-66,68-69,71-75,77,85,87-93,102-148,181,183,194-195,204-223,225-230,235-257,259-265,269-276
+apps/mobile/components/nav/navTokens.ts
+  s_488a1686f9c1af::t_88d09557af138e 5-8,10
+apps/mobile/app/(auth)/application.tsx
+  s_f93f52ad807728::t_e0841f96f14d0e 13
+apps/mobile/app/(auth)/code.tsx
+  s_f93f52ad807728::t_ed8a61017ccd5f 14
+apps/mobile/app/(auth)/welcome.tsx
+  s_f93f52ad807728::t_dc49f079018ba8 24
+apps/mobile/app/business/[id].tsx
+  s_abbe96006f0da4::t_74b4a528e88492 25
+apps/mobile/app/product/[id].tsx
+  s_f93f52ad807728::t_f1fa4e9e8861f0 22
+apps/mobile/app/(auth)/pending.tsx
+  s_488a1686f9c1af::t_177045e7389968 15
+apps/mobile/app/(tabs)/connect/chat/[id].tsx
+  s_488a1686f9c1af::t_1b5186d3b66da6 32
+apps/mobile/app/(tabs)/grow/roxy-chat.tsx
+  s_488a1686f9c1af::t_9ac26da9e6e2fe 15
+apps/mobile/components/build/OrderConfirmationSheet.tsx
+  s_488a1686f9c1af::t_b2a96e1d80eb7c 7
+apps/mobile/components/donations/DonateModal.tsx
+  s_488a1686f9c1af::t_e12866a92c1328 11
+apps/mobile/components/profile/ProfileCard.tsx
+  s_488a1686f9c1af::t_dccefbb380509f 13
+apps/mobile/components/ui/RoxyCompanionButton.tsx
+  s_488a1686f9c1af::t_1067afea8a4a3d 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "82d54058d2a1603d297829f05fb182f536c06068",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_abbe96006f0da4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f6adeb1-8e93-4b92-945d-16b3d3f69ff5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
