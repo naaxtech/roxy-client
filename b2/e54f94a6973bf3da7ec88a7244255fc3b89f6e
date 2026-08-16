@@ -1,0 +1,41 @@
+apps/mobile/__tests__/typography.test.ts
+  s_488a1686f9c1af::t_e422dccbd5a8b2 1-87
+apps/mobile/app/_layout.tsx
+  s_488a1686f9c1af::t_733e189fdcbb29 18-19
+  s_488a1686f9c1af::t_ff2208f0743db9 184-190
+  s_488a1686f9c1af::t_bcc0437fd3f8ff 2
+  s_488a1686f9c1af::t_df1c727650ef20 35-37
+  s_488a1686f9c1af::t_ba41b44cbf80fd 191
+apps/mobile/lib/typography.ts
+  s_488a1686f9c1af::t_c6661d5ca313bf 1-89
+apps/mobile/hooks/useAppFonts.ts
+  s_488a1686f9c1af::t_d329fb47d949ad 1-44
+apps/mobile/package.json
+  s_66ed3924db1052::t_22f063b2dd0f91 28-29
+apps/mobile/package-lock.json
+  s_488a1686f9c1af::t_35bd489781f520 13-14,1974-1985
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b2e54f94a6973bf3da7ec88a7244255fc3b89f6e",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_66ed3924db1052": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac1f2710b79f5c4b8",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
