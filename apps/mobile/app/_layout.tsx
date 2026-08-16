@@ -136,7 +136,10 @@ function AppNavigator() {
           } else {
             setProfile(data);
             void useThemeStore.getState().init(data.theme_preference ?? null);
-            router.replace('/(tabs)/grow');
+            // The feed is the front door in 3.0. Grow was a dashboard you read;
+            // the feed is something to be in, and landing in it is the whole
+            // point of flattening the IA.
+            router.replace('/(tabs)/feed');
           }
         }).catch((e: unknown) => {
           fetchingForUserRef.current = null;

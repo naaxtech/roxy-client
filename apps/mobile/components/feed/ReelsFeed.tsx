@@ -14,7 +14,8 @@ import { useFeedStore } from '../../store/feedStore';
 import { useSafetyStore } from '../../store/safetyStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { EmptyState } from '../ui/EmptyState';
+import { TYPE } from '../../lib/typography';
+import { STAGE, STAGE_BG } from './stageColors';
 import { FeedPager } from './FeedPager';
 import type { FeedPagerCell } from './FeedPager';
 import { FeedCell, feedItemType } from './FeedCell';
@@ -57,20 +58,31 @@ function toReelRows(data: unknown[] | null | undefined): ReelRow[] {
  *    inside a community, and RLS only returns it to members.
  *  - `community-announcements` — the public face of `communityIds` only: the
  *    video a non-member is allowed to see while she decides whether to join.
+ *  - `following` — video by the people in `authorIds`. Roxy has no follow graph,
+ *    so the Feed tab passes the viewer's accepted friends. That is a smaller set
+ *    than "following" implies, and the empty state says so rather than pretending
+ *    the segment is broken.
  */
-export type ReelsScope = 'announcements' | 'community' | 'community-announcements';
+export type ReelsScope =
+  | 'announcements'
+  | 'community'
+  | 'community-announcements'
+  | 'following';
 
 const EMPTY_BODY: Record<ReelsScope, string> = {
   announcements: 'When a community shares a video announcement, it plays here.',
   community: 'When members post video, it plays here.',
   'community-announcements': 'This community has not shared a video announcement yet.',
+  following: 'Video from your people lands here. Add friends in a community and this fills up.',
 };
 
 interface ReelsFeedProps {
   /** Defaults to `community` — the original behaviour of this list. */
   scope?: ReelsScope;
-  /** Required by both community scopes; ignored by `announcements`. */
+  /** Required by both community scopes; ignored by `announcements` and `following`. */
   communityIds?: string[];
+  /** Required by `following`; ignored by every other scope. */
+  authorIds?: string[];
   /**
    * Open on this video rather than at the top — set when the viewer tapped a
    * video card in the announcements feed. The post is spliced in if it is not
@@ -98,7 +110,9 @@ interface ReelsFeedProps {
  * opens this list at that post; the two surfaces are the same content in two
  * containers, the way Instagram keeps video in Home and in Reels.
  */
-export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: ReelsFeedProps) {
+export function ReelsFeed({
+  scope = 'community', communityIds, authorIds, initialPostId,
+}: ReelsFeedProps) {
   const colors = useThemeColors();
   const router = useRouter();
   const reducedMotion = useReducedMotion();
@@ -119,6 +133,18 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
    */
   const idsKey = (communityIds ?? []).join(',');
   const ids = useMemo(() => (idsKey ? idsKey.split(',') : []), [idsKey]);
+
+  const authorKey = (authorIds ?? []).join(',');
+  const authors = useMemo(() => (authorKey ? authorKey.split(',') : []), [authorKey]);
+
+  /**
+   * The column the scope filters on, and the values it filters by. `following`
+   * is the same query as a community scope with a different left-hand side, so
+   * it shares the cursor, the seen-exclusion and the pagination rather than
+   * forking them.
+   */
+  const filterColumn = scope === 'following' ? 'author_id' : 'community_id';
+  const filterValues = scope === 'following' ? authors : ids;
 
   /** Community scopes page by feed_score; announcements page by created_at. */
   const cursorRef = useRef<number | null>(null);
@@ -141,7 +167,7 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
   const blockUser = useSafetyStore((st) => st.blockUser);
 
   const load = useCallback(async () => {
-    if (scope !== 'announcements' && !ids.length) {
+    if (scope !== 'announcements' && !filterValues.length) {
       setReels([]);
       setLoading(false);
       setHasMore(false);
@@ -170,7 +196,7 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
       let query = supabase
         .from('posts')
         .select(POST_WITH_AUTHOR_AND_COMMUNITY)
-        .in('community_id', ids)
+        .in(filterColumn, filterValues)
         .eq('post_type', 'video')
         .is('deleted_at', null);
       // A non-member may only see the community's public face. RLS says the
@@ -217,7 +243,7 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
     setReels(rows);
     setInitialIndex(startAt);
     setLoading(false);
-  }, [scope, ids, initialPostId]);
+  }, [scope, filterColumn, filterValues, initialPostId]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
@@ -238,13 +264,13 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
       raw = page.rows;
     } else {
       const cursor = cursorRef.current;
-      if (cursor === null || !ids.length) return;
+      if (cursor === null || !filterValues.length) return;
       setLoadingMore(true);
 
       let query = supabase
         .from('posts')
         .select(POST_WITH_AUTHOR_AND_COMMUNITY)
-        .in('community_id', ids)
+        .in(filterColumn, filterValues)
         .eq('post_type', 'video')
         .is('deleted_at', null)
         .lt('feed_score', cursor);
@@ -271,7 +297,7 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
       return [...prev, ...fresh.filter((r) => !seen.has(r.id))];
     });
     setLoadingMore(false);
-  }, [scope, ids, hasMore, loadingMore]);
+  }, [scope, filterColumn, filterValues, hasMore, loadingMore]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -349,14 +375,21 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
   const keyExtractor = useCallback((item: ReelRow) => item.id, []);
   const handleEndReached = useCallback(() => { void loadMore(); }, [loadMore]);
 
+  // Placeholders are stage surfaces, so they take STAGE ink, not `colors`.
+  // See `stageColors.ts`: the ground here is forced dark in both themes, and a
+  // light-theme ink on it measured 3.4:1 on the empty state.
   const s = StyleSheet.create({
     frame: { flex: 1 },
     centred: {
       flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12,
-      backgroundColor: colors.background,
+      backgroundColor: STAGE_BG,
     },
-    errorText: { color: colors.textSecondary, textAlign: 'center' },
-    retry: { color: colors.roxy, fontWeight: '700', fontSize: 15 },
+    errorText: { color: STAGE.textSecondary, textAlign: 'center', ...TYPE.bodyLg },
+    retry: { color: STAGE.primaryInk, fontWeight: '700', ...TYPE.bodyLg },
+    emptyWrap: { flex: 1, backgroundColor: STAGE_BG },
+    emptyTitle: { color: STAGE.textPrimary, textAlign: 'center', ...TYPE.title },
+    emptyBody: { color: STAGE.textSecondary, textAlign: 'center', ...TYPE.bodyLg },
+    emptyEmoji: { fontSize: 40, textAlign: 'center' },
   });
 
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
@@ -437,12 +470,14 @@ export function ReelsFeed({ scope = 'community', communityIds, initialPostId }: 
       </View>
     );
   } else if (reels.length === 0) {
+    // Deliberately not `<EmptyState>`: that component reads `useThemeColors()`,
+    // which paints light-theme ink on this permanently dark stage.
     placeholder = (
-      <EmptyState
-        emoji="🎬"
-        title="No videos yet"
-        body={EMPTY_BODY[scope]}
-      />
+      <View style={[s.centred, s.emptyWrap]} testID="reels-feed-empty">
+        <Text style={s.emptyEmoji}>🎬</Text>
+        <Text style={s.emptyTitle}>No videos yet</Text>
+        <Text style={s.emptyBody}>{EMPTY_BODY[scope]}</Text>
+      </View>
     );
   }
 
