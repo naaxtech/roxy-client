@@ -1,4 +1,4 @@
-// apps/mobile/app/(tabs)/profile/index.tsx
+// apps/mobile/app/(tabs)/you/index.tsx
 import { useEffect, useState } from 'react';
 import { StyleSheet, ActivityIndicator, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -182,7 +182,7 @@ export default function ProfileScreen() {
         <Text style={styles.headerTitle}>@{profile.username}</Text>
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => router.push('/(tabs)/profile/settings' as any)}
+          onPress={() => router.push('/(tabs)/you/settings' as any)}
           accessibilityLabel="Settings"
         >
           <Ionicons name="settings-outline" size={20} color={colors.textPrimary} />
@@ -198,7 +198,7 @@ export default function ProfileScreen() {
           isOwn={true}
           savedBusinesses={savedBusinesses}
           onOpenBusiness={handleOpenBiz}
-          onEdit={() => router.push('/(tabs)/profile/edit' as any)}
+          onEdit={() => router.push('/(tabs)/you/edit' as any)}
         />
 
         {user?.id && (

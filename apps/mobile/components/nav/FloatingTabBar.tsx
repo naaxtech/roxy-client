@@ -6,10 +6,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { type ThemeColors } from '../../lib/theme';
+import { NAV_SLOTS_3 } from './navSlots3';
 import {
   ACTIVE_TINT_ALPHA,
   BRAND_GRADIENT,
-  NAV_SLOTS,
   PILL_INSET,
   PILL_MIN_BOTTOM,
   TAB_MIN_TOUCH,
@@ -163,7 +163,7 @@ export function FloatingTabBar({ state, descriptors, onTabPress, onCreatePress }
   return (
     <View testID="nav-bar" style={[s.bar, { paddingBottom: bottomInset }]}>
       <View testID="nav-pill" style={s.pill}>
-        {NAV_SLOTS.map((slot) => {
+        {NAV_SLOTS_3.map((slot) => {
           if (slot.kind === 'action') {
             return (
               <CreateSlot

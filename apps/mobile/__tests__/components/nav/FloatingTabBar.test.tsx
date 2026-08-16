@@ -22,13 +22,20 @@ import { THEMES, contrastRatio } from '../../../lib/theme';
 
 type Route = { key: string; name: string };
 
+/**
+ * The navigator still registers the dissolving folders as screens — Expo Router
+ * registers every directory under `(tabs)/` whether the bar draws it or not —
+ * so they are present here on purpose. The bar must render four of these and
+ * ignore the rest.
+ */
 const ROUTES: Route[] = [
-  { key: 'grow-1', name: 'grow' },
-  { key: 'connect-1', name: 'connect' },
+  { key: 'feed-1', name: 'feed' },
   { key: 'discover-1', name: 'discover' },
   { key: 'messages-1', name: 'messages' },
+  { key: 'you-1', name: 'you' },
+  { key: 'grow-1', name: 'grow' },
+  { key: 'connect-1', name: 'connect' },
   { key: 'build-1', name: 'build' },
-  { key: 'profile-1', name: 'profile' },
 ];
 
 function renderBar(overrides: {
@@ -62,28 +69,31 @@ beforeEach(() => {
 });
 
 describe('FloatingTabBar', () => {
-  it('renders exactly five slots, in the order Home · Rooms · Create · Inbox · You', () => {
+  it('renders exactly five slots, in the order Feed · Discover · Create · Messages · You', () => {
     const { getAllByTestId } = renderBar();
     expect(getAllByTestId(/^nav-slot-/).map((n) => n.props.testID)).toEqual([
-      'nav-slot-grow',
-      'nav-slot-connect',
+      'nav-slot-feed',
+      'nav-slot-discover',
       'nav-slot-create',
       'nav-slot-messages',
-      'nav-slot-profile',
+      'nav-slot-you',
     ]);
   });
 
   it('labels every slot — icon-only navigation fails a first-timer', () => {
     const { getByText } = renderBar();
-    for (const label of ['Home', 'Rooms', 'Create', 'Inbox', 'You']) {
+    for (const label of ['Feed', 'Discover', 'Create', 'Messages', 'You']) {
       expect(getByText(label)).toBeTruthy();
     }
   });
 
-  it('drops the old Grow · Connect · Play · Messages · Build vocabulary', () => {
-    const { queryByText } = renderBar();
-    for (const gone of ['Grow', 'Connect', 'Play', 'Messages', 'Build', 'Discover']) {
+  it('draws no slot for a route the redesign dissolved, even though it is still registered', () => {
+    const { queryByText, queryByTestId } = renderBar();
+    for (const gone of ['Grow', 'Home', 'Connect', 'Rooms', 'Play', 'Build', 'Inbox']) {
       expect(queryByText(gone)).toBeNull();
+    }
+    for (const gone of ['grow', 'connect', 'build']) {
+      expect(queryByTestId(`nav-slot-${gone}`)).toBeNull();
     }
   });
 
@@ -99,22 +109,22 @@ describe('FloatingTabBar', () => {
     }
   });
 
-  it('routes Rooms at the existing connect route, not a renamed folder', () => {
+  it('routes Discover at the discover folder, whatever the folder used to mean', () => {
     const { getByTestId, onTabPress } = renderBar();
-    fireEvent.press(getByTestId('nav-slot-connect'));
-    expect(onTabPress).toHaveBeenCalledWith({ key: 'connect-1', name: 'connect' }, false);
+    fireEvent.press(getByTestId('nav-slot-discover'));
+    expect(onTabPress).toHaveBeenCalledWith({ key: 'discover-1', name: 'discover' }, false);
   });
 
-  it('routes You at the existing profile route', () => {
+  it('routes You at the renamed you folder', () => {
     const { getByTestId, onTabPress } = renderBar();
-    fireEvent.press(getByTestId('nav-slot-profile'));
-    expect(onTabPress).toHaveBeenCalledWith({ key: 'profile-1', name: 'profile' }, false);
+    fireEvent.press(getByTestId('nav-slot-you'));
+    expect(onTabPress).toHaveBeenCalledWith({ key: 'you-1', name: 'you' }, false);
   });
 
   it('reports the focused slot so a tab press can be a no-op', () => {
     const { getByTestId, onTabPress } = renderBar({ index: 0 });
-    fireEvent.press(getByTestId('nav-slot-grow'));
-    expect(onTabPress).toHaveBeenCalledWith({ key: 'grow-1', name: 'grow' }, true);
+    fireEvent.press(getByTestId('nav-slot-feed'));
+    expect(onTabPress).toHaveBeenCalledWith({ key: 'feed-1', name: 'feed' }, true);
   });
 
   it('the create slot is an action, never a navigation', () => {
@@ -126,8 +136,8 @@ describe('FloatingTabBar', () => {
 
   it('announces the focused slot to a screen reader', () => {
     const { getByTestId } = renderBar({ index: 1 });
-    expect(getByTestId('nav-slot-connect').props.accessibilityState).toEqual({ selected: true });
-    expect(getByTestId('nav-slot-grow').props.accessibilityState).toEqual({ selected: false });
+    expect(getByTestId('nav-slot-discover').props.accessibilityState).toEqual({ selected: true });
+    expect(getByTestId('nav-slot-feed').props.accessibilityState).toEqual({ selected: false });
   });
 
   it('keeps the pill fill fully opaque so it stays legible over an arbitrary photo', () => {
@@ -172,7 +182,7 @@ describe('FloatingTabBar', () => {
     descriptors['messages-1'] = { options: { tabBarBadge: 7 } };
     const { getByTestId, queryByTestId } = renderBar({ descriptors });
     expect(getByTestId('nav-badge-messages')).toHaveTextContent('7');
-    expect(queryByTestId('nav-badge-grow')).toBeNull();
+    expect(queryByTestId('nav-badge-feed')).toBeNull();
   });
 
   it('drops the indicator crossfade when Reduce Motion is on', () => {

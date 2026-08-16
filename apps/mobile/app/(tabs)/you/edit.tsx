@@ -1,4 +1,4 @@
-// apps/mobile/app/(tabs)/profile/edit.tsx
+// apps/mobile/app/(tabs)/you/edit.tsx
 import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,

@@ -22,9 +22,19 @@ import { freshChannel } from '../../lib/realtimeChannel';
  */
 const FAB_LIFT = 8;
 
+/**
+ * Where the Roxy companion is suppressed.
+ *
+ * She is a companion, not a chaperone: in a conversation she would sit on top of
+ * the composer, and in a live room she would sit on top of the consent controls,
+ * which are the one thing that must never be covered. `roxy-chat` is on the list
+ * because a button that opens the screen you are already on is noise.
+ */
+const FAB_SUPPRESSED_ON = ['roxy-chat', '/messages', '/chat/', 'sister-button', 'room-session', 'speed-dating'];
+
 export default function TabLayout() {
   const pathname = usePathname();
-  const showFab = !pathname.includes('roxy-chat');
+  const showFab = !FAB_SUPPRESSED_ON.some((fragment) => pathname.includes(fragment));
   const [createOpen, setCreateOpen] = useState(false);
   const pendingCount = useFriendStore((s) => s.pendingCount);
   const { user } = useAuthStore();
@@ -83,10 +93,14 @@ export default function TabLayout() {
     return () => { supabase.removeChannel(channel); };
   }, [user?.id]);
 
-  // Route folders are deliberately untouched. `Rooms` is the `connect` folder,
-  // `You` is `profile`, and `discover`/`build` keep their routes and reach Home
-  // through the category pills instead of a bar slot. Renaming Expo Router
-  // directories is a separate, breakage-prone change.
+  // Four bar slots plus the ＋ action, per `components/nav/navSlots3.ts`.
+  //
+  // `grow`, `connect` and `build` are deliberately still declared. Expo Router
+  // registers every directory under `(tabs)/` as a screen whether or not it is
+  // named here, and `FloatingTabBar` draws only the slots in NAV_SLOTS_3 — so
+  // those three keep working as routes while their screens are re-homed, and
+  // every existing deep link and `router.push` keeps resolving. They are deleted
+  // in one commit at the end, once each screen is reachable from its new tab.
   return (
     <View style={{ flex: 1 }}>
       <Tabs
@@ -109,24 +123,23 @@ export default function TabLayout() {
           />
         )}
       >
-        <Tabs.Screen
-          name="grow"
-          options={{
-            title: 'Home',
-            tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
-          }}
-        />
-        <Tabs.Screen name="connect" options={{ title: 'Rooms' }} />
-        <Tabs.Screen name="discover" options={{ title: 'Games' }} />
+        <Tabs.Screen name="feed" options={{ title: 'Feed' }} />
+        <Tabs.Screen name="discover" options={{ title: 'Discover' }} />
         <Tabs.Screen
           name="messages"
           options={{
-            title: 'Inbox',
-            tabBarBadge: totalUnread > 0 ? totalUnread : undefined,
+            title: 'Messages',
+            // Friend requests are messages now: the request-first inbox is where
+            // they land, so the count that used to badge Home badges Messages.
+            tabBarBadge: totalUnread + pendingCount > 0 ? totalUnread + pendingCount : undefined,
           }}
         />
+        <Tabs.Screen name="you" options={{ title: 'You' }} />
+
+        {/* Retired from the bar, still routable until their screens are re-homed. */}
+        <Tabs.Screen name="grow" options={{ title: 'Home' }} />
+        <Tabs.Screen name="connect" options={{ title: 'Rooms' }} />
         <Tabs.Screen name="build" options={{ title: 'Build' }} />
-        <Tabs.Screen name="profile" options={{ title: 'You' }} />
       </Tabs>
 
       <View

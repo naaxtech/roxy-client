@@ -52,7 +52,7 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteAccount = () => {
-    router.push('/(tabs)/profile/delete-account' as any);
+    router.push('/(tabs)/you/delete-account' as any);
   };
 
   const styles = StyleSheet.create({
@@ -185,7 +185,7 @@ export default function SettingsScreen() {
           <Text style={styles.sectionHeader}>Support</Text>
           <TouchableOpacity
             style={styles.actionRow}
-            onPress={() => router.push('/(tabs)/profile/feedback')}
+            onPress={() => router.push('/(tabs)/you/feedback')}
           >
             <Text style={styles.actionRowLabel}>Send feedback / report a bug</Text>
           </TouchableOpacity>

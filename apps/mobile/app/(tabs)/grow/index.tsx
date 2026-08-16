@@ -491,7 +491,7 @@ export default function GrowScreen() {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.headerLeft}
-            onPress={() => router.push('/(tabs)/profile' as any)}
+            onPress={() => router.push('/(tabs)/you' as any)}
             activeOpacity={0.75}
           >
             <View style={[

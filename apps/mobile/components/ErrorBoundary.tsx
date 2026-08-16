@@ -32,7 +32,7 @@ function ErrorFallback({ errorMessage, onRetry }: FallbackProps) {
 
   const handleReport = () => {
     router.push({
-      pathname: '/(tabs)/profile/feedback',
+      pathname: '/(tabs)/you/feedback',
       params: {
         category: 'bug',
         prefillMessage: errorMessage ? `App crashed: ${errorMessage}` : 'App crashed.',
