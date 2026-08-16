@@ -1,0 +1,47 @@
+apps/mobile/components/feed/ReelsFeed.tsx
+  s_488a1686f9c1af::t_88f92cdf7ec7f3 113-115
+  s_488a1686f9c1af::t_6754aa3187e570 473-474,476-480
+  s_488a1686f9c1af::t_0d62764be0af7b 300
+  s_488a1686f9c1af::t_6c9caf8022fe11 199
+  s_488a1686f9c1af::t_d75207e7af4f8d 378-380,385,387-392
+  s_488a1686f9c1af::t_929decb7410d09 170
+  s_488a1686f9c1af::t_94a61fc8e01b77 267,273
+  s_488a1686f9c1af::t_e42f664d9c45a0 61-64,66-70,76,82,84-85
+  s_488a1686f9c1af::t_8d87ff9d1d64d7 137-148
+  s_488a1686f9c1af::t_7aef57b340ac13 246
+  s_488a1686f9c1af::t_fd5222089ab647 17-18
+apps/mobile/app/_layout.tsx
+  s_488a1686f9c1af::t_56bbd9e1b48cb4 139-142
+apps/mobile/components/feed/StreakChip.tsx
+  s_488a1686f9c1af::t_9b4eb34304509b 1-70
+apps/mobile/components/feed/MiniWinsSheet.tsx
+  s_488a1686f9c1af::t_1bb6af41bc1be2 1-83
+docs/sessions/2026-08-16-roxy-3.0.md
+  s_488a1686f9c1af::t_8dcf69b84b47f7 1-88
+apps/mobile/components/feed/stageColors.ts
+  s_488a1686f9c1af::t_b7408173c3bf2c 1-23
+apps/mobile/__tests__/components/feedStageContrast.test.ts
+  s_488a1686f9c1af::t_f59671f334e80f 1-57
+apps/mobile/components/feed/FeedSegments.tsx
+  s_488a1686f9c1af::t_6ef4095a056472 1-70
+apps/mobile/app/(tabs)/feed/index.tsx
+  s_488a1686f9c1af::t_6b971b149734e2 1-5,7-23,26,28-33,35-36,39-81,83-124,129-146
+apps/mobile/components/feed/NowRail.tsx
+  s_488a1686f9c1af::t_d1a77952f6e735 1-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4d237739081f2d4603c59394d6dc1bcca4a0cde6",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
