@@ -12,8 +12,8 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore } from '../../store/gateStore';
 import { useAuth } from '../../hooks/useAuth';
 import { showAlert } from '../../lib/confirm';
+import { BRAND_GRADIENT } from '../../lib/theme';
 
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 const MIN_APPEAL = 10;
 
 /**

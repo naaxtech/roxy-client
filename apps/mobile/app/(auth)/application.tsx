@@ -10,8 +10,7 @@ import { useRouter } from 'expo-router';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore, type Criterion } from '../../store/gateStore';
 import { showAlert } from '../../lib/confirm';
-
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
+import { BRAND_GRADIENT } from '../../lib/theme';
 
 /** Both are awarded together by the KYC webhook, so they share one row in the UI. */
 const KYC_KEYS = ['gov_id', 'kyc_liveness'];

@@ -19,8 +19,8 @@ import { CheckoutSheet } from '../../components/build/CheckoutSheet';
 import { OrderConfirmationSheet } from '../../components/build/OrderConfirmationSheet';
 import type { Business } from '../../types';
 import type { ProductWithVariants, ProductVariant } from '../../types/marketplace';
+import { BRAND_GRADIENT } from '../../lib/theme';
 
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
 export default function ProductDetailScreen() {
   const colors = useThemeColors();

@@ -7,12 +7,12 @@ import { useRouter, usePathname } from 'expo-router';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useCommunityStore } from '../../store/communityStore';
 import { useCommunityFilterStore } from '../../store/communityFilterStore';
+import { BRAND_GRADIENT } from '../../lib/theme';
 
 interface Props {
   visible?: boolean;
 }
 
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 // "Filter this view" only makes sense where a CommunityContextSwitcher lives.
 const FILTERABLE_SEGMENTS = ['/connect', '/build'];
 

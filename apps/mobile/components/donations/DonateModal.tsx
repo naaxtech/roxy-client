@@ -8,8 +8,8 @@ import { usePopIn } from '../ui/popIn';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { clampDonationAmount, startDonationCheckout, type DonationCadence } from '../../lib/donations';
 import { showAlert } from '../../lib/confirm';
+import { BRAND_GRADIENT } from '../../lib/theme';
 
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 const STEP_CENTS = 500; // $5
 const DEFAULT_AMOUNT_CENTS = 2000; // $20
 

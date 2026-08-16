@@ -29,6 +29,7 @@ import { QuickReactBar, ReactionChips } from '../../../../components/chat/Reacti
 import { TypingIndicator } from '../../../../components/chat/TypingIndicator';
 import { isOnline } from '../../../../store/friendStore';
 import { avatarGradient } from '../../../../lib/avatars';
+import { BRAND_GRADIENT } from '../../../../lib/theme';
 
 function formatTimeSep(iso: string): string {
   const d = new Date(iso);
@@ -68,7 +69,6 @@ const AVA_GAP = 8;
 // Roxy's brand identity gradient — reserved for her wingwoman suggestion
 // card and the composer's send button, so it reads as a consistent "modern
 // chat" accent without being confused with either participant's own color.
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
 export default function ChatScreen() {
   const { id: conversationId } = useLocalSearchParams<{ id: string }>();

@@ -22,8 +22,8 @@ import { CheckoutSheet } from '../../components/build/CheckoutSheet';
 import { OrderConfirmationSheet } from '../../components/build/OrderConfirmationSheet';
 import type { Business, BusinessPhoto } from '../../types';
 import type { ProductWithVariants } from '../../types/marketplace';
+import { BRAND_GRADIENT } from '../../lib/theme';
 
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
 type StorefrontTab = 'shop' | 'about' | 'photos' | 'policies';
 const TABS: StorefrontTab[] = ['shop', 'about', 'photos', 'policies'];

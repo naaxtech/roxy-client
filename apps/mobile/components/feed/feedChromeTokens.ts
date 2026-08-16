@@ -125,8 +125,8 @@ export const CHROME_SHADOW: TextStyle = {
   textShadowRadius: 6,
 };
 
-/** `components/profile/ProfileCard.tsx` — one brand ramp, not a second palette. */
-export const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
+/** One brand ramp, not a second palette. It lives in `lib/theme.ts`. */
+export { BRAND_GRADIENT } from '../../lib/theme';
 
 /** `THEMES.dark.background` at the alpha the contrast maths above assumes. */
 export const BRAND_VEIL = 'rgba(26,10,46,0.42)';

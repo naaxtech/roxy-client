@@ -11,8 +11,7 @@ import { RoxyWordmark } from '../../components/ui/RoxyWordmark';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore, CODE_MESSAGES } from '../../store/gateStore';
 import { normaliseInviteCode, INVITE_CODE_LENGTH } from '../../lib/inviteCode';
-
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
+import { BRAND_GRADIENT } from '../../lib/theme';
 
 export default function CodeGateScreen() {
   const colors = useThemeColors();

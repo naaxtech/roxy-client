@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { TextCell } from '../../components/feed/TextCell';
+import { BRAND_GRADIENT, contrastRatio } from '../../lib/theme';
 import type { ReelRow } from '../../lib/reels';
 
 jest.mock('expo-linear-gradient', () => {
@@ -120,22 +121,46 @@ describe('TextCell typography', () => {
   });
 });
 
+/** The veil the cell paints between the ramp and the type. */
+const VEIL = { rgb: [26, 10, 46] as const, alpha: 0.42 };
+
+/** sRGB source-over, the way React Native composites a translucent overlay. */
+function composite(stop: string, veil: typeof VEIL): string {
+  const raw = stop.replace('#', '');
+  const under = [0, 2, 4].map((i) => parseInt(raw.slice(i, i + 2), 16));
+  const mixed = under.map((c, i) =>
+    Math.round(veil.alpha * veil.rgb[i] + (1 - veil.alpha) * c)
+  );
+  return '#' + mixed.map((c) => c.toString(16).padStart(2, '0')).join('');
+}
+
 describe('TextCell canvas', () => {
   it('stands on the brand gradient rather than a black letterbox', () => {
     const view = text();
 
-    expect(view.getByTestId('text-cell-gradient').props.colors)
-      .toEqual(['#FF6A2E', '#FF2F71', '#E81C8E']);
+    // Asserted against the token, not a copy of it. A literal here is how this
+    // test went on describing the 2.x ramp for a whole redesign.
+    expect(view.getByTestId('text-cell-gradient').props.colors).toEqual([...BRAND_GRADIENT]);
   });
 
   it('darkens the gradient so white display type clears 4.5:1 on every stop', () => {
-    // #FF6A2E is only 2.86:1 against white — the brightest stop fails even the
-    // large-text bar on its own. Composited under rgba(26,10,46,0.42) it is
-    // (159,66,46) → 6.38:1, and the magenta stop lands at 8.35:1.
+    // The brightest stop is ~2.9:1 against white and fails even the large-text
+    // bar on its own, so the veil is load-bearing, not decoration. Composited
+    // rather than hardcoded: change the ramp and this still tells the truth.
     const view = text();
 
-    expect(view.getByTestId('text-cell-veil').props.style)
-      .toEqual(expect.objectContaining({ backgroundColor: 'rgba(26,10,46,0.42)' }));
+    expect(view.getByTestId('text-cell-veil').props.style).toEqual(
+      expect.objectContaining({
+        backgroundColor: `rgba(${VEIL.rgb.join(',')},${VEIL.alpha})`,
+      })
+    );
+
+    for (const stop of BRAND_GRADIENT) {
+      const over = composite(stop, VEIL);
+      const measured = contrastRatio('#FFFFFF', over).toFixed(2);
+      const verdict = contrastRatio('#FFFFFF', over) >= 4.5 ? 'pass' : `FAIL at ${measured}:1`;
+      expect(`${stop} under the veil — ${verdict}`).toBe(`${stop} under the veil — pass`);
+    }
   });
 });
 

@@ -12,13 +12,13 @@ import { callEdgeFunction } from '../../../lib/supabase';
 import { Analytics } from '../../../lib/analytics';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { showAlert } from '../../../lib/confirm';
+import { BRAND_GRADIENT } from '../../../lib/theme';
 
 type Message = { role: 'user' | 'roxy'; content: string };
 
 // Roxy's brand identity gradient — used for her wordmark, avatar mark, and
 // the "what's on your mind" suggestion chips. Keeps her visually distinct
 // from the plain user/partner bubbles used elsewhere in Connect.
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
 type Suggestion = { label: string; emoji: string; prompt: string; gradient: [string, string] };
 

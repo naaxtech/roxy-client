@@ -2,14 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
 /**
- * The brand ramp. It is duplicated here rather than imported because the two
- * places that already export it are `components/feed/feedChromeTokens.ts` (a
- * directory the navigation shell must not depend on) and nowhere else —
- * `lib/theme.ts` carries the inks but not the gradient. Six components hold a
- * private copy of this array today; consolidating them into `lib/theme.ts` is a
- * one-line move that belongs in whichever slice owns that file next.
+ * The brand ramp, re-exported so the shell's call sites keep reading in the
+ * shell's own vocabulary. The array itself now lives in `lib/theme.ts` — the
+ * consolidation this comment used to ask for, done by the 3.0 token slice. The
+ * values changed with it: the ramp is `#FF5A2E → #F22481 → #E0189A`.
  */
-export const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
+export { BRAND_GRADIENT } from '../../lib/theme';
 
 /**
  * Every interactive element in the shell is measured, not padded by hitSlop.

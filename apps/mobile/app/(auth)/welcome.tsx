@@ -21,9 +21,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore } from '../../store/gateStore';
 import { showAlert } from '../../lib/confirm';
+import { BRAND_GRADIENT } from '../../lib/theme';
 
 // Roxy brand gradient — same 3 stops as the Grow hero card.
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
 export default function WelcomeScreen() {
   const colors = useThemeColors();
