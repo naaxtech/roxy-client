@@ -1,0 +1,73 @@
+apps/mobile/components/nav/navSlots3.ts
+  s_488a1686f9c1af::t_a392da5e81285b 1-51
+apps/mobile/app/(tabs)/_layout.tsx
+  s_488a1686f9c1af::t_48d871df5c5af0 126-127,131-134,137-141
+  s_488a1686f9c1af::t_e6033bbb3813b8 96-103
+  s_488a1686f9c1af::t_ab44cc1779e367 25-34,37
+apps/mobile/components/nav/FloatingTabBar.tsx
+  s_488a1686f9c1af::t_c5b97e18ac8619 9
+  s_488a1686f9c1af::t_91eee86719dd45 166
+apps/mobile/app/(tabs)/feed/_layout.tsx
+  s_488a1686f9c1af::t_d0c730264bc33d 1-5
+apps/mobile/__tests__/components/nav/navSlots3.test.ts
+  s_488a1686f9c1af::t_616506bae3d856 1-63
+apps/mobile/app/user/[userId].tsx
+  s_488a1686f9c1af::t_4886336a498357 1
+apps/mobile/__tests__/components/nav/FloatingTabBar.test.tsx
+  s_488a1686f9c1af::t_381c9f44554049 112,114-115,118,120-121,126-127
+  s_488a1686f9c1af::t_750355ef211b78 185
+  s_488a1686f9c1af::t_c5eeb5ffbba81a 25-30,32,35-37
+  s_488a1686f9c1af::t_410ccccb38fbd5 72,75-76,79,85,90-92,95-96
+  s_488a1686f9c1af::t_571680b2a71a41 139-140
+  s_482b4ba54fa603::t_f3565b197e7bd7 97
+apps/mobile/app/(tabs)/feed/index.tsx
+  s_488a1686f9c1af::t_348d696781eb59 1-32
+docs/superpowers/plans/2026-08-16-roxy-3.0-redesign.md
+  s_488a1686f9c1af::t_eaa5cab7a05550 76-136
+  s_488a1686f9c1af::t_66a9040e50a682 1-74,137-371
+  s_488a1686f9c1af::t_899b8f18ecd3c8 75
+apps/mobile/app/(tabs)/grow/index.tsx
+  s_f93f52ad807728::t_9a2d3e0634d692 494
+apps/mobile/__tests__/screens/DeleteAccount.test.tsx
+  s_488a1686f9c1af::t_954c7d5185fbd9 25
+apps/mobile/app/(tabs)/you/edit.tsx
+  s_488a1686f9c1af::t_5335d692b4e9ed 1
+apps/mobile/app/(tabs)/you/index.tsx
+  s_488a1686f9c1af::t_6305c118a9bfae 1,185,201
+apps/mobile/app/(tabs)/you/settings.tsx
+  s_488a1686f9c1af::t_b7363715b271ea 55,188
+apps/mobile/components/ErrorBoundary.tsx
+  s_488a1686f9c1af::t_c904218ee1270d 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f9d4174b1a545778796007922737966c6205330b",
+  "prompts": {},
+  "sessions": {
+    "s_482b4ba54fa603": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "866abcbd-15c6-4a02-b55e-79c0657e3dd0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
