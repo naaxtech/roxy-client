@@ -21,16 +21,26 @@ export function logError(e: unknown, context?: string): void {
 
   // Crashlytics — log breadcrumb then record the error so the stack trace
   // appears correctly grouped in the Firebase console.
-  if (context) {
-    crashlytics().log(`[${new Date().toISOString()}] context=${context}`);
-    crashlytics().setAttribute('error_context', context);
-  }
-  if (error.stack) {
-    // Crashlytics custom attribute limit is 1024 chars.
-    crashlytics().setAttribute('stack_trace', error.stack.slice(0, 1000));
-  }
-  crashlytics().setAttribute('error_name', error.name);
-  crashlytics().recordError(error);
+  //
+  // Guarded for the same reason the PostHog block below always was, which the
+  // Crashlytics block was not: **telemetry must never be able to break the thing
+  // it is observing.** An unguarded `crashlytics()` call inside a catch block
+  // throws out of the catch, so the screen never reaches the line that shows the
+  // error state — and a woman sits watching a spinner forever because the error
+  // reporter failed. Found exactly that way: a create sheet stuck on "Finding
+  // your rooms…" because the failure path logged before it rendered.
+  try {
+    if (context) {
+      crashlytics().log(`[${new Date().toISOString()}] context=${context}`);
+      crashlytics().setAttribute('error_context', context);
+    }
+    if (error.stack) {
+      // Crashlytics custom attribute limit is 1024 chars.
+      crashlytics().setAttribute('stack_trace', error.stack.slice(0, 1000));
+    }
+    crashlytics().setAttribute('error_name', error.name);
+    crashlytics().recordError(error);
+  } catch {}
 
   // PostHog — capture as a named event so errors appear in analytics funnels.
   try {
@@ -67,7 +77,9 @@ export function logBreadcrumb(
     ? `${message} — ${Object.entries(data).map(([k, v]) => `${k}=${v}`).join(', ')}`
     : message;
 
-  crashlytics().log(`[breadcrumb] ${payload}`);
+  try {
+    crashlytics().log(`[breadcrumb] ${payload}`);
+  } catch {}
 
   if (__DEV__) {
     console.log(`[Breadcrumb] ${payload}`);
@@ -89,12 +101,16 @@ export function logBoundaryError(error: Error, componentStack: string): void {
     if (error.stack) console.error('[ErrorBoundary] JS stack:', error.stack);
   }
 
-  crashlytics().log(`[ErrorBoundary] ${error.name}: ${error.message}`);
-  crashlytics().setAttribute('component_stack', componentStack.slice(0, 1000));
-  if (error.stack) {
-    crashlytics().setAttribute('stack_trace', error.stack.slice(0, 1000));
-  }
-  crashlytics().recordError(error);
+  // Guarded: this one runs inside React's error path. A throw here would turn a
+  // recoverable render error into an unrecoverable one.
+  try {
+    crashlytics().log(`[ErrorBoundary] ${error.name}: ${error.message}`);
+    crashlytics().setAttribute('component_stack', componentStack.slice(0, 1000));
+    if (error.stack) {
+      crashlytics().setAttribute('stack_trace', error.stack.slice(0, 1000));
+    }
+    crashlytics().recordError(error);
+  } catch {}
 
   try {
     posthog?.capture('app_error', {
@@ -124,5 +140,7 @@ export function hashUserId(userId: string): string {
 }
 
 export function setCrashlyticsUser(userId: string | null): void {
-  crashlytics().setUserId(userId ? hashUserId(userId) : '');
+  try {
+    crashlytics().setUserId(userId ? hashUserId(userId) : '');
+  } catch {}
 }
