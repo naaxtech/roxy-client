@@ -1,0 +1,33 @@
+apps/mobile/lib/sellerStatus.ts
+  s_488a1686f9c1af::t_ad3f51e0910872 1-51
+apps/mobile/__tests__/lib/sellerStatus.test.ts
+  s_488a1686f9c1af::t_33922c1a0ba6f0 1-68
+apps/mobile/components/nav/CreateSheet.tsx
+  s_488a1686f9c1af::t_101c8e0c7c2b00 7,9,11-15,21,23-32,35-40,42-46,48-51,58-59,65-75,80,85-86,88,90,92,101,114-167,177-188,190-195,231-272,288,303,319-324,326,329-330,339,344-345,348,352,355,358-359,363-375,377,379,382-383
+  s_488a1686f9c1af::t_082a9372a0eb47 76-79,82,87,89
+apps/mobile/lib/errorLogger.ts
+  s_488a1686f9c1af::t_e00624fd6b4080 143-145
+  s_488a1686f9c1af::t_07b97514ce9784 104-113
+  s_488a1686f9c1af::t_6473b9551be462 80-82
+  s_488a1686f9c1af::t_985d99e0e05e27 24-43
+apps/mobile/__tests__/components/nav/CreateSheet.test.tsx
+  s_488a1686f9c1af::t_54f8af3fdffd5d 7,10,12-14,17-21,33-38,43-44,61-106,113-116,126-127,130-143,149,152-156,164-167,169
+apps/mobile/__tests__/lib/errorLoggerNeverThrows.test.ts
+  s_488a1686f9c1af::t_8aa02c83d74e2f 1-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "076ddb6732dd32adc2859f343d46cb8c4e86d079",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
