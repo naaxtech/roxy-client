@@ -13,6 +13,8 @@ import { ProfileCard } from '../../../components/profile/ProfileCard';
 import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
 import { SavedPosts } from '../../../components/profile/SavedPosts';
+import { SelfControls } from '../../../components/profile/SelfControls';
+import { MiniWinsCard } from '../../../components/grow/MiniWinsCard';
 import { OrderDetailSheet } from '../../../components/build/OrderDetailSheet';
 import { logError } from '../../../lib/errorLogger';
 import { useThemeColors } from '../../../hooks/useThemeColors';
@@ -203,6 +205,11 @@ export default function ProfileScreen() {
 
         {user?.id && (
           <>
+            {/* Directly under the card, above everything else: the two safety
+                modes have to be two taps from anywhere, and any tab → You is
+                the first of those two. */}
+            <SelfControls userId={user.id} />
+            <MiniWinsCard userId={user.id} />
             <ProfilePhotoGrid userId={user.id} editable />
             <SavedPosts userId={user.id} />
             <ProfileFavorites userId={user.id} editable />

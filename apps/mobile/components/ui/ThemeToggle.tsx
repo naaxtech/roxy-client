@@ -1,100 +1,86 @@
-import { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../store/themeStore';
+import { useThemeColors } from '../../hooks/useThemeColors';
+import { logError } from '../../lib/errorLogger';
+import { TYPE } from '../../lib/typography';
+import { RADII, inkOn, type ThemeColors } from '../../lib/theme';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
-const TRACK_W = 72;
-const TRACK_H = 36;
-const THUMB_SIZE = 28;
-const THUMB_TRAVEL = TRACK_W - THUMB_SIZE - 8; // 36px
+type Choice = { key: 'dark' | 'light'; label: string; icon: keyof typeof Ionicons.glyphMap };
 
+const CHOICES: Choice[] = [
+  { key: 'dark', label: 'Dark', icon: 'moon' },
+  { key: 'light', label: 'Light', icon: 'sunny' },
+];
+
+/**
+ * Appearance: two named buttons, not a sliding switch.
+ *
+ * The switch this replaces was a 72×36 track with a moon at one end and a sun at
+ * the other, and it was genuinely ambiguous — a sun on the right could mean "it
+ * is light now" or "tap here for light", and nothing on it said which. Two
+ * labelled buttons with a selected state cannot be read two ways, which is why
+ * the prototype draws it that way too.
+ *
+ * It also fixes three smaller things the old control got wrong: it hardcoded
+ * `#2d1b4e` and `#C4B5FF` outside the token set, it used `hitSlop={8}` where the
+ * rest of the app measures a real 48dp target, and it was the app's only
+ * `setTheme` call site while announcing itself as a generic switch.
+ *
+ * `setTheme` writes AsyncStorage and then best-effort syncs `profiles`, so a
+ * failed sync must not look like a failed choice — the local theme has already
+ * changed and the UI is already correct. The catch only logs.
+ */
 export function ThemeToggle() {
-  const { theme, setTheme } = useThemeStore();
-  const isDark = theme === 'dark';
-
-  const anim = useRef(new Animated.Value(isDark ? 0 : 1)).current;
-
-  useEffect(() => {
-    Animated.spring(anim, {
-      toValue: isDark ? 0 : 1,
-      useNativeDriver: true,
-      tension: 260,
-      friction: 18,
-    }).start();
-  }, [isDark]);
-
-  const thumbX = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [4, THUMB_TRAVEL],
-  });
-
-  const trackColor = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#2d1b4e', '#C4B5FF'],
-  });
-
-  const toggle = () => void setTheme(isDark ? 'light' : 'dark');
+  const colors = useThemeColors();
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
+  const s = styles(colors);
 
   return (
-    <Pressable
-      onPress={toggle}
-      hitSlop={8}
-      accessibilityRole="switch"
-      accessibilityState={{ checked: !isDark }}
-      accessibilityLabel={`Switch to ${isDark ? 'light' : 'dark'} mode`}
-    >
-      <Animated.View style={[styles.track, { backgroundColor: trackColor }]}>
-        {/* Moon icon - left side */}
-        <Text style={[styles.icon, styles.iconLeft]}>🌙</Text>
-        {/* Sun icon - right side */}
-        <Text style={[styles.icon, styles.iconRight]}>☀️</Text>
-
-        {/* Sliding thumb */}
-        <Animated.View
-          style={[
-            styles.thumb,
-            { transform: [{ translateX: thumbX }] },
-          ]}
-        >
-          <Text style={styles.thumbIcon}>{isDark ? '🌙' : '☀️'}</Text>
-        </Animated.View>
-      </Animated.View>
-    </Pressable>
+    <View style={s.row} accessibilityRole="radiogroup" accessibilityLabel="Appearance" testID="theme-toggle">
+      {CHOICES.map((choice) => {
+        const on = theme === choice.key;
+        return (
+          <TouchableOpacity
+            key={choice.key}
+            testID={`theme-${choice.key}`}
+            onPress={() => {
+              void setTheme(choice.key).catch((e: unknown) => logError(e, 'ThemeToggle.setTheme'));
+            }}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on, checked: on }}
+            accessibilityLabel={`${choice.label} mode`}
+            activeOpacity={0.85}
+            style={[
+              s.choice,
+              on
+                ? { backgroundColor: colors.primary, borderColor: colors.primary }
+                : { backgroundColor: 'transparent', borderColor: colors.line },
+            ]}
+          >
+            <Ionicons
+              name={choice.icon}
+              size={15}
+              color={on ? inkOn(colors.primary) : colors.textSecondary}
+            />
+            <Text style={[s.label, { color: on ? inkOn(colors.primary) : colors.textSecondary }]}>
+              {choice.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  track: {
-    width: TRACK_W,
-    height: TRACK_H,
-    borderRadius: TRACK_H / 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    overflow: 'hidden',
-    position: 'relative',
+const styles = (_colors: ThemeColors) => StyleSheet.create({
+  row: { flexDirection: 'row', gap: 8 },
+  choice: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 14,
+    borderRadius: RADII.pill, borderWidth: 1,
   },
-  icon: {
-    position: 'absolute',
-    fontSize: 14,
-    top: (TRACK_H - 20) / 2,
-  },
-  iconLeft: { left: 8 },
-  iconRight: { right: 8 },
-  thumb: {
-    position: 'absolute',
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    borderRadius: THUMB_SIZE / 2,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  thumbIcon: {
-    fontSize: 14,
-    lineHeight: 18,
-  },
+  label: { ...TYPE.caption, fontWeight: '700' },
 });
