@@ -1,0 +1,141 @@
+apps/mobile/components/rooms/ConsentStrip.tsx
+  s_488a1686f9c1af::t_9c050039b4596e 1-117
+apps/mobile/__tests__/components/events/EventModeBadge.test.tsx
+  s_488a1686f9c1af::t_f0be7df4d67b42 1-64
+apps/mobile/app/index.tsx
+  s_488a1686f9c1af::t_25c32a4e9fe381 6-10,12
+apps/mobile/__tests__/components/rooms/ConsentStrip.test.tsx
+  s_488a1686f9c1af::t_619ce60ab31260 1-103
+apps/mobile/store/safetyStore.ts
+  s_488a1686f9c1af::t_c26892c8efa772 17-29
+apps/mobile/components/events/EventModeBadge.tsx
+  s_488a1686f9c1af::t_4e510baa2d3e54 1-69
+apps/mobile/app/search.tsx
+  s_488a1686f9c1af::t_1c8114806a8edc 250-254
+apps/mobile/app/support.tsx
+  s_488a1686f9c1af::t_22747f462a1e0e 1,3-4,7-43,46-82,85-88,90-92,94-95,97-115,117-136,139-151,153-186,189,191-242,245,247-252,254-255,257-304,306-309,312-384
+  s_488a1686f9c1af::t_86829514de29ba 45
+  s_488a1686f9c1af::t_6441288caa1b05 89
+  s_488a1686f9c1af::t_1bc7762e5ec1fd 93
+  s_488a1686f9c1af::t_3a9661f14fe8b1 96
+  s_488a1686f9c1af::t_75be8cdb905ec9 116
+  s_488a1686f9c1af::t_ea544d50fe90d2 138
+  s_488a1686f9c1af::t_d338ed1f12d868 152
+  s_488a1686f9c1af::t_c6508ca989323c 187
+  s_488a1686f9c1af::t_cd10234f4e0094 190
+  s_488a1686f9c1af::t_c5184ceec4a56a 243-244
+apps/mobile/__tests__/components/RoxyCompanionButton.test.tsx
+  s_488a1686f9c1af::t_30212f00b6b182 51,67
+apps/mobile/__tests__/screens/SpeedDateSession.test.tsx
+  s_abbe96006f0da4::t_e1a7768f4a696b 49
+apps/mobile/__tests__/screens/SpeedDateWaitingRoom.test.tsx
+  s_f93f52ad807728::t_bcd05e01ece602 50
+apps/mobile/app/badges.tsx
+  s_f93f52ad807728::t_820f640219de6e 7-10
+apps/mobile/app/business/[id].tsx
+  s_abbe96006f0da4::t_b9601bbc40c235 68
+apps/mobile/app/people.tsx
+  s_093307bfc37bee::t_2e28badfac836f 9-15
+apps/mobile/app/product/[id].tsx
+  s_f93f52ad807728::t_6880d7f3071087 50
+apps/mobile/app/sister-button.tsx
+  s_f93f52ad807728::t_81a46696617ebb 1-483
+apps/mobile/app/speed-dating/index.tsx
+  s_f93f52ad807728::t_3bbfed4fbc3352 1-203
+apps/mobile/app/speed-dating/waiting-room.tsx
+  s_abbe96006f0da4::t_2f7e318642c088 1-358
+apps/mobile/components/grow/MiniWinsCard.tsx
+  s_f93f52ad807728::t_22e7e7778f112a 64,68,72
+apps/mobile/__tests__/screens/GrowBadges.test.tsx
+  s_488a1686f9c1af::t_a1b0583fa099c6 55
+apps/mobile/__tests__/screens/SpeedDateResult.test.tsx
+  s_488a1686f9c1af::t_6096ed2ba4fbde 31
+apps/mobile/app/(auth)/onboarding/step4-status.tsx
+  s_488a1686f9c1af::t_2dd4ad0a5a6270 50
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_488a1686f9c1af::t_f263db7d4573e7 483
+apps/mobile/app/(tabs)/discover/index.tsx
+  s_488a1686f9c1af::t_b5a9441336a821 278,289
+apps/mobile/app/(tabs)/messages/index.tsx
+  s_488a1686f9c1af::t_60136214d69a28 315
+apps/mobile/app/(tabs)/you/index.tsx
+  s_488a1686f9c1af::t_bc5bdc8894535d 179
+apps/mobile/app/chat/[id].tsx
+  s_3d6cbfe014b165::t_f3015206f105b0 1-1111
+apps/mobile/app/event/[id].tsx
+  s_488a1686f9c1af::t_f98afc9735a96a 429
+apps/mobile/app/notifications.tsx
+  s_488a1686f9c1af::t_e294fb42eae9e8 9,13-14
+apps/mobile/app/qotd/[id].tsx
+  s_488a1686f9c1af::t_ab60402879ead7 9-12
+apps/mobile/app/roxy-chat.tsx
+  s_093307bfc37bee::t_671d0a9ea80937 10-15
+apps/mobile/app/speed-dating/result.tsx
+  s_72ca00e15bfb50::t_7e7ee262043be8 1-265
+apps/mobile/app/speed-dating/session.tsx
+  s_488a1686f9c1af::t_f18755bbd0874c 1-490
+apps/mobile/app/tickets.tsx
+  s_488a1686f9c1af::t_4e943b9277dccb 7-10
+apps/mobile/components/grow/QuestionOfTheDayCard.tsx
+  s_488a1686f9c1af::t_c2a717a8458020 186
+apps/mobile/components/profile/SelfControls.tsx
+  s_488a1686f9c1af::t_fbab979d30b068 86,99
+apps/mobile/components/ui/RoxyCompanionButton.tsx
+  s_488a1686f9c1af::t_9785d33cdec56e 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cbb2f71b6cea8b4742b879459f77087c6327a272",
+  "prompts": {},
+  "sessions": {
+    "s_093307bfc37bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77b6e24e-8afd-4bec-a10a-872dcb104afd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_3d6cbfe014b165": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2760585ebe61ece1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_72ca00e15bfb50": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac8534a29d0a5f66c",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_abbe96006f0da4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f6adeb1-8e93-4b92-945d-16b3d3f69ff5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_f93f52ad807728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4f8fe9-9fcc-4f8b-914d-c5be5c65e5b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
