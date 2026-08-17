@@ -48,7 +48,7 @@ describe('RoxyCompanionButton', () => {
   it('long-press navigates straight to roxy-chat, bypassing the action stack', () => {
     const { getByTestId } = render(<RoxyCompanionButton />);
     fireEvent(getByTestId('fab-button'), 'longPress');
-    expect(mockPush).toHaveBeenCalledWith('/(tabs)/grow/roxy-chat');
+    expect(mockPush).toHaveBeenCalledWith('/roxy-chat');
   });
 
   it('tap opens the pop-out action stack instead of navigating immediately', () => {
@@ -64,7 +64,7 @@ describe('RoxyCompanionButton', () => {
     const { getByTestId, getByLabelText } = render(<RoxyCompanionButton />);
     fireEvent.press(getByTestId('fab-button'));
     fireEvent.press(getByLabelText('Chat with Roxy'));
-    expect(mockPush).toHaveBeenCalledWith('/(tabs)/grow/roxy-chat');
+    expect(mockPush).toHaveBeenCalledWith('/roxy-chat');
   });
 
   it('"Search Roxy" pill pushes /search', () => {

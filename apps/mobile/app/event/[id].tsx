@@ -426,7 +426,7 @@ export default function EventDetailScreen() {
               <TicketConfirmation
                 event={event}
                 ticketCode={purchaseResult.ticketCode}
-                onViewTickets={() => router.push('/(tabs)/grow/tickets' as any)}
+                onViewTickets={() => router.push('/tickets' as any)}
               />
             ) : (
               <TouchableOpacity

@@ -480,7 +480,7 @@ export default function CommunityDetailScreen() {
   // land somewhere sensible instead of doing nothing on web.
   const handleBack = () => {
     if (router.canGoBack()) router.back();
-    else router.replace({ pathname: '/(tabs)/connect', params: { tab: 'communities' } } as any);
+    else router.replace({ pathname: '/(tabs)/discover', params: {} } as any);
   };
 
   if (!community) {

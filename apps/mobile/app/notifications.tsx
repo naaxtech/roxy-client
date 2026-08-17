@@ -6,12 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { useAuthStore } from '../../../store/authStore';
+import { useAuthStore } from '../store/authStore';
 import {
   fetchNotifications, markNotificationRead, markAllNotificationsRead, countUnread,
   RoxyNotification,
-} from '../../../lib/notifications';
-import { useThemeColors } from '../../../hooks/useThemeColors';
+} from '../lib/notifications';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const TYPE_EMOJI: Record<RoxyNotification['type'], string> = {
   friend_request: '🌸',

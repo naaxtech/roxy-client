@@ -28,7 +28,7 @@ jest.mock('../../lib/supabase', () => ({
   callEdgeFunction: jest.fn().mockResolvedValue({ data: null, error: null }),
 }));
 
-import SpeedDateResult from '../../app/(tabs)/connect/speed-dating/result';
+import SpeedDateResult from '../../app/speed-dating/result';
 
 beforeEach(() => {
   jest.clearAllMocks();

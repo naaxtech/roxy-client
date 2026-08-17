@@ -7,12 +7,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuthStore } from '../../../store/authStore';
-import { callEdgeFunction } from '../../../lib/supabase';
-import { Analytics } from '../../../lib/analytics';
-import { useThemeColors } from '../../../hooks/useThemeColors';
-import { showAlert } from '../../../lib/confirm';
-import { BRAND_GRADIENT } from '../../../lib/theme';
+import { useAuthStore } from '../store/authStore';
+import { callEdgeFunction } from '../lib/supabase';
+import { Analytics } from '../lib/analytics';
+import { useThemeColors } from '../hooks/useThemeColors';
+import { showAlert } from '../lib/confirm';
+import { BRAND_GRADIENT } from '../lib/theme';
 
 type Message = { role: 'user' | 'roxy'; content: string };
 

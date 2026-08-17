@@ -47,7 +47,7 @@ export default function Step4Status() {
       return;
     }
     logBreadcrumb('onboarding_complete', { user_id: hashUserId(user.id) });
-    router.replace('/(tabs)/grow');
+    router.replace('/(tabs)/feed');
   };
 
   const styles = StyleSheet.create({

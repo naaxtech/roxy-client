@@ -4,10 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../../lib/supabase';
-import { syncMyBadges } from '../../../lib/badges';
-import { useAuthStore } from '../../../store/authStore';
-import { useThemeColors } from '../../../hooks/useThemeColors';
+import { supabase } from '../lib/supabase';
+import { syncMyBadges } from '../lib/badges';
+import { useAuthStore } from '../store/authStore';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 type BadgeProgressRow = {
   user_id: string;

@@ -65,7 +65,7 @@ export default function BusinessStorefrontScreen() {
 
   // Cold deep links (shared URL, new tab) have no history — back must still
   // land somewhere sensible instead of doing nothing on web.
-  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)/build'));
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)/discover'));
 
   // Business — try the already-loaded Build tab list first, then fall back
   // to a direct fetch so a cold deep link still resolves.

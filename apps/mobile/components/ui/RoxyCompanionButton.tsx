@@ -136,7 +136,7 @@ export function RoxyCompanionButton({ visible = true }: Props) {
 
   const goToChat = () => {
     setOpen(false);
-    router.push('/(tabs)/grow/roxy-chat' as any);
+    router.push('/roxy-chat' as any);
   };
 
   const goToSearch = () => {

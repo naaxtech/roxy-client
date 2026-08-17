@@ -47,7 +47,7 @@ jest.mock('../../lib/supabase', () => ({
   },
 }));
 
-import SpeedDateWaitingRoom from '../../app/(tabs)/connect/speed-dating/waiting-room';
+import SpeedDateWaitingRoom from '../../app/speed-dating/waiting-room';
 
 /** The heartbeat RPC's shape: a set-returning function, so an array. */
 const heartbeat = (session_status: string, room_url: string | null = null) =>

@@ -46,7 +46,7 @@ jest.mock('../../lib/supabase', () => ({
   },
 }));
 
-import SpeedDateSession from '../../app/(tabs)/connect/speed-dating/session';
+import SpeedDateSession from '../../app/speed-dating/session';
 
 const sessionRow = (overrides: Record<string, unknown> = {}) => ({
   id: 'sess-1',

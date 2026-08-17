@@ -183,7 +183,7 @@ export function QuestionOfTheDayCard({ communityIds, userId }: Props) {
 
         <TouchableOpacity
           style={[q.readBtn, { borderColor: colors.roxy }]}
-          onPress={() => router.push(`/(tabs)/grow/qotd/${question!.id}` as any)}
+          onPress={() => router.push(`/qotd/${question!.id}` as any)}
           activeOpacity={0.85}
           accessibilityLabel={`Read ${question.answer_count} answers`}
         >

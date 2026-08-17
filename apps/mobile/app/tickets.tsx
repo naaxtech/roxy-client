@@ -4,10 +4,10 @@ import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
-import { useAuthStore } from '../../../store/authStore';
-import { TicketCard } from '../../../components/TicketCard';
-import { useThemeColors } from '../../../hooks/useThemeColors';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../store/authStore';
+import { TicketCard } from '../components/TicketCard';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 interface TicketRow {
   event_id: string;

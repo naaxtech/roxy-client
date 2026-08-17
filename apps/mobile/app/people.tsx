@@ -6,13 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '../../../store/authStore';
-import { useFriendStore, FriendshipRow, isOnline, sortByPresence } from '../../../store/friendStore';
-import { openDirectChat } from '../../../lib/directMessages';
-import { logError } from '../../../lib/errorLogger';
-import { showAlert, confirmAction } from '../../../lib/confirm';
-import { avatarGradient } from '../../../lib/avatars';
-import { useThemeColors } from '../../../hooks/useThemeColors';
+import { useAuthStore } from '../store/authStore';
+import { useFriendStore, FriendshipRow, isOnline, sortByPresence } from '../store/friendStore';
+import { openDirectChat } from '../lib/directMessages';
+import { logError } from '../lib/errorLogger';
+import { showAlert, confirmAction } from '../lib/confirm';
+import { avatarGradient } from '../lib/avatars';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 type SubTab = 'friends' | 'requests' | 'sent';
 

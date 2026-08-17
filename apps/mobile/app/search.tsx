@@ -247,8 +247,11 @@ export default function GlobalSearchScreen() {
                 <TouchableOpacity
                   key={b.id}
                   style={styles.row}
-                  onPress={() => router.push('/(tabs)/build' as any)}
-                  accessibilityLabel={`Open business ${b.name} in Build`}
+                  // Was `/(tabs)/build` — every business result dropped her at
+                  // the directory index rather than the business she had just
+                  // searched for and found.
+                  onPress={() => router.push(`/business/${b.id}` as any)}
+                  accessibilityLabel={`Open ${b.name}`}
                 >
                   <View style={styles.iconPlate}>
                     <Ionicons name="briefcase" size={20} color={colors.roxy} />

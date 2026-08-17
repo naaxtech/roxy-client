@@ -14,7 +14,19 @@ interface SafetyState {
   isReportModalOpen: boolean;
   reportTarget: {
     userId: string;
-    contentType: 'message' | 'post' | 'profile';
+    /**
+     * Where the thing being reported happened.
+     *
+     * `room` and `speed_date` were added when live surfaces got report buttons.
+     * Reporting a live video date as though it were a `profile` throws away the
+     * one detail a moderator needs to find it — which session, at what time —
+     * and a report a moderator cannot act on is a report that did not happen.
+     *
+     * NOTE: `supabase/functions/submit-report` must accept these two before the
+     * live surfaces are shipped to production; until then the edge function is
+     * the narrower contract. Tracked in docs/sessions/2026-08-16-roxy-3.0.md.
+     */
+    contentType: 'message' | 'post' | 'profile' | 'room' | 'speed_date';
     contentId?: string;
   } | null;
   openReportModal: (target: SafetyState['reportTarget']) => void;

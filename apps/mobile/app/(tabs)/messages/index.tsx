@@ -312,7 +312,7 @@ export default function MessagesScreen() {
           into a tab that no longer exists is a space nobody finds on the day
           they need it. */}
       <View style={s.personas}>
-        <PinnedPersonaRow persona="roxy" onPress={() => router.push('/(tabs)/grow/roxy-chat' as never)} />
+        <PinnedPersonaRow persona="roxy" onPress={() => router.push('/roxy-chat' as never)} />
         <PinnedPersonaRow persona="sister" onPress={() => router.push('/sister-button' as never)} />
       </View>
 

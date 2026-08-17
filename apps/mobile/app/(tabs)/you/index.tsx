@@ -176,7 +176,7 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => (router.canGoBack() ? router.back() : router.push('/(tabs)/grow' as any))}
+          onPress={() => (router.canGoBack() ? router.back() : router.push('/(tabs)/feed' as any))}
           accessibilityLabel="Back"
         >
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />

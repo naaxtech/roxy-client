@@ -83,7 +83,7 @@ export function SelfControls({ userId }: Props) {
     {
       icon: 'ticket-outline',
       label: 'Tickets & orders',
-      onPress: () => router.push('/(tabs)/grow/tickets' as never),
+      onPress: () => router.push('/tickets' as never),
       testID: 'you-wallet',
     },
     {
@@ -96,7 +96,7 @@ export function SelfControls({ userId }: Props) {
       icon: 'storefront-outline',
       label: 'Sell on Roxy',
       value: sellerStatusLabel(seller),
-      onPress: () => router.push('/(tabs)/build' as never),
+      onPress: () => router.push('/support' as never),
       testID: 'you-sell',
     },
   ];

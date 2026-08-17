@@ -275,7 +275,7 @@ export default function DiscoverScreen() {
                 subtitle={`${p.supporter_count} supporters`}
                 badge="impact"
                 artSeed={p.title}
-                onPress={() => router.push('/(tabs)/build' as never)}
+                onPress={() => router.push('/support' as never)}
                 testID={`impact-${p.id}`}
               />
             ))}
@@ -286,7 +286,7 @@ export default function DiscoverScreen() {
                 title={f.title}
                 subtitle={`${f.vote_count} votes${f.type === 'planned' ? ' · Roxy pick' : ''}`}
                 artSeed={f.title}
-                onPress={() => router.push('/(tabs)/build' as never)}
+                onPress={() => router.push('/support' as never)}
                 testID={`support-${f.id}`}
               />
             ))}

@@ -6,10 +6,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { format } from 'date-fns';
-import { supabase } from '../../../../lib/supabase';
-import { useAuthStore } from '../../../../store/authStore';
-import { useThemeColors } from '../../../../hooks/useThemeColors';
-import { AnswerSheet } from '../../../../components/grow/AnswerSheet';
+import { supabase } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore';
+import { useThemeColors } from '../../hooks/useThemeColors';
+import { AnswerSheet } from '../../components/grow/AnswerSheet';
 
 interface Answer {
   id: string;

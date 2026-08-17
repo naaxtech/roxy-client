@@ -52,7 +52,7 @@ jest.mock('@shopify/flash-list', () => {
   };
 });
 
-import BadgesScreen from '../../app/(tabs)/grow/badges';
+import BadgesScreen from '../../app/badges';
 
 const { supabase, __queue: queue } = jest.requireMock('../../lib/supabase');
 const { logError } = jest.requireMock('../../lib/errorLogger');
