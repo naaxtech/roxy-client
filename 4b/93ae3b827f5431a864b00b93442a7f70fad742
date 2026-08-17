@@ -1,0 +1,21 @@
+docs/sessions/2026-08-16-roxy-3.0.md
+  s_488a1686f9c1af::t_2355deef4de3f0 3-43
+  s_488a1686f9c1af::t_9103914c7b388c 125,127-134,136-142
+  s_488a1686f9c1af::t_0da31366538260 109-113,120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4b93ae3b827f5431a864b00b93442a7f70fad742",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
