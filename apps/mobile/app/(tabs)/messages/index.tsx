@@ -18,6 +18,11 @@ import { avatarGradient } from '../../../lib/avatars';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { ScreenHeader } from '../../../components/ui/ScreenHeader';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { PinnedPersonaRow } from '../../../components/messages/PinnedPersonaRow';
+import { RequestsSheet } from '../../../components/messages/RequestsSheet';
+import { TYPE } from '../../../lib/typography';
+import { RADII } from '../../../lib/theme';
+import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 
 type PartnerProfile = { id: string; display_name: string; username: string };
 type ChatItem = {
@@ -43,9 +48,12 @@ export default function MessagesScreen() {
   const { user } = useAuthStore();
   const { setConversations, unreadCounts, clearUnread } = useConnectStore();
   const { friends } = useFriendStore();
+  const pendingCount = useFriendStore((st) => st.pendingCount);
+  const fetchAll = useFriendStore((st) => st.fetchAll);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [requestsOpen, setRequestsOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -136,6 +144,13 @@ export default function MessagesScreen() {
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
+
+  // The requests entry and its badge both read `pendingCount`, so the inbox has
+  // to be the thing that keeps it fresh now that Grow's People screen is gone.
+  useEffect(() => {
+    if (!user?.id) return;
+    void fetchAll(user.id);
+  }, [user?.id, fetchAll]);
 
   useEffect(() => {
     if (!user || chats.length === 0) return;
@@ -251,6 +266,16 @@ export default function MessagesScreen() {
     },
     badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
+    personas: { paddingHorizontal: 18, gap: 8, paddingBottom: 4 },
+    requestsRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      marginHorizontal: 18, marginTop: 10,
+      minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 14,
+      borderRadius: RADII.md,
+      backgroundColor: colors.surface,
+      borderWidth: 1, borderColor: colors.line,
+    },
+    requestsText: { ...TYPE.bodyLg, color: colors.textPrimary, fontWeight: '700', flex: 1 },
   });
 
   return (
@@ -282,24 +307,32 @@ export default function MessagesScreen() {
         />
       </View>
 
-      {/* Roxy DM row — always pinned at top */}
-      <TouchableOpacity
-        style={s.roxyRow}
-        onPress={() => router.push('/(tabs)/grow/roxy-chat' as any)}
-        activeOpacity={0.8}
-      >
-        <LinearGradient colors={['#FF6A2E', '#E81C8E']} style={s.roxyAva}>
-          <Ionicons name="sparkles" size={22} color="#fff" />
-        </LinearGradient>
-        <View style={s.roxyBody}>
-          <View style={s.roxyTop}>
-            <Text style={s.roxyName}>Roxy</Text>
-            <View style={s.roxyTag}><Text style={s.roxyTagText}>Wingwoman</Text></View>
-          </View>
-          <Text style={s.roxySub} numberOfLines={1}>Tap me anytime — I'll help you break the ice 💜</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-      </TouchableOpacity>
+      {/* Both AI personas are pinned. Sister used to be reachable only from the
+          Grow tab, which is dissolving — a private vent space that is three taps
+          into a tab that no longer exists is a space nobody finds on the day
+          they need it. */}
+      <View style={s.personas}>
+        <PinnedPersonaRow persona="roxy" onPress={() => router.push('/(tabs)/grow/roxy-chat' as never)} />
+        <PinnedPersonaRow persona="sister" onPress={() => router.push('/sister-button' as never)} />
+      </View>
+
+      {/* Request-first: a stranger never lands in the thread list. */}
+      {pendingCount > 0 ? (
+        <TouchableOpacity
+          style={s.requestsRow}
+          onPress={() => setRequestsOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`${pendingCount} ${pendingCount === 1 ? 'request' : 'requests'} waiting`}
+          activeOpacity={0.85}
+          testID="messages-requests-entry"
+        >
+          <Ionicons name="person-add-outline" size={18} color={colors.roxy} />
+          <Text style={s.requestsText}>
+            {pendingCount} {pendingCount === 1 ? 'request' : 'requests'} waiting
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.roxy} />
+        </TouchableOpacity>
+      ) : null}
 
       <Text style={s.divider}>Direct messages</Text>
 
@@ -356,6 +389,8 @@ export default function MessagesScreen() {
           }}
         />
       )}
+
+      <RequestsSheet visible={requestsOpen} onClose={() => setRequestsOpen(false)} />
     </SafeAreaView>
   );
 }
