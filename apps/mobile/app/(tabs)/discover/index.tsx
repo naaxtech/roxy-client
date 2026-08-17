@@ -9,10 +9,12 @@ import { useAuthStore } from '../../../store/authStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useBuildStore } from '../../../store/buildStore';
 import { TYPE } from '../../../lib/typography';
-import { RADII, type ThemeColors } from '../../../lib/theme';
+import { RADII, inkOn, type ThemeColors } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { formatMoney } from '../../../lib/currency';
 import { isPlayableGameUrl } from '../../../lib/gameUrl';
+import { fetchUnreadNotificationCount } from '../../../lib/notifications';
+import { logError } from '../../../lib/errorLogger';
 import { Rail } from '../../../components/discover/Rail';
 import { FilterChips } from '../../../components/discover/FilterChips';
 import { PosterCard, RowCard, HeroCard } from '../../../components/discover/DiscoverCards';
@@ -57,6 +59,7 @@ export default function DiscoverScreen() {
   const [eventFilter, setEventFilter] = useState<EventFilter>('all');
   const [economyFilter, setEconomyFilter] = useState<EconomyFilter>('all');
   const [shopsStatus, setShopsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const live = useLiveRooms();
   const events = useEvents();
@@ -68,6 +71,18 @@ export default function DiscoverScreen() {
     void hydrate(user?.id);
     if (user?.id) void loadBookmarks(user.id);
   }, [user?.id, hydrate, loadBookmarks]);
+
+  // The bell badge. `fetchUnreadNotificationCount` returns 0 on any failure
+  // including an unapplied migration 057, so an unknown count shows no badge
+  // rather than a wrong one.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    void fetchUnreadNotificationCount(user.id)
+      .then((n) => { if (!cancelled) setUnreadNotifications(n); })
+      .catch((e: unknown) => logError(e, 'discover.unreadNotifications'));
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const loadShops = useCallback(async () => {
     setShopsStatus('loading');
@@ -109,7 +124,33 @@ export default function DiscoverScreen() {
   return (
     <SafeAreaView edges={['top']} style={s.screen}>
       <View style={s.header}>
-        <Text style={s.wordmark} accessibilityRole="header">Discover</Text>
+        <View style={s.titleRow}>
+          <Text style={s.wordmark} accessibilityRole="header">Discover</Text>
+          {/* The bell's only home used to be the Grow tab. It is here rather
+              than on Feed because Feed is a full-bleed pager with no chrome to
+              spare, and the prototype puts it in this header too. */}
+          <TouchableOpacity
+            onPress={() => router.push('/notifications' as never)}
+            accessibilityRole="button"
+            accessibilityLabel={
+              unreadNotifications > 0
+                ? `Notifications, ${unreadNotifications} unread`
+                : 'Notifications'
+            }
+            activeOpacity={0.85}
+            style={s.bell}
+            testID="discover-notifications"
+          >
+            <Ionicons name="notifications-outline" size={21} color={colors.textPrimary} />
+            {unreadNotifications > 0 ? (
+              <View style={s.bellDot} testID="discover-notifications-dot">
+                <Text style={s.bellCount}>
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+        </View>
         <TouchableOpacity
           onPress={() => router.push('/search')}
           accessibilityRole="button"
@@ -356,7 +397,18 @@ export default function DiscoverScreen() {
 const styles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: 16, paddingBottom: 10, gap: 10 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   wordmark: { ...TYPE.display, color: colors.textPrimary },
+  bell: {
+    width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  bellDot: {
+    position: 'absolute', top: 6, right: 4,
+    minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: RADII.pill,
+    backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
+  },
+  bellCount: { ...TYPE.micro, color: inkOn(colors.primary), fontWeight: '800' },
   search: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 14,

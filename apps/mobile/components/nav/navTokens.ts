@@ -54,8 +54,7 @@ type IoniconName = keyof typeof Ionicons.glyphMap;
 export type NavSlot =
   | {
       kind: 'route';
-      /** The Expo Router folder this slot drives. Deliberately unchanged: the
-       *  redesign renames labels, not route directories. */
+      /** The Expo Router folder this slot drives. */
       routeName: string;
       label: string;
       icon: IoniconName;
@@ -63,46 +62,20 @@ export type NavSlot =
     }
   | { kind: 'action'; key: string; label: string; icon: IoniconName };
 
-/**
- * Five slots — Home · Rooms · ⊕ · Inbox · You.
+/*
+ * `NAV_SLOTS` and `HOME_CATEGORIES` used to live here.
  *
- * `Rooms` replaces `Discover` because on Roxy the destination is always a
- * community; discovery is a mode inside a room, not a peer of it. It points at
- * the existing `connect` route, which already owns communities, live rooms,
- * events and announcements behind its own sub-tabs.
+ * NAV_SLOTS described the five-tab bar (Home · Rooms · ⊕ · Inbox · You) and
+ * still named a `profile` route that had already been renamed to `you`. It had
+ * zero consumers — `FloatingTabBar` reads `NAV_SLOTS_3` — so it was a list of
+ * three dead routes that nothing would ever have caught.
  *
- * `Play` (the `discover` folder) and `Build` leave the bar and become category
- * pills at the top of Home — Netflix's move for giving Games first-class
- * placement without spending a navigation slot.
+ * HOME_CATEGORIES was the pill row at the top of the Grow tab, and three of its
+ * four hrefs pointed into `connect` and `build`. Its only renderer was
+ * `grow/index.tsx`. Both are gone with the tabs they described; the shape lives
+ * on as `NAV_SLOTS_3` in `navSlots3.ts`, whose test asserts every route name
+ * against the filesystem so this class of rot cannot come back silently.
  */
-export const NAV_SLOTS: readonly NavSlot[] = [
-  { kind: 'route', routeName: 'grow', label: 'Home', icon: 'home', iconInactive: 'home-outline' },
-  { kind: 'route', routeName: 'connect', label: 'Rooms', icon: 'people-circle', iconInactive: 'people-circle-outline' },
-  { kind: 'action', key: 'create', label: 'Create', icon: 'add' },
-  { kind: 'route', routeName: 'messages', label: 'Inbox', icon: 'chatbubble', iconInactive: 'chatbubble-outline' },
-  { kind: 'route', routeName: 'profile', label: 'You', icon: 'person', iconInactive: 'person-outline' },
-];
-
-export type HomeCategory = {
-  key: string;
-  label: string;
-  icon: IoniconName;
-  /** A route that resolves today. A pill that goes nowhere is worse than one
-   *  honestly absent, so this list only carries paths that already exist. */
-  href: string;
-};
-
-/**
- * The row that keeps Events, Games, live rooms and Build reachable now that the
- * bar is down to five slots. Every href below is a path the app already serves;
- * nothing here opens a screen this slice invented.
- */
-export const HOME_CATEGORIES: readonly HomeCategory[] = [
-  { key: 'events', label: 'Events', icon: 'calendar', href: '/(tabs)/connect?tab=events' },
-  { key: 'games', label: 'Games', icon: 'game-controller', href: '/(tabs)/discover' },
-  { key: 'live', label: 'Live', icon: 'radio', href: '/(tabs)/connect?tab=rooms' },
-  { key: 'build', label: 'Build', icon: 'storefront', href: '/(tabs)/build' },
-];
 
 /**
  * How long the active-slot indicator takes to cross-fade. Zero under Reduce
