@@ -1,0 +1,26 @@
+apps/mobile/components/ui/ThemeToggle.tsx
+  s_488a1686f9c1af::t_ac488b14e15852 1-2,4-8,10,12-15,17-39,42-74,78-83,85
+apps/mobile/__tests__/components/ThemeToggle.test.tsx
+  s_488a1686f9c1af::t_e9967a610b331b 1-63
+apps/mobile/components/profile/SelfControls.tsx
+  s_488a1686f9c1af::t_878d19dcf12808 1-191
+apps/mobile/app/(tabs)/you/index.tsx
+  s_488a1686f9c1af::t_5436eb15a9c732 16-17
+  s_488a1686f9c1af::t_b2a05a70512235 208-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "646ff902624d462988d00cfc33e7718459f17377",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
