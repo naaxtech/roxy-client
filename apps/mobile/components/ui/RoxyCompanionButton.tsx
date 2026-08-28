@@ -3,26 +3,33 @@ import { TouchableOpacity, StyleSheet, Animated, View, Text, Modal, Pressable, F
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useCommunityStore } from '../../store/communityStore';
 import { useCommunityFilterStore } from '../../store/communityFilterStore';
 import { BRAND_GRADIENT } from '../../lib/theme';
+import { a11yState } from '../../lib/a11yState';
 
 interface Props {
   visible?: boolean;
 }
 
-// "Filter this view" only makes sense where a CommunityContextSwitcher lives.
-const FILTERABLE_SEGMENTS = ['/connect', '/build'];
+// Whether "Filter this view" can do anything is not a property of the route.
+//
+// It used to be decided by matching the pathname — first against `/connect` and
+// `/build`, two tabs the 3.0 shell retired, and then against `/feed`. Both were
+// wrong in the same way: the Feed honours a community filter on ONE of its
+// three segments, and a pathname cannot tell them apart. On For You the action
+// rendered enabled, opened the radio list, wrote a selection and changed
+// nothing on screen. The filterable surface now says so itself, in
+// `communityFilterStore`.
 
 export function RoxyCompanionButton({ visible = true }: Props) {
   const colors = useThemeColors();
   const router = useRouter();
-  const pathname = usePathname();
-  const canFilter = FILTERABLE_SEGMENTS.some((seg) => pathname.includes(seg));
 
   const joinedCommunities = useCommunityStore((s) => s.joinedCommunities);
+  const canFilter = useCommunityFilterStore((s) => s.filterable);
   const selectedCommunityId = useCommunityFilterStore((s) => s.selectedCommunityId);
   const setSelectedCommunity = useCommunityFilterStore((s) => s.setSelectedCommunity);
 
@@ -209,13 +216,13 @@ export function RoxyCompanionButton({ visible = true }: Props) {
               style={[styles.pillTouchable, !canFilter && styles.pillDisabled]}
               onPress={handleFilterPress}
               accessibilityLabel="Filter this view"
-              accessibilityHint={canFilter ? undefined : 'Works on Connect & Build'}
-              accessibilityState={{ disabled: !canFilter }}
+              accessibilityHint={canFilter ? undefined : 'Works on Feed › Communities'}
+              {...a11yState({ disabled: !canFilter })}
             >
               <Ionicons name="options" size={16} color={canFilter ? colors.roxy : colors.textMuted} />
               <Text style={[styles.pillText, !canFilter && styles.pillTextDisabled]}>Filter this view</Text>
             </TouchableOpacity>
-            {!canFilter && <Text style={styles.pillHint}>Works on Connect & Build</Text>}
+            {!canFilter && <Text style={styles.pillHint}>Works on Feed › Communities</Text>}
 
             {canFilter && filterExpanded && (
               <View style={styles.communityList}>

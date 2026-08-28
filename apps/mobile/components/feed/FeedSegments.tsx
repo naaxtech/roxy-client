@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { STAGE } from './stageColors';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
+import { a11yState } from '../../lib/a11yState';
 
 export type FeedSegment = 'foryou' | 'following' | 'communities';
 
@@ -39,7 +40,7 @@ export function FeedSegments({ value, onChange }: Props) {
             testID={`feed-segment-${seg.key}`}
             onPress={() => onChange(seg.key)}
             accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
+            {...a11yState({ selected: on })}
             accessibilityLabel={seg.label}
             activeOpacity={0.8}
             style={s.tab}

@@ -1,5 +1,5 @@
 // apps/mobile/app/(tabs)/you/index.tsx
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, ActivityIndicator, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -19,10 +19,15 @@ import { OrderDetailSheet } from '../../../components/build/OrderDetailSheet';
 import { logError } from '../../../lib/errorLogger';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { formatMoney } from '../../../lib/currency';
-import type { UserBadgeProgress, Badge, Business } from '../../../types';
+import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
+import { RADII } from '../../../lib/theme';
+import type { UserBadgeProgress, Badge, Business, Profile } from '../../../types';
 import type { OrderWithItems } from '../../../types/marketplace';
 
 type EarnedBadge = UserBadgeProgress & { badges: Badge | null };
+
+/** How long a spinner is a reasonable answer before it becomes a dead end. */
+const PROFILE_STALL_MS = 8_000;
 
 const STATUS_COLORS: Record<string, string> = {
   paid: '#3B82F6',
@@ -48,6 +53,51 @@ export default function ProfileScreen() {
   const [savedBusinesses, setSavedBusinesses] = useState<Business[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
   const [showOrders, setShowOrders] = useState(ordersParam === '1');
+  const scrollRef = useRef<ScrollView>(null);
+  const [savedY, setSavedY] = useState(0);
+
+  /*
+   * A spinner needs an end.
+   *
+   * The profile is fetched by the root layout and this screen only reads it, so
+   * a failed or hanging load leaves it null with no error anywhere to render —
+   * a spinner that never resolves and offers nothing. That already mattered;
+   * it matters more now that this tab holds the only links to `/people` and
+   * `/badges`, so one stuck fetch takes three screens with it.
+   *
+   * Eight seconds, then a way out. The retry re-reads the same row the layout
+   * reads and writes it to the same store, so a success here is indistinguishable
+   * from the load having worked the first time.
+   */
+  const [profileStalled, setProfileStalled] = useState(false);
+  const [retryingProfile, setRetryingProfile] = useState(false);
+  const setProfile = useProfileStore((s) => s.setProfile);
+
+  useEffect(() => {
+    if (profile) { setProfileStalled(false); return undefined; }
+    const t = setTimeout(() => setProfileStalled(true), PROFILE_STALL_MS);
+    return () => clearTimeout(t);
+  }, [profile]);
+
+  const retryProfile = useCallback(async () => {
+    if (!user?.id) return;
+    setRetryingProfile(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (error) throw error;
+      if (data) setProfile(data as Profile);
+    } catch (e) {
+      // Stay on the error state rather than dropping back to the spinner: a
+      // second silent wait is the thing she just failed to get out of.
+      logError(e, 'ProfileScreen.retryProfile');
+    } finally {
+      setRetryingProfile(false);
+    }
+  }, [user?.id, setProfile]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -156,12 +206,42 @@ export default function ProfileScreen() {
     statusText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
     badgeError: { color: colors.error, fontSize: 13, textAlign: 'center', paddingHorizontal: 16, paddingTop: 4 },
     noBadges: { color: colors.textMuted, fontSize: 13, textAlign: 'center', paddingHorizontal: 16, paddingTop: 4 },
+    stalled: { paddingHorizontal: 32, paddingTop: 64, gap: 8, alignItems: 'center' },
+    stalledTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700', textAlign: 'center' },
+    stalledBody: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: 'center' },
+    stalledBtn: {
+      marginTop: 8, minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 22,
+      alignItems: 'center', justifyContent: 'center',
+      borderRadius: RADII.pill, backgroundColor: colors.primary,
+    },
+    stalledBtnText: { color: colors.primaryInk, fontSize: 14, fontWeight: '700' },
   });
 
   if (!user || !profile) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
+        {profileStalled ? (
+          <View style={styles.stalled} testID="you-profile-stalled">
+            <Text style={styles.stalledTitle}>We could not load your profile</Text>
+            <Text style={styles.stalledBody}>
+              Everything on this tab needs it — your people, your badges, your orders.
+            </Text>
+            <TouchableOpacity
+              onPress={() => void retryProfile()}
+              accessibilityRole="button"
+              accessibilityLabel="Try loading your profile again"
+              activeOpacity={0.85}
+              style={styles.stalledBtn}
+              testID="you-profile-retry"
+            >
+              <Text style={styles.stalledBtnText}>
+                {retryingProfile ? 'Trying…' : 'Try again'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
+        )}
       </SafeAreaView>
     );
   }
@@ -193,7 +273,11 @@ export default function ProfileScreen() {
       {/* Bug fix: no bottom padding meant the last section (My Orders) scrolled
           in right under the fixed tab bar + Roxy FAB with nothing protecting
           it -- other screens in this app already reserve ~80px for this. */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
         <ProfileCard
           profile={profile}
           badges={badges}
@@ -208,10 +292,19 @@ export default function ProfileScreen() {
             {/* Directly under the card, above everything else: the two safety
                 modes have to be two taps from anywhere, and any tab → You is
                 the first of those two. */}
-            <SelfControls userId={user.id} />
+            <SelfControls
+              userId={user.id}
+              onOpenSaved={() => scrollRef.current?.scrollTo({ y: savedY, animated: true })}
+            />
             <MiniWinsCard userId={user.id} />
             <ProfilePhotoGrid userId={user.id} editable />
-            <SavedPosts userId={user.id} />
+            {/* Measured rather than estimated: the blocks above it are all
+                variable height — a photo grid, a card whose seller row may or
+                may not carry a status — so any constant here would be wrong for
+                most women most of the time. */}
+            <View onLayout={(e) => setSavedY(e.nativeEvent.layout.y)}>
+              <SavedPosts userId={user.id} />
+            </View>
             <ProfileFavorites userId={user.id} editable />
           </>
         )}

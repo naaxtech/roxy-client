@@ -10,6 +10,7 @@ import type { FeedBodyCellProps } from './FeedCellChrome';
 import { BRAND_GRADIENT, CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
 import { pollShare, pollVoteTotal } from './poll';
 import type { ParsedPoll } from './poll';
+import { a11yState } from '../../lib/a11yState';
 
 /**
  * The feed canvas is dark on every surface it serves, whatever the app theme
@@ -118,7 +119,7 @@ export function PollCell({
                 onPress={() => { void vote(option.key); }}
                 disabled={locked}
                 accessibilityRole="radio"
-                accessibilityState={{ checked: chosen, disabled: locked }}
+                {...a11yState({ checked: chosen, disabled: locked })}
                 accessibilityLabel={
                   showResults
                     ? [

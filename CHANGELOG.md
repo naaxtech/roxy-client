@@ -12,7 +12,72 @@ finer-grained engineering log lives in `.claude/log.md`.
 
 ## [Unreleased]
 
+### Added
+- **Roxy 3.0 parity pass — five capabilities and two whole screens had lost
+  every way in.** Flattening five tabs to four moved the screens but not all of
+  their doors, and a migration map cannot prove a door exists. A sweep for
+  components nothing imports and routes nothing pushes to found nine orphans,
+  five created by the flattening, plus `/people` and `/badges` with zero links
+  anywhere in the app. Restored: the community filter now sits in the Feed
+  header on the Communities segment and actually narrows the pager (the Roxy
+  FAB's "Filter this view" had been writing to a store nothing read, gated on
+  two routes that no longer existed); Question of the Day is a Discover rail,
+  which also makes `/qotd/<id>` reachable again; the full searchable
+  communities browser is back at `/communities` behind the rail's "See all",
+  because the rail caps at twelve; and **My people** and **Badges** are rows on
+  the You tab — the only links to either screen. The sweep is written down in
+  `docs/sessions/2026-08-16-roxy-3.0.md` as a command to re-run after any
+  navigation change.
+- **e2e suites rebuilt on the 3.0 IA.** Seven Maestro flows select
+  `nav-slot-<route>` testIDs instead of tab labels that no longer exist, and
+  share a conditional subflow that dismisses the once-a-day Mini Wins modal —
+  it is a `Modal`, so its scrim swallowed the first tap of every flow that
+  navigated. The onboarding flow now goes through the invite-code gate, which
+  has been the real front door since the gate shipped. Four Playwright specs
+  rewritten, 17/17 green against the live web build; the previous versions were
+  all failing on `welcome-screen` at `/`.
+
+### Known gaps
+- Deleting `HappeningTonightCard` kept its content and lost its **scoping**. It
+  asked "what is happening tonight, in the communities I joined"; `NowRail` and
+  Discover's events rail are global and unwindowed, and live *games* have no
+  surface at all. Multi-term business search went the same way with
+  `ChipSearchBar` — `/search` finds a business by name but cannot AND two terms.
+  Named rather than smoothed over: each is its own slice.
+
 ### Fixed
+- **The whole app told assistive technology nothing about selected, expanded,
+  checked, disabled or busy state on web.** `accessibilityState={{…}}` is the
+  React Native API and is correct on iOS and Android; on react-native-web 0.19
+  it renders nothing at all. Caught in the browser: the focused tab came out as
+  `<div role="tab" tabindex="0" aria-label="Feed">` with no `aria-selected` in
+  either state — a tablist where nothing says which tab is current, WCAG 2.2
+  SC 4.1.2. RNW documents flattened `accessibility*` props instead of the state
+  object, and the one spelling both it and React Native 0.74 accept is `aria-*`.
+  New `lib/a11yState.ts` emits both; all 25 call sites across 18 files use it.
+  The navigation smoke test asserts the attribute in the real DOM, because no
+  unit test can see it.
+- **The streak chip vanished at random.** `StreakChip` fired
+  `record_daily_checkin` on mount with no dependency on auth. Feed is the
+  initial tab, so on a cold start the RPC could land before the JWT and answer
+  `P0001 not authenticated`; `recordDailyCheckin` swallows every failure to
+  `null`, and a `null` streak hides the chip. Silent, intermittent, and
+  indistinguishable to a member from a streak she had actually lost. Now gated
+  on the signed-in user id, and cleared when that id changes so one woman's
+  count is never briefly shown to the next.
+- **A hybrid event advertised itself as in-person only.** Discover's hero card —
+  the full-width one at the top — read `event_type === 'online' ? 'online' :
+  'inPerson'`, so an event running both ways told her to turn up somewhere.
+  `BadgeKind` has no hybrid value, so the pill is now omitted rather than
+  guessed, and the true mode leads the meta line. Same defect and same fix as
+  the events rail.
+- **"Saved" on the You tab opened the video feed.** The row pushed
+  `/(tabs)/feed`; her saved posts render further down the You screen itself. It
+  now scrolls to them.
+- **Three retired tabs were still declared as navigator screens.** `grow`,
+  `connect` and `build` kept their `Tabs.Screen` entries after the folders were
+  deleted, which Expo Router logs on every render of the navigator.
+
 - **Six rate limits had never once refused a request, and the limiter failed
   open for all twelve.** `checkRateLimit` counted rows in `ai_call_log`;
   `logAiCall` wrote them; nothing made a caller do both. `cancel-event`,

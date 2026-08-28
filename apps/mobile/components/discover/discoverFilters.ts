@@ -26,17 +26,20 @@ export const DISCOVER_CHIPS: { key: DiscoverChip; label: string }[] = [
   { key: 'games', label: 'Games' },
 ];
 
-export type DiscoverRail = 'hero' | 'top10' | 'live' | 'events' | 'economy' | 'communities' | 'games';
+export type DiscoverRail = 'qotd' | 'hero' | 'top10' | 'live' | 'events' | 'economy' | 'communities' | 'games';
 
 /**
  * Which rails a given top chip shows.
  *
- * `hero` rides with Events because the hero IS an event in the prototype, and
- * `top10` is an all-view thing — a "top 10 of one category" is a list, not a
- * chart, and it stops meaning anything once the category is already chosen.
+ * `qotd` leads the all-view and appears nowhere else — a question of the day
+ * is a today thing, and a today thing sitting below a browse rail is a today
+ * thing nobody scrolls far enough to answer. `hero` rides with Events because
+ * the hero IS an event in the prototype, and `top10` is an all-view thing — a
+ * "top 10 of one category" is a list, not a chart, and it stops meaning
+ * anything once the category is already chosen.
  */
 const RAILS_BY_CHIP: Record<DiscoverChip, DiscoverRail[]> = {
-  all: ['hero', 'top10', 'live', 'events', 'economy', 'communities', 'games'],
+  all: ['qotd', 'hero', 'top10', 'live', 'events', 'economy', 'communities', 'games'],
   events: ['hero', 'events'],
   shops: ['economy'],
   live: ['live'],

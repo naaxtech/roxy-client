@@ -3,6 +3,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII, inkOn, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
+import { a11yState } from '../../lib/a11yState';
 
 export interface Chip<T extends string> {
   key: T;
@@ -56,7 +57,7 @@ export function FilterChips<T extends string>({
             testID={testID ? `${testID}-${chip.key}` : undefined}
             onPress={() => onChange(chip.key)}
             accessibilityRole="radio"
-            accessibilityState={{ selected: on, checked: on }}
+            {...a11yState({ selected: on, checked: on })}
             accessibilityLabel={chip.label}
             activeOpacity={0.8}
             style={[

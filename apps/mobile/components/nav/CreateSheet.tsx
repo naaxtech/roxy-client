@@ -14,6 +14,7 @@ import {
 import { TYPE } from '../../lib/typography';
 import { deriveSellerStatus, canSell, type SellerStatus } from '../../lib/sellerStatus';
 import { TAB_MIN_TOUCH } from './navTokens';
+import { a11yState } from '../../lib/a11yState';
 
 type MemberRow = { community_id: string; communities: { id: string; name: string } | null };
 type Room = { id: string; name: string };
@@ -240,7 +241,7 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
                   disabled={blocked}
                   testID={`create-kind-${row.kind}`}
                   accessibilityRole="button"
-                  accessibilityState={{ disabled: blocked }}
+                  {...a11yState({ disabled: blocked })}
                   accessibilityLabel={
                     blocked ? `${row.title}. Unavailable. ${row.blockedReason}` : row.title
                   }

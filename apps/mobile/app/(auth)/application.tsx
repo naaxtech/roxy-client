@@ -11,6 +11,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore, type Criterion } from '../../store/gateStore';
 import { showAlert } from '../../lib/confirm';
 import { BRAND_GRADIENT } from '../../lib/theme';
+import { a11yState } from '../../lib/a11yState';
 
 /** Both are awarded together by the KYC webhook, so they share one row in the UI. */
 const KYC_KEYS = ['gov_id', 'kyc_liveness'];
@@ -315,7 +316,7 @@ export default function ApplicationScreen() {
                     style={s.consentRow}
                     onPress={() => setConsentTicked((v) => !v)}
                     accessibilityRole="checkbox"
-                    accessibilityState={{ checked: consentTicked }}
+                    {...a11yState({ checked: consentTicked })}
                     accessibilityLabel="I agree to the identity check"
                   >
                     <Ionicons

@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logError } from './errorLogger';
 
 /**
  * Records today's check-in server-side and returns the current streak count.
@@ -16,9 +17,22 @@ export async function recordDailyCheckin(): Promise<number | null> {
       // keep UTC
     }
     const { data, error } = await supabase.rpc('record_daily_checkin', { client_tz: clientTz });
-    if (error || typeof data !== 'number') return null;
+    if (error) {
+      // Returning null hides the chip, which is the right thing to show and the
+      // wrong thing to say nothing about. Every cause lands here — migration 056
+      // unapplied, an RLS change, a signature change, a dropped connection — and
+      // without this line all of them look identical from the outside: a streak
+      // that quietly stopped existing. The error object carries no PII.
+      logError(error, 'recordDailyCheckin');
+      return null;
+    }
+    if (typeof data !== 'number') {
+      logError(new Error(`record_daily_checkin returned ${typeof data}`), 'recordDailyCheckin');
+      return null;
+    }
     return data;
-  } catch {
+  } catch (e) {
+    logError(e, 'recordDailyCheckin.threw');
     return null;
   }
 }

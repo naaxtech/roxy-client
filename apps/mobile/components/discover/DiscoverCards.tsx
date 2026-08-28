@@ -148,7 +148,13 @@ export function RowCard({ icon, title, subtitle, badge, artSeed, onPress, testID
 }
 
 export interface HeroCardProps {
-  badge: BadgeKind;
+  /**
+   * Optional because `BadgeKind` has no value for a hybrid event, and the hero
+   * is the loudest card on the board — a required pill there forced a both-ways
+   * event to advertise itself as one or the other. A caller with no truthful
+   * pill to show omits it and says the mode in `meta` instead.
+   */
+  badge?: BadgeKind;
   title: string;
   meta: string;
   body: string;
@@ -167,14 +173,20 @@ export function HeroCard({ badge, title, meta, body, cta, artSeed, onPress }: He
     <TouchableOpacity
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${title}. ${BADGE_TEXT[badge]}. ${meta}. ${cta}`}
+      // Without a pill the mode still has to reach a screen reader, and it does:
+      // callers that omit `badge` put the word in `meta`, which is already here.
+      accessibilityLabel={
+        badge
+          ? `${title}. ${BADGE_TEXT[badge]}. ${meta}. ${cta}`
+          : `${title}. ${meta}. ${cta}`
+      }
       activeOpacity={0.9}
       style={s.hero}
       testID="discover-hero"
     >
       <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.heroArt} />
       <View style={s.heroBody}>
-        <View style={s.badgeInline}><Badge kind={badge} /></View>
+        {badge ? <View style={s.badgeInline}><Badge kind={badge} /></View> : null}
         <Text style={s.heroTitle} numberOfLines={2}>{title}</Text>
         <Text style={s.meta} numberOfLines={1}>{meta}</Text>
         <Text style={s.heroText} numberOfLines={2}>{body}</Text>

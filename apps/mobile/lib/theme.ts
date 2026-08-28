@@ -191,6 +191,60 @@ export function inkOn(fill: string): string {
 }
 
 /**
+ * A deeper brand ink, for text that sits on a gradient rather than a fill.
+ *
+ * `BRAND_INK` is `#1A0A2E` and answers 4.74:1 on the ramp's middle stop — which
+ * is why measuring against that stop feels safe and is not. On `#E0189A` at the
+ * end of the ramp the same ink measures 4.23:1, and the trailing glyphs of a
+ * centred label land there. Neither brand ink clears 4.5:1 across all three
+ * stops (white is worse: 3.11:1 on the orange end), so the answer is a darker
+ * ink rather than a choice between the two.
+ *
+ * Luminance only — the hue and saturation of `BRAND_INK` are held, the same
+ * departure this file already documents for `textMuted` and `roxy` in light.
+ * It measures 6.51 / 5.15 / 4.60 across the ramp.
+ */
+export const BRAND_INK_DEEP = '#0B0314';
+
+/** Every ink `inkOnGradient` may answer with, darkest last. */
+const GRADIENT_INKS = [BRAND_INK_INVERSE, BRAND_INK, BRAND_INK_DEEP] as const;
+
+/**
+ * The contrast a colour achieves against the WORST stop of a gradient.
+ *
+ * The only number that matters for a label on a ramp: a glyph does not get to
+ * choose which stop it lands on.
+ */
+export function worstContrast(ink: string, stops: readonly string[]): number {
+  return stops.reduce((worst, stop) => Math.min(worst, contrastRatio(ink, stop)), Infinity);
+}
+
+/**
+ * Ink for text drawn over a multi-stop gradient.
+ *
+ * Returns the LIGHTEST ink that clears `threshold` against every stop, so a
+ * design is never darkened further than its contrast requires. `threshold`
+ * defaults to 4.5 (SC 1.4.3, text); pass 3 for an icon or other non-text mark
+ * (SC 1.4.11).
+ *
+ * When nothing clears the bar it returns the best available ink rather than
+ * throwing. A palette that cannot be made accessible is a design problem, and
+ * the contrast test suite is where it should fail — not at runtime, in a woman's
+ * hand, as a blank screen where a button used to be.
+ *
+ * src: https://www.w3.org/TR/WCAG22/#contrast-minimum · SC 1.4.3 · 2026-08-19
+ * src: https://www.w3.org/TR/WCAG22/#non-text-contrast · SC 1.4.11 · 2026-08-19
+ */
+export function inkOnGradient(stops: readonly string[], threshold = 4.5): string {
+  const clears = GRADIENT_INKS.find((ink) => worstContrast(ink, stops) >= threshold);
+  if (clears) return clears;
+
+  return GRADIENT_INKS.reduce((best, ink) =>
+    worstContrast(ink, stops) > worstContrast(best, stops) ? ink : best
+  );
+}
+
+/**
  * The rotating fills behind a community's initial on the community chips. Lives
  * here rather than inline in the screen so the contrast gate can import the real
  * array instead of a copy of it — every entry has to carry `inkOn()` at 4.5:1.

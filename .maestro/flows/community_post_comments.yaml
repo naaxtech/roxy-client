@@ -5,55 +5,73 @@
 # Prerequisites:
 #   - User must be a member of at least one community with posts
 #   - Run community_join_leave flow first if no communities joined yet
-
+#
+# Roxy 3.0: the Connect feed is gone. Community posts are read on the community
+# detail screen's Posts page, which is still the FeedCard pipeline — the Feed
+# tab is the full-bleed pager and a different component entirely.
 appId: com.roxy.app
 ---
-# Navigate to Connect tab — Feed shows posts from joined communities
-- tapOn:
-    text: "Connect"
+- runFlow: ../subflows/dismiss_first_run.yaml
 
 - tapOn:
-    text: "Feed"
+    id: "nav-slot-discover"
 
-# Wait for feed to load
+- tapOn:
+    id: "discover-chips-comms"
+
+# Through "See all", not the rail. The rail is a HORIZONTAL ScrollView capped at
+# twelve cards, so `scrollUntilVisible … direction: DOWN` cannot reach a
+# community that is off to the right — it only ever passed when the seed order
+# happened to put this one in the first two or three visible cards. The browser
+# behind this link is a vertical list of all of them.
+- tapOn:
+    id: "rail-communities-link"
+
+- scrollUntilVisible:
+    element:
+      text: "Queer Gamers"
+    direction: DOWN
+    timeout: 5000
+
+- tapOn:
+    text: "Queer Gamers"
+
 - waitForAnimationToEnd:
     timeout: 3000
 
-# Tap the post card body to open post detail
+# A still post, never a video: `contentDetailPath()` sends video posts to the
+# player at /community/video/<id> and everything else to the post detail at
+# /community/post/<id>. Tapping "whichever card is first" picks a different
+# screen depending on what that community posted most recently.
 - tapOn:
-    text: "💬"
+    id: "static-card"
     index: 0
 
-# Verify PostDetailScreen opened
 - assertVisible:
-    text: "Post"
-    timeout: 3000
+    id: "post-detail-screen"
+    timeout: 5000
 
-# Verify composer is present
 - assertVisible:
     text: "Add a comment…"
 
-# Type a comment
 - tapOn:
     text: "Add a comment…"
 
 - inputText: "Testing Maestro 💜"
 
-# "Post" button should now be visible (only shows when draft has text)
+# "Post" only appears once the draft has text
 - assertVisible:
     text: "Post"
 
 - tapOn:
     text: "Post"
 
-# Wait for submission
 - waitForAnimationToEnd:
     timeout: 3000
 
-# Comment should appear in the list
 - assertVisible:
     text: "Testing Maestro 💜"
     timeout: 5000
 
-# Go back
-- back
+- tapOn:
+    id: "post-detail-back"

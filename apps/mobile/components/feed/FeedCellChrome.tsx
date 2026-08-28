@@ -13,6 +13,7 @@ import { MIN_INLINE_TOUCH_TARGET, MIN_TOUCH_TARGET } from '../../lib/touchTarget
 import type { ReelRow } from '../../lib/reels';
 import type { PostType } from '../../types';
 import { CommunityCrest } from './CommunityCrest';
+import { a11yState } from '../../lib/a11yState';
 import {
   CAPTION_CAP, CAPTION_COLLAPSED_LINES, CAPTION_EXPANDED_CAP, CAPTION_EXPANDED_LINES,
   CAPTION_LINE_HEIGHT,
@@ -415,7 +416,7 @@ export function FeedCellChrome({
                     ? `Unfollow ${authorName || 'this author'}`
                     : `Follow ${authorName || 'this author'}`
                 }
-                accessibilityState={{ selected: following === true }}
+                {...a11yState({ selected: following === true })}
               >
                 <View style={s.followBadge}>
                   <Ionicons
@@ -436,7 +437,7 @@ export function FeedCellChrome({
             accessibilityLabel={
               liked ? `Unlike ${noun}, ${likeCount} likes` : `Like ${noun}, ${likeCount} likes`
             }
-            accessibilityState={{ selected: liked }}
+            {...a11yState({ selected: liked })}
           >
             <Ionicons
               name={liked ? 'heart' : 'heart-outline'}
@@ -464,7 +465,7 @@ export function FeedCellChrome({
             onPress={onSave}
             accessibilityRole="button"
             accessibilityLabel={saved ? `Remove ${noun} from saved` : `Save ${noun}`}
-            accessibilityState={{ selected: saved }}
+            {...a11yState({ selected: saved })}
           >
             <Ionicons
               name={saved ? 'bookmark' : 'bookmark-outline'}

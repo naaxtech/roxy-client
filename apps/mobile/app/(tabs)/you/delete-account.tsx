@@ -14,6 +14,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { logError } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
+import { a11yState } from '../../../lib/a11yState';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
@@ -179,7 +180,7 @@ export default function DeleteAccountScreen() {
           ]}
           onPress={handleDelete}
           disabled={!confirmed || loading}
-          accessibilityState={{ disabled: !confirmed || loading }}
+          {...a11yState({ disabled: !confirmed || loading })}
         >
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />

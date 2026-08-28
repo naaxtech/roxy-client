@@ -18,6 +18,8 @@ import { logError } from '../../../lib/errorLogger';
 import { Rail } from '../../../components/discover/Rail';
 import { FilterChips } from '../../../components/discover/FilterChips';
 import { PosterCard, RowCard, HeroCard } from '../../../components/discover/DiscoverCards';
+import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayCard';
+import { eventModeLabel } from '../../../components/events/EventModeBadge';
 import {
   DISCOVER_CHIPS, EVENT_FILTERS, ECONOMY_FILTERS,
   railVisible, eventMatchesFilter, economyKind, economyWlwOnly, economySavedOnly,
@@ -109,6 +111,10 @@ export default function DiscoverScreen() {
   );
 
   const top10 = useMemo(() => allCommunities.slice(0, 10), [allCommunities]);
+  // The card's own query is `.in('community_id', communityIds)` — the ids she
+  // has joined, not the ids on screen. `joinedIds` is a Set for O(1) lookups
+  // elsewhere on this screen; the card wants an array to hand Supabase.
+  const qotdCommunityIds = useMemo(() => Array.from(joinedIds), [joinedIds]);
   const heroEvent = shownEvents[0] ?? events.rows[0] ?? null;
   const kind = economyKind(economyFilter);
 
@@ -120,6 +126,20 @@ export default function DiscoverScreen() {
 
   const eventPrice = (e: typeof events.rows[number]) =>
     e.is_paid && e.price_cents ? formatMoney(e.price_cents) : 'Free';
+
+  // PosterCard's `badge` prop is a fixed BadgeKind enum — 'online' | 'inPerson'
+  // — with no hybrid value and no way to carry a component, so the real
+  // EventModeBadge can't slot in here without reshaping DiscoverCards, which
+  // is out of scope for this screen. Forcing hybrid onto 'inPerson' would
+  // repeat the exact lie EventModeBadge exists to stop — telling her to
+  // travel for something she could open from bed — so the pill is only
+  // offered where it can be truthful, composed from the actual values the
+  // column stores rather than "not online" by elimination.
+  const eventBadgeKind = (mode: typeof events.rows[number]['event_type']) => {
+    if (mode === 'online') return 'online' as const;
+    if (mode === 'in_person') return 'inPerson' as const;
+    return undefined;
+  };
 
   return (
     <SafeAreaView edges={['top']} style={s.screen}>
@@ -174,11 +194,25 @@ export default function DiscoverScreen() {
       />
 
       <ScrollView contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
+        {/* qotd leads the all-view, ahead of hero — a today thing below a
+            browse rail is a today thing nobody scrolls far enough to answer.
+            Gated on a real user id: the card's own query is
+            `.eq('user_id', userId)`, and an undefined id there is a query
+            that quietly matches nothing rather than an error. */}
+        {railVisible(chip, 'qotd') && user?.id ? (
+          <View style={s.qotd} testID="rail-qotd">
+            <QuestionOfTheDayCard communityIds={qotdCommunityIds} userId={user.id} />
+          </View>
+        ) : null}
+
         {railVisible(chip, 'hero') && heroEvent ? (
           <HeroCard
-            badge={heroEvent.event_type === 'online' ? 'online' : 'inPerson'}
+            badge={eventBadgeKind(heroEvent.event_type)}
             title={heroEvent.title}
-            meta={eventMeta(heroEvent)}
+            // The mode leads the meta line for the same reason it leads the rail
+            // cards' subtitle: `eventBadgeKind` returns undefined for a hybrid
+            // event rather than lying, so this is where "BOTH" is said.
+            meta={`${eventModeLabel(heroEvent.event_type)} · ${eventMeta(heroEvent)}`}
             body={heroEvent.community_name ? `Hosted by ${heroEvent.community_name}` : 'Open to members'}
             cta={heroEvent.is_paid ? 'Get a ticket' : 'RSVP — it’s free'}
             artSeed={heroEvent.id}
@@ -262,8 +296,18 @@ export default function DiscoverScreen() {
               <PosterCard
                 key={e.id}
                 title={e.title}
-                subtitle={`${eventPrice(e)} · ${eventMeta(e)}`}
-                badge={e.event_type === 'online' ? 'online' : 'inPerson'}
+                // The word only leads the subtitle when the pill above cannot
+                // carry it. For `online` and `in_person` the pill already says
+                // it, and repeating it costs the start time: this subtitle is
+                // `numberOfLines={1}` at TYPE.micro on a 150pt card, so
+                // "IN PERSON · " pushes the one piece of information she came
+                // for off the end of the line.
+                subtitle={
+                  eventBadgeKind(e.event_type)
+                    ? `${eventPrice(e)} · ${eventMeta(e)}`
+                    : `${eventModeLabel(e.event_type)} · ${eventPrice(e)} · ${eventMeta(e)}`
+                }
+                badge={eventBadgeKind(e.event_type)}
                 artSeed={e.id}
                 onPress={() => router.push(`/event/${e.id}` as never)}
                 testID={`event-${e.id}`}
@@ -341,6 +385,8 @@ export default function DiscoverScreen() {
             count={allCommunities.length}
             emptyBody="No communities yet."
             onRetry={() => void hydrate(user?.id)}
+            linkLabel="See all"
+            onLinkPress={() => router.push('/communities' as never)}
             testID="rail-communities"
           >
             {allCommunities.slice(0, 12).map((c) => (
@@ -417,5 +463,6 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   searchText: { ...TYPE.caption, color: colors.textSecondary },
   body: { paddingBottom: 8 },
+  qotd: { marginHorizontal: 16, marginTop: 4, marginBottom: 10 },
   tail: { height: 120 },
 });

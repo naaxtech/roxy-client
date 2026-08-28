@@ -6,22 +6,28 @@
 #   - Dev build running on emulator/device (com.roxy.app)
 #   - User signed in (run login flow first if needed)
 #
-# Session 19: the communities browser moved from the Discover (now Play) tab
-# to Connect — reached via the compass "Browse communities" header button.
-
+# Roxy 3.0: Connect is gone. Community discovery is Discover's Communities rail,
+# and the full searchable browser — the screen this flow needs, because the rail
+# caps at twelve — is behind the rail's "See all" link at `/communities`.
 appId: com.roxy.app
 ---
-# Navigate to Connect tab (owns community discovery)
-- tapOn:
-    text: "Connect"
+- runFlow: ../subflows/dismiss_first_run.yaml
 
-# Open the communities browser via the header compass button
 - tapOn:
-    id: "Browse communities"
+    id: "nav-slot-discover"
+
+# The Communities top chip narrows the board to one rail, so "See all" is on
+# screen without a scroll on any device size.
+- tapOn:
+    id: "discover-chips-comms"
+
+- tapOn:
+    id: "rail-communities-link"
 
 # Browser screen loaded
 - assertVisible:
     text: "Communities"
+    timeout: 5000
 
 # Find "Queer Gamers" community (seeded in 003_communities_social.sql)
 - scrollUntilVisible:
@@ -50,8 +56,7 @@ appId: com.roxy.app
     timeout: 3000
 
 # Go back
-- tapOn:
-    id: "arrow-back-outline"
+- back
 
 # Now leave the community from the list
 - scrollUntilVisible:

@@ -6,6 +6,7 @@ import { logError } from '../../lib/errorLogger';
 import { TYPE } from '../../lib/typography';
 import { RADII, inkOn, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
+import { a11yState } from '../../lib/a11yState';
 
 type Choice = { key: 'dark' | 'light'; label: string; icon: keyof typeof Ionicons.glyphMap };
 
@@ -50,7 +51,7 @@ export function ThemeToggle() {
               void setTheme(choice.key).catch((e: unknown) => logError(e, 'ThemeToggle.setTheme'));
             }}
             accessibilityRole="radio"
-            accessibilityState={{ selected: on, checked: on }}
+            {...a11yState({ selected: on, checked: on })}
             accessibilityLabel={`${choice.label} mode`}
             activeOpacity={0.85}
             style={[

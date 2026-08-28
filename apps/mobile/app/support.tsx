@@ -17,6 +17,7 @@ import { MIN_TOUCH_TARGET } from '../lib/touchTargets';
 import { FeatureVoteCard, type FeatureRequest } from '../components/build/FeatureVoteCard';
 import { DonateModal } from '../components/donations/DonateModal';
 import type { ImpactProject } from '../types';
+import { a11yState } from '../lib/a11yState';
 
 type Tab = 'planned' | 'pitched' | 'impact';
 
@@ -174,7 +175,7 @@ export default function SupportScreen() {
                 key={t.key}
                 onPress={() => setTab(t.key)}
                 accessibilityRole="radio"
-                accessibilityState={{ selected: on, checked: on }}
+                {...a11yState({ selected: on, checked: on })}
                 accessibilityLabel={t.label}
                 activeOpacity={0.85}
                 style={[s.tab, on ? { backgroundColor: colors.primary, borderColor: colors.primary } : null]}
@@ -212,7 +213,7 @@ export default function SupportScreen() {
                     onPress={() => void support(p.id)}
                     disabled={already || p.status !== 'active'}
                     accessibilityRole="button"
-                    accessibilityState={{ disabled: already }}
+                    {...a11yState({ disabled: already })}
                     accessibilityLabel={already ? `Already supporting ${p.title}` : `Support ${p.title}`}
                     style={[s.support, already && s.supportDone]}
                     testID={`impact-support-${p.id}`}
@@ -291,7 +292,7 @@ export default function SupportScreen() {
                 onPress={() => void pitch()}
                 disabled={pitchTitle.trim().length < 3 || pitching}
                 accessibilityRole="button"
-                accessibilityState={{ disabled: pitchTitle.trim().length < 3 || pitching }}
+                {...a11yState({ disabled: pitchTitle.trim().length < 3 || pitching })}
                 accessibilityLabel="Send pitch"
                 style={[s.send, (pitchTitle.trim().length < 3 || pitching) && s.sendOff]}
                 testID="support-pitch-send"

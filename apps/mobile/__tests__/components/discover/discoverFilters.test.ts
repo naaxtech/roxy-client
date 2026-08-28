@@ -20,7 +20,7 @@ import {
 } from '../../../components/discover/discoverFilters';
 
 const ALL_RAILS: DiscoverRail[] = [
-  'hero', 'top10', 'live', 'events', 'economy', 'communities', 'games',
+  'qotd', 'hero', 'top10', 'live', 'events', 'economy', 'communities', 'games',
 ];
 
 describe('the top chip row', () => {
@@ -43,6 +43,20 @@ describe('the top chip row', () => {
   it('keeps the hero with Events, because the hero is an event', () => {
     expect(railVisible('events', 'hero')).toBe(true);
     expect(railVisible('shops', 'hero')).toBe(false);
+  });
+
+  /**
+   * A question of the day is a today thing. A today thing sitting below a
+   * browse rail is a today thing nobody scrolls far enough to answer, so it
+   * has to lead — and only the all-view is "today", not a category someone
+   * already narrowed to.
+   */
+  it('puts qotd first in the all-view and shows it nowhere else', () => {
+    expect(visibleRails('all')[0]).toBe('qotd');
+    const withQotd = DISCOVER_CHIPS
+      .map((c) => c.key)
+      .filter((k) => railVisible(k, 'qotd'));
+    expect(withQotd).toEqual(['all']);
   });
 
   /**

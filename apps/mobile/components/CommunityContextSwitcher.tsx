@@ -6,32 +6,64 @@ import {
 import { useCommunityFilterStore } from '../store/communityFilterStore';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../hooks/useAppWidth';
+import { STAGE } from './feed/stageColors';
+import { MIN_TOUCH_TARGET } from '../lib/touchTargets';
 
 type CommunityOption = { id: string; name: string };
 
 interface Props {
   communities: CommunityOption[];
+  /**
+   * The trigger renders on two different grounds: the themed sheet list
+   * (light or dark, whichever the viewer picked) when it opens from the FAB
+   * menu, and the Feed tab's permanently-dark stage
+   * (`components/feed/stageColors.ts`) when it opens from the feed header.
+   * Reading `useThemeColors()` unconditionally repeats the exact bug that
+   * file's own comment documents — light-theme ink measured against a dark
+   * ground lands under 4.5:1. `onStage` sources the TRIGGER's fill, border
+   * and label from `STAGE` instead of the active theme. The sheet below is a
+   * full-screen overlay with its own themed background — it is never on the
+   * stage, so it keeps `useThemeColors()` unconditionally either way.
+   *
+   * `STAGE.primaryInk` on `STAGE.surface` measures 7.27:1 as text, and on
+   * `STAGE_BG` — the ground the border actually meets — 7.93:1 as a border;
+   * both clear their floors (4.5:1 text / 3:1 non-text) with margin.
+   * `__tests__/components/CommunityContextSwitcher.test.tsx` holds the
+   * arithmetic to AA so this cannot drift silently.
+   */
+  onStage?: boolean;
 }
 
-export function CommunityContextSwitcher({ communities }: Props) {
+export function CommunityContextSwitcher({ communities, onStage = false }: Props) {
   const colors = useThemeColors();
   const { selectedCommunityId, setSelectedCommunity } = useCommunityFilterStore();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const popAnim = useRef(new Animated.Value(0.94)).current; // pop, not slide-from-below
 
+  const triggerBg = onStage ? STAGE.surface : colors.surface;
+  const triggerBorder = onStage ? STAGE.primaryInk : colors.primary + '60';
+  const triggerText = onStage ? STAGE.primaryInk : colors.primary;
+
   const styles = StyleSheet.create({
     btn: {
-      backgroundColor: colors.surface,
+      backgroundColor: triggerBg,
       borderRadius: 14,
       paddingHorizontal: 10,
-      paddingVertical: 5,
+      // Measured, not padded. `paddingVertical: 5` on 12pt text made this ~26pt
+      // — barely half the floor, and it now sits in a row beside StreakChip and
+      // the Now toggle, both of which are 48. `lib/touchTargets.ts` carries the
+      // sources; the short version is that Google's TouchTargetSizeCheck
+      // hardcodes 48 and runs against this build in the Play Console
+      // pre-launch report.
+      minHeight: MIN_TOUCH_TARGET,
+      justifyContent: 'center',
       borderWidth: 1,
-      borderColor: colors.primary + '60',
+      borderColor: triggerBorder,
       maxWidth: 160,
     },
     btnText: {
-      color: colors.primary,
+      color: triggerText,
       fontWeight: '700',
       fontSize: 12,
     },
@@ -130,10 +162,22 @@ export function CommunityContextSwitcher({ communities }: Props) {
 
   return (
     <>
+      {/* The spoken label is built from `rawLabel`, not `label`. `label`
+          truncates at 12 characters so the pill fits a feed header — "WLW
+          Hikers" and "WLW Hiking Club" both become "WLW Hikin…", which is a
+          reasonable thing to show and a useless thing to say. And the visible
+          text is a name plus "▾": without a role, a screen reader announces a
+          value and never mentions that it is a control at all. */}
       <TouchableOpacity
         style={styles.btn}
         onPress={() => setOpen(true)}
         activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel={
+          selectedCommunityId
+            ? `Filtering by ${rawLabel}. Change which community you are viewing.`
+            : 'All communities. Choose which community you are viewing.'
+        }
         testID="community-switcher-btn"
       >
         <Text style={styles.btnText} numberOfLines={1}>{label}</Text>

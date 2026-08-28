@@ -11,6 +11,7 @@ import { FeedVideoPlayer } from './FeedVideoPlayer';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedCellChromeProps } from './FeedCellChrome';
 import { CHROME_SHADOW, RAIL_BACKING } from './feedChromeTokens';
+import { a11yState } from '../../lib/a11yState';
 
 export interface ReelCellProps
   extends Omit<FeedCellChromeProps, 'playbackControl' | 'showCaption' | 'active'> {
@@ -176,7 +177,7 @@ export function ReelCell({
           onPress={onToggleMute}
           accessibilityRole="button"
           accessibilityLabel={muted ? 'Unmute video' : 'Mute video'}
-          accessibilityState={{ selected: !muted }}
+          {...a11yState({ selected: !muted })}
         >
           <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={18} color="#fff" />
         </TouchableOpacity>

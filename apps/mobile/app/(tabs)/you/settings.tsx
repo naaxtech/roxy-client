@@ -12,6 +12,7 @@ import { exportUserData, describeExportResult } from '../../../lib/dataExport';
 import { confirmAction, showAlert } from '../../../lib/confirm';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { useThemeStore } from '../../../store/themeStore';
+import { a11yState } from '../../../lib/a11yState';
 import { ThemeToggle } from '../../../components/ui/ThemeToggle';
 
 export default function SettingsScreen() {
@@ -201,7 +202,7 @@ export default function SettingsScreen() {
             disabled={exporting}
             accessibilityRole="button"
             accessibilityLabel="Export my data"
-            accessibilityState={{ disabled: exporting, busy: exporting }}
+            {...a11yState({ disabled: exporting, busy: exporting })}
           >
             <View style={styles.actionRowBusy}>
               {exporting && <ActivityIndicator size="small" color={colors.roxy} />}

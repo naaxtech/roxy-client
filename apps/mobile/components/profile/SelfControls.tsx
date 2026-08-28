@@ -13,6 +13,14 @@ import { deriveSellerStatus, sellerStatusLabel, type SellerStatus } from '../../
 
 interface Props {
   userId: string;
+  /**
+   * Scroll the You screen to its Saved section.
+   *
+   * A callback rather than a route because there is no Saved route: `SavedPosts`
+   * renders further down this same screen. The row used to push `/(tabs)/feed`,
+   * which is the one place her saved posts are not.
+   */
+  onOpenSaved: () => void;
 }
 
 /**
@@ -32,7 +40,7 @@ interface Props {
  * is only visible is a safety control half the people who need it cannot
  * confirm they have set.
  */
-export function SelfControls({ userId }: Props) {
+export function SelfControls({ userId, onOpenSaved }: Props) {
   const colors = useThemeColors();
   const router = useRouter();
   const s = styles(colors);
@@ -79,24 +87,49 @@ export function SelfControls({ userId }: Props) {
     }
   };
 
+  /*
+   * This list is the only door to two screens.
+   *
+   * `/people` and `/badges` both survived the 3.0 flattening as routes and lost
+   * every link to them when Grow was deleted — a route-level orphan sweep found
+   * them with zero `router.push` references anywhere in the app. Messages holds
+   * the request-first inbox, which is where a friend request ARRIVES; it is not
+   * where she goes to see who she is already connected to, cancel a request she
+   * sent, or unfriend. ProfileCard shows the badges she has EARNED; the badges
+   * screen is the only place showing progress toward the ones she has not.
+   *
+   * If a row is removed from here, check what else reaches its route first.
+   */
   const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; value?: string; onPress: () => void; testID: string }[] = [
+    {
+      icon: 'people-outline',
+      label: 'My people',
+      onPress: () => router.push('/people'),
+      testID: 'you-people',
+    },
     {
       icon: 'ticket-outline',
       label: 'Tickets & orders',
-      onPress: () => router.push('/tickets' as never),
+      onPress: () => router.push('/tickets'),
       testID: 'you-wallet',
+    },
+    {
+      icon: 'ribbon-outline',
+      label: 'Badges',
+      onPress: () => router.push('/badges'),
+      testID: 'you-badges',
     },
     {
       icon: 'bookmark-outline',
       label: 'Saved',
-      onPress: () => router.push('/(tabs)/feed' as never),
+      onPress: onOpenSaved,
       testID: 'you-saved',
     },
     {
       icon: 'storefront-outline',
       label: 'Sell on Roxy',
       value: sellerStatusLabel(seller),
-      onPress: () => router.push('/support' as never),
+      onPress: () => router.push('/support'),
       testID: 'you-sell',
     },
   ];

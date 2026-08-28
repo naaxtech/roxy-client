@@ -10,6 +10,7 @@ import type { LinkType } from '../../types';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
 import { BRAND_GRADIENT, CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
+import { a11yState } from '../../lib/a11yState';
 
 /** See `PollCell` — the feed canvas is always the dark one. */
 const DARK = THEMES.dark;
@@ -116,7 +117,7 @@ export function ResourceCell({
             disabled={busy}
             accessibilityRole="button"
             accessibilityLabel={cta}
-            accessibilityState={{ busy, disabled: busy }}
+            {...a11yState({ busy, disabled: busy })}
             activeOpacity={0.85}
           >
             <LinearGradient

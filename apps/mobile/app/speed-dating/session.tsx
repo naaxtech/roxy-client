@@ -20,6 +20,7 @@ import type { SpeedDateSession as SpeedDateSessionData } from '../../types';
 
 import { DailyProvider } from '../../lib/video';
 import { useVideoCall } from '../../hooks/useVideoCall';
+import { a11yState } from '../../lib/a11yState';
 
 const TIMER_COLORS = { green: '#10B981', yellow: '#F59E0B', red: '#EF4444' };
 
@@ -446,7 +447,7 @@ export default function SpeedDateSession() {
             AccessibilityInfo.announceForAccessibility('Passed. You will not be matched.');
           }}
           accessibilityRole="button"
-          accessibilityState={{ selected: passed }}
+          {...a11yState({ selected: passed })}
           accessibilityLabel="Pass. You will not be matched with her."
           activeOpacity={0.85}
           testID="speed-pass"
@@ -465,7 +466,7 @@ export default function SpeedDateSession() {
             );
           }}
           accessibilityRole="button"
-          accessibilityState={{ selected: liked }}
+          {...a11yState({ selected: liked })}
           accessibilityLabel="Send a flower. You both find out at the end, only if she sends one too."
           activeOpacity={0.85}
           testID="speed-flower"

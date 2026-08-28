@@ -69,6 +69,7 @@ export function MiniWinsSheet({ visible, userId, onClose }: Props) {
                 onPress={onClose}
                 accessibilityRole="button"
                 accessibilityLabel="Close"
+                testID="mini-wins-close"
                 style={s.close}
               >
                 <Ionicons name="close" size={22} color={colors.textSecondary} />

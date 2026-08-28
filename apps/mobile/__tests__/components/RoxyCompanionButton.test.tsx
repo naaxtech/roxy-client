@@ -20,7 +20,7 @@ beforeEach(() => {
   jest.useFakeTimers();
   mockPush.mockClear();
   mockPathname.mockReturnValue('/(tabs)/grow');
-  useCommunityFilterStore.setState({ selectedCommunityId: null });
+  useCommunityFilterStore.setState({ selectedCommunityId: null, filterable: false });
   useCommunityStore.setState({ joinedCommunities: [] });
 });
 
@@ -74,15 +74,61 @@ describe('RoxyCompanionButton', () => {
     expect(mockPush).toHaveBeenCalledWith('/search');
   });
 
-  it('"Filter this view" is disabled outside Connect/Build with a hint', () => {
-    mockPathname.mockReturnValue('/(tabs)/grow');
-    const { getByTestId, getByText } = render(<RoxyCompanionButton />);
-    fireEvent.press(getByTestId('fab-button'));
-    expect(getByText('Works on Connect & Build')).toBeTruthy();
+  // Connect and Build were folded into the 3.0 four-tab shell and their own
+  // CommunityContextSwitcher instances went with them — the Feed tab's
+  // Communities segment is the only place a switcher renders now. The hint
+  // Disabled is decided by `filterable`, never by the route.
+  //
+  // Two earlier versions of this decided it by pathname, and both were wrong in
+  // the same way. The first named `/connect` and `/build`, tabs the 3.0
+  // flattening deleted. The second named `/feed` — and passed for exactly the
+  // broken case, because the Feed honours a community filter on ONE of its
+  // three segments. On For You the scope is `announcements`, `ReelsFeed`
+  // ignores `communityIds` entirely, and the action wrote a selection that
+  // changed nothing on screen with no explanation.
+  //
+  // The hint copy is asserted too: a stale place name in a disabled-state hint
+  // is invisible to every other kind of check.
+  it('"Filter this view" is disabled while no surface claims the filter, on any route', () => {
+    for (const route of ['/(tabs)/discover', '/(tabs)/feed', '/(tabs)/you']) {
+      mockPathname.mockReturnValue(route);
+      const { getByTestId, getByText, getByLabelText, unmount } = render(<RoxyCompanionButton />);
+      fireEvent.press(getByTestId('fab-button'));
+
+      expect(getByText('Works on Feed › Communities')).toBeTruthy();
+      expect(getByLabelText('Filter this view').props.accessibilityState?.disabled).toBe(true);
+      unmount();
+    }
   });
 
-  it('"Filter this view" expands the joined-community list on the Connect tab and applies a selection', () => {
-    mockPathname.mockReturnValue('/(tabs)/connect');
+  it('being on the Feed route is not on its own enough to make a selection', () => {
+    mockPathname.mockReturnValue('/(tabs)/feed');
+    useCommunityStore.setState({
+      joinedCommunities: [
+        { id: 'c1', name: 'Femme Fest', slug: 'femme-fest', description: null, cover_image_url: null, category: 'social', is_private: false, member_count: 10, created_by: 'u1', created_at: '2026-01-01' },
+      ],
+    });
+    const { getByTestId, getByLabelText, queryByTestId } = render(<RoxyCompanionButton />);
+    fireEvent.press(getByTestId('fab-button'));
+    fireEvent.press(getByLabelText('Filter this view'));
+
+    expect(queryByTestId('fab-filter-c1')).toBeNull();
+    expect(useCommunityFilterStore.getState().selectedCommunityId).toBeNull();
+  });
+
+  it('names no tab that has been retired', () => {
+    mockPathname.mockReturnValue('/(tabs)/discover');
+    const { getByTestId, queryByText } = render(<RoxyCompanionButton />);
+    fireEvent.press(getByTestId('fab-button'));
+
+    for (const dead of [/Connect/, /Build/, /Grow/, /Play/]) {
+      expect(queryByText(dead)).toBeNull();
+    }
+  });
+
+  it('"Filter this view" expands the joined-community list on a filterable view and applies a selection', () => {
+    mockPathname.mockReturnValue('/(tabs)/feed');
+    useCommunityFilterStore.setState({ filterable: true });
     useCommunityStore.setState({
       joinedCommunities: [
         { id: 'c1', name: 'Femme Fest', slug: 'femme-fest', description: null, cover_image_url: null, category: 'social', is_private: false, member_count: 10, created_by: 'u1', created_at: '2026-01-01' },
@@ -95,9 +141,9 @@ describe('RoxyCompanionButton', () => {
     expect(useCommunityFilterStore.getState().selectedCommunityId).toBe('c1');
   });
 
-  it('"Filter this view" expands on the Build tab too, and "All Communities" clears the filter', () => {
-    mockPathname.mockReturnValue('/(tabs)/build');
-    useCommunityFilterStore.setState({ selectedCommunityId: 'c1' });
+  it('"Filter this view" on a filterable view also lets her clear back to All Communities', () => {
+    mockPathname.mockReturnValue('/(tabs)/feed');
+    useCommunityFilterStore.setState({ selectedCommunityId: 'c1', filterable: true });
     const { getByTestId, getByLabelText } = render(<RoxyCompanionButton />);
     fireEvent.press(getByTestId('fab-button'));
     fireEvent.press(getByLabelText('Filter this view'));

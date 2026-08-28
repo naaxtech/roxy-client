@@ -11,6 +11,7 @@ import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { ReelRow } from '../../lib/reels';
 import { REPORT_DETAIL_MAX, REPORT_REASONS } from './feedSafety';
 import type { ReportReason } from './feedSafety';
+import { a11yState } from '../../lib/a11yState';
 
 /** The feed's surfaces are the dark ones, whatever the app theme is. */
 const DARK = THEMES.dark;
@@ -226,7 +227,7 @@ export function FeedSafetySheet({
                       style={[s.reason, chosen && s.reasonChosen]}
                       onPress={() => setReason(option.key)}
                       accessibilityRole="radio"
-                      accessibilityState={{ checked: chosen }}
+                      {...a11yState({ checked: chosen })}
                       accessibilityLabel={option.label}
                     >
                       <Text style={s.reasonText}>{option.label}</Text>
@@ -257,7 +258,7 @@ export function FeedSafetySheet({
                 disabled={reason === null || busy}
                 accessibilityRole="button"
                 accessibilityLabel="Send report"
-                accessibilityState={{ disabled: reason === null || busy, busy }}
+                {...a11yState({ disabled: reason === null || busy, busy })}
               >
                 {busy
                   ? <ActivityIndicator color="#fff" />
@@ -279,7 +280,7 @@ export function FeedSafetySheet({
                 disabled={busy}
                 accessibilityRole="button"
                 accessibilityLabel={authorName ? `Block ${authorName}` : 'Block this author'}
-                accessibilityState={{ disabled: busy, busy }}
+                {...a11yState({ disabled: busy, busy })}
               >
                 {busy
                   ? <ActivityIndicator color="#fff" />

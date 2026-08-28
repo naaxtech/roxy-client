@@ -93,11 +93,16 @@ export function Rail({
         </View>
       )}
 
+      {/* The content state needs its own testID like the other three. Without
+          one, the only handle on a loaded rail was the wrapper's `testID`, which
+          is mounted in EVERY status — so an e2e assertion written against it
+          passed for a rail that was still spinning, or erroring. */}
       {status === 'ready' && count > 0 && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.cards}
+          testID={testID ? `${testID}-cards` : undefined}
         >
           {children}
         </ScrollView>

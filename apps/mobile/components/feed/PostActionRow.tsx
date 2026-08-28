@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Animated, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { a11yState } from '../../lib/a11yState';
 
 interface PostActionRowProps {
   likeCount: number;
@@ -79,7 +80,7 @@ export function PostActionRow({
         onPress={handleLikePress}
         accessibilityRole="button"
         accessibilityLabel={isLiked ? 'Unlike post' : 'Like post'}
-        accessibilityState={{ selected: isLiked }}
+        {...a11yState({ selected: isLiked })}
         hitSlop={6}
       >
         <Animated.View style={{ transform: [{ scale: likeAnim.scale }] }}>

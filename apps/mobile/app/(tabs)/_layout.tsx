@@ -95,12 +95,11 @@ export default function TabLayout() {
 
   // Four bar slots plus the ＋ action, per `components/nav/navSlots3.ts`.
   //
-  // `grow`, `connect` and `build` are deliberately still declared. Expo Router
-  // registers every directory under `(tabs)/` as a screen whether or not it is
-  // named here, and `FloatingTabBar` draws only the slots in NAV_SLOTS_3 — so
-  // those three keep working as routes while their screens are re-homed, and
-  // every existing deep link and `router.push` keeps resolving. They are deleted
-  // in one commit at the end, once each screen is reachable from its new tab.
+  // `grow`, `connect` and `build` were declared here through the re-homing so
+  // their routes kept resolving while their screens moved out. The directories
+  // are gone now, and a `Tabs.Screen` naming a route that does not exist is not
+  // inert — Expo Router logs `No route named "grow" exists in nested children`
+  // on every render of the navigator. The declarations went with the folders.
   return (
     <View style={{ flex: 1 }}>
       <Tabs
@@ -135,11 +134,6 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen name="you" options={{ title: 'You' }} />
-
-        {/* Retired from the bar, still routable until their screens are re-homed. */}
-        <Tabs.Screen name="grow" options={{ title: 'Home' }} />
-        <Tabs.Screen name="connect" options={{ title: 'Rooms' }} />
-        <Tabs.Screen name="build" options={{ title: 'Build' }} />
       </Tabs>
 
       <View

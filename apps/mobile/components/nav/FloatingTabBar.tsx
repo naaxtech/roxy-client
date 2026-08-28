@@ -7,6 +7,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { type ThemeColors } from '../../lib/theme';
 import { NAV_SLOTS_3 } from './navSlots3';
+import { a11yState } from '../../lib/a11yState';
 import {
   ACTIVE_TINT_ALPHA,
   BRAND_GRADIENT,
@@ -81,7 +82,7 @@ function RouteSlot({
       onPress={onPress}
       activeOpacity={0.8}
       accessibilityRole="tab"
-      accessibilityState={{ selected: isFocused }}
+      {...a11yState({ selected: isFocused })}
       accessibilityLabel={label}
     >
       <Animated.View pointerEvents="none" style={[s.indicator, { opacity: indicator }]} />
