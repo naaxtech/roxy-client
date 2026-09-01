@@ -15,10 +15,13 @@
  */
 
 /** The top row: which rails are on screen at all. */
-export type DiscoverChip = 'all' | 'events' | 'shops' | 'live' | 'comms' | 'games';
+export type DiscoverChip = 'all' | 'archive' | 'events' | 'shops' | 'live' | 'comms' | 'games';
 
 export const DISCOVER_CHIPS: { key: DiscoverChip; label: string }[] = [
   { key: 'all', label: 'All' },
+  // Second, right after All. The Archive is the one surface a pending member
+  // can use, so it must be reachable before she has joined anything.
+  { key: 'archive', label: 'Archive' },
   { key: 'events', label: 'Events' },
   { key: 'shops', label: 'Shops' },
   { key: 'live', label: 'Live' },
@@ -26,7 +29,7 @@ export const DISCOVER_CHIPS: { key: DiscoverChip; label: string }[] = [
   { key: 'games', label: 'Games' },
 ];
 
-export type DiscoverRail = 'qotd' | 'hero' | 'top10' | 'live' | 'events' | 'economy' | 'communities' | 'games';
+export type DiscoverRail = 'qotd' | 'hero' | 'top10' | 'archive' | 'live' | 'events' | 'economy' | 'communities' | 'games';
 
 /**
  * Which rails a given top chip shows.
@@ -39,7 +42,8 @@ export type DiscoverRail = 'qotd' | 'hero' | 'top10' | 'live' | 'events' | 'econ
  * anything once the category is already chosen.
  */
 const RAILS_BY_CHIP: Record<DiscoverChip, DiscoverRail[]> = {
-  all: ['qotd', 'hero', 'top10', 'live', 'events', 'economy', 'communities', 'games'],
+  all: ['qotd', 'hero', 'top10', 'archive', 'live', 'events', 'economy', 'communities', 'games'],
+  archive: ['archive'],
   events: ['hero', 'events'],
   shops: ['economy'],
   live: ['live'],

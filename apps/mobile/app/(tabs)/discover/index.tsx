@@ -16,6 +16,9 @@ import { isPlayableGameUrl } from '../../../lib/gameUrl';
 import { fetchUnreadNotificationCount } from '../../../lib/notifications';
 import { logError } from '../../../lib/errorLogger';
 import { Rail } from '../../../components/discover/Rail';
+import { ArchiveRail } from '../../../components/archive/ArchiveRail';
+import { fetchArchiveEntries, type ArchiveEntry } from '../../../lib/archive';
+import { archiveDetailPath } from '../../../lib/contentNavigation';
 import { FilterChips } from '../../../components/discover/FilterChips';
 import { PosterCard, RowCard, HeroCard } from '../../../components/discover/DiscoverCards';
 import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayCard';
@@ -58,6 +61,33 @@ export default function DiscoverScreen() {
   const loadBookmarks = useBuildStore((st) => st.loadBookmarks);
 
   const [chip, setChip] = useState<DiscoverChip>('all');
+
+  // The rail's own slice of the Archive: the top few, plus the catalogue total
+  // so "Browse all N" promises the real number rather than the rail's length.
+  const [archiveEntries, setArchiveEntries] = useState<ArchiveEntry[]>([]);
+  const [archiveTotal, setArchiveTotal] = useState(0);
+  const [archiveStatus, setArchiveStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  const loadArchive = useCallback(async () => {
+    setArchiveStatus('loading');
+    try {
+      // Two queries rather than one: the rail shows the best few, and the
+      // count is of everything published. Deriving the total from the rail's
+      // own length would make the link under-promise by an order of magnitude.
+      const [top, all] = await Promise.all([
+        fetchArchiveEntries({ sort: 'top', limit: 12 }),
+        fetchArchiveEntries({ sort: 'voted', limit: 200 }),
+      ]);
+      setArchiveEntries(top);
+      setArchiveTotal(all.length);
+      setArchiveStatus('ready');
+    } catch {
+      // fetchArchiveEntries logs before throwing; logging again double-reports.
+      setArchiveStatus('error');
+    }
+  }, []);
+
+  useEffect(() => { void loadArchive(); }, [loadArchive]);
   const [eventFilter, setEventFilter] = useState<EventFilter>('all');
   const [economyFilter, setEconomyFilter] = useState<EconomyFilter>('all');
   const [shopsStatus, setShopsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -217,6 +247,23 @@ export default function DiscoverScreen() {
             cta={heroEvent.is_paid ? 'Get a ticket' : 'RSVP — it’s free'}
             artSeed={heroEvent.id}
             onPress={() => router.push(`/event/${heroEvent.id}` as never)}
+          />
+        ) : null}
+
+        {/* The Archive. Mounted here rather than left to global search, which
+            was its only route in — a catalogue you can only reach by already
+            knowing the name of something inside it is not a catalogue. It sits
+            above the community rails on purpose: it is the one surface a
+            PENDING member can use, and she reaches Discover before she has
+            joined anything. */}
+        {railVisible(chip, 'archive') ? (
+          <ArchiveRail
+            entries={archiveEntries}
+            total={archiveTotal}
+            status={archiveStatus}
+            onRetry={() => void loadArchive()}
+            onPressEntry={(entry) => router.push(archiveDetailPath(entry.slug) as never)}
+            onSeeAll={() => router.push('/archive' as never)}
           />
         ) : null}
 

@@ -20,13 +20,16 @@ import {
 } from '../../../components/discover/discoverFilters';
 
 const ALL_RAILS: DiscoverRail[] = [
-  'qotd', 'hero', 'top10', 'live', 'events', 'economy', 'communities', 'games',
+  'qotd', 'hero', 'top10', 'archive', 'live', 'events', 'economy', 'communities', 'games',
 ];
 
 describe('the top chip row', () => {
-  it('offers exactly the six the design names, All first', () => {
+  it('offers exactly the seven categories, All first and Archive second', () => {
+    // Archive joined the design's original six. It sits second on purpose: it
+    // is the only surface a pending member can use, so it has to be reachable
+    // before she has joined a single community.
     expect(DISCOVER_CHIPS.map((c) => c.key)).toEqual([
-      'all', 'events', 'shops', 'live', 'comms', 'games',
+      'all', 'archive', 'events', 'shops', 'live', 'comms', 'games',
     ]);
   });
 
@@ -141,6 +144,34 @@ describe('the WLW-economy chips', () => {
   it('never asks for WLW-only and Saved at once', () => {
     for (const f of ECONOMY_FILTERS) {
       expect(economyWlwOnly(f.key) && economySavedOnly(f.key)).toBe(false);
+    }
+  });
+});
+
+describe('the Archive on Discover', () => {
+  it('has its own top chip, so it can be reached without knowing a title', () => {
+    // Before this, `/archive` had exactly one route in: global search. A woman
+    // could only find the Archive by already knowing the name of something in
+    // it, which is the opposite of what a catalogue is for. The rail is the
+    // front door and the chip is how she narrows to it.
+    expect(DISCOVER_CHIPS.map((c) => c.key)).toContain('archive');
+    expect(DISCOVER_CHIPS.find((c) => c.key === 'archive')?.label).toBe('Archive');
+  });
+
+  it('shows the archive rail in the all-view and under its own chip', () => {
+    expect(railVisible('all', 'archive')).toBe(true);
+    expect(railVisible('archive', 'archive')).toBe(true);
+  });
+
+  it('shows nothing but the archive rail under the archive chip', () => {
+    expect(visibleRails('archive')).toEqual(['archive']);
+  });
+
+  it('keeps the archive rail out of every other category', () => {
+    // Composed from the chips that DO show it rather than asserting a
+    // not-equals — the same reason the rest of this module avoids elimination.
+    for (const chip of ['events', 'shops', 'live', 'comms', 'games'] as const) {
+      expect(railVisible(chip, 'archive')).toBe(false);
     }
   });
 });
