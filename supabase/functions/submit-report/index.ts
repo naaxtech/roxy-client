@@ -18,6 +18,29 @@ import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
  */
 const REPORT_CONTENT_TYPES = ['message', 'post', 'profile', 'room', 'speed_date'];
 
+/**
+ * Why a report was filed.
+ *
+ * Same shape and same reason as REPORT_CONTENT_TYPES above: `reports.reason`
+ * has always had a CHECK (008_safety.sql) that this function never mirrored —
+ * this function required only that `reason` be truthy, so an unrecognised
+ * value reached the insert and came back as an opaque 23514 instead of a
+ * clear 400. Migration 099 widens the CHECK to add the three WLW Archive
+ * reasons; kept in step by
+ * apps/mobile/__tests__/lib/archiveReportReasons.test.ts, which reads both
+ * off disk.
+ */
+const REPORT_REASONS = [
+  'harassment',
+  'spam',
+  'inappropriate',
+  'hate_speech',
+  'other',
+  'archive_spoiler',
+  'archive_bad_entry',
+  'archive_review_abuse',
+];
+
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -32,6 +55,9 @@ Deno.serve(async (req) => {
   }
   if (!REPORT_CONTENT_TYPES.includes(contentType)) {
     return errorResponse(`contentType must be one of: ${REPORT_CONTENT_TYPES.join(', ')}`, 400);
+  }
+  if (!REPORT_REASONS.includes(reason)) {
+    return errorResponse(`reason must be one of: ${REPORT_REASONS.join(', ')}`, 400);
   }
 
   const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;

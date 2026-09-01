@@ -248,3 +248,29 @@ CREATE INDEX IF NOT EXISTS idx_archive_revisions_entry
 
 COMMENT ON TABLE public.archive_revisions IS
   'Every proposed create or edit, with the row state it was proposed against. Mods publish; the credit stays with submitted_by.';
+
+
+-- ── RLS on, before anything else can run ────────────────────────────────────
+--
+-- Enabled HERE rather than only in 096, because the window between the two
+-- matters. `.claude/rules/migrations.md` is explicit — "RLS ships with the
+-- table; a table without a policy in the same file is a bug, not a follow-up"
+-- — and the brief's file split (core, then policies) quietly violates it: if
+-- 095 applied and 096 did not, eight tables holding every score, review,
+-- watchlist and block-adjacent row would sit with RLS OFF and be readable by
+-- anyone holding the anon key.
+--
+-- With RLS enabled and no policy yet, Postgres denies everything. That is the
+-- correct half-applied state: the feature is broken until 096 lands, rather
+-- than open. Fail closed, then open deliberately.
+--
+-- 096 re-runs these as ALTER ... ENABLE, which is idempotent.
+
+ALTER TABLE public.archive_entries         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.archive_votes           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.archive_reviews         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.archive_review_helpful  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.archive_content_notes   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.archive_note_agreements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.archive_watchlist       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.archive_revisions       ENABLE ROW LEVEL SECURITY;
