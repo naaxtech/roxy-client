@@ -1,0 +1,35 @@
+apps/mobile/__tests__/screens/UserProfileShell.test.tsx
+  s_488a1686f9c1af::t_012acfea9fd2cc 1-141
+apps/mobile/__tests__/components/profile/profileVariant.test.ts
+  s_488a1686f9c1af::t_ba3d37ba7a6da0 1-178
+apps/mobile/__tests__/components/profile/ProfileShell.test.tsx
+  s_488a1686f9c1af::t_09209311507f65 165-171,173-181
+  s_488a1686f9c1af::t_3aafc3a48c5da7 1-164,172,182-264
+apps/mobile/app/(tabs)/you/[userId].tsx
+  s_488a1686f9c1af::t_3de867501fe7d1 1-2,6-10,15,17,20-45,49,55-57,60,62-65,68-100,103-105,111,116,123,135,144,147-151,153,156,161-193,196-206,208-220
+apps/mobile/components/profile/profileVariant.ts
+  s_488a1686f9c1af::t_0e32df0b4c5cb3 1-88,91
+  s_488a1686f9c1af::t_07af91ef70291a 89-90
+  s_488a1686f9c1af::t_13339214dfdb1c 92-115
+apps/mobile/components/profile/ProfileShell.tsx
+  s_488a1686f9c1af::t_6ec5852d678720 1-604
+docs/sessions/2026-08-16-roxy-3.0.md
+  s_488a1686f9c1af::t_0a18e50418364a 91-107
+  s_488a1686f9c1af::t_044d04b89fb47b 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4f9756cb73420c5048ad492cdd0480444d1d18ae",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
