@@ -1,0 +1,63 @@
+apps/mobile/components/archive/ArchiveRow.tsx
+  s_488a1686f9c1af::t_af07ecb8313fca 1-152
+apps/mobile/components/archive/PendingBanner.tsx
+  s_488a1686f9c1af::t_6c8784c9c59e0f 1-98
+apps/mobile/__tests__/components/archive/chips.test.tsx
+  s_488a1686f9c1af::t_37f5f6b8d23c2e 1-101
+apps/mobile/__tests__/components/archive/ContentNoteChip.test.tsx
+  s_488a1686f9c1af::t_304301ed7dc11a 1-111
+apps/mobile/components/archive/archiveTokens.ts
+  s_488a1686f9c1af::t_0e93594f9ec5a2 1-174
+apps/mobile/components/archive/VoteCard.tsx
+  s_488a1686f9c1af::t_e83ff2a06c5e95 1-119
+apps/mobile/components/archive/SortChips.tsx
+  s_488a1686f9c1af::t_0a3ef7d2e78c1b 1-65,85-90
+  s_488a1686f9c1af::t_a3e08b781637da 66-84
+apps/mobile/__tests__/components/archive/ArchiveRail.test.tsx
+  s_488a1686f9c1af::t_6e6ddc385b7ab7 1-90
+apps/mobile/__tests__/components/archive/VoteCard.test.tsx
+  s_488a1686f9c1af::t_c16beada358aa3 1-94
+apps/mobile/__tests__/components/archive/archiveTokens.test.ts
+  s_488a1686f9c1af::t_56b59b85da03ab 1-112
+apps/mobile/components/archive/ArchiveRail.tsx
+  s_488a1686f9c1af::t_953d81157b1e7f 1-174
+apps/mobile/components/archive/ScoreRing.tsx
+  s_488a1686f9c1af::t_3d80c170fa86b3 50-54
+  s_488a1686f9c1af::t_f8a82277c958ad 1-49,55-110
+apps/mobile/components/archive/ScorePill.tsx
+  s_488a1686f9c1af::t_bb907b95e70312 1-79
+apps/mobile/__tests__/components/archive/ScoreRing.test.tsx
+  s_488a1686f9c1af::t_f8a82277c958ad 1-78
+apps/mobile/components/archive/VerdictLine.tsx
+  s_488a1686f9c1af::t_8c7cd91d9bdae9 1-49
+apps/mobile/__tests__/components/archive/VerdictLine.test.tsx
+  s_488a1686f9c1af::t_5efc1bd4bb91e3 1-34
+apps/mobile/__tests__/components/archive/ScorePill.test.tsx
+  s_488a1686f9c1af::t_22252dea9bc7bb 1-65
+apps/mobile/__tests__/components/archive/ArchiveRow.test.tsx
+  s_488a1686f9c1af::t_cc19cce0352524 1-110
+apps/mobile/components/archive/ContentNoteChip.tsx
+  s_488a1686f9c1af::t_a3e08b781637da 1,89-108
+  s_488a1686f9c1af::t_0a3ef7d2e78c1b 2-88,109-111
+apps/mobile/components/archive/MediaTypeChips.tsx
+  s_488a1686f9c1af::t_a3e08b781637da 1,65-83
+  s_488a1686f9c1af::t_0a3ef7d2e78c1b 2-64,84-89
+apps/mobile/__tests__/components/archive/PendingBanner.test.tsx
+  s_488a1686f9c1af::t_77753d22357f71 1-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "74233bfa7c270c805002c968abaa2b4ef29bab30",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
