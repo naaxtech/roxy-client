@@ -1,0 +1,53 @@
+apps/studio/app/(dashboard)/staff/archive/reports/ReportsQueueClient.tsx
+  s_488a1686f9c1af::t_301bf680010ae4 1-220
+apps/studio/app/(dashboard)/staff/archive/reports/loading.tsx
+  s_488a1686f9c1af::t_479f8595a2cd92 1-18
+apps/studio/__tests__/archive/archiveRevisionDiff.test.ts
+  s_488a1686f9c1af::t_d05024fd298ee5 1-91
+apps/studio/lib/archiveRevisionDiff.ts
+  s_488a1686f9c1af::t_f23017357721ba 1-72
+apps/studio/app/(dashboard)/staff/archive/members/page.tsx
+  s_488a1686f9c1af::t_8c4fb680820f5e 1-151
+apps/studio/app/(dashboard)/staff/archive/members/MemberQueueClient.tsx
+  s_488a1686f9c1af::t_f9ec7f77e2c9d2 1-258
+apps/studio/app/(dashboard)/staff/archive/loading.tsx
+  s_488a1686f9c1af::t_e9a96592b896f3 1-33
+apps/studio/__tests__/archive/ReportsQueueClient.test.tsx
+  s_488a1686f9c1af::t_fdd136eab807a3 1-127
+apps/studio/components/AppSidebar.tsx
+  s_488a1686f9c1af::t_90ff1b6c34f78a 11
+  s_488a1686f9c1af::t_83aa6238d747a0 56-62
+apps/studio/app/(dashboard)/staff/archive/revisions/RevisionQueueClient.tsx
+  s_488a1686f9c1af::t_042643c6539974 1-286
+apps/studio/app/(dashboard)/staff/archive/reports/page.tsx
+  s_488a1686f9c1af::t_0a1e4a86b42581 1-17,31-160
+  s_488a1686f9c1af::t_e7d0e0f8bff411 18-30
+apps/studio/app/(dashboard)/staff/archive/revisions/loading.tsx
+  s_488a1686f9c1af::t_64b19600540792 1-24
+apps/studio/__tests__/archive/MemberQueueClient.test.tsx
+  s_488a1686f9c1af::t_2beac0e44b9708 1-112
+apps/studio/app/(dashboard)/staff/archive/revisions/page.tsx
+  s_488a1686f9c1af::t_02dc309b4d9e44 1-165
+apps/studio/__tests__/archive/RevisionQueueClient.test.tsx
+  s_488a1686f9c1af::t_bdb93ec6db0b18 1-154
+apps/studio/app/(dashboard)/staff/archive/members/loading.tsx
+  s_488a1686f9c1af::t_1c679609bd3fbf 1-18
+apps/studio/app/(dashboard)/staff/archive/page.tsx
+  s_488a1686f9c1af::t_2ea8799c52b554 1-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b5a021278a505ca50b2f633f86bc624099492bf3",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
