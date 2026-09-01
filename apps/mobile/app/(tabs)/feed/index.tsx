@@ -152,7 +152,9 @@ export default function FeedScreen() {
             {...a11yState({ expanded: nowOpen })}
             accessibilityLabel={
               liveCount > 0
-                ? `Happening now, ${liveCount} rooms live. ${nowOpen ? 'Hide' : 'Show'}.`
+                // Not "rooms": the rail carries live rooms, live games and
+                // events starting tonight, and the count covers all three.
+                ? `Happening now, ${liveCount} on. ${nowOpen ? 'Hide' : 'Show'}.`
                 : `Happening now. ${nowOpen ? 'Hide' : 'Show'}.`
             }
             activeOpacity={0.85}
@@ -164,7 +166,7 @@ export default function FeedScreen() {
         </View>
 
         <View style={s.railWrap} pointerEvents="box-none">
-          <NowRail open={nowOpen} onCount={handleNowCount} />
+          <NowRail open={nowOpen} communityIds={communityIds} onCount={handleNowCount} />
         </View>
 
         <FeedSegments value={segment} onChange={setSegment} />

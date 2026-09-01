@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Business, ImpactProject } from '../types';
 import { supabase } from '../lib/supabase';
+import { ilikePattern } from '../lib/ilikePattern';
 
 interface BuildState {
   businesses: Business[];
@@ -163,9 +164,17 @@ export const useBuildStore = create<BuildState>((set, get) => ({
       query = query.in('owner_id', communityMemberIds);
     }
 
+    // A chip is user input going into PostgREST's own filter grammar. Built by
+    // bare interpolation, a chip containing a comma or a paren was read as
+    // extra clauses and emptied the directory, and a chip containing `%` or `_`
+    // — the ILIKE wildcards — matched every business on Roxy. `ilikePattern`
+    // escapes both and returns null for a chip that was nothing else, because a
+    // pattern of `%%` is the same as no filter at all.
     for (const chip of chips) {
+      const pattern = ilikePattern(chip);
+      if (!pattern) continue;
       query = query.or(
-        `name.ilike.%${chip}%,description.ilike.%${chip}%,category.ilike.%${chip}%`
+        `name.ilike.${pattern},description.ilike.${pattern},category.ilike.${pattern}`
       );
     }
 

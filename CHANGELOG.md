@@ -13,6 +13,42 @@ finer-grained engineering log lives in `.claude/log.md`.
 ## [Unreleased]
 
 ### Added
+- **The three gaps the parity pass named as debt are closed.** Deleting
+  `HappeningTonightCard` and `ChipSearchBar` kept their content and dropped
+  their *scoping*, and the entry below says so; this is the repayment.
+  - **"Happening now" is hers again.** The card asked three tables — live
+    rooms, live games, events inside a 24-hour window — `.in('community_id',
+    communityIds)`. The rail that replaced it asked one table for every live
+    room on Roxy, forever. Reachable content, different product. `NowRail` now
+    queries all three, scoped to the communities she joined, and falls back to
+    Roxy-wide only when she has joined none — because scoping a new member to
+    an empty list returns nothing and reads as a dead app. The scope decision,
+    the window and the ordering are pure functions in
+    `components/feed/happeningNow.ts`, so they can be wrong in a test instead of
+    in a query. **This also gives live games a surface** — Discover's games rail
+    is the catalogue, and a game actually in progress had nowhere to appear.
+  - **Search narrows on more than one word again.** Chips accumulated terms and
+    ANDed them; `/search`, where business lookup now lives, took the whole
+    string as one literal pattern, so `%vegan bakery%` matched a business named
+    exactly that and nothing else. Typing two words made results vanish, which
+    reads as an empty directory rather than a mis-asked question. `globalSearch`
+    splits on whitespace and applies one filter per term — PostgREST ANDs
+    repeated filter parameters, verified against the URL supabase-js 2.105.4
+    actually builds, not from memory. Businesses match name, description **or**
+    category, the three columns the chips searched.
+
+### Fixed
+- **A search chip went into PostgREST's filter grammar unescaped.**
+  `buildStore.loadBusinesses` built `name.ilike.%${chip}%,…` by interpolation.
+  A chip containing a comma or a paren was read as extra clauses and silently
+  emptied the directory; a chip containing `%` or `_` — the ILIKE wildcards —
+  matched every business on Roxy. `globalSearch` had escaped these since it was
+  written and this path never did, so the fix is one escaper
+  (`lib/ilikePattern.ts`) imported by both, which is the only arrangement where
+  the two cannot disagree. A chip that is nothing but delimiters is now dropped
+  rather than becoming `%%`.
+
+### Added
 - **Roxy 3.0 parity pass — five capabilities and two whole screens had lost
   every way in.** Flattening five tabs to four moved the screens but not all of
   their doors, and a migration map cannot prove a door exists. A sweep for
