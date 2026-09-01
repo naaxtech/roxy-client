@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase, callEdgeFunction } from '../lib/supabase';
 import { logError } from '../lib/errorLogger';
+import type { ReportContentType } from '../lib/reportTargets';
 
 /** Enough of a blocked member to render a row she can recognise and undo. */
 export type BlockedProfile = {
@@ -42,16 +43,16 @@ interface SafetyState {
     /**
      * Where the thing being reported happened.
      *
-     * `room` and `speed_date` were added when live surfaces got report buttons.
-     * Reporting a live video date as though it were a `profile` throws away the
-     * one detail a moderator needs to find it — which session, at what time —
-     * and a report a moderator cannot act on is a report that did not happen.
-     *
-     * NOTE: `supabase/functions/submit-report` must accept these two before the
-     * live surfaces are shipped to production; until then the edge function is
-     * the narrower contract. Tracked in docs/sessions/2026-08-16-roxy-3.0.md.
+     * The list lives in `lib/reportTargets.ts`, and it is the only copy the
+     * client has. This union used to be written out here with a note saying the
+     * edge function had to be widened to match "before the live surfaces are
+     * shipped" — it never was, and neither was the CHECK on
+     * `reports.content_type`, so every report from a room or a video date died
+     * on a constraint violation. Migration 094 and the edge function's own
+     * allowlist close it, and `__tests__/lib/reportContentTypes.test.ts` reads
+     * all three off disk so they cannot drift apart again.
      */
-    contentType: 'message' | 'post' | 'profile' | 'room' | 'speed_date';
+    contentType: ReportContentType;
     contentId?: string;
   } | null;
   openReportModal: (target: SafetyState['reportTarget']) => void;
