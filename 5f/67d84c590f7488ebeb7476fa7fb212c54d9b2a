@@ -1,0 +1,32 @@
+apps/mobile/lib/postComposer.ts
+  s_488a1686f9c1af::t_fe2f5da0bf1425 1-83
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  s_488a1686f9c1af::t_ebc4c2f727757f 334-339
+  s_488a1686f9c1af::t_b305cc7682be29 528-534
+  s_488a1686f9c1af::t_e3cf370b740d88 14,49-52,166,171-177,253,286-293
+  s_488a1686f9c1af::t_10e5bdd673d691 21
+apps/mobile/components/nav/CreateSheet.tsx
+  s_488a1686f9c1af::t_96b5d247bc53fb 276-280
+  s_488a1686f9c1af::t_1bdb880ae12a36 108-110,112-116,131-133,168-169,194,198,281-283
+  s_488a1686f9c1af::t_42fae96d17b857 284-286,288-290,292,295-299
+apps/mobile/__tests__/components/nav/CreateSheet.test.tsx
+  s_488a1686f9c1af::t_41289e88f0246c 127-131,135-146,161-164,168,170
+apps/mobile/__tests__/lib/postComposer.test.ts
+  s_488a1686f9c1af::t_916ea4e1714e04 1-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5f67d84c590f7488ebeb7476fa7fb212c54d9b2a",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
