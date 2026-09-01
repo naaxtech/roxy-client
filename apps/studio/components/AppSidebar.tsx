@@ -8,6 +8,7 @@ import {
   ShoppingBag, Package, ShoppingCart, DollarSign, Settings,
   Shield, CheckSquare, Mail, RefreshCw, AlertTriangle, Building2,
   ChevronRight, LogOut, Lightbulb, Bug, UserCheck, Ticket, UserCog,
+  Archive, UserPlus, GitPullRequest, Flag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOutAction } from '@/app/auth/signout-action';
@@ -52,6 +53,13 @@ const staffNav = [
   { href: '/staff/reconciliation',         label: 'Reconciliation',     icon: RefreshCw },
   { href: '/staff/disputes',               label: 'Disputes',           icon: AlertTriangle },
   { href: '/staff/games',                  label: 'Game Reviews',       icon: Gamepad2 },
+  // WLW Archive moderator tooling. `exact` on the dashboard entry only —
+  // without it, visiting any /staff/archive/* subpage would also light up
+  // "Archive Dashboard" (see NavItem's startsWith match below).
+  { href: '/staff/archive',                label: 'Archive Dashboard',  icon: Archive, exact: true },
+  { href: '/staff/archive/members',        label: 'Archive Members',    icon: UserPlus },
+  { href: '/staff/archive/revisions',      label: 'Archive Revisions',  icon: GitPullRequest },
+  { href: '/staff/archive/reports',        label: 'Archive Reports',    icon: Flag },
 ];
 
 interface NavItemProps {
