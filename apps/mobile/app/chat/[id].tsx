@@ -12,7 +12,7 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { supabase, callEdgeFunction } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { useConnectStore } from '../../store/connectStore';
-import { useRealtime } from '../../hooks/useRealtime';
+import { useRealtime, type ChatMessage } from '../../hooks/useRealtime';
 import { useReactions } from '../../hooks/useReactions';
 import { useTyping } from '../../hooks/useTyping';
 import { useSafetyStore } from '../../store/safetyStore';
@@ -20,6 +20,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { showAlert, confirmAction } from '../../lib/confirm';
 import { logError } from '../../lib/errorLogger';
+import { MessageStatus } from '../../components/chat/MessageStatus';
 import { Analytics } from '../../lib/analytics';
 import { Message } from '../../types';
 import EmojiKeyboard from 'rn-emoji-keyboard';
@@ -57,7 +58,10 @@ type PartnerProfile = {
   last_seen_at: string | null;
 };
 
-type MessageWithGroup = Message & {
+// ChatMessage, not Message: the grouped list has to carry `deliveryStatus`
+// through to the bubble, or the tick has nothing to read and every message
+// renders as delivered again.
+type MessageWithGroup = ChatMessage & {
   isFirstInGroup: boolean;
   isLastInGroup: boolean;
   showTimestamp: boolean;
@@ -113,7 +117,13 @@ export default function ChatScreen() {
   const [reportDetail, setReportDetail] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
 
-  const { messages, isSubscribed: _isSubscribed, appendMessage, replaceMessageId, removeMessage } = useRealtime({
+  const {
+    // replaceMessageId and removeMessage went with the old send path: settleSend
+    // now owns the temp-id swap, and a failed message stays on screen in a
+    // failed state instead of being removed out from under her.
+    messages, isSubscribed: _isSubscribed, appendMessage,
+    appendOptimistic, settleSend, retryMessage, failMessage,
+  } = useRealtime({
     conversationId: conversationId ?? '',
     initialMessages,
     currentUserId: user?.id ?? '',
@@ -125,7 +135,7 @@ export default function ChatScreen() {
     messageIds,
   });
 
-  const { partnerIsTyping, sendTyping } = useTyping({
+  const { partnerIsTyping, sendTyping, stopTyping } = useTyping({
     conversationId: conversationId ?? '',
     currentUserId: user?.id ?? '',
     partnerName,
@@ -448,6 +458,10 @@ export default function ChatScreen() {
 
   const sendMessage = async (content: string, type: Message['message_type'] = 'text', mediaUrl?: string) => {
     if ((!content.trim() && !mediaUrl) || !user || !conversationId) return;
+    // She has stopped — the message is on its way. Without this the other side
+    // keeps seeing "typing…" until the 2500ms expiry, next to the message that
+    // was supposedly still being written.
+    stopTyping();
     setSending(true);
     const optimisticMsg: Message = {
       id: `tmp-${Date.now()}`,
@@ -459,7 +473,10 @@ export default function ChatScreen() {
       is_read: false,
       created_at: new Date().toISOString(),
     };
-    appendMessage(optimisticMsg);
+    // Optimistic, and explicitly IN FLIGHT. appendMessage would render it in
+    // the same state as a delivered message, which is the whole bug: there
+    // would be no visual difference between "on its way" and "arrived".
+    appendOptimistic(optimisticMsg);
     setInputText('');
 
     // Bug fix: this previously had no try/catch, unlike handleWingwoman/
@@ -479,31 +496,28 @@ export default function ChatScreen() {
         .select('id')
         .single();
 
-      if (error) throw error;
+      // The ONLY route to 'sent'. `if (inserted?.id)` used to guard the happy
+      // path and do nothing otherwise — so a 200 that inserted zero rows threw
+      // nothing, matched nothing, and left her message on screen looking
+      // delivered forever. settleSend treats a missing id exactly like an
+      // error, because to her they are the same event.
+      if (!settleSend(optimisticMsg.id, { data: inserted, error })) {
+        // The message stays on screen in a failed state with a retry on it,
+        // rather than vanishing behind a modal. A message that disappears
+        // reads as "I never wrote that", which is worse than "this failed".
+        setSending(false);
+        return;
+      }
 
-      if (inserted?.id) {
-        replaceMessageId(optimisticMsg.id, inserted.id);
-        Analytics.messageSent(conversationId);
-        supabase
-          .from('conversations')
-          .update({ last_message_at: new Date().toISOString() })
-          .eq('id', conversationId)
-          .then(null, () => {});
-      }
-    } catch {
-      removeMessage(optimisticMsg.id);
-      const retry = await confirmAction(
-        'Message not sent',
-        'Could not deliver your message.',
-        'Retry',
-        false,
-      );
-      if (retry) {
-        void sendMessage(content, type, mediaUrl);
-      } else {
-        // Restore the typed text instead of losing it silently.
-        setInputText(content);
-      }
+      Analytics.messageSent(conversationId);
+      supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', conversationId)
+        .then(null, () => {});
+    } catch (e) {
+      logError(e, 'chat_sendMessage');
+      failMessage(optimisticMsg.id);
     } finally {
       setSending(false);
     }
@@ -744,9 +758,25 @@ export default function ChatScreen() {
                   {format(new Date(item.created_at), 'HH:mm')}
                 </Text>
                 {isOwn && (
-                  <Text style={[styles.readTick, item.is_read && styles.readTickRead]}>
-                    {item.is_read ? '✓✓' : '✓'}
-                  </Text>
+                  // The tick used to be drawn from is_read alone, which meant a
+                  // message that never reached the server still wore one. It
+                  // now reads the delivery status, and an older row with no
+                  // status is 'sent' — those are rows the server already
+                  // returned, so the tick is honest for them.
+                  <MessageStatus
+                    status={item.deliveryStatus ?? 'sent'}
+                    isRead={item.is_read}
+                    onRetry={() => {
+                      const again = retryMessage(item.id);
+                      if (again) {
+                        void sendMessage(
+                          again.content ?? '',
+                          again.message_type,
+                          again.media_url ?? undefined,
+                        );
+                      }
+                    }}
+                  />
                 )}
               </View>
             </View>
