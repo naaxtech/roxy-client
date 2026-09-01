@@ -1,0 +1,21 @@
+apps/mobile/assets/brand/roxy-logo-mono-black.svg
+  s_488a1686f9c1af::t_2763ecba72eeec 1-10
+apps/mobile/assets/brand/roxy-logo-mono-white.svg
+  s_488a1686f9c1af::t_2763ecba72eeec 1-2,4-5,8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a565ac209182c3b50c2ccbdac32448fd62df477b",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
