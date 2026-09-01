@@ -105,14 +105,15 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
 
   const s = styles(colors);
 
-  const openComposer = (communityId: string) => {
+  // No communityId means the post lands on her profile. The composer reads the
+  // absent param as a profile destination (lib/postComposer).
+  const openComposer = (communityId?: string) => {
     onClose();
-    router.push({ pathname: '/community/create-post', params: { communityId } });
-  };
-
-  const findRooms = () => {
-    onClose();
-    router.push('/(tabs)/discover');
+    router.push(
+      communityId
+        ? { pathname: '/community/create-post', params: { communityId } }
+        : { pathname: '/community/create-post' }
+    );
   };
 
   const productReason = canSell(seller)
@@ -127,7 +128,9 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
       icon: 'flower-outline',
       title: 'Post',
       subtitle: 'Video, photos or a text card for the feed',
-      blockedReason: rooms.length === 0 ? 'Join a community first — a post needs somewhere to land.' : null,
+      // Never blocked. A post lands on her own profile unless she chooses a
+      // community, so there is no longer a state where she has nowhere to post.
+      blockedReason: null,
     },
     {
       kind: 'event',
@@ -162,8 +165,8 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
   const onKind = (row: KindRow) => {
     if (row.blockedReason) return;
     if (row.kind === 'post') {
-      // One room means no question worth asking.
-      if (rooms.length === 1) { openComposer(rooms[0].id); return; }
+      // No communities means no question worth asking — it goes on her profile.
+      if (rooms.length === 0) { openComposer(); return; }
       setStep('room');
     }
   };
@@ -188,11 +191,11 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
             </TouchableOpacity>
           ) : null}
           <View style={s.headerText}>
-            <Text style={s.title}>{step === 'kind' ? 'Create' : 'Post to a room'}</Text>
+            <Text style={s.title}>{step === 'kind' ? 'Create' : 'Where does this go?'}</Text>
             <Text style={s.subtitle}>
               {step === 'kind'
                 ? 'What are you making?'
-                : 'Everything on Roxy lands somewhere. Pick where this goes.'}
+                : 'Your profile, or one of your communities.'}
             </Text>
           </View>
           <TouchableOpacity
@@ -270,24 +273,32 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
           </ScrollView>
         )}
 
-        {status === 'ready' && step === 'room' && rooms.length === 0 && (
-          <View style={s.state}>
-            <Text style={s.stateText}>You are not in a room yet — a post needs one to land in.</Text>
-            <TouchableOpacity
-              style={s.stateCta}
-              onPress={findRooms}
-              testID="create-sheet-empty-cta"
-              accessibilityRole="button"
-              accessibilityLabel="Find rooms"
-              activeOpacity={0.8}
-            >
-              <Text style={s.stateCtaText}>Find rooms</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {/* The "you are not in a room yet" empty state was removed with the
+            community requirement. It is unreachable now — with no communities
+            the Post row goes straight to the profile composer and never sets
+            this step — and an unreachable branch that still says a post needs a
+            room to land in would outlive the rule it described. */}
 
         {status === 'ready' && step === 'room' && rooms.length > 0 && (
           <ScrollView style={s.list} contentContainerStyle={s.listContent}>
+            {/* Her own wall, first and always. A post no longer needs a
+                community to live in, and listing only communities here would
+                say the opposite of what the app now does. */}
+            <TouchableOpacity
+              style={s.row}
+              onPress={() => openComposer()}
+              testID="create-sheet-profile"
+              accessibilityRole="button"
+              accessibilityLabel="Post to your profile"
+              activeOpacity={0.8}
+            >
+              <View style={[s.crest, { backgroundColor: colors.roxy }]}>
+                <Ionicons name="person" size={16} color={inkOn(colors.roxy)} />
+              </View>
+              <Text style={s.roomName} numberOfLines={1}>Your profile</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+
             {rooms.map((room, idx) => {
               const crest = COMMUNITY_CHIP_COLORS[idx % COMMUNITY_CHIP_COLORS.length];
               return (

@@ -124,14 +124,26 @@ describe('CreateSheet', () => {
   });
 
   // One room is not a choice, and asking anyway is a tax on the common case.
-  it('skips the room question when she is only in one', async () => {
+  it('still asks where the post goes when she is in exactly one community', async () => {
+    // It used to skip straight into that community, on the reasoning that one
+    // room is no question worth asking. Her own profile is now a destination
+    // too, so with one community there are two answers and the question is
+    // real again.
     mockMembersQuery.mockResolvedValue({ data: [room('c1', 'The Sapphic Club')], error: null });
     const { findByTestId } = render(<CreateSheet visible userId="u1" onClose={jest.fn()} />);
     await chooseePost(findByTestId as never);
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: '/community/create-post',
-      params: { communityId: 'c1' },
-    });
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(await findByTestId('create-sheet-profile')).toBeTruthy();
+    expect(await findByTestId('create-sheet-room-c1')).toBeTruthy();
+  });
+
+  it('offers her profile above her communities, and posts there with no community', async () => {
+    mockMembersQuery.mockResolvedValue({ data: [room('c1', 'The Sapphic Club')], error: null });
+    const { findByTestId } = render(<CreateSheet visible userId="u1" onClose={jest.fn()} />);
+    await chooseePost(findByTestId as never);
+    fireEvent.press(await findByTestId('create-sheet-profile'));
+    // No params at all: the composer reads an absent communityId as her profile.
+    expect(mockPush).toHaveBeenCalledWith({ pathname: '/community/create-post' });
   });
 
   it('gives each room row a real 44pt touch target', async () => {
@@ -146,14 +158,16 @@ describe('CreateSheet', () => {
     expect(row.props.hitSlop).toBeUndefined();
   });
 
-  it('locks Post and says why when she is in no rooms at all', async () => {
+  it('posts to her profile when she is in no communities, instead of locking Post', async () => {
+    // Post used to be a dead control until she joined something — the one row
+    // in this sheet that refused her. A post no longer needs a community to
+    // land in, so there is no such state left to lock.
     mockMembersQuery.mockResolvedValue({ data: [], error: null });
     const { findByTestId } = render(<CreateSheet visible userId="u1" onClose={jest.fn()} />);
     const post = await findByTestId('create-kind-post');
-    expect(post.props.accessibilityState).toEqual({ disabled: true });
-    expect(String(post.props.accessibilityLabel)).toContain('Join a community first');
+    expect(post.props.accessibilityState).not.toEqual({ disabled: true });
     fireEvent.press(post);
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith({ pathname: '/community/create-post' });
   });
 
   it('surfaces a failure with a retry rather than an empty list', async () => {

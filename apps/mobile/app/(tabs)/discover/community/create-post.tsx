@@ -11,12 +11,14 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase, callEdgeFunction } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
+import { postDestination, buildPostPayload, destinationLabel } from '../../../../lib/postComposer';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { RoxyLinkPicker, RoxyLinkSelection } from '../../../../components/feed/RoxyLinkPicker';
 import { showAlert } from '../../../../lib/confirm';
 import { logError } from '../../../../lib/errorLogger';
 import { uploadImageAsset, assetExtension, UploadError } from '../../../../lib/uploads';
 import type { PostType } from '../../../../types';
+import { TYPE } from '../../../../lib/typography';
 
 const MAX_PHOTOS = 10;
 const MAX_VIDEO_SECONDS = 180;
@@ -44,7 +46,10 @@ function uploadFailureMessage(e: unknown): string {
 
 export default function CreatePostScreen() {
   const colors = useThemeColors();
-  const { communityId } = useLocalSearchParams<{ communityId: string }>();
+  // Optional now. No param means the post lands on her own profile — every
+  // profile is a wall, and a post no longer needs a community to live in.
+  const { communityId } = useLocalSearchParams<{ communityId?: string }>();
+  const destination = postDestination(communityId);
   const router = useRouter();
   const { user } = useAuthStore();
 
@@ -158,17 +163,18 @@ export default function CreatePostScreen() {
   // 3. PATCH the raw video bytes to that URL per the TUS protocol (single
   //    request: Upload-Offset 0, Content-Type application/offset+octet-stream).
   const uploadVideoAndCreatePost = async (): Promise<{ error: string | null }> => {
-    if (!user?.id || !communityId || !video) return { error: 'Missing video' };
+    if (!user?.id || !video) return { error: 'Missing video' };
 
     setUploadStatus('Creating post…');
     const { data: newPost, error: insertErr } = await supabase
       .from('posts')
-      .insert({
-        author_id: user.id,
-        community_id: communityId,
-        content: content.trim(),
-        post_type: 'video',
-      })
+      .insert(buildPostPayload({
+        authorId: user.id,
+        destination,
+        content,
+        postType: 'video',
+        postedAsCommunity: postAsCommunity,
+      }))
       .select('id')
       .single();
 
@@ -244,7 +250,7 @@ export default function CreatePostScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!user?.id || !communityId || submitting) return;
+    if (!user?.id || submitting) return;
     // Per-type validation: a photo post needs a photo (caption optional);
     // a video post needs a video; text/standard needs text; roxy_link needs
     // a linked entity.
@@ -277,19 +283,14 @@ export default function CreatePostScreen() {
       return;
     }
 
-    const payload: Record<string, unknown> = {
-      author_id: user.id,
-      community_id: communityId,
-      content: content.trim(),
-      post_type: postType,
-      posted_as_community: postAsCommunity,
-    };
-
-    if (postType === 'roxy_link' && roxyLink) {
-      payload.link_type = roxyLink.linkType;
-      payload.link_entity_id = roxyLink.entityId;
-      payload.link_community_id = roxyLink.communityId;
-    }
+    const payload = buildPostPayload({
+      authorId: user.id,
+      destination,
+      content,
+      postType,
+      postedAsCommunity: postAsCommunity,
+      roxyLink: postType === 'roxy_link' ? roxyLink : null,
+    });
 
     if (postType === 'photo') {
       try {
@@ -330,6 +331,12 @@ export default function CreatePostScreen() {
       borderBottomWidth: 1, borderBottomColor: colors.surface,
     },
     cancelBtn: { color: colors.primary, fontSize: 15 },
+    destination: {
+      ...TYPE.caption,
+      color: colors.textMuted,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+    },
     announceRow: {
       flexDirection: 'row', alignItems: 'center', gap: 12,
       marginHorizontal: 16, marginTop: 4, marginBottom: 12,
@@ -517,6 +524,13 @@ export default function CreatePostScreen() {
         autoFocus={postType !== 'photo' && postType !== 'video'}
         maxLength={1000}
       />
+
+      {/* Where it lands. A post reaches her own profile unless she opened the
+          composer from a community, and she should not have to infer which —
+          the two go to different audiences. */}
+      <Text style={styles.destination} testID="create-post-destination">
+        Posting to {destinationLabel(destination, communityName)}
+      </Text>
 
       {/* Only admins and border patrol see this: posting under the community's
           name and avatar is a more convincing impersonation than any
