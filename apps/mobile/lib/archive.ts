@@ -187,3 +187,72 @@ export async function fetchArchiveEntry(slug: string): Promise<ArchiveEntry | nu
   }
   return (data as unknown as ArchiveEntry | null) ?? null;
 }
+
+// ── Entry detail ─────────────────────────────────────────────────────────────
+
+export type ArchiveNoteRow = {
+  id: string;
+  label: string;
+  agreeCount: number;
+  agreed: boolean;
+};
+
+export type ArchiveReviewRow = {
+  id: string;
+  body: string;
+  is_recommend: boolean;
+  helpful_count: number;
+  created_at: string;
+  author: {
+    id: string;
+    display_name: string | null;
+    username: string | null;
+    avatar_url: string | null;
+  } | null;
+};
+
+export type ArchiveEntryDetail = {
+  notes: ArchiveNoteRow[];
+  reviews: ArchiveReviewRow[];
+};
+
+/**
+ * The two lists under an entry: its community content notes and its reviews.
+ *
+ * `agreed` is left false here and filled in by the store from
+ * `noteAgreements` — this function is called for anyone, and whether SHE has
+ * agreed is not a property of the note. Asking the server per-viewer would also
+ * make the note rows uncacheable for a value the client already holds.
+ *
+ * Notes come back unfiltered; `visibleNotes` applies the >=3 agreement gate at
+ * the point of render, so the entry screen can show the count of hidden ones
+ * without a second query.
+ */
+export async function fetchArchiveEntryDetail(entryId: string): Promise<ArchiveEntryDetail> {
+  const [notesRes, reviewsRes] = await Promise.all([
+    supabase
+      .from('archive_content_notes')
+      .select('id, label, agree_count')
+      .eq('entry_id', entryId)
+      .eq('status', 'visible')
+      .order('agree_count', { ascending: false }),
+    supabase
+      .from('archive_reviews')
+      .select('id, body, is_recommend, helpful_count, created_at, author:profiles(id, display_name, username, avatar_url)')
+      .eq('entry_id', entryId)
+      .eq('status', 'published')
+      .order('helpful_count', { ascending: false })
+      .limit(20),
+  ]);
+
+  // One list failing is not the screen failing — the other still renders. A
+  // missing notes list and a missing reviews list are different losses and
+  // neither should take the entry down with it.
+  if (notesRes.error) logError(notesRes.error, 'archive.fetchEntryDetail.notes');
+  if (reviewsRes.error) logError(reviewsRes.error, 'archive.fetchEntryDetail.reviews');
+
+  const notes = ((notesRes.data ?? []) as unknown as { id: string; label: string; agree_count: number }[])
+    .map((n) => ({ id: n.id, label: n.label, agreeCount: n.agree_count ?? 0, agreed: false }));
+
+  return { notes, reviews: (reviewsRes.data ?? []) as unknown as ArchiveReviewRow[] };
+}
