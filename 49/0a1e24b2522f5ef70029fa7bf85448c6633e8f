@@ -1,0 +1,40 @@
+supabase/migrations/099_archive_report_reasons.sql
+  s_488a1686f9c1af::t_aebd1f8e1c13bd 1-51
+supabase/functions/submit-report/index.ts
+  s_488a1686f9c1af::t_c37e57b12643e2 59-61
+  s_488a1686f9c1af::t_fcc514066f9a55 21-43
+apps/mobile/__tests__/lib/archiveReportReasons.test.ts
+  s_488a1686f9c1af::t_2bb1bc22cdabc0 1-77
+supabase/functions/archive-submit-edit/index.ts
+  s_488a1686f9c1af::t_050d13c484321e 192
+  s_488a1686f9c1af::t_3c028fd8f53196 142
+  s_488a1686f9c1af::t_1c0ccc8493d245 1-125,127-129,131-132,134,136,138-141,143-191,193-230
+  s_488a1686f9c1af::t_6447acd7e8d256 126,130,133,135,137
+supabase/functions/archive-submit-entry/index.ts
+  s_488a1686f9c1af::t_f88aac382424d6 138-140
+  s_488a1686f9c1af::t_b6ed5d84617b40 108
+  s_488a1686f9c1af::t_c5e31509d4ed42 1-107,109-137,141-271
+supabase/migrations/095_archive_core.sql
+  s_488a1686f9c1af::t_464ed33e0bfd30 251-276
+supabase/functions/staff-review-archive-revision/index.ts
+  s_488a1686f9c1af::t_a9ae2dc8fecee3 34-141
+  s_488a1686f9c1af::t_4f4d17d61c2154 1-33,142-320
+supabase/downs/099_archive_report_reasons_down.sql
+  s_488a1686f9c1af::t_2bb47ad77df549 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "490a1e24b2522f5ef70029fa7bf85448c6633e8f",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
