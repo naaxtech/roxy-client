@@ -5,15 +5,33 @@ export type SearchCommunity = { id: string; name: string; description: string | 
 export type SearchPerson = { id: string; display_name: string | null; username: string | null };
 export type SearchEvent = { id: string; title: string; starts_at: string };
 export type SearchBusiness = { id: string; name: string; description: string | null };
+/**
+ * An Archive entry, as global search returns it.
+ *
+ * Carries the raw tallies rather than a formatted score: `formatScore` in
+ * `lib/archive.ts` owns the >=10-vote gate, and a search result that
+ * pre-formatted its own percentage would be the second place that rule lives.
+ */
+export type SearchArchiveEntry = {
+  id: string;
+  slug: string;
+  title: string;
+  media_type: string;
+  release_year: number | null;
+  vote_count: number;
+  up_count: number;
+  has_score: boolean;
+};
 
 export type GlobalSearchResult = {
   communities: SearchCommunity[];
   people: SearchPerson[];
   events: SearchEvent[];
   businesses: SearchBusiness[];
+  archive: SearchArchiveEntry[];
 };
 
-const EMPTY_RESULT: GlobalSearchResult = { communities: [], people: [], events: [], businesses: [] };
+const EMPTY_RESULT: GlobalSearchResult = { communities: [], people: [], events: [], businesses: [], archive: [] };
 const LIMIT = 5;
 
 /**
@@ -93,8 +111,8 @@ function andAnyColumn<T extends { or: (filters: string) => T }>(
 }
 
 /**
- * Global search across communities, people, events, and businesses.
- * Four independent ILIKE queries run in parallel; any single table failing
+ * Global search across communities, people, events, businesses and the Archive.
+ * Five independent ILIKE queries run in parallel; any single table failing
  * (RLS denial, network blip) degrades to an empty array for that section
  * only — the rest of the results still return.
  */
@@ -109,7 +127,7 @@ export async function globalSearch(q: string): Promise<GlobalSearchResult> {
 
   if (patterns.length === 0) return EMPTY_RESULT;
 
-  const [communities, people, events, businesses] = await Promise.all([
+  const [communities, people, events, businesses, archive] = await Promise.all([
     safeQuery<SearchCommunity>(
       andIlike(supabase.from('communities').select('id,name,description'), 'name', patterns).limit(LIMIT)
     ),
@@ -133,7 +151,20 @@ export async function globalSearch(q: string): Promise<GlobalSearchResult> {
         patterns
       ).limit(LIMIT)
     ),
+    safeQuery<SearchArchiveEntry>(
+      // Published only. A member's unreviewed submission is not catalogue yet,
+      // and surfacing it here would publish it ahead of the mod who has to
+      // approve it. Title or creator — the two things she would type.
+      andAnyColumn(
+        supabase
+          .from('archive_entries')
+          .select('id,slug,title,media_type,release_year,vote_count,up_count,has_score')
+          .eq('status', 'published'),
+        ['title', 'creator'],
+        patterns
+      ).limit(LIMIT)
+    ),
   ]);
 
-  return { communities, people, events, businesses };
+  return { communities, people, events, businesses, archive };
 }

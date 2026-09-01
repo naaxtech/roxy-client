@@ -14,6 +14,23 @@ export function contentDetailPath(postId: string, postType: PostType): string {
 }
 
 /**
+ * An Archive entry's route, and therefore its deep link.
+ *
+ * `roxy://archive/<slug>` resolves here through expo-router without any extra
+ * registration, which is why the Archive needs no scheme handling of its own.
+ * One spelling of the path lives here so a share sheet, a search row and a rail
+ * card cannot drift into three.
+ *
+ * NOT done, deliberately: adding 'archive' to `posts.link_type`. That CHECK is
+ * `('game','room','event')` (migration 045), so posting an Archive entry AS a
+ * Roxy Link is a schema change and a composer change — a feature, not a deep
+ * link. The prototype's share action copies a URL; this is that URL.
+ */
+export function archiveDetailPath(slug: string): string {
+  return `/archive/${slug}`;
+}
+
+/**
  * Where a roxy_link post's CTA (Join Game / Join Room / View Event) should
  * actually take the user. Games need a slug lookup; rooms join the live
  * session; events open detail. Returns null when the link can't resolve.

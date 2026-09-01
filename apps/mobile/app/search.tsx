@@ -8,13 +8,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { globalSearch, GlobalSearchResult } from '../lib/globalSearch';
+import { formatScore } from '../lib/archive';
+import { archiveDetailPath } from '../lib/contentNavigation';
 import { avatarGradient } from '../lib/avatars';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
 
 const DEBOUNCE_MS = 300;
-const EMPTY_RESULTS: GlobalSearchResult = { communities: [], people: [], events: [], businesses: [] };
+const EMPTY_RESULTS: GlobalSearchResult = { communities: [], people: [], events: [], businesses: [], archive: [] };
 
 export default function GlobalSearchScreen() {
   const colors = useThemeColors();
@@ -67,7 +69,8 @@ export default function GlobalSearchScreen() {
     results.communities.length > 0 ||
     results.people.length > 0 ||
     results.events.length > 0 ||
-    results.businesses.length > 0;
+    results.businesses.length > 0 ||
+    results.archive.length > 0;
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -237,6 +240,40 @@ export default function GlobalSearchScreen() {
                   <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                 </TouchableOpacity>
               ))}
+            </View>
+          )}
+
+          {results.archive.length > 0 && (
+            <View style={styles.section}>
+              <SectionHeader title="Archive" icon="film" />
+              {results.archive.map((a) => {
+                // Through formatScore, always. It owns the >=10-vote gate, and
+                // a search row computing its own percentage is exactly how a
+                // one-vote entry ends up advertising 100% on the busiest screen
+                // in the app.
+                const score = formatScore(a.up_count, a.vote_count);
+                return (
+                  <TouchableOpacity
+                    key={a.id}
+                    style={styles.row}
+                    onPress={() => router.push(archiveDetailPath(a.slug) as any)}
+                    accessibilityLabel={`Open ${a.title}, ${score.label}`}
+                    testID={`search-archive-${a.slug}`}
+                  >
+                    <View style={styles.iconPlate}>
+                      <Ionicons name="film" size={20} color={colors.roxy} />
+                    </View>
+                    <View style={styles.rowInfo}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>{a.title}</Text>
+                      <Text style={styles.rowSub} numberOfLines={1}>
+                        {[a.media_type.toUpperCase(), a.release_year, score.label]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
 

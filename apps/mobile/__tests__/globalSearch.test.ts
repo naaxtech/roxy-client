@@ -14,13 +14,14 @@ type QueryResult = { data: unknown; error: unknown };
  * term — `.ilike().ilike().limit()` — and a stub that returned a bare `{limit}`
  * could only ever model the single-term case.
  */
-type Chain = { limit: jest.Mock; ilike: jest.Mock; or: jest.Mock };
+type Chain = { limit: jest.Mock; ilike: jest.Mock; or: jest.Mock; eq: jest.Mock };
 
 function chain(result: QueryResult): Chain {
   const c: Chain = {
     limit: jest.fn().mockResolvedValue(result),
     ilike: jest.fn(() => c),
     or: jest.fn(() => c),
+    eq: jest.fn(() => c),
   };
   return c;
 }
@@ -39,8 +40,49 @@ describe('globalSearch', () => {
 
   it('returns safe-empty results for a blank query without touching supabase', async () => {
     const result = await globalSearch('   ');
-    expect(result).toEqual({ communities: [], people: [], events: [], businesses: [] });
+    expect(result).toEqual({ communities: [], people: [], events: [], businesses: [], archive: [] });
     expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it('finds archive entries, so a wlw film is searchable by name', async () => {
+    // The Archive is a catalogue people look things up in. Leaving it out of
+    // global search means the one screen built for "what should I watch" cannot
+    // be reached by typing what you want to watch.
+    mockTables({
+      communities: { data: [], error: null },
+      profiles: { data: [], error: null },
+      events: { data: [], error: null },
+      businesses: { data: [], error: null },
+      archive_entries: {
+        data: [{
+          id: 'a1', slug: 'carol', title: 'Carol', media_type: 'film',
+          release_year: 2015, vote_count: 1204, up_count: 1067, has_score: true,
+        }],
+        error: null,
+      },
+    });
+
+    const result = await globalSearch('carol');
+    expect(result.archive).toEqual([{
+      id: 'a1', slug: 'carol', title: 'Carol', media_type: 'film',
+      release_year: 2015, vote_count: 1204, up_count: 1067, has_score: true,
+    }]);
+    expect(supabase.from).toHaveBeenCalledWith('archive_entries');
+  });
+
+  it('searches only published archive entries, never a pending submission', async () => {
+    const chains = mockTables({
+      communities: { data: [], error: null },
+      profiles: { data: [], error: null },
+      events: { data: [], error: null },
+      businesses: { data: [], error: null },
+      archive_entries: { data: [], error: null },
+    });
+
+    await globalSearch('carol');
+    // A member's unreviewed submission is not catalogue yet, and surfacing it
+    // in search would publish it ahead of the mod who has to approve it.
+    expect(chains.archive_entries.eq).toHaveBeenCalledWith('status', 'published');
   });
 
   it('fans out to all four tables and returns their rows', async () => {
