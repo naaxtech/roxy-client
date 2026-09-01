@@ -14,6 +14,10 @@ import { useThemeColors } from '../../../hooks/useThemeColors';
 import { useThemeStore } from '../../../store/themeStore';
 import { a11yState } from '../../../lib/a11yState';
 import { ThemeToggle } from '../../../components/ui/ThemeToggle';
+import { useSafetyStore } from '../../../store/safetyStore';
+import {
+  readDmPermission, nextDmPermission, dmPermissionLabel, dmPermissionDescription,
+} from '../../../lib/dmPermission';
 
 export default function SettingsScreen() {
   const { user } = useAuthStore();
@@ -23,6 +27,9 @@ export default function SettingsScreen() {
   const { theme } = useThemeStore();
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  // `(tabs)/_layout.tsx` hydrates this once per session, so the count is here
+  // without this screen fetching anything.
+  const blockedCount = useSafetyStore((s) => s.blockedUserIds.length);
 
   if (!user || !profile) {
     return (
@@ -31,6 +38,12 @@ export default function SettingsScreen() {
       </SafeAreaView>
     );
   }
+
+  // Migration 093 is written and NOT applied, so this key is absent from every
+  // profile row today. `readDmPermission` answers `everyone` for that, which is
+  // exactly how the app already behaves — anyone may message, and the inbox
+  // files strangers under Requests.
+  const dmPermission = readDmPermission(profile as { dm_permission?: unknown });
 
   const handleSignOut = async () => {
     const confirmed = await confirmAction('Sign out', 'Are you sure you want to sign out?', 'Sign out');
@@ -164,6 +177,54 @@ export default function SettingsScreen() {
               thumbColor={colors.textPrimary}
             />
           </View>
+
+          <View style={styles.separator} />
+
+          {/* Who can message me — the prototype cycles the three values in
+              place rather than pushing a picker (behaviour 1637). The write
+              can fail on this branch because migration 093 is not applied
+              yet, and it says so instead of showing a value it did not save. */}
+          <TouchableOpacity
+            style={styles.row}
+            onPress={async () => {
+              const next = nextDmPermission(dmPermission);
+              try {
+                await updateProfile({ dm_permission: next } as never);
+              } catch {
+                showAlert(
+                  'Not saved',
+                  'Could not save who can message you. Your setting is unchanged.'
+                );
+              }
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Who can message me: ${dmPermissionLabel(dmPermission)}. Change.`}
+            testID="settings-dm-permission"
+          >
+            <View style={styles.rowLabelGroup}>
+              <Text style={styles.rowLabel}>Who can message me</Text>
+              <Text style={styles.rowDescription}>{dmPermissionDescription(dmPermission)}</Text>
+            </View>
+            <Text style={styles.rowValue}>{dmPermissionLabel(dmPermission)} ›</Text>
+          </TouchableOpacity>
+
+          <View style={styles.separator} />
+
+          {/* "Blocked", not the prototype's "Blocked & muted": this app has no
+              mute, and naming one would send her looking for it. */}
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => router.push('/(tabs)/you/blocked' as never)}
+            accessibilityRole="button"
+            accessibilityLabel={`Blocked, ${blockedCount} ${blockedCount === 1 ? 'person' : 'people'}`}
+            testID="settings-blocked"
+          >
+            <View style={styles.rowLabelGroup}>
+              <Text style={styles.rowLabel}>Blocked</Text>
+              <Text style={styles.rowDescription}>Who cannot see or reach you</Text>
+            </View>
+            <Text style={styles.rowValue}>{blockedCount} ›</Text>
+          </TouchableOpacity>
 
           <View style={styles.separator} />
 

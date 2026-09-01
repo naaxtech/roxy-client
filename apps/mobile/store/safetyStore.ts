@@ -2,13 +2,38 @@ import { create } from 'zustand';
 import { supabase, callEdgeFunction } from '../lib/supabase';
 import { logError } from '../lib/errorLogger';
 
+/** Enough of a blocked member to render a row she can recognise and undo. */
+export type BlockedProfile = {
+  id: string;
+  display_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+};
+
 interface SafetyState {
   // Blocking
   blockedUserIds: string[];
+  /**
+   * The same block list with names attached, from the `blocked_profiles()`
+   * function migration 093 adds. `blockedUserIds` answers "is he blocked" on
+   * every render of every feed and stays a bare array of ids for that reason;
+   * this one exists only for the Blocked screen.
+   */
+  blockedProfiles: BlockedProfile[];
   loadingBlocks: boolean;
   blockLoadError: boolean;
   loadBlockedUsers: () => Promise<void>;
+  loadBlockedProfiles: () => Promise<void>;
   blockUser: (targetUserId: string) => Promise<void>;
+  /**
+   * Returns whether a row was actually removed.
+   *
+   * A PostgREST write answers 200 for a statement that matched nothing, so the
+   * absence of an error is not evidence that she is unblocked. `unblock_user`
+   * returns its affected-row count and this returns it as a boolean, so the
+   * screen can tell an undo from a no-op instead of assuming.
+   */
+  unblockUser: (targetUserId: string) => Promise<boolean>;
 
   // Reporting
   isReportModalOpen: boolean;
@@ -39,6 +64,7 @@ interface SafetyState {
 
 export const useSafetyStore = create<SafetyState>((set, get) => ({
   blockedUserIds: [],
+  blockedProfiles: [],
   loadingBlocks: false,
   blockLoadError: false,
   isReportModalOpen: false,
@@ -79,6 +105,48 @@ export const useSafetyStore = create<SafetyState>((set, get) => ({
     const { error } = await supabase.rpc('block_user', { p_target_id: targetUserId });
     if (error) throw error;
     set((s) => ({ blockedUserIds: [...s.blockedUserIds, targetUserId] }));
+  },
+
+  /**
+   * The block list with names, for the Blocked screen.
+   *
+   * Same rule as `loadBlockedUsers` above and for the same reason: a failed
+   * refresh must never look like "you have not blocked anyone". It sets the
+   * error flag and leaves what it already had.
+   */
+  loadBlockedProfiles: async () => {
+    set({ loadingBlocks: true, blockLoadError: false });
+    const { data, error } = await supabase.rpc('blocked_profiles');
+    if (error) {
+      logError(error, 'safetyStore.loadBlockedProfiles');
+      set({ loadingBlocks: false, blockLoadError: true });
+      return;
+    }
+    set({
+      blockedProfiles: (data as BlockedProfile[] | null) ?? [],
+      loadingBlocks: false,
+      blockLoadError: false,
+    });
+  },
+
+  unblockUser: async (targetUserId) => {
+    const { data, error } = await supabase.rpc('unblock_user', { p_target_id: targetUserId });
+    if (error) {
+      logError(error, 'safetyStore.unblockUser');
+      return false;
+    }
+
+    // The count, not the absence of an error. Zero rows means she is still
+    // blocked — showing her removed from the list would be the app reporting a
+    // safety change that did not happen, in the direction that matters most.
+    const removed = typeof data === 'number' ? data : 0;
+    if (removed === 0) return false;
+
+    set((s) => ({
+      blockedUserIds: s.blockedUserIds.filter((id) => id !== targetUserId),
+      blockedProfiles: s.blockedProfiles.filter((p) => p.id !== targetUserId),
+    }));
+    return true;
   },
 
   openReportModal: (target) => set({ reportTarget: target, isReportModalOpen: true }),

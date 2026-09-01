@@ -13,6 +13,23 @@ finer-grained engineering log lives in `.claude/log.md`.
 ## [Unreleased]
 
 ### Added
+- **A block can be undone, and she can choose who reaches her.** Migration 085
+  shipped `block_user` and `blocked_user_ids` and no unblock, so a block was
+  permanent by accident and the prototype's "Blocked" row had nothing to open.
+  Settings › **Blocked** is now a real screen with a real undo, and Settings ›
+  **Who can message me** cycles Friends only / Friends of friends / Everyone —
+  requests first. Two decisions worth naming: the unblock is gated on the
+  affected-row count the new RPC returns rather than on the absence of an error,
+  because PostgREST answers 200 for a write that matched nothing and a list that
+  removes her on a no-op tells a woman something false about who can reach her;
+  and the screen says **Blocked**, not the prototype's "Blocked & muted",
+  because this app has no mute and naming one would send her looking for it.
+  DM permission is enforced by a trigger in migration 093, not in the client — a
+  rule the client checks is a rule an attacker skips. **093 is written and not
+  applied**; until a human runs it the column is absent and the app behaves
+  exactly as it does today.
+
+### Added
 - **The three gaps the parity pass named as debt are closed.** Deleting
   `HappeningTonightCard` and `ChipSearchBar` kept their content and dropped
   their *scoping*, and the entry below says so; this is the repayment.
