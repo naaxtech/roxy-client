@@ -1,0 +1,27 @@
+supabase/functions/submit-report/index.ts
+  s_488a1686f9c1af::t_078d35b26b34c4 19-23
+supabase/downs/100_archive_moderation_contract_down.sql
+  s_488a1686f9c1af::t_20c72b8dabd0d6 1-24
+supabase/functions/staff-review-archive-revision/index.ts
+  s_488a1686f9c1af::t_1cb1acb39627b1 158-159,185-274
+supabase/migrations/100_archive_moderation_contract.sql
+  s_488a1686f9c1af::t_d20ea1c97c416d 1-98
+apps/mobile/lib/reportTargets.ts
+  s_488a1686f9c1af::t_20c72b8dabd0d6 23-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9cb9ffe3ebd173149fe5b7ceed81bcf900e6ebbe",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
