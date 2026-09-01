@@ -1,0 +1,50 @@
+apps/mobile/store/safetyStore.ts
+  s_488a1686f9c1af::t_fe2bdc9601b38d 67
+  s_488a1686f9c1af::t_0e0dd7a0d745ce 5-12,16-22,26,28-36
+  s_488a1686f9c1af::t_0b87b6b64b3317 110-151
+apps/mobile/app/(tabs)/you/settings.tsx
+  s_488a1686f9c1af::t_be1c42ff7633e8 42-47
+  s_488a1686f9c1af::t_01e541fd5b7279 30-32
+  s_488a1686f9c1af::t_5ac2972428a86f 17-20
+  s_488a1686f9c1af::t_d6a6b0315c9ee2 183-230
+supabase/migrations/093_dm_permissions_and_unblock.sql
+  s_488a1686f9c1af::t_c4809f3fea22cc 1-234
+supabase/downs/093_dm_permissions_and_unblock_down.sql
+  s_488a1686f9c1af::t_6d7f25b3b172a9 1-18
+apps/mobile/app/blocked.tsx
+  s_488a1686f9c1af::t_5ba013a413c3bb 1
+CHANGELOG.md
+  s_488a1686f9c1af::t_5f16bdcc47da6c 16-31
+  s_488a1686f9c1af::t_f3e9ee48a78cb7 15
+apps/mobile/__tests__/store/safetyStoreUnblock.test.ts
+  s_488a1686f9c1af::t_c019ffda309cf5 1-100
+apps/mobile/lib/dmPermission.ts
+  s_488a1686f9c1af::t_08aefd5575e3e2 1-79
+apps/mobile/app/(tabs)/you/blocked.tsx
+  s_488a1686f9c1af::t_a2a526b7dea96f 71
+  s_488a1686f9c1af::t_2bcab471069c02 1-70,72-189
+apps/mobile/__tests__/screens/BlockedList.test.tsx
+  s_488a1686f9c1af::t_54947ec2b8283d 1-97
+apps/mobile/__tests__/lib/dmPermission.test.ts
+  s_488a1686f9c1af::t_2f54dcbabb0bcb 1-43,51-73
+  s_488a1686f9c1af::t_8b3d48335c38c7 44-50
+docs/sessions/2026-08-16-roxy-3.0.md
+  s_488a1686f9c1af::t_9df2765efd7d81 217-241
+  s_488a1686f9c1af::t_114efc6d034e13 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3bf93fb5ef569024f09c18dbc0b38a6cada0c6c5",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
