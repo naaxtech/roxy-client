@@ -1,0 +1,52 @@
+apps/mobile/components/feed/NowRail.tsx
+  s_488a1686f9c1af::t_522a39d556af20 11-14,21-22,27-35,37-39,45,47,49-53,57-117,122-127,130,147,160,163-167,179,181-183,185,189-200,207-280,301-311
+apps/mobile/store/buildStore.ts
+  s_488a1686f9c1af::t_bf56783dbbfdf8 4
+  s_488a1686f9c1af::t_1dcb96d418b6e3 167-172,174-175,177
+apps/mobile/lib/ilikePattern.ts
+  s_488a1686f9c1af::t_9e4eeec952bf3c 1-34
+apps/mobile/components/feed/happeningNow.ts
+  s_488a1686f9c1af::t_09d5b15cef6016 1-78
+apps/mobile/__tests__/store/buildStoreSearchSafety.test.ts
+  s_488a1686f9c1af::t_df077b5da3c11e 1-71
+apps/mobile/__tests__/components/feed/NowRail.test.tsx
+  s_488a1686f9c1af::t_6b93ff4795489f 1-14,18-25,27-33,36-42,45-46,50-81,85-107,110-134
+  s_488a1686f9c1af::t_b109b5c12f968c 15-17,26,34-35,43-44,47-49,82-84,108-109
+apps/mobile/__tests__/globalSearch.test.ts
+  s_488a1686f9c1af::t_07e0a2fce31d4f 145-147
+  s_488a1686f9c1af::t_e5e12955204796 11-16,21-25
+  s_488a1686f9c1af::t_5dc825bcab01c2 114-118
+  s_488a1686f9c1af::t_9e25ac0e02a987 17-20
+  s_488a1686f9c1af::t_e510caf9197c58 168-251
+  s_488a1686f9c1af::t_e6153765ac39d0 1
+CHANGELOG.md
+  s_488a1686f9c1af::t_93adc65ed23193 16-50
+  s_488a1686f9c1af::t_95325f3f09e37b 15
+apps/mobile/__tests__/components/feed/happeningNow.test.ts
+  s_488a1686f9c1af::t_338e7ab2c3e2d3 1-92
+apps/mobile/lib/globalSearch.ts
+  s_488a1686f9c1af::t_4e4c22c648c80a 2
+  s_488a1686f9c1af::t_4541cc401c7b0e 36-38
+  s_488a1686f9c1af::t_627cfc874c0301 39-45,47-57,59-92,102-108,110,114,117-121,124,127-134
+apps/mobile/app/(tabs)/feed/index.tsx
+  s_488a1686f9c1af::t_6281c830a8cf3c 169
+  s_488a1686f9c1af::t_2790ab6cf44c5c 155-157
+docs/sessions/2026-08-16-roxy-3.0.md
+  s_488a1686f9c1af::t_65efce44317855 53-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "78ecab3cc84fbc87b967be41ccd5f6f3ebd7576e",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
