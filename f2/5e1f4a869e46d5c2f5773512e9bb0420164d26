@@ -1,0 +1,26 @@
+apps/mobile/__tests__/components/discover/discoverFilters.test.ts
+  s_488a1686f9c1af::t_13785e81a25f72 150-177
+  s_488a1686f9c1af::t_0164a378d932fd 23
+  s_488a1686f9c1af::t_34d9011c96dd15 27-30,32
+apps/mobile/components/discover/discoverFilters.ts
+  s_488a1686f9c1af::t_64ace9a92dc1ec 18,22-24,32,45-46
+apps/mobile/app/(tabs)/discover/index.tsx
+  s_488a1686f9c1af::t_868cbebd59e9ad 19-21,253-269
+  s_488a1686f9c1af::t_c64d1f264e5bf8 64-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f25e1f4a869e46d5c2f5773512e9bb0420164d26",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
