@@ -20,6 +20,8 @@ export const REPORT_CONTENT_TYPES = [
   'profile',
   'room',
   'speed_date',
+  'archive_entry',
+  'archive_review',
 ] as const;
 
 export type ReportContentType = (typeof REPORT_CONTENT_TYPES)[number];

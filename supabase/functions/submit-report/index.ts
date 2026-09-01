@@ -16,7 +16,11 @@ import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
  * Kept in step with the client constant and the migration by
  * `apps/mobile/__tests__/lib/reportContentTypes.test.ts`, which reads all three.
  */
-const REPORT_CONTENT_TYPES = ['message', 'post', 'profile', 'room', 'speed_date'];
+// archive_entry / archive_review joined the list in migration 100 — without
+// them an Archive report dies on the CHECK, the same bug 094 fixed for the live
+// surfaces. Keep this array free of comments: the drift test parses it
+// literally, and a comment inside the brackets reads as another value.
+const REPORT_CONTENT_TYPES = ['message', 'post', 'profile', 'room', 'speed_date', 'archive_entry', 'archive_review'];
 
 /**
  * Why a report was filed.

@@ -155,8 +155,8 @@ Deno.serve(async (req) => {
   }
   const { revision_id, decision, review_note } = body;
   if (!revision_id || !decision) return errorResponse('Missing revision_id or decision', 400);
-  if (decision !== 'approved' && decision !== 'rejected') {
-    return errorResponse("decision must be 'approved' or 'rejected'", 400);
+  if (decision !== 'approved' && decision !== 'rejected' && decision !== 'reverted') {
+    return errorResponse("decision must be 'approved', 'rejected' or 'reverted'", 400);
   }
 
   const supabase = getSupabaseClient();
@@ -180,6 +180,96 @@ Deno.serve(async (req) => {
   // A mod may not decide her own submission. See header -- 071's lesson.
   if (revision.submitted_by === userId) {
     return errorResponse('You may not decide your own submission', 403);
+  }
+
+
+  // ── Revert an applied revision ────────────────────────────────────────────
+  //
+  // Deliberately ABOVE the idempotency guard below, which returns early for
+  // any non-pending revision: a revert acts on an APPROVED one, so it would
+  // otherwise be answered "already decided" and do nothing.
+  //
+  // 'reverted' is its own status (migration 100) rather than a reuse of
+  // 'rejected'. A revision that was live and then undone is a different history
+  // from one that was never applied, and this table is the Archive's audit
+  // trail — collapsing the two would erase the fact that members saw the change.
+  //
+  // The restore runs `prev` back through the SAME whitelist as `patch`. `prev`
+  // was captured by whatever wrote the revision — which, because
+  // archive_revisions_insert_approved (096) lets any approved member insert one
+  // directly through RLS, is not necessarily our own submit function. It is
+  // untrusted for exactly the reason `patch` is.
+  if (decision === 'reverted') {
+    if (revision.status === 'reverted') {
+      return successResponse({
+        revision_id: revision.id,
+        already_decided: true,
+        decision: 'reverted',
+        entry_id: revision.entry_id,
+      });
+    }
+    if (revision.status !== 'approved') {
+      return errorResponse(
+        `Only an approved revision can be reverted; this one is ${revision.status}`,
+        400
+      );
+    }
+    if (!revision.entry_id) {
+      return errorResponse('This revision has no entry to revert', 400);
+    }
+    if (revision.kind === 'create') {
+      // Undoing a create is not a restore — there is no earlier state to put
+      // back. Hiding the entry is the honest inverse, and it keeps the row and
+      // any votes cast on it rather than deleting a member's work.
+      const { data: hidden, error: hideErr } = await supabase
+        .from('archive_entries')
+        .update({ status: 'hidden', updated_at: new Date().toISOString() })
+        .eq('id', revision.entry_id)
+        .select('id')
+        .single();
+      if (hideErr || !hidden) {
+        return errorResponse(hideErr?.message ?? 'Could not hide the created entry', 500);
+      }
+    } else {
+      const restored = applyPatch(revision.prev);
+      if ('error' in restored) return errorResponse(restored.error, 400);
+
+      const { data: reverted, error: revErr } = await supabase
+        .from('archive_entries')
+        .update({ ...restored.fields, updated_at: new Date().toISOString() })
+        .eq('id', revision.entry_id)
+        .select('id')
+        .single();
+      if (revErr || !reverted) {
+        return errorResponse(revErr?.message ?? 'Could not restore the previous values', 500);
+      }
+    }
+
+    const { data: updatedRev, error: updErr } = await supabase
+      .from('archive_revisions')
+      .update({
+        status: 'reverted',
+        reviewed_by: userId,
+        reviewed_at: new Date().toISOString(),
+        review_note: review_note ?? null,
+      })
+      .eq('id', revision_id)
+      .eq('status', 'approved') // guard against a concurrent revert
+      .select('id')
+      .single();
+    if (updErr || !updatedRev) {
+      return errorResponse(
+        updErr?.message ?? 'Revision was changed by someone else just now',
+        409
+      );
+    }
+
+    return successResponse({
+      revision_id: revision.id,
+      already_decided: false,
+      decision: 'reverted',
+      entry_id: revision.entry_id,
+    });
   }
 
   // Idempotent no-op: report the standing decision, change nothing.
