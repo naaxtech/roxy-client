@@ -1,0 +1,31 @@
+apps/mobile/lib/reportTargets.ts
+  s_488a1686f9c1af::t_71856d1709cc40 1-25
+supabase/downs/094_report_live_surfaces_down.sql
+  s_488a1686f9c1af::t_a75d49a17d45ad 1-17
+supabase/migrations/094_report_live_surfaces.sql
+  s_488a1686f9c1af::t_97c3f5b5da5805 1-41
+supabase/functions/submit-report/index.ts
+  s_488a1686f9c1af::t_b410be21de1d35 6-20
+  s_488a1686f9c1af::t_9358d9aef9ff73 33-35
+apps/mobile/store/safetyStore.ts
+  s_488a1686f9c1af::t_19a77444c8d55b 4,46-53,55
+apps/mobile/__tests__/lib/reportContentTypes.test.ts
+  s_488a1686f9c1af::t_67a263c73a7807 27,46
+  s_488a1686f9c1af::t_f1ae040d1cc78d 1-26,28-45,47-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "31bf2e1693a9eb139b0ebd8f59755b1571baebc6",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
