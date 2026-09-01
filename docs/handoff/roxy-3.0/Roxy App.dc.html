@@ -340,6 +340,27 @@ a{color:#FF7AB5;text-decoration:none}a:hover{color:#FFA3CC}
                 </div>
               </div>
             </sc-if>
+            <sc-if value="{{vArch}}" hint-placeholder-val="{{true}}">
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 16px">
+                  <span style="font-family:'Outfit',sans-serif;font-weight:700;font-size:14.5px;color:var(--tx)">The WLW Archive</span>
+                  <button onClick="{{oArch}}" style="cursor:pointer;background:none;border:none;padding:0;font-size:11px;font-weight:700;color:var(--pkT)">Browse all {{archN}} →</button>
+                </div>
+                <div style="padding:0 16px;font-size:11.5px;line-height:1.45;color:var(--tx2)">Films, shows, books, comics and music — scored by us, for us. Open to everyone, even while your membership is pending.</div>
+                <div class="nosb" style="display:flex;gap:10px;overflow-x:auto;padding:0 14px 4px">
+                  <sc-for list="{{archRail}}" as="ar" hint-placeholder-count="4">
+                    <button onClick="{{ar.go}}" style="cursor:pointer;flex:none;width:126px;background:none;border:none;padding:0;text-align:left;display:flex;flex-direction:column;gap:7px">
+                      <span style="display:block;height:168px;border-radius:14px;background:{{ar.g}};border:1px solid var(--ln);position:relative;overflow:hidden">
+                        <span style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(13,5,32,.72))"></span>
+                        <span style="position:absolute;top:7px;left:7px;background:rgba(13,5,32,.6);backdrop-filter:blur(4px);color:rgba(255,249,251,.85);font-size:8px;font-weight:800;letter-spacing:.1em;border-radius:5px;padding:3px 6px">{{ar.type}}</span>
+                        <span style="position:absolute;bottom:7px;left:7px;display:flex;align-items:center;gap:4px;background:{{ar.scoreBg}};border-radius:999px;padding:3px 8px 3px 6px"><span style="font-size:10px">{{ar.scoreIc}}</span><span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:11.5px;color:#FFF8FB">{{ar.score}}%</span></span>
+                      </span>
+                      <span><span style="display:block;font-weight:700;font-size:12px;color:var(--tx);font-family:'Figtree',sans-serif;line-height:1.25">{{ar.t}}</span><span style="display:block;font-size:10.5px;font-weight:600;color:var(--tx3);margin-top:2px">{{ar.year}} · {{ar.votes}} votes</span></span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
             <sc-if value="{{vGames}}" hint-placeholder-val="{{true}}">
               <div style="display:flex;flex-direction:column;gap:9px">
                 <div style="padding:0 16px;font-family:'Outfit',sans-serif;font-weight:700;font-size:14.5px;color:var(--tx)">Games &amp; icebreakers</div>
@@ -927,6 +948,142 @@ a{color:#FF7AB5;text-decoration:none}a:hover{color:#FFA3CC}
         </div>
         </sc-if>
 
+<sc-if value="{{ovArch}}" hint-placeholder-val="{{false}}">
+        <div data-screen-label="Archive browse" style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:28">
+          <div style="flex:none;padding:10px 12px 9px;background:var(--bg2);border-bottom:1px solid var(--ln);display:flex;flex-direction:column;gap:9px">
+            <div style="display:flex;align-items:center;gap:9px">
+              <button onClick="{{back}}" aria-label="Back" style="cursor:pointer;width:32px;height:32px;flex:none;border-radius:99px;background:var(--sf);border:1px solid var(--ln);color:var(--tx2);display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4.5 7.5 12l7.5 7.5"></path></svg></button>
+              <div style="flex:1"><div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:17px;color:var(--tx);letter-spacing:-.01em">The WLW Archive</div><div style="font-size:10.5px;font-weight:600;color:var(--tx3)">{{archN}} entries · scored by {{archVoters}} members</div></div>
+              <button onClick="{{archAdd}}" aria-label="Add an entry" style="cursor:pointer;width:32px;height:32px;flex:none;border-radius:99px;background:linear-gradient(120deg,#FF5A2E,#F22481);border:none;color:#FFF8FB;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center">+</button>
+            </div>
+            <input value="{{aq}}" onChange="{{setAq}}" placeholder="Search titles, authors, directors…" style="background:var(--sf);border:1px solid var(--ln);border-radius:13px;padding:9px 13px;color:var(--tx);font-family:'Figtree',sans-serif;font-size:12.5px;outline:none">
+            <div class="nosb" style="display:flex;gap:6px;overflow-x:auto">
+              <sc-for list="{{aTypes}}" as="at" hint-placeholder-count="6">
+                <button onClick="{{at.go}}" style="cursor:pointer;flex:none;font-family:'Figtree',sans-serif;font-weight:700;font-size:11.5px;border-radius:999px;padding:6px 12px;white-space:nowrap;{{at.style}}">{{at.l}}</button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--tx3)">SORT</span>
+              <sc-for list="{{aSorts}}" as="as" hint-placeholder-count="3">
+                <button onClick="{{as.go}}" style="cursor:pointer;font-family:'Figtree',sans-serif;font-weight:700;font-size:11px;border-radius:999px;padding:5px 10px;white-space:nowrap;{{as.style}}">{{as.l}}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div class="nosb" style="flex:1;overflow-y:auto;padding:12px 14px 90px;display:flex;flex-direction:column;gap:10px">
+            <sc-if value="{{pendOn}}" hint-placeholder-val="{{true}}">
+              <div style="display:flex;gap:10px;align-items:flex-start;background:var(--sf);border:1px solid var(--gdT);border-radius:16px;padding:12px 13px">
+                <span style="flex:none;width:26px;height:26px;border-radius:99px;background:rgba(245,183,61,.16);display:flex;align-items:center;justify-content:center;font-size:13px">⏳</span>
+                <span style="flex:1">
+                  <span style="display:block;font-weight:700;font-size:12.5px;color:var(--tx);font-family:'Figtree',sans-serif">Membership pending — you still get the Archive</span>
+                  <span style="display:block;font-size:11.5px;line-height:1.5;color:var(--tx2);margin-top:3px">Browse, search, read every review and score anything you've seen. Writing reviews, adding entries and the rest of Roxy unlock when a mod approves you — usually within 24h.</span>
+                  <button onClick="{{approveMe}}" style="cursor:pointer;margin-top:7px;background:none;border:1px solid var(--pkLn);border-radius:10px;color:var(--pkT);font-family:'Figtree',sans-serif;font-weight:700;font-size:11px;padding:6px 11px">Preview approved state →</button>
+                </span>
+              </div>
+            </sc-if>
+            <sc-for list="{{archRows}}" as="e" hint-placeholder-count="5">
+              <button onClick="{{e.go}}" style="cursor:pointer;display:flex;gap:11px;align-items:stretch;background:var(--sf);border:1px solid var(--ln);border-radius:16px;padding:10px;text-align:left" style-hover="border-color:var(--pkLn)">
+                <span style="flex:none;width:62px;border-radius:11px;background:{{e.g}};position:relative;overflow:hidden;min-height:88px"><span style="position:absolute;bottom:5px;left:5px;font-size:9px;font-weight:800;color:rgba(255,249,251,.8);letter-spacing:.06em">{{e.type}}</span></span>
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                  <span style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                    <span style="font-family:'Outfit',sans-serif;font-weight:700;font-size:14px;color:var(--tx);line-height:1.2">{{e.t}}</span>
+                    <span style="flex:none;display:flex;align-items:center;gap:4px;background:{{e.scoreBg}};border-radius:999px;padding:3px 8px 3px 6px"><span style="font-size:10px">{{e.scoreIc}}</span><span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:11.5px;color:#FFF8FB">{{e.score}}%</span></span>
+                  </span>
+                  <span style="font-size:11px;font-weight:600;color:var(--tx3)">{{e.meta}}</span>
+                  <span style="font-size:11.5px;line-height:1.4;color:var(--tx2);text-wrap:pretty">{{e.blurb}}</span>
+                  <span style="display:flex;gap:5px;flex-wrap:wrap;margin-top:2px">
+                    <sc-for list="{{e.cws}}" as="cw" hint-placeholder-count="2"><span style="background:var(--sf2);border:1px solid var(--ln);border-radius:99px;font-size:9.5px;font-weight:700;color:var(--tx2);padding:3px 8px">{{cw.t}}</span></sc-for>
+                    <span style="font-size:9.5px;font-weight:700;color:var(--tx3);padding:3px 0">{{e.revN}} reviews</span>
+                  </span>
+                </span>
+              </button>
+            </sc-for>
+            <sc-if value="{{archEmpty}}" hint-placeholder-val="{{false}}">
+              <div style="text-align:center;padding:34px 24px;color:var(--tx3);font-size:12.5px;line-height:1.6">Nothing here for “{{aq}}” yet.<br><button onClick="{{archAdd}}" style="cursor:pointer;background:none;border:none;color:var(--pkT);font-weight:700;font-size:12.5px;text-decoration:underline">Suggest it as a new entry</button> — a mod reviews it, then it's live for everyone.</div>
+            </sc-if>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ovEntry}}" hint-placeholder-val="{{false}}">
+        <div data-screen-label="Archive entry" style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:29">
+          <div class="nosb" style="flex:1;overflow-y:auto;padding-bottom:96px">
+            <div style="height:196px;background:{{enG}};position:relative">
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(13,5,32,.3),rgba(13,5,32,.1) 40%,var(--bg))"></div>
+              <button onClick="{{back}}" aria-label="Back" style="cursor:pointer;position:absolute;top:10px;left:10px;width:32px;height:32px;border-radius:99px;background:rgba(13,5,32,.5);backdrop-filter:blur(5px);border:1px solid rgba(255,249,251,.25);color:#FFF8FB;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4.5 7.5 12l7.5 7.5"></path></svg></button>
+              <button onClick="{{enShare}}" aria-label="Share" style="cursor:pointer;position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:99px;background:rgba(13,5,32,.5);backdrop-filter:blur(5px);border:1px solid rgba(255,249,251,.25);color:#FFF8FB;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5 21 11.2l-6.5 6.2v-3.9c-4.6 0-7.9 1.5-10.5 4.6.8-5.9 4.5-9.8 10.5-10.2Z"></path></svg></button>
+            </div>
+            <div style="padding:0 16px;display:flex;flex-direction:column;gap:13px;margin-top:-42px;position:relative">
+              <div style="display:flex;gap:12px;align-items:flex-end">
+                <span style="flex:none;width:84px;height:118px;border-radius:13px;background:{{enPoster}};border:2px solid var(--bg);box-shadow:var(--sh)"></span>
+                <div style="flex:1;padding-bottom:4px">
+                  <div style="font-size:9.5px;font-weight:800;letter-spacing:.12em;color:var(--pkT)">{{enType}}</div>
+                  <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:19px;line-height:1.15;color:var(--tx);margin-top:3px;text-wrap:pretty">{{enT}}</div>
+                  <div style="font-size:11.5px;font-weight:600;color:var(--tx3);margin-top:3px">{{enMeta}}</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;background:var(--sf);border:1px solid var(--ln);border-radius:18px;padding:13px">
+                <div style="flex:none;width:62px;height:62px;border-radius:99px;background:conic-gradient({{enRing}} {{enDeg}}, var(--sf3) 0);display:flex;align-items:center;justify-content:center">
+                  <span style="width:50px;height:50px;border-radius:99px;background:var(--sf);display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;color:var(--tx);line-height:1">{{enScore}}%</span><span style="font-size:7.5px;font-weight:800;letter-spacing:.08em;color:var(--tx3)">REC</span></span>
+                </div>
+                <div style="flex:1">
+                  <div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px">{{enScoreIc}}</span><span style="font-family:'Outfit',sans-serif;font-weight:700;font-size:14px;color:var(--tx)">{{enVerdict}}</span></div>
+                  <div style="font-size:11.5px;font-weight:600;color:var(--tx2);margin-top:2px">{{enVotes}} members voted · {{enRevN}} wrote reviews</div>
+                  <div style="font-size:10.5px;font-weight:600;color:var(--tx3);margin-top:3px">One score, one question. No critics, no stars.</div>
+                </div>
+              </div>
+              <div style="background:var(--sf);border:1px solid {{enVoteLn}};border-radius:18px;padding:13px;display:flex;flex-direction:column;gap:10px">
+                <div style="font-weight:700;font-size:13px;color:var(--tx);font-family:'Figtree',sans-serif">Seen it? Would you recommend it to another wlw?</div>
+                <div style="display:flex;gap:8px">
+                  <button onClick="{{voteUp}}" style="cursor:pointer;flex:1;border-radius:13px;padding:12px 0;font-family:'Figtree',sans-serif;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;gap:7px;{{upS}}">👍 Yes{{upSuffix}}</button>
+                  <button onClick="{{voteDown}}" style="cursor:pointer;flex:1;border-radius:13px;padding:12px 0;font-family:'Figtree',sans-serif;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;gap:7px;{{dnS}}">👎 No</button>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button onClick="{{enWatch}}" style="cursor:pointer;flex:1;background:none;border:1px solid var(--ln2);border-radius:13px;color:var(--tx2);font-family:'Figtree',sans-serif;font-weight:700;font-size:12px;padding:10px 0">{{watchLbl}}</button>
+                  <button onClick="{{enReview}}" style="cursor:pointer;flex:1;border-radius:13px;font-family:'Figtree',sans-serif;font-weight:700;font-size:12px;padding:10px 0;{{revBtnS}}">{{revBtnLbl}}</button>
+                </div>
+                <div style="font-size:10.5px;font-weight:600;color:var(--tx3)">{{voteNote}}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <span style="font-family:'Outfit',sans-serif;font-weight:700;font-size:13.5px;color:var(--tx)">Content notes</span>
+                  <span style="font-size:10px;font-weight:700;color:var(--tx3)">tagged by members</span>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <sc-for list="{{enCws}}" as="cw" hint-placeholder-count="3">
+                    <button onClick="{{cw.go}}" style="cursor:pointer;background:{{cw.bg}};border:1px solid {{cw.ln}};border-radius:999px;padding:6px 11px;color:{{cw.c}};font-family:'Figtree',sans-serif;font-weight:700;font-size:11px;display:flex;align-items:center;gap:6px">{{cw.t}}<span style="opacity:.65;font-weight:600">{{cw.n}}</span></button>
+                  </sc-for>
+                  <button onClick="{{addCw}}" style="cursor:pointer;background:none;border:1px dashed var(--ln2);border-radius:999px;padding:6px 11px;color:var(--tx3);font-family:'Figtree',sans-serif;font-weight:700;font-size:11px">+ add a note</button>
+                </div>
+                <div style="font-size:10.5px;line-height:1.5;font-weight:600;color:var(--tx3)">Tap a note to agree. We don't tag endings — no spoilers in the Archive, ever.</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between">
+                  <span style="font-family:'Outfit',sans-serif;font-weight:700;font-size:13.5px;color:var(--tx)">Member reviews</span>
+                  <span style="font-size:10.5px;font-weight:700;color:var(--tx3)">most helpful</span>
+                </div>
+                <sc-for list="{{enRevs}}" as="rv" hint-placeholder-count="2">
+                  <div style="background:var(--sf);border:1px solid var(--ln);border-radius:16px;padding:12px">
+                    <div style="display:flex;align-items:center;gap:9px">
+                      <button onClick="{{rv.goProf}}" style="cursor:pointer;flex:none;width:30px;height:30px;border-radius:99px;background:{{rv.g}};border:none;color:#FFF8FB;font-family:'Outfit',sans-serif;font-weight:800;font-size:12px">{{rv.ini}}</button>
+                      <button onClick="{{rv.goProf}}" style="cursor:pointer;flex:1;background:none;border:none;padding:0;text-align:left"><span style="display:block;font-weight:700;font-size:12px;color:var(--tx);font-family:'Figtree',sans-serif">{{rv.n}}</span><span style="display:block;font-size:10px;font-weight:600;color:var(--tx3)">{{rv.time}}</span></button>
+                      <span style="flex:none;font-size:11px;font-weight:800;color:{{rv.vC}}">{{rv.v}}</span>
+                    </div>
+                    <div style="font-size:12.5px;line-height:1.55;color:var(--tx2);margin-top:8px;text-wrap:pretty">{{rv.t}}</div>
+                    <button onClick="{{rv.help}}" style="cursor:pointer;margin-top:8px;background:none;border:1px solid var(--ln);border-radius:999px;padding:5px 11px;color:{{rv.helpC}};font-family:'Figtree',sans-serif;font-weight:700;font-size:10.5px">✿ helpful · {{rv.h}}</button>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:7px;background:var(--sf);border:1px dashed var(--ln2);border-radius:16px;padding:13px">
+                <div style="font-weight:700;font-size:12.5px;color:var(--tx);font-family:'Figtree',sans-serif">Something wrong or missing?</div>
+                <div style="font-size:11.5px;line-height:1.5;color:var(--tx2)">The Archive is member-maintained. Suggest a fix and a mod publishes it — every edit keeps its author's name.</div>
+                <button onClick="{{enEdit}}" style="cursor:pointer;align-self:flex-start;background:none;border:1px solid var(--liLn);border-radius:11px;color:var(--liT);font-family:'Figtree',sans-serif;font-weight:700;font-size:11.5px;padding:8px 13px">✎ Suggest an edit</button>
+                <div style="font-size:10.5px;font-weight:600;color:var(--tx3)">Last edit: {{enLastEdit}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
         <sc-if value="{{showFab}}" hint-placeholder-val="{{false}}">
           <button onClick="{{openRoxy}}" aria-label="Ask Roxy" style="cursor:pointer;position:absolute;right:16px;bottom:20px;z-index:30;width:54px;height:54px;border-radius:999px;border:none;background:linear-gradient(130deg,#FF5A2E,#F22481 60%,#E0189A);color:#FFF8FB;font-size:22px;box-shadow:0 10px 26px rgba(242,36,129,.45);display:flex;align-items:center;justify-content:center" style-hover="transform:scale(1.06)">✦</button>
         </sc-if>
@@ -1156,6 +1313,31 @@ a{color:#FF7AB5;text-decoration:none}a:hover{color:#FFA3CC}
               </div>
             </sc-if>
 
+<sc-if value="{{shEdit}}" hint-placeholder-val="{{false}}">
+              <div style="padding:6px 16px 20px;display:flex;flex-direction:column;gap:11px">
+                <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:17px;color:var(--tx)">{{edTitle}}</div>
+                <div style="font-size:11.5px;line-height:1.5;color:var(--tx2)">{{edIntro}}</div>
+                <sc-if value="{{edLocked}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex;gap:10px;align-items:flex-start;background:var(--sf);border:1px solid var(--gdT);border-radius:15px;padding:12px">
+                    <span style="font-size:15px">⏳</span>
+                    <span style="flex:1;font-size:11.5px;line-height:1.5;color:var(--tx2)">Your membership is still pending, so this one is read-only for now. You can keep scoring anything you've seen — that counts and stays.</span>
+                  </div>
+                  <button onClick="{{approveMe}}" style="cursor:pointer;background:none;border:1px solid var(--pkLn);border-radius:13px;color:var(--pkT);font-family:'Figtree',sans-serif;font-weight:700;font-size:12.5px;padding:12px 0">Preview approved state</button>
+                </sc-if>
+                <sc-if value="{{edOpen}}" hint-placeholder-val="{{true}}">
+                  <sc-for list="{{edFields}}" as="ef" hint-placeholder-count="3">
+                    <div style="display:flex;flex-direction:column;gap:5px">
+                      <span style="font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--tx3)">{{ef.l}}</span>
+                      <div style="background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600;color:{{ef.c}};min-height:17px">{{ef.v}}</div>
+                    </div>
+                  </sc-for>
+                  <textarea value="{{edIn}}" onChange="{{setEdIn}}" placeholder="{{edPh}}" style="background:var(--sf);border:1px solid var(--pkLn);border-radius:13px;padding:11px 13px;color:var(--tx);font-family:'Figtree',sans-serif;font-size:12.5px;line-height:1.5;outline:none;resize:none;min-height:88px"></textarea>
+                  <div style="font-size:10.5px;font-weight:600;color:var(--tx3)">{{edFoot}}</div>
+                  <button onClick="{{edSubmit}}" style="cursor:pointer;background:var(--pk);border:none;border-radius:13px;color:var(--onpk);font-family:'Figtree',sans-serif;font-weight:800;font-size:13.5px;padding:13px 0">{{edCta}}</button>
+                </sc-if>
+              </div>
+            </sc-if>
+
             <sc-if value="{{shWallet}}" hint-placeholder-val="{{false}}">
               <div class="nosb" style="overflow-y:auto;max-height:560px;padding:6px 16px 20px;display:flex;flex-direction:column;gap:12px">
                 <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:17px;color:var(--tx)">Tickets &amp; orders</div>
@@ -1335,6 +1517,32 @@ class Component extends DCLogic {
       cinema:{t:'Sapphic Cinema Night',host:'wlw',hostN:'WLW London',mode:'off',date:'Thu 12 Sep',time:'7:00 PM',dur:'4h',venue:'Rio Cinema, Dalston',going:42,price:'Free',about:'Two classic wlw films back-to-back. Discussion after. Popcorn provided.',safety:'Public venue · hosted by WLW London mods · attendee list visible to members only',tiers:[{n:'Free RSVP',p:'£0.00',left:'118 spots left'}]},
       poetry:{t:'WLW Poetry Slam',host:'qn',hostN:'Camden Queer Collective',mode:'off',date:'Tue 24 Sep',time:'8:00 PM',dur:'3h',venue:'Green Note, Camden',going:23,price:'£8.00',about:'Spoken word, acoustic sets and open mic slots on the night.',safety:'Public venue · step-free access · attendee list hidden',tiers:[{n:'Standard',p:'£8.00',left:'23 left'},{n:'Front row + zine',p:'£14.00',left:'6 left'}]}
     };
+    this.ARCH={
+      portrait:{t:'Portrait of a Lady on Fire',type:'Film',year:2019,by:'Céline Sciamma',len:'2h 2m',up:1412,tot:1489,g:'linear-gradient(160deg,#1E3A5E,#7A6A9E 55%,#D98A5E)',
+        blurb:'A painter and her subject on a Breton island. The one everyone tells you to watch first, and they’re right.',
+        cw:[['Period-typical sexism',214],['Grief',88],['Nudity',146]],edit:'title & runtime, 3 days ago by @mayalin.art',
+        revs:[{a:'maya',v:'up',time:'2 weeks ago',h:64,t:'It understands looking. Not being looked at — looking. I’ve watched it four times and the last ten minutes still take a full evening out of me.'},{a:'tasha',v:'up',time:'1 month ago',h:41,t:'Slow in the way a held breath is slow. Watch it with someone you can be quiet next to.'}]},
+      gentleman:{t:'Gentleman Jack',type:'TV',year:2019,by:'Sally Wainwright · BBC/HBO',len:'2 seasons',up:894,tot:1042,g:'linear-gradient(160deg,#2A1B3E,#5E3A2A 55%,#C58A4A)',
+        blurb:'Anne Lister, top hat, ledgers, and a diary in code. Cancelled too early; still worth the two seasons.',
+        cw:[['Family estrangement',96],['Period-typical violence',63]],edit:'added S2 episode count, 1 week ago by @junomakes',
+        revs:[{a:'juno',v:'up',time:'3 weeks ago',h:29,t:'Watching her walk into a room and simply decide the room is hers rewired something in me. Suranne Jones to camera is a public service.'}]},
+      priory:{t:'The Priory of the Orange Tree',type:'Book',year:2019,by:'Samantha Shannon',len:'848 pages',up:731,tot:812,g:'linear-gradient(160deg,#0E4B4E,#2A7A5E 55%,#E0A83D)',
+        blurb:'Dragons, a queen who must produce an heir, and the bodyguard who loves her. 800 pages that read like 300.',
+        cw:[['Body horror',54],['Religious persecution',77]],edit:'page count corrected, 5 days ago by @priyacodes',
+        revs:[{a:'priya',v:'up',time:'1 week ago',h:33,t:'I put off the size for a year for nothing. It’s the rare epic fantasy where the wlw romance is load-bearing rather than decorative.'}]},
+      heartstopper:{t:'Heartstopper',type:'Comic',year:2019,by:'Alice Oseman',len:'5 volumes',up:668,tot:702,g:'linear-gradient(160deg,#1E4E7A,#4A8AD8 55%,#F2A8C8)',
+        blurb:'Mostly the boys’ story, but Tara and Darcy are why a lot of us hand this to our younger cousins.',
+        cw:[['Eating disorder (vol 4)',122],['School bullying',91]],edit:'volume 5 added, 2 days ago by @tashanights',
+        revs:[{a:'tasha',v:'up',time:'4 days ago',h:18,t:'Gentle on purpose. Tara’s coming-out arc is the one I needed at fifteen and the one I still reread at thirty.'}]},
+      boygenius:{t:'the record',type:'Music',year:2023,by:'boygenius',len:'12 tracks',up:1088,tot:1121,g:'linear-gradient(160deg,#3A2A5E,#7A4A8A 55%,#E06A8A)',
+        blurb:'Three songwriters, no filler. “Not Strong Enough” is the group chat’s permanent state of mind.',
+        cw:[['Substance use',41],['Religious imagery',36]],edit:'tracklist verified, 2 weeks ago by @mayalin.art',
+        revs:[{a:'maya',v:'up',time:'1 month ago',h:52,t:'Put “Cool About It” on after a bad text and let it do the work. Best £11 I’ve spent on being unwell about someone.'}]},
+      bottoms:{t:'Bottoms',type:'Film',year:2023,by:'Emma Seligman',len:'1h 31m',up:512,tot:918,g:'linear-gradient(160deg,#5E1E3A,#C24A6A 55%,#F2C84A)',
+        blurb:'Two unpopular girls start a fight club to meet cheerleaders. Divisive here — either your exact humour or not at all.',
+        cw:[['Cartoon violence',88],['Slurs (reclaimed)',67]],edit:'summary rewritten, 6 days ago by @junomakes',
+        revs:[{a:'juno',v:'up',time:'2 weeks ago',h:24,t:'Screamed in a cinema. It’s stupid on purpose and I refuse to defend it further.'},{a:'priya',v:'down',time:'3 weeks ago',h:19,t:'Wanted to love it. The jokes land at a pace that never lets a single character breathe — I left liking nobody.'}]}
+    };
     this.CMTS=[{a:'priya',t:'the colours on print 03 😭 I need it',time:'2h',l:12},{a:'juno',t:'saving up for the whole set tbh',time:'1h',l:8},{a:'tasha',t:'open studio sat = calendar blocked',time:'44m',l:5}];
     this.R_ANS={
       'Dating advice':"Skip drinks for a first date. Columbia Road flower market walk, then coffee — 45 minutes, easy exit, endless things to talk about. Want me to see who's free this weekend?",
@@ -1362,7 +1570,8 @@ class Component extends DCLogic {
         'buy-sell-trade':[{a:'juno',card:{k:'prod',t:'Crochet Bucket Hat · £15',sub:'made to order · 1 week',cta:'View item'},time:'8:47'},{a:'elena',t:'candle restock went live this morning 🕯️',time:'9:02'}]},
       cmts:this.CMTS.slice(),dating:false,ghost:false,dmPerm:'Friends only',
       av:{skin:0,hair:0,style:0,frame:1},pn:'she/her',ori:'Bi',rel:'💛 Looking for friends',
-      seller:'none',speedT:294,hand:false,toast:null,fb:{cat:0,stars:0,sent:false},claimed:{},xp:2450,saidHi:false};
+      seller:'none',speedT:294,hand:false,toast:null,
+      member:'pending',aq:'',atype:'All',asort:'Top rated',votes:{},watch:{},cwVotes:{},helpful:{},edIn:'',fb:{cat:0,stars:0,sent:false},claimed:{},xp:2450,saidHi:false};
   }
   componentDidMount(){this._iv=setInterval(()=>{const s=this.state;if(s.over&&s.over.k==='room'&&s.over.w==='speed'&&s.speedT>0)this.setState(x=>({speedT:x.speedT-1}));},1000);}
   componentWillUnmount(){clearInterval(this._iv);clearTimeout(this._tt);clearTimeout(this._ai);}
@@ -1395,7 +1604,13 @@ class Component extends DCLogic {
   go(k){const S=this;const M={feed:()=>S.setTab('feed'),disc:()=>S.setTab('disc'),msg:()=>S.setTab('msg'),you:()=>S.setTab('you'),create:()=>{S.setTab('feed');S.sheet('create');},
     maya:()=>{S.setTab('feed');S.openProf('maya');},wlw:()=>{S.setTab('feed');S.openProf('wlw');},chat:()=>{S.setTab('msg');S.push({k:'chat',w:'comm'});},roxy:()=>{S.setTab('msg');S.push({k:'chat',w:'roxy'});},sister:()=>{S.setTab('msg');S.push({k:'chat',w:'sister'});},dm:()=>{S.setTab('msg');S.push({k:'chat',w:'dm'});},
     audio:()=>S.push({k:'room',w:'audio'}),speed:()=>{S.setState({speedT:294});S.push({k:'room',w:'speed'});},event:()=>S.sheet('event',{ev:'cinema'}),eventOn:()=>S.sheet('eventOn'),product:()=>S.sheet('product',{pid:'print'}),comments:()=>{S.setTab('feed');S.sheet('comments',{post:'p1'});},safety:()=>S.sheet('safety',{who:'@mayalin.art'}),
-    search:()=>S.push({k:'search'}),settings:()=>{S.setTab('you');S.push({k:'settings'});},studio:()=>S.sheet('studio'),wallet:()=>S.sheet('wallet'),sell:()=>S.sheet('sell'),notif:()=>S.sheet('notif'),feedback:()=>S.sheet('feedback'),daily:()=>S.sheet('daily'),poetry:()=>S.sheet('event',{ev:'poetry'})};
+    search:()=>S.push({k:'search'}),settings:()=>{S.setTab('you');S.push({k:'settings'});},studio:()=>S.sheet('studio'),wallet:()=>S.sheet('wallet'),sell:()=>S.sheet('sell'),notif:()=>S.sheet('notif'),feedback:()=>S.sheet('feedback'),daily:()=>S.sheet('daily'),poetry:()=>S.sheet('event',{ev:'poetry'}),
+    archRail:()=>{S.setTab('disc');S.setState({chip:'archive'});},arch:()=>{S.setTab('disc');S.push({k:'arch'});},
+    entry1:()=>{S.setTab('disc');S.push({k:'entry',id:'portrait'});},entry2:()=>{S.setTab('disc');S.push({k:'entry',id:'bottoms'});},
+    edit:()=>{S.setTab('disc');S.push({k:'entry',id:'portrait'});S.sheet('edit',{mode:'edit',id:'portrait'});},
+    review:()=>{S.setTab('disc');S.push({k:'entry',id:'portrait'});S.sheet('edit',{mode:'review',id:'portrait'});},
+    addEntry:()=>{S.setTab('disc');S.push({k:'arch'});S.sheet('edit',{mode:'add'});},
+    member:()=>{const nx=S.state.member==='pending'?'approved':'pending';S.setState({member:nx});S.T(nx==='pending'?'Now viewing as a PENDING member — archive only':'Now viewing as an APPROVED member — everything open');}};
     if(M[k])M[k]();}
   renderVals(){
     const s=this.state,dk=this.dk(),c=(d,l)=>dk?d:l;
@@ -1428,13 +1643,14 @@ class Component extends DCLogic {
       rail:[{t:'Tabs',b:[['Feed','feed'],['Discover','disc'],['Messages','msg'],['You','you'],['＋ Create','create']].map(x=>({l:x[0],go:()=>this.go(x[1])}))},
         {t:'Profiles',b:[['Maya · seller','maya'],['WLW London · community','wlw'],['Product sheet','product'],['Event · ticketed','event'],['Event · online','eventOn']].map(x=>({l:x[0],go:()=>this.go(x[1])}))},
         {t:'Chat & live',b:[['Community channels','chat'],['Roxy','roxy'],['Sister','sister'],['DM thread','dm'],['Audio room','audio'],['Speed dating','speed']].map(x=>({l:x[0],go:()=>this.go(x[1])}))},
+        {t:'Archive (new)',b:[['Archive rail','archRail'],['Browse all','arch'],['Entry · loved','entry1'],['Entry · divisive','entry2'],['Suggest edit','edit'],['Write review','review'],['Add entry','addEntry'],['Toggle pending/approved','member']].map(x=>({l:x[0],go:()=>this.go(x[1])}))},
         {t:'System',b:[['Search','search'],['Comments','comments'],['Safety sheet','safety'],['Mini Wins','daily'],['Wallet','wallet'],['Sell on Roxy','sell'],['Avatar studio','studio'],['Notifications','notif'],['Settings','settings'],['Feedback','feedback']].map(x=>({l:x[0],go:()=>this.go(x[1])}))}],
       isFeed:s.tab==='feed'&&!over,isDisc:s.tab==='disc'&&!over,isMsg:s.tab==='msg'&&!over,
       shellOn:!!pvId,pvId:pvId||'',
       chatRoxy:chatOn&&ow==='roxy',chatSister:chatOn&&ow==='sister',chatDM:chatOn&&ow==='dm',chatComm:chatOn&&ow==='comm',
       roomAudio:roomOn&&ow==='audio',roomSpeed:roomOn&&ow==='speed',ovSearch:ok==='search',ovSettings:ok==='settings',
-      showBar:!(chatOn||roomOn||ok==='search'||ok==='settings'),
-      showFab:!s.sheet&&!chatOn&&!roomOn&&ok!=='search'&&ok!=='settings'&&s.tab!=='msg',
+      showBar:!(chatOn||roomOn||ok==='search'||ok==='settings'||ok==='entry'),
+      showFab:!s.sheet&&!chatOn&&!roomOn&&['search','settings','arch','entry'].indexOf(ok)<0&&s.tab!=='msg',
       goFeed:()=>this.setTab('feed'),goDisc:()=>this.setTab('disc'),goMsg:()=>this.setTab('msg'),goYou:()=>this.setTab('you'),
       openCreate:()=>this.sheet('create'),openRoxy:()=>this.push({k:'chat',w:'roxy'}),back:()=>this.back(),
       navFeedC:s.tab==='feed'?c('#FF9BC8','#D81368'):c('#9C89C2','#8672A8'),navFeedW:s.tab==='feed'?'700':'600',
@@ -1452,6 +1668,8 @@ class Component extends DCLogic {
       ...this.chatVals(s,c),
       ...this.sysVals(s,c),
       ...this.sheetVals(s,c),
+      ...this.archVals(s,c),
+      ...this.editVals(s),
       toastOn:!!s.toast,toastMsg:s.toast||''
     };
   }
@@ -1463,7 +1681,7 @@ class Component extends DCLogic {
     return{
       oSearch:()=>this.push({k:'search'}),oNotif:()=>this.sheet('notif'),oSell:()=>this.sheet('sell'),
       heroInfo:qv({badge:'IN PERSON EVENT',bb:'#8B5CF6',t:'Sapphic Cinema Night',meta:'Thu 12 Sep · 7 PM · Rio Cinema, Dalston · Free',d:'Two classic wlw films back-to-back, discussion after, popcorn provided. Hosted by WLW London.',cta:'Open event',go:()=>this.sheet('event',{ev:'cinema'}),g:'linear-gradient(150deg,#2A1B6E,#B02478)'}),
-      dChips:[['all','All'],['events','Events'],['shops','Shops'],['live','Live'],['comms','Communities'],['games','Games']].map(x=>({l:x[1],style:chip(s.chip===x[0]),go:()=>this.setState({chip:x[0]})})),
+      dChips:[['all','All'],['archive','Archive'],['events','Events'],['shops','Shops'],['live','Live'],['comms','Communities'],['games','Games']].map(x=>({l:x[1],style:chip(s.chip===x[0]),go:()=>this.setState({chip:x[0]})})),
       vHero:s.chip==='all'||s.chip==='events',vTop:s.chip==='all',vLive:s.chip==='all'||s.chip==='live',
       vEvents:s.chip==='all'||s.chip==='events',vShops:s.chip==='all'||s.chip==='shops',
       vComms:s.chip==='all'||s.chip==='comms',vGames:s.chip==='all'||s.chip==='games',
@@ -1754,6 +1972,84 @@ class Component extends DCLogic {
     };
   }
   sendCmt(){const t=this.state.cIn.trim();if(!t)return;this.setState(s=>({cmts:s.cmts.concat([{a:'you',t,time:'now',l:0}]),cIn:''}));}
+  archVals(s,c){
+    const A=this.ARCH,ok=s.over?s.over.k:'';
+    const pend=s.member==='pending';
+    const scoreBg=v=>v>=75?'linear-gradient(120deg,#178A4C,#2FC97E)':v>=50?'linear-gradient(120deg,#B07A10,#F5B73D)':'linear-gradient(120deg,#8A2540,#F0326E)';
+    const scoreIc=v=>v>=75?'✿':v>=50?'❋':'🥀';
+    const adj=k=>{const v=s.votes[k];const e=A[k];const up=e.up+(v==='up'?1:0),tot=e.tot+(v?1:0);return{pct:Math.round(up/tot*100),tot};};
+    const keys=Object.keys(A);
+    const q=s.aq.trim().toLowerCase();
+    const typed=keys.filter(k=>s.atype==='All'||A[k].type===s.atype);
+    let rows=typed.filter(k=>!q||(A[k].t+' '+A[k].by+' '+A[k].blurb).toLowerCase().indexOf(q)>-1);
+    rows.sort((x,y)=>s.asort==='Top rated'?adj(y).pct-adj(x).pct:s.asort==='Most voted'?adj(y).tot-adj(x).tot:(A[y].year+'').localeCompare(A[x].year+''));
+    const row=k=>{const a=adj(k),e=A[k];
+      return{key:k,t:e.t,type:e.type.toUpperCase(),year:e.year,g:e.g,score:a.pct,votes:a.tot,scoreBg:scoreBg(a.pct),scoreIc:scoreIc(a.pct),
+        meta:e.year+' · '+e.by+' · '+a.tot+' votes',blurb:e.blurb,revN:(e.revs||[]).length,
+        cws:(e.cw||[]).slice(0,2).map(x=>({t:x[0]})),go:()=>this.push({k:'entry',id:k})};};
+    const eKey=ok==='entry'?s.over.id:'portrait';
+    const E=A[eKey],ea=adj(eKey),myVote=s.votes[eKey];
+    const cwPal=[['var(--pkBg)','var(--pkLn)','var(--pkT)'],['var(--liBg)','var(--liLn)','var(--liT)'],['var(--sf2)','var(--ln)','var(--tx2)']];
+    return{
+      vArch:s.chip==='all'||s.chip==='archive',archN:keys.length+'',archVoters:'3,180',
+      oArch:()=>this.push({k:'arch'}),ovArch:ok==='arch',ovEntry:ok==='entry',
+      archRail:['portrait','gentleman','priory','heartstopper'].map(row),
+      archRows:rows.map(row),archEmpty:!rows.length,
+      aq:s.aq,setAq:e=>this.setState({aq:e.target.value}),
+      aTypes:['All','Film','TV','Book','Comic','Music'].map(t=>({l:t,go:()=>this.setState({atype:t}),style:t===s.atype?'background:'+c('#F22481','#D81368')+';color:#FFF8FB;border:1px solid transparent':'background:var(--sf);color:var(--tx2);border:1px solid var(--ln)'})),
+      aSorts:['Top rated','Most voted','Newest'].map(t=>({l:t,go:()=>this.setState({asort:t}),style:t===s.asort?'background:var(--pkBg);color:var(--pkT);border:1px solid var(--pkLn)':'background:none;color:var(--tx3);border:1px solid var(--ln)'})),
+      pendOn:pend,approveMe:()=>{this.setState({member:'approved',sheet:null});this.T('Approved ✿ reviews, entries and the rest of Roxy are open');},
+      archAdd:()=>this.sheet('edit',{mode:'add'}),
+      enG:E.g,enPoster:E.g,enT:E.t,enType:E.type.toUpperCase(),enMeta:E.year+' · '+E.by+' · '+E.len,
+      enScore:ea.pct,enVotes:ea.tot.toLocaleString(),enRevN:(E.revs||[]).length,
+      enRing:ea.pct>=75?c('#2FC97E','#178A4C'):ea.pct>=50?c('#F5B73D','#B07A10'):c('#F0326E','#D81368'),enDeg:Math.round(ea.pct*3.6)+'deg',
+      enScoreIc:scoreIc(ea.pct),enVerdict:ea.pct>=90?'Community favourite':ea.pct>=75?'Worth your night':ea.pct>=50?'Divisive':'Most of us said skip it',
+      enVoteLn:myVote?'var(--pkLn)':'var(--ln)',
+      voteUp:()=>{this.setState(x=>({votes:{...x.votes,[eKey]:x.votes[eKey]==='up'?null:'up'}}));if(myVote!=='up')this.T('Counted ✿ your yes is in the score');},
+      voteDown:()=>{this.setState(x=>({votes:{...x.votes,[eKey]:x.votes[eKey]==='down'?null:'down'}}));if(myVote!=='down')this.T('Counted — thanks for the honesty');},
+      upS:myVote==='up'?'background:linear-gradient(120deg,#178A4C,#2FC97E);color:#FFF8FB;border:none':'background:var(--sf2);color:var(--tx);border:1px solid var(--ln)',
+      dnS:myVote==='down'?'background:linear-gradient(120deg,#8A2540,#F0326E);color:#FFF8FB;border:none':'background:var(--sf2);color:var(--tx);border:1px solid var(--ln)',
+      upSuffix:myVote==='up'?' ✓':'',
+      watchLbl:s.watch[eKey]?'✓ On your list':'+ Watchlist',
+      enWatch:()=>{this.setState(x=>({watch:{...x.watch,[eKey]:!x.watch[eKey]}}));this.T(s.watch[eKey]?'Removed from your list':'Saved to your list — find it under You › Saved');},
+      revBtnLbl:pend?'🔒 Write a review':'✎ Write a review',
+      revBtnS:pend?'background:var(--sf2);color:var(--tx3);border:1px solid var(--ln)':'background:var(--pk);color:var(--onpk);border:none',
+      enReview:()=>this.sheet('edit',{mode:'review',id:eKey}),
+      voteNote:pend?'Scoring works while pending. Written reviews unlock on approval.':'Your score is public as a number only — your review carries your name.',
+      enCws:(E.cw||[]).map((x,i)=>{const on=s.cwVotes[eKey+x[0]];const p=cwPal[i%3];
+        return{t:x[0],n:(x[1]+(on?1:0)),bg:on?'var(--pkBg)':p[0],ln:on?'var(--pkLn)':p[1],c:on?'var(--pkT)':p[2],
+          go:()=>{this.setState(y=>({cwVotes:{...y.cwVotes,[eKey+x[0]]:!y.cwVotes[eKey+x[0]]}}));}};}),
+      addCw:()=>this.sheet('edit',{mode:'cw',id:eKey}),
+      enRevs:(E.revs||[]).map((r,i)=>{const u=this.U[r.a]||{name:'Noor Haddad',g:'linear-gradient(130deg,#FF5A2E,#E0189A)'};const helped=s.helpful&&s.helpful[eKey+i];
+        return{ini:u.name[0],g:u.g,n:u.name,time:r.time,t:r.t,v:r.v==='up'?'👍 recommends':'👎 doesn’t',vC:r.v==='up'?'var(--okT)':'var(--pkT)',
+          h:r.h+(helped?1:0),helpC:helped?'var(--pkT)':'var(--tx3)',
+          help:()=>this.setState(y=>({helpful:{...(y.helpful||{}),[eKey+i]:!(y.helpful&&y.helpful[eKey+i])}})),
+          goProf:()=>{if(this.U[r.a])this.push({k:'prof',id:r.a});}};}),
+      enShare:()=>this.T('Archive link copied 🔗'),
+      enEdit:()=>this.sheet('edit',{mode:'edit',id:eKey}),
+      enLastEdit:E.edit
+    };
+  }
+  editVals(s){
+    const sd=s.sd||{},mode=sd.mode||'edit',pend=s.member==='pending';
+    const E=this.ARCH[sd.id||'portrait'];
+    const M={
+      add:{t:'Suggest a new entry',intro:'Add something the Archive is missing. A mod checks it, then it’s live for everyone — credited to you.',ph:'Title, year, type, and why it belongs here…',cta:'Send to mods',foot:'Queued for review · most entries are published within a day.',lock:true,fields:[]},
+      edit:{t:'Suggest an edit',intro:'Fix a detail on “'+E.t+'”. Edits are queued for a mod, then published with your name on the revision.',ph:'What should change, and what’s the source?',cta:'Send to mods',foot:'Queued for review · you’ll get a notification either way.',lock:true,
+        fields:[['CURRENT TITLE',E.t],['YEAR · CREATOR',E.year+' · '+E.by],['SUMMARY',E.blurb]]},
+      review:{t:'Write a review',intro:'“'+E.t+'” · your review shows next to your score, with your name.',ph:'No spoilers about the ending — that’s the one Archive rule.',cta:'Publish review',foot:'Reviews are public and editable. Spoiler-free by policy.',lock:true,fields:[]},
+      cw:{t:'Add a content note',intro:'Help people decide before they press play. Notes are member-tagged and only count once others agree.',ph:'e.g. on-screen biphobia, hospital scenes…',cta:'Add note',foot:'Notes never describe endings.',lock:false,fields:[]}
+    }[mode];
+    return{
+      shEdit:s.sheet==='edit',edTitle:M.t,edIntro:M.intro,edPh:M.ph,edCta:M.cta,edFoot:M.foot,
+      edLocked:pend&&M.lock,edOpen:!(pend&&M.lock),
+      edFields:M.fields.map(f=>({l:f[0],v:f[1],c:'var(--tx2)'})),
+      edIn:s.edIn,setEdIn:e=>this.setState({edIn:e.target.value}),
+      edSubmit:()=>{const t=s.edIn.trim();if(!t){this.T('Add a little detail first');return;}
+        this.setState({edIn:'',sheet:null});
+        this.T(mode==='review'?'Review published ✿':mode==='cw'?'Note added — others can agree with it now':'Sent to mods — you’ll hear back within a day');}
+    };
+  }
   /*RX-EXT*/
 }
 </script>
