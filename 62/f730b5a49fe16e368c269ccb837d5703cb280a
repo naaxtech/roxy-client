@@ -1,0 +1,45 @@
+supabase/downs/097_archive_triggers_down.sql
+  s_488a1686f9c1af::t_bc47589919d22c 1-21
+apps/mobile/lib/archive.ts
+  s_488a1686f9c1af::t_18c3242f102222 1-2,4-169,174-187,189
+  s_488a1686f9c1af::t_8647b910a606a8 3
+  s_488a1686f9c1af::t_98928b3d73d7e3 170-173,188
+"docs/handoff/roxy-3.0/Roxy App.dc.html"
+  s_488a1686f9c1af::t_c7a2c9f445fac5 343-363,951-1086,1316-1340,1520-1545,1573-1574,1607-1613,1646,1652-1653,1671-1672,1684,1975-2052
+apps/mobile/__tests__/lib/archiveSeed.test.ts
+  s_488a1686f9c1af::t_9aa0f7f6f1f455 1-104
+supabase/migrations/095_archive_core.sql
+  s_488a1686f9c1af::t_10b401f026104b 123-124
+  s_488a1686f9c1af::t_01f4a170d190ee 101-114
+  s_488a1686f9c1af::t_b62a3437735fa2 1-100,115-122,125-250
+supabase/migrations/098_archive_seed.sql
+  s_488a1686f9c1af::t_11a09274da95bd 1-415
+apps/mobile/__tests__/lib/archiveScore.test.ts
+  s_488a1686f9c1af::t_2c9a1c055f9945 80
+  s_488a1686f9c1af::t_bf202be014170b 1-79,81-94
+supabase/migrations/097_archive_triggers.sql
+  s_488a1686f9c1af::t_a7699b7c47f47e 1-33,37,40-164
+  s_488a1686f9c1af::t_c27235df66cf2b 34-36,38-39
+supabase/migrations/096_archive_rls.sql
+  s_488a1686f9c1af::t_510f1ea289e2b6 1-197
+supabase/downs/095_archive_core_down.sql
+  s_488a1686f9c1af::t_bc47589919d22c 1-27
+supabase/downs/096_archive_rls_down.sql
+  s_488a1686f9c1af::t_bc47589919d22c 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "62f730b5a49fe16e368c269ccb837d5703cb280a",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
