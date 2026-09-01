@@ -1,0 +1,49 @@
+apps/mobile/__tests__/hooks/useRealtime.test.ts
+  s_488a1686f9c1af::t_82cdc8884f03b9 10-16
+apps/mobile/__tests__/hooks/useTyping.reliability.test.ts
+  s_488a1686f9c1af::t_c9e41c0c972ce5 1-224
+apps/mobile/__tests__/components/chat/MessageStatus.test.tsx
+  s_488a1686f9c1af::t_ca3544762c07b1 1-76
+apps/mobile/__tests__/store/archiveStore.test.ts
+  s_488a1686f9c1af::t_9770a53258c12c 1-410
+apps/mobile/store/archiveStore.ts
+  s_488a1686f9c1af::t_e0fd760ab661b9 1-277
+apps/mobile/hooks/useRealtime.ts
+  s_488a1686f9c1af::t_803df64d7daf13 1-2,4-5,8-27,32-33,37,42-127,134,136,138-148,150-160,162-168,172-175,177-185,187-239,241-338,340-343,354-356,359,372-373,375,378-383,387,390,392-422
+apps/mobile/hooks/useMembership.ts
+  s_488a1686f9c1af::t_b4c2890db89a20 1-69
+apps/mobile/__tests__/hooks/useRealtime.reliability.test.ts
+  s_488a1686f9c1af::t_4871303a2e3090 27,34
+  s_488a1686f9c1af::t_da0e6199b67c25 1-26,28-33,35-506
+apps/mobile/hooks/useTyping.ts
+  s_488a1686f9c1af::t_1e5bae6ca2a792 2,14,17-56,58-61,66-81,83-87,92,94-103,106,115-116,118,120-133,135-154,156
+apps/mobile/__tests__/hooks/useTyping.test.ts
+  s_488a1686f9c1af::t_61a127f034d5ba 85-88
+apps/mobile/components/chat/MessageStatus.tsx
+  s_488a1686f9c1af::t_6d548c4a710af8 1-84
+apps/mobile/app/chat/[id].tsx
+  s_488a1686f9c1af::t_9601e01006c3b6 125
+  s_488a1686f9c1af::t_1ab2c538def166 120,126,476-479,499-509,511-520
+  s_488a1686f9c1af::t_4049c7bed8855d 15,61-64
+  s_488a1686f9c1af::t_bcd1a3b80ef410 23,761-779
+  s_488a1686f9c1af::t_2a44d70620ef61 121-124
+  s_488a1686f9c1af::t_0e1e065df7332d 138,461-464
+apps/mobile/__tests__/hooks/useMembership.test.ts
+  s_488a1686f9c1af::t_7da761cbf2224c 1-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "81991a0172804be664bf6aa812d5044ba4aa1262",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
