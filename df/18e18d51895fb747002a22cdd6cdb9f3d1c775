@@ -1,0 +1,27 @@
+apps/mobile/app/archive/index.tsx
+  s_488a1686f9c1af::t_8261a762dbea45 1-230
+apps/mobile/app/archive/[slug].tsx
+  s_488a1686f9c1af::t_236b508289c44c 1-329
+apps/mobile/__tests__/screens/ArchiveBrowse.test.tsx
+  s_488a1686f9c1af::t_ae87a8a0428d8d 1-154
+apps/mobile/lib/archive.ts
+  s_488a1686f9c1af::t_98194bc8fe8767 190-258
+apps/mobile/__tests__/screens/ArchiveEntry.test.tsx
+  s_488a1686f9c1af::t_fd716f9397e52d 1-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "df18e18d51895fb747002a22cdd6cdb9f3d1c775",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
