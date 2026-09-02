@@ -20,7 +20,9 @@
     "test:e2e": "playwright test",
     "test:e2e:audit": "playwright test tests/e2e/content-feed-audit.spec.ts",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "host:deploy": "npm run web:export && eas deploy --prod",
+    "host:preview": "npm run web:export && eas deploy"
   },
   "dependencies": {
     "@daily-co/react-native-daily-js": "^0.83.0",
