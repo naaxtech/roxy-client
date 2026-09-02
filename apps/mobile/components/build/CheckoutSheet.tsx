@@ -7,12 +7,15 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { usePopIn } from '../ui/popIn';
 import { formatMoney, currencyCode } from '../../lib/currency';
+import { inkOn } from '../../lib/theme';
+import { checkoutProgressLabel, CHECKOUT_STEPS, type CheckoutStep } from '../../lib/checkoutSteps';
 import { newIdempotencyKey, checkoutSignature } from '../../lib/idempotency';
 import type { ProductWithVariants, ShippingAddress, CheckoutLine } from '../../types/marketplace';
 
-type Step = 'review' | 'shipping' | 'payment';
 
-const STEPS: Step[] = ['review', 'shipping', 'payment'];
+// Step order and its labels live in lib/checkoutSteps so the announcement
+// and the indicator cannot disagree about which step she is on.
+const STEPS = CHECKOUT_STEPS;
 
 /** idle → creating (server opens the PaymentIntent) → paying (Stripe sheet) → confirming (webhook writes the order). */
 type Phase = 'idle' | 'creating' | 'paying' | 'confirming';
@@ -46,7 +49,7 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
   /** The seller's own currency — the one create-product-order opens the intent in. */
   const currency = businessCurrency(businessId);
 
-  const [step, setStep] = useState<Step>('review');
+  const [step, setStep] = useState<CheckoutStep>('review');
   const [shipping, setShipping] = useState<ShippingAddress>({
     name: '', line1: '', line2: '', city: '', state: '', postal_code: '', country: 'US',
   });
@@ -313,7 +316,7 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
     stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
     stepDotActive: { backgroundColor: colors.primary },
     stepDotDone: { backgroundColor: colors.primary + '80' },
-    stepDotText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+    stepDotText: { color: inkOn(colors.primary), fontWeight: '700', fontSize: 12 },
     stepLine: { flex: 1, height: 2, backgroundColor: colors.surface },
     stepLineDone: { backgroundColor: colors.primary + '80' },
     stepTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginBottom: 16 },
@@ -353,14 +356,29 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
         <Animated.View style={[styles.sheet, pop]}>
           <View style={styles.handle} />
           {/* Step indicator */}
-          <View style={styles.steps}>
+          {/* One announcement for the whole indicator, not three unlabelled
+              dots. A screen reader heard "1 2 3" here — on the one screen where
+              she is about to spend money. The row is the progress control; the
+              dots inside it are decoration and are hidden from assistive tech
+              so they are not read as three separate numbers. */}
+          <View
+            style={styles.steps}
+            accessibilityRole="progressbar"
+            accessibilityLabel={checkoutProgressLabel(step)}
+            accessibilityValue={{ min: 1, max: STEPS.length, now: STEPS.indexOf(step) + 1 }}
+            testID="checkout-progress"
+          >
             {STEPS.map((s, i) => (
               <React.Fragment key={s}>
-                <View style={[
-                  styles.stepDot,
-                  step === s && styles.stepDotActive,
-                  STEPS.indexOf(step) > i && styles.stepDotDone,
-                ]}>
+                <View
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                  style={[
+                    styles.stepDot,
+                    step === s && styles.stepDotActive,
+                    STEPS.indexOf(step) > i && styles.stepDotDone,
+                  ]}
+                >
                   <Text style={styles.stepDotText}>{i + 1}</Text>
                 </View>
                 {i < 2 && (
