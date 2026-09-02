@@ -30,10 +30,23 @@
 export type ProfileVariant = 'user' | 'seller' | 'community' | 'self';
 
 export type ProfileTab =
-  | 'posts' | 'shop' | 'events' | 'rooms' | 'games' | 'about' | 'saved';
+  | 'posts' | 'shop' | 'events' | 'rooms' | 'games' | 'about' | 'saved'
+  // Storefront-only. The design names six tabs, but a real shop also carries a
+  // photo wall and its shipping and returns terms — and folding policies into
+  // About would bury the one section a buyer reads before she pays.
+  | 'photos' | 'policies';
 
-/** Whether each tab has anything to put inside it. */
-export type PopulatedTabs = Record<ProfileTab, boolean>;
+/**
+ * Whether each tab has anything to put inside it.
+ *
+ * The storefront-only pair is optional: a woman's profile has no policies and
+ * should not have to declare that it does not. An absent key is falsy, which is
+ * the same answer `visibleTabs` gives an explicit `false`.
+ */
+export type StorefrontTab = 'photos' | 'policies';
+export type PopulatedTabs =
+  Record<Exclude<ProfileTab, StorefrontTab>, boolean>
+  & Partial<Record<StorefrontTab, boolean>>;
 
 /**
  * The tabs each variant is *allowed* to show, in prototype order.
@@ -50,7 +63,7 @@ export type PopulatedTabs = Record<ProfileTab, boolean>;
  */
 const ALLOWED_TABS: Record<ProfileVariant, readonly ProfileTab[]> = {
   user: ['posts', 'events', 'rooms', 'games', 'about'],
-  seller: ['posts', 'shop', 'events', 'rooms', 'games', 'about'],
+  seller: ['posts', 'shop', 'photos', 'events', 'rooms', 'games', 'about', 'policies'],
   community: ['posts', 'rooms', 'events', 'games', 'about'],
   self: ['posts', 'saved', 'shop', 'events', 'rooms', 'games', 'about'],
 };
@@ -58,6 +71,8 @@ const ALLOWED_TABS: Record<ProfileVariant, readonly ProfileTab[]> = {
 /** Human labels for the strip. One spelling, so no two screens disagree. */
 export const TAB_LABELS: Record<ProfileTab, string> = {
   posts: 'Posts',
+  photos: 'Photos',
+  policies: 'Policies',
   shop: 'Shop',
   events: 'Events',
   rooms: 'Rooms',

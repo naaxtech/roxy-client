@@ -176,3 +176,36 @@ describe('profileLevel — ProfileCard bands, kept', () => {
     expect(profileLevel(-5).label).toBe('Seedling');
   });
 });
+
+describe('a storefront keeps what a storefront needs', () => {
+  it('lets a seller show photos and policies', () => {
+    // The design names Posts / Shop / Events / Rooms / Games / About. A real
+    // storefront also carries a photo wall and its shipping and returns terms,
+    // and folding policies into About would bury the one section a buyer looks
+    // for before she pays. Allowed for `seller` only.
+    const tabs = visibleTabs('seller', {
+      posts: false, shop: true, events: false, rooms: false,
+      games: false, about: true, saved: false, photos: true, policies: true,
+    });
+    expect(tabs).toContain('photos');
+    expect(tabs).toContain('policies');
+  });
+
+  it('gives nobody else a policies tab', () => {
+    for (const variant of ['user', 'community', 'self'] as const) {
+      const tabs = visibleTabs(variant, {
+        posts: true, shop: true, events: true, rooms: true,
+        games: true, about: true, saved: true, photos: true, policies: true,
+      });
+      expect(tabs).not.toContain('policies');
+    }
+  });
+
+  it('still hides them when there is nothing in them', () => {
+    const tabs = visibleTabs('seller', {
+      posts: false, shop: true, events: false, rooms: false,
+      games: false, about: false, saved: false, photos: false, policies: false,
+    });
+    expect(tabs).toEqual(['shop']);
+  });
+});
