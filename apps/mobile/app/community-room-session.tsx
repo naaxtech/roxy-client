@@ -19,6 +19,11 @@ import { useVideoCall } from '../hooks/useVideoCall';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { logError } from '../lib/errorLogger';
 import { showAlert, confirmAction } from '../lib/confirm';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../store/authStore';
+import { useSafetyStore } from '../store/safetyStore';
+import { ConsentStrip } from '../components/rooms/ConsentStrip';
+import { roomReportTarget, roomBlockTarget } from './roomSafety';
 import { useAppWidth } from '../hooks/useAppWidth';
 import type { RemoteParticipant } from '../lib/video/VideoCallProvider';
 
@@ -200,6 +205,10 @@ export default function CommunityRoomSession() {
   const [provider] = useState(() => new DailyProvider());
   const { state, remoteParticipants, localVideoVersion, localMediaState } = useVideoCall(provider);
   const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
+  // The room's creator. `join-community-room` does not return it, and the
+  // ConsentStrip needs a subject: a report hands a moderator the session, and a
+  // block has to be about a person. See app/roomSafety.ts.
+  const [hostId, setHostId] = useState<string | null>(null);
 
   // Real provider state, not a client-side guess. Defaults match the actual
   // join params (startAudioOff: true, camera on) until the first sync arrives.
@@ -387,6 +396,75 @@ export default function CommunityRoomSession() {
     };
   }, [room_id, provider, router]);
 
+  const viewerId = useAuthStore((st) => st.user?.id ?? null);
+  const openReportModal = useSafetyStore((st) => st.openReportModal);
+  const blockUser = useSafetyStore((st) => st.blockUser);
+
+  // Who opened the room. join-community-room does not return it, so it is read
+  // here — the strip needs a subject before it can offer report or block.
+  useEffect(() => {
+    if (!room_id) return;
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from('community_rooms')
+        .select('created_by')
+        .eq('id', room_id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) { logError(error, 'roomSession_loadHost'); return; }
+      setHostId((data as { created_by?: string } | null)?.created_by ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [room_id]);
+
+  const handleReport = () => {
+    const target = roomReportTarget({ roomId: String(room_id ?? ''), hostId });
+    if (!target) {
+      showAlert('Cannot report yet', 'We could not identify this room. Leave and try from the community page.');
+      return;
+    }
+    openReportModal(target);
+  };
+
+  const handleBlock = async () => {
+    const target = roomBlockTarget({ hostId, viewerId });
+    if (!target) {
+      showAlert('Nothing to block', 'This room has no other host to block.');
+      return;
+    }
+    const ok = await confirmAction(
+      'Block the host?',
+      'She will not be able to see you or reach you anywhere on Roxy. You will leave this room.',
+      'Block'
+    );
+    if (!ok) return;
+    try {
+      await blockUser(target);
+    } catch (e) {
+      // blockUser throws on a failed RPC. Never say "blocked" over a write that
+      // did not land — this app has told a woman she was protected when she
+      // was not, and it is the reason that store re-reads its own state.
+      logError(e, 'roomSession_block');
+      showAlert('Not blocked', 'We could not block her. Check your connection and try again.');
+      return;
+    }
+    await provider.leave().catch(() => {});
+    router.back();
+  };
+
+  /**
+   * Leave without telling anyone.
+   *
+   * Different promise from the Leave button, which confirms first. Nobody is
+   * notified and nothing is announced — that is the whole point of the control,
+   * and it is why it does not reuse handleLeave.
+   */
+  const handleLeaveQuietly = async () => {
+    await provider.leave().catch(() => {});
+    router.back();
+  };
+
   const handleLeave = async () => {
     const ok = await confirmAction('Leave Room?', 'Are you sure you want to leave?', 'Leave');
     if (!ok) return;
@@ -562,6 +640,19 @@ export default function CommunityRoomSession() {
           </View>
         </View>
       </SafeAreaView>
+
+      {/* ── The way out ─────────────────────────────────────────────────
+          Pinned, above the media controls, present in every frame. This screen
+          shipped with a Leave button and nothing else: a woman being talked
+          over in a live room had no report and no block without backing out
+          first. Speed dating has had this strip since it was built; the room
+          is the surface where a stranger reaches a whole community. */}
+      <ConsentStrip
+        onEnd={() => void handleLeave()}
+        onReport={handleReport}
+        onBlock={() => void handleBlock()}
+        onLeaveQuietly={() => void handleLeaveQuietly()}
+      />
 
       {/* ── Bottom controls ─────────────────────────────────────────────── */}
       <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
