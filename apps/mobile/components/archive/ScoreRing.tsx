@@ -97,12 +97,9 @@ export function ScoreRing({ score, size = DEFAULT_SIZE, testID }: Props) {
             <Text style={s.caption}>REC</Text>
           </>
         ) : (
-          <>
-            <Text style={s.newLabel}>NEW</Text>
-            <Text style={s.caption}>
-              {score.total} {score.total === 1 ? 'vote' : 'votes'}
-            </Text>
-          </>
+          // Nobody has rated it. "0 votes" reads as a defect; "Unreviewed"
+          // reads as an invitation, which is what an empty entry actually is.
+          <Text style={s.newLabel}>Unreviewed</Text>
         )}
       </View>
     </View>

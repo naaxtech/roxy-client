@@ -12,9 +12,31 @@ const flat = (node: { props: { style?: unknown } }) =>
 afterEach(() => useThemeStore.setState({ theme: 'dark' }));
 
 describe('MediaTypeChips', () => {
-  it('offers the prototype six, in order', () => {
+  it('names the types the way a person browsing would, not the way the enum does', () => {
+    // The column is still film/tv/comic — only what she reads changed. "Comic"
+    // excluded manga by implication, which is much of what that category holds.
     const v = render(<MediaTypeChips value={null} onChange={jest.fn()} />);
-    ['All', 'Film', 'TV', 'Book', 'Comic', 'Music'].forEach((l) => expect(v.getByText(l)).toBeTruthy());
+    ['Everything', 'Movies', 'Series', 'Books', 'Comics & Manga', 'Music']
+      .forEach((l) => expect(v.getByText(l)).toBeTruthy());
+  });
+
+  it('shows how many entries each type has, when it is given counts', () => {
+    const v = render(
+      <MediaTypeChips
+        value={null}
+        onChange={jest.fn()}
+        counts={{ film: 12, tv: 10, book: 11, comic: 6, music: 6 }}
+        testID="t"
+      />
+    );
+    // Everything carries the sum, so the row totals the catalogue at a glance.
+    expect(v.getByTestId('t-all').props.accessibilityLabel).toBe('Everything, 45 entries');
+    expect(v.getByTestId('t-comic').props.accessibilityLabel).toBe('Comics & Manga, 6 entries');
+  });
+
+  it('renders without counts at all when it is not given any', () => {
+    const v = render(<MediaTypeChips value={null} onChange={jest.fn()} testID="t" />);
+    expect(v.getByTestId('t-film').props.accessibilityLabel).toBe('Movies');
   });
 
   it('treats All as no filter rather than a seventh media type', () => {
@@ -42,14 +64,42 @@ describe('MediaTypeChips', () => {
     expect(on.props.accessibilityState.checked).toBe(true);
   });
 
-  it('fills the selected chip with the theme primary, in both themes', () => {
+  it('fills the selected PILL with the theme primary, in both themes', () => {
+    // The fill is on the pill, not on the touch target: the target is a 44pt
+    // box with no paint, so a 44pt slab of primary is exactly what this row
+    // must not render.
     const dark = render(<MediaTypeChips value="tv" onChange={jest.fn()} testID="t" />);
-    expect(flat(dark.getByTestId('t-tv')).backgroundColor).toBe(THEMES.dark.primary);
+    expect(flat(dark.getByTestId('t-tv-pill')).backgroundColor).toBe(THEMES.dark.primary);
     dark.unmount();
 
     useThemeStore.setState({ theme: 'light' });
     const light = render(<MediaTypeChips value="tv" onChange={jest.fn()} testID="t" />);
-    expect(flat(light.getByTestId('t-tv')).backgroundColor).toBe(THEMES.light.primary);
+    expect(flat(light.getByTestId('t-tv-pill')).backgroundColor).toBe(THEMES.light.primary);
+  });
+
+  it('keeps a full touch target while the pill stays visually light', () => {
+    // The whole point of the redesign. The target is >= 44pt and measured; the
+    // pill inside is smaller, so the row reads as chips rather than as slabs.
+    const v = render(<MediaTypeChips value={null} onChange={jest.fn()} testID="t" />);
+    const target = flat(v.getByTestId('t-film'));
+    const pill = flat(v.getByTestId('t-film-pill'));
+    expect(Number(target.minHeight)).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
+    expect(Number(pill.height)).toBeLessThan(MIN_TOUCH_TARGET);
+  });
+
+  it('dims a type with nothing in it rather than hiding it', () => {
+    // Hiding an empty category makes the row jump around as the catalogue
+    // grows; dimming says "nothing here yet" without moving anything.
+    const v = render(
+      <MediaTypeChips
+        value={null}
+        onChange={jest.fn()}
+        counts={{ film: 12, tv: 0, book: 11, comic: 6, music: 6 }}
+        testID="t"
+      />
+    );
+    expect(Number(flat(v.getByTestId('t-tv')).opacity)).toBeLessThan(1);
+    expect(flat(v.getByTestId('t-film')).opacity).toBeUndefined();
   });
 
   it('sizes every chip to the touch-target floor', () => {

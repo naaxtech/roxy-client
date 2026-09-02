@@ -19,12 +19,20 @@ import { ilikePattern } from './ilikePattern';
  */
 
 /**
- * How many votes an entry needs before it shows a number at all.
+ * How many votes an entry needs before it can be RANKED.
  *
- * Mirrored by `archive_entries.has_score` (migration 095) so the ORDER BY and
- * the label agree — "Top rated" leading with an unearned 100% is the same bug
- * in a different clause. `__tests__/lib/archiveScore.test.ts` reads the
- * threshold out of the migration and fails if the two drift.
+ * This used to gate display as well: under ten votes an entry showed no
+ * percentage at all. That was changed deliberately — an entry one woman has
+ * rated now shows her rating, because hiding it made a catalogue of 45 titles
+ * look like a catalogue of none, and because a score with its sample size
+ * printed beside it is information rather than a claim.
+ *
+ * It still gates RANKING. "Top rated" leading with a 100% built from a single
+ * vote is a different problem from showing that 100% on the entry's own row:
+ * one is the app making a recommendation, the other is the app reporting what
+ * it has. Mirrored by `archive_entries.has_score` (migration 095), and
+ * `__tests__/lib/archiveScore.test.ts` reads the threshold out of the migration
+ * so the two cannot drift.
  */
 export const SCORE_GATE = 10;
 
@@ -64,14 +72,11 @@ export function verdictFor(percent: number): ArchiveVerdict {
 }
 
 export function formatScore(up: number, total: number): ArchiveScore {
-  if (total < SCORE_GATE) {
-    return {
-      hasScore: false,
-      percent: null,
-      label: `NEW · ${total} ${total === 1 ? 'vote' : 'votes'}`,
-      verdict: null,
-      total,
-    };
+  // Nobody has rated it. There is no statistic to show and none to imply —
+  // "0%" would read as a verdict and "NEW · 0 votes" reads as a defect. It is
+  // simply unreviewed, and saying so is an invitation rather than an absence.
+  if (total <= 0) {
+    return { hasScore: false, percent: null, label: 'Unreviewed', verdict: null, total: 0 };
   }
 
   // A denormalized up_count above vote_count means a counter trigger drifted.

@@ -52,7 +52,7 @@ export function ScorePill({ score, testID }: Props) {
       <View
         style={[s.pill, s.unscored]}
         testID={testID}
-        accessibilityLabel={`Not scored yet, ${score.total} ${score.total === 1 ? 'vote' : 'votes'} so far`}
+        accessibilityLabel="Not reviewed yet"
       >
         <Text style={s.unscoredText}>{score.label}</Text>
       </View>

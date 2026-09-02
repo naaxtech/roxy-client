@@ -16,6 +16,8 @@ import { Analytics } from '../../lib/analytics';
 import { archiveDetailPath } from '../../lib/contentNavigation';
 import { ArchiveRow } from '../../components/archive/ArchiveRow';
 import { MediaTypeChips } from '../../components/archive/MediaTypeChips';
+import { countByType, type TypeCounts } from '../../lib/archiveTypes';
+import { fetchArchiveEntries } from '../../lib/archive';
 import { SortChips } from '../../components/archive/SortChips';
 import { PendingBanner } from '../../components/archive/PendingBanner';
 import type { ArchiveEntry } from '../../lib/archive';
@@ -50,6 +52,27 @@ export default function ArchiveBrowseScreen() {
   const hydrateMine = useArchiveStore((s) => s.hydrateMine);
 
   const [lockedOpen, setLockedOpen] = useState(false);
+
+  // Counts come from their OWN query, not from `entries`. The list is already
+  // narrowed by her search and her type — counting it would make every chip
+  // read the size of the current result, so "Movies 12" would drop to "Movies 1"
+  // the moment she typed, which is the opposite of what a filter count is for.
+  const [typeCounts, setTypeCounts] = useState<TypeCounts | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const all = await fetchArchiveEntries({ sort: 'newest', limit: 500 });
+        if (!cancelled) setTypeCounts(countByType(all));
+      } catch {
+        // fetchArchiveEntries logs before throwing. A failed count is not a
+        // failed screen — the chips simply render without numbers.
+        if (!cancelled) setTypeCounts(undefined);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     Analytics.archiveViewed();
@@ -207,6 +230,7 @@ export default function ArchiveBrowseScreen() {
       <MediaTypeChips
         value={filters.mediaType}
         onChange={(mediaType) => setFilters({ mediaType })}
+        counts={typeCounts}
       />
       <SortChips value={filters.sort} onChange={(sort) => setFilters({ sort })} />
 

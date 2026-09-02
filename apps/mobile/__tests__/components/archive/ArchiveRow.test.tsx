@@ -39,10 +39,17 @@ describe('ArchiveRow', () => {
     expect(v.getByText('41 reviews')).toBeTruthy();
   });
 
-  it('scores through formatScore, so a 1-vote entry never shows 100%', () => {
+  it('says Unreviewed when nobody has rated it', () => {
+    const v = render(<ArchiveRow entry={entry({ vote_count: 0, up_count: 0, has_score: false })} onPress={jest.fn()} />);
+    expect(v.getByText('Unreviewed')).toBeTruthy();
+    expect(v.queryByText('0%')).toBeNull();
+  });
+
+  it('shows the rating beside its sample size from the first vote', () => {
     const v = render(<ArchiveRow entry={entry({ vote_count: 1, up_count: 1, has_score: false })} onPress={jest.fn()} />);
-    expect(v.queryByText('100%')).toBeNull();
-    expect(v.getByText('NEW · 1 vote')).toBeTruthy();
+    expect(v.getByText('100%')).toBeTruthy();
+    // The count travels with the number, so 100% is never bare.
+    expect(v.getByText(/1 vote/)).toBeTruthy();
   });
 
   it('shows at most the top two content notes', () => {

@@ -40,20 +40,23 @@ describe('ScoreRing', () => {
     expect(v.getByText('REC')).toBeTruthy();
   });
 
-  it('draws no arc at all below the gate', () => {
-    // The gate is defeated the moment an unscored entry gets a coloured ring:
-    // a nearly-full circle reads as a score whatever the label under it says.
-    const v = render(<ScoreRing score={formatScore(3, 3)} testID="r" />);
+  it('draws no arc at all when nobody has rated it', () => {
+    // A coloured ring over nothing reads as a score whatever the label says.
+    const v = render(<ScoreRing score={formatScore(0, 0)} testID="r" />);
     expect(v.queryByTestId('r-progress')).toBeNull();
     expect(v.getByTestId('r-track').props.stroke).toBe(THEMES.dark.line);
-    expect(v.getByText('NEW')).toBeTruthy();
-    expect(v.getByText('3 votes')).toBeTruthy();
+    expect(v.getByText('Unreviewed')).toBeTruthy();
     expect(v.queryByText('REC')).toBeNull();
   });
 
+  it('draws the arc from the first rating', () => {
+    const v = render(<ScoreRing score={formatScore(1, 1)} testID="r" />);
+    expect(v.getByTestId('r-progress')).toBeTruthy();
+  });
+
   it('announces the whole score in one phrase', () => {
-    const v = render(<ScoreRing score={formatScore(3, 3)} testID="r" />);
-    expect(v.getByTestId('r').props.accessibilityLabel).toBe('NEW · 3 votes');
+    const v = render(<ScoreRing score={formatScore(0, 0)} testID="r" />);
+    expect(v.getByTestId('r').props.accessibilityLabel).toBe('Unreviewed');
   });
 
   it('scales the geometry with the size it is given', () => {

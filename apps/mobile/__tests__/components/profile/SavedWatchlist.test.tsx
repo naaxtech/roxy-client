@@ -74,12 +74,12 @@ describe('SavedWatchlist', () => {
   });
 
   it('scores each row through formatScore, never its own arithmetic', async () => {
-    // 1 vote must not render 100% here any more than anywhere else.
+    // Unrated reads "Unreviewed" — not 0%, and not a count dressed as a score.
     useArchiveStore.setState({ watchlist: ['e3'] } as never);
-    mockFetch.mockResolvedValue([entry({ id: 'e3', slug: 'new', title: 'New', vote_count: 1, up_count: 1, has_score: false })]);
+    mockFetch.mockResolvedValue([entry({ id: 'e3', slug: 'new', title: 'New', vote_count: 0, up_count: 0, has_score: false })]);
     const { getByText, queryByText } = render(<SavedWatchlist />);
     await waitFor(() => expect(getByText('New')).toBeTruthy());
-    expect(queryByText('100%')).toBeNull();
-    expect(getByText('NEW · 1 vote')).toBeTruthy();
+    expect(queryByText('0%')).toBeNull();
+    expect(getByText('Unreviewed')).toBeTruthy();
   });
 });

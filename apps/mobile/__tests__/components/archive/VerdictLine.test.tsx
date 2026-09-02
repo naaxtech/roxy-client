@@ -10,12 +10,19 @@ describe('VerdictLine', () => {
     expect(render(<VerdictLine score={formatScore(20, 100)} />).getByText('Most of us said skip it')).toBeTruthy();
   });
 
-  it('renders NOTHING below the gate', () => {
-    // A verdict under an unscored entry is the gate defeated by the sentence
-    // under it: "Most of us said skip it" off three votes is a lie with the
-    // number withheld.
-    const v = render(<VerdictLine score={formatScore(1, 3)} />);
+  it('renders NOTHING when nobody has rated it', () => {
+    // There is no verdict to give. A sentence here would be the app inventing
+    // an opinion out of an empty column.
+    const v = render(<VerdictLine score={formatScore(0, 0)} />);
     expect(v.toJSON()).toBeNull();
+  });
+
+  it('renders a verdict from the first rating, with the count beside it', () => {
+    const v = render(<VerdictLine score={formatScore(1, 3)} />);
+    expect(v.getByText('Most of us said skip it')).toBeTruthy();
+    // The sample size is never hidden — that is what keeps a verdict off three
+    // votes honest rather than authoritative.
+    expect(v.getByText('3 members voted')).toBeTruthy();
   });
 
   it('says how many members voted', () => {

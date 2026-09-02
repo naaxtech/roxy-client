@@ -17,35 +17,41 @@ import { formatScore, SCORE_GATE, verdictFor } from '../../lib/archive';
  * the threshold out of the migration and fails if the two ever disagree.
  */
 
-describe('the vote gate', () => {
-  it('shows no percentage under ten votes, and says how far off it is', () => {
-    const s = formatScore(1, 1);
+describe('an entry nobody has rated', () => {
+  it('says Unreviewed rather than showing a statistic built from nothing', () => {
+    const s = formatScore(0, 0);
     expect(s.hasScore).toBe(false);
     expect(s.percent).toBeNull();
-    expect(s.label).toBe('NEW · 1 vote');
+    expect(s.verdict).toBeNull();
+    expect(s.label).toBe('Unreviewed');
+  });
+});
+
+describe('an entry someone has rated', () => {
+  it('shows the rating from the very first vote', () => {
+    const s = formatScore(1, 1);
+    expect(s.hasScore).toBe(true);
+    expect(s.percent).toBe(100);
+    expect(s.label).toBe('100%');
   });
 
-  it('pluralises honestly', () => {
-    expect(formatScore(4, 9).label).toBe('NEW · 9 votes');
-    expect(formatScore(0, 0).label).toBe('NEW · 0 votes');
+  it('shows it at every count below the ranking gate too', () => {
+    expect(formatScore(4, 9).percent).toBe(44);
+    expect(formatScore(9, 10).percent).toBe(90);
   });
 
-  it('opens exactly at ten, not at eleven', () => {
-    expect(formatScore(9, 10).hasScore).toBe(true);
-    expect(formatScore(9, 9).hasScore).toBe(false);
-  });
-
-  it('shows the percentage once the gate is passed', () => {
-    const s = formatScore(9, 10);
-    expect(s.percent).toBe(90);
-    expect(s.label).toBe('90%');
+  it('carries the sample size, so a 100% off one vote is never bare', () => {
+    // The rating shows from the first vote, but the number it rests on travels
+    // with it. `total` is what every surface prints beside the percentage.
+    expect(formatScore(1, 1).total).toBe(1);
+    expect(formatScore(9, 10).total).toBe(10);
   });
 
   it('rounds rather than truncating, so 2/3 is 67 and not 66', () => {
     expect(formatScore(20, 30).percent).toBe(67);
   });
 
-  it('treats a total of zero as ungated rather than dividing by it', () => {
+  it('never divides by zero', () => {
     expect(formatScore(0, 0).percent).toBeNull();
     expect(formatScore(0, 0).hasScore).toBe(false);
   });
@@ -73,16 +79,20 @@ describe('the verdict bands', () => {
     expect(verdictFor(100)).toBe('Community favourite');
   });
 
-  it('has no verdict for an entry that has no score', () => {
-    // A verdict under the gate would be the gate defeated by the sentence
-    // underneath it.
-    expect(formatScore(1, 1).verdict).toBeNull();
+  it('has no verdict for an entry nobody has rated', () => {
+    // There is nothing to summarise. A verdict over zero votes would be the
+    // app inventing an opinion.
+    expect(formatScore(0, 0).verdict).toBeNull();
+  });
+
+  it('has a verdict as soon as there is a rating to summarise', () => {
+    expect(formatScore(1, 1).verdict).toBe('Community favourite');
     expect(formatScore(9, 10).verdict).toBe('Community favourite');
   });
 });
 
-describe('the gate the database sorts by', () => {
-  it('is the same number this helper labels with', () => {
+describe('the gate the database RANKS by', () => {
+  it('is the same number the client uses to decide what may be ranked', () => {
     const sql = readFileSync(
       join(__dirname, '..', '..', '..', '..', 'supabase', 'migrations', '095_archive_core.sql'),
       'utf8'

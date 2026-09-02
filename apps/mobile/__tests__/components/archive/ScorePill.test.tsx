@@ -29,16 +29,17 @@ describe('ScorePill', () => {
     expect(render(<ScorePill score={formatScore(20, 100)} />).getByText('🥀')).toBeTruthy();
   });
 
-  it('says NEW and the vote count below the gate, never a number it has not earned', () => {
-    const v = render(<ScorePill score={formatScore(3, 3)} />);
-    expect(v.getByText('NEW · 3 votes')).toBeTruthy();
-    expect(v.queryByText('100%')).toBeNull();
-    // No flower either: an icon here is a verdict the votes do not support.
+  it('says Unreviewed when nobody has rated it, with no icon and no number', () => {
+    const v = render(<ScorePill score={formatScore(0, 0)} />);
+    expect(v.getByText('Unreviewed')).toBeTruthy();
+    expect(v.queryByText('0%')).toBeNull();
+    // No flower either: an icon here is a verdict nothing supports.
     expect(v.queryByText('✿')).toBeNull();
   });
 
-  it('singularises one vote', () => {
-    expect(render(<ScorePill score={formatScore(1, 1)} />).getByText('NEW · 1 vote')).toBeTruthy();
+  it('shows the rating from the very first vote', () => {
+    const v = render(<ScorePill score={formatScore(1, 1)} />);
+    expect(v.getByText('100%')).toBeTruthy();
   });
 
   it('paints the band gradient, not the brand ramp', () => {
@@ -46,20 +47,20 @@ describe('ScorePill', () => {
     expect(v.getByTestId('p').props.colors).toEqual(SCORE_GRADIENT.good);
   });
 
-  it('drops to a neutral theme surface below the gate, in both themes', () => {
-    const dark = render(<ScorePill score={formatScore(2, 2)} testID="p" />);
+  it('drops to a neutral theme surface when unreviewed, in both themes', () => {
+    const dark = render(<ScorePill score={formatScore(0, 0)} testID="p" />);
     expect(flat(dark.getByTestId('p')).backgroundColor).toBe(THEMES.dark.surfaceLight);
     dark.unmount();
 
     useThemeStore.setState({ theme: 'light' });
-    const light = render(<ScorePill score={formatScore(2, 2)} testID="p" />);
+    const light = render(<ScorePill score={formatScore(0, 0)} testID="p" />);
     expect(flat(light.getByTestId('p')).backgroundColor).toBe(THEMES.light.surfaceLight);
   });
 
   it('announces itself as a sentence rather than a flower glyph', () => {
     const v = render(<ScorePill score={formatScore(84, 100)} testID="p" />);
     expect(v.getByTestId('p').props.accessibilityLabel).toBe('84% of 100 members recommend it');
-    const fresh = render(<ScorePill score={formatScore(3, 3)} testID="q" />);
-    expect(fresh.getByTestId('q').props.accessibilityLabel).toBe('Not scored yet, 3 votes so far');
+    const fresh = render(<ScorePill score={formatScore(0, 0)} testID="q" />);
+    expect(fresh.getByTestId('q').props.accessibilityLabel).toBe('Not reviewed yet');
   });
 });
