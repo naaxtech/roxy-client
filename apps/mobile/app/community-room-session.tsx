@@ -435,7 +435,11 @@ export default function CommunityRoomSession() {
     }
     const ok = await confirmAction(
       'Block the host?',
-      'She will not be able to see you or reach you anywhere on Roxy. You will leave this room.',
+      // Precise, because the previous wording promised more than a block does.
+      // A block hides her posts, profile and DMs and keeps her out of your
+      // speed-date queue (102) — it does NOT stop you both being in the same
+      // community room, which is a many-person space nobody is matched into.
+      'She will not see your posts or profile, she cannot message you, and you will never be matched in Speed Dating. She can still open community rooms. You will leave this one now.',
       'Block'
     );
     if (!ok) return;
