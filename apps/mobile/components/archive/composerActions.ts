@@ -174,9 +174,14 @@ export async function submitEdit(
   // proposes nothing. Refused here rather than spent as someone's attention.
   if (Object.keys(patch).length === 0) return { data: null, error: EMPTY_EDIT_ERROR };
 
+  // The key is `fields`, not `patch`. The deployed function reads `body.fields`
+  // and 400s on anything else, so this sent every edit into a rejection that
+  // surfaced to her as the developer string "fields must be an object of
+  // proposed changes". Pinned by archiveEditContract.test.ts, which reads the
+  // function's own source.
   const { data, error } = await callEdgeFunction<{ revision_id: string }>(
     'archive-submit-edit',
-    { entry_id: entryId, patch }
+    { entry_id: entryId, fields: patch }
   );
 
   if (error) return { data: null, error };

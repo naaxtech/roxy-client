@@ -14,6 +14,7 @@ import { DevPanel } from '../components/dev/DevPanel';
 import { Analytics } from '../lib/analytics';
 import { logError, logBreadcrumb, setCrashlyticsUser, hashUserId } from '../lib/errorLogger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { ReportSheet } from '../components/safety/ReportSheet';
 import { useThemeStore } from '../store/themeStore';
 import { THEMES } from '../lib/theme';
 import { useAppFonts } from '../hooks/useAppFonts';
@@ -198,6 +199,13 @@ function AppNavigator() {
         <WebAppFrame>
           <ErrorBoundary>
             <Stack screenOptions={{ headerShown: false }} />
+            {/* Mounted once, at the root, so every surface that calls
+                safetyStore.openReportModal actually opens something. Before
+                this, nothing in the app read isReportModalOpen — the Report
+                button on a live audio room and on a video date with a stranger
+                did nothing at all. Chat kept working only because it carries
+                its own local modal. */}
+            <ReportSheet />
           </ErrorBoundary>
         </WebAppFrame>
         {__DEV__ && <DevPanel />}

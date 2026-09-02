@@ -158,7 +158,17 @@ export async function fetchArchiveEntries(opts: ArchiveQuery = {}): Promise<Arch
     if (pattern) q = q.or(`title.ilike.${pattern},creator.ilike.${pattern}`);
   }
 
-  if (sort === 'top') q = q.eq('has_score', true).order('up_count', { ascending: false });
+  if (sort === 'top') {
+    // Gated entries only, ordered by RATIO — not by raw yes-count.
+    //
+    // `.order('up_count')` sorted by popularity while calling itself Top rated,
+    // so The L Word at 58% ("Divisive") outranked entries at 97% purely on
+    // volume, and every well-liked entry with a modest vote count fell off the
+    // list. PostgREST cannot order by an expression, so the ratio is computed
+    // client-side after fetching the gated set — which is bounded, because
+    // has_score already excludes everything under ten votes.
+    q = q.eq('has_score', true).order('vote_count', { ascending: false });
+  }
   else if (sort === 'voted') q = q.order('vote_count', { ascending: false });
   else q = q.order('published_at', { ascending: false });
 
@@ -166,6 +176,18 @@ export async function fetchArchiveEntries(opts: ArchiveQuery = {}): Promise<Arch
   if (error) {
     logError(error, 'archive.fetchArchiveEntries');
     throw error;
+  }
+
+  if (sort === 'top') {
+    const rows = (data ?? []) as unknown as ArchiveEntry[];
+    // Ratio descending, then vote_count as the tie-break so a 100% off ten
+    // votes does not outrank a 100% off a thousand.
+    return [...rows].sort((a, b) => {
+      const ra = a.vote_count > 0 ? a.up_count / a.vote_count : 0;
+      const rb = b.vote_count > 0 ? b.up_count / b.vote_count : 0;
+      if (rb !== ra) return rb - ra;
+      return b.vote_count - a.vote_count;
+    });
   }
   // The generated Database types do not know the archive tables yet, so the
   // client infers PostgREST's error shape here. Cast through unknown rather

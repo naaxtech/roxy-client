@@ -53,6 +53,10 @@ export default function ArchiveEntryScreen() {
   const [detail, setDetail] = useState<ArchiveEntryDetail>({ notes: [], reviews: [] });
   const [status, setStatus] = useState<Status>('loading');
   const [lockedOpen, setLockedOpen] = useState(false);
+  // Above every early return — this screen returns early for loading, missing
+  // and error, and a hook declared after those runs in a different order on
+  // each of them.
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -86,6 +90,7 @@ export default function ArchiveEntryScreen() {
     sectionTitle: { ...TYPE.title, color: colors.textPrimary },
     notes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     hint: { ...TYPE.micro, color: colors.textMuted },
+    actionError: { ...TYPE.caption, color: colors.error, fontWeight: '700' },
     review: {
       gap: 4, padding: 12, borderRadius: RADII.md,
       backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
@@ -180,9 +185,28 @@ export default function ArchiveEntryScreen() {
     .filter((p) => p !== null && p !== undefined && String(p).length > 0)
     .join(' · ');
 
+  // Every one of these store actions THROWS by design — agreeNote's own
+  // docstring says a pending member's 42501 "must reach the caller as a real,
+  // specific error — never swallowed into a silent no-op". The screen was the
+  // caller that swallowed it: `void vote(...)` with no catch, so a failed vote
+  // lit the button, silently reverted, and said nothing.
+  const runAction = async (label: string, fn: () => Promise<unknown>) => {
+    setActionError(null);
+    try {
+      await fn();
+    } catch (e) {
+      logError(e, `archiveEntry.${label}`);
+      setActionError(e instanceof Error ? e.message : 'That did not save. Please try again.');
+    }
+  };
+
   const castVote = async (value: boolean) => {
-    Analytics.archiveVoteCast(entry.slug, value, membership.status);
-    await vote(entry.id, value);
+    // Analytics AFTER the write, not before: firing first counted votes that
+    // never landed, which is the same lie in the metrics as in the UI.
+    await runAction('vote', async () => {
+      await vote(entry.id, value);
+      Analytics.archiveVoteCast(entry.slug, value, membership.status);
+    });
   };
 
   const requireApproved = (then: () => void) => {
@@ -204,6 +228,10 @@ export default function ArchiveEntryScreen() {
 
         <VerdictLine score={score} reviewCount={entry.review_count} />
 
+        {actionError ? (
+          <Text style={s.actionError} testID="archive-action-error">{actionError}</Text>
+        ) : null}
+
         {entry.summary ? <Text style={s.summary}>{entry.summary}</Text> : null}
 
         <VoteCard
@@ -219,10 +247,10 @@ export default function ArchiveEntryScreen() {
           footer={
             <View style={s.actionRow}>
               <Pressable
-                onPress={() => {
+                onPress={() => void runAction('toggleWatch', async () => {
+                  await toggleWatch(entry.id);
                   if (!watched) Analytics.archiveWatchlistAdded(entry.slug);
-                  void toggleWatch(entry.id);
-                }}
+                })}
                 style={s.action}
                 testID="archive-watch"
                 accessibilityRole="button"
@@ -257,10 +285,10 @@ export default function ArchiveEntryScreen() {
                   agreeCount={note.agreeCount}
                   agreed={note.agreed}
                   index={i}
-                  onPress={() => {
+                  onPress={() => void runAction('agreeNote', async () => {
+                    await agreeNote(note.id);
                     Analytics.archiveNoteAgreed(entry.slug);
-                    void agreeNote(note.id);
-                  }}
+                  })}
                   testID={`archive-note-${note.id}`}
                 />
               ))}

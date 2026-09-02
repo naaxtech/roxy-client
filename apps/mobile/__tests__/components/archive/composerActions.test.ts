@@ -153,7 +153,7 @@ describe('submitEntry / submitEdit — the edge-function half', () => {
     (callEdgeFunction as jest.Mock).mockResolvedValue({ data: { revision_id: 'r1' }, error: null });
     const res = await submitEdit('e1', { length_label: '1h 48m' });
     expect(callEdgeFunction).toHaveBeenCalledWith('archive-submit-edit', {
-      entry_id: 'e1', patch: { length_label: '1h 48m' },
+      entry_id: 'e1', fields: { length_label: '1h 48m' },
     });
     expect(res.error).toBeNull();
   });

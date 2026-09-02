@@ -223,7 +223,12 @@ Deno.serve(async (req) => {
       // any votes cast on it rather than deleting a member's work.
       const { data: hidden, error: hideErr } = await supabase
         .from('archive_entries')
-        .update({ status: 'hidden', updated_at: new Date().toISOString() })
+        // published_at must be cleared with the status. archive_published_has_date
+        // is CHECK ((status = 'published') = (published_at IS NOT NULL)), so
+        // hiding a published entry while leaving its date violated the
+        // constraint and 500'd — a moderator could not pull back an entry that
+        // turned out to be abusive, and it stayed live.
+        .update({ status: 'hidden', published_at: null, updated_at: new Date().toISOString() })
         .eq('id', revision.entry_id)
         .select('id')
         .single();
