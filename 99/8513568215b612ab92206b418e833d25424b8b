@@ -1,0 +1,45 @@
+apps/mobile/app/archive/[slug]/edit.tsx
+  s_488a1686f9c1af::t_305a85e88c4637 1-99
+apps/mobile/app/archive/[slug]/index.tsx
+  s_488a1686f9c1af::t_305a85e88c4637 1-338
+apps/mobile/__tests__/components/archive/useComposerEntry.test.ts
+  s_488a1686f9c1af::t_abbfa5ff2e4553 1-50
+apps/mobile/components/archive/useComposerEntry.ts
+  s_488a1686f9c1af::t_ab3959fd8496a2 1-63
+apps/mobile/app/archive/_layout.tsx
+  s_488a1686f9c1af::t_6e4d88c985b7eb 1-18
+apps/mobile/app/archive/new.tsx
+  s_488a1686f9c1af::t_d2f1aa247e9dc1 1-119
+apps/mobile/app/archive/[slug]/_layout.tsx
+  s_488a1686f9c1af::t_6e4d88c985b7eb 1-19
+apps/mobile/__tests__/components/archive/composerActions.test.ts
+  s_488a1686f9c1af::t_bf956e34dcf882 1-183
+apps/mobile/__tests__/components/archive/ComposerShell.test.tsx
+  s_488a1686f9c1af::t_b74236905c3392 1-64
+apps/mobile/components/archive/ComposerField.tsx
+  s_488a1686f9c1af::t_aba8b71124a7f1 1-164
+apps/mobile/app/archive/[slug]/review.tsx
+  s_488a1686f9c1af::t_4ced3fb838b194 1-114
+apps/mobile/app/archive/[slug]/note.tsx
+  s_488a1686f9c1af::t_4ced3fb838b194 1-80
+apps/mobile/components/archive/composerActions.ts
+  s_488a1686f9c1af::t_5d13719acbc65a 1-185
+apps/mobile/components/archive/ComposerShell.tsx
+  s_488a1686f9c1af::t_032fee27c41887 1-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "998513568215b612ab92206b418e833d25424b8b",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
