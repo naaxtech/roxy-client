@@ -13,6 +13,8 @@ import { ProfileCard } from '../../../components/profile/ProfileCard';
 import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
 import { SavedPosts } from '../../../components/profile/SavedPosts';
+import { SavedWatchlist } from '../../../components/profile/SavedWatchlist';
+import { useArchiveStore } from '../../../store/archiveStore';
 import { SelfControls } from '../../../components/profile/SelfControls';
 import { MiniWinsCard } from '../../../components/grow/MiniWinsCard';
 import { OrderDetailSheet } from '../../../components/build/OrderDetailSheet';
@@ -54,6 +56,14 @@ export default function ProfileScreen() {
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
   const [showOrders, setShowOrders] = useState(ordersParam === '1');
   const scrollRef = useRef<ScrollView>(null);
+
+  // The watchlist lives in archiveStore, which the Archive screens hydrate on
+  // their own mount. Arriving straight at You — a cold start, a deep link —
+  // would otherwise show an empty Saved section for a list she definitely has.
+  const hydrateArchive = useArchiveStore((s) => s.hydrateMine);
+  useEffect(() => {
+    if (user?.id) void hydrateArchive(user.id);
+  }, [user?.id, hydrateArchive]);
   const [savedY, setSavedY] = useState(0);
 
   /*
@@ -304,6 +314,11 @@ export default function ProfileScreen() {
                 most women most of the time. */}
             <View onLayout={(e) => setSavedY(e.nativeEvent.layout.y)}>
               <SavedPosts userId={user.id} />
+              {/* Her Archive watchlist lives under Saved with her saved posts.
+                  It is the one thing a pending member can accumulate before the
+                  rest of Roxy opens, so it belongs where she looks for the
+                  things she kept — not only inside the Archive. */}
+              <SavedWatchlist />
             </View>
             <ProfileFavorites userId={user.id} editable />
           </>
