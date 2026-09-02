@@ -3,23 +3,23 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useArchiveStore } from '../../store/archiveStore';
-import { useMembership } from '../../hooks/useMembership';
-import { useThemeColors } from '../../hooks/useThemeColors';
-import { TYPE } from '../../lib/typography';
-import { RADII } from '../../lib/theme';
-import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
-import { Analytics } from '../../lib/analytics';
-import { logError } from '../../lib/errorLogger';
+import { useArchiveStore } from '../../../store/archiveStore';
+import { useMembership } from '../../../hooks/useMembership';
+import { useThemeColors } from '../../../hooks/useThemeColors';
+import { TYPE } from '../../../lib/typography';
+import { RADII } from '../../../lib/theme';
+import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
+import { Analytics } from '../../../lib/analytics';
+import { logError } from '../../../lib/errorLogger';
 import {
   fetchArchiveEntry, fetchArchiveEntryDetail, formatScore,
   type ArchiveEntry, type ArchiveEntryDetail,
-} from '../../lib/archive';
-import { ScoreRing } from '../../components/archive/ScoreRing';
-import { VerdictLine } from '../../components/archive/VerdictLine';
-import { VoteCard } from '../../components/archive/VoteCard';
-import { ContentNoteChip, visibleNotes } from '../../components/archive/ContentNoteChip';
-import { PendingBanner } from '../../components/archive/PendingBanner';
+} from '../../../lib/archive';
+import { ScoreRing } from '../../../components/archive/ScoreRing';
+import { VerdictLine } from '../../../components/archive/VerdictLine';
+import { VoteCard } from '../../../components/archive/VoteCard';
+import { ContentNoteChip, visibleNotes } from '../../../components/archive/ContentNoteChip';
+import { PendingBanner } from '../../../components/archive/PendingBanner';
 
 type Status = 'loading' | 'ready' | 'missing' | 'error';
 
@@ -274,6 +274,15 @@ export default function ArchiveEntryScreen() {
           {/* Endings are never tagged. That is the one Archive rule and it is
               stated where a member is about to add a note, not buried in help. */}
           <Text style={s.hint}>Notes describe what is in it. Never how it ends.</Text>
+          <Pressable
+            onPress={() => requireApproved(() => router.push(`/archive/${entry.slug}/note` as never))}
+            style={s.action}
+            testID="archive-add-note"
+            accessibilityRole="button"
+            accessibilityLabel={membership.canEdit ? 'Add a content note' : 'Adding a content note is locked while your membership is pending'}
+          >
+            <Text style={s.actionText}>{membership.canEdit ? '+ Add a note' : '🔒 Add a note'}</Text>
+          </Pressable>
         </View>
 
         <View style={s.section}>
