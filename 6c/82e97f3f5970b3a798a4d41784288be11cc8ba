@@ -1,0 +1,42 @@
+apps/mobile/__tests__/components/archive/composerActions.test.ts
+  s_488a1686f9c1af::t_020310212fe3b5 156
+supabase/migrations/101_review_findings.sql
+  s_488a1686f9c1af::t_4aabda7e324d58 1-70
+supabase/functions/staff-review-archive-revision/index.ts
+  s_488a1686f9c1af::t_6f0855ab46cb9e 226-231
+apps/mobile/__tests__/lib/archiveEditContract.test.ts
+  s_488a1686f9c1af::t_c05cc715bd7488 1-45
+apps/mobile/lib/archive.ts
+  s_488a1686f9c1af::t_f702f9c2e04959 161-171,180-191
+apps/mobile/app/_layout.tsx
+  s_488a1686f9c1af::t_969abb9ec63e79 17,202-208
+supabase/downs/101_review_findings_down.sql
+  s_488a1686f9c1af::t_745ae44d970da1 1-17
+apps/mobile/__tests__/components/ReportSheet.test.tsx
+  s_488a1686f9c1af::t_dc6b44493f5e6c 1-94
+apps/mobile/__tests__/lib/archiveTopSort.test.ts
+  s_488a1686f9c1af::t_5bb87b81345e7e 1-57
+apps/mobile/app/archive/[slug]/index.tsx
+  s_488a1686f9c1af::t_e45cd53c2c625d 56-59
+  s_488a1686f9c1af::t_641ab6480a1876 93,188-202,204-209,231-234,250-251,253,288-289,291
+apps/mobile/components/safety/ReportSheet.tsx
+  s_488a1686f9c1af::t_0bdd004f4c9fb2 1-168
+apps/mobile/components/archive/composerActions.ts
+  s_488a1686f9c1af::t_020310212fe3b5 177-181,184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6c82e97f3f5970b3a798a4d41784288be11cc8ba",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
