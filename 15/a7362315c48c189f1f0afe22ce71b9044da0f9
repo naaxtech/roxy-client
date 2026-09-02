@@ -1,0 +1,24 @@
+apps/mobile/lib/checkoutSteps.ts
+  s_488a1686f9c1af::t_f0eb27227a7c6f 1-42
+apps/mobile/__tests__/lib/checkoutSteps.test.ts
+  s_488a1686f9c1af::t_f36cea64aa3f4c 1-39
+apps/mobile/components/build/CheckoutSheet.tsx
+  s_488a1686f9c1af::t_fda6ce6ba345ee 319,359-370,373-381
+  s_488a1686f9c1af::t_0b4fccfa0b0516 10-11,16-18,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "15a7362315c48c189f1f0afe22ce71b9044da0f9",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
