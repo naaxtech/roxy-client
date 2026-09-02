@@ -1,0 +1,24 @@
+apps/mobile/app/event/[id].tsx
+  s_488a1686f9c1af::t_86feb60c3d65eb 18,311-318,458-479
+apps/mobile/__tests__/lib/eventStage.test.ts
+  s_488a1686f9c1af::t_da8f70fc46ceaf 1-79
+apps/mobile/lib/eventUtils.ts
+  s_488a1686f9c1af::t_c0d173a2b0428e 46-110
+  s_488a1686f9c1af::t_eded882aeb2fb1 111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "840a9c195b5d4f92df9d6b0c0b6d02c4c4328558",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
