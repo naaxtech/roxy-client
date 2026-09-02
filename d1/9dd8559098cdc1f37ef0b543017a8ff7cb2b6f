@@ -1,0 +1,24 @@
+apps/mobile/__tests__/screens/RoomSafety.test.tsx
+  s_488a1686f9c1af::t_373fdfaa4f2a6c 1-62
+apps/mobile/app/roomSafety.ts
+  s_488a1686f9c1af::t_d7454b6cbcd331 1-45
+apps/mobile/app/community-room-session.tsx
+  s_488a1686f9c1af::t_d2f64824b5974a 208-211,467,644-656
+  s_488a1686f9c1af::t_08deddd7093de7 22-26,399-466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d19dd8559098cdc1f37ef0b543017a8ff7cb2b6f",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
