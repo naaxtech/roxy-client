@@ -13,6 +13,40 @@ finer-grained engineering log lives in `.claude/log.md`.
 ## [Unreleased]
 
 ### Added
+- **The WLW Archive — live.** A community-scored catalogue of wlw films, TV,
+  books, comics and music, seeded with 45 real works. One score, one question:
+  *would you recommend this to another wlw?* An entry shows a percentage only at
+  **ten votes or more** — below that it reads `NEW · n votes`, and that rule is a
+  stored generated column with a partial index on it, so it holds in the
+  `ORDER BY` as well as in the label. "Top rated" leading with one person's
+  opinion at 100% is the same bug in a different clause.
+  - **It is the one surface a pending member can use.** Migration 079 is a
+    postmortem about a new signup being locked out of the entire app with no
+    screen explaining why; the Archive is the answer. She can browse, search,
+    read every review, score anything she has seen and keep a watchlist. Writing
+    reviews, adding entries and suggesting edits unlock on approval, and every
+    locked action opens an explanation rather than sitting greyed out.
+  - Reachable from Discover's own chip and rail, from global search, and by deep
+    link at `roxy://archive/<slug>`.
+  - Moderation in the studio: member queue, revision queue with a side-by-side
+    diff built from the revision's `prev`/`patch` pair, reports queue, dashboard.
+    A mod cannot decide her own submission — enforced in the edge function, not
+    just hidden in the UI.
+  - No summary and no content note refers to an ending. That is the one Archive
+    rule, and a test fails the seed if it breaks it.
+
+### Fixed
+- **The moderation loop could be opened but not closed.** Four gaps, each found
+  by building the screen that needed it: nothing could *file* an archive report
+  (`reports.content_type` had no archive member); no mod could *read* one
+  (`reports` has carried exactly one SELECT policy since 2023 — `reporter_id =
+  auth.uid()` — so the staff queue would render **empty**, which tells a
+  moderator there is nothing to do); no mod could *act* (no staff UPDATE policy
+  on entries or reviews); and revert had no state to move to. Migration 100
+  closes all four.
+
+
+### Added
 - **A block can be undone, and she can choose who reaches her.** Migration 085
   shipped `block_user` and `blocked_user_ids` and no unblock, so a block was
   permanent by accident and the prototype's "Blocked" row had nothing to open.
