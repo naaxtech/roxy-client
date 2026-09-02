@@ -15,6 +15,7 @@ import { TicketCard } from '../../components/TicketCard';
 import { TicketConfirmation } from '../../components/TicketConfirmation';
 import { formatDuration, openCalendar } from '../../lib/eventUtils';
 import { purchaseTicket, subscribeToTicket } from '../../lib/stripe';
+import { eventStage, eventCta } from '../../lib/eventUtils';
 import { toggleUserFavorite } from '../../components/profile/ProfileFavorites';
 
 type EventDetail = {
@@ -307,6 +308,14 @@ export default function EventDetailScreen() {
   }
 
   const duration = formatDuration(event.starts_at, event.ends_at);
+
+  // An online event is not a static RSVP — the design turns it into a room she
+  // can walk into at start time. Nothing read the clock before this, so an
+  // event she had RSVP'd to looked identical five minutes before it began and
+  // an hour after it ended.
+  const stage = eventStage(event.starts_at, event.ends_at);
+  const isOnline = event.event_type === 'online' || event.event_type === 'hybrid';
+  const canJoinNow = isOnline && stage === 'live' && !!event.location_url;
   const going = ticketCode !== null;
   const isSoldOut = event.max_attendees !== null && event.attendee_count >= event.max_attendees;
 
@@ -446,7 +455,28 @@ export default function EventDetailScreen() {
           </View>
         )}
 
-        {event.status === 'active' && !going && !event.is_paid && (
+        {/* Live now: the room is open, so the door is the primary action —
+            offered to anyone who finds it running, not only to women who
+            RSVP'd. Refusing her entry to something already open helps nobody. */}
+        {event.status === 'active' && canJoinNow && (
+          <TouchableOpacity
+            style={styles.rsvpBtn}
+            onPress={() => { if (event.location_url) void Linking.openURL(event.location_url); }}
+            accessibilityRole="button"
+            accessibilityLabel={`${eventCta(stage, going, !!event.is_paid)} — opens the event room`}
+            testID="event-join-now"
+          >
+            <Text style={styles.rsvpBtnText}>{eventCta(stage, going, !!event.is_paid)}</Text>
+          </TouchableOpacity>
+        )}
+
+        {event.status === 'active' && stage === 'ended' && (
+          <Text style={styles.errorText} testID="event-ended">
+            {eventCta('ended', going, !!event.is_paid)}
+          </Text>
+        )}
+
+        {event.status === 'active' && !canJoinNow && stage !== 'ended' && !going && !event.is_paid && (
           <TouchableOpacity
             style={[styles.rsvpBtn, rsvping && styles.rsvpBtnDisabled]}
             onPress={handleRsvp}
