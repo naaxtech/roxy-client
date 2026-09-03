@@ -15,6 +15,9 @@ interface Props {
 
 const OPTIONS: { key: ArchiveSort; label: string }[] = [
   { key: 'top', label: 'Top rated' },
+  // The contribution path. With a young catalogue this is the most useful sort
+  // in the app: it says which titles are still waiting for their first rating.
+  { key: 'needs', label: 'Needs ratings' },
   { key: 'voted', label: 'Most voted' },
   { key: 'newest', label: 'Newest' },
 ];

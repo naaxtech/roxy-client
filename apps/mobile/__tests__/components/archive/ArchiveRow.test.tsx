@@ -39,10 +39,19 @@ describe('ArchiveRow', () => {
     expect(v.getByText('41 reviews')).toBeTruthy();
   });
 
-  it('says Unreviewed when nobody has rated it', () => {
-    const v = render(<ArchiveRow entry={entry({ vote_count: 0, up_count: 0, has_score: false })} onPress={jest.fn()} />);
+  it('says Unreviewed when nobody has rated it, and invites her to be first', () => {
+    const v = render(<ArchiveRow entry={entry({ vote_count: 0, up_count: 0, has_score: false, review_count: 0 })} onPress={jest.fn()} />);
     expect(v.getByText('Unreviewed')).toBeTruthy();
     expect(v.queryByText('0%')).toBeNull();
+    // The invitation is the point: an unrated row is the product's whole ask
+    // at this stage, not a hole in the data.
+    expect(v.getByText('Be the first to rate this →')).toBeTruthy();
+  });
+
+  it('stops inviting once someone has rated it', () => {
+    const v = render(<ArchiveRow entry={entry({ vote_count: 3, up_count: 2, has_score: false, review_count: 0 })} onPress={jest.fn()} />);
+    expect(v.queryByText('Be the first to rate this →')).toBeNull();
+    expect(v.getByText('3 ratings · no reviews yet')).toBeTruthy();
   });
 
   it('shows the rating beside its sample size from the first vote', () => {
@@ -75,6 +84,14 @@ describe('ArchiveRow', () => {
     const v = render(<ArchiveRow entry={bare} onPress={jest.fn()} />);
     expect(v.getByText('100 votes')).toBeTruthy();
     expect(v.getByText('Portrait of a Lady on Fire')).toBeTruthy();
+  });
+
+  it('does not say "0 votes" beside a pill already saying Unreviewed', () => {
+    // The same fact twice, and the second telling reads as a defect rather than
+    // as an empty category.
+    const v = render(<ArchiveRow entry={entry({ vote_count: 0, up_count: 0, has_score: false })} onPress={jest.fn()} />);
+    expect(v.queryByText(/0 votes/)).toBeNull();
+    expect(v.getByText('2019 · Céline Sciamma')).toBeTruthy();
   });
 
   it('names the media type on the cover', () => {

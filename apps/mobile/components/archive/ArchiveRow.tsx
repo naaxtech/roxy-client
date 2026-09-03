@@ -43,10 +43,15 @@ export function ArchiveRow({ entry, notes = [], onPress, testID }: Props) {
   const score = formatScore(entry.up_count, entry.vote_count);
   const shown = visibleNotes(notes, NOTES_ON_A_ROW);
 
+  // "0 votes" beside a pill already saying "Unreviewed" is the same fact twice,
+  // and the second telling reads as a defect rather than as an empty category.
+  // With no votes the meta line is just the work: year and creator.
   const meta = [
     entry.release_year ?? null,
     entry.creator ?? null,
-    `${entry.vote_count} ${entry.vote_count === 1 ? 'vote' : 'votes'}`,
+    entry.vote_count > 0
+      ? `${entry.vote_count} ${entry.vote_count === 1 ? 'vote' : 'votes'}`
+      : null,
   ]
     .filter((part) => part !== null && String(part).length > 0)
     .join(' · ');
@@ -80,6 +85,7 @@ export function ArchiveRow({ entry, notes = [], onPress, testID }: Props) {
     blurb: { ...TYPE.caption, color: colors.textSecondary },
     notes: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
     reviews: { ...TYPE.micro, color: colors.textMuted },
+    invite: { ...TYPE.micro, color: colors.primaryInk, fontWeight: '700' },
   });
 
   const showImage = !!entry.cover_url && !coverFailed;
@@ -140,11 +146,20 @@ export function ArchiveRow({ entry, notes = [], onPress, testID }: Props) {
             </View>
           ) : null}
 
-          {entry.review_count > 0 ? (
+          {/* An unrated entry is an invitation, not a gap. "Unreviewed" in the
+              pill states the fact; this states what she can do about it, and
+              at this stage of the Archive that is the whole product loop. */}
+          {score.total === 0 ? (
+            <Text style={s.invite}>Be the first to rate this →</Text>
+          ) : entry.review_count > 0 ? (
             <Text style={s.reviews}>
               {entry.review_count} {entry.review_count === 1 ? 'review' : 'reviews'}
             </Text>
-          ) : null}
+          ) : (
+            <Text style={s.reviews}>
+              {score.total} {score.total === 1 ? 'rating' : 'ratings'} · no reviews yet
+            </Text>
+          )}
         </View>
       </View>
     </Pressable>

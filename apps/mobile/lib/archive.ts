@@ -124,7 +124,7 @@ export type ArchiveEntry = {
   published_at: string | null;
 };
 
-export type ArchiveSort = 'top' | 'voted' | 'newest';
+export type ArchiveSort = 'top' | 'voted' | 'newest' | 'needs';
 
 const ENTRY_COLUMNS =
   'id, slug, title, media_type, release_year, creator, length_label, summary, ' +
@@ -163,16 +163,17 @@ export async function fetchArchiveEntries(opts: ArchiveQuery = {}): Promise<Arch
     if (pattern) q = q.or(`title.ilike.${pattern},creator.ilike.${pattern}`);
   }
 
-  if (sort === 'top') {
-    // Gated entries only, ordered by RATIO — not by raw yes-count.
+  if (sort === 'top' || sort === 'needs') {
+    // Neither of these can be expressed in SQL — one ranks by a ratio, the
+    // other by "has anyone rated this" — so both fetch and sort below.
     //
-    // `.order('up_count')` sorted by popularity while calling itself Top rated,
-    // so The L Word at 58% ("Divisive") outranked entries at 97% purely on
-    // volume, and every well-liked entry with a modest vote count fell off the
-    // list. PostgREST cannot order by an expression, so the ratio is computed
-    // client-side after fetching the gated set — which is bounded, because
-    // has_score already excludes everything under ten votes.
-    q = q.eq('has_score', true).order('vote_count', { ascending: false });
+    // `top` used to add `.eq('has_score', true)`, and that was a latent
+    // catastrophe: it was invisible while every entry carried seeded vote
+    // weight, and the moment 104 removed the fabricated votes the DEFAULT view
+    // returned zero rows and 45 real titles rendered as an empty Archive.
+    // The >=10 rule is a reason to rank an unrated entry BELOW a rated one,
+    // never a reason to pretend it is not in the catalogue.
+    q = q.order('vote_count', { ascending: false });
   }
   else if (sort === 'voted') q = q.order('vote_count', { ascending: false });
   else q = q.order('published_at', { ascending: false });
@@ -183,16 +184,29 @@ export async function fetchArchiveEntries(opts: ArchiveQuery = {}): Promise<Arch
     throw error;
   }
 
+  const rows = (data ?? []) as unknown as ArchiveEntry[];
+
   if (sort === 'top') {
-    const rows = (data ?? []) as unknown as ArchiveEntry[];
-    // Ratio descending, then vote_count as the tie-break so a 100% off ten
-    // votes does not outrank a 100% off a thousand.
+    // Three tiers, in this order:
+    //   1. past the gate — a rating the community has actually earned
+    //   2. rated but under the gate — real, just thin
+    //   3. unrated
+    // Within each, by ratio, then by sample size so 100% of ten does not
+    // outrank 100% of a thousand. The gate ranks; it no longer hides.
+    const tier = (e: ArchiveEntry) => (e.has_score ? 0 : e.vote_count > 0 ? 1 : 2);
     return [...rows].sort((a, b) => {
+      if (tier(a) !== tier(b)) return tier(a) - tier(b);
       const ra = a.vote_count > 0 ? a.up_count / a.vote_count : 0;
       const rb = b.vote_count > 0 ? b.up_count / b.vote_count : 0;
       if (rb !== ra) return rb - ra;
       return b.vote_count - a.vote_count;
     });
+  }
+
+  if (sort === 'needs') {
+    // The contribution path: what the Archive most needs a woman to rate.
+    // Fewest votes first, so an entry nobody has touched leads.
+    return [...rows].sort((a, b) => a.vote_count - b.vote_count);
   }
   // The generated Database types do not know the archive tables yet, so the
   // client infers PostgREST's error shape here. Cast through unknown rather
