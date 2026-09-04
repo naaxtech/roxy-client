@@ -1,0 +1,19 @@
+apps/mobile/tests/e2e/fab-occlusion.spec.ts
+  s_488a1686f9c1af::t_25d2f84e071a03 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "776707fc89abe317fa760aa0557492ecffe81503",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
