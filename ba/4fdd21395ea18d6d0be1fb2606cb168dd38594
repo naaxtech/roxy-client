@@ -1,0 +1,41 @@
+apps/mobile/__tests__/lib/lastEdit.test.ts
+  s_488a1686f9c1af::t_5b6694f985354a 1-40
+apps/mobile/__tests__/components/archive/EntryHero.test.tsx
+  s_488a1686f9c1af::t_7dd5760405e2ec 7
+  s_488a1686f9c1af::t_44ae5796bb46fd 1-6,8-72
+apps/mobile/__tests__/screens/ArchiveEntry.test.tsx
+  s_488a1686f9c1af::t_67fef1376d706a 87,163-172
+apps/mobile/__tests__/lib/archiveShare.test.ts
+  s_488a1686f9c1af::t_7eb565a7dadd04 1-31
+apps/mobile/__tests__/lib/coverGradient.test.ts
+  s_488a1686f9c1af::t_4ec5e45fc47d9e 1-69
+apps/mobile/lib/archive.ts
+  s_488a1686f9c1af::t_efeb934605ad17 258-259,262-291,305,319-326,334-340,345-355
+apps/mobile/lib/coverGradient.ts
+  s_488a1686f9c1af::t_50acd1276efced 1-51
+apps/mobile/lib/archiveShare.ts
+  s_488a1686f9c1af::t_7eb565a7dadd04 1-32
+apps/mobile/components/archive/EntryHero.tsx
+  s_488a1686f9c1af::t_98eaba7eb21f7d 1-167
+apps/mobile/app/archive/[slug]/index.tsx
+  s_488a1686f9c1af::t_efeb934605ad17 54,188
+  s_488a1686f9c1af::t_7f6c008afc7796 23,84-86,90,93-94,121,124-125,229-239,251,271,311
+  s_488a1686f9c1af::t_67fef1376d706a 87-89,241-250,252-263
+  s_488a1686f9c1af::t_9e0830b3e76d1f 385-392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ba4fdd21395ea18d6d0be1fb2606cb168dd38594",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
