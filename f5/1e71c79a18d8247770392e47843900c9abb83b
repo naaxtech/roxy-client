@@ -1,0 +1,29 @@
+apps/mobile/tests/e2e/design-parity.spec.ts
+  s_488a1686f9c1af::t_ff2d4d9d16f5df 1-42
+apps/mobile/__tests__/components/archive/ArchiveRow.test.tsx
+  s_488a1686f9c1af::t_f3257123a52abe 139-162
+  s_488a1686f9c1af::t_8889388363f1a2 9-13
+apps/mobile/components/archive/ArchiveRow.tsx
+  s_488a1686f9c1af::t_e1c314b88ad6ac 12
+  s_488a1686f9c1af::t_64d698fa950b9a 71-72,74-75,79,83-92,103-106,120-126
+apps/mobile/components/archive/ArchiveRail.tsx
+  s_488a1686f9c1af::t_88cc210c1e1753 2,8-9,66-74,77-78,80-97,173-198
+apps/mobile/__tests__/components/archive/ArchiveRail.test.tsx
+  s_488a1686f9c1af::t_4976c3b24347a5 5-6,92-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f51e71c79a18d8247770392e47843900c9abb83b",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
