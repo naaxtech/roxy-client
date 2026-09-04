@@ -350,6 +350,12 @@ export default function CommunityDetailScreen() {
       paddingHorizontal: 8, paddingVertical: 2,
     },
     livePillDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.error },
+    chatPill: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      backgroundColor: colors.primary + '20', borderRadius: 10,
+      paddingHorizontal: 8, paddingVertical: 2,
+    },
+    chatPillText: { color: colors.primaryInk, fontWeight: '700', fontSize: 11 },
     livePillText: { color: colors.error, fontWeight: '700', fontSize: 11 },
     membersRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
     membersText: { color: colors.textMuted, fontWeight: '600', fontSize: 12 },
@@ -547,6 +553,22 @@ export default function CommunityDetailScreen() {
               <TouchableOpacity style={styles.livePill} onPress={() => handleTabPress('rooms')}>
                 <View style={styles.livePillDot} />
                 <Text style={styles.livePillText}>Live</Text>
+              </TouchableOpacity>
+            )}
+            {/* Channels are a full-screen route, not a page of this pager, so
+                they get an entry point here rather than a sixth sub-tab.
+                Members only: migration 105's RLS returns nothing to anyone
+                else, and sending her to an empty screen that explains why is a
+                dead end dressed up as a feature. */}
+            {isJoined && (
+              <TouchableOpacity
+                style={styles.chatPill}
+                onPress={() => router.push(`/community/channels/${id}` as any)}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${community.name} channels`}
+                testID="community-channels-link"
+              >
+                <Text style={styles.chatPillText}># Chat</Text>
               </TouchableOpacity>
             )}
           </View>

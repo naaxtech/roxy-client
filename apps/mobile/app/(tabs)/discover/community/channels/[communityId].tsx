@@ -198,9 +198,9 @@ export default function CommunityChannelsScreen() {
       return (
         <View style={s.centre} testID="channel-messages-empty">
           <Text style={s.centreTitle}>Nothing in # {active.slug} yet</Text>
-          <Text style={s.centreBody}>
-            {active.topic ?? 'Say the first thing. Somebody has to.'}
-          </Text>
+          {/* Never the topic: the header already carries it two lines up, and
+              the same sentence twice on one screen reads as a rendering bug. */}
+          <Text style={s.centreBody}>Say the first thing. Somebody has to.</Text>
         </View>
       );
     }
