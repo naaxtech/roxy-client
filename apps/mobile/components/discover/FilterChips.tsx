@@ -1,9 +1,12 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII, inkOn, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
+
+/** The painted pill's height. The TARGET is MIN_TOUCH_TARGET; this is the ink. */
+const PILL_HEIGHT = 34;
 
 export interface Chip<T extends string> {
   key: T;
@@ -52,30 +55,45 @@ export function FilterChips<T extends string>({
         const on = chip.key === value;
         const fill = primary ? colors.primary : colors.surfaceLight;
         return (
-          <TouchableOpacity
-            key={chip.key}
-            testID={testID ? `${testID}-${chip.key}` : undefined}
-            onPress={() => onChange(chip.key)}
-            accessibilityRole="radio"
-            {...a11yState({ selected: on, checked: on })}
-            accessibilityLabel={chip.label}
-            activeOpacity={0.8}
-            style={[
-              s.chip,
-              on
-                ? { backgroundColor: fill, borderColor: fill }
-                : { backgroundColor: colors.surface, borderColor: colors.line },
-            ]}
-          >
-            <Text
-              style={[
-                primary ? s.labelPrimary : s.labelInline,
-                { color: on ? inkOn(fill) : colors.textSecondary },
-              ]}
+          <Pressable key={chip.key} onPress={() => onChange(chip.key)} accessible={false}>
+            {/* The 44pt minimum belongs on what a FINGER HITS. Putting it on the
+                painted pill made every chip a 44pt slab carrying a 12px word,
+                and two stacked rows of those pushed the rails off the screen.
+                The target below is full height and transparent; the pill inside
+                is 34pt and is only paint.
+
+                The a11y identity sits on this View rather than the Pressable:
+                RN's Pressable drops unknown props so `aria-*` never reaches the
+                node, and accessibilityState alone is inert on
+                react-native-web 0.19. */}
+            <View
+              style={s.target}
+              testID={testID ? `${testID}-${chip.key}` : undefined}
+              accessibilityRole="radio"
+              {...a11yState({ selected: on, checked: on })}
+              accessibilityLabel={chip.label}
             >
-              {chip.label}
-            </Text>
-          </TouchableOpacity>
+              <View
+                testID={testID ? `${testID}-${chip.key}-pill` : undefined}
+                style={[
+                  s.chip,
+                  on
+                    ? { backgroundColor: fill, borderColor: fill }
+                    : { backgroundColor: colors.surface, borderColor: colors.line },
+                ]}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    primary ? s.labelPrimary : s.labelInline,
+                    { color: on ? inkOn(fill) : colors.textSecondary },
+                  ]}
+                >
+                  {chip.label}
+                </Text>
+              </View>
+            </View>
+          </Pressable>
         );
       })}
       {/* Trailing breathing room so the last chip is not flush with the edge. */}
@@ -88,14 +106,19 @@ export function FilterChips<T extends string>({
 // inline; only the geometry is static.
 const styles = (_colors: ThemeColors) => StyleSheet.create({
   row: { gap: 8, paddingHorizontal: 16, alignItems: 'center' },
+  // The touch target: full height, no paint of its own.
+  target: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
   chip: {
-    minHeight: MIN_TOUCH_TARGET,
+    height: PILL_HEIGHT,
     justifyContent: 'center',
     paddingHorizontal: 14,
     borderRadius: RADII.pill,
     borderWidth: 1,
   },
-  labelPrimary: { ...TYPE.bodyLg, fontWeight: '700' },
+  // Primary leads by WEIGHT, not by size. It was bodyLg — 15px against the
+  // in-rail 12px — which made the top row read as a different kind of object
+  // rather than as the more important one.
+  labelPrimary: { ...TYPE.caption, fontWeight: '800' },
   labelInline: { ...TYPE.caption, fontWeight: '600' },
   tail: { width: 4 },
 });

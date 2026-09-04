@@ -96,7 +96,12 @@ export function PosterCard({
       <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.art}>
         {badge ? <View style={s.badgeSlot}><Badge kind={badge} /></View> : null}
       </LinearGradient>
-      <Text style={s.title} numberOfLines={1}>{title}</Text>
+      {/* Two lines, with the height reserved either way. One line cropped
+          every real name — "The Rise and Fall of a Midwest Princess" is 39
+          characters and about 25 fit — and letting the block grow only when a
+          title is long made each card in the rail a different height, which is
+          what made the row look broken. */}
+      <Text style={s.title} numberOfLines={2}>{title}</Text>
       <Text style={s.meta} numberOfLines={1}>{subtitle}</Text>
     </TouchableOpacity>
   );
@@ -141,7 +146,11 @@ export function RowCard({ icon, title, subtitle, badge, artSeed, onPress, testID
       <View style={s.rowText}>
         {badge ? <View style={s.badgeInline}><Badge kind={badge} /></View> : null}
         <Text style={s.title} numberOfLines={1}>{title}</Text>
-        <Text style={s.meta} numberOfLines={1}>{subtitle}</Text>
+        {/* Two lines. Found by a browser audit rather than a unit test: Speed
+            Dating's short_description is 51 characters into a 168px box, so
+            one line cut it mid-sentence. The row is fixed rather than the row's
+            copy, because the next long description would break identically. */}
+        <Text style={s.rowMeta} numberOfLines={2}>{subtitle}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -200,7 +209,7 @@ export function HeroCard({ badge, title, meta, body, cta, artSeed, onPress }: He
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
-  poster: { width: 150, gap: 5 },
+  poster: { width: 164, gap: 5 },
   art: { height: 96, borderRadius: RADII.md, padding: 8, justifyContent: 'flex-start' },
   badgeSlot: { alignSelf: 'flex-start' },
   badgeInline: { alignSelf: 'flex-start' },
@@ -211,18 +220,28 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   badgeText: { ...TYPE.micro, fontWeight: '800' },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  title: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '700' },
+  title: {
+    ...TYPE.caption,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    // Two lines of caption leading, reserved whether or not the title needs
+    // them, so every card in a rail bottoms out level.
+    minHeight: TYPE.caption.lineHeight * 2,
+  },
   meta: { ...TYPE.micro, color: colors.textSecondary },
   ranked: { flexDirection: 'row', alignItems: 'flex-end' },
 
   row: {
-    width: 240, minHeight: MIN_TOUCH_TARGET,
+    width: 252, minHeight: MIN_TOUCH_TARGET,
     flexDirection: 'row', alignItems: 'center', gap: 10,
     padding: 10, borderRadius: RADII.md,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
   },
   plate: { width: 40, height: 40, borderRadius: RADII.sm, alignItems: 'center', justifyContent: 'center' },
   rowText: { flex: 1, gap: 2 },
+  // Two lines of micro leading, reserved either way, so a rail of row cards
+  // bottoms out level whether a subtitle needs one line or two.
+  rowMeta: { ...TYPE.micro, color: colors.textSecondary, minHeight: TYPE.micro.lineHeight * 2 },
 
   hero: {
     marginHorizontal: 16, borderRadius: RADII.lg, overflow: 'hidden',
