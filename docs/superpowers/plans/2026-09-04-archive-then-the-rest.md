@@ -117,3 +117,42 @@ fabricated votes to nobody, and the seed guard would have behaved as designed.
 - Every change deploys to roxy.expo.app and is verified in the shipped bundle,
   not in the deploy log.
 - A defect found in live code jumps the queue ahead of new work.
+
+---
+
+## B3 — Community channels (design: "Community channels", markup 655–697)
+
+**The outcome:** a member opens her community and talks in one of its channels.
+
+**Why a dedicated table, not `conversations`.** `conversations` decides access by
+scanning `participant_ids uuid[]`. Migration 103 fixed two DM bypasses that came
+straight out of that shape — a null `conversation_type`, and a three-participant
+array carrying a permissive decoy. A channel with 1,240 members would need 1,240
+array entries and would force the DM permission logic to special-case itself.
+Channel access is a *property* — "is she in this community" — so it is asked of
+`community_members` through the existing `is_community_member(cid)`, which is
+already STABLE SECURITY DEFINER with a pinned search_path and already composes
+`is_approved_member()`.
+
+**Schema (105):**
+- `community_channels(id, community_id→communities, slug, name, topic, position,
+  is_default, created_by, created_at)`, unique `(community_id, slug)`.
+- `community_channel_messages(id, channel_id→community_channels, sender_id→profiles,
+  body, created_at, edited_at, deleted_at)`.
+- RLS on both in the SAME file (`.claude/rules/migrations.md`).
+- Read: `is_community_member(community_id)`. Write: member AND
+  `sender_id = auth.uid()`. Edit/soft-delete: own message, or a community
+  admin/moderator.
+- A down migration in `supabase/downs/`.
+
+**Client:** `lib/channels.ts` (fetch/send), `store/channelStore.ts`,
+`app/community/channels/[communityId].tsx` (the house pattern, matching
+`app/community/members/[communityId].tsx`), and `components/channels/`
+— `ChannelBar`, `ChannelMessage`, `ChannelComposer`.
+
+`ChannelBar` is a horizontal ScrollView and therefore gets
+`flexGrow: 0, flexShrink: 0` — without it a flex sibling crushes it to 6px on
+react-native-web, which is the bug MediaTypeChips already shipped once.
+
+**Deferred to B4:** the design's rich message cards (`m.hasCard`). Attachment
+columns are NOT in 105 — schema nothing reads is dead schema.
