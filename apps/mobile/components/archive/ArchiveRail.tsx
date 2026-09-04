@@ -1,10 +1,12 @@
 import { View, Text, Pressable, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
-import { RADII } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { formatScore, type ArchiveEntry } from '../../lib/archive';
 import { ScorePill } from './ScorePill';
+import { coverGradientFor } from '../../lib/coverGradient';
+import { archiveTypeLabel } from '../../lib/archiveTypes';
 
 interface Props {
   entries: ArchiveEntry[];
@@ -61,16 +63,38 @@ export function ArchiveRail({
     linkText: { ...TYPE.caption, color: colors.primaryInk, fontWeight: '700' },
     blurb: { ...TYPE.caption, color: colors.textSecondary },
     rail: { gap: 10, paddingHorizontal: 16, paddingTop: 4 },
-    card: {
-      width: 148,
-      gap: 6,
-      padding: 10,
-      borderRadius: RADII.md,
-      backgroundColor: colors.surface,
+    // The design's rail is a POSTER, not a surface card: 126 wide, a 168-tall
+    // gradient with the type chip and the score sitting on the art itself. The
+    // card that stood here framed a score pill in a grey box, which is the
+    // catalogue's only visual on Discover and read as a settings list.
+    card: { width: 126, gap: 7, minHeight: MIN_TOUCH_TARGET },
+    poster: {
+      height: 168,
+      borderRadius: 14,
+      overflow: 'hidden',
       borderWidth: 1,
       borderColor: colors.line,
-      minHeight: MIN_TOUCH_TARGET,
+      justifyContent: 'space-between',
+      padding: 7,
     },
+    posterArt: { ...StyleSheet.absoluteFillObject },
+    // Transparent for the top 45%, then darkening — the design's own scrim, and
+    // what keeps a white chip legible over art of any colour.
+    posterScrim: { ...StyleSheet.absoluteFillObject },
+    typeChip: {
+      alignSelf: 'flex-start',
+      backgroundColor: 'rgba(13,5,32,0.6)',
+      borderRadius: 5,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+    },
+    typeChipText: {
+      ...TYPE.micro,
+      color: 'rgba(255,249,251,0.85)',
+      fontWeight: '800',
+      letterSpacing: 1,
+    },
+    scoreSlot: { alignSelf: 'flex-start' },
     cardTitle: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '800' },
     cardMeta: { ...TYPE.micro, color: colors.textMuted },
     state: { paddingHorizontal: 16, paddingVertical: 14, gap: 8, alignItems: 'flex-start' },
@@ -146,9 +170,32 @@ export function ArchiveRail({
                 accessibilityRole="button"
                 accessibilityLabel={`${entry.title}. ${score.label}.`}
               >
-                <ScorePill score={score} />
-                <Text style={s.cardTitle} numberOfLines={2}>{entry.title}</Text>
-                <Text style={s.cardMeta} numberOfLines={1}>{meta}</Text>
+                <View style={s.poster}>
+                  <LinearGradient
+                    colors={coverGradientFor(entry.cover_gradient, entry.slug) as [string, string, ...string[]]}
+                    start={{ x: 0.15, y: 0 }}
+                    end={{ x: 0.85, y: 1 }}
+                    style={s.posterArt}
+                    testID={`${testID}-art-${entry.slug}`}
+                  />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(13,5,32,0.72)']}
+                    locations={[0.45, 1]}
+                    style={s.posterScrim}
+                  />
+                  <View style={s.typeChip}>
+                    <Text style={s.typeChipText}>
+                      {archiveTypeLabel(entry.media_type).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={s.scoreSlot}>
+                    <ScorePill score={score} />
+                  </View>
+                </View>
+                <View>
+                  <Text style={s.cardTitle} numberOfLines={2}>{entry.title}</Text>
+                  <Text style={s.cardMeta} numberOfLines={1}>{meta}</Text>
+                </View>
               </View>
             </Pressable>
           );

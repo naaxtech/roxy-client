@@ -2,6 +2,8 @@ import { render, fireEvent } from '@testing-library/react-native';
 import { ArchiveRail } from '../../../components/archive/ArchiveRail';
 import type { ArchiveEntry } from '../../../lib/archive';
 
+jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
+
 const entry = (over: Partial<ArchiveEntry> = {}): ArchiveEntry => ({
   id: 'e1',
   slug: 'portrait',
@@ -86,5 +88,20 @@ describe('ArchiveRail', () => {
         'Films, shows, books, comics and music — scored by us, for us. Open to everyone, even while your membership is pending.'
       )
     ).toBeTruthy();
+  });
+
+  it('paints each card with that entry’s own cover art', () => {
+    // The rail is the catalogue's only visual on Discover. It framed a score
+    // pill in a grey box; the design makes it a poster.
+    const v = render(
+      <ArchiveRail
+        entries={[entry({ slug: 'carol', cover_gradient: 'linear-gradient(160deg,#1E2A4E,#4A3A7A 55%,#D98A5E)' })]}
+        total={45}
+        onPressEntry={() => {}}
+        onSeeAll={() => {}}
+      />,
+    );
+    expect(v.getByTestId('archive-rail-art-carol').props.colors)
+      .toEqual(['#1E2A4E', '#4A3A7A', '#D98A5E']);
   });
 });

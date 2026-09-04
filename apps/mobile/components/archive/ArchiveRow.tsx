@@ -9,6 +9,7 @@ import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { formatScore, type ArchiveEntry } from '../../lib/archive';
 import { ScorePill } from './ScorePill';
 import { ContentNoteChip, visibleNotes, type ArchiveNote } from './ContentNoteChip';
+import { coverGradientFor } from '../../lib/coverGradient';
 
 interface Props {
   entry: ArchiveEntry;
@@ -67,18 +68,28 @@ export function ArchiveRow({ entry, notes = [], onPress, testID }: Props) {
       borderWidth: 1,
       borderColor: colors.line,
     },
+    // The design's own poster: 62 wide, 88 tall, the type word tucked into the
+    // bottom-left corner OVER the art rather than centred in a grey box.
     coverWrap: {
-      width: 56,
-      height: 78,
+      width: 62,
+      minHeight: 88,
       borderRadius: RADII.sm,
       overflow: 'hidden',
       backgroundColor: colors.surfaceLight,
-      alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'flex-end',
     },
     cover: { width: '100%', height: '100%' },
     coverPlate: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-    coverType: { ...TYPE.micro, color: colors.textSecondary, fontWeight: '800', letterSpacing: 0.6 },
+    coverType: {
+      ...TYPE.micro,
+      // Fixed against the art, not the theme: this text sits on a gradient of
+      // unknown colour, so a theme token would be unreadable on half of them.
+      color: 'rgba(255,249,251,0.8)',
+      fontWeight: '800',
+      letterSpacing: 0.6,
+      paddingHorizontal: 5,
+      paddingBottom: 5,
+    },
     body: { flex: 1, gap: 4 },
     title: { ...TYPE.body, color: colors.textPrimary, fontWeight: '800' },
     meta: { ...TYPE.micro, color: colors.textMuted },
@@ -89,9 +100,10 @@ export function ArchiveRow({ entry, notes = [], onPress, testID }: Props) {
   });
 
   const showImage = !!entry.cover_url && !coverFailed;
-  const gradient = entry.cover_gradient
-    ? ([colors.surfaceLight, colors.surface] as const)
-    : ([colors.surfaceLight, colors.surface] as const);
+  // Migration 098 seeded the design's own CSS gradients, one per entry. The
+  // ternary that stood here had two identical branches, so every poster painted
+  // the same grey plate and the art never reached the screen.
+  const gradient = coverGradientFor(entry.cover_gradient, entry.slug);
 
   return (
     <Pressable onPress={onPress} accessible={false}>
@@ -105,7 +117,13 @@ export function ArchiveRow({ entry, notes = [], onPress, testID }: Props) {
         accessibilityLabel={`${entry.title}. ${score.label}. ${meta}`}
       >
         <View style={s.coverWrap}>
-          <LinearGradient colors={gradient} style={s.coverPlate} />
+          <LinearGradient
+            colors={gradient as [string, string, ...string[]]}
+            start={{ x: 0.15, y: 0 }}
+            end={{ x: 0.85, y: 1 }}
+            style={s.coverPlate}
+            testID={testID ? `${testID}-cover-art` : undefined}
+          />
           {showImage ? (
             <ExpoImage
               source={{ uri: entry.cover_url as string }}

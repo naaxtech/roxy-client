@@ -6,6 +6,11 @@ import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { THEMES } from '../../../lib/theme';
 import { useThemeStore } from '../../../store/themeStore';
 
+// expo-linear-gradient runs `colors` through processColor, so a raw-hex
+// assertion compares '#1E2A4E' against 4280166990. Mocked as a host component
+// (the house convention) so the prop arrives as written.
+jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
+
 const flat = (node: { props: { style?: unknown } }) =>
   StyleSheet.flatten(node.props.style as never) as Record<string, string | number>;
 
@@ -130,5 +135,29 @@ describe('ArchiveRow', () => {
     expect(v.getByTestId('row-cover-image')).toBeTruthy();
     fireEvent(v.getByTestId('row-cover-image'), 'error');
     expect(v.queryByTestId('row-cover-image')).toBeNull();
+  });
+
+  it('paints the entry’s OWN cover gradient, not one flat plate for everything', () => {
+    // The ternary here had two identical branches: `cover_gradient` was read and
+    // thrown away, so all 45 posters painted the same grey. Migration 098 seeded
+    // the design's real gradients and none of them ever reached the screen.
+    const v = render(
+      <ArchiveRow
+        entry={entry({ cover_gradient: 'linear-gradient(160deg,#1E2A4E,#4A3A7A 55%,#D98A5E)' })}
+        onPress={() => {}}
+        testID="row"
+      />,
+    );
+    expect(v.getByTestId('row-cover-art').props.colors).toEqual(['#1E2A4E', '#4A3A7A', '#D98A5E']);
+  });
+
+  it('gives an entry with no stored gradient art anyway, and the same art twice', () => {
+    const art = () =>
+      render(<ArchiveRow entry={entry({ cover_gradient: null })} onPress={() => {}} testID="row" />)
+        .getByTestId('row-cover-art').props.colors;
+    const first = art();
+    expect(first.length).toBeGreaterThanOrEqual(2);
+    // A cover that changed between renders reads as a loading glitch.
+    expect(art()).toEqual(first);
   });
 });
