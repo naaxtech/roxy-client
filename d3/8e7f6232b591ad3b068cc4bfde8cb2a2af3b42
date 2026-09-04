@@ -1,0 +1,32 @@
+apps/mobile/tests/e2e/discover-audit.spec.ts
+  s_488a1686f9c1af::t_314abf9d087a8e 139-188
+apps/mobile/components/archive/MediaTypeChips.tsx
+  s_488a1686f9c1af::t_cacdca0d437138 54-59,88
+apps/mobile/tests/e2e/discover-diagnose.spec.ts
+  s_488a1686f9c1af::t_d2562c5437d53c 1-94
+apps/mobile/.gitignore
+  s_488a1686f9c1af::t_d2562c5437d53c 11-12
+  s_488a1686f9c1af::t_edd3e8aab0787f 10
+apps/mobile/components/archive/ArchiveRail.tsx
+  s_488a1686f9c1af::t_43f8b0c04ab19f 121-124,127-129
+apps/mobile/components/discover/RankNumeral.tsx
+  s_488a1686f9c1af::t_43f8b0c04ab19f 30-34,37
+apps/mobile/components/discover/FilterChips.tsx
+  s_488a1686f9c1af::t_cacdca0d437138 49,110-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d38e7f6232b591ad3b068cc4bfde8cb2a2af3b42",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
