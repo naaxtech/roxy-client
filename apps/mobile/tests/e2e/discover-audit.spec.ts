@@ -136,3 +136,53 @@ test('no element is wider than the screen', async ({ page }) => {
 
   expect(tooWide, `elements wider than the viewport:\n${JSON.stringify(tooWide, null, 2)}`).toEqual([]);
 });
+
+/**
+ * The Archive's own filter row, which is where the crushing showed up.
+ *
+ * A horizontal ScrollView in a flex COLUMN has no intrinsic height on
+ * react-native-web, so a sibling that takes flex — here the results FlatList —
+ * squeezes it to a sliver. The chips still render, still pass every unit test,
+ * and are two pixels tall on screen. Only a browser can see it, and only if
+ * something asserts the rendered height.
+ */
+test.describe('the Archive filter row', () => {
+  test('is not crushed by the list below it', async ({ page }) => {
+    await page.goto('/archive');
+    await page.waitForTimeout(2500);
+
+    // getBoundingClientRect, NOT Playwright's boundingBox(). boundingBox()
+    // reports a scroller's CONTENT size, so it answered 44+ for a row that was
+    // six pixels tall on screen — the check passed while the bug was visible in
+    // a screenshot. Measuring the painted box is the whole point.
+    const height = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="archive-type-chips"]');
+      return el ? Math.round(el.getBoundingClientRect().height) : -1;
+    });
+
+    expect(height, 'archive type chips did not render').toBeGreaterThan(0);
+    expect(height, `type chip row collapsed to ${height}px`).toBeGreaterThanOrEqual(44);
+  });
+
+  test('shows every chip at full height, not a sliver', async ({ page }) => {
+    await page.goto('/archive');
+    await page.waitForTimeout(2500);
+
+    const chips = page.locator('[data-testid^="archive-type-chips-"]:not([data-testid$="-pill"])');
+    const count = await chips.count();
+    expect(count, 'no type chips rendered').toBeGreaterThan(0);
+
+    const crushed = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('[data-testid^="archive-type-chips-"]'))
+        .filter((el) => !el.getAttribute('data-testid')!.endsWith('-pill'))
+        .map((el) => ({
+          chip: el.getAttribute('aria-label'),
+          height: Math.round(el.getBoundingClientRect().height),
+        }))
+        .filter((c) => c.height < 44));
+
+    expect(crushed, `chips crushed below the touch target:
+${JSON.stringify(crushed, null, 2)}`)
+      .toEqual([]);
+  });
+});

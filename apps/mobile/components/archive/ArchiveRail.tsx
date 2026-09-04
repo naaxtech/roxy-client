@@ -118,9 +118,15 @@ export function ArchiveRail({
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.rail}>
         {entries.map((entry) => {
           const score = formatScore(entry.up_count, entry.vote_count);
+          // "0 votes" beside a pill already reading "Unreviewed" is the same
+          // fact twice, and the second telling reads as a defect. Same rule
+          // ArchiveRow follows — it was fixed there and missed here, which is
+          // what a shared helper would have prevented.
           const meta = [
             entry.release_year ?? null,
-            `${entry.vote_count} ${entry.vote_count === 1 ? 'vote' : 'votes'}`,
+            entry.vote_count > 0
+              ? `${entry.vote_count} ${entry.vote_count === 1 ? 'vote' : 'votes'}`
+              : null,
           ]
             .filter((part) => part !== null)
             .join(' · ');

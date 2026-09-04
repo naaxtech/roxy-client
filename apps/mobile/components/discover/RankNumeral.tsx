@@ -27,10 +27,14 @@ export function RankNumeral({ rank }: Props) {
 
   return (
     <View style={[s.wrap, { width }]} pointerEvents="none" accessibilityElementsHidden>
-      <Svg width={width} height={96} viewBox={`0 0 ${width} 96`}>
+      {/* 104, not 96. A 92px glyph with a 3px stroke overshoots its em box at
+          the top and bottom, so a 96px canvas clipped the curve of every
+          numeral — measured in the browser as scrollHeight 106 against
+          clientHeight 100. The extra eight pixels are the stroke's room. */}
+      <Svg width={width} height={104} viewBox={`0 0 ${width} 104`}>
         <SvgText
           x={width / 2}
-          y={80}
+          y={84}
           textAnchor="middle"
           fontSize={92}
           fontWeight="800"

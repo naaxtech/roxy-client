@@ -51,6 +51,12 @@ export function MediaTypeChips({ value, onChange, counts, testID = 'archive-type
 
   const s = StyleSheet.create({
     row: { gap: 8, paddingHorizontal: 16, alignItems: 'center' },
+  // A horizontal ScrollView has NO intrinsic height on react-native-web, so a
+  // flex sibling below it — a results list, a rail — squeezes it to nothing.
+  // The Archive's type row rendered at SIX PIXELS this way: chips present,
+  // every unit test green, a sliver on screen. flexGrow/flexShrink 0 makes the
+  // row keep the height its content asks for.
+  scroller: { flexGrow: 0, flexShrink: 0 },
     // The touch target: full height, no paint of its own.
     target: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
     pill: {
@@ -79,6 +85,7 @@ export function MediaTypeChips({ value, onChange, counts, testID = 'archive-type
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={s.scroller}
       contentContainerStyle={s.row}
       testID={testID}
       accessibilityRole="radiogroup"

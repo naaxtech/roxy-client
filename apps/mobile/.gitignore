@@ -7,3 +7,6 @@ expo-env.d.ts
 .env
 /test-results/
 /playwright-report/
+
+# Playwright diagnostic screenshots — a tool, not an artifact.
+shots/
