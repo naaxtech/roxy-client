@@ -1,0 +1,41 @@
+apps/mobile/components/channels/ChannelBar.tsx
+  s_488a1686f9c1af::t_0e35a50259fdf5 1-125
+supabase/downs/105_community_channels_down.sql
+  s_488a1686f9c1af::t_045d34e5d53b0d 1-20
+apps/mobile/lib/channels.ts
+  s_488a1686f9c1af::t_728e18342e8c1e 1-150
+supabase/migrations/105_community_channels.sql
+  s_488a1686f9c1af::t_cd2539fdb9ad0a 1-217
+docs/superpowers/plans/2026-09-04-archive-then-the-rest.md
+  s_488a1686f9c1af::t_ec9e6d6e7a2332 120-158
+apps/mobile/__tests__/lib/channels.test.ts
+  s_488a1686f9c1af::t_c24bd409d47b62 1-175
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  s_488a1686f9c1af::t_b741304d253e5a 1-59,61-74,76-274
+  s_488a1686f9c1af::t_256a061314961e 60,75
+apps/mobile/__tests__/components/channels/ChannelPieces.test.tsx
+  s_488a1686f9c1af::t_bef6b30dd1d4f8 1-191
+apps/mobile/components/channels/ChannelComposer.tsx
+  s_488a1686f9c1af::t_99756189c85cf5 1-140
+apps/mobile/components/channels/ChannelMessage.tsx
+  s_488a1686f9c1af::t_99756189c85cf5 6
+  s_488a1686f9c1af::t_0e35a50259fdf5 1-5,7-117
+apps/mobile/app/community/channels/[communityId].tsx
+  s_488a1686f9c1af::t_f4d284ee540f73 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a8c4840b67d40701af8af62bef3816c5cbf9a080",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
