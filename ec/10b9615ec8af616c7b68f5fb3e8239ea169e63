@@ -1,0 +1,27 @@
+apps/mobile/components/discover/DiscoverCards.tsx
+  s_488a1686f9c1af::t_339fd052a5bfbc 99-104,212,223-230
+  s_488a1686f9c1af::t_7c0476745dfe59 149-153,235,242-244
+apps/mobile/components/discover/FilterChips.tsx
+  s_488a1686f9c1af::t_004aae7b4f2500 1,8-10,58-74,76-96,109-110,112,118-121
+apps/mobile/__tests__/components/discover/chipGeometry.test.tsx
+  s_488a1686f9c1af::t_2be30ba8d5e91b 1-67,69-78,80,82-130
+  s_488a1686f9c1af::t_4505358332c7db 68,79,81
+apps/mobile/tests/e2e/discover-audit.spec.ts
+  s_488a1686f9c1af::t_fcfbec987d684e 1-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ec10b9615ec8af616c7b68f5fb3e8239ea169e63",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
