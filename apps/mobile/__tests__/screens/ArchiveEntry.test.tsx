@@ -84,6 +84,7 @@ describe('the Archive entry screen', () => {
     const { getByText } = render(<ArchiveEntryScreen />);
     await waitFor(() => expect(getByText('Carol')).toBeTruthy());
     expect(getByText('89%')).toBeTruthy();
+    // 89 of 100 — a real rating, so the ring shows.
     // 89% is 'Worth your night' — 'Community favourite' starts at 90, and
     // asserting the band boundary is the point of picking 89 here.
     expect(getByText('Worth your night')).toBeTruthy();
@@ -158,5 +159,15 @@ describe('the Archive entry screen', () => {
     await waitFor(() => expect(getByTestId('archive-entry-error')).toBeTruthy());
     fireEvent.press(getByTestId('archive-entry-retry'));
     await waitFor(() => expect(mockFetchEntry).toHaveBeenCalledTimes(2));
+  });
+
+  it('offers the invitation instead of an empty ring when nobody has rated it', async () => {
+    // A ring is a container for a percentage. With none it renders as an empty
+    // circle with "Unreviewed" spilling past its edge — caught in a screenshot,
+    // not by any assertion.
+    mockFetchEntry.mockResolvedValue({ ...entry, vote_count: 0, up_count: 0, has_score: false });
+    const { getByTestId, queryByTestId } = render(<ArchiveEntryScreen />);
+    await waitFor(() => expect(getByTestId('archive-entry-unrated')).toBeTruthy());
+    expect(queryByTestId('archive-entry-ring')).toBeNull();
   });
 });

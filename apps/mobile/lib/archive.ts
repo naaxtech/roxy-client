@@ -255,7 +255,39 @@ export type ArchiveReviewRow = {
 export type ArchiveEntryDetail = {
   notes: ArchiveNoteRow[];
   reviews: ArchiveReviewRow[];
+  /** "runtime, 3 days ago by @mayalin.art", or null before any edit lands. */
+  lastEdit: string | null;
 };
+
+/**
+ * The design's "Last edit: …" credit, from the most recent APPROVED revision.
+ *
+ * It is what makes "member-maintained" a visible fact rather than a claim —
+ * someone's name is on the most recent change. Null until an edit has actually
+ * been published, because inventing a credit would be the exact opposite of
+ * the thing it is there to demonstrate.
+ */
+export function describeLastEdit(
+  fields: string[],
+  reviewedAt: string | null,
+  username: string | null
+): string | null {
+  if (!reviewedAt) return null;
+  const when = relativeDay(reviewedAt);
+  const what = fields.length > 0 ? fields.join(' & ') : 'details';
+  return username ? `${what}, ${when} by @${username}` : `${what}, ${when}`;
+}
+
+function relativeDay(iso: string): string {
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return 'recently';
+  const days = Math.floor((Date.now() - then) / 86_400_000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 30) return `${days} days ago`;
+  const months = Math.floor(days / 30);
+  return months === 1 ? 'a month ago' : `${months} months ago`;
+}
 
 /**
  * The two lists under an entry: its community content notes and its reviews.
@@ -270,7 +302,7 @@ export type ArchiveEntryDetail = {
  * without a second query.
  */
 export async function fetchArchiveEntryDetail(entryId: string): Promise<ArchiveEntryDetail> {
-  const [notesRes, reviewsRes] = await Promise.all([
+  const [notesRes, reviewsRes, editRes] = await Promise.all([
     supabase
       .from('archive_content_notes')
       .select('id, label, agree_count')
@@ -284,6 +316,14 @@ export async function fetchArchiveEntryDetail(entryId: string): Promise<ArchiveE
       .eq('status', 'published')
       .order('helpful_count', { ascending: false })
       .limit(20),
+    supabase
+      .from('archive_revisions')
+      .select('patch, reviewed_at, submitter:profiles!archive_revisions_submitted_by_fkey(username)')
+      .eq('entry_id', entryId)
+      .eq('status', 'approved')
+      .order('reviewed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   // One list failing is not the screen failing — the other still renders. A
@@ -291,9 +331,26 @@ export async function fetchArchiveEntryDetail(entryId: string): Promise<ArchiveE
   // neither should take the entry down with it.
   if (notesRes.error) logError(notesRes.error, 'archive.fetchEntryDetail.notes');
   if (reviewsRes.error) logError(reviewsRes.error, 'archive.fetchEntryDetail.reviews');
+  if (editRes.error) logError(editRes.error, 'archive.fetchEntryDetail.lastEdit');
+
+  const edit = editRes.data as unknown as {
+    patch?: Record<string, unknown> | null;
+    reviewed_at?: string | null;
+    submitter?: { username?: string | null } | null;
+  } | null;
 
   const notes = ((notesRes.data ?? []) as unknown as { id: string; label: string; agree_count: number }[])
     .map((n) => ({ id: n.id, label: n.label, agreeCount: n.agree_count ?? 0, agreed: false }));
 
-  return { notes, reviews: (reviewsRes.data ?? []) as unknown as ArchiveReviewRow[] };
+  return {
+    notes,
+    reviews: (reviewsRes.data ?? []) as unknown as ArchiveReviewRow[],
+    lastEdit: edit
+      ? describeLastEdit(
+          Object.keys(edit.patch ?? {}),
+          edit.reviewed_at ?? null,
+          edit.submitter?.username ?? null
+        )
+      : null,
+  };
 }

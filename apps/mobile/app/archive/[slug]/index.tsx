@@ -20,6 +20,7 @@ import { VerdictLine } from '../../../components/archive/VerdictLine';
 import { VoteCard } from '../../../components/archive/VoteCard';
 import { ContentNoteChip, visibleNotes } from '../../../components/archive/ContentNoteChip';
 import { PendingBanner } from '../../../components/archive/PendingBanner';
+import { EntryHero } from '../../../components/archive/EntryHero';
 
 type Status = 'loading' | 'ready' | 'missing' | 'error';
 
@@ -50,7 +51,7 @@ export default function ArchiveEntryScreen() {
   const agreeNote = useArchiveStore((s) => s.agreeNote);
 
   const [entry, setEntry] = useState<ArchiveEntry | null>(null);
-  const [detail, setDetail] = useState<ArchiveEntryDetail>({ notes: [], reviews: [] });
+  const [detail, setDetail] = useState<ArchiveEntryDetail>({ notes: [], reviews: [], lastEdit: null });
   const [status, setStatus] = useState<Status>('loading');
   const [lockedOpen, setLockedOpen] = useState(false);
   // Above every early return — this screen returns early for loading, missing
@@ -80,13 +81,17 @@ export default function ArchiveEntryScreen() {
     container: { flex: 1, backgroundColor: colors.background },
     header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
     backBtn: { minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
-    content: { padding: 16, gap: 16, paddingBottom: 48 },
-    hero: { flexDirection: 'row', gap: 16, alignItems: 'center' },
-    heroText: { flex: 1, gap: 4 },
+    content: { gap: 16, paddingBottom: 48 },
+    section: { paddingHorizontal: 16, gap: 8 },
+    scoreRow: { flexDirection: 'row', gap: 14, alignItems: 'center', paddingHorizontal: 16 },
+    unrated: { paddingHorizontal: 16, gap: 3 },
+    unratedTitle: { ...TYPE.title, color: colors.textPrimary },
+    unratedBody: { ...TYPE.caption, color: colors.textSecondary },
+    scoreText: { flex: 1 },
     title: { ...TYPE.headline, color: colors.textPrimary },
     meta: { ...TYPE.caption, color: colors.textMuted },
-    summary: { ...TYPE.body, color: colors.textSecondary },
-    section: { gap: 8 },
+    summary: { ...TYPE.body, color: colors.textSecondary, paddingHorizontal: 16 },
+
     sectionTitle: { ...TYPE.title, color: colors.textPrimary },
     notes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     hint: { ...TYPE.micro, color: colors.textMuted },
@@ -113,9 +118,11 @@ export default function ArchiveEntryScreen() {
       backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
     },
     edit: {
-      gap: 4, padding: 12, borderRadius: RADII.md,
+      gap: 4, padding: 12, borderRadius: RADII.md, marginHorizontal: 16,
       borderWidth: 1, borderColor: colors.line,
     },
+    lastEdit: { ...TYPE.micro, color: colors.textMuted, paddingHorizontal: 16 },
+    voteWrap: { paddingHorizontal: 16 },
   });
 
   const back = (
@@ -178,6 +185,7 @@ export default function ArchiveEntryScreen() {
   const score = formatScore(entry.up_count, entry.vote_count);
   const myVote = entry.id in myVotes ? (myVotes[entry.id] ? 'up' : 'down') : null;
   const watched = watchlist.includes(entry.id);
+  const lastEdit = detail.lastEdit;
   const notes = visibleNotes(
     detail.notes.map((n) => ({ ...n, agreed: noteAgreements.includes(n.id) }))
   );
@@ -218,15 +226,41 @@ export default function ArchiveEntryScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       {back}
       <ScrollView contentContainerStyle={s.content}>
-        <View style={s.hero}>
-          <ScoreRing score={score} size={84} testID="archive-entry-ring" />
-          <View style={s.heroText}>
-            <Text style={s.title}>{entry.title}</Text>
-            <Text style={s.meta}>{meta}</Text>
-          </View>
-        </View>
+        {/* The design leads with colour: a 196px banner and a poster across
+            its lower edge. The page had neither, and a bare ring on a flat
+            background read as a settings row rather than a catalogue entry. */}
+        <EntryHero
+          slug={entry.slug}
+          title={entry.title}
+          mediaType={entry.media_type}
+          meta={meta}
+          coverGradient={entry.cover_gradient}
+          testID="archive-entry-hero"
+        />
 
-        <VerdictLine score={score} reviewCount={entry.review_count} />
+        {/* A ring exists to hold a percentage. With no rating it is an empty
+            circle with the word "Unreviewed" spilling out of it — so an unrated
+            entry gets the invitation instead, which is the thing actually worth
+            saying at that moment. */}
+        {score.hasScore ? (
+          <View style={s.scoreRow}>
+            <ScoreRing score={score} size={72} testID="archive-entry-ring" />
+            <View style={s.scoreText}>
+              <VerdictLine score={score} reviewCount={entry.review_count} />
+            </View>
+          </View>
+        ) : (
+          <View style={s.unrated} testID="archive-entry-unrated">
+            <Text style={s.unratedTitle}>
+              {score.total === 0 ? 'Nobody has rated this yet' : `${score.total} ${score.total === 1 ? 'rating' : 'ratings'} so far`}
+            </Text>
+            <Text style={s.unratedBody}>
+              {score.total === 0
+                ? 'Yours would be the first. One question, one tap — it counts from the moment you cast it.'
+                : 'A few more and this shows a community score.'}
+            </Text>
+          </View>
+        )}
 
         {actionError ? (
           <Text style={s.actionError} testID="archive-action-error">{actionError}</Text>
@@ -234,6 +268,7 @@ export default function ArchiveEntryScreen() {
 
         {entry.summary ? <Text style={s.summary}>{entry.summary}</Text> : null}
 
+        <View style={s.voteWrap}>
         <VoteCard
           myVote={myVote}
           onUp={() => void castVote(true)}
@@ -273,6 +308,7 @@ export default function ArchiveEntryScreen() {
             </View>
           }
         />
+        </View>
 
         <View style={s.section}>
           <Text style={s.sectionTitle}>Content notes</Text>
@@ -346,6 +382,14 @@ export default function ArchiveEntryScreen() {
             The Archive is member-maintained. Edits are published by a mod, credited to you.
           </Text>
         </Pressable>
+
+        {/* "Last edit: …" — the design's own credit line. It is what makes
+            "member-maintained" a visible fact rather than a claim: someone's
+            name is on the most recent change. Absent until an edit has actually
+            been published, because inventing one would be the opposite. */}
+        {lastEdit ? (
+          <Text style={s.lastEdit} testID="archive-last-edit">Last edit: {lastEdit}</Text>
+        ) : null}
       </ScrollView>
 
       {lockedOpen ? (
