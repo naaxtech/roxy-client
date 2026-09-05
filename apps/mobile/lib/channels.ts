@@ -14,7 +14,6 @@ export interface Channel {
   id: string;
   community_id: string;
   slug: string;
-  name: string;
   topic: string | null;
   position: number;
   is_default: boolean;
@@ -38,7 +37,10 @@ export interface ChannelMessage {
   author: ChannelAuthor | null;
 }
 
-const CHANNEL_FIELDS = 'id, community_id, slug, name, topic, position, is_default';
+// No `name`: every surface renders `# {slug}` — the header, the chip row,
+// the composer placeholder and the empty state. Selecting a column nothing
+// reads is the shape this codebase keeps finding.
+const CHANNEL_FIELDS = 'id, community_id, slug, topic, position, is_default';
 const MESSAGE_FIELDS =
   'id, channel_id, sender_id, body, created_at, edited_at, deleted_at, ' +
   'author:profiles!community_channel_messages_sender_id_fkey(id, username, display_name, avatar_url)';
@@ -91,11 +93,11 @@ export async function sendChannelMessage(
   body: string,
 ): Promise<ChannelMessage> {
   const trimmed = body.trim();
-  if (!trimmed) throw new Error('Nothing to send.');
+  if (!trimmed) throw new ChannelInputError('Nothing to send.');
   if (trimmed.length > MAX_MESSAGE_LENGTH) {
     // The same bound as the CHECK constraint. Failing here gives her the
     // message; failing at the constraint gives her a 400.
-    throw new Error(`Keep it under ${MAX_MESSAGE_LENGTH} characters.`);
+    throw new ChannelInputError(`Keep it under ${MAX_MESSAGE_LENGTH} characters.`);
   }
 
   const { data, error } = await supabase
@@ -105,7 +107,7 @@ export async function sendChannelMessage(
     .single();
 
   if (error) throw error;
-  if (!data) throw new Error('The message did not send.');
+  if (!data) throw new ChannelInputError('The message did not send.');
   return data as unknown as ChannelMessage;
 }
 
@@ -123,7 +125,99 @@ export async function deleteChannelMessage(messageId: string): Promise<void> {
   if (error) throw error;
   // Zero rows means RLS refused her. Reporting success there is how a UI ends
   // up announcing a moderation action that never happened.
-  if (!count) throw new Error('That message could not be removed.');
+  if (!count) throw new ChannelInputError('That message could not be removed.');
+}
+
+/** A room that is live in this community right now, if there is one. */
+export interface LiveStage {
+  roomId: string;
+  participantCount: number;
+}
+
+/**
+ * The design's `🎙 stage · 12` chip sits beside the channels (markup 672).
+ *
+ * Returns null when nothing is live. A permanent stage button on a silent
+ * community advertises a room nobody is in, and the chip is only worth its
+ * space when tapping it lands her somewhere with people in it.
+ */
+export async function fetchLiveStage(communityId: string): Promise<LiveStage | null> {
+  const { data, error } = await supabase
+    .from('community_rooms')
+    .select('id, participant_count')
+    .eq('community_id', communityId)
+    .eq('status', 'live')
+    .order('participant_count', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // A failed stage lookup must not take the channel screen down with it: the
+  // chip is an extra, and the messages are the point.
+  if (error || !data) return null;
+  return { roomId: data.id as string, participantCount: (data.participant_count as number) ?? 0 };
+}
+
+/**
+ * Whether she can moderate here.
+ *
+ * The same predicate migration 105's policies use, asked once when the screen
+ * loads so the UI can offer "Remove" only where the database would accept it.
+ * It is a HINT for what to draw, never the gate — the gate is the policy, and
+ * a client that decided this for itself would be the copy that drifts.
+ */
+export async function fetchMyChannelRole(
+  communityId: string,
+  userId: string,
+): Promise<{ isModerator: boolean }> {
+  const { data, error } = await supabase
+    .from('community_members')
+    .select('role')
+    .eq('community_id', communityId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  // Composed from the roles that HOLD the power, never by excluding 'member' —
+  // a fourth role added later must not inherit moderation by elimination.
+  return { isModerator: ['owner', 'admin', 'moderator'].includes(data?.role ?? '') };
+}
+
+/**
+ * What to show her when a write is refused.
+ *
+ * A PostgrestError is an Error subclass, so `e.message` reaches the screen
+ * intact — and that message is policy text: "new row violates row-level
+ * security policy for table \"community_channel_messages\"". That is an
+ * internal error and a table name in front of a member, which
+ * `.claude/rules/react.md` bans outright.
+ *
+ * Only messages this module raised itself are hers to read; they are the ones
+ * written for her. Anything from the database becomes a sentence about what
+ * happened to HER, with the detail left where a moderator can still find it.
+ */
+export function writeFailureMessage(e: unknown): string {
+  if (e instanceof ChannelInputError) return e.message;
+  const code = (e as { code?: string } | null)?.code;
+  if (code === '42501') return 'You do not have permission to do that here.';
+  if (code === '23514') return 'That message could not be saved as written.';
+  return 'That did not send. Try again.';
+}
+
+/**
+ * An error whose message was written for the woman reading it.
+ *
+ * A marker CLASS, not a registry of known strings: a set populated at throw
+ * time only recognises a message after it has already been thrown once, so
+ * whether her own error was shown or swallowed depended on what had happened
+ * earlier in the session.
+ */
+export class ChannelInputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ChannelInputError';
+    // Required for `instanceof` to survive TypeScript's ES5 class emit.
+    Object.setPrototypeOf(this, ChannelInputError.prototype);
+  }
 }
 
 /** The name to show. Never the email, and never a raw id. */

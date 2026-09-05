@@ -3,12 +3,12 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { ChannelBar } from '../../../components/channels/ChannelBar';
 import { ChannelMessage, formatTime } from '../../../components/channels/ChannelMessage';
 import { ChannelComposer } from '../../../components/channels/ChannelComposer';
-import { MAX_MESSAGE_LENGTH, type Channel, type ChannelMessage as Message } from '../../../lib/channels';
+import { MAX_MESSAGE_LENGTH, ChannelInputError, type Channel, type ChannelMessage as Message } from '../../../lib/channels';
 
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 
 const channel = (over: Partial<Channel> = {}): Channel => ({
-  id: 'c1', community_id: 'com1', slug: 'general', name: 'general',
+  id: 'c1', community_id: 'com1', slug: 'general',
   topic: null, position: 0, is_default: false, ...over,
 });
 
@@ -164,14 +164,36 @@ describe('ChannelComposer', () => {
     await waitFor(() => expect(v.getByTestId('channel-composer-input').props.value).toBe(''));
   });
 
-  it('keeps her text and shows why when the send fails', async () => {
-    const onSend = jest.fn().mockRejectedValue(new Error('Network is out.'));
+  it('keeps her text when the send fails, and never prints the raw error', async () => {
+    // A PostgrestError is an Error subclass, so `e.message` reached the screen
+    // as policy text naming the table. `.claude/rules/react.md` bans exactly
+    // that, and it read to a member as though the app had broken.
+    const dbError = Object.assign(
+      new Error('new row violates row-level security policy for table "community_channel_messages"'),
+      { code: '42501' },
+    );
+    const onSend = jest.fn().mockRejectedValue(dbError);
     const v = render(<ChannelComposer placeholder="Message # general" onSend={onSend} />);
     fireEvent.changeText(v.getByTestId('channel-composer-input'), 'hi');
     fireEvent.press(v.getByTestId('channel-composer-send'));
     await waitFor(() => expect(v.getByTestId('channel-composer-error')).toBeTruthy());
-    expect(v.getByText('Network is out.')).toBeTruthy();
+
+    const shown = v.getByTestId('channel-composer-error').props.children as string;
+    expect(shown).toBe('You do not have permission to do that here.');
+    expect(shown).not.toMatch(/row-level security|community_channel_messages|policy/);
+    // Her words are still hers.
     expect(v.getByTestId('channel-composer-input').props.value).toBe('hi');
+  });
+
+  it('still shows the messages the module wrote FOR her', async () => {
+    // The length and empty-message guards are written to be read; only the
+    // database's own text is the part that must never reach her.
+    const onSend = jest.fn().mockRejectedValue(new ChannelInputError('Keep it under 2000 characters.'));
+    const v = render(<ChannelComposer placeholder="Message # general" onSend={onSend} />);
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'hi');
+    fireEvent.press(v.getByTestId('channel-composer-send'));
+    await waitFor(() => expect(v.getByTestId('channel-composer-error')).toBeTruthy());
+    expect(v.getByText('Keep it under 2000 characters.')).toBeTruthy();
   });
 
   it('says how far over the limit she is instead of failing at the constraint', () => {

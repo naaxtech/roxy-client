@@ -4,7 +4,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII, inkOn } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
-import { MAX_MESSAGE_LENGTH } from '../../lib/channels';
+import { MAX_MESSAGE_LENGTH, writeFailureMessage } from '../../lib/channels';
 
 interface Props {
   /** The design's `{{chanPh}}` — placeholder names the channel she is in. */
@@ -45,7 +45,11 @@ export function ChannelComposer({
       // when the send fails.
       setValue('');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'That did not send. Try again.');
+      // NEVER `e.message`. A PostgrestError is an Error subclass, so that branch
+      // put policy text — "new row violates row-level security policy for table
+      // \"community_channel_messages\"" — under a member's composer, which is a
+      // client-visible internal error and a table-name leak both.
+      setError(writeFailureMessage(e));
     } finally {
       setSending(false);
     }

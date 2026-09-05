@@ -34,7 +34,7 @@ import {
 } from '../../lib/channels';
 
 const channel = (over: Partial<Channel> = {}): Channel => ({
-  id: 'c1', community_id: 'com1', slug: 'general', name: 'general',
+  id: 'c1', community_id: 'com1', slug: 'general',
   topic: null, position: 0, is_default: false, ...over,
 });
 
