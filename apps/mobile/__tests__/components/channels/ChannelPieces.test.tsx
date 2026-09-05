@@ -30,9 +30,14 @@ describe('ChannelBar', () => {
     expect(style).toMatchObject({ flexGrow: 0, flexShrink: 0 });
   });
 
-  it('marks the active channel in a way web can actually read', () => {
-    // accessibilityState alone is inert on RNW 0.19, and Pressable strips
-    // aria-*, so the identity has to sit on a View inside it.
+  it('puts the name, the role and the selected state on the FOCUSABLE node', () => {
+    // Splitting them was the defect: the identity sat on an inner View while
+    // the handler sat on a Pressable wrapping it, so the browser got a
+    // focusable div with tabindex="0", role=null and aria-label=null, beside a
+    // role="tab" that could not be focused or activated. Verified in a real
+    // browser — jest sees the element tree, never the DOM, so this assertion
+    // is a reminder of the shape, and tests/e2e/channel-a11y.spec.ts is the
+    // check that can actually fail on it.
     const v = render(
       <ChannelBar
         channels={[channel({ id: 'c1', slug: 'general' }), channel({ id: 'c2', slug: 'rants' })]}
@@ -40,8 +45,14 @@ describe('ChannelBar', () => {
         onSelect={() => {}}
       />,
     );
-    expect(v.getByTestId('channel-bar-rants').props['aria-selected']).toBe(true);
-    expect(v.getByTestId('channel-bar-general').props['aria-selected']).toBe(false);
+    // `accessibilityState` is what jest can see. The `aria-selected` half is
+    // dropped from the element tree by TouchableOpacity and only appears in the
+    // real DOM — `tests/e2e/channel-a11y.spec.ts` is what checks that, because
+    // this renderer structurally cannot.
+    expect(v.getByTestId('channel-bar-rants').props.accessibilityState).toEqual({ selected: true });
+    expect(v.getByTestId('channel-bar-general').props.accessibilityState).toEqual({ selected: false });
+    expect(v.getByTestId('channel-bar-rants').props.accessibilityRole).toBe('tab');
+    expect(v.getByTestId('channel-bar-rants').props.accessibilityLabel).toBe('# rants');
   });
 
   it('hands back the channel, not an index', () => {

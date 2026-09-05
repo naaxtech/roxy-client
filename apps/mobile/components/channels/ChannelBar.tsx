@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
@@ -80,45 +80,50 @@ export function ChannelBar({
       {channels.map((channel) => {
         const active = channel.id === activeId;
         return (
-          <Pressable
+          // The name, the role and the selected state all sit on the ONE node
+          // that is focusable and clickable. Splitting them — identity on an
+          // inner View, the handler on a Pressable wrapping it — produced a
+          // focusable div with no name and no role, next to a `role="tab"` that
+          // could not be focused or activated. Verified in a browser, not
+          // inferred: the Pressable came out `tabindex="0" role=null
+          // aria-label=null`.
+          //
+          // TouchableOpacity, not Pressable: Pressable drops unknown props, so
+          // `aria-*` never reaches the DOM through it. This is the shape
+          // `lib/a11yState.ts` documents.
+          <TouchableOpacity
             key={channel.id}
             onPress={() => onSelect(channel)}
             style={s.target}
-            accessible={false}
+            testID={`${testID}-${channel.slug}`}
+            accessibilityRole="tab"
+            accessibilityLabel={channelLabel(channel)}
+            {...a11yState({ selected: active })}
           >
-            {/* The a11y identity sits on this View, not the Pressable: RNW
-                strips unknown props from Pressable so `aria-*` never reaches
-                the DOM, and `accessibilityState` alone is inert on 0.19. */}
-            <View
-              style={[s.pill, active && s.pillActive]}
-              testID={`${testID}-${channel.slug}`}
-              accessibilityRole="tab"
-              accessibilityLabel={channelLabel(channel)}
-              {...a11yState({ selected: active })}
-            >
+            <View style={[s.pill, active && s.pillActive]} pointerEvents="none">
               <Text style={[s.label, active && s.labelActive]} numberOfLines={1}>
                 {channelLabel(channel)}
               </Text>
             </View>
-          </Pressable>
+          </TouchableOpacity>
         );
       })}
 
       {/* Only when audio is actually live. A permanent stage button on a silent
           community advertises a room nobody is in. */}
       {stageCount !== null && stageCount > 0 && onJoinStage ? (
-        <Pressable onPress={onJoinStage} style={s.target} accessible={false}>
-          <View
-            style={s.stage}
-            testID={`${testID}-stage`}
-            accessibilityRole="button"
-            accessibilityLabel={`Join the live stage, ${stageCount} in the room`}
-            aria-label={`Join the live stage, ${stageCount} in the room`}
-          >
+        <TouchableOpacity
+          onPress={onJoinStage}
+          style={s.target}
+          testID={`${testID}-stage`}
+          accessibilityRole="button"
+          accessibilityLabel={`Join the live stage, ${stageCount} in the room`}
+        >
+          <View style={s.stage} pointerEvents="none">
             <View style={s.stageDot} />
             <Text style={s.stageText}>🎙 stage · {stageCount}</Text>
           </View>
-        </Pressable>
+        </TouchableOpacity>
       ) : null}
     </ScrollView>
   );
