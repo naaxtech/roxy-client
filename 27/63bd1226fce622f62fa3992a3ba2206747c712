@@ -1,0 +1,42 @@
+apps/mobile/components/channels/ChannelBar.tsx
+  s_488a1686f9c1af::t_f72618ab4fc9fc 1,83-94,98-101,103,108,115-122,126
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_02997141a06547::t_97109f6c21e1a5 770
+  s_02997141a06547::t_eb9c0a8a2817c7 442-443,470-478,480-483,485-495,539-541,543-571,573,575-576,578-614,616-619,621-627,629-631,640,691-693,695-741,743-769,771-778,782-783,785,787
+  s_02997141a06547::t_44af80d4bb24a9 76
+  s_02997141a06547::t_9faae2e2ffe943 4,30-31,33-35,38,40-48,742
+  s_02997141a06547::t_ddfe78b61673e6 32
+  s_02997141a06547::t_70bb0321df3844 305-306
+  s_02997141a06547::t_53d1f1598dea96 55
+  s_02997141a06547::t_99f104f48c7810 671-676
+  s_02997141a06547::t_d8c14d4020a7f1 382-405
+apps/mobile/__tests__/components/channels/ChannelPieces.test.tsx
+  s_488a1686f9c1af::t_1c9e8bd3b3ab54 33-40
+  s_488a1686f9c1af::t_5ff459e7e13f61 48-55
+apps/mobile/tests/e2e/channel-a11y.spec.ts
+  s_488a1686f9c1af::t_5ff459e7e13f61 1-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2763bd1226fce622f62fa3992a3ba2206747c712",
+  "prompts": {},
+  "sessions": {
+    "s_02997141a06547": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eeb5e1d1-aac6-4653-9c90-afb5f6db1d41",
+        "model": "grok-4.6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
