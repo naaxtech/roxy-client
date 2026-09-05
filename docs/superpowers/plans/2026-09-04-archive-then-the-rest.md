@@ -156,3 +156,42 @@ react-native-web, which is the bug MediaTypeChips already shipped once.
 
 **Deferred to B4:** the design's rich message cards (`m.hasCard`). Attachment
 columns are NOT in 105 — schema nothing reads is dead schema.
+
+---
+
+## B3 review — what was fixed, and what is still open
+
+Review of the 105 slice returned twelve findings and a BLOCKED gate. The
+blockers are closed (migration 107, the switch races, report/block, the reachable
+Remove, the leaked policy text, the a11y split, real avatars, the live stage).
+
+**Still open, deliberately, each with the reason:**
+
+- **Channel management has no UI.** 105 grants insert/delete and
+  `update (name, topic, position, is_default)` on `community_channels`, and
+  `is_community_moderator` has no client caller. No channel can be created after
+  the backfill. This is a capability in the schema with no reader — the rule this
+  codebase keeps rediscovering — and the honest fix is a moderator screen, not a
+  grant revoke, because the design's chip row implies more than one channel.
+  *Next slice.*
+
+- **No paging.** `MESSAGE_PAGE = 50` with no cursor and no `onEndReached`, so
+  message 51 and older is unreachable. Fine on a channel opened today; wrong the
+  moment a community is a month old. *Next slice.*
+
+- **Blocked members are still visible in a channel.** `fetchChannelMessages`
+  does not read `blockedUserIds`. Blocking him stops the DM and leaves his
+  channel messages on her screen — the same shape as the `friendships.status =
+  'blocked'` postmortem: a write nothing reads. *Next slice, and it belongs with
+  paging since both touch the same query.*
+
+- **`.subscribe()` has no status callback.** A `CHANNEL_ERROR` stops realtime
+  silently and forever, with nothing on screen saying so.
+
+- **A redundant, unnamed focus stop** wraps every `MediaTypeChips` /
+  `FilterChips` / `ContentNoteChip` pill. The named node inside is correct and
+  focusable (verified in the DOM), so this is a duplicate tab stop rather than a
+  missing control.
+
+- **Every realtime INSERT triggers a full 50-row refetch with a profiles join.**
+  Correct, and wasteful on a busy channel.
