@@ -32,8 +32,16 @@
 --   The studio reads through the same RLS-bound client as every other staff
 --   page. A service-role workaround in one screen means that screen is no
 --   longer subject to the policy everything else is checked against, and the
---   next person to copy it inherits that. The policies below are scoped to the
---   exact columns a moderator touches.
+--   next person to copy it inherits that.
+--
+--   CORRECTION (2026-09-05, migration 106). The sentence that stood here said
+--   "The policies below are scoped to the exact columns a moderator touches."
+--   That was false, and in a way worth spelling out: RLS chooses ROWS and never
+--   columns — the whole lesson of migration 101 — so a policy cannot scope a
+--   column at all. archive_entries in fact carried a table-WIDE update grant,
+--   and archive_reviews had no grant on `status`, so remove-review returned
+--   42501 for every moderator from the day this shipped. 106 narrows the one
+--   grant and adds the other.
 -- ============================================================
 
 -- ── 1. Archive reports can be filed ─────────────────────────────────────────

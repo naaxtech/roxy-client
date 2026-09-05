@@ -46,8 +46,27 @@ export const Analytics = {
     safe(() => analytics().logEvent('archive_entry_viewed', { entry: entrySlug }));
     ph('archive_entry_viewed', { entry: entrySlug });
   },
-  archiveVoteCast: (entrySlug: string, value: boolean, membershipStatus: string) => {
-    const payload = { entry: entrySlug, value, membership_status: membershipStatus };
+  /**
+   * No entry slug, and no vote value.
+   *
+   * `setUserId(hashUserId(id))` gives both vendors a STABLE per-woman identity,
+   * and `archive_votes` carries `SELECT ... USING (profile_id = auth.uid())` —
+   * Roxy's own database will not show an individual vote to anyone, not even a
+   * moderator, and the entry screen promises her "Your score is public as a
+   * number only." Attaching the slug here built a per-person record, held by
+   * two US vendors, of which queer works she endorsed: finer-grained than
+   * anything Roxy itself will disclose, on the app where that inference is the
+   * sensitive one.
+   *
+   * Nothing is lost. Per-entry popularity is already aggregated in Postgres as
+   * `archive_entries.vote_count` / `up_count`.
+   *
+   * `membership_status` STAYS: pending → first vote → approved → first review
+   * is the funnel this whole surface exists to prove, and it is about a
+   * membership state, not about a title.
+   */
+  archiveVoteCast: (_entrySlug: string, _value: boolean, membershipStatus: string) => {
+    const payload = { membership_status: membershipStatus };
     safe(() => analytics().logEvent('archive_vote_cast', payload));
     ph('archive_vote_cast', payload);
   },
@@ -65,13 +84,17 @@ export const Analytics = {
     safe(() => analytics().logEvent('archive_edit_submitted', { entry: entrySlug }));
     ph('archive_edit_submitted', { entry: entrySlug });
   },
-  archiveNoteAgreed: (entrySlug: string) => {
-    safe(() => analytics().logEvent('archive_note_agreed', { entry: entrySlug }));
-    ph('archive_note_agreed', { entry: entrySlug });
+  // No slug: `archive_note_agreements` is private to her by RLS, and agreeing
+  // that a specific work carries a specific content warning is the one of these
+  // three that can imply why she knows.
+  archiveNoteAgreed: (_entrySlug: string) => {
+    safe(() => analytics().logEvent('archive_note_agreed'));
+    ph('archive_note_agreed');
   },
-  archiveWatchlistAdded: (entrySlug: string) => {
-    safe(() => analytics().logEvent('archive_watchlist_added', { entry: entrySlug }));
-    ph('archive_watchlist_added', { entry: entrySlug });
+  // No slug: `archive_watchlist` is private to her by RLS too.
+  archiveWatchlistAdded: (_entrySlug: string) => {
+    safe(() => analytics().logEvent('archive_watchlist_added'));
+    ph('archive_watchlist_added');
   },
   membershipApproved: () => {
     safe(() => analytics().logEvent('membership_approved'));
