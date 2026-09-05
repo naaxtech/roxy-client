@@ -1,0 +1,30 @@
+apps/mobile/__tests__/lib/archiveAnalytics.test.ts
+  s_488a1686f9c1af::t_ae507a912a6774 65-68,70
+  s_488a1686f9c1af::t_bb94ffaa0b0a7e 94-161
+supabase/migrations/106_moderator_can_actually_moderate.sql
+  s_488a1686f9c1af::t_0274ea96395423 1-97
+apps/mobile/__tests__/lib/moderationContract.test.ts
+  s_488a1686f9c1af::t_3ec1f38dc4b5df 1-104
+apps/mobile/lib/analytics.ts
+  s_488a1686f9c1af::t_6d4df4f0d653d8 49-69,87-92,94-97
+supabase/migrations/100_archive_moderation_contract.sql
+  s_488a1686f9c1af::t_ce629ab71f564b 35-44
+supabase/downs/106_moderator_can_actually_moderate_down.sql
+  s_488a1686f9c1af::t_b6e2b9af47e511 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3b6ac7f52915e06807a73db8d9af1a3f0f7a136b",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
