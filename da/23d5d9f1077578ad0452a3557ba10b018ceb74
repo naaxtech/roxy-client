@@ -1,0 +1,120 @@
+apps/mobile/lib/profileTags.ts
+  s_02997141a06547::t_8dceed03da3f92 1-58
+apps/mobile/components/feed/CommentThread.tsx
+  s_02997141a06547::t_734d1406353633 2-3,5,30-31,39-41,43,45,50-56,67-73,75,88,91-100,102-107,129-130,145,151,161,173
+apps/mobile/types/index.ts
+  s_02997141a06547::t_c2fec5a10a3909 32-33
+apps/mobile/components/profile/ProfileShell.tsx
+  s_02997141a06547::t_26480f7dee7e19 106-107
+  s_02997141a06547::t_fa6c962660e0fe 157,160-161
+  s_02997141a06547::t_dea08e1210b963 728
+  s_02997141a06547::t_2e5776a633e219 230-236
+  s_02997141a06547::t_d2f92f33604186 429
+  s_02997141a06547::t_8dafc2f6e1614f 560-561
+  s_02997141a06547::t_6c4430ce63bf6a 178-179
+  s_02997141a06547::t_9060cc50c0636e 292
+  s_02997141a06547::t_8b2eb2b6005f7c 444
+  s_02997141a06547::t_2cb3d638ed33a7 770-782,784
+  s_02997141a06547::t_54638c80adbea4 12,14-16
+  s_02997141a06547::t_f50127c6f64b0f 670-671
+  s_02997141a06547::t_cfd9176f67cf2d 211-213
+  s_02997141a06547::t_499d5d50016ed5 710
+  s_02997141a06547::t_5b8b615f18fdd1 568-604,607-617
+  s_02997141a06547::t_9ca2a09052eac5 693
+  s_02997141a06547::t_60c5cc5d6a11a1 822
+apps/mobile/app/(tabs)/discover/post/[postId].tsx
+  s_02997141a06547::t_3f465fa11e9c0e 113
+  s_02997141a06547::t_3567941565b4c1 284
+  s_02997141a06547::t_a09bd96f10a34d 98,101-103
+  s_02997141a06547::t_6a8a81e3ea394e 16
+apps/mobile/__tests__/screens/YouProfileShell.test.tsx
+  s_02997141a06547::t_4895b9fa89f346 43-47
+  s_02997141a06547::t_cadd2cbe1e8f95 119
+apps/mobile/app/(tabs)/discover/video/[postId].tsx
+  s_02997141a06547::t_c9bfc50e4634c3 17
+  s_02997141a06547::t_b59d913cb5c89c 167-169
+  s_02997141a06547::t_9a4fc6332c45d3 237,242
+apps/mobile/app/(tabs)/you/index.tsx
+  s_02997141a06547::t_410ab5f0a753e5 27-30,183
+  s_02997141a06547::t_df3978ba83515e 64-66
+  s_02997141a06547::t_3f61f1534e69ad 298-304,306-311,318-398
+  s_02997141a06547::t_29e7e432c6a54d 155-163,166-182
+  s_02997141a06547::t_6b471c7ae02c10 245-266
+  s_02997141a06547::t_8400d2dadfb6b5 435-436,439
+apps/mobile/app/(tabs)/you/edit.tsx
+  s_02997141a06547::t_82f16dd8b7420e 115-121
+  s_02997141a06547::t_b3404dec91b7ab 15
+  s_02997141a06547::t_287776a42665aa 287-340
+  s_02997141a06547::t_e5b8419737db56 35
+apps/mobile/components/feed/PostActionRow.tsx
+  s_02997141a06547::t_437012499ac541 75
+  s_02997141a06547::t_6499f4095672b6 87
+apps/mobile/__tests__/lib/postComposer.test.ts
+  s_02997141a06547::t_0641a8fae5c2ea 8-9,17-18,25,31-33,37,40,43-44
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  s_02997141a06547::t_5f89c8d84a291c 279-280
+  s_02997141a06547::t_9f6ee0389e6d11 49
+  s_02997141a06547::t_9595d0345e32f6 1
+  s_02997141a06547::t_a878c2c00bfa1e 8
+  s_02997141a06547::t_2c08b382460229 4
+  s_02997141a06547::t_f262061fa3a91c 260
+  s_02997141a06547::t_943ddcf093da09 145
+  s_02997141a06547::t_26c7444b5646fe 482
+apps/mobile/__tests__/lib/profileTags.test.ts
+  s_02997141a06547::t_9bd16b2452d9b8 1-55
+apps/mobile/__tests__/components/nav/CreateSheet.test.tsx
+  s_02997141a06547::t_bd3ef17602e06f 12,14,34,61-64,74,76-77,79
+docs/sessions/2026-09-07-roxy-client-checklist.md
+  s_02997141a06547::t_f9cafd1bb0e58a 20,28
+  s_02997141a06547::t_87766a3d24ae77 6
+  s_02997141a06547::t_8114ffb5b71a81 59-60
+apps/mobile/lib/comments.ts
+  s_02997141a06547::t_d1685c6cf1af29 3,6-28,49-113
+apps/mobile/components/feed/ReelsFeed.tsx
+  s_02997141a06547::t_a414a0492307f9 9-10
+  s_02997141a06547::t_6eace010574579 358-359
+  s_02997141a06547::t_1596631e3cec31 341,346-348
+supabase/migrations/117_profile_wall_posts_and_custom_tags.sql
+  s_02997141a06547::t_9f05a5ed3f946f 1-24
+apps/mobile/__tests__/components/profile/ProfileShell.test.tsx
+  s_02997141a06547::t_3765f308548a90 39-58
+apps/mobile/app/tickets.tsx
+  s_02997141a06547::t_b90d73aa025ed4 183-187,189
+  s_02997141a06547::t_9870b138f0daba 216
+  s_02997141a06547::t_da3cdcd3ae3f67 109-115,118-119,122-125,129,131-136,148
+apps/mobile/lib/profileHosted.ts
+  s_02997141a06547::t_53c8689347b381 27-91
+apps/mobile/components/nav/CreateSheet.tsx
+  s_02997141a06547::t_629c621c379f8c 3,11,17,32-34,41,43-48,53-54,58,60,72,74,102,109,120-121,134-155,157-171
+apps/mobile/__tests__/lib/comments.test.ts
+  s_02997141a06547::t_0ef3bb24af35b7 2-37
+  s_02997141a06547::t_07f15ef8a4ff7f 1
+  s_02997141a06547::t_7717abc922c655 38-49
+apps/mobile/components/feed/CommentSheet.tsx
+  s_02997141a06547::t_0001def9dcb39d 10,12,17-18,32,38-39,45,59-67,76,78-83,89,94,102-103,117-119,124-138,141-155,159,165,168,171-173,176-177
+apps/mobile/lib/postComposer.ts
+  s_02997141a06547::t_2e4df0692e9a4f 4-7,9-13,16,26,34-36,38-39,43-44,46,50,54,57
+apps/mobile/app/(tabs)/you/[userId].tsx
+  s_02997141a06547::t_5501c486c8c16b 289
+  s_02997141a06547::t_a9a048a0e0588a 288
+  s_02997141a06547::t_0a9f983648e45b 354-365
+  s_02997141a06547::t_9040035014e016 458-460
+apps/mobile/__tests__/screens/UserProfileShell.test.tsx
+  s_02997141a06547::t_c8c54e22fdbb3e 240,242-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "da23d5d9f1077578ad0452a3557ba10b018ceb74",
+  "prompts": {},
+  "sessions": {
+    "s_02997141a06547": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eeb5e1d1-aac6-4653-9c90-afb5f6db1d41",
+        "model": "grok-4.6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
