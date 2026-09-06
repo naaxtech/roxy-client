@@ -1,0 +1,48 @@
+apps/mobile/components/nav/FloatingTabBar.tsx
+  s_02997141a06547::t_d52860a3b52b1c 286-291
+  s_02997141a06547::t_51208ee05ae73b 131
+  s_02997141a06547::t_115abe090238ae 51,55
+  s_02997141a06547::t_42934dad0bc4cc 107
+  s_02997141a06547::t_30cba8b894bc65 8,10
+  s_02997141a06547::t_1a2d3a36b3e36e 122
+  s_02997141a06547::t_ca7ca7e72d2ead 248
+  s_02997141a06547::t_ecad0a3d05bf09 93,96-101
+  s_02997141a06547::t_b60452f6ce5048 251-252,256-269
+apps/mobile/__tests__/components/nav/NavIcons.test.tsx
+  s_02997141a06547::t_31b23f6a2d758b 1-37
+apps/mobile/__tests__/lib/applyBrandType.test.ts
+  s_02997141a06547::t_6938f4e9e5ec9e 1-19
+apps/mobile/lib/applyBrandType.ts
+  s_02997141a06547::t_a0a691ca80ec23 1-26
+apps/mobile/__tests__/components/nav/FloatingTabBar.test.tsx
+  s_02997141a06547::t_314e446272f7e0 9-14
+  s_02997141a06547::t_9a1342a73bb607 170
+apps/mobile/app/_layout.tsx
+  s_02997141a06547::t_fc5297bcaada3d 28-30
+apps/mobile/__tests__/components/nav/navSlots3.test.ts
+  s_02997141a06547::t_a91b65588a8a86 50-51
+apps/mobile/components/nav/navSlots3.ts
+  s_02997141a06547::t_eb7e8fc22d2971 27,33,35,40,46
+  s_02997141a06547::t_12102730185f46 63,69,75
+apps/mobile/components/nav/NavIcons.tsx
+  s_02997141a06547::t_f7ddf9aac957aa 1-107
+apps/mobile/components/nav/navTokens.ts
+  s_02997141a06547::t_5299cffe15c3c3 58,60
+  s_02997141a06547::t_924c1d3d6da148 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "8cbe567d1bc4f12ea2938f68441fe4b43761c258",
+  "prompts": {},
+  "sessions": {
+    "s_02997141a06547": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eeb5e1d1-aac6-4653-9c90-afb5f6db1d41",
+        "model": "grok-4.6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
