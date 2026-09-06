@@ -19,6 +19,15 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 
+jest.mock('../../hooks/useAccess', () => ({
+  useAccess: () => ({
+    tier: 'beta',
+    isBeta: true,
+    can: () => true,
+    canCommunity: () => true,
+  }),
+}));
+
 // StreakChip and NowRail each own a real Supabase query of their own; this
 // suite is about the header's composition and the ids ReelsFeed receives,
 // neither of which either component affects.

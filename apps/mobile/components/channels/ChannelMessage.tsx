@@ -7,6 +7,8 @@ import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { avatarGradient, isPresetAvatar, presetColor, presetEmoji } from '../../lib/avatars';
 import { authorName, type ChannelMessage as Message } from '../../lib/channels';
+import { parseMessageCard } from '../../lib/messageCard';
+import { RADII } from '../../lib/theme';
 
 interface Props {
   message: Message;
@@ -18,6 +20,8 @@ interface Props {
    * out of, which is the one thing this app cannot ship.
    */
   onLongPress?: (message: Message) => void;
+  /** Opens a parsed event / product / archive / room card. */
+  onOpenCard?: (path: string) => void;
   testID?: string;
 }
 
@@ -30,7 +34,7 @@ const AVATAR = 34;
  * precisely so moderating one reply does not punch a hole in the conversation
  * around it, and the row has to render that state rather than vanish.
  */
-export function ChannelMessage({ message, onPressAuthor, onLongPress, testID }: Props) {
+export function ChannelMessage({ message, onPressAuthor, onLongPress, onOpenCard, testID }: Props) {
   const colors = useThemeColors();
   const name = authorName(message.author);
   const removed = message.deleted_at !== null;
@@ -66,10 +70,20 @@ export function ChannelMessage({ message, onPressAuthor, onLongPress, testID }: 
     // Italic and muted: it reads as an absence rather than as something said.
     removedText: { ...TYPE.caption, color: colors.textMuted, fontStyle: 'italic', marginTop: 1 },
     edited: { ...TYPE.micro, color: colors.textMuted },
+    card: {
+      marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 10,
+      maxWidth: 250, paddingHorizontal: 11, paddingVertical: 9,
+      borderRadius: RADII.md, borderWidth: 1, borderColor: colors.line,
+      backgroundColor: colors.surface, minHeight: MIN_TOUCH_TARGET,
+    },
+    cardTitle: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '700' },
+    cardSub: { ...TYPE.micro, color: colors.textMuted, fontWeight: '600' },
+    cardCta: { ...TYPE.micro, color: colors.primaryInk, fontWeight: '800' },
   });
 
   const initial = name.slice(0, 1).toUpperCase();
   const canOpen = !!(onPressAuthor && message.sender_id);
+  const card = !removed ? parseMessageCard(message.body) : null;
 
   let face: ReactNode;
   if (avatarUrl && isPresetAvatar(avatarUrl)) {
@@ -140,7 +154,24 @@ export function ChannelMessage({ message, onPressAuthor, onLongPress, testID }: 
               Message removed by a moderator.
             </Text>
           ) : (
-            <Text style={s.text}>{message.body}</Text>
+            <>
+              <Text style={s.text}>{message.body}</Text>
+              {card && onOpenCard ? (
+                <Pressable
+                  style={s.card}
+                  onPress={() => onOpenCard(card.path)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${card.cta} ${card.title}`}
+                  testID={testID ? `${testID}-card` : 'message-card'}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={s.cardTitle} numberOfLines={1}>{card.title}</Text>
+                    <Text style={s.cardSub} numberOfLines={1}>{card.subtitle}</Text>
+                  </View>
+                  <Text style={s.cardCta}>{card.cta}</Text>
+                </Pressable>
+              ) : null}
+            </>
           )}
         </View>
       </View>

@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { formatScore, SCORE_GATE, verdictFor } from '../../lib/archive';
+import { formatScore, SCORE_GATE, verdictFor, firstVoteLanded } from '../../lib/archive';
 
 /**
  * One score, one question, and one gate.
@@ -100,5 +100,13 @@ describe('the gate the database RANKS by', () => {
     const generated = sql.match(/has_score\s+boolean\s+GENERATED ALWAYS AS \(vote_count >= (\d+)\)/);
     expect(generated).not.toBeNull();
     expect(Number(generated![1])).toBe(SCORE_GATE);
+  });
+});
+
+describe('firstVoteLanded', () => {
+  it('is true only when she is the first person to rate it', () => {
+    expect(firstVoteLanded(false, 0)).toBe(true);
+    expect(firstVoteLanded(true, 0)).toBe(false);
+    expect(firstVoteLanded(false, 3)).toBe(false);
   });
 });

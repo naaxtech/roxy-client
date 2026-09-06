@@ -9,6 +9,8 @@ import { useConnectStore } from '../../store/connectStore';
 import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
 import { useSafetyStore } from '../../store/safetyStore';
+import { useAccess } from '../../hooks/useAccess';
+import { navSlotsFor } from '../../components/nav/navSlots3';
 import { supabase } from '../../lib/supabase';
 import { freshChannel } from '../../lib/realtimeChannel';
 
@@ -34,7 +36,11 @@ const FAB_SUPPRESSED_ON = ['roxy-chat', '/messages', '/chat/', 'sister-button', 
 
 export default function TabLayout() {
   const pathname = usePathname();
-  const showFab = !FAB_SUPPRESSED_ON.some((fragment) => pathname.includes(fragment));
+  const { can, tier } = useAccess();
+  const slots = navSlotsFor(tier);
+  const showFab =
+    can('roxyCompanion') &&
+    !FAB_SUPPRESSED_ON.some((fragment) => pathname.includes(fragment));
   const [createOpen, setCreateOpen] = useState(false);
   const pendingCount = useFriendStore((s) => s.pendingCount);
   const { user } = useAuthStore();
@@ -106,6 +112,7 @@ export default function TabLayout() {
         screenOptions={{ headerShown: false }}
         tabBar={(props) => (
           <FloatingTabBar
+            slots={slots}
             state={props.state}
             descriptors={props.descriptors}
             onTabPress={(route, isFocused) => {

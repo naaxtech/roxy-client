@@ -8,7 +8,9 @@ import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { usePopIn } from '../ui/popIn';
 import { formatMoney, currencyCode } from '../../lib/currency';
 import { inkOn } from '../../lib/theme';
-import { checkoutProgressLabel, CHECKOUT_STEPS, type CheckoutStep } from '../../lib/checkoutSteps';
+import { checkoutProgressLabel, checkoutStepCompact, CHECKOUT_STEPS, type CheckoutStep } from '../../lib/checkoutSteps';
+import { TYPE } from '../../lib/typography';
+import { RADII } from '../../lib/theme';
 import { newIdempotencyKey, checkoutSignature } from '../../lib/idempotency';
 import type { ProductWithVariants, ShippingAddress, CheckoutLine } from '../../types/marketplace';
 
@@ -312,14 +314,16 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
     sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, maxHeight: '92%', width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center' },
     handle: { width: 40, height: 4, backgroundColor: colors.textMuted, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
-    steps: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, marginBottom: 20 },
-    stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
-    stepDotActive: { backgroundColor: colors.primary },
-    stepDotDone: { backgroundColor: colors.primary + '80' },
-    stepDotText: { color: inkOn(colors.primary), fontWeight: '700', fontSize: 12 },
-    stepLine: { flex: 1, height: 2, backgroundColor: colors.surface },
-    stepLineDone: { backgroundColor: colors.primary + '80' },
-    stepTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginBottom: 16 },
+    steps: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, marginBottom: 16, gap: 8 },
+    stepChip: {
+      paddingHorizontal: 10, paddingVertical: 6, borderRadius: RADII.pill,
+      backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.line,
+    },
+    stepChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    stepChipDone: { backgroundColor: colors.primary + '80', borderColor: colors.primary },
+    stepChipText: { ...TYPE.micro, color: colors.textMuted, fontWeight: '800' },
+    stepChipTextOn: { color: inkOn(colors.primary) },
+    stepTitle: { ...TYPE.headline, color: colors.textPrimary, marginBottom: 16 },
     reviewItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.surface },
     reviewItemName: { flex: 1, fontSize: 14, color: colors.textPrimary },
     reviewItemPrice: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
@@ -369,22 +373,23 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
             testID="checkout-progress"
           >
             {STEPS.map((s, i) => (
-              <React.Fragment key={s}>
-                <View
-                  accessibilityElementsHidden
-                  importantForAccessibility="no-hide-descendants"
-                  style={[
-                    styles.stepDot,
-                    step === s && styles.stepDotActive,
-                    STEPS.indexOf(step) > i && styles.stepDotDone,
-                  ]}
-                >
-                  <Text style={styles.stepDotText}>{i + 1}</Text>
-                </View>
-                {i < 2 && (
-                  <View style={[styles.stepLine, STEPS.indexOf(step) > i && styles.stepLineDone]} />
-                )}
-              </React.Fragment>
+              <View
+                key={s}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                style={[
+                  styles.stepChip,
+                  step === s && styles.stepChipActive,
+                  STEPS.indexOf(step) > i && styles.stepChipDone,
+                ]}
+              >
+                <Text style={[
+                  styles.stepChipText,
+                  (step === s || STEPS.indexOf(step) > i) && styles.stepChipTextOn,
+                ]}>
+                  {checkoutStepCompact(s)}
+                </Text>
+              </View>
             ))}
           </View>
           <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>

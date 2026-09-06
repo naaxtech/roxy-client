@@ -21,6 +21,7 @@ import { useAppFonts } from '../hooks/useAppFonts';
 import { WebAppFrame } from '../components/ui/WebAppFrame';
 import { shouldRedirectToPending, shouldRedirectToApplication } from '../lib/authRouting';
 import { useGateStore } from '../store/gateStore';
+import { LaunchGate } from '../components/features/FeatureGate';
 
 
 function AppNavigator() {
@@ -198,7 +199,9 @@ function AppNavigator() {
       <SafeAreaProvider>
         <WebAppFrame>
           <ErrorBoundary>
-            <Stack screenOptions={{ headerShown: false }} />
+            <LaunchGate>
+              <Stack screenOptions={{ headerShown: false }} />
+            </LaunchGate>
             {/* Mounted once, at the root, so every surface that calls
                 safetyStore.openReportModal actually opens something. Before
                 this, nothing in the app read isReportModalOpen — the Report

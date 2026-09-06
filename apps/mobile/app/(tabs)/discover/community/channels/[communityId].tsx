@@ -23,6 +23,8 @@ import {
   type Channel, type ChannelMessage as Message,
 } from '../../../../../lib/channels';
 import { useSafetyStore } from '../../../../../store/safetyStore';
+import { useAccess } from '../../../../../hooks/useAccess';
+import { ComingSoon } from '../../../../../components/features/ComingSoon';
 
 /**
  * Community channels (design markup 655–697).
@@ -38,8 +40,10 @@ export default function CommunityChannelsScreen() {
   const router = useRouter();
   const { communityId } = useLocalSearchParams<{ communityId: string }>();
   const { user } = useAuthStore();
+  const { canCommunity } = useAccess();
 
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [communitySlug, setCommunitySlug] = useState<string | null>(null);
   const [active, setActive] = useState<Channel | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [communityName, setCommunityName] = useState<string>('');
@@ -74,11 +78,12 @@ export default function CommunityChannelsScreen() {
     try {
       const [rows, community] = await Promise.all([
         fetchChannels(communityId),
-        supabase.from('communities').select('name').eq('id', communityId).maybeSingle(),
+        supabase.from('communities').select('name, slug').eq('id', communityId).maybeSingle(),
       ]);
       setChannels(rows);
       setActive(initialChannel(rows));
       setCommunityName(community.data?.name ?? '');
+      setCommunitySlug(community.data?.slug ?? null);
       setError(null);
       // A hint for what to DRAW, never the gate. The gate is the policy, and a
       // client that decided this for itself would be the copy that drifts.
@@ -250,6 +255,10 @@ export default function CommunityChannelsScreen() {
     retryHit: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
   });
 
+  if (!loading && communitySlug && !canCommunity(communitySlug)) {
+    return <ComingSoon feature="communities" />;
+  }
+
   const body = () => {
     if (loading) {
       return (
@@ -338,6 +347,7 @@ export default function CommunityChannelsScreen() {
             message={item}
             onPressAuthor={(id) => router.push(`/user/${id}` as never)}
             onLongPress={(m) => setMenuFor(m)}
+            onOpenCard={(path) => router.push(path as never)}
             testID={`channel-message-${item.id}`}
           />
         )}

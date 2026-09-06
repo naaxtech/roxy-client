@@ -7,6 +7,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { type ThemeColors } from '../../lib/theme';
 import { NAV_SLOTS_3 } from './navSlots3';
+import type { NavSlot } from './navTokens';
 import { a11yState } from '../../lib/a11yState';
 import {
   ACTIVE_TINT_ALPHA,
@@ -26,6 +27,8 @@ export type FloatingTabBarProps = {
    *  to the layout that has the real navigation object; this bar only reports. */
   onTabPress: (route: TabBarRoute, isFocused: boolean) => void;
   onCreatePress: () => void;
+  /** Defaults to the full 3.0 bar. Public launch passes the three-slot set. */
+  slots?: readonly NavSlot[];
 };
 
 /** The ink the create plate carries. Derived from the darkest stop of the brand
@@ -152,7 +155,9 @@ function CreateSlot({
  * would need a `useBottomTabBarHeight()` padding pass across all six tab
  * screens; that is its own slice.
  */
-export function FloatingTabBar({ state, descriptors, onTabPress, onCreatePress }: FloatingTabBarProps) {
+export function FloatingTabBar({
+  state, descriptors, onTabPress, onCreatePress, slots = NAV_SLOTS_3,
+}: FloatingTabBarProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
@@ -164,7 +169,7 @@ export function FloatingTabBar({ state, descriptors, onTabPress, onCreatePress }
   return (
     <View testID="nav-bar" style={[s.bar, { paddingBottom: bottomInset }]}>
       <View testID="nav-pill" style={s.pill}>
-        {NAV_SLOTS_3.map((slot) => {
+        {slots.map((slot) => {
           if (slot.kind === 'action') {
             return (
               <CreateSlot

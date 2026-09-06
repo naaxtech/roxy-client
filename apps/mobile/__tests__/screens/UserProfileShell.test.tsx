@@ -29,6 +29,15 @@ jest.mock('expo-router', () => ({
 
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 
+jest.mock('../../hooks/useAccess', () => ({
+  useAccess: () => ({
+    tier: 'beta',
+    isBeta: true,
+    can: () => true,
+    canCommunity: () => true,
+  }),
+}));
+
 jest.mock('../../store/authStore', () => ({
   useAuthStore: (sel: (s: unknown) => unknown) => {
     const state = { user: { id: 'u1' } };

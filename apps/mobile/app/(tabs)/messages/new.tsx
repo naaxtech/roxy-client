@@ -13,8 +13,9 @@ import { logError } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
 import { avatarGradient } from '../../../lib/avatars';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { FeatureGate } from '../../../components/features/FeatureGate';
 
-export default function NewMessageScreen() {
+function NewMessageScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -154,5 +155,13 @@ export default function NewMessageScreen() {
         />
       )}
     </SafeAreaView>
+  );
+}
+
+export default function NewMessageRoute() {
+  return (
+    <FeatureGate feature="dms">
+      <NewMessageScreen />
+    </FeatureGate>
   );
 }

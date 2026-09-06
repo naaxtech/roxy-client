@@ -67,6 +67,7 @@ export type ProfileAction = {
   onPress?: () => void;
   accessibilityLabel?: string;
   icon?: keyof typeof Ionicons.glyphMap;
+  testID?: string;
 };
 
 export type ProfileStat = { value: string; label: string };
@@ -104,6 +105,12 @@ export interface ProfileShellProps {
   // — body ————————————————————————————————————————————————————
   populated: PopulatedTabs;
   renderTab: (tab: ProfileTab) => ReactNode;
+  /**
+   * Optional controlled strip. The You tab's Saved row has to *open* Saved,
+   * and the shell otherwise owns selection internally. Pass both, or neither.
+   */
+  selectedTab?: ProfileTab | null;
+  onSelectTab?: (tab: ProfileTab) => void;
   /** Variant extras between the stats and the strip — SelfControls, the online row. */
   beforeTabs?: ReactNode;
   status?: ProfileBodyStatus;
@@ -152,6 +159,8 @@ export function ProfileShell({
   secondaryAction,
   populated,
   renderTab,
+  selectedTab,
+  onSelectTab,
   beforeTabs,
   status = 'ready',
   errorMessage = 'We could not load this yet.',
@@ -163,7 +172,12 @@ export function ProfileShell({
   const s = styles(colors);
 
   const tabs = visibleTabs(variant, populated);
-  const [selected, setSelected] = useState<ProfileTab | null>(null);
+  const [internalSelected, setInternalSelected] = useState<ProfileTab | null>(null);
+  const selected = onSelectTab ? (selectedTab ?? null) : internalSelected;
+  const setSelected = (tab: ProfileTab) => {
+    if (onSelectTab) onSelectTab(tab);
+    else setInternalSelected(tab);
+  };
   const active = resolveActiveTab(tabs, selected);
 
   const isCommunity = variant === 'community';
@@ -223,7 +237,7 @@ export function ProfileShell({
   };
 
   const renderAction = (action: ProfileAction, kind: 'primary' | 'secondary') => {
-    const id = kind === 'primary' ? 'profile-primary-action' : 'profile-secondary-action';
+    const id = action.testID ?? (kind === 'primary' ? 'profile-primary-action' : 'profile-secondary-action');
     const box = kind === 'primary' ? s.primaryBtn : s.secondaryBtn;
     const label = kind === 'primary' ? s.primaryLabel : s.secondaryLabel;
     const iconColor = kind === 'primary' ? inkOn(colors.primary) : colors.primaryInk;

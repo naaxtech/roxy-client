@@ -12,7 +12,7 @@
  */
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { NAV_SLOTS_3 } from '../../../components/nav/navSlots3';
+import { NAV_SLOTS_3, NAV_SLOTS_PUBLIC, navSlotsFor } from '../../../components/nav/navSlots3';
 
 const TABS_DIR = join(__dirname, '..', '..', '..', 'app', '(tabs)');
 
@@ -59,5 +59,29 @@ describe('NAV_SLOTS_3', () => {
     for (const gone of ['grow', 'connect', 'build']) {
       expect(routes).not.toContain(gone);
     }
+  });
+});
+
+describe('NAV_SLOTS_PUBLIC', () => {
+  it('is Archive · Chat · You — no Discover, no Create', () => {
+    expect(NAV_SLOTS_PUBLIC.map((s) => s.label)).toEqual(['Archive', 'Chat', 'You']);
+    expect(NAV_SLOTS_PUBLIC.every((s) => s.kind === 'route')).toBe(true);
+  });
+
+  it('reuses existing tab directories so the bar does not point at a gap', () => {
+    for (const slot of NAV_SLOTS_PUBLIC) {
+      if (slot.kind !== 'route') continue;
+      const dir = join(TABS_DIR, slot.routeName);
+      expect(`${slot.routeName} → ${existsSync(dir) ? 'exists' : 'MISSING'}`).toBe(
+        `${slot.routeName} → exists`
+      );
+    }
+  });
+});
+
+describe('navSlotsFor', () => {
+  it('gives beta the full 3.0 bar and public the limited launch bar', () => {
+    expect(navSlotsFor('beta')).toBe(NAV_SLOTS_3);
+    expect(navSlotsFor('public')).toBe(NAV_SLOTS_PUBLIC);
   });
 });

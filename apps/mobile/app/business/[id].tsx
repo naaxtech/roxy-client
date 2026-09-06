@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  ScrollView, Share, Linking,
+  Share, Linking,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -20,16 +19,11 @@ import { BusinessPhotoGallery } from '../../components/build/BusinessPhotoGaller
 import { CartDrawer } from '../../components/build/CartDrawer';
 import { CheckoutSheet } from '../../components/build/CheckoutSheet';
 import { OrderConfirmationSheet } from '../../components/build/OrderConfirmationSheet';
+import { ProfileShell } from '../../components/profile/ProfileShell';
+import type { PopulatedTabs, ProfileTab } from '../../components/profile/profileVariant';
+import { deriveSellerStatus, canSell } from '../../lib/sellerStatus';
 import type { Business, BusinessPhoto } from '../../types';
 import type { ProductWithVariants } from '../../types/marketplace';
-import { BRAND_GRADIENT } from '../../lib/theme';
-
-
-type StorefrontTab = 'shop' | 'about' | 'photos' | 'policies';
-const TABS: StorefrontTab[] = ['shop', 'about', 'photos', 'policies'];
-const TAB_LABEL: Record<StorefrontTab, string> = {
-  shop: 'Shop', about: 'About', photos: 'Photos', policies: 'Policies',
-};
 
 export default function BusinessStorefrontScreen() {
   const colors = useThemeColors();
@@ -51,7 +45,7 @@ export default function BusinessStorefrontScreen() {
   const [photos, setPhotos] = useState<BusinessPhoto[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(true);
   const [photosError, setPhotosError] = useState(false);
-  const [activeTab, setActiveTab] = useState<StorefrontTab>('shop');
+  const [shellTab, setShellTab] = useState<ProfileTab | null>(null);
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   // Set once payment succeeds. orderId inside is null while the Stripe webhook is
@@ -152,7 +146,7 @@ export default function BusinessStorefrontScreen() {
 
   const handleViewOrders = () => {
     setCheckoutResult(null);
-    router.push({ pathname: '/(tabs)/profile', params: { orders: '1' } } as any);
+    router.push({ pathname: '/(tabs)/you', params: { orders: '1' } } as any);
   };
 
   // 2-col grid math derives from useAppWidth() (not raw window width) so the
@@ -363,178 +357,133 @@ export default function BusinessStorefrontScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Sticky header */}
-      <View style={styles.topBar}>
-        <TouchableOpacity style={styles.iconBtn} onPress={goBack} accessibilityLabel="Back" hitSlop={8}>
-          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.topBarActions}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={handleShare}
-            accessibilityLabel="Share this shop"
-            hitSlop={8}
-          >
-            <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            testID="bookmark-btn"
-            style={styles.iconBtn}
-            onPress={handleBookmarkToggle}
-            accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
-            hitSlop={8}
-          >
-            <Ionicons
-              name={isBookmarked ? 'heart' : 'heart-outline'}
-              size={20}
-              color={isBookmarked ? colors.roxy : colors.textPrimary}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
+  const approved = canSell(deriveSellerStatus([business]));
+  const populated: PopulatedTabs = {
+    posts: false,
+    shop: approved,
+    events: false,
+    rooms: false,
+    games: false,
+    about: !!(business.description || business.website_url || business.instagram_handle),
+    saved: false,
+    photos: photos.length > 0,
+    policies: approved,
+  };
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: cartCount > 0 ? 96 : 24 }}
-      >
-        {/* Hero */}
-        <View style={styles.hero}>
-          {business.logo_url ? (
-            <Image
-              source={{ uri: business.logo_url }}
-              style={styles.logoImg}
-              contentFit="cover"
-              accessibilityLabel={business.name}
-            />
-          ) : (
-            <LinearGradient
-              colors={BRAND_GRADIENT}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.logoPlate}
-            >
-              <Text style={styles.logoInitial}>{business.name?.[0]?.toUpperCase() ?? '?'}</Text>
-            </LinearGradient>
-          )}
-          <Text style={styles.name}>{business.name}</Text>
-          {business.is_verified && (
-            <View style={styles.verifiedRow}>
-              <Ionicons name="shield-checkmark" size={14} color={colors.primary} />
-              <Text style={styles.verifiedText}>Verified WLW Business</Text>
-            </View>
-          )}
-          {business.location_city && (
-            <View style={styles.metaRow}>
-              <Ionicons name="location-outline" size={13} color={colors.textMuted} />
-              <Text style={styles.metaText}>{business.location_city}</Text>
-            </View>
-          )}
-          {business.category && (
-            <View style={styles.categoryChip}>
-              <Text style={styles.categoryChipText}>{business.category}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Segmented tabs */}
-        <View style={styles.tabBar}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
-              onPress={() => setActiveTab(tab)}
-              accessibilityLabel={`${TAB_LABEL[tab]} tab`}
-            >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {TAB_LABEL[tab]}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Shop */}
-        {activeTab === 'shop' && (
-          <View style={styles.shopGrid}>
-            {isLoadingProducts || !productsByBusiness[businessId] ? (
-              // Until the store has actually fetched this business's products,
-              // treat it as loading — otherwise the first paint (products=[],
-              // loading=false) briefly flashes the "No products yet" empty state.
-              <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
-            ) : products.length === 0 ? (
-              renderSectionEmpty('storefront-outline', 'No products yet', "This shop hasn't listed products yet.")
-            ) : (
-              <View style={styles.grid}>
-                {products.map((product) => renderProductCell(product))}
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* About */}
-        {activeTab === 'about' && (
-          <View style={styles.aboutSection}>
-            {business.description
-              ? <Text style={styles.description}>{business.description}</Text>
-              : renderSectionEmpty('document-text-outline', 'No description yet')}
-            {(business.website_url || business.instagram_handle) && (
-              <View style={styles.linksSection}>
-                {business.website_url && (
-                  <TouchableOpacity
-                    style={styles.linkRow}
-                    onPress={() => Linking.openURL(business.website_url!).catch(() => {})}
-                  >
-                    <Ionicons name="globe-outline" size={18} color={colors.primary} />
-                    <Text style={styles.linkText}>Website</Text>
-                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                  </TouchableOpacity>
-                )}
-                {business.instagram_handle && (
-                  <TouchableOpacity
-                    style={styles.linkRow}
-                    onPress={() => Linking.openURL(`https://instagram.com/${business.instagram_handle}`).catch(() => {})}
-                  >
-                    <Ionicons name="logo-instagram" size={18} color={colors.primary} />
-                    <Text style={styles.linkText}>@{business.instagram_handle}</Text>
-                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Photos */}
-        {activeTab === 'photos' && (
-          loadingPhotos ? (
+  const renderTab = (tab: ProfileTab) => {
+    if (tab === 'shop') {
+      return (
+        <View style={styles.shopGrid}>
+          {isLoadingProducts || !productsByBusiness[businessId] ? (
             <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
-          ) : photosError ? (
-            renderSectionEmpty(
-              'alert-circle-outline',
-              "Couldn't load photos",
-              'Check your connection and try again.',
-              loadPhotos,
-            )
-          ) : photos.length === 0 ? (
-            renderSectionEmpty('images-outline', 'No photos yet')
+          ) : products.length === 0 ? (
+            renderSectionEmpty('storefront-outline', 'No products yet', "This shop hasn't listed products yet.")
           ) : (
-            <View testID="photo-gallery">
-              <BusinessPhotoGallery photos={photos} />
+            <View style={styles.grid}>
+              {products.map((product) => renderProductCell(product))}
             </View>
-          )
-        )}
+          )}
+        </View>
+      );
+    }
+    if (tab === 'about') {
+      return (
+        <View style={styles.aboutSection}>
+          {business.description
+            ? <Text style={styles.description}>{business.description}</Text>
+            : renderSectionEmpty('document-text-outline', 'No description yet')}
+          {(business.website_url || business.instagram_handle) && (
+            <View style={styles.linksSection}>
+              {business.website_url && (
+                <TouchableOpacity
+                  style={styles.linkRow}
+                  onPress={() => Linking.openURL(business.website_url!).catch(() => {})}
+                >
+                  <Ionicons name="globe-outline" size={18} color={colors.primary} />
+                  <Text style={styles.linkText}>Website</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
+              {business.instagram_handle && (
+                <TouchableOpacity
+                  style={styles.linkRow}
+                  onPress={() => Linking.openURL(`https://instagram.com/${business.instagram_handle}`).catch(() => {})}
+                >
+                  <Ionicons name="logo-instagram" size={18} color={colors.primary} />
+                  <Text style={styles.linkText}>@{business.instagram_handle}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
+      );
+    }
+    if (tab === 'photos') {
+      if (loadingPhotos) return <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />;
+      if (photosError) {
+        return renderSectionEmpty(
+          'alert-circle-outline',
+          "Couldn't load photos",
+          'Check your connection and try again.',
+          loadPhotos,
+        );
+      }
+      if (photos.length === 0) return renderSectionEmpty('images-outline', 'No photos yet');
+      return (
+        <View testID="photo-gallery">
+          <BusinessPhotoGallery photos={photos} />
+        </View>
+      );
+    }
+    return (
+      <View style={styles.policiesSection}>
+        {renderPolicyRow('airplane-outline', 'Ships internationally where the seller allows')}
+        {renderPolicyRow('lock-closed-outline', 'Secure checkout via Stripe')}
+        {renderPolicyRow('pricetag-outline', `Prices shown in ${currencyCode(businessCurrency(businessId))}`)}
+        {renderPolicyRow('arrow-undo-outline', 'Returns handled by the seller — contact before buying')}
+      </View>
+    );
+  };
 
-        {/* Policies */}
-        {activeTab === 'policies' && (
-          <View style={styles.policiesSection}>
-            {renderPolicyRow('airplane-outline', 'Ships internationally where the seller allows')}
-            {renderPolicyRow('lock-closed-outline', 'Secure checkout via Stripe')}
-            {renderPolicyRow('pricetag-outline', `Prices shown in ${currencyCode(businessCurrency(businessId))}`)}
-            {renderPolicyRow('arrow-undo-outline', 'Returns handled by the seller — contact before buying')}
-          </View>
-        )}
-      </ScrollView>
+  return (
+    <SafeAreaView style={styles.container} edges={['top']} testID="business-shell">
+      <ProfileShell
+        variant="seller"
+        name={business.name}
+        subtitle={[business.category, business.location_city].filter(Boolean).join(' · ') || null}
+        bio={business.description}
+        avatarUrl={business.logo_url}
+        coverUrl={photos[0]?.url ?? null}
+        verified={business.is_verified}
+        sellerApproved={approved}
+        stats={approved ? [
+          { value: String(products.length), label: 'Products' },
+          { value: business.location_city ?? '—', label: 'Ships from' },
+          { value: business.is_wlw_owned ? 'WLW' : 'Shop', label: 'Owned' },
+        ] : undefined}
+        onBack={goBack}
+        headerActions={[
+          {
+            icon: 'share-outline',
+            label: 'Share this shop',
+            onPress: handleShare,
+            testID: 'business-share',
+          },
+          {
+            icon: isBookmarked ? 'heart' : 'heart-outline',
+            label: isBookmarked ? 'Remove bookmark' : 'Add bookmark',
+            onPress: handleBookmarkToggle,
+            testID: 'bookmark-btn',
+          },
+        ]}
+        primaryAction={{ label: approved ? 'Shop' : 'About' }}
+        populated={populated}
+        selectedTab={shellTab}
+        onSelectTab={setShellTab}
+        renderTab={renderTab}
+        testID="profile-shell"
+      />
 
       {/* Bottom cart bar */}
       {cartCount > 0 && (

@@ -113,6 +113,19 @@ describe('ChannelMessage', () => {
     expect(v.queryByLabelText(/Open .* profile/)).toBeNull();
   });
 
+  it('draws a tappable card when the body names an event', () => {
+    const onOpenCard = jest.fn();
+    const v = render(
+      <ChannelMessage
+        message={message({ body: 'tonight /event/c2fb3fd8-8528-4e69-bce6-44931b4377c4' })}
+        onOpenCard={onOpenCard}
+        testID="m"
+      />,
+    );
+    fireEvent.press(v.getByTestId('m-card'));
+    expect(onOpenCard).toHaveBeenCalledWith('/event/c2fb3fd8-8528-4e69-bce6-44931b4377c4');
+  });
+
   it('does not say "edited" on a message that was removed', () => {
     const v = render(
       <ChannelMessage

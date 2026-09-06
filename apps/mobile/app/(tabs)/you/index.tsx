@@ -1,6 +1,6 @@
 // apps/mobile/app/(tabs)/you/index.tsx
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, ActivityIndicator, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,13 +9,16 @@ import { useProfileStore } from '../../../store/profileStore';
 import { useBuildStore } from '../../../store/buildStore';
 import { useMarketplaceStore } from '../../../store/marketplaceStore';
 import { supabase } from '../../../lib/supabase';
-import { ProfileCard } from '../../../components/profile/ProfileCard';
+import { ProfileShell } from '../../../components/profile/ProfileShell';
+import type { PopulatedTabs, ProfileTab } from '../../../components/profile/profileVariant';
 import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
 import { SavedPosts } from '../../../components/profile/SavedPosts';
 import { SavedWatchlist } from '../../../components/profile/SavedWatchlist';
+import { BadgeRow, type EarnedBadge } from '../../../components/profile/BadgeRow';
 import { useArchiveStore } from '../../../store/archiveStore';
 import { SelfControls } from '../../../components/profile/SelfControls';
+import { fetchUnreadNotificationCount } from '../../../lib/notifications';
 import { MiniWinsCard } from '../../../components/grow/MiniWinsCard';
 import { OrderDetailSheet } from '../../../components/build/OrderDetailSheet';
 import { logError } from '../../../lib/errorLogger';
@@ -23,10 +26,11 @@ import { useThemeColors } from '../../../hooks/useThemeColors';
 import { formatMoney } from '../../../lib/currency';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { RADII } from '../../../lib/theme';
-import type { UserBadgeProgress, Badge, Business, Profile } from '../../../types';
+import type { Business, Profile } from '../../../types';
 import type { OrderWithItems } from '../../../types/marketplace';
+import { useAccess } from '../../../hooks/useAccess';
+import { TYPE } from '../../../lib/typography';
 
-type EarnedBadge = UserBadgeProgress & { badges: Badge | null };
 
 /** How long a spinner is a reasonable answer before it becomes a dead end. */
 const PROFILE_STALL_MS = 8_000;
@@ -42,6 +46,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function ProfileScreen() {
   const { user } = useAuthStore();
   const { profile } = useProfileStore();
+  const { isBeta } = useAccess();
   const { bookmarkedBusinessIds, loadBookmarks } = useBuildStore();
   const { orders, loadingOrders, ordersError, fetchOrders } = useMarketplaceStore();
   const router = useRouter();
@@ -55,7 +60,9 @@ export default function ProfileScreen() {
   const [savedBusinesses, setSavedBusinesses] = useState<Business[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
   const [showOrders, setShowOrders] = useState(ordersParam === '1');
-  const scrollRef = useRef<ScrollView>(null);
+  const [shellTab, setShellTab] = useState<ProfileTab | null>(null);
+  const [postCount, setPostCount] = useState(0);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
 
   // The watchlist lives in archiveStore, which the Archive screens hydrate on
   // their own mount. Arriving straight at You — a cold start, a deep link —
@@ -64,7 +71,6 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (user?.id) void hydrateArchive(user.id);
   }, [user?.id, hydrateArchive]);
-  const [savedY, setSavedY] = useState(0);
 
   /*
    * A spinner needs an end.
@@ -126,12 +132,30 @@ export default function ProfileScreen() {
 
     void loadBookmarks(user.id);
     void fetchOrders();
+    void supabase
+      .from('posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('author_id', user.id)
+      .in('post_type', ['photo', 'video'])
+      .then(({ count, error }) => {
+        if (error) logError(error, 'you_postCount');
+        else setPostCount(count ?? 0);
+      });
+    void fetchUnreadNotificationCount(user.id)
+      .then(setUnreadNotifs)
+      .catch((e: unknown) => logError(e, 'you_unreadNotifs'));
   }, [user?.id, loadBookmarks, fetchOrders]);
 
-  // Fetch saved business details whenever bookmarked IDs change
+  // Fetch saved business details whenever bookmarked IDs change.
+  // An empty Set with a new reference every render must not write [] again —
+  // that re-render loop took the You tab down in tests and would do the same
+  // if the store ever handed us a fresh Set of the same ids.
   useEffect(() => {
     const ids = [...bookmarkedBusinessIds];
-    if (ids.length === 0) { setSavedBusinesses([]); return; }
+    if (ids.length === 0) {
+      setSavedBusinesses((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
     void (async () => {
       try {
         const { data } = await supabase
@@ -154,16 +178,6 @@ export default function ProfileScreen() {
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    header: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingHorizontal: 12, paddingVertical: 8,
-    },
-    headerBtn: {
-      width: 40, height: 40, borderRadius: 20,
-      alignItems: 'center', justifyContent: 'center',
-      backgroundColor: colors.surface,
-    },
-    headerTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 16 },
     ordersSection: {
       marginTop: 8,
       marginHorizontal: 16,
@@ -216,6 +230,17 @@ export default function ProfileScreen() {
     statusText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
     badgeError: { color: colors.error, fontSize: 13, textAlign: 'center', paddingHorizontal: 16, paddingTop: 4 },
     noBadges: { color: colors.textMuted, fontSize: 13, textAlign: 'center', paddingHorizontal: 16, paddingTop: 4 },
+    comingSoonCard: {
+      marginHorizontal: 16,
+      marginTop: 8,
+      marginBottom: 8,
+      padding: 16,
+      borderRadius: RADII.md,
+      backgroundColor: colors.surface,
+      gap: 6,
+    },
+    comingSoonTitle: { ...TYPE.title, color: colors.textPrimary },
+    comingSoonBody: { ...TYPE.body, color: colors.textSecondary },
     stalled: { paddingHorizontal: 32, paddingTop: 64, gap: 8, alignItems: 'center' },
     stalledTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700', textAlign: 'center' },
     stalledBody: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: 'center' },
@@ -225,6 +250,7 @@ export default function ProfileScreen() {
       borderRadius: RADII.pill, backgroundColor: colors.primary,
     },
     stalledBtnText: { color: colors.primaryInk, fontSize: 14, fontWeight: '700' },
+    badgeRow: { paddingHorizontal: 16, paddingBottom: 8 },
   });
 
   if (!user || !profile) {
@@ -260,154 +286,190 @@ export default function ProfileScreen() {
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Standard social profile header: back · @handle · settings */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerBtn}
-          onPress={() => (router.canGoBack() ? router.back() : router.push('/(tabs)/feed' as any))}
-          accessibilityLabel="Back"
-        >
-          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>@{profile.username}</Text>
-        <TouchableOpacity
-          style={styles.headerBtn}
-          onPress={() => router.push('/(tabs)/you/settings' as any)}
-          accessibilityLabel="Settings"
-        >
-          <Ionicons name="settings-outline" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
-      {/* Bug fix: no bottom padding meant the last section (My Orders) scrolled
-          in right under the fixed tab bar + Roxy FAB with nothing protecting
-          it -- other screens in this app already reserve ~80px for this. */}
-      <ScrollView
-        ref={scrollRef}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        <ProfileCard
-          profile={profile}
-          badges={badges}
-          isOwn={true}
-          savedBusinesses={savedBusinesses}
-          onOpenBusiness={handleOpenBiz}
-          onEdit={() => router.push('/(tabs)/you/edit' as any)}
-        />
+  const populated: PopulatedTabs = {
+    posts: isBeta && postCount > 0,
+    shop: false,
+    events: false,
+    rooms: false,
+    games: false,
+    about: isBeta,
+    saved: true,
+  };
 
-        {user?.id && (
-          <>
-            {/* Directly under the card, above everything else: the two safety
-                modes have to be two taps from anywhere, and any tab → You is
-                the first of those two. */}
-            <SelfControls
-              userId={user.id}
-              onOpenSaved={() => scrollRef.current?.scrollTo({ y: savedY, animated: true })}
-            />
-            <MiniWinsCard userId={user.id} />
-            <ProfilePhotoGrid userId={user.id} editable />
-            {/* Measured rather than estimated: the blocks above it are all
-                variable height — a photo grid, a card whose seller row may or
-                may not carry a status — so any constant here would be wrong for
-                most women most of the time. */}
-            <View onLayout={(e) => setSavedY(e.nativeEvent.layout.y)}>
-              <SavedPosts userId={user.id} />
-              {/* Her Archive watchlist lives under Saved with her saved posts.
-                  It is the one thing a pending member can accumulate before the
-                  rest of Roxy opens, so it belongs where she looks for the
-                  things she kept — not only inside the Archive. */}
-              <SavedWatchlist />
-            </View>
-            <ProfileFavorites userId={user.id} editable />
-          </>
-        )}
-
-        {badgeLoadError ? (
-          <Text style={styles.badgeError}>Could not load badges</Text>
-        ) : null}
-
-        {/* My Orders section */}
-        <View style={styles.ordersSection}>
-          <TouchableOpacity
-            style={styles.ordersSectionHeader}
-            onPress={() => setShowOrders(v => !v)}
-            accessibilityLabel="Toggle my orders"
-          >
-            <Text style={styles.ordersSectionTitle}>My Orders</Text>
-            <View style={styles.ordersHeaderRight}>
-              {orders.length > 0 && (
-                <View style={styles.orderCountBadge}>
-                  <Text style={styles.orderCountText}>{orders.length}</Text>
-                </View>
-              )}
-              <Ionicons
-                name={showOrders ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color={colors.textMuted}
-              />
-            </View>
-          </TouchableOpacity>
-
-          {showOrders && (
-            <>
-              {loadingOrders ? (
-                <View style={styles.ordersLoading}>
-                  <ActivityIndicator color={colors.primary} />
-                </View>
-              ) : ordersError ? (
-                <View style={styles.ordersEmpty}>
-                  <Text style={styles.ordersEmptyText}>{ordersError}</Text>
-                  <TouchableOpacity onPress={() => void fetchOrders()} accessibilityLabel="Retry loading orders">
-                    <Text style={styles.ordersRetryText}>Try again</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : sortedOrders.length === 0 ? (
-                <View style={styles.ordersEmpty}>
-                  <Text style={styles.ordersEmptyText}>No orders yet</Text>
-                  <Text style={styles.ordersEmptySubtext}>Shop from WLW businesses in the Build tab</Text>
-                </View>
-              ) : (
-                sortedOrders.map((order) => (
-                  <TouchableOpacity
-                    key={order.id}
-                    style={styles.orderRow}
-                    onPress={() => setSelectedOrder(order)}
-                    accessibilityLabel={`Order ${order.id.slice(-8).toUpperCase()}, ${order.status}`}
-                  >
-                    <View style={styles.orderRowLeft}>
-                      <Text style={styles.orderRowId}>#{order.id.slice(-8).toUpperCase()}</Text>
-                      <Text style={styles.orderRowDate}>
-                        {new Date(order.created_at).toLocaleDateString()}
-                      </Text>
-                      <Text style={styles.orderRowItems}>
-                        {order.order_items.length} item{order.order_items.length !== 1 ? 's' : ''}
-                      </Text>
-                    </View>
-                    <View style={styles.orderRowRight}>
-                      <Text style={styles.orderRowTotal}>
-                        {formatMoney(order.total_cents, order.currency)}
-                      </Text>
-                      <View style={[
-                        styles.statusBadge,
-                        { backgroundColor: (STATUS_COLORS[order.status] ?? '#6B7280') + '20' },
-                      ]}>
-                        <Text style={[
-                          styles.statusText,
-                          { color: STATUS_COLORS[order.status] ?? '#6B7280' },
-                        ]}>
-                          {order.status.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))
-              )}
-            </>
-          )}
+  const renderTab = (tab: ProfileTab) => {
+    if (!user?.id) return null;
+    if (tab === 'posts') return <ProfilePhotoGrid userId={user.id} editable />;
+    if (tab === 'saved') {
+      return (
+        <View>
+          {isBeta ? <SavedPosts userId={user.id} /> : null}
+          <SavedWatchlist />
+          {isBeta && savedBusinesses.map((biz) => (
+            <TouchableOpacity
+              key={biz.id}
+              style={styles.orderRow}
+              onPress={() => handleOpenBiz(biz)}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${biz.name}`}
+            >
+              <Text style={styles.orderRowId}>{biz.name}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      </ScrollView>
+      );
+    }
+    return <ProfileFavorites userId={user.id} editable />;
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']} testID="you-shell">
+      <ProfileShell
+        variant="self"
+        name={profile.display_name ?? profile.username}
+        subtitle={profile.username ? `@${profile.username}` : null}
+        bio={profile.bio}
+        pronouns={profile.pronouns ?? []}
+        identityLabels={profile.identity_labels ?? []}
+        avatarUrl={profile.avatar_url}
+        points={profile.gamification_points}
+        stats={
+          isBeta
+            ? [
+                { value: String(postCount), label: 'Posts' },
+                { value: String(badges.length), label: 'Badges' },
+                { value: String(orders.length), label: 'Orders' },
+              ]
+            : []
+        }
+        headerActions={[
+          {
+            icon: 'notifications-outline',
+            label: 'Notifications',
+            onPress: () => router.push('/notifications' as never),
+            badge: unreadNotifs > 0,
+            testID: 'you-notifications',
+          },
+          {
+            icon: 'settings-outline',
+            label: 'Settings',
+            onPress: () => router.push('/(tabs)/you/settings' as never),
+            testID: 'you-settings',
+          },
+        ]}
+        primaryAction={{
+          label: 'Edit',
+          onPress: () => router.push('/(tabs)/you/edit' as never),
+        }}
+        populated={populated}
+        selectedTab={shellTab}
+        onSelectTab={setShellTab}
+        renderTab={renderTab}
+        beforeTabs={
+          user?.id ? (
+            <View>
+              <SelfControls
+                userId={user.id}
+                onOpenSaved={() => setShellTab('saved')}
+              />
+              {!isBeta ? (
+                <View style={styles.comingSoonCard} testID="you-coming-soon">
+                  <Text style={styles.comingSoonTitle}>More of Roxy is coming soon</Text>
+                  <Text style={styles.comingSoonBody}>
+                    Archive and Official chat are live. Feed, rooms, shop and dating open for beta first.
+                  </Text>
+                </View>
+              ) : null}
+              {isBeta ? <MiniWinsCard userId={user.id} /> : null}
+              {isBeta && badges.length > 0 ? (
+                <View style={styles.badgeRow} testID="profile-badges">
+                  <BadgeRow badges={badges} />
+                </View>
+              ) : null}
+              {isBeta && badgeLoadError ? (
+                <Text style={styles.badgeError}>Could not load badges</Text>
+              ) : null}
+              {isBeta ? <View style={styles.ordersSection}>
+                <TouchableOpacity
+                  style={styles.ordersSectionHeader}
+                  onPress={() => setShowOrders((v) => !v)}
+                  accessibilityLabel="Toggle my orders"
+                >
+                  <Text style={styles.ordersSectionTitle}>My Orders</Text>
+                  <View style={styles.ordersHeaderRight}>
+                    {orders.length > 0 && (
+                      <View style={styles.orderCountBadge}>
+                        <Text style={styles.orderCountText}>{orders.length}</Text>
+                      </View>
+                    )}
+                    <Ionicons
+                      name={showOrders ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color={colors.textMuted}
+                    />
+                  </View>
+                </TouchableOpacity>
+                {showOrders && (
+                  <>
+                    {loadingOrders ? (
+                      <View style={styles.ordersLoading}>
+                        <ActivityIndicator color={colors.primary} />
+                      </View>
+                    ) : ordersError ? (
+                      <View style={styles.ordersEmpty}>
+                        <Text style={styles.ordersEmptyText}>{ordersError}</Text>
+                        <TouchableOpacity onPress={() => void fetchOrders()} accessibilityLabel="Retry loading orders">
+                          <Text style={styles.ordersRetryText}>Try again</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : sortedOrders.length === 0 ? (
+                      <View style={styles.ordersEmpty}>
+                        <Text style={styles.ordersEmptyText}>No orders yet</Text>
+                        <Text style={styles.ordersEmptySubtext}>Shop from WLW businesses on Discover</Text>
+                      </View>
+                    ) : (
+                      sortedOrders.map((order) => (
+                        <TouchableOpacity
+                          key={order.id}
+                          style={styles.orderRow}
+                          onPress={() => setSelectedOrder(order)}
+                          accessibilityLabel={`Order ${order.id.slice(-8).toUpperCase()}, ${order.status}`}
+                        >
+                          <View style={styles.orderRowLeft}>
+                            <Text style={styles.orderRowId}>#{order.id.slice(-8).toUpperCase()}</Text>
+                            <Text style={styles.orderRowDate}>
+                              {new Date(order.created_at).toLocaleDateString()}
+                            </Text>
+                            <Text style={styles.orderRowItems}>
+                              {order.order_items.length} item{order.order_items.length !== 1 ? 's' : ''}
+                            </Text>
+                          </View>
+                          <View style={styles.orderRowRight}>
+                            <Text style={styles.orderRowTotal}>
+                              {formatMoney(order.total_cents, order.currency)}
+                            </Text>
+                            <View style={[
+                              styles.statusBadge,
+                              { backgroundColor: (STATUS_COLORS[order.status] ?? '#6B7280') + '20' },
+                            ]}>
+                              <Text style={[
+                                styles.statusText,
+                                { color: STATUS_COLORS[order.status] ?? '#6B7280' },
+                              ]}>
+                                {order.status.toUpperCase()}
+                              </Text>
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </>
+                )}
+              </View> : null}
+            </View>
+          ) : null
+        }
+        testID="profile-shell"
+      />
 
       <OrderDetailSheet
         order={selectedOrder}

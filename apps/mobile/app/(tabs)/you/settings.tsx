@@ -18,10 +18,12 @@ import { useSafetyStore } from '../../../store/safetyStore';
 import {
   readDmPermission, nextDmPermission, dmPermissionLabel, dmPermissionDescription,
 } from '../../../lib/dmPermission';
+import { useAccess } from '../../../hooks/useAccess';
 
 export default function SettingsScreen() {
   const { user } = useAuthStore();
   const { profile, updateProfile } = useProfileStore();
+  const { isBeta } = useAccess();
   const router = useRouter();
   const colors = useThemeColors();
   const { theme } = useThemeStore();
@@ -145,40 +147,44 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Preferences</Text>
 
-          <View style={styles.row}>
-            <View style={styles.rowLabelGroup}>
-              <Text style={styles.rowLabel}>Dating mode</Text>
-            </View>
-            <Switch
-              value={profile.is_dating_mode ?? false}
-              onValueChange={async (value) => {
-                try { await updateProfile({ is_dating_mode: value }); }
-                catch { showAlert('Error', 'Could not save preference'); }
-              }}
-              trackColor={{ false: colors.surface, true: colors.roxy }}
-              thumbColor={colors.textPrimary}
-            />
-          </View>
+          {isBeta ? (
+            <>
+              <View style={styles.row}>
+                <View style={styles.rowLabelGroup}>
+                  <Text style={styles.rowLabel}>Dating mode</Text>
+                </View>
+                <Switch
+                  value={profile.is_dating_mode ?? false}
+                  onValueChange={async (value) => {
+                    try { await updateProfile({ is_dating_mode: value }); }
+                    catch { showAlert('Error', 'Could not save preference'); }
+                  }}
+                  trackColor={{ false: colors.surface, true: colors.roxy }}
+                  thumbColor={colors.textPrimary}
+                />
+              </View>
 
-          <View style={styles.separator} />
+              <View style={styles.separator} />
 
-          <View style={styles.row}>
-            <View style={styles.rowLabelGroup}>
-              <Text style={styles.rowLabel}>Ghost mode</Text>
-              <Text style={styles.rowDescription}>Hide from discovery</Text>
-            </View>
-            <Switch
-              value={profile.is_ghost ?? false}
-              onValueChange={async (value) => {
-                try { await updateProfile({ is_ghost: value }); }
-                catch { showAlert('Error', 'Could not save preference'); }
-              }}
-              trackColor={{ false: colors.surface, true: colors.roxy }}
-              thumbColor={colors.textPrimary}
-            />
-          </View>
+              <View style={styles.row}>
+                <View style={styles.rowLabelGroup}>
+                  <Text style={styles.rowLabel}>Ghost mode</Text>
+                  <Text style={styles.rowDescription}>Hide from discovery</Text>
+                </View>
+                <Switch
+                  value={profile.is_ghost ?? false}
+                  onValueChange={async (value) => {
+                    try { await updateProfile({ is_ghost: value }); }
+                    catch { showAlert('Error', 'Could not save preference'); }
+                  }}
+                  trackColor={{ false: colors.surface, true: colors.roxy }}
+                  thumbColor={colors.textPrimary}
+                />
+              </View>
 
-          <View style={styles.separator} />
+              <View style={styles.separator} />
+            </>
+          ) : null}
 
           {/* Who can message me — the prototype cycles the three values in
               place rather than pushing a picker (behaviour 1637). The write

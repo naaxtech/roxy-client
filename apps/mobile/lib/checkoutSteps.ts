@@ -31,6 +31,17 @@ export function checkoutStepLabel(step: CheckoutStep): string {
 }
 
 /**
+ * The prototype's own step chip: `1 · bag`, `2 · delivery & pay`, `3 · confirmed`.
+ * This app splits delivery and payment, so the third chip is pay rather than
+ * confirmed (confirmation is a separate sheet). Same vocabulary, finer split.
+ */
+export function checkoutStepCompact(step: CheckoutStep): string {
+  if (step === 'review') return '1 · bag';
+  if (step === 'shipping') return '2 · delivery';
+  return '3 · pay';
+}
+
+/**
  * What assistive tech reads when the indicator changes.
  *
  * Position, name and total, in that order — "Step 2 of 3: Delivery". Knowing

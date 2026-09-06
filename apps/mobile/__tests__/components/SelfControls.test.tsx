@@ -5,6 +5,14 @@ import { supabase } from '../../lib/supabase';
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock('../../lib/supabase', () => ({ supabase: { from: jest.fn() } }));
+jest.mock('../../hooks/useAccess', () => ({
+  useAccess: () => ({
+    tier: 'beta',
+    isBeta: true,
+    can: () => true,
+    canCommunity: () => true,
+  }),
+}));
 
 const push = mockPush;
 const from = supabase.from as jest.Mock;

@@ -252,6 +252,21 @@ describe('ProfileShell — every control is reachable', () => {
   });
 });
 
+describe('ProfileShell — a parent can drive the strip', () => {
+  it('opens the tab the parent asks for and reports the next press', () => {
+    const onSelectTab = jest.fn();
+    const view = renderShell({
+      variant: 'self',
+      populated: { ...NONE, posts: true, saved: true },
+      selectedTab: 'saved',
+      onSelectTab,
+    });
+    expect(view.getByText('content:saved')).toBeTruthy();
+    fireEvent.press(view.getByTestId('profile-tab-posts'));
+    expect(onSelectTab).toHaveBeenCalledWith('posts');
+  });
+});
+
 describe('ProfileShell — the variant extras slot', () => {
   it('renders whatever the route puts above the tab strip', () => {
     const view = renderShell({

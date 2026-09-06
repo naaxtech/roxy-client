@@ -1,3 +1,4 @@
+import type { AccessTier } from '../../lib/features';
 import type { NavSlot } from './navTokens';
 
 /**
@@ -49,3 +50,39 @@ export const NAV_SLOTS_3: readonly NavSlot[] = [
     iconInactive: 'person-outline',
   },
 ];
+
+/**
+ * Limited launch bar: Archive · Chat · You.
+ *
+ * Feed still owns the `feed` directory — the screen swaps in the Archive
+ * browse when the member is public. Messages owns official chat the same
+ * way. Discover and Create stay registered on the navigator so deep links
+ * resolve; they are simply not drawn.
+ */
+export const NAV_SLOTS_PUBLIC: readonly NavSlot[] = [
+  {
+    kind: 'route',
+    routeName: 'feed',
+    label: 'Archive',
+    icon: 'library',
+    iconInactive: 'library-outline',
+  },
+  {
+    kind: 'route',
+    routeName: 'messages',
+    label: 'Chat',
+    icon: 'chatbubble',
+    iconInactive: 'chatbubble-outline',
+  },
+  {
+    kind: 'route',
+    routeName: 'you',
+    label: 'You',
+    icon: 'person',
+    iconInactive: 'person-outline',
+  },
+];
+
+export function navSlotsFor(tier: AccessTier): readonly NavSlot[] {
+  return tier === 'beta' ? NAV_SLOTS_3 : NAV_SLOTS_PUBLIC;
+}

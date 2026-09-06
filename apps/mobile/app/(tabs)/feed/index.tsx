@@ -19,6 +19,8 @@ import { useCommunityStore } from '../../../store/communityStore';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { useFriendStore } from '../../../store/friendStore';
 import { a11yState } from '../../../lib/a11yState';
+import { useAccess } from '../../../hooks/useAccess';
+import ArchiveBrowseScreen from '../../archive/index';
 
 /** One Mini Wins prompt per calendar day, per device. */
 const MINI_WINS_KEY = 'roxy_mini_wins_last_shown';
@@ -38,7 +40,7 @@ const todayKey = () => new Date().toISOString().slice(0, 10);
  * Every pixel of chrome here takes its ink from `STAGE`, not `useThemeColors()`:
  * the stage is dark in both themes. See `components/feed/stageColors.ts`.
  */
-export default function FeedScreen() {
+function FeedScreen() {
   const user = useAuthStore((s) => s.user);
   const joinedIds = useCommunityStore((s) => s.joinedIds);
   const joinedCommunities = useCommunityStore((s) => s.joinedCommunities);
@@ -203,3 +205,9 @@ const s = StyleSheet.create({
   },
   nowLabel: { ...TYPE.caption, color: STAGE.textPrimary, fontWeight: '700' },
 });
+
+export default function FeedRoute() {
+  const { can } = useAccess();
+  if (!can('feed')) return <ArchiveBrowseScreen asHome />;
+  return <FeedScreen />;
+}

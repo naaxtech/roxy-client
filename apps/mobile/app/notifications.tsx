@@ -12,6 +12,8 @@ import {
   RoxyNotification,
 } from '../lib/notifications';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useAccess } from '../hooks/useAccess';
+import { canOpenPath } from '../lib/features';
 
 const TYPE_EMOJI: Record<RoxyNotification['type'], string> = {
   friend_request: '🌸',
@@ -23,6 +25,7 @@ export default function NotificationsScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
+  const { tier } = useAccess();
   const [items, setItems] = useState<RoxyNotification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +47,9 @@ export default function NotificationsScreen() {
         x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x
       ));
     }
-    if (n.link_path) router.push(n.link_path as any);
+    if (n.link_path && canOpenPath(n.link_path, tier)) {
+      router.push(n.link_path as any);
+    }
   };
 
   const handleMarkAll = () => {
@@ -80,6 +85,7 @@ export default function NotificationsScreen() {
     titleUnread: { color: colors.textPrimary, fontWeight: '700' },
     sub: { color: colors.textMuted, fontSize: 12 },
     time: { color: colors.textMuted, fontSize: 11, flexShrink: 0 },
+    gated: { color: colors.primary, fontSize: 11, fontWeight: '700' },
     dot: {
       width: 8, height: 8, borderRadius: 4,
       backgroundColor: colors.roxy, marginLeft: 4,
@@ -128,11 +134,13 @@ export default function NotificationsScreen() {
           }
           renderItem={({ item }) => {
             const isUnread = item.read_at === null;
+            const gated = !!(item.link_path && !canOpenPath(item.link_path, tier));
             return (
               <TouchableOpacity
                 style={[styles.row, isUnread && styles.rowUnread]}
                 onPress={() => handleOpen(item)}
                 activeOpacity={0.7}
+                accessibilityLabel={gated ? `${item.title}. Coming soon` : item.title}
               >
                 <Text style={styles.emoji}>{TYPE_EMOJI[item.type] ?? '🔔'}</Text>
                 <View style={styles.body}>
@@ -141,9 +149,13 @@ export default function NotificationsScreen() {
                   </Text>
                   {item.body ? <Text style={styles.sub} numberOfLines={1}>{item.body}</Text> : null}
                 </View>
-                <Text style={styles.time}>
-                  {formatDistanceToNowStrict(new Date(item.created_at), { addSuffix: false })}
-                </Text>
+                {gated ? (
+                  <Text style={styles.gated}>Coming soon</Text>
+                ) : (
+                  <Text style={styles.time}>
+                    {formatDistanceToNowStrict(new Date(item.created_at), { addSuffix: false })}
+                  </Text>
+                )}
                 {isUnread && <View style={styles.dot} />}
               </TouchableOpacity>
             );

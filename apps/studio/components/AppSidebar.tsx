@@ -8,7 +8,7 @@ import {
   ShoppingBag, Package, ShoppingCart, DollarSign, Settings,
   Shield, CheckSquare, Mail, RefreshCw, AlertTriangle, Building2,
   ChevronRight, LogOut, Lightbulb, Bug, UserCheck, Ticket, UserCog,
-  Archive, UserPlus, GitPullRequest, Flag,
+  Archive, UserPlus, GitPullRequest, Flag, Unlock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOutAction } from '@/app/auth/signout-action';
@@ -56,6 +56,7 @@ const staffNav = [
   // WLW Archive moderator tooling. `exact` on the dashboard entry only —
   // without it, visiting any /staff/archive/* subpage would also light up
   // "Archive Dashboard" (see NavItem's startsWith match below).
+  { href: '/staff/launch',                 label: 'Launch access',      icon: Unlock },
   { href: '/staff/archive',                label: 'Archive Dashboard',  icon: Archive, exact: true },
   { href: '/staff/archive/members',        label: 'Archive Members',    icon: UserPlus },
   { href: '/staff/archive/revisions',      label: 'Archive Revisions',  icon: GitPullRequest },

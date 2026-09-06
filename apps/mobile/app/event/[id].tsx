@@ -13,10 +13,14 @@ import { useAuthStore } from '../../store/authStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TicketCard } from '../../components/TicketCard';
 import { TicketConfirmation } from '../../components/TicketConfirmation';
-import { formatDuration, openCalendar } from '../../lib/eventUtils';
+import { LinearGradient } from 'expo-linear-gradient';
+import { formatDuration, openCalendar, eventStage, eventCta, eventSafetyLine } from '../../lib/eventUtils';
 import { purchaseTicket, subscribeToTicket } from '../../lib/stripe';
-import { eventStage, eventCta } from '../../lib/eventUtils';
 import { toggleUserFavorite } from '../../components/profile/ProfileFavorites';
+import { EventModeBadge } from '../../components/events/EventModeBadge';
+import { TYPE } from '../../lib/typography';
+import { RADII, inkOn } from '../../lib/theme';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
 type EventDetail = {
   id: string;
@@ -204,23 +208,43 @@ export default function EventDetailScreen() {
 
     scroll: { paddingHorizontal: 20, paddingBottom: 40, gap: 0 },
 
+    hero: {
+      height: 132, borderRadius: RADII.lg, overflow: 'hidden',
+      marginBottom: 14, justifyContent: 'space-between',
+      paddingHorizontal: 12, paddingVertical: 10,
+    },
+    heroTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+    saveBtn: {
+      minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET,
+      borderRadius: RADII.pill, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.background + '80',
+    },
     title: {
-      color: colors.textPrimary, fontSize: 22, fontWeight: '800',
-      marginTop: 8, marginBottom: 6,
+      ...TYPE.headline, color: colors.textPrimary, marginBottom: 4,
     },
     communityLink: {
-      color: colors.primary, fontSize: 14, fontWeight: '600', marginBottom: 16,
+      ...TYPE.body, color: colors.primaryInk, fontWeight: '700', marginBottom: 12,
     },
 
-    metaBlock: { gap: 8, marginBottom: 20 },
-    metaRow: { color: colors.textSecondary, fontSize: 14 },
-    metaLink: { color: colors.primary, textDecorationLine: 'underline' },
-    metaFree: { color: colors.success },
-    metaPaid: { color: colors.warning },
+    metaCard: {
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+      borderRadius: RADII.lg, paddingHorizontal: 13, paddingVertical: 11,
+      gap: 8, marginBottom: 16,
+    },
+    metaRow: { ...TYPE.body, color: colors.textSecondary, fontWeight: '600' },
+    metaStrong: { color: colors.textPrimary, fontWeight: '700' },
+    metaLink: { color: colors.primaryInk, textDecorationLine: 'underline' },
+    metaFree: { color: colors.successInk },
+    metaPaid: { color: colors.goldInk },
 
-    descBlock: { marginBottom: 24 },
-    descLabel: { color: colors.textPrimary, fontWeight: '700', fontSize: 15, marginBottom: 8 },
-    desc: { color: colors.textSecondary, fontSize: 14, lineHeight: 22 },
+    descBlock: { marginBottom: 14 },
+    descLabel: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '800', letterSpacing: 0.8 },
+    desc: { ...TYPE.body, color: colors.textSecondary, lineHeight: 20 },
+    safety: {
+      backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.line,
+      borderRadius: RADII.md, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16,
+    },
+    safetyText: { ...TYPE.caption, color: colors.secondaryInk, fontWeight: '600', lineHeight: 17 },
 
     divider: {
       height: 1, backgroundColor: colors.surface,
@@ -322,65 +346,109 @@ export default function EventDetailScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.topBar}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
           <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        {user && (
-          <TouchableOpacity
-            onPress={async () => {
-              const on = await toggleUserFavorite(user.id, 'event', event.id);
-              setFavorited(on);
-            }}
-            hitSlop={8}
-          >
-            <Ionicons
-              name={favorited ? 'heart' : 'heart-outline'}
-              size={24}
-              color={favorited ? colors.primary : colors.textPrimary}
-            />
-          </TouchableOpacity>
-        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <LinearGradient
+          colors={isOnline ? [colors.backgroundAlt, colors.secondary] : [colors.backgroundAlt, colors.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+          testID="event-hero"
+        >
+          <View style={styles.heroTop}>
+            <EventModeBadge mode={event.event_type} />
+            {user ? (
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={async () => {
+                  const on = await toggleUserFavorite(user.id, 'event', event.id);
+                  setFavorited(on);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={favorited ? 'Remove event from saved' : 'Save event'}
+                testID="event-save"
+              >
+                <Ionicons
+                  name={favorited ? 'heart' : 'heart-outline'}
+                  size={20}
+                  color={favorited ? colors.primary : inkOn(colors.backgroundAlt)}
+                />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </LinearGradient>
+
         <Text style={styles.title}>{event.title}</Text>
 
         {event.communities && (
-          <TouchableOpacity onPress={() => router.push(`/community/${event.community_id}` as any)}>
-            <Text style={styles.communityLink}>🏳️‍🌈 {event.communities.name}</Text>
+          <TouchableOpacity
+            onPress={() => router.push(`/community/${event.community_id}` as any)}
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${event.communities.name}`}
+          >
+            <Text style={styles.communityLink}>hosted by {event.communities.name} →</Text>
           </TouchableOpacity>
         )}
 
-        <View style={styles.metaBlock}>
+        <View style={styles.metaCard} testID="event-meta">
           <Text style={styles.metaRow}>
-            🗓  {format(new Date(event.starts_at), 'EEE d MMM · h:mm a')}
+            <Text style={styles.metaStrong}>
+              {format(new Date(event.starts_at), 'EEE d MMM · h:mm a')}
+            </Text>
+            {duration ? ` · ${duration}` : ''}
           </Text>
-          {duration && <Text style={styles.metaRow}>⏱  {duration}</Text>}
-          {event.location_text && (
+          {event.location_text ? (
             <TouchableOpacity
               disabled={!event.location_url}
               onPress={() => event.location_url
                 ? Linking.openURL(event.location_url!).catch(() => {})
                 : undefined
               }
+              accessibilityRole={event.location_url ? 'link' : 'text'}
+              accessibilityLabel={event.location_text}
             >
-              <Text style={[styles.metaRow, event.location_url ? styles.metaLink : null]}>
-                📍  {event.location_text}
+              <Text style={[styles.metaRow, event.location_url ? styles.metaLink : styles.metaStrong]}>
+                {event.location_text}
               </Text>
             </TouchableOpacity>
-          )}
-          <Text style={styles.metaRow}>👥  {event.attendee_count} going</Text>
-          <Text style={[styles.metaRow, event.is_paid ? styles.metaPaid : styles.metaFree]}>
-            🎟  {event.is_paid ? 'Paid' : 'Free'}
+          ) : isOnline ? (
+            <Text style={styles.metaRow}>Doors open 10 min early</Text>
+          ) : null}
+          <Text style={styles.metaRow}>
+            <Text style={styles.metaStrong}>{event.attendee_count} going</Text>
+            <Text style={[styles.metaRow, event.is_paid ? styles.metaPaid : styles.metaFree]}>
+              {' · '}{event.is_paid ? 'Paid' : 'Free'}
+            </Text>
           </Text>
         </View>
 
         {event.description ? (
           <View style={styles.descBlock}>
-            <Text style={styles.descLabel}>About</Text>
-            <Text style={styles.desc}>{event.description}</Text>
+            <Text style={styles.desc}>
+              <Text style={styles.descLabel}>ABOUT · </Text>
+              {event.description}
+            </Text>
           </View>
         ) : null}
+
+        <View style={styles.safety} testID="event-safety">
+          <Text style={styles.safetyText}>
+            {eventSafetyLine({
+              event_type: event.event_type,
+              is_private: event.is_private,
+              communityName: event.communities?.name ?? null,
+            })}
+          </Text>
+        </View>
 
         {/* Cancelled banner */}
         {event.status === 'cancelled' && (

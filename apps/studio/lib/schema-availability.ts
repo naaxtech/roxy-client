@@ -18,6 +18,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
  */
 const MISSING_TABLE_CODES: readonly string[] = ['PGRST205', '42P01'];
 const MISSING_FUNCTION_CODES: readonly string[] = ['PGRST202', '42883'];
+const MISSING_COLUMN_CODES: readonly string[] = ['42703', 'PGRST204'];
 
 /** True when the failure is "that table does not exist here yet". */
 export function isMissingTable(error: PostgrestError | null | undefined): boolean {
@@ -27,4 +28,9 @@ export function isMissingTable(error: PostgrestError | null | undefined): boolea
 /** True when the failure is "that function does not exist here yet". */
 export function isMissingFunction(error: PostgrestError | null | undefined): boolean {
   return error != null && MISSING_FUNCTION_CODES.includes(error.code);
+}
+
+/** True when the failure is "that column does not exist here yet". */
+export function isMissingColumn(error: PostgrestError | null | undefined): boolean {
+  return error != null && MISSING_COLUMN_CODES.includes(error.code);
 }

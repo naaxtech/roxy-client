@@ -37,7 +37,12 @@ import type { ArchiveEntry } from '../../lib/archive';
  *
  * src: docs/handoff/roxy-3.0/Roxy App.dc.html · markup 952–1007 · 2026-09-01
  */
-export default function ArchiveBrowseScreen() {
+type Props = {
+  /** When the Archive is the first tab, Back has nowhere honest to go. */
+  asHome?: boolean;
+};
+
+export default function ArchiveBrowseScreen({ asHome = false }: Props) {
   const router = useRouter();
   const colors = useThemeColors();
   const membership = useMembership();
@@ -195,14 +200,17 @@ export default function ArchiveBrowseScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <View style={s.header}>
-        <Pressable
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/discover' as never))}
-          style={s.backBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-        >
-          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
-        </Pressable>
+        {asHome ? null : (
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/feed' as never))}
+            style={s.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            testID="archive-back"
+          >
+            <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
+          </Pressable>
+        )}
         <Text style={s.title}>The WLW Archive</Text>
       </View>
 

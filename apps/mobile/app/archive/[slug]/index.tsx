@@ -12,7 +12,7 @@ import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { Analytics } from '../../../lib/analytics';
 import { logError } from '../../../lib/errorLogger';
 import {
-  fetchArchiveEntry, fetchArchiveEntryDetail, formatScore,
+  fetchArchiveEntry, fetchArchiveEntryDetail, formatScore, firstVoteLanded,
   type ArchiveEntry, type ArchiveEntryDetail,
 } from '../../../lib/archive';
 import { ScoreRing } from '../../../components/archive/ScoreRing';
@@ -58,6 +58,7 @@ export default function ArchiveEntryScreen() {
   // and error, and a hook declared after those runs in a different order on
   // each of them.
   const [actionError, setActionError] = useState<string | null>(null);
+  const [firstVoteOpen, setFirstVoteOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -211,9 +212,11 @@ export default function ArchiveEntryScreen() {
   const castVote = async (value: boolean) => {
     // Analytics AFTER the write, not before: firing first counted votes that
     // never landed, which is the same lie in the metrics as in the UI.
+    const wasFirst = firstVoteLanded(myVote !== null, entry.vote_count);
     await runAction('vote', async () => {
       await vote(entry.id, value);
       Analytics.archiveVoteCast(entry.slug, value, membership.status);
+      if (wasFirst) setFirstVoteOpen(true);
     });
   };
 
@@ -264,6 +267,39 @@ export default function ArchiveEntryScreen() {
 
         {actionError ? (
           <Text style={s.actionError} testID="archive-action-error">{actionError}</Text>
+        ) : null}
+
+        {firstVoteOpen ? (
+          <View style={s.sheet} testID="archive-first-vote">
+            <Text style={s.unratedTitle}>You rated this first</Text>
+            <Text style={s.unratedBody}>
+              That vote is live. A review is the second loop — only if you want it.
+            </Text>
+            {membership.canReview ? (
+              <Pressable
+                onPress={() => {
+                  setFirstVoteOpen(false);
+                  router.push(`/archive/${entry.slug}/review` as never);
+                }}
+                style={s.action}
+                testID="archive-first-vote-review"
+                accessibilityRole="button"
+                accessibilityLabel="Write a review"
+              >
+                <Text style={s.actionText}>Write a review</Text>
+              </Pressable>
+            ) : (
+              <Text style={s.hint}>Written reviews unlock once you are approved.</Text>
+            )}
+            <Pressable
+              onPress={() => setFirstVoteOpen(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss"
+              style={{ minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' }}
+            >
+              <Text style={s.link}>Keep browsing</Text>
+            </Pressable>
+          </View>
         ) : null}
 
         {entry.summary ? <Text style={s.summary}>{entry.summary}</Text> : null}

@@ -15,12 +15,16 @@ jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 // succeeds the screen renders its full tree, and every one of these children
 // owns a query of its own — none of which this file is testing.
 jest.mock('../../components/profile/ProfileCard', () => ({ ProfileCard: () => null }));
+jest.mock('../../components/profile/ProfileShell', () => ({ ProfileShell: () => null }));
 jest.mock('../../components/profile/ProfilePhotoGrid', () => ({ ProfilePhotoGrid: () => null }));
 jest.mock('../../components/profile/ProfileFavorites', () => ({ ProfileFavorites: () => null }));
 jest.mock('../../components/profile/SavedPosts', () => ({ SavedPosts: () => null }));
+jest.mock('../../components/profile/SavedWatchlist', () => ({ SavedWatchlist: () => null }));
+jest.mock('../../components/profile/BadgeRow', () => ({ BadgeRow: () => null }));
 jest.mock('../../components/profile/SelfControls', () => ({ SelfControls: () => null }));
 jest.mock('../../components/grow/MiniWinsCard', () => ({ MiniWinsCard: () => null }));
 jest.mock('../../components/build/OrderDetailSheet', () => ({ OrderDetailSheet: () => null }));
+jest.mock('../../lib/notifications', () => ({ fetchUnreadNotificationCount: jest.fn(async () => 0) }));
 
 const mockSingle = jest.fn();
 jest.mock('../../lib/supabase', () => ({
@@ -31,6 +35,7 @@ jest.mock('../../lib/supabase', () => ({
           single: mockSingle,
           maybeSingle: mockSingle,
           order: jest.fn(() => Promise.resolve({ data: [], error: null })),
+          in: jest.fn(() => Promise.resolve({ count: 0, error: null })),
         })),
         in: jest.fn(() => Promise.resolve({ data: [], error: null })),
       })),
@@ -59,6 +64,10 @@ jest.mock('../../store/marketplaceStore', () => {
       (selector ? selector(state) : state),
   };
 });
+jest.mock('../../store/archiveStore', () => ({
+  useArchiveStore: (sel: (s: { hydrateMine: () => void }) => unknown) =>
+    sel({ hydrateMine: jest.fn() }),
+}));
 
 import ProfileScreen from '../../app/(tabs)/you/index';
 import { useProfileStore } from '../../store/profileStore';

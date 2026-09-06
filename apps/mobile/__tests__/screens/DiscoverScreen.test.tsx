@@ -42,6 +42,15 @@ jest.mock('../../hooks/useThemeColors', () => ({
 }));
 
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
+
+jest.mock('../../hooks/useAccess', () => ({
+  useAccess: () => ({
+    tier: 'beta',
+    isBeta: true,
+    can: () => true,
+    canCommunity: () => true,
+  }),
+}));
 jest.mock('../../lib/notifications', () => ({
   fetchUnreadNotificationCount: jest.fn(() => Promise.resolve(0)),
 }));

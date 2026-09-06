@@ -100,6 +100,40 @@ export function eventStage(
  * codebase has shipped the `!== 'x'` version of this three times, and the
  * version here would offer a room that has closed.
  */
+/**
+ * The safety line under About.
+ *
+ * The prototype always prints one (markup 1231). Roxy has no `safety_notes`
+ * column, so this is composed from facts the row already has — venue kind,
+ * host, and whether the attendee list is private. Inventing "step-free" or a
+ * host we do not have would be a lie on the one line she reads before she
+ * books a train.
+ */
+export function eventSafetyLine(event: {
+  event_type: 'online' | 'in_person' | 'hybrid';
+  is_private: boolean;
+  communityName?: string | null;
+}): string {
+  if (event.event_type === 'online') {
+    return 'Lurk-friendly — mics optional. Doors open 10 min early.';
+  }
+
+  const host = event.communityName?.trim()
+    ? `hosted by ${event.communityName.trim()}`
+    : 'community hosted';
+  const list = event.is_private
+    ? 'attendee list hidden'
+    : 'attendee list visible to members only';
+
+  if (event.event_type === 'hybrid') {
+    return `Online and in person · ${host} · ${list}`;
+  }
+
+  return event.is_private
+    ? `Private event · ${host} · ${list}`
+    : `Public venue · ${host} · ${list}`;
+}
+
 export function eventCta(stage: EventStage, isAttending: boolean, isPaid: boolean): string {
   if (stage === 'ended') return 'This has ended';
   // Open to anyone who finds it while it is running. Refusing her because she

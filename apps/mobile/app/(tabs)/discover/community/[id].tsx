@@ -33,6 +33,8 @@ import { EventModeBadge, type EventMode } from '../../../../components/events/Ev
 import { TYPE } from '../../../../lib/typography';
 import { RADII, inkOn } from '../../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../../lib/touchTargets';
+import { useAccess } from '../../../../hooks/useAccess';
+import { ComingSoon } from '../../../../components/features/ComingSoon';
 
 /**
  * A community on the unified profile shell.
@@ -66,6 +68,7 @@ const GAME_CATEGORY_EMOJI: Record<string, string> = {
 
 export default function CommunityDetailScreen() {
   const colors = useThemeColors();
+  const { canCommunity } = useAccess();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -437,6 +440,10 @@ export default function CommunityDetailScreen() {
         <Text style={styles.errorText}>Community not found</Text>
       </SafeAreaView>
     );
+  }
+
+  if (!canCommunity(community.slug)) {
+    return <ComingSoon feature="communities" />;
   }
 
   const live = rooms.some((r) => r.status === 'live');

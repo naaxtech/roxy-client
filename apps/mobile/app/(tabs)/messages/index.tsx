@@ -20,6 +20,8 @@ import { ScreenHeader } from '../../../components/ui/ScreenHeader';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { PinnedPersonaRow } from '../../../components/messages/PinnedPersonaRow';
 import { RequestsSheet } from '../../../components/messages/RequestsSheet';
+import { OfficialChatInbox } from '../../../components/messages/OfficialChatInbox';
+import { useAccess } from '../../../hooks/useAccess';
 import { TYPE } from '../../../lib/typography';
 import { RADII } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
@@ -42,7 +44,7 @@ function formatTime(ts: string | null): string {
   return format(d, 'dd MMM');
 }
 
-export default function MessagesScreen() {
+function MessagesScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -393,4 +395,10 @@ export default function MessagesScreen() {
       <RequestsSheet visible={requestsOpen} onClose={() => setRequestsOpen(false)} />
     </SafeAreaView>
   );
+}
+
+export default function MessagesRoute() {
+  const { can } = useAccess();
+  if (!can('dms')) return <OfficialChatInbox />;
+  return <MessagesScreen />;
 }

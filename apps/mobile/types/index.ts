@@ -9,6 +9,12 @@ export interface Profile {
    * predicate accepts it alongside 'approved'.
    */
   vetting_status: 'unvetted' | 'pending' | 'approved' | 'rejected';
+  /**
+   * Limited launch (migration 108). 'public' sees Archive + Roxy Official
+   * chat. 'beta' sees the rest of the app. Missing on a stale client row
+   * fails closed to public.
+   */
+  access_tier?: 'public' | 'beta';
   bio: string | null;
   avatar_url: string | null;
   pronouns: string[];

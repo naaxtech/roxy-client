@@ -1,5 +1,5 @@
 import {
-  CHECKOUT_STEPS, checkoutStepLabel, checkoutProgressLabel,
+  CHECKOUT_STEPS, checkoutStepLabel, checkoutProgressLabel, checkoutStepCompact,
 } from '../../lib/checkoutSteps';
 
 /**
@@ -35,5 +35,13 @@ describe('checkoutProgressLabel', () => {
 
   it('counts from one, because she is not a zero-indexed array', () => {
     expect(checkoutProgressLabel('review')).toContain('Step 1');
+  });
+});
+
+describe('checkoutStepCompact', () => {
+  it('uses the prototype\'s own labels, not numbered dots', () => {
+    expect(checkoutStepCompact('review')).toBe('1 · bag');
+    expect(checkoutStepCompact('shipping')).toBe('2 · delivery');
+    expect(checkoutStepCompact('payment')).toBe('3 · pay');
   });
 });

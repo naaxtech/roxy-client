@@ -23,6 +23,7 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { useSafetyStore } from '../store/safetyStore';
 import { ConsentStrip } from '../components/rooms/ConsentStrip';
+import { handLabel, setRoomHand } from '../lib/roomHands';
 import { roomReportTarget, roomBlockTarget } from './roomSafety';
 import { useAppWidth } from '../hooks/useAppWidth';
 import type { RemoteParticipant } from '../lib/video/VideoCallProvider';
@@ -209,6 +210,7 @@ export default function CommunityRoomSession() {
   // ConsentStrip needs a subject: a report hands a moderator the session, and a
   // block has to be about a person. See app/roomSafety.ts.
   const [hostId, setHostId] = useState<string | null>(null);
+  const [handRaised, setHandRaised] = useState(false);
 
   // Real provider state, not a client-side guess. Defaults match the actual
   // join params (startAudioOff: true, camera on) until the first sync arrives.
@@ -334,6 +336,17 @@ export default function CommunityRoomSession() {
     },
     controlBtnOff: { backgroundColor: 'rgba(255,255,255,0.1)' },
     controlBtnLeave: { backgroundColor: colors.error },
+    handBtn: {
+      flex: 1, minHeight: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center',
+      paddingHorizontal: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
+      backgroundColor: 'rgba(255,255,255,0.08)',
+    },
+    handBtnOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+    handBtnText: { color: '#FFF8FB', fontWeight: '700', fontSize: 13 },
+    handHint: {
+      color: 'rgba(255,255,255,0.55)', fontSize: 10, fontWeight: '600',
+      textAlign: 'center', paddingBottom: 6,
+    },
   });
 
   // Join the room once we know Daily is available and we have a room_id.
@@ -660,6 +673,26 @@ export default function CommunityRoomSession() {
 
       {/* ── Bottom controls ─────────────────────────────────────────────── */}
       <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
+        {!isVideo ? (
+          <>
+            <Text style={styles.handHint}>Mics are invite-only · raise your hand to speak · report is anonymous</Text>
+            <View style={[styles.controls, { paddingTop: 0 }]}>
+              <TouchableOpacity
+                style={[styles.handBtn, handRaised && styles.handBtnOn]}
+                onPress={() => {
+                  const next = !handRaised;
+                  setHandRaised(next);
+                  if (room_id && viewerId) void setRoomHand(room_id, viewerId, next);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={handLabel(handRaised)}
+                testID="room-raise-hand"
+              >
+                <Text style={styles.handBtnText}>{handRaised ? '✋ ' : ''}{handLabel(handRaised)}</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : null}
         <View style={styles.controls}>
           <TouchableOpacity
             style={[styles.controlBtn, !micOn && styles.controlBtnOff]}

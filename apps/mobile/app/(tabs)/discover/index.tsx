@@ -31,6 +31,7 @@ import {
 import {
   useLiveRooms, useEvents, useGames, useImpact, useSupport,
 } from '../../../components/discover/useDiscoverData';
+import { FeatureGate } from '../../../components/features/FeatureGate';
 
 /**
  * Discover — search-first, then rails.
@@ -45,7 +46,7 @@ import {
  * rails that already have their data. `discoverFilters.ts` owns which rails are
  * on screen; this file only asks.
  */
-export default function DiscoverScreen() {
+function DiscoverScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const s = styles(colors);
@@ -513,3 +514,11 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   qotd: { marginHorizontal: 16, marginTop: 4, marginBottom: 10 },
   tail: { height: 120 },
 });
+
+export default function DiscoverRoute() {
+  return (
+    <FeatureGate feature="discover">
+      <DiscoverScreen />
+    </FeatureGate>
+  );
+}

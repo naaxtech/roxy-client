@@ -97,6 +97,17 @@ export function formatScore(up: number, total: number): ArchiveScore {
 /** Colour band for the score pill and ring. Green / gold / rose, as the prototype. */
 export type ScoreTone = 'good' | 'mixed' | 'poor' | 'none';
 
+/**
+ * Whether this tap is the first vote the entry has ever had.
+ *
+ * Casting that vote is the most valuable action in the Archive right now, and
+ * it used to change a number silently. The screen uses this to show the
+ * moment — and to invite a review — only when it actually landed first.
+ */
+export function firstVoteLanded(alreadyVoted: boolean, previousTotal: number): boolean {
+  return !alreadyVoted && previousTotal === 0;
+}
+
 export function scoreTone(score: ArchiveScore): ScoreTone {
   if (!score.hasScore || score.percent === null) return 'none';
   if (score.percent >= 75) return 'good';

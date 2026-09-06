@@ -15,6 +15,7 @@ import { useThemeColors } from '../../../hooks/useThemeColors';
 import { TYPE } from '../../../lib/typography';
 import { showAlert } from '../../../lib/confirm';
 import type { Profile } from '../../../types';
+import { FeatureGate } from '../../../components/features/FeatureGate';
 
 type FriendshipState = 'none' | 'sent' | 'received' | 'friends';
 type SellerRow = SellerBusinessRow & { id: string; name: string };
@@ -43,7 +44,7 @@ const MEDIA_POST_TYPES = ['photo', 'video'];
  * never shown them, so leaving them out loses nothing, and turning them on
  * without a renderer would draw a tab over nothing. They are the next slice.
  */
-export default function UserProfileScreen() {
+function UserProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -220,5 +221,13 @@ export default function UserProfileScreen() {
         }
       />
     </SafeAreaView>
+  );
+}
+
+export default function UserProfileRoute() {
+  return (
+    <FeatureGate feature="feed">
+      <UserProfileScreen />
+    </FeatureGate>
   );
 }

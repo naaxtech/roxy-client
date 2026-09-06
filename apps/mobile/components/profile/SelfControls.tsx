@@ -10,6 +10,7 @@ import { TYPE } from '../../lib/typography';
 import { RADII, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { deriveSellerStatus, sellerStatusLabel, type SellerStatus } from '../../lib/sellerStatus';
+import { useAccess } from '../../hooks/useAccess';
 
 interface Props {
   userId: string;
@@ -45,6 +46,7 @@ export function SelfControls({ userId, onOpenSaved }: Props) {
   const router = useRouter();
   const s = styles(colors);
 
+  const { isBeta } = useAccess();
   const profile = useProfileStore((st) => st.profile);
   const updateProfile = useProfileStore((st) => st.updateProfile);
 
@@ -133,6 +135,8 @@ export function SelfControls({ userId, onOpenSaved }: Props) {
       testID: 'you-sell',
     },
   ];
+
+  if (!isBeta) return null;
 
   return (
     <View style={s.wrap} testID="self-controls">
