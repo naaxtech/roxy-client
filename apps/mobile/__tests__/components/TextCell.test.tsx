@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { TextCell } from '../../components/feed/TextCell';
-import { BRAND_GRADIENT, contrastRatio } from '../../lib/theme';
+import { TEXT_CARD_EXAMPLE, TEXT_CARD_GRADIENT } from '../../lib/textCard';
 import type { ReelRow } from '../../lib/reels';
 
 jest.mock('expo-linear-gradient', () => {
@@ -74,7 +74,7 @@ function text(post: ReelRow = BASE, onOpenPost: () => void = noop) {
 function bodyStyle(post: ReelRow): {
   fontSize: number; lineHeight: number; fontWeight: string; letterSpacing: number;
 } {
-  const flat = StyleSheet.flatten(text(post).getByTestId('text-cell-body').props.style);
+  const flat = StyleSheet.flatten(text(post).getByTestId('text-cell-prompt').props.style);
   return flat as unknown as {
     fontSize: number; lineHeight: number; fontWeight: string; letterSpacing: number;
   };
@@ -114,62 +114,50 @@ describe('TextCell typography', () => {
 
   it('caps the measure so a line never runs the full width of a phone', () => {
     const view = text();
-    const flat = StyleSheet.flatten(view.getByTestId('text-cell-body').props.style) as unknown as
+    const flat = StyleSheet.flatten(view.getByTestId('text-cell-prompt').props.style) as unknown as
       { maxWidth: number };
 
     expect(flat.maxWidth).toBeLessThanOrEqual(WIDTH - 48);
   });
 });
 
-/** The veil the cell paints between the ramp and the type. */
-const VEIL = { rgb: [26, 10, 46] as const, alpha: 0.42 };
-
-/** sRGB source-over, the way React Native composites a translucent overlay. */
-function composite(stop: string, veil: typeof VEIL): string {
-  const raw = stop.replace('#', '');
-  const under = [0, 2, 4].map((i) => parseInt(raw.slice(i, i + 2), 16));
-  const mixed = under.map((c, i) =>
-    Math.round(veil.alpha * veil.rgb[i] + (1 - veil.alpha) * c)
-  );
-  return '#' + mixed.map((c) => c.toString(16).padStart(2, '0')).join('');
-}
-
 describe('TextCell canvas', () => {
   it('marks the card with the prototype flower, left-aligned like Claude Design', () => {
     const view = text();
     expect(view.getByTestId('text-cell-flower').props.children).toBe('✿');
-    const body = view.getByTestId('text-cell-body');
+    const body = view.getByTestId('text-cell-prompt');
     expect(body.props.style).toEqual(
       expect.arrayContaining([expect.objectContaining({ textAlign: 'left' })]),
     );
   });
 
-  it('stands on the brand gradient rather than a black letterbox', () => {
+  it('stands on the plum text ramp, not the brand orange', () => {
     const view = text();
-
-    // Asserted against the token, not a copy of it. A literal here is how this
-    // test went on describing the 2.x ramp for a whole redesign.
-    expect(view.getByTestId('text-cell-gradient').props.colors).toEqual([...BRAND_GRADIENT]);
+    expect(view.getByTestId('text-cell-gradient').props.colors).toEqual([...TEXT_CARD_GRADIENT]);
   });
 
-  it('darkens the gradient so white display type clears 4.5:1 on every stop', () => {
-    // The brightest stop is ~2.9:1 against white and fails even the large-text
-    // bar on its own, so the veil is load-bearing, not decoration. Composited
-    // rather than hardcoded: change the ramp and this still tells the truth.
-    const view = text();
-
-    expect(view.getByTestId('text-cell-veil').props.style).toEqual(
-      expect.objectContaining({
-        backgroundColor: `rgba(${VEIL.rgb.join(',')},${VEIL.alpha})`,
-      })
+  it('splits the London prompt into headline and sub the way p3 does', () => {
+    const view = text(makePost({
+      content: `${TEXT_CARD_EXAMPLE.prompt}\nBest answer gets pinned to the community board`,
+    }));
+    expect(view.getByTestId('text-cell-prompt').props.children).toBe(TEXT_CARD_EXAMPLE.prompt);
+    expect(view.getByTestId('text-cell-sub').props.children).toBe(
+      'Best answer gets pinned to the community board',
     );
+    expect(view.queryByTestId('text-cell-kick')).toBeNull();
+  });
 
-    for (const stop of BRAND_GRADIENT) {
-      const over = composite(stop, VEIL);
-      const measured = contrastRatio('#FFFFFF', over).toFixed(2);
-      const verdict = contrastRatio('#FFFFFF', over) >= 4.5 ? 'pass' : `FAIL at ${measured}:1`;
-      expect(`${stop} under the veil — ${verdict}`).toBe(`${stop} under the veil — pass`);
-    }
+  it('paints the kick pill when the first line is the prototype label', () => {
+    const view = text(makePost({
+      content: [
+        TEXT_CARD_EXAMPLE.kick,
+        TEXT_CARD_EXAMPLE.prompt,
+        TEXT_CARD_EXAMPLE.sub,
+      ].join('\n'),
+    }));
+    expect(view.getByText(TEXT_CARD_EXAMPLE.kick)).toBeTruthy();
+    expect(view.getByText(TEXT_CARD_EXAMPLE.prompt)).toBeTruthy();
+    expect(view.getByText(TEXT_CARD_EXAMPLE.sub)).toBeTruthy();
   });
 });
 
@@ -212,6 +200,6 @@ describe('TextCell overflow', () => {
     const view = text(makePost({ content: '   ' }));
 
     expect(view.queryByTestId('text-cell-empty')).not.toBeNull();
-    expect(view.queryByTestId('text-cell-body')).toBeNull();
+    expect(view.queryByTestId('text-cell-prompt')).toBeNull();
   });
 });

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { BRAND_GRADIENT, type ThemeColors } from '../../lib/theme';
+import { type ThemeColors } from '../../lib/theme';
+import { TextCardFace } from '../feed/TextCardFace';
+import { parseTextCard } from '../../lib/textCard';
 import { contentDetailPath } from '../../lib/contentNavigation';
 import { logError } from '../../lib/errorLogger';
 import type { PostType } from '../../types';
@@ -77,7 +78,7 @@ export function ProfilePostsGrid({ userId }: Props) {
               testID={`profile-post-${post.id}`}
               onPress={() => router.push(contentDetailPath(post.id, post.post_type) as never)}
               accessibilityRole="button"
-              accessibilityLabel={isText ? post.content.slice(0, 80) || 'Text post' : 'Open post'}
+              accessibilityLabel={isText ? parseTextCard(post.content).prompt.slice(0, 80) || 'Text post' : 'Open post'}
             >
               {photo || thumb ? (
                 <Image
@@ -86,11 +87,7 @@ export function ProfilePostsGrid({ userId }: Props) {
                   contentFit="cover"
                 />
               ) : (
-                <LinearGradient colors={BRAND_GRADIENT} style={s.media}>
-                  <Text style={s.cardWords} numberOfLines={4}>
-                    {post.content.trim() || '✿'}
-                  </Text>
-                </LinearGradient>
+                <TextCardFace content={post.content} size="tile" testIDPrefix={`profile-post-card-${post.id}`} />
               )}
               {post.post_type === 'video' ? (
                 <View style={s.play}>
@@ -116,7 +113,6 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   media: { width: '100%', height: '100%', justifyContent: 'center', padding: 8 },
-  cardWords: { color: '#FFF8FB', fontWeight: '800', fontSize: 12, lineHeight: 15 },
   play: {
     position: 'absolute', right: 6, bottom: 6,
     width: 22, height: 22, borderRadius: 11,

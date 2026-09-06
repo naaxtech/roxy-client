@@ -23,8 +23,8 @@ import { uploadImageAsset, assetExtension, UploadError } from '../../../../lib/u
 import { canTagShop } from '../../../../lib/createAccess';
 import { isOfficialAccount } from '../../../../lib/officialGrant';
 import { deriveSellerStatus, canSell } from '../../../../lib/sellerStatus';
-import { textCardScale } from '../../../../lib/textCard';
-import { BRAND_GRADIENT } from '../../../../lib/theme';
+import { TEXT_CARD_PLACEHOLDER } from '../../../../lib/textCard';
+import { TextCardFace } from '../../../../components/feed/TextCardFace';
 import type { PostType } from '../../../../types';
 import { TYPE } from '../../../../lib/typography';
 
@@ -92,7 +92,7 @@ export default function CreatePostScreen() {
     : null;
 
   const TYPE_OPTIONS: { type: PostType; icon: keyof typeof Ionicons.glyphMap; grad: readonly [string, string]; label: string; sub: string }[] = [
-    { type: 'standard', icon: 'create', grad: ['#8E7CF7', '#C86DD7'], label: 'Text card', sub: 'Full-bleed words on the brand gradient' },
+    { type: 'standard', icon: 'create', grad: ['#8E7CF7', '#C86DD7'], label: 'Text card', sub: 'A headline, a quieter line, on the plum ramp' },
     { type: 'photo', icon: 'images', grad: ['#FF6A2E', '#E81C8E'], label: 'Photo', sub: 'Capture or upload — up to 10' },
     { type: 'video', icon: 'videocam', grad: ['#FF2F71', '#E81C8E'], label: 'Video', sub: 'Capture or upload — 3 min max' },
   ];
@@ -342,18 +342,8 @@ export default function CreatePostScreen() {
     sourceTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
     sourceSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
     cardPreview: {
-      margin: 16, borderRadius: 18, overflow: 'hidden', minHeight: 220,
-      paddingHorizontal: 22, paddingVertical: 28, justifyContent: 'center', gap: 12,
+      margin: 16, borderRadius: 18, overflow: 'hidden',
     },
-    cardKick: {
-      alignSelf: 'flex-start',
-      fontSize: 10.5, fontWeight: '800', letterSpacing: 1.6,
-      color: 'rgba(255,249,251,0.85)',
-      borderWidth: 1, borderColor: 'rgba(255,249,251,0.4)',
-      borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5,
-    },
-    cardWords: { color: '#FFF8FB', fontFamily: 'Outfit' },
-    cardFlower: { fontSize: 44, lineHeight: 44, color: 'rgba(255,249,251,0.16)' },
     captionInput: {
       flex: 1, padding: 16,
       color: colors.textPrimary, fontSize: 16,
@@ -470,7 +460,6 @@ export default function CreatePostScreen() {
   }
 
   const words = content.trim();
-  const cardStep = textCardScale(words.length || 12);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -491,19 +480,14 @@ export default function CreatePostScreen() {
       )}
 
       {postType === 'standard' && (
-        <LinearGradient
-          colors={BRAND_GRADIENT}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.cardPreview}
-          testID="text-card-preview"
-        >
-          <Text style={styles.cardKick}>TEXT CARD</Text>
-          <Text style={[styles.cardWords, cardStep]} numberOfLines={6}>
-            {words || "What's on your mind?"}
-          </Text>
-          <Text style={styles.cardFlower}>✿</Text>
-        </LinearGradient>
+        <View style={styles.cardPreview} testID="text-card-preview">
+          <TextCardFace
+            content={words}
+            size="preview"
+            ghost={!words}
+            testIDPrefix="text-card-preview"
+          />
+        </View>
       )}
 
       {postType === 'photo' && (
@@ -574,7 +558,7 @@ export default function CreatePostScreen() {
         style={styles.captionInput}
         placeholder={
           postType === 'standard'
-            ? 'Write the card…'
+            ? TEXT_CARD_PLACEHOLDER
             : 'Add a caption (optional)…'
         }
         placeholderTextColor={colors.textMuted}
