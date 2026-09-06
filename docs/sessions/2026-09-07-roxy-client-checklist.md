@@ -26,6 +26,7 @@ Status key:
 - [x] **TREE** Official profile cover uses the granted community `cover_image_url` (personal cover column still WAIT)
 - [x] **TREE** Other profile header More: Report + Block
 - [x] **TREE** Posts always land on the author. Create sheet no longer asks where. Comments/replies/hearts work. Profile chrome + tags + tickets.
+- [x] **TREE** Seed + schema: wipe old demo folders, official community profiles, For You ranks profile walls (118)
 
 - [ ] **NEXT** Archive Watch / Read / Listen links + outbound click log
 - [x] **LIVE** Commit / push / deploy mobile + Studio (`33e3460`, 7 Sep 2026)
@@ -57,7 +58,7 @@ Status key:
 ## Wait
 
 - [x] **LIVE** Migration 117 — null leftover `posts.community_id` / `posted_as_community`, `profiles.custom_tags` (max 5)
-- [ ] **WAIT** For You ranks followed authors (announcement feed still exists for video)
+- [x] **TREE** For You ranks profile-wall posts (follow is a bonus, not a filter)
 - [ ] **WAIT** Self-serve community brand toggle
 - [ ] **WAIT** Mobile event / game composers (Studio still hosts)
 - [ ] **WAIT** Redirect `/community/[id]` to the owner profile

@@ -85,7 +85,7 @@ function FeedScreen() {
 
   /**
    * The Communities segment is the one place "which community" means
-   * anything — For You reads `announcements` and Following reads `authorIds`,
+   * anything — For You ranks profile walls and Following reads `authorIds`,
    * neither of which ever looks at `communityIds`, so a selection made while
    * looking at Communities and left behind on another segment must not leak
    * into a query it cannot affect but could still be blamed for.

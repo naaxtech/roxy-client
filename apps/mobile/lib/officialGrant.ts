@@ -36,3 +36,14 @@ export function officialFirst<T extends { id: string }>(
   }
   return official.concat(rest);
 }
+
+/** Profile ids that own the given official community rows. */
+export function ownerIdsFromProfiles(
+  rows: readonly { id?: string | null }[] | null | undefined,
+): string[] {
+  const ids: string[] = [];
+  for (const row of rows ?? []) {
+    if (typeof row.id === 'string' && row.id) ids.push(row.id);
+  }
+  return ids;
+}

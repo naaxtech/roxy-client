@@ -117,26 +117,27 @@ export default function CommunityDetailScreen() {
   const isJoined = id ? joinedIds.has(id) : false;
 
   /**
-   * Same query + normalizer as the rest of the app — one post pipeline.
-   *
-   * A member sees everything. A non-member sees the community's public face
-   * only: its announcements. `posts_select` (migration 073) already draws that
-   * line server-side — `posted_as_community = true OR is_community_member(...)`
-   * — so this filter is not what protects the content. It is here so the screen
-   * asks for exactly what it is entitled to, and so the empty state below can
-   * tell the truth about why a tab is short.
+   * The official account's wall. Posts do not live on the community row.
    */
   const loadPosts = useCallback(async () => {
     if (!id) return;
     setPostsLoading(true);
     setPostsError(false);
-    let query = supabase
+    const { data: owner } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('official_community_id', id)
+      .maybeSingle();
+    if (!owner?.id) {
+      setPosts([]);
+      setPostsLoading(false);
+      return;
+    }
+    const { data, error } = await supabase
       .from('posts')
       .select(POST_WITH_AUTHOR_AND_COMMUNITY)
-      .eq('community_id', id)
-      .is('deleted_at', null);
-    if (!isJoined) query = query.eq('posted_as_community', true);
-    const { data, error } = await query
+      .eq('author_id', owner.id)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(30);
     if (error) {
@@ -147,7 +148,7 @@ export default function CommunityDetailScreen() {
       setPosts((data as Record<string, unknown>[]).map(normalizePost));
     }
     setPostsLoading(false);
-  }, [id, isJoined]);
+  }, [id]);
 
   const loadEvents = useCallback(async () => {
     if (!id) return;
@@ -455,17 +456,16 @@ export default function CommunityDetailScreen() {
   const hasVideo = posts.some((p) => p.post_type === 'video');
 
   /**
-   * What a non-member gets instead of member content: the community's public
-   * face, named as such, with the door held open. Not a blank tab, not an
-   * error, and never a silent trim of the list she is looking at.
+   * Posts are already the official account's wall. Join is for chat, not for
+   * unlocking a second hidden feed.
    */
   const joinNotice = (
     <View style={styles.joinNotice}>
-      <Text style={styles.joinNoticeEmoji}>🌸</Text>
+      <Text style={styles.joinNoticeEmoji}>💬</Text>
       <View style={{ flex: 1 }}>
-        <Text style={styles.joinNoticeTitle}>You&apos;re seeing the public side</Text>
+        <Text style={styles.joinNoticeTitle}>These are their posts</Text>
         <Text style={styles.joinNoticeText}>
-          Announcements are open to everyone. Join to see what members are sharing inside.
+          Follow for the feed. Join to get into the community chat.
         </Text>
       </View>
       <TouchableOpacity
@@ -522,10 +522,10 @@ export default function CommunityDetailScreen() {
           ) : posts.length === 0 ? (
             <EmptyState
               emoji="📝"
-              title={isJoined ? 'No posts yet' : 'No announcements yet'}
+              title="No posts yet"
               body={isJoined
-                ? 'Be the first to post!'
-                : `${community.name} hasn't posted publicly yet. Join to see what members are sharing inside.`}
+                ? `${community.name} has not posted yet.`
+                : `${community.name} has not posted yet. Join to get into the chat.`}
             />
           ) : (
             posts.map((post) => (

@@ -334,3 +334,20 @@ describe('migration 116', () => {
     expect(sql).not.toMatch(/grant update\s*\([^)]*official_community_id/i);
   });
 });
+
+describe('migration 118', () => {
+  const sql = readFileSync(
+    join(__dirname, '..', '..', '..', '..', 'supabase', 'migrations', '118_account_wall_feed_and_reseed.sql'),
+    'utf8',
+  );
+
+  it('locks posts to the author and ranks For You on profile walls', () => {
+    expect(sql).toMatch(/posts_force_profile_wall/);
+    expect(sql).toMatch(/NEW\.community_id := NULL/);
+    expect(sql).toMatch(/NEW\.posted_as_community := false/);
+    expect(sql).toMatch(/create or replace function public\.announcement_feed/i);
+    expect(sql).toMatch(/join public\.follows f/i);
+    expect(sql).toMatch(/create or replace function public\.link_official_community/i);
+    expect(sql).not.toMatch(/grant update\s*\([^)]*official_community_id/i);
+  });
+});

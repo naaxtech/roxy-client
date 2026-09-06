@@ -14,6 +14,7 @@ import { useFollowStore } from '../../store/followStore';
 import { excludeSeenReels, displayedLikeCount, initialReelIndex } from '../../lib/reels';
 import type { ReelRow } from '../../lib/reels';
 import { fetchAnnouncementVideos } from '../../lib/announcements';
+import { ownerIdsFromProfiles } from '../../lib/officialGrant';
 import { useFeedStore } from '../../store/feedStore';
 import { useSafetyStore } from '../../store/safetyStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -56,13 +57,13 @@ function toReelRows(data: unknown[] | null | undefined): ReelRow[] {
 /**
  * Which videos this list plays. Two scopes, because Roxy has two:
  *
- *  - `announcements` — the public square. Video announcements from EVERY
- *    community, joined or not, ranked by `announcement_feed` (migration 073).
- *    This is Connect. `communityIds` is not consulted.
- *  - `community` — member video inside `communityIds`. This is what is going on
- *    inside a community, and RLS only returns it to members.
- *  - `community-announcements` — the public face of `communityIds` only: the
- *    video a non-member is allowed to see while she decides whether to join.
+ *  - `announcements` — the public square. Profile-wall videos, ranked by
+ *    `announcement_feed` (migration 118). Follow is a bonus, not a filter.
+ *    `communityIds` is not consulted.
+ *  - `community` — videos on the official account that owns `communityIds`.
+ *    Posts do not live on the community row.
+ *  - `community-announcements` — same owner wall. Kept as a separate scope so
+ *    existing call sites do not have to rename.
  *  - `following` — video by the people in `authorIds`. The Feed tab passes the
  *    viewer's `follows` ids. Friends are still request-first for DMs; they are
  *    not this list.
@@ -74,9 +75,9 @@ export type ReelsScope =
   | 'following';
 
 const EMPTY_BODY: Record<ReelsScope, string> = {
-  announcements: 'When a community shares a video announcement, it plays here.',
-  community: 'When members post video, it plays here.',
-  'community-announcements': 'This community has not shared a video announcement yet.',
+  announcements: 'When someone posts a video, it plays here.',
+  community: 'When this community posts a video, it plays here.',
+  'community-announcements': 'This community has not posted a video yet.',
   following: 'Video from people you follow lands here. Follow someone and this fills up.',
 };
 
@@ -146,12 +147,10 @@ export function ReelsFeed({
   const authors = useMemo(() => (authorKey ? authorKey.split(',') : []), [authorKey]);
 
   /**
-   * The column the scope filters on, and the values it filters by. `following`
-   * is the same query as a community scope with a different left-hand side, so
-   * it shares the cursor, the seen-exclusion and the pagination rather than
-   * forking them.
+   * Following already has author ids. Community scopes start as community ids
+   * and resolve to the official owner inside `load` — posts live on that
+   * account, not on the community row.
    */
-  const filterColumn = scope === 'following' ? 'author_id' : 'community_id';
   const filterValues = scope === 'following' ? authors : ids;
 
   /** Community scopes page by feed_score; announcements page by created_at. */
@@ -201,17 +200,27 @@ export function ReelsFeed({
       setHasMore(page.hasMore);
       raw = page.rows;
     } else {
-      let query = supabase
+      let authorIdsForQuery = filterValues;
+      if (scope === 'community' || scope === 'community-announcements') {
+        const { data: owners } = await supabase
+          .from('profiles')
+          .select('id')
+          .in('official_community_id', filterValues);
+        authorIdsForQuery = ownerIdsFromProfiles(owners);
+        if (!authorIdsForQuery.length) {
+          setReels([]);
+          setLoading(false);
+          setHasMore(false);
+          return;
+        }
+      }
+
+      const { data, error: err } = await supabase
         .from('posts')
         .select(POST_WITH_AUTHOR_AND_COMMUNITY)
-        .in(filterColumn, filterValues)
+        .in('author_id', authorIdsForQuery)
         .eq('post_type', 'video')
-        .is('deleted_at', null);
-      // A non-member may only see the community's public face. RLS says the
-      // same thing server-side; this makes the intent readable here too.
-      if (scope === 'community-announcements') query = query.eq('posted_as_community', true);
-
-      const { data, error: err } = await query
+        .is('deleted_at', null)
         .order('feed_score', { ascending: false })
         .limit(PAGE_SIZE);
 
@@ -251,7 +260,7 @@ export function ReelsFeed({
     setReels(rows);
     setInitialIndex(startAt);
     setLoading(false);
-  }, [scope, filterColumn, filterValues, initialPostId]);
+  }, [scope, filterValues, initialPostId]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
@@ -275,16 +284,27 @@ export function ReelsFeed({
       if (cursor === null || !filterValues.length) return;
       setLoadingMore(true);
 
-      let query = supabase
+      let authorIdsForQuery = filterValues;
+      if (scope === 'community' || scope === 'community-announcements') {
+        const { data: owners } = await supabase
+          .from('profiles')
+          .select('id')
+          .in('official_community_id', filterValues);
+        authorIdsForQuery = ownerIdsFromProfiles(owners);
+        if (!authorIdsForQuery.length) {
+          setLoadingMore(false);
+          setHasMore(false);
+          return;
+        }
+      }
+
+      const { data, error: err } = await supabase
         .from('posts')
         .select(POST_WITH_AUTHOR_AND_COMMUNITY)
-        .in(filterColumn, filterValues)
+        .in('author_id', authorIdsForQuery)
         .eq('post_type', 'video')
         .is('deleted_at', null)
-        .lt('feed_score', cursor);
-      if (scope === 'community-announcements') query = query.eq('posted_as_community', true);
-
-      const { data, error: err } = await query
+        .lt('feed_score', cursor)
         .order('feed_score', { ascending: false })
         .limit(PAGE_SIZE);
 
@@ -305,7 +325,7 @@ export function ReelsFeed({
       return [...prev, ...fresh.filter((r) => !seen.has(r.id))];
     });
     setLoadingMore(false);
-  }, [scope, filterColumn, filterValues, hasMore, loadingMore]);
+  }, [scope, filterValues, hasMore, loadingMore]);
 
   useEffect(() => { void load(); }, [load]);
 

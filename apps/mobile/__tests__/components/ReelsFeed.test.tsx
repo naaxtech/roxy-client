@@ -67,8 +67,14 @@ jest.mock('../../lib/supabase', () => {
   chain.in = jest.fn(() => chain);
   chain.eq = jest.fn(() => chain);
   chain.is = jest.fn(() => chain);
+  chain.lt = jest.fn(() => chain);
   chain.order = jest.fn(() => chain);
   chain.limit = jest.fn(() => Promise.resolve({ data: rows, error: null }));
+  chain.maybeSingle = jest.fn(() => Promise.resolve({ data: rows[0], error: null }));
+  chain.then = (
+    resolve: (value: { data: { id: string }[]; error: null }) => unknown,
+    reject?: (reason: unknown) => unknown,
+  ) => Promise.resolve({ data: [{ id: 'u1' }], error: null }).then(resolve, reject);
   return {
     supabase: { from: jest.fn(() => chain) },
     callEdgeFunction: jest.fn(() => Promise.resolve({ data: { ok: true }, error: null })),

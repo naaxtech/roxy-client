@@ -2,6 +2,7 @@ import {
   isOfficialAccount,
   officialCommunityIdsFromProfiles,
   officialFirst,
+  ownerIdsFromProfiles,
 } from '../../lib/officialGrant';
 
 describe('isOfficialAccount', () => {
@@ -34,5 +35,17 @@ describe('officialFirst', () => {
     const rows = [{ id: 'a' }, { id: 'b' }];
     expect(officialFirst(rows, new Set())).toEqual(rows);
     expect(officialFirst(rows, new Set())).not.toBe(rows);
+  });
+});
+
+describe('ownerIdsFromProfiles', () => {
+  it('keeps real ids and drops empty rows', () => {
+    expect(ownerIdsFromProfiles([
+      { id: 'u1' },
+      { id: null },
+      { id: '' },
+      { id: 'u2' },
+    ])).toEqual(['u1', 'u2']);
+    expect(ownerIdsFromProfiles(null)).toEqual([]);
   });
 });

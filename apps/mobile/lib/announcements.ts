@@ -7,18 +7,12 @@ import type { ReelRow } from './reels';
 /**
  * The public square.
  *
- * Connect shows community *announcements* — a post published under a
- * community's own name, capped at one per community per UTC day by
- * `uq_community_announcement_per_day` (migration 073). Member conversation
- * lives inside each community and requires joining; this module never returns
- * it. `announcement_feed` is SECURITY INVOKER, so `posts_select` still decides
- * what the caller may read — the client filter here is the second lock, not
- * the only one.
- *
- * The discovery half matters as much as the filtering half: the RPC ranks
- * across EVERY community, joined or not (membership is worth +2 on the rank,
- * not a WHERE clause), which is what gives a brand-new account with zero
- * communities a populated first screen.
+ * For You ranks profile-wall posts — `author_id`, never a community folder.
+ * The RPC is still named `announcement_feed` (migration 073, rewritten in 118)
+ * so the client call does not change. Follow is a bonus, not a filter: a new
+ * account with nobody followed still sees the square. `posts_select` remains
+ * the read lock; the client filter here only drops deleted rows between the
+ * two round trips.
  */
 
 /**
@@ -154,7 +148,7 @@ export async function fetchAnnouncementPage(
     .in('id', ranked.map((row) => row.post_id))
     // Belt and braces with the RPC's own predicate: if a post is deleted or
     // demoted between the two round trips, it must not reach the screen.
-    .eq('posted_as_community', true)
+    .is('community_id', null)
     .is('deleted_at', null);
   if (options.videoOnly) hydrate = hydrate.eq('post_type', 'video');
 
@@ -171,14 +165,13 @@ export async function fetchAnnouncementPage(
 const MAX_VIDEO_PAGES = 3;
 
 /**
- * A page of *video* announcements.
+ * A page of *video* from the For You ranking.
  *
- * A ranked page of 50 announcements can easily contain no video at all — most
- * communities announce in text — and a reels tab that renders "no videos yet"
+ * A ranked page of 50 posts can easily contain no video at all — most walls
+ * start as text and photos — and a reels tab that renders "no videos yet"
  * while the RPC still has pages left is lying about an empty library. So keep
  * walking the cursor until a page yields video, the stream runs out, or the
- * walk hits `MAX_VIDEO_PAGES` (which bounds the worst case at three round trips
- * rather than one per community-day in the table).
+ * walk hits `MAX_VIDEO_PAGES`.
  */
 export async function fetchAnnouncementVideos(
   before: string | null = null,
