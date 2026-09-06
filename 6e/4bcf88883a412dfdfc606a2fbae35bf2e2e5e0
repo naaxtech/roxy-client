@@ -1,0 +1,28 @@
+apps/mobile/__tests__/components/archive/composerActions.test.ts
+  s_02997141a06547::t_a3d59d342670f6 24
+  s_02997141a06547::t_d943a3fc8924a7 43-48,52-77
+apps/mobile/__tests__/store/archiveStore.test.ts
+  s_02997141a06547::t_2401741e4f2c89 30
+  s_02997141a06547::t_b173242afb2c64 168-211
+apps/mobile/store/archiveStore.ts
+  s_02997141a06547::t_215462baac7bd9 138-145,167-181,184
+  s_02997141a06547::t_c24c3d311e88a9 189-201
+apps/mobile/components/archive/composerActions.ts
+  s_02997141a06547::t_ad14b3b8942871 40-44,48-53,69-89,92-98,104-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "6e4bcf88883a412dfdfc606a2fbae35bf2e2e5e0",
+  "prompts": {},
+  "sessions": {
+    "s_02997141a06547": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eeb5e1d1-aac6-4653-9c90-afb5f6db1d41",
+        "model": "grok-4.6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
