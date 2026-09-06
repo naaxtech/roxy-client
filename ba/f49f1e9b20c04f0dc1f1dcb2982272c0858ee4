@@ -1,0 +1,72 @@
+apps/mobile/__tests__/lib/feedPagerWeb.test.ts
+  s_02997141a06547::t_92c37940c9d6df 1
+  s_02997141a06547::t_12211a35325d24 2-106
+apps/mobile/components/feed/FeedPager.tsx
+  s_02997141a06547::t_b889b2dfcb06ca 327
+  s_02997141a06547::t_87a1ab248d9342 3,9-10,12-15
+  s_02997141a06547::t_c953d486f66600 318
+  s_02997141a06547::t_b9b8b421de8ce5 278-285,288-295
+  s_02997141a06547::t_07af7b9ad32cdd 400
+  s_02997141a06547::t_13208081dc90ac 306-308,310
+  s_02997141a06547::t_9e125161069c8a 271-277,286-287,296-305,309,311-317,319-326,328
+  s_02997141a06547::t_e321629cf52587 11
+  s_02997141a06547::t_52c71322a1c0dc 372,376,392-398,403-404,417
+apps/mobile/__tests__/components/feedTouchTargets.test.tsx
+  s_02997141a06547::t_b67b1fad244d56 32
+apps/mobile/components/feed/FeedVideoPlayer.tsx
+  s_02997141a06547::t_1b116072a2f333 149-151
+apps/mobile/lib/feedMediaTaps.ts
+  s_02997141a06547::t_acd3ac1ac22484 1-36
+apps/mobile/__tests__/components/ReelsFeed.test.tsx
+  s_02997141a06547::t_2ffe30aaff4ac0 32,34-38
+  s_02997141a06547::t_65235b1fdce8e8 33
+apps/mobile/__tests__/lib/feedPagerSnap.test.ts
+  s_02997141a06547::t_2130eaf5e44fdf 1-69
+apps/mobile/__tests__/components/FeedCellRecycling.test.tsx
+  s_02997141a06547::t_d93679748529eb 57
+apps/mobile/__tests__/components/ReelCell.test.tsx
+  s_02997141a06547::t_37aa12b427c92e 34
+apps/mobile/lib/feedPagerSnap.ts
+  s_02997141a06547::t_a8111a1ab04116 1-51
+apps/mobile/__tests__/lib/feedMediaTaps.test.ts
+  s_02997141a06547::t_9e9b864435c618 1-55
+apps/mobile/__tests__/components/FeedPager.test.tsx
+  s_02997141a06547::t_b0b52c03720384 204
+  s_02997141a06547::t_afc85958a1a3c2 81-84
+  s_02997141a06547::t_b540c2ec480bc5 50
+  s_02997141a06547::t_78eb6f7b9ed31c 55-56
+  s_02997141a06547::t_937470a64ee32a 148
+  s_02997141a06547::t_f4007cfc0876fc 207-233
+  s_02997141a06547::t_9e0348187f854b 12-20
+  s_02997141a06547::t_27fb685e4cad6a 85-86
+apps/mobile/__tests__/components/FeedCell.test.tsx
+  s_02997141a06547::t_1f40e825a11914 33
+apps/mobile/components/feed/ReelCell.tsx
+  s_02997141a06547::t_adccc87e2f9457 4-5
+  s_02997141a06547::t_cca9729d6bd60d 109-136
+  s_02997141a06547::t_ef352cfb822b58 104-107
+  s_02997141a06547::t_957ac4ed9e8ad4 1,3
+  s_02997141a06547::t_7bbf9cc51aa69c 172-175
+  s_02997141a06547::t_68139a2dba63b5 108
+apps/mobile/lib/feedPagerWeb.ts
+  s_02997141a06547::t_d99a8df0afb5fd 92-113
+  s_02997141a06547::t_76a81710b0e0b6 18-20
+  s_02997141a06547::t_55220253ee9019 60-61
+  s_02997141a06547::t_32bc111a84a695 1-17,21-59,62-91,114-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "baf49f1e9b20c04f0dc1f1dcb2982272c0858ee4",
+  "prompts": {},
+  "sessions": {
+    "s_02997141a06547": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eeb5e1d1-aac6-4653-9c90-afb5f6db1d41",
+        "model": "grok-4.6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
