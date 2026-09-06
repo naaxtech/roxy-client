@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import type {
   LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent, ViewToken,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { activeIndexFromScroll } from '../../lib/reels';
+import { snapPageOffset } from '../../lib/feedPagerSnap';
+import {
+  applyWebPageOffset,
+  attachFeedPagerWebGestures,
+  createFeedPagerWebController,
+  findWebNode,
+} from '../../lib/feedPagerWeb';
 
 /** Everything the pager knows about one cell when it asks the caller to draw it. */
 export interface FeedPagerCell<TItem> {
@@ -261,6 +268,64 @@ export function FeedPager<TItem>({
     applyActiveIndex(activeIndexFromScroll(e.nativeEvent.contentOffset.y, pageH, items.length));
   }, [pageH, items.length, applyActiveIndex]);
 
+  const listRef = useRef<FlashList<TItem>>(null);
+  const frameRef = useRef<View>(null);
+  const pageHRef = useRef(pageH);
+  const itemsLenRef = useRef(items.length);
+  pageHRef.current = pageH;
+  itemsLenRef.current = items.length;
+
+  const resolveFrameNode = useCallback((): HTMLElement | null => {
+    if (Platform.OS !== 'web') return null;
+    return findWebNode(frameRef)
+      ?? (typeof document !== 'undefined' && testID
+        ? document.querySelector(`[data-testid="${testID}"]`)
+        : null);
+  }, [testID]);
+
+  const goToPage = useCallback((index: number) => {
+    applyActiveIndex(index);
+    const offset = index * pageHRef.current;
+    listRef.current?.scrollToOffset({
+      offset,
+      animated: Platform.OS !== 'web',
+    });
+    const node = resolveFrameNode();
+    if (node) applyWebPageOffset(node, offset);
+  }, [applyActiveIndex, resolveFrameNode]);
+
+  /**
+   * Native snap can leave the list between pages — after a like re-render, or
+   * after a wheel tick on web. Pull back to the nearer page so the next swipe
+   * has a real page to leave.
+   */
+  const handleScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const target = snapPageOffset(y, pageH, items.length);
+    if (Math.abs(y - target) <= 1) return;
+    listRef.current?.scrollToOffset({ offset: target, animated: Platform.OS !== 'web' });
+    const node = resolveFrameNode();
+    if (node) applyWebPageOffset(node, target);
+    applyActiveIndex(activeIndexFromScroll(target, pageH, items.length));
+  }, [pageH, items.length, applyActiveIndex, resolveFrameNode]);
+
+  /**
+   * Web has no mouse-drag scroll on overflow:auto, and snapToInterval turns a
+   * wheel into a stuck mid-page offset. Own the gesture: one flick = one page.
+   */
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !showsList) return;
+    const node = resolveFrameNode();
+    if (!node) return;
+    const controller = createFeedPagerWebController({
+      getPageH: () => pageHRef.current,
+      getCount: () => itemsLenRef.current,
+      getIndex: () => activeIndexRef.current,
+      goToIndex: goToPage,
+    });
+    return attachFeedPagerWebGestures(node, controller);
+  }, [showsList, goToPage, resolveFrameNode]);
+
   /** WHICH item is active, not merely which slot. */
   const activeItem: TItem | undefined = items[activeIndex];
   const activeItemId = activeItem === undefined ? null : keyExtractor(activeItem, activeIndex);
@@ -304,9 +369,11 @@ export function FeedPager<TItem>({
   );
 
   const width = pageW > 0 ? pageW : windowWidth;
+  const web = Platform.OS === 'web';
 
   const list = showsList ? (
     <FlashList
+      ref={listRef}
       data={items}
       keyExtractor={keyExtractor}
       extraData={listExtraData}
@@ -322,12 +389,19 @@ export function FeedPager<TItem>({
       // No `pagingEnabled`: snapToInterval overrides it, and pairing the two on
       // Android with flash-list 1.6.x + RN 0.74 jumps the list to the last
       // index. src: https://github.com/Shopify/flash-list/issues/1200 · @shopify/flash-list 1.6.4 · 2026-08-05
-      snapToInterval={pageH}
-      snapToAlignment="start"
+      // Web owns paging in feedPagerWeb — native snap leaves the list between
+      // pages, after which neither wheel nor drag can leave.
+      {...(web ? {} : {
+        snapToInterval: pageH,
+        snapToAlignment: 'start' as const,
+        disableIntervalMomentum: true,
+      })}
       decelerationRate="fast"
-      disableIntervalMomentum
+      directionalLockEnabled
       showsVerticalScrollIndicator={false}
       onScroll={handleScroll}
+      onMomentumScrollEnd={handleScrollEnd}
+      onScrollEndDrag={handleScrollEnd}
       scrollEventThrottle={16}
       onEndReached={onEndReached}
       onEndReachedThreshold={END_REACHED_THRESHOLD}
@@ -340,7 +414,7 @@ export function FeedPager<TItem>({
   ) : null;
 
   return (
-    <View testID={testID} style={styles.frame} onLayout={handleLayout}>
+    <View ref={frameRef} testID={testID} style={styles.frame} onLayout={handleLayout}>
       {placeholder ?? list}
     </View>
   );

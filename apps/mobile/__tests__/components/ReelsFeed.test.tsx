@@ -29,10 +29,13 @@ jest.mock('@shopify/flash-list', () => {
   const ReactLocal = require('react');
   const { View } = require('react-native');
   const captured: Record<string, unknown>[] = [];
-  const FlashList = (props: Record<string, unknown>): React.ReactElement => {
-    captured.push(props);
-    return ReactLocal.createElement(View, { testID: 'flash-list' });
-  };
+  const FlashList = ReactLocal.forwardRef(
+    (props: Record<string, unknown>, ref: unknown) => {
+      captured.push(props);
+      ReactLocal.useImperativeHandle(ref, () => ({ scrollToOffset: jest.fn() }));
+      return ReactLocal.createElement(View, { testID: 'flash-list' });
+    },
+  );
   return { FlashList, __captured: captured };
 });
 

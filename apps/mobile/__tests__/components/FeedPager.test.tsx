@@ -9,11 +9,15 @@ jest.mock('@shopify/flash-list', () => {
   const ReactLocal = require('react');
   const { View: RNView } = require('react-native');
   const captured: Record<string, unknown>[] = [];
-  const FlashList = (props: Record<string, unknown>): React.ReactElement => {
-    captured.push(props);
-    return ReactLocal.createElement(RNView, { testID: 'flash-list' });
-  };
-  return { FlashList, __captured: captured };
+  const listApi = { scrollToOffset: jest.fn() };
+  const FlashList = ReactLocal.forwardRef(
+    (props: Record<string, unknown>, ref: React.Ref<unknown>) => {
+      captured.push(props);
+      ReactLocal.useImperativeHandle(ref, () => listApi);
+      return ReactLocal.createElement(RNView, { testID: 'flash-list' });
+    },
+  );
+  return { FlashList, __captured: captured, __listApi: listApi };
 });
 
 interface TestItem {
@@ -43,10 +47,13 @@ interface CapturedListProps {
   snapToAlignment: string;
   decelerationRate: string;
   disableIntervalMomentum: boolean;
+  directionalLockEnabled?: boolean;
   showsVerticalScrollIndicator: boolean;
   pagingEnabled?: boolean;
   getItemLayout?: unknown;
   onScroll: (event: { nativeEvent: { contentOffset: { y: number } } }) => void;
+  onMomentumScrollEnd?: (event: { nativeEvent: { contentOffset: { y: number } } }) => void;
+  onScrollEndDrag?: (event: { nativeEvent: { contentOffset: { y: number } } }) => void;
   scrollEventThrottle: number;
   onEndReached?: () => void;
   onEndReachedThreshold: number;
@@ -69,6 +76,12 @@ function latest(): CapturedListProps {
   const all = captured();
   if (!all.length) throw new Error('the pager never rendered a list');
   return all[all.length - 1];
+}
+
+function listApi(): { scrollToOffset: jest.Mock } {
+  return (jest.requireMock('@shopify/flash-list') as {
+    __listApi: { scrollToOffset: jest.Mock };
+  }).__listApi;
 }
 
 /** Every cell info object the pager has handed the caller's renderer. */
@@ -132,6 +145,7 @@ function activeIdOnCell(index = 0): string | null {
 beforeEach(() => {
   captured().length = 0;
   cells.length = 0;
+  listApi().scrollToOffset.mockClear();
 });
 
 describe('FeedPager viewport gate', () => {
@@ -187,7 +201,35 @@ describe('FeedPager snap paging', () => {
     expect(props.snapToAlignment).toBe('start');
     expect(props.decelerationRate).toBe('fast');
     expect(props.disableIntervalMomentum).toBe(true);
+    expect(props.directionalLockEnabled).toBe(true);
     expect(props.showsVerticalScrollIndicator).toBe(false);
+  });
+
+  it('snaps back to a page boundary when a scroll ends between pages', () => {
+    mountPager();
+
+    act(() => {
+      latest().onMomentumScrollEnd?.({
+        nativeEvent: { contentOffset: { y: 1400 } },
+      });
+    });
+
+    expect(listApi().scrollToOffset).toHaveBeenCalledWith({
+      offset: PAGE_H * 2,
+      animated: true,
+    });
+  });
+
+  it('does not re-snap when a scroll already ended on a page', () => {
+    mountPager();
+
+    act(() => {
+      latest().onScrollEndDrag?.({
+        nativeEvent: { contentOffset: { y: PAGE_H } },
+      });
+    });
+
+    expect(listApi().scrollToOffset).not.toHaveBeenCalled();
   });
 });
 

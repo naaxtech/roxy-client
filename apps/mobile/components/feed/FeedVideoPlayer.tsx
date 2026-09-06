@@ -146,6 +146,9 @@ export function FeedVideoPlayer({
             style={{
               position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
               objectFit: 'contain', backgroundColor: '#000',
+              // The pager owns the swipe. A <video> that captures pointer
+              // events is why a like-tap on the frame then refused to page.
+              pointerEvents: 'none',
             }}
             autoPlay={isActive}
             loop

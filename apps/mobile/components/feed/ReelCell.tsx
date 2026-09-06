@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Platform, View, StyleSheet, TouchableOpacity } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
+import { feedMediaTaps } from '../../lib/feedMediaTaps';
 import Animated, {
   useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring,
 } from 'react-native-reanimated';
@@ -100,20 +101,39 @@ export function ReelCell({
   // UI thread, regardless of whether they are worklets or not." The versioned
   // docs.swmansion.com path for 2.16.2 now 404s, so this cites the tag.
   // src: https://github.com/software-mansion/react-native-gesture-handler/blob/2.16.2/src/handlers/gestures/gesture.ts · react-native-gesture-handler 2.16.2 · 2026-08-05
-  const tapGesture = useMemo(() => {
-    const doubleTap = Gesture.Tap()
-      .numberOfTaps(2)
-      .maxDelay(260)
-      .runOnJS(true)
-      .onEnd((_event, success) => { if (success) handleDoubleTap(); });
-    const singleTap = Gesture.Tap()
-      .numberOfTaps(1)
-      .runOnJS(true)
-      .onEnd((_event, success) => { if (success) togglePlay(); });
-    // Exclusive, not Race: the single tap must wait for the double tap to fail,
-    // or every like also pauses the video.
-    return Gesture.Exclusive(doubleTap, singleTap);
-  }, [handleDoubleTap, togglePlay]);
+  const tapGesture = useMemo(
+    () => feedMediaTaps(handleDoubleTap, togglePlay),
+    [handleDoubleTap, togglePlay],
+  );
+
+  // Web: RNGH's catcher still captures the pointer, so a swipe becomes a like
+  // and the pager never sees the drag. Click/dblclick do not steal scroll.
+  const webTapPending = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const webTapCatcher = Platform.OS === 'web' ? (
+    <View
+      testID="feed-media-taps"
+      style={StyleSheet.absoluteFill}
+      collapsable={false}
+      {...({
+        onClick: () => {
+          if (webTapPending.current) {
+            clearTimeout(webTapPending.current);
+            webTapPending.current = null;
+            handleDoubleTap();
+            return;
+          }
+          webTapPending.current = setTimeout(() => {
+            webTapPending.current = null;
+            togglePlay();
+          }, 260);
+        },
+      } as Record<string, unknown>)}
+    />
+  ) : (
+    <GestureDetector gesture={tapGesture} touchAction="pan-y">
+      <View style={StyleSheet.absoluteFill} collapsable={false} />
+    </GestureDetector>
+  );
 
   /**
    * The pause mechanism WCAG 2.2 SC 2.2.2 requires. Tap-anywhere does the same
@@ -149,10 +169,10 @@ export function ReelCell({
       />
 
       {/* Transparent catcher: sits over the video and under every control, so
-          the rail buttons keep their own touches. */}
-      <GestureDetector gesture={tapGesture}>
-        <View style={StyleSheet.absoluteFill} collapsable={false} />
-      </GestureDetector>
+          the rail buttons keep their own touches. Native uses RNGH with a
+          slop so a swipe is never a like. Web uses click/dblclick — RNGH
+          still captures the pointer there and the pager never sees the drag. */}
+      {webTapCatcher}
 
       <Animated.View style={[s.burst, burstStyle]} pointerEvents="none">
         <Ionicons name="heart" size={110} color="rgba(255,255,255,0.92)" />
