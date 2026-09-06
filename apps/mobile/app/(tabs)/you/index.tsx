@@ -24,6 +24,10 @@ import { logError } from '../../../lib/errorLogger';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { isOfficialAccount } from '../../../lib/officialGrant';
+import { hostedTabFlags, loadHostedProfile } from '../../../lib/profileHosted';
+import { canSell, deriveSellerStatus, type SellerBusinessRow } from '../../../lib/sellerStatus';
+import { EventModeBadge, type EventMode } from '../../../components/events/EventModeBadge';
+import { isPlayableGameUrl } from '../../../lib/gameUrl';
 import { RADII } from '../../../lib/theme';
 import type { Business, Profile } from '../../../types';
 import { useAccess } from '../../../hooks/useAccess';
@@ -57,6 +61,9 @@ export default function ProfileScreen() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [postCount, setPostCount] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [sellerRows, setSellerRows] = useState<SellerBusinessRow[]>([]);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [hosted, setHosted] = useState({ events: [] as Awaited<ReturnType<typeof loadHostedProfile>>['events'], rooms: [] as Awaited<ReturnType<typeof loadHostedProfile>>['rooms'], games: [] as Awaited<ReturnType<typeof loadHostedProfile>>['games'] });
 
   // The watchlist lives in archiveStore, which the Archive screens hydrate on
   // their own mount. Arriving straight at You — a cold start, a deep link —
@@ -145,7 +152,34 @@ export default function ProfileScreen() {
     void fetchUnreadNotificationCount(user.id)
       .then(setUnreadNotifs)
       .catch((e: unknown) => logError(e, 'you_unreadNotifs'));
+
+    void supabase
+      .from('businesses')
+      .select('id, is_verified, can_sell, stripe_account_id')
+      .eq('owner_id', user.id)
+      .then(({ data, error }) => {
+        if (error) logError(error, 'you_seller');
+        else setSellerRows((data ?? []) as SellerBusinessRow[]);
+      });
   }, [user?.id, loadBookmarks, fetchOrders]);
+
+  useEffect(() => {
+    if (!user?.id || !profile) return;
+    const officialId = profile.official_community_id ?? null;
+    void loadHostedProfile(user.id, officialId)
+      .then(setHosted)
+      .catch((e: unknown) => logError(e, 'you_hosted'));
+    if (!officialId) { setCoverUrl(null); return; }
+    void supabase
+      .from('communities')
+      .select('cover_image_url')
+      .eq('id', officialId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) logError(error, 'you_cover');
+        else setCoverUrl(data?.cover_image_url ?? null);
+      });
+  }, [user?.id, profile]);
 
   // Fetch saved business details whenever bookmarked IDs change.
   // An empty Set with a new reference every render must not write [] again —
@@ -208,7 +242,28 @@ export default function ProfileScreen() {
       alignItems: 'center', justifyContent: 'center',
       borderRadius: RADII.pill, backgroundColor: colors.primary,
     },
-    stalledBtnText: { color: colors.primaryInk, fontSize: 14, fontWeight: '700' },
+    stalledBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+    hostedList: { paddingTop: 8, paddingBottom: 24, gap: 8 },
+    hostedRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      minHeight: MIN_TOUCH_TARGET + 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.line,
+      borderRadius: RADII.md,
+    },
+    hostedCopy: { flex: 1, minWidth: 0, gap: 2 },
+    hostedTitle: { ...TYPE.body, color: colors.textPrimary, fontWeight: '700' },
+    hostedMeta: { ...TYPE.caption, color: colors.textMuted, fontWeight: '600' },
+    hostedPlay: {
+      ...TYPE.caption, color: '#FFFFFF', fontWeight: '800',
+      backgroundColor: colors.primary,
+      paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADII.pill,
+    },
   });
 
   if (!user || !profile) {
@@ -240,19 +295,107 @@ export default function ProfileScreen() {
     );
   }
 
+  const sellerApproved = canSell(deriveSellerStatus(sellerRows));
+  const shop = sellerRows.find((s) => s.is_verified === true && s.can_sell === true && !!s.stripe_account_id) as (SellerBusinessRow & { id?: string }) | undefined;
+  const hostedFlags = hostedTabFlags({
+    events: hosted.events.length,
+    rooms: hosted.rooms.length,
+    games: hosted.games.length,
+  });
   const populated: PopulatedTabs = {
-    posts: isBeta && postCount > 0,
-    shop: false,
-    events: false,
-    rooms: false,
-    games: false,
-    about: isBeta,
+    posts: true,
+    shop: sellerApproved,
+    events: hostedFlags.events,
+    rooms: hostedFlags.rooms,
+    games: hostedFlags.games,
+    about: false,
     saved: true,
   };
 
   const renderTab = (tab: ProfileTab) => {
     if (!user?.id) return null;
     if (tab === 'posts') return <ProfilePhotoGrid userId={user.id} editable />;
+    if (tab === 'shop' && shop?.id) {
+      return (
+        <TouchableOpacity
+          style={styles.hostedRow}
+          onPress={() => router.push(`/business/${shop.id}` as never)}
+          accessibilityRole="button"
+          accessibilityLabel="Open your shop"
+        >
+          <Text style={styles.hostedTitle}>Open your shop</Text>
+        </TouchableOpacity>
+      );
+    }
+    if (tab === 'events') {
+      return (
+        <View style={styles.hostedList}>
+          {hosted.events.map((event) => (
+            <TouchableOpacity
+              key={event.id}
+              style={styles.hostedRow}
+              onPress={() => router.push(`/event/${event.id}` as never)}
+              accessibilityRole="button"
+              accessibilityLabel={`Open event ${event.title}`}
+            >
+              <View style={styles.hostedCopy}>
+                <Text style={styles.hostedTitle} numberOfLines={1}>{event.title}</Text>
+                <Text style={styles.hostedMeta} numberOfLines={1}>
+                  {[event.location_text, new Date(event.starts_at).toLocaleDateString()].filter(Boolean).join(' · ')}
+                </Text>
+              </View>
+              <EventModeBadge mode={event.event_type as EventMode} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      );
+    }
+    if (tab === 'rooms') {
+      return (
+        <View style={styles.hostedList}>
+          {hosted.rooms.map((room) => (
+            <TouchableOpacity
+              key={room.id}
+              style={styles.hostedRow}
+              onPress={() => router.push(`/community-room-session?room_id=${room.id}` as never)}
+              accessibilityRole="button"
+              accessibilityLabel={`Open room ${room.name}`}
+            >
+              <View style={styles.hostedCopy}>
+                <Text style={styles.hostedTitle} numberOfLines={1}>{room.name}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      );
+    }
+    if (tab === 'games') {
+      return (
+        <View style={styles.hostedList}>
+          {hosted.games.map((game) => {
+            const canPlay = game.name === 'Speed Dating' || isPlayableGameUrl(game.url);
+            return (
+              <TouchableOpacity
+                key={game.id}
+                style={styles.hostedRow}
+                onPress={() => {
+                  if (game.name === 'Speed Dating') { router.push('/speed-dating' as never); return; }
+                  if (canPlay) router.push(`/(tabs)/discover/games/${game.id}` as never);
+                }}
+                disabled={!canPlay}
+                accessibilityRole="button"
+                accessibilityLabel={`Play ${game.name}`}
+              >
+                <View style={styles.hostedCopy}>
+                  <Text style={styles.hostedTitle} numberOfLines={1}>{game.name}</Text>
+                </View>
+                {canPlay ? <Text style={styles.hostedPlay}>Play</Text> : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      );
+    }
     if (tab === 'saved') {
       return (
         <View>
@@ -289,8 +432,11 @@ export default function ProfileScreen() {
         bio={profile.bio}
         pronouns={profile.pronouns ?? []}
         identityLabels={profile.identity_labels ?? []}
+        interests={profile.interests ?? []}
+        customTags={profile.custom_tags ?? []}
         statusLabels={profile.dating_looking_for ?? []}
         avatarUrl={profile.avatar_url}
+        coverUrl={coverUrl}
         points={profile.gamification_points}
         official={isOfficialAccount(profile)}
         badgePreview={(() => {

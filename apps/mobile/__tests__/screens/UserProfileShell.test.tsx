@@ -237,11 +237,10 @@ describe('user profile on the unified shell', () => {
     expect(queryByTestId('profile-tab-shop')).toBeNull();
   });
 
-  it('omits the Posts tab entirely when she has posted nothing, rather than drawing an empty one', async () => {
+  it('still shows Posts when the grid is empty — the wall is hers either way', async () => {
     mockPostCount = 0;
-    const { getByTestId, queryByTestId } = render(<UserProfileScreen />);
-    await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
-    expect(queryByTestId('profile-tab-posts')).toBeNull();
+    const { getByTestId } = render(<UserProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-tab-posts')).toBeTruthy());
   });
 
   it('says so when the profile is missing instead of rendering an empty shell', async () => {

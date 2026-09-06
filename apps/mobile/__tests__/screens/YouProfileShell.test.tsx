@@ -40,6 +40,11 @@ const thenable = (data: unknown, count = 0) => {
   return chain;
 };
 
+jest.mock('../../lib/profileHosted', () => ({
+  hostedTabFlags: () => ({ events: false, rooms: false, games: false }),
+  loadHostedProfile: jest.fn(async () => ({ events: [], rooms: [], games: [] })),
+}));
+
 jest.mock('../../lib/supabase', () => ({
   supabase: {
     from: jest.fn((table: string) => {
@@ -111,6 +116,7 @@ describe('You on the unified shell', () => {
     expect(getByTestId('you-coming-soon')).toBeTruthy();
     expect(getByTestId('self-controls')).toBeTruthy();
     expect(getByTestId('you-more')).toBeTruthy();
+    expect(getByTestId('profile-tab-posts')).toBeTruthy();
     expect(getByTestId('profile-tab-saved')).toBeTruthy();
     expect(getByText('Edit')).toBeTruthy();
     expect(getByText('40 XP')).toBeTruthy();

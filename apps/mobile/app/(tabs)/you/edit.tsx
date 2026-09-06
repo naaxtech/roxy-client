@@ -12,6 +12,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { supabase } from '../../../lib/supabase';
 import { PRONOUNS, IDENTITY_LABELS } from '../../../lib/constants';
+import { clampCustomTags, MAX_CUSTOM_TAGS } from '../../../lib/profileTags';
 import { logError } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
@@ -31,6 +32,7 @@ export default function EditProfileScreen() {
   const colors = useThemeColors();
 
   const [localBio, setLocalBio] = useState(profile?.bio ?? '');
+  const [tagDraft, setTagDraft] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [badges, setBadges] = useState<EarnedBadge[]>([]);
@@ -110,6 +112,13 @@ export default function EditProfileScreen() {
       borderRadius: 2, overflow: 'hidden', marginTop: 4,
     },
     progressFill: { height: 3, backgroundColor: colors.primary, borderRadius: 2 },
+    tagAddRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+    tagInput: { flex: 1, color: colors.textPrimary, fontSize: 15, minHeight: 40 },
+    tagAdd: {
+      backgroundColor: colors.roxy, borderRadius: 16,
+      paddingHorizontal: 14, paddingVertical: 8,
+    },
+    tagAddText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   });
 
   if (!user || !profile) {
@@ -273,6 +282,60 @@ export default function EditProfileScreen() {
               );
             })}
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Custom tags — up to {MAX_CUSTOM_TAGS}</Text>
+          <View style={styles.chipRow}>
+            {(profile.custom_tags ?? []).map((tag) => (
+              <TouchableOpacity
+                key={tag}
+                style={[styles.chip, styles.chipSelected]}
+                onPress={async () => {
+                  const next = (profile.custom_tags ?? []).filter((t) => t !== tag);
+                  try { await updateProfile({ custom_tags: next }); }
+                  catch (e) { logError(e, 'editProfile_removeTag'); showAlert('Error', 'Could not save tags'); }
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove tag ${tag}`}
+              >
+                <Text style={[styles.chipText, styles.chipTextSelected]}>{tag} ×</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {(profile.custom_tags ?? []).length < MAX_CUSTOM_TAGS ? (
+            <View style={styles.tagAddRow}>
+              <TextInput
+                style={styles.tagInput}
+                placeholder="Add a tag"
+                placeholderTextColor={colors.textMuted}
+                value={tagDraft}
+                onChangeText={setTagDraft}
+                maxLength={24}
+                testID="edit-custom-tag-input"
+              />
+              <TouchableOpacity
+                style={styles.tagAdd}
+                onPress={async () => {
+                  const next = clampCustomTags([...(profile.custom_tags ?? []), tagDraft]);
+                  if (next.length === (profile.custom_tags ?? []).length) return;
+                  try {
+                    await updateProfile({ custom_tags: next });
+                    setTagDraft('');
+                  } catch (e) {
+                    logError(e, 'editProfile_addTag');
+                    showAlert('Error', 'Could not save tags');
+                  }
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Add custom tag"
+              >
+                <Text style={styles.tagAddText}>Add</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text style={styles.hint}>Five tags is the limit.</Text>
+          )}
         </View>
 
         {/* Identity */}

@@ -106,27 +106,34 @@ export default function MyTicketsScreen() {
   };
 
   const now = new Date();
-  const upcoming = tickets.filter((t) => t.events && new Date(t.events.starts_at) >= now);
-  const past = tickets.filter((t) => t.events && new Date(t.events.starts_at) < now);
+  const isFinished = (t: TicketRow) => {
+    if (!t.events) return true;
+    if (t.events.status === 'cancelled' || t.events.status === 'completed') return true;
+    return new Date(t.events.starts_at) < now;
+  };
+  const upcoming = tickets.filter((t) => t.events && !isFinished(t));
+  const past = tickets.filter((t) => t.events && isFinished(t));
 
   type ListItem =
-    | { type: 'ticket'; data: TicketRow }
-    | { type: 'divider' };
+    | { type: 'ticket'; data: TicketRow; finished: boolean }
+    | { type: 'section'; label: string };
 
   const listData: ListItem[] = [
-    ...upcoming.map((t): ListItem => ({ type: 'ticket', data: t })),
-    ...(past.length > 0 ? [{ type: 'divider' } as ListItem] : []),
-    ...past.map((t): ListItem => ({ type: 'ticket', data: t })),
+    ...(upcoming.length > 0 ? [{ type: 'section', label: 'Active' } as ListItem] : []),
+    ...upcoming.map((t): ListItem => ({ type: 'ticket', data: t, finished: false })),
+    ...(past.length > 0 ? [{ type: 'section', label: 'Finished' } as ListItem] : []),
+    ...past.map((t): ListItem => ({ type: 'ticket', data: t, finished: true })),
   ];
 
   const renderItem = ({ item }: { item: ListItem }) => {
-    if (item.type === 'divider') {
+    if (item.type === 'section') {
       return (
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerLabel}>Past</Text>
-          <View style={styles.dividerLine} />
-        </View>
+        <Text
+          style={[styles.sectionLabel, item.label === 'Finished' && styles.sectionFinished]}
+          testID={`tickets-section-${item.label.toLowerCase()}`}
+        >
+          {item.label}
+        </Text>
       );
     }
     const t = item.data;
@@ -138,7 +145,7 @@ export default function MyTicketsScreen() {
       : 'active';
 
     return (
-      <View style={styles.ticketWrap}>
+      <View style={[styles.ticketWrap, item.finished && styles.ticketFinished]}>
         {isExpanded ? (
           <TouchableOpacity onPress={() => setExpandedId(null)} activeOpacity={1}>
             <TicketCard
@@ -173,10 +180,13 @@ export default function MyTicketsScreen() {
     back: { marginRight: 12 },
     heading: { fontSize: 20, fontWeight: '800', color: colors.textPrimary },
     list: { padding: 16 },
+    sectionLabel: {
+      color: colors.textPrimary, fontSize: 13, fontWeight: '800',
+      letterSpacing: 0.4, marginBottom: 8, marginTop: 4,
+    },
+    sectionFinished: { color: colors.textMuted, marginTop: 12 },
     ticketWrap: { marginBottom: 12 },
-    dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 16, gap: 8 },
-    dividerLine: { flex: 1, height: 1, backgroundColor: colors.surface },
-    dividerLabel: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
+    ticketFinished: { marginBottom: 6, opacity: 0.55 },
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
     emptyText: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
     emptySubText: { color: colors.textSecondary, fontSize: 14 },
@@ -203,7 +213,7 @@ export default function MyTicketsScreen() {
           data={listData}
           renderItem={renderItem}
           estimatedItemSize={80}
-          keyExtractor={(item, _i) => item.type === 'divider' ? 'divider' : item.data.event_id}
+          keyExtractor={(item, i) => item.type === 'section' ? `section-${item.label}` : item.data.event_id + String(i)}
           contentContainerStyle={styles.list}
           onEndReached={() => { if (hasMore && !loading) fetchTickets(); }}
           onEndReachedThreshold={0.4}

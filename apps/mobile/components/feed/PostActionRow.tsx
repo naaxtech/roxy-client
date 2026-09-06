@@ -72,8 +72,7 @@ export function PostActionRow({
 
   return (
     <View style={s.row}>
-      {/* Like — plain tap, the Instagram/TikTok model. Roxy's like is the
-          flower, rendered as a vector (no emoji chrome). */}
+      {/* Like — plain tap, the Instagram/TikTok model. Heart, not a flower. */}
       <TouchableOpacity
         testID="action-like"
         style={[s.action, isLiked && s.actionActive]}
@@ -85,7 +84,7 @@ export function PostActionRow({
       >
         <Animated.View style={{ transform: [{ scale: likeAnim.scale }] }}>
           <Ionicons
-            name={isLiked ? 'flower' : 'flower-outline'}
+            name={isLiked ? 'heart' : 'heart-outline'}
             size={20}
             color={isLiked ? colors.roxy : colors.textMuted}
           />

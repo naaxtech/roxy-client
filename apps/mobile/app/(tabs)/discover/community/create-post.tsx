@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, StyleSheet, Switch,
+  ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,10 +46,7 @@ function uploadFailureMessage(e: unknown): string {
 
 export default function CreatePostScreen() {
   const colors = useThemeColors();
-  // Optional now. No param means the post lands on her own profile — every
-  // profile is a wall, and a post no longer needs a community to live in.
-  const { communityId } = useLocalSearchParams<{ communityId?: string }>();
-  const destination = postDestination(communityId);
+  const destination = postDestination();
   const router = useRouter();
   const { user } = useAuthStore();
 
@@ -62,34 +59,6 @@ export default function CreatePostScreen() {
   const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [video, setVideo] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
-  // Announcements (migration 073): published under the community's own name,
-  // readable without joining, capped at one per community per day.
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [postAsCommunity, setPostAsCommunity] = useState(false);
-  const [slotUsed, setSlotUsed] = useState(false);
-  const [communityName, setCommunityName] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user?.id || !communityId) return;
-    let cancelled = false;
-    void (async () => {
-      const [{ data: membership }, { data: used }, { data: community }] = await Promise.all([
-        supabase
-          .from('community_members')
-          .select('role')
-          .eq('community_id', communityId)
-          .eq('user_id', user.id)
-          .maybeSingle(),
-        supabase.rpc('announcement_slot_used', { p_community_id: communityId }),
-        supabase.from('communities').select('name').eq('id', communityId).maybeSingle(),
-      ]);
-      if (cancelled) return;
-      setIsAdmin(['admin', 'border_patrol'].includes((membership as { role?: string } | null)?.role ?? ''));
-      setSlotUsed(used === true);
-      setCommunityName((community as { name?: string } | null)?.name ?? null);
-    })();
-    return () => { cancelled = true; };
-  }, [user?.id, communityId]);
 
   const TYPE_OPTIONS: { type: PostType; icon: keyof typeof Ionicons.glyphMap; grad: readonly [string, string]; label: string; sub: string }[] = [
     { type: 'standard',  icon: 'create',   grad: ['#8E7CF7', '#C86DD7'], label: 'Text',            sub: "Share what's on your mind" },
@@ -173,7 +142,7 @@ export default function CreatePostScreen() {
         destination,
         content,
         postType: 'video',
-        postedAsCommunity: postAsCommunity,
+        postedAsCommunity: false,
       }))
       .select('id')
       .single();
@@ -288,7 +257,7 @@ export default function CreatePostScreen() {
       destination,
       content,
       postType,
-      postedAsCommunity: postAsCommunity,
+      postedAsCommunity: false,
       roxyLink: postType === 'roxy_link' ? roxyLink : null,
     });
 
@@ -307,17 +276,8 @@ export default function CreatePostScreen() {
     setSubmitting(false);
 
     if (error) {
-      // The daily cap is a unique index, so hitting it surfaces as 23505. The
-      // raw text is "duplicate key value violates unique constraint
-      // uq_community_announcement_per_day" — not something to show an organiser.
-      const isDailyCap =
-        error.code === '23505' && error.message.includes('announcement_per_day');
-      showAlert(
-        isDailyCap ? 'Already posted today' : 'Post failed',
-        isDailyCap
-          ? 'Your community has already published its announcement for today. Post it as yourself, or try again tomorrow.'
-          : 'Could not publish. Please try again.',
-      );
+      logError(error, 'createPost_insert');
+      showAlert('Post failed', 'Could not publish. Please try again.');
       return;
     }
     router.back();
@@ -337,13 +297,6 @@ export default function CreatePostScreen() {
       paddingHorizontal: 16,
       paddingTop: 12,
     },
-    announceRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 12,
-      marginHorizontal: 16, marginTop: 4, marginBottom: 12,
-      padding: 14, borderRadius: 14, backgroundColor: colors.surface,
-    },
-    announceTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 14 },
-    announceBody: { color: colors.textMuted, fontSize: 12, lineHeight: 17, marginTop: 3 },
     headerTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
     publishBtn: {
       backgroundColor: colors.primary, paddingHorizontal: 16,
@@ -525,35 +478,9 @@ export default function CreatePostScreen() {
         maxLength={1000}
       />
 
-      {/* Where it lands. A post reaches her own profile unless she opened the
-          composer from a community, and she should not have to infer which —
-          the two go to different audiences. */}
       <Text style={styles.destination} testID="create-post-destination">
-        Posting to {destinationLabel(destination, communityName)}
+        Posting to {destinationLabel(destination)}
       </Text>
-
-      {/* Only admins and border patrol see this: posting under the community's
-          name and avatar is a more convincing impersonation than any
-          display-name trick, so RLS enforces it too (migration 073). */}
-      {isAdmin && (
-        <View style={styles.announceRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.announceTitle}>Post as {communityName ?? 'the community'}</Text>
-            <Text style={styles.announceBody}>
-              {slotUsed
-                ? 'Today’s announcement has already gone out. One per day keeps the feed worth reading.'
-                : 'Published under the community’s name. Visible to everyone, including women who haven’t joined yet.'}
-            </Text>
-          </View>
-          <Switch
-            value={postAsCommunity}
-            onValueChange={setPostAsCommunity}
-            disabled={slotUsed}
-            trackColor={{ false: colors.surface, true: colors.roxy }}
-            accessibilityLabel="Post as the community"
-          />
-        </View>
-      )}
 
       {uploadStatus && <Text style={styles.uploadStatus}>{uploadStatus}</Text>}
     </SafeAreaView>

@@ -36,6 +36,26 @@ const renderShell = (over: Partial<ProfileShellProps> = {}) =>
   render(<ProfileShell {...base} {...over} />);
 
 describe('ProfileShell — the header the prototype draws', () => {
+  it('shows orientation, interests and custom tags, and expands the overflow', () => {
+    const view = renderShell({
+      identityLabels: ['Lesbian'],
+      interests: ['Music', 'Film', 'Art', 'Travel', 'Food'],
+      customTags: ['night owl', 'cats'],
+    });
+    expect(view.getByTestId('profile-tags')).toBeTruthy();
+    expect(view.getByText('Lesbian')).toBeTruthy();
+    expect(view.getByTestId('profile-tags-more')).toBeTruthy();
+    fireEvent.press(view.getByTestId('profile-tags-more'));
+    expect(view.getByText('night owl')).toBeTruthy();
+    expect(view.queryByTestId('profile-tags-more')).toBeNull();
+  });
+
+  it('keeps a long bio collapsed until she taps more', () => {
+    const long = 'Ceramics, film photography, and too many plants. '.repeat(8);
+    const view = renderShell({ bio: long });
+    expect(view.getByTestId('profile-bio')).toBeTruthy();
+  });
+
   it('renders cover, avatar, name, pronouns, subtitle, bio and the stat row', () => {
     const view = renderShell();
     expect(view.getByTestId('profile-cover')).toBeTruthy();

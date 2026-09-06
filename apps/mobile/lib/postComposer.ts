@@ -1,24 +1,19 @@
 /**
  * Where a post lands, and the row that gets written.
  *
- * Every profile is a wall now — a woman's or a community's — and all of her
- * posts appear on hers. Posting into a community is one option rather than the
- * only one, so the create sheet no longer refuses her until she has joined
- * something. The schema was always ready: `posts.community_id` is nullable,
- * `can_read_community_content(NULL)` is true for an approved member, and
- * `posts_select` has had an explicit `community_id IS NULL` arm since migration
- * 076. The whole gate lived in the client.
+ * A post always lands on the author's profile. Communities are approved
+ * special accounts now — they do not own a separate post folder. Asking
+ * "where does this go?" was the old model, and it is what made posting
+ * from her own profile feel broken.
  *
- * This module exists so the destination is decided in one place and can be
- * tested without a database, because one of the rules it enforces is invisible
- * until RLS refuses the write — see `posted_as_community` below.
- *
- * src: docs/handoff/roxy-3.0/Roxy App.dc.html · profile markup 456–655 · 2026-09-01
+ * `posted_as_community` is forced false for the same reason the last
+ * client still had: the INSERT policy from 073 permits that flag only
+ * when an EXISTS finds the author as an admin of `posts.community_id`.
+ * With a null community that EXISTS can never match, so the row is
+ * refused as a bare 42501.
  */
 
-export type PostDestination =
-  | { kind: 'profile' }
-  | { kind: 'community'; communityId: string };
+export type PostDestination = { kind: 'profile' };
 
 export type RoxyLinkSelection = {
   linkType: string;
@@ -28,7 +23,7 @@ export type RoxyLinkSelection = {
 
 export type PostPayloadInput = {
   authorId: string;
-  destination: PostDestination;
+  destination?: PostDestination;
   content: string;
   postType: string;
   postedAsCommunity?: boolean;
@@ -36,41 +31,30 @@ export type PostPayloadInput = {
 };
 
 /**
- * An absent route param is a profile post.
- *
- * The empty-string case is deliberate rather than defensive: expo-router hands
- * back `''` for a param that was not supplied, and `''` is just truthy enough
- * in the wrong `if` to reach the insert as `community_id: ''`, which fails on
- * the uuid cast rather than on anything a reader would recognise.
+ * Every route param is ignored. expo-router still hands back `communityId`
+ * from old links; treating that as a destination would put the post back
+ * inside a community folder we have retired.
  */
-export function postDestination(communityId?: string | null): PostDestination {
-  if (!communityId || communityId.trim() === '') return { kind: 'profile' };
-  return { kind: 'community', communityId };
+export function postDestination(_communityId?: string | null): PostDestination {
+  return { kind: 'profile' };
 }
 
 export function destinationLabel(
-  destination: PostDestination,
-  communityName: string | null
+  _destination?: PostDestination,
+  _communityName?: string | null,
 ): string {
-  if (destination.kind === 'profile') return 'your profile';
-  return communityName ?? 'this community';
+  return 'your profile';
 }
 
 export function buildPostPayload(input: PostPayloadInput): Record<string, unknown> {
-  const { authorId, destination, content, postType, postedAsCommunity, roxyLink } = input;
+  const { authorId, content, postType, roxyLink } = input;
 
   const payload: Record<string, unknown> = {
     author_id: authorId,
-    community_id: destination.kind === 'community' ? destination.communityId : null,
+    community_id: null,
     content: content.trim(),
     post_type: postType,
-    // Only a community post can be published in a community's voice, and this
-    // is not merely tidiness: the INSERT policy from 073 permits
-    // `posted_as_community` only when an EXISTS finds the author as an admin of
-    // `posts.community_id`. With a null community that EXISTS can never match,
-    // so the row is refused — and it surfaces as a bare 42501, which reads like
-    // a permissions bug rather than a payload the client should not have built.
-    posted_as_community: destination.kind === 'community' && postedAsCommunity === true,
+    posted_as_community: false,
   };
 
   if (roxyLink) {

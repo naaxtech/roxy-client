@@ -285,10 +285,8 @@ function UserProfileScreen() {
     games: games.length,
   });
   const populated: PopulatedTabs = {
-    posts: postCount > 0,
-    // Her shop is a whole screen of its own; the shell links to it rather than
-    // drawing a tab over a renderer this route does not have.
-    shop: false,
+    posts: true,
+    shop: approved,
     events: hosted.events,
     rooms: hosted.rooms,
     games: hosted.games,
@@ -353,6 +351,18 @@ function UserProfileScreen() {
   const online = official ? officialPresenceLine(presence, Date.now()) : null;
 
   const renderTab = (tab: ProfileTab) => {
+    if (tab === 'shop' && shop) {
+      return (
+        <TouchableOpacity
+          style={rowStyles.row}
+          onPress={() => router.push(`/business/${shop.id}` as never)}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${shop.name}`}
+        >
+          <Text style={rowStyles.title}>Open shop</Text>
+        </TouchableOpacity>
+      );
+    }
     if (tab === 'posts' && userId) return <ProfilePhotoGrid userId={userId} />;
     if (tab === 'events') {
       return (
@@ -445,6 +455,9 @@ function UserProfileScreen() {
         bio={profile?.bio ?? null}
         pronouns={profile?.pronouns ?? []}
         identityLabels={profile?.identity_labels ?? []}
+        interests={profile?.interests ?? []}
+        customTags={profile?.custom_tags ?? []}
+        statusLabels={profile?.dating_looking_for ?? []}
         avatarUrl={profile?.avatar_url ?? null}
         coverUrl={coverUrl}
         points={profile?.gamification_points ?? null}

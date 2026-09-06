@@ -29,6 +29,8 @@ export interface Profile {
   identity_labels: string[];
   is_dating_mode: boolean;
   interests: string[];
+  /** Up to five labels she writes herself. Shown under the bio with orientation and interests. */
+  custom_tags?: string[];
   dating_looking_for: string[];
   age_min_pref: number;
   age_max_pref: number;

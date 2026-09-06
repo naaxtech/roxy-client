@@ -9,8 +9,11 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { isPresetAvatar, presetEmoji, presetColor, avatarGradient } from '../../lib/avatars';
 import { TYPE } from '../../lib/typography';
 import {
-  RADII, LIVE_GRADIENT, BRAND_GRADIENT, inkOn, inkOnGradient, type ThemeColors,
+  RADII, LIVE_GRADIENT, BRAND_GRADIENT, type ThemeColors,
 } from '../../lib/theme';
+import {
+  collapseProfileTags, profileDisplayTags, RETIRED_PROFILE_CHIPS,
+} from '../../lib/profileTags';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
 import {
@@ -100,6 +103,8 @@ export interface ProfileShellProps {
   /** Rendered inline beside the name, the way the prototype prints pronouns. */
   pronouns?: string[];
   identityLabels?: string[];
+  interests?: string[];
+  customTags?: string[];
   /** Relationship / looking-for chip — the second tag in the prototype. */
   statusLabels?: string[];
   /** Self (and seller) header chip. Opens /badges. */
@@ -149,11 +154,11 @@ export interface ProfileShellProps {
  * them makes a profile read as mislabelled by the app rather than described by
  * her, which is the opposite of what an identity chip is for.
  */
-const RETIRED_CHIPS = new Set(['any/all', 'other', 'Prefer not to say']);
-
-const COVER_HEIGHT = 112;
+const COVER_HEIGHT = 120;
 const AVATAR_SIZE = 76;
 const AVATAR_FRAME = 3;
+const ON_COLOR = '#FFFFFF';
+const BIO_COLLAPSE_LINES = 2;
 
 /** What an empty profile says, per variant. Never a bare blank column. */
 const EMPTY_COPY: Record<ProfileVariant, string> = {
@@ -170,6 +175,8 @@ export function ProfileShell({
   bio,
   pronouns = [],
   identityLabels = [],
+  interests = [],
+  customTags = [],
   statusLabels = [],
   badgePreview = null,
   xp = null,
@@ -201,6 +208,9 @@ export function ProfileShell({
   const s = styles(colors);
 
   const tabs = visibleTabs(variant, populated);
+  const [bioExpanded, setBioExpanded] = useState(false);
+  const [bioTruncated, setBioTruncated] = useState(false);
+  const [tagsExpanded, setTagsExpanded] = useState(false);
   const [internalSelected, setInternalSelected] = useState<ProfileTab | null>(null);
   const selected = onSelectTab ? (selectedTab ?? null) : internalSelected;
   const setSelected = (tab: ProfileTab) => {
@@ -217,10 +227,13 @@ export function ProfileShell({
   // Tinted at the source rather than string-matched: both lists are free-form,
   // so "she/her" could legitimately appear in either and no regex can tell them
   // apart. The column the value came from is the only reliable signal.
-  const pronounChips = pronouns.filter((c) => !RETIRED_CHIPS.has(c));
-  const identityChips = identityLabels.filter((c) => !RETIRED_CHIPS.has(c));
-
-  const liveInk = inkOnGradient(LIVE_GRADIENT);
+  const pronounChips = pronouns.filter((c) => !RETIRED_PROFILE_CHIPS.has(c));
+  const allTags = profileDisplayTags({ identityLabels, interests, customTags });
+  const extraStatus = statusLabels.filter((c) => !RETIRED_PROFILE_CHIPS.has(c));
+  const tagStrip = collapseProfileTags([
+    ...allTags,
+    ...extraStatus.map((label) => ({ kind: 'custom' as const, label })),
+  ], tagsExpanded);
 
   const renderCover = () => {
     if (coverUrl) {
@@ -276,7 +289,7 @@ export function ProfileShell({
     const id = action.testID ?? (kind === 'primary' ? 'profile-primary-action' : 'profile-secondary-action');
     const box = kind === 'primary' ? s.primaryBtn : s.secondaryBtn;
     const label = kind === 'primary' ? s.primaryLabel : s.secondaryLabel;
-    const iconColor = kind === 'primary' ? inkOn(colors.primary) : colors.primaryInk;
+    const iconColor = kind === 'primary' ? ON_COLOR : colors.primaryInk;
     const selfEdit = variant === 'self' && kind === 'primary' && !!action.onPress;
 
     if (!action.onPress) {
@@ -413,7 +426,7 @@ export function ProfileShell({
             accessibilityLabel="Back"
             testID="profile-back"
           >
-            <Ionicons name="chevron-back" size={20} color={inkOn(colors.backgroundAlt)} />
+            <Ionicons name="chevron-back" size={20} color={ON_COLOR} />
           </TouchableOpacity>
         ) : null}
         {headerActions.length > 0 ? (
@@ -428,7 +441,7 @@ export function ProfileShell({
                 accessibilityLabel={action.label}
                 testID={action.testID}
               >
-                <Ionicons name={action.icon} size={19} color={inkOn(colors.backgroundAlt)} />
+                <Ionicons name={action.icon} size={19} color={ON_COLOR} />
                 {action.badge ? <View style={s.coverBtnDot} /> : null}
               </TouchableOpacity>
             ))}
@@ -544,30 +557,66 @@ export function ProfileShell({
                 style={s.livePill}
                 testID="profile-live"
               >
-                <View style={[s.liveDot, { backgroundColor: liveInk }]} />
-                <Text style={[s.livePillText, { color: liveInk }]}>LIVE</Text>
+                <View style={[s.liveDot, { backgroundColor: ON_COLOR }]} />
+                <Text style={[s.livePillText, { color: ON_COLOR }]}>LIVE</Text>
               </LinearGradient>
             ) : null}
           </View>
 
           {subtitle ? <Text style={s.subtitle}>{subtitle}</Text> : null}
 
-          {identityChips.length > 0 || statusLabels.length > 0 ? (
-            <View style={s.chipRow}>
-              {identityChips.map((chip) => (
-                <View key={`identity-${chip}`} style={s.pronounChip}>
-                  <Text style={s.pronounChipText}>{chip}</Text>
-                </View>
-              ))}
-              {statusLabels.filter((c) => !RETIRED_CHIPS.has(c)).map((chip) => (
-                <View key={`status-${chip}`} style={s.identityChip}>
-                  <Text style={s.identityChipText}>{chip}</Text>
-                </View>
-              ))}
+          {bio ? (
+            <View testID="profile-bio">
+              <Text
+                style={s.bio}
+                numberOfLines={bioExpanded ? undefined : BIO_COLLAPSE_LINES}
+                onTextLayout={(e) => {
+                  if (!bioExpanded && e.nativeEvent.lines.length >= BIO_COLLAPSE_LINES) {
+                    setBioTruncated(true);
+                  }
+                }}
+              >
+                {bio}
+              </Text>
+              {bioTruncated ? (
+                <TouchableOpacity
+                  onPress={() => setBioExpanded((open) => !open)}
+                  accessibilityRole="button"
+                  accessibilityLabel={bioExpanded ? 'Show less bio' : 'Show more bio'}
+                  testID="profile-bio-toggle"
+                  hitSlop={8}
+                >
+                  <Text style={s.bioMore}>{bioExpanded ? 'less' : 'more'}</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           ) : null}
 
-          {bio ? <Text style={s.bio}>{bio}</Text> : null}
+          {tagStrip.visible.length > 0 ? (
+            <View style={s.chipRow} testID="profile-tags">
+              {tagStrip.visible.map((tag) => (
+                <View
+                  key={`${tag.kind}-${tag.label}`}
+                  style={tag.kind === 'identity' ? s.pronounChip : tag.kind === 'interest' ? s.identityChip : s.customChip}
+                >
+                  <Text style={tag.kind === 'identity' ? s.pronounChipText : tag.kind === 'interest' ? s.identityChipText : s.customChipText}>
+                    {tag.label}
+                  </Text>
+                </View>
+              ))}
+              {tagStrip.hidden > 0 ? (
+                <TouchableOpacity
+                  style={s.moreChip}
+                  onPress={() => setTagsExpanded(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Show ${tagStrip.hidden} more tags`}
+                  testID="profile-tags-more"
+                >
+                  <Text style={s.moreChipText}>+{tagStrip.hidden}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         {stats.length > 0 ? (
@@ -618,7 +667,8 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   body: { paddingHorizontal: 16, gap: 10 },
   identityRow: {
     flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
-    marginTop: -30, gap: 8,
+    // Half the avatar sits on the cover, half on the body — the seam.
+    marginTop: -(AVATAR_SIZE / 2), gap: 8,
   },
   avatarWrap: { width: AVATAR_SIZE, height: AVATAR_SIZE },
   avatarFrame: {
@@ -640,7 +690,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: RADII.pill, paddingHorizontal: 7, paddingVertical: 2.5,
     borderWidth: 2, borderColor: colors.background,
   },
-  levelBadgeText: { ...TYPE.micro, color: inkOnGradient(BRAND_GRADIENT), fontWeight: '800' },
+  levelBadgeText: { ...TYPE.micro, color: ON_COLOR, fontWeight: '800' },
 
   // — actions ——————————————————————————————————————————————————
   actionCol: { flex: 1, alignItems: 'flex-end', gap: 6, paddingBottom: 4 },
@@ -657,7 +707,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 13,
     borderRadius: RADII.pill, alignItems: 'center', justifyContent: 'center',
   },
-  selfEditLabel: { ...TYPE.caption, color: inkOnGradient(['#F22481', '#8B5CF6']), fontWeight: '700' },
+  selfEditLabel: { ...TYPE.caption, color: ON_COLOR, fontWeight: '700' },
   xpPill: {
     flexDirection: 'row', alignItems: 'center', gap: 7,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
@@ -675,7 +725,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 18,
     borderRadius: RADII.sm, backgroundColor: colors.primary,
   },
-  primaryLabel: { ...TYPE.body, color: inkOn(colors.primary), fontWeight: '700' },
+  primaryLabel: { ...TYPE.body, color: ON_COLOR, fontWeight: '700' },
   secondaryBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 14,
@@ -717,7 +767,21 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1, borderColor: colors.secondary + '45',
   },
   identityChipText: { ...TYPE.caption, color: colors.secondaryInk, fontWeight: '700' },
+  customChip: {
+    borderRadius: RADII.pill, paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: colors.surfaceLight,
+    borderWidth: 1, borderColor: colors.line,
+  },
+  customChipText: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '700' },
+  moreChip: {
+    borderRadius: RADII.pill, paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.line,
+    minHeight: 28, justifyContent: 'center',
+  },
+  moreChipText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '800' },
   bio: { ...TYPE.body, color: colors.textSecondary },
+  bioMore: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '700', marginTop: 2 },
 
   // — stats ——————————————————————————————————————————————————
   statRow: {
@@ -755,5 +819,5 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderRadius: RADII.pill, backgroundColor: colors.primary,
   },
-  retryLabel: { ...TYPE.body, color: inkOn(colors.primary), fontWeight: '700' },
+  retryLabel: { ...TYPE.body, color: ON_COLOR, fontWeight: '700' },
 });

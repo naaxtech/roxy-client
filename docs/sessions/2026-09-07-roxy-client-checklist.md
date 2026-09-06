@@ -3,7 +3,7 @@
 **Date:** 2026-09-07  
 **Scope:** `apps/mobile` only. Studio is a separate list.  
 **Canvas:** open beside chat — `roxy-client-checklist.canvas.tsx`  
-**Rule:** update this file when an item closes. Always deploy live after a finished slice. Do not start Phase 2 until Phase 1 is tested on a real build.
+**Rule:** update this file when an item closes. Always deploy live after a finished slice.
 
 Status key:
 
@@ -17,7 +17,7 @@ Status key:
 
 ## Doing now
 
-- [ ] **NOW** Keep this file + the canvas in sync
+- [x] **NOW** Keep this file + the canvas in sync
 
 ## Next — finish before Phase 2
 
@@ -25,6 +25,7 @@ Status key:
 - [x] **TREE** Official profile: online-now row after members are live
 - [x] **TREE** Official profile cover uses the granted community `cover_image_url` (personal cover column still WAIT)
 - [x] **TREE** Other profile header More: Report + Block
+- [x] **TREE** Posts always land on the author. Create sheet no longer asks where. Comments/replies/hearts work. Profile chrome + tags + tickets.
 
 - [ ] **NEXT** Archive Watch / Read / Listen links + outbound click log
 - [x] **LIVE** Commit / push / deploy mobile + Studio (`33e3460`, 7 Sep 2026)
@@ -55,7 +56,8 @@ Status key:
 
 ## Wait
 
-- [ ] **WAIT** Phase 2 hard cut: null leftover `posts.community_id`, drop `posted_as_community` as public door, For You ranks followed authors
+- [x] **LIVE** Migration 117 — null leftover `posts.community_id` / `posted_as_community`, `profiles.custom_tags` (max 5)
+- [ ] **WAIT** For You ranks followed authors (announcement feed still exists for video)
 - [ ] **WAIT** Self-serve community brand toggle
 - [ ] **WAIT** Mobile event / game composers (Studio still hosts)
 - [ ] **WAIT** Redirect `/community/[id]` to the owner profile

@@ -6,7 +6,8 @@ import { supabase } from '../../lib/supabase';
 import { logError } from '../../lib/errorLogger';
 import { normalizePost } from '../../lib/posts';
 import { contentDetailPath } from '../../lib/contentNavigation';
-import { COMMENT_WITH_AUTHOR, POST_WITH_AUTHOR_AND_COMMUNITY } from '../../lib/supabaseQueries';
+import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../lib/supabaseQueries';
+import { loadPostComments, toggleCommentLike } from '../../lib/comments';
 import type { Comment } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { useFollowStore } from '../../store/followStore';
@@ -337,19 +338,14 @@ export function ReelsFeed({
   const openComments = useCallback(async (postId: string) => {
     setCommentPostId(postId);
     setSheetComments([]);
-    const { data, error: loadError } = await supabase
-      .from('comments')
-      .select(COMMENT_WITH_AUTHOR)
-      .eq('post_id', postId)
-      .is('parent_id', null)
-      .order('created_at', { ascending: true })
-      .limit(40);
+    const { comments, likedIds, error: loadError } = await loadPostComments(postId, userId);
     if (loadError) {
       logError(loadError, 'ReelsFeed.comments');
       return;
     }
-    setSheetComments((data ?? []) as Comment[]);
-  }, []);
+    setSheetComments(comments);
+    setLikedCommentIds(likedIds);
+  }, [userId]);
 
   const handleLikeComment = useCallback(async (commentId: string) => {
     const wasLiked = likedCommentIds.has(commentId);
@@ -359,12 +355,8 @@ export function ReelsFeed({
       else next.add(commentId);
       return next;
     });
-    if (wasLiked) {
-      await supabase.from('comment_likes').delete()
-        .eq('comment_id', commentId).eq('user_id', userId);
-    } else {
-      await supabase.from('comment_likes').insert({ comment_id: commentId });
-    }
+    if (!userId) return;
+    await toggleCommentLike({ commentId, userId, liked: wasLiked });
   }, [likedCommentIds, userId]);
 
   /**
@@ -574,7 +566,6 @@ export function ReelsFeed({
         onClose={() => setCommentPostId(null)}
         onCommentsChange={setSheetComments}
         onLikeComment={(id) => { void handleLikeComment(id); }}
-        onReply={() => undefined}
       />
     </View>
   );
