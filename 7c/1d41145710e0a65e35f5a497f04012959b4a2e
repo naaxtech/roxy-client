@@ -1,0 +1,28 @@
+apps/mobile/__tests__/components/profile/ProfileShell.test.tsx
+  s_02997141a06547::t_5090d93630151d 99-119
+apps/mobile/tests/e2e/profile-align.spec.ts
+  s_02997141a06547::t_bbea17270ed213 20-42
+apps/mobile/components/profile/ProfileShell.tsx
+  s_02997141a06547::t_6436198849eb6a 696,698,703
+  s_02997141a06547::t_d0060fe00f5e9b 158,160-163
+  s_02997141a06547::t_2cac392b3283ff 498
+  s_02997141a06547::t_13b561f76a4127 699-700
+  s_02997141a06547::t_95b7abc1df52b2 736
+  s_02997141a06547::t_b37b2cd0403d99 522
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7c1d41145710e0a65e35f5a497f04012959b4a2e",
+  "prompts": {},
+  "sessions": {
+    "s_02997141a06547": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eeb5e1d1-aac6-4653-9c90-afb5f6db1d41",
+        "model": "grok-4.6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
