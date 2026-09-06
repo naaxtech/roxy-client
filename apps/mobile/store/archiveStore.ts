@@ -135,10 +135,14 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
    * archive_votes_update_own — 096) so it feels instant; nothing this
    * reversible needs an edge function.
    *
-   * A PostgREST upsert answers 200 even when its ON CONFLICT DO UPDATE path
-   * touches zero rows — RLS's USING clause silently filters non-matching rows
-   * rather than raising, the exact class of trap `block_user`'s dead column
-   * shipped. `.select()` asks for the row back so "no error" and "it actually
+   * Update-then-insert, never upsert. 101 revoked UPDATE on entry_id and
+   * profile_id so a vote cannot be moved between entries. Postgres still
+   * checks those privileges on `INSERT … ON CONFLICT DO UPDATE`, even when
+   * there is no conflict — so an upsert of `{entry_id, profile_id, value}`
+   * fails every vote, first one included. Changing her mind writes only
+   * `value` and `updated_at`, the two columns she is still allowed to PATCH.
+   *
+   * `.select()` asks for the row back so "no error" and "it actually
    * happened" cannot come apart here.
    */
   vote: async (entryId, value) => {
@@ -160,14 +164,41 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
       throw new Error(SIGN_IN_AGAIN);
     }
 
+    const { data: updated, error: updateError } = await supabase
+      .from('archive_votes')
+      .update({ value, updated_at: new Date().toISOString() })
+      .eq('entry_id', entryId)
+      .eq('profile_id', userId)
+      .select('value')
+      .maybeSingle();
+
+    if (updateError) {
+      logError(updateError, 'archiveStore.vote');
+      rollback();
+      throw new Error(GENERIC_VOTE_ERROR);
+    }
+    if (updated) return;
+
     const { data, error } = await supabase
       .from('archive_votes')
-      .upsert({ entry_id: entryId, profile_id: userId, value }, { onConflict: 'entry_id,profile_id' })
+      .insert({ entry_id: entryId, profile_id: userId, value })
       .select('value')
       .maybeSingle();
 
     if (error) {
-      logError(error, 'archiveStore.vote');
+      if (error.code === '23505') {
+        const retry = await supabase
+          .from('archive_votes')
+          .update({ value, updated_at: new Date().toISOString() })
+          .eq('entry_id', entryId)
+          .eq('profile_id', userId)
+          .select('value')
+          .maybeSingle();
+        if (!retry.error && retry.data) return;
+        if (retry.error) logError(retry.error, 'archiveStore.vote');
+      } else {
+        logError(error, 'archiveStore.vote');
+      }
       rollback();
       throw new Error(GENERIC_VOTE_ERROR);
     }

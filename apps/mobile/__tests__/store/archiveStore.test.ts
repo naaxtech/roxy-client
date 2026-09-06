@@ -27,7 +27,7 @@ type Result = { data?: unknown; error?: unknown; count?: number | null };
  */
 function makeChain(result: Result) {
   const chain: Record<string, unknown> = {};
-  const passthrough = ['select', 'eq', 'upsert', 'insert', 'delete', 'order', 'limit'];
+  const passthrough = ['select', 'eq', 'upsert', 'insert', 'update', 'delete', 'order', 'limit'];
   passthrough.forEach((m) => {
     chain[m] = jest.fn(() => chain);
   });
@@ -165,6 +165,50 @@ describe('archiveStore.hydrateMine', () => {
 });
 
 describe('archiveStore.vote', () => {
+  it('never upserts — 101 revoked UPDATE on entry_id/profile_id, and ON CONFLICT still needs those privileges', async () => {
+    const updateChain = makeChain({ data: null, error: null });
+    const insertChain = makeChain({ data: { value: true }, error: null });
+    supabase.from
+      .mockReturnValueOnce(updateChain)
+      .mockReturnValueOnce(insertChain);
+
+    const { result } = renderHook(() => useArchiveStore());
+    await act(async () => {
+      await result.current.vote('e1', true);
+    });
+
+    expect(updateChain.upsert).not.toHaveBeenCalled();
+    expect(insertChain.upsert).not.toHaveBeenCalled();
+    expect(updateChain.update).toHaveBeenCalledWith({
+      value: true,
+      updated_at: expect.any(String),
+    });
+    expect(insertChain.insert).toHaveBeenCalledWith({
+      entry_id: 'e1',
+      profile_id: 'user-1',
+      value: true,
+    });
+    expect(result.current.myVotes['e1']).toBe(true);
+  });
+
+  it('changes an existing vote by updating only value and updated_at', async () => {
+    useArchiveStore.setState({ myVotes: { e1: false } });
+    const updateChain = makeChain({ data: { value: true }, error: null });
+    supabase.from.mockReturnValue(updateChain);
+
+    const { result } = renderHook(() => useArchiveStore());
+    await act(async () => {
+      await result.current.vote('e1', true);
+    });
+
+    expect(updateChain.update).toHaveBeenCalledWith({
+      value: true,
+      updated_at: expect.any(String),
+    });
+    expect(updateChain.insert).not.toHaveBeenCalled();
+    expect(result.current.myVotes['e1']).toBe(true);
+  });
+
   it('applies optimistically before the write resolves', () => {
     supabase.from.mockReturnValue(makeChain({ data: { value: true }, error: null }));
 

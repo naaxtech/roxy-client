@@ -37,13 +37,20 @@ const NOTE_DUPLICATE_ERROR =
   'That note already exists for this title — agree with it instead of adding a duplicate.';
 const APPROVED_ONLY_ERROR = 'Approved membership is required for this — try again once a mod has approved you.';
 
+function reviewWriteError(error: { code?: string }): string {
+  if (error.code === '42501') return APPROVED_ONLY_ERROR;
+  return GENERIC_REVIEW_ERROR;
+}
+
 /**
  * Publish (or republish) her review.
  *
- * Upsert, not insert: `archive_reviews` has `UNIQUE (entry_id, author_id)`
- * and the composer's own footer copy says "Reviews are public and
- * editable" — resubmitting is how she fixes one, not a 23505 she has to
- * puzzle out.
+ * Update-then-insert, never upsert. 101 revoked UPDATE on entry_id and
+ * author_id so a review cannot be moved onto another title or another
+ * name. Postgres still checks those privileges on
+ * `INSERT … ON CONFLICT DO UPDATE`, so an upsert of the full row fails
+ * every publish — first review included. An edit writes only the columns
+ * she is still allowed to PATCH.
  *
  * `noSpoilersAck` is a parameter, not a hardcoded `true`, so this function
  * stays honest about what it sends: the caller (the review sheet) is the
@@ -59,25 +66,56 @@ export async function submitReview(
   const userId = await currentUserId();
   if (!userId) return { data: null, error: SIGN_IN_AGAIN };
 
+  const writable = {
+    body,
+    is_recommend: isRecommend,
+    no_spoilers_ack: noSpoilersAck,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: updated, error: updateError } = await supabase
+    .from('archive_reviews')
+    .update(writable)
+    .eq('entry_id', entryId)
+    .eq('author_id', userId)
+    .select('id')
+    .maybeSingle();
+
+  if (updateError) {
+    logError(updateError, 'archiveComposer.submitReview');
+    return { data: null, error: reviewWriteError(updateError) };
+  }
+  if (updated) return { data: updated as { id: string }, error: null };
+
   const { data, error } = await supabase
     .from('archive_reviews')
-    .upsert(
-      {
-        entry_id: entryId,
-        author_id: userId,
-        body,
-        is_recommend: isRecommend,
-        no_spoilers_ack: noSpoilersAck,
-      },
-      { onConflict: 'entry_id,author_id' }
-    )
+    .insert({
+      entry_id: entryId,
+      author_id: userId,
+      body,
+      is_recommend: isRecommend,
+      no_spoilers_ack: noSpoilersAck,
+    })
     .select('id')
     .maybeSingle();
 
   if (error) {
     logError(error, 'archiveComposer.submitReview');
-    if (error.code === '42501') return { data: null, error: APPROVED_ONLY_ERROR };
-    return { data: null, error: GENERIC_REVIEW_ERROR };
+    if (error.code === '23505') {
+      const retry = await supabase
+        .from('archive_reviews')
+        .update(writable)
+        .eq('entry_id', entryId)
+        .eq('author_id', userId)
+        .select('id')
+        .maybeSingle();
+      if (retry.error) {
+        logError(retry.error, 'archiveComposer.submitReview');
+        return { data: null, error: reviewWriteError(retry.error) };
+      }
+      if (retry.data) return { data: retry.data as { id: string }, error: null };
+    }
+    return { data: null, error: reviewWriteError(error) };
   }
   if (!data) {
     // 200, zero rows written back — RLS's WITH CHECK silently filtered

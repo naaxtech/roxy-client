@@ -21,7 +21,7 @@ type Result = { data?: unknown; error?: unknown };
  */
 function makeChain(result: Result) {
   const chain: Record<string, unknown> = {};
-  const passthrough = ['select', 'eq', 'upsert', 'insert'];
+  const passthrough = ['select', 'eq', 'upsert', 'insert', 'update'];
   passthrough.forEach((m) => {
     chain[m] = jest.fn(() => chain);
   });
@@ -40,23 +40,41 @@ beforeEach(() => {
 });
 
 describe('submitReview', () => {
-  it('upserts the review keyed on entry+author, with the ack she just gave', async () => {
-    const chain = makeChain({ data: { id: 'r1' }, error: null });
-    supabase.from.mockReturnValue(chain);
+  it('inserts a first review instead of upserting — ON CONFLICT needs UPDATE on entry_id/author_id, which 101 revoked', async () => {
+    const updateChain = makeChain({ data: null, error: null });
+    const insertChain = makeChain({ data: { id: 'r1' }, error: null });
+    supabase.from
+      .mockReturnValueOnce(updateChain)
+      .mockReturnValueOnce(insertChain);
 
     const result = await submitReview('e1', 'Loved the gloves scene.', true, true);
 
-    expect(supabase.from).toHaveBeenCalledWith('archive_reviews');
-    expect(chain.upsert).toHaveBeenCalledWith(
-      {
-        entry_id: 'e1',
-        author_id: 'user-1',
-        body: 'Loved the gloves scene.',
-        is_recommend: true,
-        no_spoilers_ack: true,
-      },
-      { onConflict: 'entry_id,author_id' }
-    );
+    expect(updateChain.upsert).not.toHaveBeenCalled();
+    expect(insertChain.upsert).not.toHaveBeenCalled();
+    expect(updateChain.update).toHaveBeenCalledWith({
+      body: 'Loved the gloves scene.',
+      is_recommend: true,
+      no_spoilers_ack: true,
+      updated_at: expect.any(String),
+    });
+    expect(insertChain.insert).toHaveBeenCalledWith({
+      entry_id: 'e1',
+      author_id: 'user-1',
+      body: 'Loved the gloves scene.',
+      is_recommend: true,
+      no_spoilers_ack: true,
+    });
+    expect(result).toEqual({ data: { id: 'r1' }, error: null });
+  });
+
+  it('edits an existing review by updating only the writable columns', async () => {
+    const updateChain = makeChain({ data: { id: 'r1' }, error: null });
+    supabase.from.mockReturnValue(updateChain);
+
+    const result = await submitReview('e1', 'Loved the gloves scene.', true, true);
+
+    expect(updateChain.update).toHaveBeenCalled();
+    expect(updateChain.insert).not.toHaveBeenCalled();
     expect(result).toEqual({ data: { id: 'r1' }, error: null });
   });
 
