@@ -1,0 +1,52 @@
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  s_02997141a06547::t_e9dd47aaf80de6 26-27
+  s_02997141a06547::t_b5c270f2880325 561
+  s_02997141a06547::t_0da3afc35b846f 95
+  s_02997141a06547::t_994b431618be12 345
+  s_02997141a06547::t_647f38d42e29f3 483-490
+apps/mobile/components/feed/TextCell.tsx
+  s_02997141a06547::t_9e6ff8e2c01ccd 7,9,14,18,27-28,32-33,35-45,60,62,65,69-71,77
+  s_02997141a06547::t_8e8f382872cf66 4
+  s_02997141a06547::t_2b782916063c1d 19-26
+  s_02997141a06547::t_72a890376a00d4 61
+apps/mobile/lib/textCard.ts
+  s_02997141a06547::t_04617e684c9290 2,5-65,68-82,90-91,93-95,99
+  s_02997141a06547::t_f6af07b0bffa3f 83-89,92
+apps/mobile/components/feed/StaticPostCard.tsx
+  s_02997141a06547::t_b394aabcca7ddf 9
+  s_02997141a06547::t_79fbe29d8f8925 59-61
+  s_02997141a06547::t_bd4feae90f3844 131-135,142
+apps/mobile/__tests__/components/TextCell.test.tsx
+  s_02997141a06547::t_9ee3f6c4bcda54 77
+  s_02997141a06547::t_2fc25f6000b62d 5
+  s_02997141a06547::t_853158271fb4aa 117
+  s_02997141a06547::t_8416f336ec10db 128,134,136,139-145,147-148,150-160
+  s_02997141a06547::t_3a6d69b9338348 203
+apps/mobile/components/feed/TextCardFace.tsx
+  s_02997141a06547::t_b05156505d8790 85-89
+  s_02997141a06547::t_47f97751230e39 1-38,40-41,45-84,90-107,109-110,113,115-162,164
+  s_02997141a06547::t_153fe0f0665ee3 108,111-112,114
+  s_02997141a06547::t_9a6ac19e9a9fb0 163
+  s_02997141a06547::t_16f2e5bd14a7e2 39,42-44
+apps/mobile/__tests__/lib/textCard.test.ts
+  s_02997141a06547::t_bf3cc9a7055f6f 1-65
+apps/mobile/components/profile/ProfilePostsGrid.tsx
+  s_02997141a06547::t_9781ab9403a55e 81,90
+  s_02997141a06547::t_49b20baa64f041 8-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "50696972318c09e507ca22befc13d409fb46d7a6",
+  "prompts": {},
+  "sessions": {
+    "s_02997141a06547": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eeb5e1d1-aac6-4653-9c90-afb5f6db1d41",
+        "model": "grok-4.6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
