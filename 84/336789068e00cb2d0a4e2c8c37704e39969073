@@ -1,0 +1,59 @@
+apps/mobile/__tests__/lib/officialGrant.test.ts
+  s_02997141a06547::t_4fb55e10a4273f 5
+  s_02997141a06547::t_756abb8490c264 40-51
+apps/mobile/components/feed/ReelsFeed.tsx
+  s_02997141a06547::t_8791a2e2c476c0 150-152
+  s_02997141a06547::t_0c324894ec8b99 17
+  s_02997141a06547::t_cadcecdf6bd3c1 263
+  s_02997141a06547::t_637acabcb1e26b 287-301,304,307
+  s_02997141a06547::t_a3810e50f417ca 203-218,221,223
+  s_02997141a06547::t_c27c34aaacd351 328
+  s_02997141a06547::t_df5efca3e41982 60-66,78-80
+apps/mobile/__tests__/components/ReelsFeed.test.tsx
+  s_02997141a06547::t_a6b1380ab032b7 70,74-77
+  s_02997141a06547::t_5618e8e24f06b0 73
+docs/sessions/2026-09-07-roxy-client-checklist.md
+  s_02997141a06547::t_4cfaecd139ff54 61
+  s_02997141a06547::t_d6884c388b9776 29
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_02997141a06547::t_f645bd8f6bcf45 151
+  s_02997141a06547::t_e5c880996ac0ad 459-460,464,466,468
+  s_02997141a06547::t_c3c80408281f23 525,527-528
+  s_02997141a06547::t_6ca2f5198929f1 120,126-136,139-140
+apps/mobile/lib/officialGrant.ts
+  s_02997141a06547::t_2081d1f3779160 39-49
+apps/mobile/app/(tabs)/feed/index.tsx
+  s_02997141a06547::t_d78f1d49af67fd 88
+supabase/dev_seed.sql
+  s_02997141a06547::t_c9696ffc30fc5d 3-6,9-10,13-22,33-34,37-38,41-49,59,65,67-69,72-74,76-124,126-127,130-135,137,139-141,143,145-157,159,162,164-167,169,172-173,175-179,181
+apps/mobile/__tests__/lib/features.test.ts
+  s_02997141a06547::t_68d6b9038bdb3d 349
+  s_02997141a06547::t_d538451122f420 348,350
+  s_02997141a06547::t_87e9fc05955b9f 337-347,351-353
+supabase/migrations/118_account_wall_feed_and_reseed.sql
+  s_02997141a06547::t_45da6b28c93069 1-253,255-612,633-682
+  s_02997141a06547::t_970ea4ef4f0abc 613-632
+  s_02997141a06547::t_ef2e0946b72ee3 254
+apps/mobile/lib/announcements.ts
+  s_02997141a06547::t_0df2e67517f134 151
+  s_02997141a06547::t_091e39f40e3c5e 168,170-171,174
+  s_02997141a06547::t_f24dde3df03989 10-15
+scripts/query-live.mjs
+  s_02997141a06547::t_3a76698d122f42 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "84336789068e00cb2d0a4e2c8c37704e39969073",
+  "prompts": {},
+  "sessions": {
+    "s_02997141a06547": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eeb5e1d1-aac6-4653-9c90-afb5f6db1d41",
+        "model": "grok-4.6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
