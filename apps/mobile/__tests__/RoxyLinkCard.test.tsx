@@ -11,6 +11,7 @@ function makePost(linkType: 'game' | 'room' | 'event'): Post {
     is_pinned: false, is_flagged: false, reaction_counts: {},
     comment_count: 7, like_count: 22, save_count: 3, feed_score: 15,
     blurhash: null, deleted_at: null,
+    posted_as_community: false, post_tags: [],
     video_url: null, video_thumbnail_url: null,
     video_duration_secs: null, video_aspect_ratio: null,
     link_type: linkType, link_entity_id: 'entity1', link_community_id: null,

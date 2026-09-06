@@ -14,7 +14,7 @@ export interface RemoteParticipant {
 }
 
 export interface VideoCallProvider {
-  readonly type: 'daily' | 'livekit';
+  readonly type: 'daily';
   readonly isAvailable: boolean;
 
   // ── Event callbacks (set before calling join) ──────────────────────────────

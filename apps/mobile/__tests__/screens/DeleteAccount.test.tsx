@@ -22,7 +22,7 @@ jest.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children }: any) => children,
 }));
 
-import DeleteAccountScreen from '../../app/(tabs)/profile/delete-account';
+import DeleteAccountScreen from '../../app/(tabs)/you/delete-account';
 
 beforeEach(() => {
   jest.clearAllMocks();

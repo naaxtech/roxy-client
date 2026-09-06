@@ -92,3 +92,58 @@ describe('safetyStore', () => {
     expect(result.current.isReportModalOpen).toBe(false);
   });
 });
+
+describe('safetyStore.submitReport — a safety control must not lie', () => {
+  // callEdgeFunction CATCHES and returns { data, error }; it never throws
+  // (lib/supabase.ts:23-26). submitReport awaited it, discarded the envelope and
+  // closed the modal, so a refused write resolved exactly like an accepted one —
+  // and connect/chat/[id].tsx:602 then told her "Report submitted. Thank you for
+  // keeping our community safe 💜" over a report that does not exist.
+  it('rejects when the edge function refuses the write', async () => {
+    const { callEdgeFunction } = jest.requireMock('../../lib/supabase');
+    callEdgeFunction.mockResolvedValue({ data: null, error: 'Rate limit exceeded' });
+
+    useSafetyStore.setState({
+      isReportModalOpen: true,
+      reportTarget: { userId: 'u1', contentType: 'message', contentId: 'c1' },
+    });
+
+    const { result } = renderHook(() => useSafetyStore());
+    await expect(
+      act(async () => { await result.current.submitReport('harassment'); })
+    ).rejects.toThrow();
+  });
+
+  it('keeps the modal open on failure, so she can retry instead of believing it worked', async () => {
+    const { callEdgeFunction } = jest.requireMock('../../lib/supabase');
+    callEdgeFunction.mockResolvedValue({ data: null, error: 'Network unreachable' });
+
+    useSafetyStore.setState({
+      isReportModalOpen: true,
+      reportTarget: { userId: 'u1', contentType: 'message', contentId: 'c1' },
+    });
+
+    const { result } = renderHook(() => useSafetyStore());
+    await act(async () => {
+      await result.current.submitReport('harassment').catch(() => { /* asserted above */ });
+    });
+
+    expect(result.current.isReportModalOpen).toBe(true);
+    expect(result.current.reportTarget).not.toBeNull();
+  });
+
+  it('closes the modal only when the write actually landed', async () => {
+    const { callEdgeFunction } = jest.requireMock('../../lib/supabase');
+    callEdgeFunction.mockResolvedValue({ data: { ok: true }, error: null });
+
+    useSafetyStore.setState({
+      isReportModalOpen: true,
+      reportTarget: { userId: 'u1', contentType: 'message', contentId: 'c1' },
+    });
+
+    const { result } = renderHook(() => useSafetyStore());
+    await act(async () => { await result.current.submitReport('harassment'); });
+
+    expect(result.current.isReportModalOpen).toBe(false);
+  });
+});

@@ -61,15 +61,15 @@ export function MiniWinsCard({ userId }: Props) {
   const quests: QuestRow[] = [
     {
       key: 'react', icon: 'flower', grad: ['#FF2F71', '#E81C8E'], label: 'React to 3 posts',
-      current: Math.min(counts.reactions, 3), target: 3, route: '/(tabs)/connect',
+      current: Math.min(counts.reactions, 3), target: 3, route: '/(tabs)/feed',
     },
     {
       key: 'join', icon: 'people', grad: ['#8E7CF7', '#C86DD7'], label: 'Join 1 community',
-      current: Math.min(counts.communityJoins, 1), target: 1, route: '/(tabs)/connect?tab=communities',
+      current: Math.min(counts.communityJoins, 1), target: 1, route: '/(tabs)/discover',
     },
     {
       key: 'attend', icon: 'calendar', grad: ['#FF6A2E', '#FF2F71'], label: 'Attend 1 event this week',
-      current: Math.min(counts.eventsGoing, 1), target: 1, route: '/(tabs)/connect?tab=events',
+      current: Math.min(counts.eventsGoing, 1), target: 1, route: '/(tabs)/discover',
     },
   ];
 

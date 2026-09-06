@@ -7,7 +7,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { callEdgeFunction } from '../../../lib/supabase';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { RoxyWordmark } from '../../../components/ui/RoxyWordmark';
-import { logError, logBreadcrumb } from '../../../lib/errorLogger';
+import { logError, logBreadcrumb, hashUserId } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
 
 const GOALS = [
@@ -46,8 +46,8 @@ export default function Step4Status() {
       showAlert('Setup error', 'Could not finish setup. Please try again.');
       return;
     }
-    logBreadcrumb('onboarding_complete', { user_id: user.id });
-    router.replace('/(tabs)/grow');
+    logBreadcrumb('onboarding_complete', { user_id: hashUserId(user.id) });
+    router.replace('/(tabs)/feed');
   };
 
   const styles = StyleSheet.create({
@@ -65,6 +65,7 @@ export default function Step4Status() {
     btn: { backgroundColor: colors.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 'auto' },
     btnDisabled: { opacity: 0.5 },
     btnText: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
+    disclosure: { color: colors.textMuted, fontSize: 12, textAlign: 'center', marginTop: 10, lineHeight: 17 },
   });
 
   return (
@@ -92,6 +93,9 @@ export default function Step4Status() {
         >
           <Text style={styles.btnText}>{loading ? 'Setting up...' : 'Meet Roxy →'}</Text>
         </TouchableOpacity>
+        <Text style={styles.disclosure}>
+          Roxy is your AI wingwoman — her messages are generated, not sent by a real person.
+        </Text>
       </View>
     </SafeAreaView>
   );

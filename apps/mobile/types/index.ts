@@ -3,12 +3,34 @@ export interface Profile {
   username: string;
   display_name: string;
   onboarding_completed: boolean;
+  /**
+   * Invite gate (migration 070). 'unvetted' is the grandfathered population
+   * from before the gate — they keep full access, which is why the enforcement
+   * predicate accepts it alongside 'approved'.
+   */
+  vetting_status: 'unvetted' | 'pending' | 'approved' | 'rejected';
+  /**
+   * Limited launch (migration 108). 'public' sees Archive + Roxy Official
+   * chat. 'beta' sees the rest of the app. Missing on a stale client row
+   * fails closed to public.
+   */
+  access_tier?: 'public' | 'beta';
+  is_staff?: boolean;
+  staff_role?: 'staff' | 'core' | null;
+  is_community_owner?: boolean;
+  /**
+   * Official community grant (migration 116). Join and chat attach to this
+   * row. Posts still live on this profile's author_id.
+   */
+  official_community_id?: string | null;
   bio: string | null;
   avatar_url: string | null;
   pronouns: string[];
   identity_labels: string[];
   is_dating_mode: boolean;
   interests: string[];
+  /** Up to five labels she writes herself. Shown under the bio with orientation and interests. */
+  custom_tags?: string[];
   dating_looking_for: string[];
   age_min_pref: number;
   age_max_pref: number;
@@ -20,10 +42,15 @@ export interface Profile {
   last_seen_at: string;
   gamification_points: number;
   badge_ids: string[];
-  push_token: string | null;
   notification_preferences: Record<string, boolean>;
   is_ghost: boolean;
   created_at: string;
+  updated_at: string;
+}
+
+export interface PushToken {
+  user_id: string;
+  token: string;
   updated_at: string;
 }
 
@@ -54,6 +81,13 @@ export interface CommunityMember {
   user_id: string;
   role: 'member' | 'moderator' | 'admin';
   joined_at: string;
+}
+
+/** Feed subscription. Never grants chat. */
+export interface Follow {
+  follower_id: string;
+  followed_id: string;
+  created_at: string;
 }
 
 export interface Friendship {
@@ -105,6 +139,12 @@ export interface SpeedDateSession {
   daily_room_url: string | null;
   prompts: string[];
   created_at: string;
+  /**
+   * Server instant the session went active (migration 077). Both participants
+   * derive elapsed time from this so the two handsets agree on when the date
+   * ends. Null on sessions created before 077.
+   */
+  started_at: string | null;
 }
 
 export interface Match {
@@ -126,7 +166,8 @@ export type VideoAspectRatio = '4:5' | '16:9' | '1:1';
 export interface Post {
   id: string;
   author_id: string;
-  community_id: string;
+  /** Leftover folder id. New posts are null — the wall is author_id. */
+  community_id: string | null;
   content: string;
   media_urls: string[];
   post_type: PostType;
@@ -139,6 +180,14 @@ export interface Post {
   feed_score: number;
   blurhash: string | null;
   deleted_at: string | null;
+  /**
+   * Published under the community's own name and avatar rather than the
+   * admin who wrote it (migration 073). Announcements are public — readable
+   * without joining — which is what makes them a discovery surface. Capped at
+   * one per community per day by a unique index.
+   */
+  posted_as_community: boolean;
+  post_tags: string[];
   // video
   video_url: string | null;
   video_thumbnail_url: string | null;
@@ -288,6 +337,34 @@ export interface Report {
   detail: string | null;
   status: 'pending' | 'reviewed' | 'dismissed';
   reviewed_by: string | null;
+  created_at: string;
+}
+
+export interface AppFeedback {
+  id: string;
+  user_id: string;
+  category: 'bug' | 'broken' | 'other';
+  rating: number | null;
+  message: string;
+  screen_context: string | null;
+  app_version: string | null;
+  platform: string | null;
+  status: 'open' | 'in_review' | 'resolved' | 'wontfix';
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export type FeatureRequestType = 'planned' | 'pitched';
+export type FeatureRequestStatus = 'open' | 'in_progress' | 'done' | 'rejected';
+
+export interface FeatureRequest {
+  id: string;
+  title: string;
+  description: string | null;
+  type: FeatureRequestType;
+  status: FeatureRequestStatus;
+  vote_count: number;
+  created_by: string | null;
   created_at: string;
 }
 

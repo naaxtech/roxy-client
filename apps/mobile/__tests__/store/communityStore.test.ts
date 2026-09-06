@@ -23,7 +23,9 @@ const makeCommunity = (id: string, name: string) => ({
 
 describe('communityStore', () => {
   beforeEach(() => {
-    useCommunityStore.setState({ joinedCommunities: [], allCommunities: [], joinedIds: new Set() });
+    useCommunityStore.setState({
+      joinedCommunities: [], allCommunities: [], joinedIds: new Set(), officialCommunityIds: new Set(),
+    });
     jest.clearAllMocks();
   });
 

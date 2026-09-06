@@ -27,6 +27,31 @@ describe('normalizePost', () => {
     updated_at: '2026-01-01',
   };
 
+  // Migration 073 added posted_as_community and post_tags. Every post written
+  // before it lacks both, and an undefined flag reaching the feed filters would
+  // silently drop announcements out of the card feed.
+  describe('community announcement fields', () => {
+    it('defaults posted_as_community to false when the column is absent', () => {
+      expect(normalizePost({ ...base }).posted_as_community).toBe(false);
+    });
+
+    it('carries posted_as_community through when set', () => {
+      expect(normalizePost({ ...base, posted_as_community: true }).posted_as_community).toBe(true);
+    });
+
+    it('defaults post_tags to an empty array when absent or not an array', () => {
+      expect(normalizePost({ ...base }).post_tags).toEqual([]);
+      expect(normalizePost({ ...base, post_tags: null }).post_tags).toEqual([]);
+      expect(normalizePost({ ...base, post_tags: 'queer joy' }).post_tags).toEqual([]);
+    });
+
+    it('keeps only string tags — interest_overlap compares text[] and a stray number would never match', () => {
+      expect(
+        normalizePost({ ...base, post_tags: ['queer joy', 42, null, 'books'] }).post_tags,
+      ).toEqual(['queer joy', 'books']);
+    });
+  });
+
   it('defaults null media_urls to empty array', () => {
     const post = normalizePost({ ...base, media_urls: null });
     expect(post.media_urls).toEqual([]);

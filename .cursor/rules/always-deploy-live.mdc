@@ -1,0 +1,16 @@
+---
+description: Always ship Roxy client and Studio to production after work lands
+alwaysApply: true
+---
+
+# Always deploy live
+
+We are rushing. After Roxy client or Studio work is complete enough to test:
+
+1. Commit (when the user asked to ship, or when this rule applies after a finished slice).
+2. Push the branch.
+3. Deploy **production** immediately:
+   - Studio: `npx vercel deploy --prod --yes --scope team_0HiBgsTPVZVWgzW5UyBwtn8W` from `apps/studio`
+   - Mobile web: `npm run web:export` then EAS `eas deploy --prod` and/or Vercel `roxy-web` from `apps/mobile/dist`
+4. Do not leave working-tree features unshipped for a later "when you ask."
+5. Do not start Phase 2 (hard cut of `posts.community_id`) until Phase 1 has been tested on a live build.

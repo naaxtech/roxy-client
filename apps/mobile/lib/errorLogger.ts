@@ -21,16 +21,26 @@ export function logError(e: unknown, context?: string): void {
 
   // Crashlytics — log breadcrumb then record the error so the stack trace
   // appears correctly grouped in the Firebase console.
-  if (context) {
-    crashlytics().log(`[${new Date().toISOString()}] context=${context}`);
-    crashlytics().setAttribute('error_context', context);
-  }
-  if (error.stack) {
-    // Crashlytics custom attribute limit is 1024 chars.
-    crashlytics().setAttribute('stack_trace', error.stack.slice(0, 1000));
-  }
-  crashlytics().setAttribute('error_name', error.name);
-  crashlytics().recordError(error);
+  //
+  // Guarded for the same reason the PostHog block below always was, which the
+  // Crashlytics block was not: **telemetry must never be able to break the thing
+  // it is observing.** An unguarded `crashlytics()` call inside a catch block
+  // throws out of the catch, so the screen never reaches the line that shows the
+  // error state — and a woman sits watching a spinner forever because the error
+  // reporter failed. Found exactly that way: a create sheet stuck on "Finding
+  // your rooms…" because the failure path logged before it rendered.
+  try {
+    if (context) {
+      crashlytics().log(`[${new Date().toISOString()}] context=${context}`);
+      crashlytics().setAttribute('error_context', context);
+    }
+    if (error.stack) {
+      // Crashlytics custom attribute limit is 1024 chars.
+      crashlytics().setAttribute('stack_trace', error.stack.slice(0, 1000));
+    }
+    crashlytics().setAttribute('error_name', error.name);
+    crashlytics().recordError(error);
+  } catch {}
 
   // PostHog — capture as a named event so errors appear in analytics funnels.
   try {
@@ -51,9 +61,13 @@ export function logError(e: unknown, context?: string): void {
  * Call this at meaningful navigation/action boundaries so crash reports have
  * a clear trail of what the user did.
  *
+ * Never pass a tier-1 field (email, phone, display_name, username, bio,
+ * identity_labels, pronouns, location, avatar_url, message/post content) —
+ * strip it instead. Always hash a user_id with `hashUserId()` first.
+ *
  * @example
- *   logBreadcrumb('onboarding_step1_submit', { username });
- *   logBreadcrumb('profile_fetch', { user_id: user.id });
+ *   logBreadcrumb('onboarding_step1_submit', { label_count: String(labels.length) });
+ *   logBreadcrumb('profile_fetch', { user_id: hashUserId(user.id) });
  */
 export function logBreadcrumb(
   message: string,
@@ -63,7 +77,9 @@ export function logBreadcrumb(
     ? `${message} — ${Object.entries(data).map(([k, v]) => `${k}=${v}`).join(', ')}`
     : message;
 
-  crashlytics().log(`[breadcrumb] ${payload}`);
+  try {
+    crashlytics().log(`[breadcrumb] ${payload}`);
+  } catch {}
 
   if (__DEV__) {
     console.log(`[Breadcrumb] ${payload}`);
@@ -85,12 +101,16 @@ export function logBoundaryError(error: Error, componentStack: string): void {
     if (error.stack) console.error('[ErrorBoundary] JS stack:', error.stack);
   }
 
-  crashlytics().log(`[ErrorBoundary] ${error.name}: ${error.message}`);
-  crashlytics().setAttribute('component_stack', componentStack.slice(0, 1000));
-  if (error.stack) {
-    crashlytics().setAttribute('stack_trace', error.stack.slice(0, 1000));
-  }
-  crashlytics().recordError(error);
+  // Guarded: this one runs inside React's error path. A throw here would turn a
+  // recoverable render error into an unrecoverable one.
+  try {
+    crashlytics().log(`[ErrorBoundary] ${error.name}: ${error.message}`);
+    crashlytics().setAttribute('component_stack', componentStack.slice(0, 1000));
+    if (error.stack) {
+      crashlytics().setAttribute('stack_trace', error.stack.slice(0, 1000));
+    }
+    crashlytics().recordError(error);
+  } catch {}
 
   try {
     posthog?.capture('app_error', {
@@ -103,6 +123,24 @@ export function logBoundaryError(error: Error, componentStack: string): void {
   } catch {}
 }
 
+/**
+ * Hash a user_id to an 8-char hex string before it reaches any third-party
+ * log/analytics call — required by CLAUDE.md §10 ("LOG ANONYMISED: user_id").
+ * Not for security, only for de-identification — a stable, non-reversible-
+ * enough correlation key so support can group events by user without ever
+ * transmitting the real id to Crashlytics/PostHog/Firebase.
+ */
+export function hashUserId(userId: string): string {
+  let hash = 0x811c9dc5; // FNV-1a 32-bit offset basis
+  for (let i = 0; i < userId.length; i++) {
+    hash ^= userId.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
 export function setCrashlyticsUser(userId: string | null): void {
-  crashlytics().setUserId(userId ?? '');
+  try {
+    crashlytics().setUserId(userId ? hashUserId(userId) : '');
+  } catch {}
 }

@@ -1,66 +1,20 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
+import {
+  RoomClaimError,
+  createMeetingToken,
+  ensureDailyRoom,
+  roomNameFromUrl,
+} from '../_shared/daily.ts';
 
 const DEV_MOCK_ROOM_URL = 'https://roxy.daily.co/dev-room';
-
-async function getOrCreateDailyRoom(roomName: string, apiKey: string): Promise<string> {
-  const getRes = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
-  if (getRes.ok) {
-    const room = await getRes.json();
-    return room.url;
-  }
-  const createRes = await fetch('https://api.daily.co/v1/rooms', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: roomName,
-      properties: {
-        max_participants: 50,
-        enable_chat: true,
-        enable_screenshare: false,
-        exp: Math.floor(Date.now() / 1000) + 7200,
-        eject_at_room_exp: true,
-      },
-    }),
-  });
-  if (!createRes.ok) throw new Error(`Daily.co room creation failed: ${await createRes.text()}`);
-  return (await createRes.json()).url;
-}
-
-async function createMeetingToken(
-  roomName: string,
-  userName: string,
-  userId: string,
-  isOwner: boolean,
-  apiKey: string,
-): Promise<string> {
-  const res = await fetch('https://api.daily.co/v1/meeting-tokens', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      properties: {
-        room_name: roomName,
-        user_name: userName,
-        user_id: userId,
-        is_owner: isOwner,
-        start_audio_off: true,
-        // NOTE: eject_at_room_exp is a ROOM property, not a token property —
-        // Daily rejects tokens that include it (invalid-request-error).
-      },
-    }),
-  });
-  if (!res.ok) throw new Error(`Meeting token creation failed: ${await res.text()}`);
-  return (await res.json()).token;
-}
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
-  const auth = verifyJWT(req);
+  const auth = await verifyJWT(req);
   if (!auth) return errorResponse('Unauthorized', 401);
 
   const body = await req.json();
@@ -81,15 +35,20 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Fail closed, loudly in the logs and vaguely to the client: the operator
+  // needs the variable name, the user does not. The value is never logged.
   const dailyApiKey = Deno.env.get('DAILY_API_KEY');
-  if (!dailyApiKey) return errorResponse('DAILY_API_KEY not configured', 503);
+  if (!dailyApiKey) {
+    console.error('join-community-room: DAILY_API_KEY is not set — every room join will fail');
+    return errorResponse('Live rooms are temporarily unavailable', 503);
+  }
 
   const supabase = getSupabaseClient();
 
   // Fetch room
   const { data: room, error: roomError } = await supabase
     .from('community_rooms')
-    .select('id, name, daily_room_url, daily_room_name, community_id, room_type, status, created_by')
+    .select('id, name, daily_room_url, daily_room_name, community_id, room_type, status, created_by, max_participants')
     .eq('id', room_id)
     .single();
 
@@ -97,27 +56,58 @@ Deno.serve(async (req) => {
   if (room.status === 'scheduled') return errorResponse('Room has not started yet', 409);
   if (room.status === 'closed')    return errorResponse('Room is closed', 410);
 
-  // Get or create Daily.co room
-  const roomName = room.daily_room_name ?? `roxy-community-${room_id.slice(0, 8)}`;
-  let roomUrl = room.daily_room_url as string | null;
+  // Resolve the Daily room, confirming it still exists rather than trusting the
+  // stored URL. ensureDailyRoom derives the name from the row id itself, so this
+  // and manage-room always land on one room and can never land on another row's.
+  const storedName = room.daily_room_name as string | null;
+  const storedUrl  = room.daily_room_url  as string | null;
 
-  if (!roomUrl) {
-    try {
-      roomUrl = await getOrCreateDailyRoom(roomName, dailyApiKey);
-      await supabase
-        .from('community_rooms')
-        .update({ daily_room_url: roomUrl, daily_room_name: roomName })
-        .eq('id', room_id);
-    } catch (e) {
-      return errorResponse(`Failed to create video room: ${e instanceof Error ? e.message : 'unknown'}`, 500);
+  // Only follow a stored name while a call is actually in progress. A room that
+  // is not live has nobody to keep together, so there is nothing to preserve and
+  // ensureDailyRoom mints the collision-free canonical name instead — which is
+  // what retires the pre-fix short names without cutting anyone off mid-call.
+  const offeredName = room.status === 'live'
+    ? (storedName ?? (storedUrl ? roomNameFromUrl(storedUrl) : null))
+    : null;
+
+  // room.id, not the request body: the row is the authority for its own name.
+  const identity = { roomId: room.id as string, storedName: offeredName };
+
+  let ensured: { url: string; name: string };
+  try {
+    ensured = await ensureDailyRoom(
+      identity, room.max_participants as number | null, dailyApiKey,
+    );
+  } catch (e) {
+    if (e instanceof RoomClaimError) {
+      // The row points at a Daily room it cannot prove is its own. Joining it
+      // could put her in another community's call, so refuse and make a host
+      // reopen — never retry, and never fall back to the stored name.
+      console.error('join-community-room: refused a daily room this row has no claim to');
+      return errorResponse('This room needs to be reopened by a host', 409);
     }
+    // Legible server-side cause; no key, no token, no identifiers.
+    console.error(
+      `join-community-room: could not provision room reason=${e instanceof Error ? e.message : 'unknown'}`,
+    );
+    return errorResponse('Could not reach the video service', 502);
+  }
+
+  const roomUrl = ensured.url;
+  const roomName = ensured.name;
+
+  if (roomUrl !== storedUrl || roomName !== storedName) {
+    await supabase
+      .from('community_rooms')
+      .update({ daily_room_url: roomUrl, daily_room_name: roomName })
+      .eq('id', room.id);
   }
 
   // Determine if joining user is admin/moderator
   const [profileRes, memberRes] = await Promise.all([
     supabase
       .from('profiles')
-      .select('display_name')
+      .select('display_name, staff_role')
       .eq('id', auth.userId)
       .single(),
     supabase
@@ -128,14 +118,16 @@ Deno.serve(async (req) => {
       .single(),
   ]);
 
-  // Block non-members from joining
-  if (!memberRes.data && auth.userId !== room.created_by) {
+  const isCore = profileRes.data?.staff_role === 'core';
+
+  // Block non-members from joining. Roxy core owns every room.
+  if (!memberRes.data && auth.userId !== room.created_by && !isCore) {
     return errorResponse('You are not a member of this community', 403);
   }
 
   const displayName = profileRes.data?.display_name ?? 'Guest';
   const role = memberRes.data?.role ?? 'member';
-  const isOwner = role === 'admin' || role === 'moderator' || auth.userId === room.created_by;
+  const isOwner = isCore || role === 'admin' || role === 'moderator' || auth.userId === room.created_by;
 
   // Get creator display name
   let creatorDisplayName: string | null = null;
@@ -153,7 +145,10 @@ Deno.serve(async (req) => {
   try {
     token = await createMeetingToken(roomName, displayName, auth.userId, isOwner, dailyApiKey);
   } catch (e) {
-    return errorResponse(`Meeting token creation failed: ${e instanceof Error ? e.message : String(e)}`, 500);
+    console.error(
+      `join-community-room: token mint failed reason=${e instanceof Error ? e.message : 'unknown'}`,
+    );
+    return errorResponse('Could not reach the video service', 502);
   }
 
   return successResponse({

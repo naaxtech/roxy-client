@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { isMissingColumn } from '@/lib/schema-availability';
 import { Badge } from '@/components/ui/badge';
 import { AttendeeList } from './AttendeeList';
 import { CancelEventButton } from './CancelEventButton';
@@ -24,7 +25,23 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   if (!event) notFound();
 
-  // Must be host or member of this community
+  const first = await supabase
+    .from('profiles')
+    .select('is_staff, staff_role')
+    .eq('id', user.id)
+    .single();
+  let profile = first.data as { is_staff: boolean | null; staff_role?: string | null } | null;
+  if (isMissingColumn(first.error)) {
+    const fallback = await supabase
+      .from('profiles')
+      .select('is_staff')
+      .eq('id', user.id)
+      .single();
+    profile = fallback.data ? { ...fallback.data, staff_role: null } : null;
+  }
+  const isStaff = profile?.is_staff === true;
+  const isCore = profile?.staff_role === 'core';
+
   const { data: membership } = await supabase
     .from('community_members')
     .select('role')
@@ -33,15 +50,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     .maybeSingle();
 
   const isHost = event.host_id === user.id;
-  const isAdmin = membership?.role === 'admin';
+  const isAdmin = isCore || membership?.role === 'admin';
   if (!isHost && !isAdmin) notFound();
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_staff')
-    .eq('id', user.id)
-    .single();
-  const isStaff = profile?.is_staff === true;
 
   const { data: attendees } = await supabase
     .from('event_attendees')
@@ -110,7 +120,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             {event.max_attendees ? ` · cap ${event.max_attendees}` : ''}
           </span>
         </div>
-        <AttendeeList attendees={(attendees ?? []) as any} eventId={id} canCheckin={isHost || isAdmin} />
+        <AttendeeList attendees={(attendees ?? []) as any} eventId={id} canCheckin={isHost || isAdmin || isCore} />
       </div>
     </div>
   );

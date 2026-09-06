@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  /* :root IS the dark theme — there is deliberately no `.dark` block. next-themes
+     writes `class="dark"` or `class="light"` on <html>; `dark` simply leaves these
+     values in place, while `.light` below overrides them. Adding a `.dark` block
+     would duplicate this one, so change dark-mode colours here. */
   :root {
     --background: 268 64% 11%;
     --foreground: 0 0% 100%;
@@ -28,17 +32,28 @@
   }
 
   .light {
-    --background: 340 100% 98%;
-    --foreground: 268 64% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 268 64% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 268 64% 11%;
-    --muted: 340 60% 94%;
-    --muted-foreground: 300 20% 45%;
-    --border: 340 40% 88%;
-    --input: 340 40% 88%;
-    /* primary, secondary, accent, ring, radius unchanged — brand is consistent */
+    /* Warm paper, not candy-pink. Hue 46 is a faint yellow-white so long
+       sessions stay easier on the eye than the old 340/100% blush. */
+    --background: 46 28% 97.5%;
+    --foreground: 30 18% 16%;
+    --card: 42 40% 99%;
+    --card-foreground: 30 18% 16%;
+    --popover: 42 40% 99%;
+    --popover-foreground: 30 18% 16%;
+    --muted: 44 18% 93%;
+    --muted-foreground: 30 10% 38%;
+    --border: 40 12% 86%;
+    --input: 40 12% 86%;
+
+    /* Brand hues stay; only lightness drops so they stay legible on paper
+       white. Dark-mode primaries fail WCAG AA on this surface. */
+    --primary: 330 73% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 258 60% 45%;
+    --secondary-foreground: 0 0% 100%;
+    --destructive: 0 72% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 330 73% 38%;
   }
 }
 
@@ -106,5 +121,19 @@
   .card-hover:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 30px rgba(232, 121, 166, 0.1);
+  }
+
+  /* Pale amber utilities are for dark surfaces. On warm paper they vanish. */
+  .notice-icon {
+    color: hsl(38 92% 62%);
+  }
+  .light .notice-icon {
+    color: hsl(28 75% 32%);
+  }
+  .light .text-amber-300 {
+    color: hsl(28 72% 28%);
+  }
+  .light .text-amber-400 {
+    color: hsl(28 65% 32%);
   }
 }

@@ -5,25 +5,48 @@ import {
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../../../lib/supabase';
+import { supabase, callEdgeFunction } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
+import { postDestination, buildPostPayload, destinationLabel } from '../../../../lib/postComposer';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { RoxyLinkPicker, RoxyLinkSelection } from '../../../../components/feed/RoxyLinkPicker';
 import { showAlert } from '../../../../lib/confirm';
 import { logError } from '../../../../lib/errorLogger';
+import { uploadImageAsset, assetExtension, UploadError } from '../../../../lib/uploads';
 import type { PostType } from '../../../../types';
+import { TYPE } from '../../../../lib/typography';
 
 const MAX_PHOTOS = 10;
+const MAX_VIDEO_SECONDS = 180;
 
 type Step = 'type-picker' | 'composer';
 
+/**
+ * Turn an upload failure into something worth reading, without putting a
+ * storage path (which starts with the user's id) in front of the user.
+ * The underlying error still goes to logError with its reason code intact.
+ */
+function uploadFailureMessage(e: unknown): string {
+  if (e instanceof UploadError) {
+    switch (e.reason) {
+      case 'read_failed':
+        return 'We could not read that file from your device. Pick it again and retry.';
+      case 'empty_file':
+        return 'That file came back empty. Pick it again, or choose a different one.';
+      case 'storage_rejected':
+        return 'The upload was rejected. Check your connection and try again.';
+    }
+  }
+  return 'Could not upload your photos. Please try again.';
+}
+
 export default function CreatePostScreen() {
   const colors = useThemeColors();
-  const { communityId } = useLocalSearchParams<{ communityId: string }>();
+  const destination = postDestination();
   const router = useRouter();
   const { user } = useAuthStore();
 
@@ -34,6 +57,8 @@ export default function CreatePostScreen() {
   const [showLinkPicker, setShowLinkPicker] = useState(false);
   const [roxyLink, setRoxyLink] = useState<RoxyLinkSelection | null>(null);
   const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
+  const [video, setVideo] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
 
   const TYPE_OPTIONS: { type: PostType; icon: keyof typeof Ionicons.glyphMap; grad: readonly [string, string]; label: string; sub: string }[] = [
     { type: 'standard',  icon: 'create',   grad: ['#8E7CF7', '#C86DD7'], label: 'Text',            sub: "Share what's on your mind" },
@@ -48,6 +73,8 @@ export default function CreatePostScreen() {
       setShowLinkPicker(true);
     } else if (type === 'photo') {
       void handlePickPhoto();
+    } else if (type === 'video') {
+      void handlePickVideo();
     } else {
       setStep('composer');
     }
@@ -78,32 +105,130 @@ export default function CreatePostScreen() {
 
   const removePhoto = (uri: string) => setPhotos((prev) => prev.filter((p) => p.uri !== uri));
 
+  const handlePickVideo = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      allowsMultipleSelection: false,
+      quality: 1,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    const asset = result.assets[0];
+    const durationSeconds = asset.duration ? asset.duration / 1000 : 0;
+    if (durationSeconds > MAX_VIDEO_SECONDS) {
+      showAlert('Video too long', `Videos are capped at ${MAX_VIDEO_SECONDS / 60} minutes.`);
+      return;
+    }
+    setVideo(asset);
+    setStep('composer');
+  };
+
+  const removeVideo = () => setVideo(null);
+
+  // Upload the picked video to Cloudflare Stream via a TUS upload session.
+  // 1. Insert the post row first (need a real id — Cloudflare's upload
+  //    session is tagged with it as metadata so cloudflare-video-webhook
+  //    can find the right row once processing finishes).
+  // 2. Get a TUS uploadURL scoped to that postId from get-video-upload-url.
+  // 3. PATCH the raw video bytes to that URL per the TUS protocol (single
+  //    request: Upload-Offset 0, Content-Type application/offset+octet-stream).
+  const uploadVideoAndCreatePost = async (): Promise<{ error: string | null }> => {
+    if (!user?.id || !video) return { error: 'Missing video' };
+
+    setUploadStatus('Creating post…');
+    const { data: newPost, error: insertErr } = await supabase
+      .from('posts')
+      .insert(buildPostPayload({
+        authorId: user.id,
+        destination,
+        content,
+        postType: 'video',
+        postedAsCommunity: false,
+      }))
+      .select('id')
+      .single();
+
+    if (insertErr || !newPost) {
+      // The raw Postgres text ("new row violates row-level security policy for
+      // table \"posts\"") is a debugging aid, not a sentence to show a user.
+      // Keep it in the log, hand back something actionable.
+      logError(insertErr ?? new Error('posts insert returned no row'), 'createPost_videoInsert');
+      return { error: 'Could not create the post. Please try again.' };
+    }
+
+    try {
+      setUploadStatus('Preparing upload…');
+      // Deliberately a Blob here, unlike the photo path: this PATCH goes
+      // through React Native's own fetch, which handles Blob request bodies
+      // natively. An ArrayBuffer body is base64-encoded across the bridge and
+      // would materialise a 3-minute video in memory several times over. The
+      // storage-js FormData trap that breaks photo uploads cannot apply — no
+      // FormData is involved in this request.
+      const blob = await (await fetch(video.uri)).blob();
+      if (blob.size === 0) throw new Error('video read as 0 bytes');
+
+      const { data: uploadInfo, error: urlErr } = await callEdgeFunction<{ uploadURL: string; videoId: string }>(
+        'get-video-upload-url',
+        { postId: newPost.id, maxDurationSeconds: MAX_VIDEO_SECONDS, fileSize: blob.size },
+      );
+      if (urlErr || !uploadInfo) throw new Error(urlErr ?? 'Could not get upload URL');
+
+      setUploadStatus('Uploading video…');
+      const uploadRes = await fetch(uploadInfo.uploadURL, {
+        method: 'PATCH',
+        headers: {
+          'Tus-Resumable': '1.0.0',
+          'Upload-Offset': '0',
+          'Content-Type': 'application/offset+octet-stream',
+        },
+        body: blob,
+      });
+      if (!uploadRes.ok) throw new Error(`Upload failed (${uploadRes.status})`);
+
+      return { error: null };
+    } catch (e) {
+      // Don't leave an orphaned post with no video attached.
+      await supabase.from('posts').delete().eq('id', newPost.id);
+      logError(e, 'createPost_videoUpload');
+      return { error: 'Your video could not be uploaded. Check your connection and try again.' };
+    } finally {
+      setUploadStatus(null);
+    }
+  };
+
   // Upload picked photos to post-media/<userId>/... and return their public
   // URLs. Path folder MUST be the user id — the bucket RLS checks
-  // auth.uid() = foldername(name)[1].
+  // auth.uid() = foldername(name)[1]. Bytes go through uploadImageAsset:
+  // handing storage-js a Blob on React Native uploads 0 bytes on iOS and
+  // throws on Android (see lib/uploads.ts).
   const uploadPhotos = async (): Promise<string[]> => {
     if (!user?.id) return [];
     const urls: string[] = [];
     for (let i = 0; i < photos.length; i++) {
       const asset = photos[i];
-      const ext = asset.uri.split('.').pop()?.split('?')[0]?.toLowerCase() || 'jpg';
-      const path = `${user.id}/${Date.now()}-${i}.${ext}`;
-      const blob = await (await fetch(asset.uri)).blob();
-      const { error: upErr } = await supabase.storage
-        .from('post-media')
-        .upload(path, blob, { contentType: asset.mimeType ?? 'image/jpeg', upsert: false });
-      if (upErr) throw upErr;
-      urls.push(supabase.storage.from('post-media').getPublicUrl(path).data.publicUrl);
+      urls.push(
+        await uploadImageAsset({
+          bucket: 'post-media',
+          pathPrefix: user.id,
+          fileName: `${Date.now()}-${i}.${assetExtension(asset)}`,
+          asset,
+          upsert: false,
+        }),
+      );
     }
     return urls;
   };
 
   const handleSubmit = async () => {
-    if (!user?.id || !communityId || submitting) return;
+    if (!user?.id || submitting) return;
     // Per-type validation: a photo post needs a photo (caption optional);
-    // text/standard needs text; roxy_link needs a linked entity.
+    // a video post needs a video; text/standard needs text; roxy_link needs
+    // a linked entity.
     if (postType === 'photo' && photos.length === 0) {
       showAlert('Add a photo', 'Pick at least one photo for a photo post.');
+      return;
+    }
+    if (postType === 'video' && !video) {
+      showAlert('Add a video', 'Pick a video for a video post.');
       return;
     }
     if (postType === 'standard' && !content.trim()) {
@@ -112,18 +237,29 @@ export default function CreatePostScreen() {
     }
     setSubmitting(true);
 
-    const payload: Record<string, unknown> = {
-      author_id: user.id,
-      community_id: communityId,
-      content: content.trim(),
-      post_type: postType,
-    };
-
-    if (postType === 'roxy_link' && roxyLink) {
-      payload.link_type = roxyLink.linkType;
-      payload.link_entity_id = roxyLink.entityId;
-      payload.link_community_id = roxyLink.communityId;
+    // Video posts go through Cloudflare Stream (insert-first, then upload)
+    // rather than the shared payload-insert path below — the video isn't
+    // ready to attach at insert time, it arrives later via
+    // cloudflare-video-webhook once processing finishes.
+    if (postType === 'video') {
+      const { error } = await uploadVideoAndCreatePost();
+      setSubmitting(false);
+      if (error) {
+        showAlert('Upload failed', error);
+        return;
+      }
+      router.back();
+      return;
     }
+
+    const payload = buildPostPayload({
+      authorId: user.id,
+      destination,
+      content,
+      postType,
+      postedAsCommunity: false,
+      roxyLink: postType === 'roxy_link' ? roxyLink : null,
+    });
 
     if (postType === 'photo') {
       try {
@@ -131,7 +267,7 @@ export default function CreatePostScreen() {
       } catch (e) {
         logError(e, 'createPost_uploadPhotos');
         setSubmitting(false);
-        showAlert('Upload failed', 'Could not upload your photos. Please try again.');
+        showAlert('Upload failed', uploadFailureMessage(e));
         return;
       }
     }
@@ -140,6 +276,7 @@ export default function CreatePostScreen() {
     setSubmitting(false);
 
     if (error) {
+      logError(error, 'createPost_insert');
       showAlert('Post failed', 'Could not publish. Please try again.');
       return;
     }
@@ -154,6 +291,12 @@ export default function CreatePostScreen() {
       borderBottomWidth: 1, borderBottomColor: colors.surface,
     },
     cancelBtn: { color: colors.primary, fontSize: 15 },
+    destination: {
+      ...TYPE.caption,
+      color: colors.textMuted,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+    },
     headerTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
     publishBtn: {
       backgroundColor: colors.primary, paddingHorizontal: 16,
@@ -197,6 +340,12 @@ export default function CreatePostScreen() {
       borderWidth: 1.5, borderColor: colors.primary + '55', borderStyle: 'dashed',
       alignItems: 'center', justifyContent: 'center',
     },
+    videoPreview: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      margin: 16, padding: 12, borderRadius: 12, backgroundColor: colors.surface,
+    },
+    videoPreviewText: { color: colors.textPrimary, fontSize: 14, flex: 1 },
+    uploadStatus: { color: colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: 8 },
   });
 
   if (step === 'type-picker') {
@@ -299,12 +448,25 @@ export default function CreatePostScreen() {
         </ScrollView>
       )}
 
+      {postType === 'video' && video && (
+        <View style={styles.videoPreview}>
+          <Ionicons name="videocam" size={24} color={colors.primary} />
+          <Text style={styles.videoPreviewText} numberOfLines={1}>
+            {video.fileName ?? 'Video selected'}
+            {video.duration ? ` · ${Math.round(video.duration / 1000)}s` : ''}
+          </Text>
+          <TouchableOpacity onPress={removeVideo} hitSlop={6} accessibilityLabel="Remove video">
+            <Ionicons name="close" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <TextInput
         style={styles.captionInput}
         placeholder={
           postType === 'roxy_link'
             ? 'Add a caption (optional)…'
-            : postType === 'photo'
+            : postType === 'photo' || postType === 'video'
               ? 'Add a caption (optional)…'
               : "What's on your mind?"
         }
@@ -312,9 +474,15 @@ export default function CreatePostScreen() {
         value={content}
         onChangeText={setContent}
         multiline
-        autoFocus={postType !== 'photo'}
+        autoFocus={postType !== 'photo' && postType !== 'video'}
         maxLength={1000}
       />
+
+      <Text style={styles.destination} testID="create-post-destination">
+        Posting to {destinationLabel(destination)}
+      </Text>
+
+      {uploadStatus && <Text style={styles.uploadStatus}>{uploadStatus}</Text>}
     </SafeAreaView>
   );
 }

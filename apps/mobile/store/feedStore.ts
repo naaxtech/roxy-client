@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { logError } from '../lib/errorLogger';
 import { normalizePosts } from '../lib/posts';
 import { POST_WITH_AUTHOR } from '../lib/supabaseQueries';
+import { useAuthStore } from './authStore';
 import type { Post } from '../types';
 
 interface FeedState {
@@ -18,6 +19,15 @@ interface FeedState {
   likedPostIds: Set<string>;
   savedPostIds: Set<string>;
   seenPostIds: Set<string>;
+
+  /**
+   * Net like change per post since the app loaded, for lists that fetch and
+   * hold their own rows (Reels, the Connect card feed) and therefore never see
+   * the `posts` array below being adjusted. Read it through
+   * `displayedLikeCount` in `lib/reels`; a list that renders straight out of
+   * `posts` must NOT apply it, or the tap counts twice.
+   */
+  likeCountDeltas: Record<string, number>;
 
   videoQueue: string[];
   discoverScrollOffset: number;
@@ -58,6 +68,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   likedPostIds: new Set(),
   savedPostIds: new Set(),
   seenPostIds: new Set(),
+  likeCountDeltas: {},
   videoQueue: [],
   discoverScrollOffset: 0,
   connectScrollOffset: 0,
@@ -158,13 +169,15 @@ export const useFeedStore = create<FeedState>((set, get) => ({
 
   toggleLike: async (postId) => {
     const wasLiked = get().likedPostIds.has(postId);
+    const step = wasLiked ? -1 : 1;
     set(s => ({
       likedPostIds: wasLiked
         ? new Set([...s.likedPostIds].filter(id => id !== postId))
         : new Set([...s.likedPostIds, postId]),
       posts: s.posts.map(p =>
-        p.id === postId ? { ...p, like_count: p.like_count + (wasLiked ? -1 : 1) } : p
+        p.id === postId ? { ...p, like_count: p.like_count + step } : p
       ),
+      likeCountDeltas: { ...s.likeCountDeltas, [postId]: (s.likeCountDeltas[postId] ?? 0) + step },
     }));
     // Upsert, not insert: a row can already exist server-side (state drift,
     // double-tap, another device) and a bare insert 409s on the PK — the
@@ -181,8 +194,9 @@ export const useFeedStore = create<FeedState>((set, get) => ({
           ? new Set([...s.likedPostIds, postId])
           : new Set([...s.likedPostIds].filter(id => id !== postId)),
         posts: s.posts.map(p =>
-          p.id === postId ? { ...p, like_count: p.like_count + (wasLiked ? 1 : -1) } : p
+          p.id === postId ? { ...p, like_count: p.like_count - step } : p
         ),
+        likeCountDeltas: { ...s.likeCountDeltas, [postId]: (s.likeCountDeltas[postId] ?? 0) - step },
       }));
     }
   },
@@ -217,13 +231,15 @@ export const useFeedStore = create<FeedState>((set, get) => ({
 
   markSeen: (postId) => {
     set(s => ({ seenPostIds: new Set([...s.seenPostIds, postId]) }));
-    void supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      void supabase
-        .from('seen_posts')
-        .upsert({ post_id: postId, user_id: user.id }, { onConflict: 'user_id,post_id' })
-        .then(() => {});
-    });
+    // Reels calls this on every swipe. supabase.auth.getUser() is a GoTrue
+    // network round trip, so asking it per video put a request on the wire for
+    // each swipe; the session already in authStore carries the same id.
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return;
+    void supabase
+      .from('seen_posts')
+      .upsert({ post_id: postId, user_id: userId }, { onConflict: 'user_id,post_id' })
+      .then(() => {});
   },
 
   acceptNewPosts: () => {

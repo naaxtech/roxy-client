@@ -7,7 +7,22 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { BRAND_GRADIENT, inkOnGradient } from '../../lib/theme';
 import { AnswerSheet } from './AnswerSheet';
+
+// The CTA label sits on the whole brand ramp, so it is measured against the
+// whole brand ramp.
+//
+// Two wrong answers preceded this one. First a hardcoded `#fff` on a one-off
+// gradient: 3.56:1, a plain SC 1.4.3 failure. Then `inkOn(BRAND_GRADIENT[1])`,
+// which reads as the careful fix and is not — it asks about the MIDDLE stop and
+// answers 4.74:1, while the same ink measures 4.23:1 against `#E0189A` at the
+// end of the ramp. The label is centred in a `flex: 1` pill, so its trailing
+// glyphs land exactly there.
+//
+// `inkOnGradient` takes the worst stop, which is the only one a glyph does not
+// get to avoid. Computed once: the ramp is a constant, not a per-render lookup.
+const CTA_INK = inkOnGradient(BRAND_GRADIENT);
 
 interface Question {
   id: string;
@@ -170,7 +185,7 @@ export function QuestionOfTheDayCard({ communityIds, userId }: Props) {
           accessibilityLabel="Add your answer"
         >
           <LinearGradient
-            colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
+            colors={BRAND_GRADIENT}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={q.addBtn}
@@ -183,7 +198,7 @@ export function QuestionOfTheDayCard({ communityIds, userId }: Props) {
 
         <TouchableOpacity
           style={[q.readBtn, { borderColor: colors.roxy }]}
-          onPress={() => router.push(`/(tabs)/grow/qotd/${question!.id}` as any)}
+          onPress={() => router.push(`/qotd/${question!.id}` as any)}
           activeOpacity={0.85}
           accessibilityLabel={`Read ${question.answer_count} answers`}
         >
@@ -228,7 +243,7 @@ const q = StyleSheet.create({
   btnRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   addBtnWrap: { flex: 1, borderRadius: 999, overflow: 'hidden' },
   addBtn: { minHeight: 40, alignItems: 'center', justifyContent: 'center' },
-  addBtnText: { fontSize: 13.5, fontWeight: '800', color: '#fff' },
+  addBtnText: { fontSize: 13.5, fontWeight: '800', color: CTA_INK },
   readBtn: {
     flex: 1, borderRadius: 999, minHeight: 40, borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  ScrollView, Share,
+  Share, Platform,
 } from 'react-native';
-import { Image } from 'expo-image';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, usePathname } from 'expo-router';
 import { format } from 'date-fns';
 import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
@@ -18,23 +18,44 @@ import { showAlert } from '../../../../lib/confirm';
 import { CommunityRoomCard } from '../../../../components/community/CommunityRoomCard';
 import { CommunityRoom, Post } from '../../../../types';
 import { FeedCard } from '../../../../components/feed/FeedCard';
+import { ReelsFeed } from '../../../../components/feed/ReelsFeed';
 import { EmptyState } from '../../../../components/ui/EmptyState';
 import { useFeedStore } from '../../../../store/feedStore';
 import { normalizePost } from '../../../../lib/posts';
 import { contentDetailPath, linkedEntityPath } from '../../../../lib/contentNavigation';
+import { isPlayableGameUrl } from '../../../../lib/gameUrl';
 import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../../lib/supabaseQueries';
 import { EventsCalendar } from '../../../../components/events/EventsCalendar';
 import { freshChannel } from '../../../../lib/realtimeChannel';
-import { useAppWidth } from '../../../../hooks/useAppWidth';
+import { ProfileShell } from '../../../../components/profile/ProfileShell';
+import type { PopulatedTabs, ProfileTab } from '../../../../components/profile/profileVariant';
+import { EventModeBadge, type EventMode } from '../../../../components/events/EventModeBadge';
+import { TYPE } from '../../../../lib/typography';
+import { RADII, inkOn } from '../../../../lib/theme';
+import { MIN_TOUCH_TARGET } from '../../../../lib/touchTargets';
+import { useAccess } from '../../../../hooks/useAccess';
+import { ComingSoon } from '../../../../components/features/ComingSoon';
+import { OFFICIAL_COMMUNITY_SLUG } from '../../../../lib/features';
 
-type SubTab = 'posts' | 'events' | 'games' | 'rooms';
-
-const TABS: SubTab[] = ['posts', 'rooms', 'games', 'events'];
+/**
+ * A community on the unified profile shell.
+ *
+ * The header, the LIVE pill and the strip used to be drawn here — a fifth
+ * opinion on cover / avatar / tabs, next to user, seller, business and You.
+ * 3.0 draws them once (`ProfileShell`, prototype markup 434–633). This route
+ * still owns every query; the shell only owns the frame.
+ *
+ * Tabs are Rooms · Events · Games · About plus Posts when there is something
+ * to show, or when she has joined (so the empty state and the create FAB still
+ * have a home). Reels stay reachable as a full-screen watch, not a sixth tab
+ * the prototype never drew.
+ */
 
 
 type EventRow = {
   id: string; title: string; starts_at: string; location: string | null;
   description: string | null;
+  event_type?: EventMode | null;
 };
 
 type CommunityGameRow = {
@@ -46,25 +67,20 @@ const GAME_CATEGORY_EMOJI: Record<string, string> = {
   dating: '⚡', icebreaker: '💞', party: '🃏', trivia: '🎯', other: '🎮',
 };
 
-function getCommunityLevel(n: number): { label: string; emoji: string } {
-  if (n >= 100) return { label: 'Radiant', emoji: '✨' };
-  if (n >= 20) return { label: 'Thriving', emoji: '🌸' };
-  if (n >= 5) return { label: 'Growing', emoji: '🌿' };
-  return { label: 'Seedling', emoji: '🌱' };
-}
-
 export default function CommunityDetailScreen() {
   const colors = useThemeColors();
+  const { canCommunity } = useAccess();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const screenWidth = useAppWidth();
   const { user } = useAuthStore();
   const { joinedIds, allCommunities, joinCommunity, leaveCommunity, fetchAll, fetchJoined } = useCommunityStore();
 
   const [community, setCommunity] = useState<Community | null>(null);
   const [loading, setLoading] = useState(true);
-  const [subTab, setSubTab] = useState<SubTab>('posts');
+  const [reelsOpen, setReelsOpen] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsError, setPostsError] = useState(false);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [eventsView, setEventsView] = useState<'list' | 'calendar'>('list');
   const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
@@ -98,17 +114,40 @@ export default function CommunityDetailScreen() {
     }
   }, [id, allCommunities]);
 
-  // Same query + normalizer as the Connect feed — one post pipeline app-wide.
+  const isJoined = id ? joinedIds.has(id) : false;
+
+  /**
+   * The official account's wall. Posts do not live on the community row.
+   */
   const loadPosts = useCallback(async () => {
     if (!id) return;
-    const { data } = await supabase
+    setPostsLoading(true);
+    setPostsError(false);
+    const { data: owner } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('official_community_id', id)
+      .maybeSingle();
+    if (!owner?.id) {
+      setPosts([]);
+      setPostsLoading(false);
+      return;
+    }
+    const { data, error } = await supabase
       .from('posts')
       .select(POST_WITH_AUTHOR_AND_COMMUNITY)
-      .eq('community_id', id)
+      .eq('author_id', owner.id)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(30);
-    if (data) setPosts((data as Record<string, unknown>[]).map(normalizePost));
+    if (error) {
+      logError(error, 'community.loadPosts');
+      setPostsError(true);
+      setPosts([]);
+    } else {
+      setPosts((data as Record<string, unknown>[]).map(normalizePost));
+    }
+    setPostsLoading(false);
   }, [id]);
 
   const loadEvents = useCallback(async () => {
@@ -172,14 +211,49 @@ export default function CommunityDetailScreen() {
     setLoadingGames(false);
   }, [id]);
 
-  // Load all tab content upfront so swiping is instant
+  // Load all tab content upfront so swiping is instant.
+  //
+  // `isJoined` belongs in here: joining changes what every one of these queries
+  // is allowed to return, so without it the screen keeps showing the
+  // non-member's view of a community she just joined until she navigates away
+  // and back.
   useEffect(() => {
     loadPosts();
     loadEvents();
     loadRsvps();
     loadRooms();
     loadGames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isJoined]);
 
+  // Bug fix: publishing a post (or RSVPing to an event) from a screen pushed
+  // on top of this one returned here with no refetch — the new content
+  // looked like it never posted. Native: this screen stays mounted in the
+  // stack, so useFocusEffect fires on return. Web: useFocusEffect does NOT
+  // fire on web navigation via the root Stack (see connect/index.tsx for the
+  // same caveat), so fall back to a pathname-change effect there.
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'web') return;
+      loadPosts();
+      loadEvents();
+      loadRsvps();
+    }, [loadPosts, loadEvents, loadRsvps])
+  );
+
+  const pathname = usePathname();
+  const prevPathnameRef = useRef('');
+  useEffect(() => {
+    const prev = prevPathnameRef.current;
+    prevPathnameRef.current = pathname;
+    if (Platform.OS !== 'web' || !prev || prev === pathname) return;
+    loadPosts();
+    loadEvents();
+    loadRsvps();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  useEffect(() => {
     if (!id) return;
     // Realtime: keep participant_count and status live while on this screen
     const channel = freshChannel(`community-rooms-${id}`)
@@ -200,16 +274,6 @@ export default function CommunityDetailScreen() {
 
     return () => { supabase.removeChannel(channel); };
   }, [loadPosts, loadEvents, loadRsvps, loadRooms, loadGames, id]);
-
-  const pagerRef = useRef<ScrollView>(null);
-
-  const handleTabPress = (tab: SubTab) => {
-    const index = TABS.indexOf(tab);
-    setSubTab(tab);
-    pagerRef.current?.scrollTo({ x: index * screenWidth, animated: true });
-  };
-
-  const isJoined = id ? joinedIds.has(id) : false;
 
   const handleJoinLeave = async () => {
     if (!user || !id) return;
@@ -242,70 +306,10 @@ export default function CommunityDetailScreen() {
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-
-    // Compact header — no decorative banner, content starts right after this
-    header: {
-      flexDirection: 'row', alignItems: 'center', gap: 10,
-      paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10,
-      backgroundColor: colors.surface,
-    },
     backBtn: {
-      width: 32, height: 32, borderRadius: 16,
-      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET,
+      alignItems: 'center', justifyContent: 'center',
     },
-    avatarWrap: {
-      width: 40, height: 40, borderRadius: 20, flexShrink: 0,
-      backgroundColor: colors.secondary + '30',
-      alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-    },
-    avatarImg: { width: 40, height: 40 },
-    avatarEmoji: { fontSize: 18 },
-
-    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-    communityName: { color: colors.textPrimary, fontSize: 15, fontWeight: '800', flexShrink: 1 },
-    levelBadge: {
-      backgroundColor: colors.secondary + '20', borderRadius: 10,
-      paddingHorizontal: 8, paddingVertical: 2,
-    },
-    levelBadgeText: { color: colors.secondary, fontWeight: '700', fontSize: 11 },
-    livePill: {
-      flexDirection: 'row', alignItems: 'center', gap: 4,
-      backgroundColor: colors.error + '20', borderRadius: 10,
-      paddingHorizontal: 8, paddingVertical: 2,
-    },
-    livePillDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.error },
-    livePillText: { color: colors.error, fontWeight: '700', fontSize: 11 },
-    membersRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
-    membersText: { color: colors.textMuted, fontWeight: '600', fontSize: 12 },
-    privacyPill: {
-      backgroundColor: colors.primary + '20', borderRadius: 8,
-      paddingHorizontal: 7, paddingVertical: 1,
-    },
-    privacyPillPrivate: { backgroundColor: colors.textMuted + '20' },
-    privacyPillText: { color: colors.textMuted, fontSize: 10 },
-    communityDescInline: { color: colors.textMuted, fontSize: 12, flexShrink: 1 },
-    joinBtnCompact: {
-      backgroundColor: colors.roxy, borderRadius: 14,
-      paddingHorizontal: 14, paddingVertical: 7, flexShrink: 0,
-    },
-    joinBtnJoined: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.textMuted + '60' },
-    joinBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-    joinBtnTextJoined: { color: colors.textMuted },
-
-    // Sub-tabs
-    subTabRow: {
-      flexDirection: 'row',
-      backgroundColor: colors.background,
-      borderBottomWidth: 1, borderBottomColor: colors.surface,
-    },
-    subTab: {
-      flex: 1, paddingVertical: 13,
-      alignItems: 'center',
-      borderBottomWidth: 2, borderBottomColor: 'transparent',
-    },
-    subTabActive: { borderBottomColor: colors.roxy },
-    subTabText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
-    subTabTextActive: { color: colors.roxy, fontWeight: '700' },
 
     // Events
     eventCardBody: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
@@ -365,8 +369,49 @@ export default function CommunityDetailScreen() {
       shadowOpacity: 0.3, shadowRadius: 6, elevation: 8,
     },
 
+    // Non-member notice — a community's public face, and the way in
+    joinNotice: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      backgroundColor: colors.secondary + '18',
+      borderRadius: 14, marginHorizontal: 12, marginBottom: 10, padding: 12,
+    },
+    joinNoticeEmoji: { fontSize: 20 },
+    joinNoticeTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 13.5, marginBottom: 2 },
+    joinNoticeText: { color: colors.textSecondary, fontSize: 12.5, lineHeight: 17 },
+    joinNoticeBtn: {
+      backgroundColor: colors.roxy, borderRadius: 16, paddingHorizontal: 14,
+      minHeight: 34, alignItems: 'center', justifyContent: 'center',
+    },
+    joinNoticeBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+
+    reelsRoot: { flex: 1, backgroundColor: colors.background },
+    reelsBar: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      paddingHorizontal: 12, paddingVertical: 8,
+    },
+    reelsTitle: { ...TYPE.bodyLg, color: colors.textPrimary, fontWeight: '700', flex: 1 },
+    reelsEntry: {
+      marginHorizontal: 16, marginBottom: 10,
+      minHeight: MIN_TOUCH_TARGET, borderRadius: RADII.md,
+      borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    reelsEntryText: { ...TYPE.body, color: colors.primaryInk, fontWeight: '700' },
+    aboutWrap: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
+    aboutCard: {
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+      borderRadius: RADII.lg, padding: 14, gap: 8,
+    },
+    aboutLabel: { ...TYPE.caption, color: colors.textMuted, fontWeight: '800', letterSpacing: 0.8 },
+    aboutBody: { ...TYPE.body, color: colors.textSecondary, lineHeight: 20 },
+    membersLink: {
+      minHeight: MIN_TOUCH_TARGET, justifyContent: 'center',
+    },
+    membersLinkText: { ...TYPE.body, color: colors.primaryInk, fontWeight: '700' },
+
     // Error / empty
     errorText: { color: colors.textMuted, textAlign: 'center', marginTop: 48, fontSize: 16 },
+    retryLink: { color: colors.roxy, fontWeight: '700', fontSize: 15 },
     emptyCenter: { alignItems: 'center', padding: 40, gap: 12 },
     emptyIcon: { fontSize: 48 },
     emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center' },
@@ -385,7 +430,7 @@ export default function CommunityDetailScreen() {
   // land somewhere sensible instead of doing nothing on web.
   const handleBack = () => {
     if (router.canGoBack()) router.back();
-    else router.replace({ pathname: '/(tabs)/connect', params: { tab: 'communities' } } as any);
+    else router.replace({ pathname: '/(tabs)/discover', params: {} } as any);
   };
 
   if (!community) {
@@ -399,93 +444,89 @@ export default function CommunityDetailScreen() {
     );
   }
 
-  const level = getCommunityLevel(community.member_count);
+  if (!canCommunity(community.slug)) {
+    return (
+      <ComingSoon
+        feature={community.slug === OFFICIAL_COMMUNITY_SLUG ? 'officialChat' : 'communities'}
+      />
+    );
+  }
 
-  return (
-    <SafeAreaView style={styles.container} edges={[]}>
-      {/* Compact header — content starts almost immediately, no decorative banner */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={handleBack} hitSlop={8}>
-          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
+  const live = rooms.some((r) => r.status === 'live');
+  const hasVideo = posts.some((p) => p.post_type === 'video');
 
-        <View style={styles.avatarWrap}>
-          {community.cover_image_url ? (
-            <Image source={{ uri: community.cover_image_url }} style={styles.avatarImg} />
-          ) : (
-            <Text style={styles.avatarEmoji}>{level.emoji}</Text>
-          )}
-        </View>
-
-        <View style={{ flex: 1 }}>
-          <View style={styles.infoRow}>
-            <Text style={styles.communityName} numberOfLines={1}>{community.name}</Text>
-            <View style={styles.levelBadge}>
-              <Text style={styles.levelBadgeText}>{level.emoji} {level.label}</Text>
-            </View>
-            {rooms.some((r) => r.status === 'live') && (
-              <TouchableOpacity style={styles.livePill} onPress={() => handleTabPress('rooms')}>
-                <View style={styles.livePillDot} />
-                <Text style={styles.livePillText}>Live</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <TouchableOpacity
-            onPress={() => router.push(`/community/members/${id}` as any)}
-            style={styles.membersRow}
-          >
-            <Text style={styles.membersText}>{community.member_count} members</Text>
-            <View style={[styles.privacyPill, community.is_private && styles.privacyPillPrivate]}>
-              <Text style={styles.privacyPillText}>{community.is_private ? '🔒 Private' : '🌐 Public'}</Text>
-            </View>
-            {community.description ? (
-              <Text style={styles.communityDescInline} numberOfLines={1}> · {community.description}</Text>
-            ) : null}
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.joinBtnCompact, isJoined && styles.joinBtnJoined]}
-          onPress={handleJoinLeave}
-        >
-          <Text style={[styles.joinBtnText, isJoined && styles.joinBtnTextJoined]}>
-            {isJoined ? 'Joined' : 'Join'}
-          </Text>
-        </TouchableOpacity>
+  /**
+   * Posts are already the official account's wall. Join is for chat, not for
+   * unlocking a second hidden feed.
+   */
+  const joinNotice = (
+    <View style={styles.joinNotice}>
+      <Text style={styles.joinNoticeEmoji}>💬</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.joinNoticeTitle}>These are their posts</Text>
+        <Text style={styles.joinNoticeText}>
+          Follow for the feed. Join to get into the community chat.
+        </Text>
       </View>
-
-      {/* Tab bar */}
-      <View style={styles.subTabRow}>
-        {TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.subTab, subTab === tab && styles.subTabActive]}
-            onPress={() => handleTabPress(tab)}
-          >
-            <Text style={[styles.subTabText, subTab === tab && styles.subTabTextActive]}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Horizontal pager */}
-      <ScrollView
-        ref={pagerRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        style={{ flex: 1 }}
-        onMomentumScrollEnd={(e) => {
-          const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
-          setSubTab(TABS[index]);
-        }}
+      <TouchableOpacity
+        style={styles.joinNoticeBtn}
+        onPress={handleJoinLeave}
+        accessibilityRole="button"
+        accessibilityLabel={`Join ${community.name}`}
       >
-        {/* Page 0 — Posts (shared FeedCard pipeline — identical to Connect feed) */}
-        <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 80 }}>
-          {posts.length === 0 ? (
-            <EmptyState emoji="📝" title="No posts yet" body="Be the first to post!" />
+        <Text style={styles.joinNoticeBtnText}>Join</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const populated: PopulatedTabs = {
+    posts: isJoined || posts.length > 0,
+    shop: false,
+    events: events.length > 0,
+    rooms: rooms.length > 0,
+    games: communityGames.length > 0,
+    about: true,
+    saved: false,
+  };
+
+  const renderTab = (tab: ProfileTab) => {
+    if (tab === 'posts') {
+      return (
+        <View>
+          {isJoined ? null : joinNotice}
+          {hasVideo ? (
+            <TouchableOpacity
+              style={styles.reelsEntry}
+              onPress={() => setReelsOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Watch ${community.name} reels`}
+              testID="community-reels-entry"
+            >
+              <Text style={styles.reelsEntryText}>Watch reels</Text>
+            </TouchableOpacity>
+          ) : null}
+          {postsLoading ? (
+            <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
+          ) : postsError ? (
+            <View style={styles.emptyCenter}>
+              <Text style={styles.emptyIcon}>📡</Text>
+              <Text style={styles.emptyTitle}>Could not load posts</Text>
+              <TouchableOpacity
+                onPress={() => void loadPosts()}
+                accessibilityRole="button"
+                accessibilityLabel="Try loading posts again"
+              >
+                <Text style={styles.retryLink}>Try again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : posts.length === 0 ? (
+            <EmptyState
+              emoji="📝"
+              title="No posts yet"
+              body={isJoined
+                ? `${community.name} has not posted yet.`
+                : `${community.name} has not posted yet. Join to get into the chat.`}
+            />
           ) : (
             posts.map((post) => (
               <FeedCard
@@ -507,88 +548,99 @@ export default function CommunityDetailScreen() {
               />
             ))
           )}
-        </ScrollView>
+        </View>
+      );
+    }
 
-        {/* Page 1 — Rooms */}
-        <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ padding: 12, paddingBottom: 80 }}>
-          {loadingRooms ? (
-            <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
-          ) : rooms.length === 0 ? (
-            <View style={styles.emptyCenter}>
-              <Text style={styles.emptyIcon}>📡</Text>
-              <Text style={styles.emptyTitle}>No rooms open right now</Text>
-              <Text style={styles.emptySub}>Check back later for live rooms</Text>
-            </View>
-          ) : (
-            rooms.map((room) => (
-              <CommunityRoomCard
-                key={room.id}
-                id={room.id}
-                name={room.name}
-                description={room.description}
-                room_type={room.room_type}
-                status={room.status}
-                scheduled_at={room.scheduled_at}
-                banner_url={(room as { banner_url?: string | null }).banner_url ?? null}
-                community_name={null}
-                creator_display_name={room.creator_display_name}
-                participant_count={room.participant_count}
-                max_participants={room.max_participants}
-                hideCommunityTag={true}
-                onPress={() => router.push(`/community-room-session?room_id=${room.id}` as any)}
-              />
-            ))
-          )}
-        </ScrollView>
+    if (tab === 'rooms') {
+      if (loadingRooms) return <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />;
+      if (rooms.length === 0) {
+        return (
+          <View style={styles.emptyCenter}>
+            <Text style={styles.emptyIcon}>📡</Text>
+            <Text style={styles.emptyTitle}>No rooms open right now</Text>
+            <Text style={styles.emptySub}>Check back later for live rooms</Text>
+          </View>
+        );
+      }
+      return (
+        <View style={{ padding: 12, paddingBottom: 80 }}>
+          {rooms.map((room) => (
+            <CommunityRoomCard
+              key={room.id}
+              id={room.id}
+              name={room.name}
+              description={room.description}
+              room_type={room.room_type}
+              status={room.status}
+              scheduled_at={room.scheduled_at}
+              banner_url={(room as { banner_url?: string | null }).banner_url ?? null}
+              community_name={null}
+              creator_display_name={room.creator_display_name}
+              participant_count={room.participant_count}
+              max_participants={room.max_participants}
+              hideCommunityTag={true}
+              onPress={() => router.push(`/community-room-session?room_id=${room.id}` as any)}
+            />
+          ))}
+        </View>
+      );
+    }
 
-        {/* Page 2 — Games (real data from community_games + games tables) */}
-        <ScrollView style={{ width: screenWidth }} contentContainerStyle={styles.gamesContainer}>
-          {loadingGames ? (
-            <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
-          ) : communityGames.length === 0 ? (
-            <View style={styles.emptyCenter}>
-              <Text style={styles.emptyIcon}>🎮</Text>
-              <Text style={styles.emptyTitle}>No games yet</Text>
-              <Text style={styles.emptySub}>Community admins can enable games here.</Text>
-            </View>
-          ) : (
-            communityGames.map((game) => {
-              const canPlay = game.url !== null || game.name === 'Speed Dating';
-              return (
-                <TouchableOpacity
-                  key={game.id}
-                  style={styles.gameCard}
-                  onPress={() => {
-                    if (game.name === 'Speed Dating') router.push('/speed-dating' as any);
-                    else if (game.url) router.push(game.url as any);
-                  }}
-                  activeOpacity={canPlay ? 0.8 : 1}
-                >
-                  <Text style={styles.gameEmoji}>
-                    {GAME_CATEGORY_EMOJI[game.category] ?? '🎮'}
+    if (tab === 'games') {
+      if (loadingGames) return <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />;
+      if (communityGames.length === 0) {
+        return (
+          <View style={styles.emptyCenter}>
+            <Text style={styles.emptyIcon}>🎮</Text>
+            <Text style={styles.emptyTitle}>No games yet</Text>
+            <Text style={styles.emptySub}>Community admins can enable games here.</Text>
+          </View>
+        );
+      }
+      return (
+        <View style={styles.gamesContainer}>
+          {communityGames.map((game) => {
+            const isSpeedDating = game.name === 'Speed Dating';
+            const canPlay = isSpeedDating || isPlayableGameUrl(game.url);
+            return (
+              <TouchableOpacity
+                key={game.id}
+                style={styles.gameCard}
+                onPress={() => {
+                  if (isSpeedDating) { router.push('/speed-dating' as any); return; }
+                  if (canPlay) router.push(`/(tabs)/discover/games/${game.id}` as never);
+                }}
+                disabled={!canPlay}
+                activeOpacity={canPlay ? 0.8 : 1}
+              >
+                <Text style={styles.gameEmoji}>
+                  {GAME_CATEGORY_EMOJI[game.category] ?? '🎮'}
+                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.gameTitle}>{game.name}</Text>
+                  <Text style={styles.gameDesc}>{game.short_description}</Text>
+                </View>
+                {game.publisher_type === 'roxy' && (
+                  <Text style={{ fontSize: 10, color: colors.roxy, fontWeight: '700', marginRight: 6 }}>
+                    Roxy Original
                   </Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.gameTitle}>{game.name}</Text>
-                    <Text style={styles.gameDesc}>{game.short_description}</Text>
+                )}
+                {canPlay && (
+                  <View style={styles.playBtn}>
+                    <Text style={styles.playBtnText}>Play</Text>
                   </View>
-                  {game.publisher_type === 'roxy' && (
-                    <Text style={{ fontSize: 10, color: colors.roxy, fontWeight: '700', marginRight: 6 }}>
-                      Roxy Original
-                    </Text>
-                  )}
-                  {canPlay && (
-                    <View style={styles.playBtn}>
-                      <Text style={styles.playBtnText}>Play</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })
-          )}
-        </ScrollView>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      );
+    }
 
-        {/* Page 3 — Events */}
-        <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}>
+    if (tab === 'events') {
+      return (
+        <View style={{ paddingTop: 8, paddingBottom: 24 }}>
           <View style={styles.viewToggleRow}>
             {(['list', 'calendar'] as const).map((v) => (
               <TouchableOpacity
@@ -597,7 +649,7 @@ export default function CommunityDetailScreen() {
                 onPress={() => setEventsView(v)}
                 accessibilityLabel={v === 'list' ? 'List view' : 'Calendar view'}
               >
-                <Ionicons name={v === 'list' ? 'list' : 'calendar'} size={16} color={eventsView === v ? '#fff' : colors.textMuted} />
+                <Ionicons name={v === 'list' ? 'list' : 'calendar'} size={16} color={eventsView === v ? inkOn(colors.roxy) : colors.textMuted} />
               </TouchableOpacity>
             ))}
           </View>
@@ -616,7 +668,6 @@ export default function CommunityDetailScreen() {
               const going = rsvpIds.has(event.id);
               return (
                 <View key={event.id} style={styles.eventCard}>
-                  {/* Tappable body → event detail; RSVP stays a separate target */}
                   <TouchableOpacity
                     style={styles.eventCardBody}
                     onPress={() => router.push(`/event/${event.id}` as any)}
@@ -629,7 +680,12 @@ export default function CommunityDetailScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
-                      {event.location && <Text style={styles.eventLocation} numberOfLines={1}>📍 {event.location}</Text>}
+                      {event.location && <Text style={styles.eventLocation} numberOfLines={1}>{event.location}</Text>}
+                      {event.event_type ? (
+                        <View style={{ marginTop: 4 }}>
+                          <EventModeBadge mode={event.event_type} />
+                        </View>
+                      ) : null}
                     </View>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -644,19 +700,103 @@ export default function CommunityDetailScreen() {
               );
             })
           )}
-        </ScrollView>
-      </ScrollView>
+        </View>
+      );
+    }
 
-      {/* FAB — create post (posts tab only) */}
-      {subTab === 'posts' && isJoined && (
+    return (
+      <View style={styles.aboutWrap}>
+        {community.description ? (
+          <Text style={styles.aboutBody}>{community.description}</Text>
+        ) : null}
+        <View style={styles.aboutCard}>
+          <Text style={styles.aboutLabel}>COMMUNITY</Text>
+          <Text style={styles.aboutBody}>
+            {community.is_private ? 'Private' : 'Public'} · {community.member_count} members
+          </Text>
+          <Text style={styles.aboutBody}>
+            Created {format(new Date(community.created_at), 'MMMM yyyy')}
+          </Text>
+          <TouchableOpacity
+            style={styles.membersLink}
+            onPress={() => router.push(`/community/members/${id}` as any)}
+            accessibilityRole="button"
+            accessibilityLabel={`See members of ${community.name}`}
+          >
+            <Text style={styles.membersLinkText}>See members</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  if (reelsOpen) {
+    return (
+      <SafeAreaView style={styles.reelsRoot} edges={['top']}>
+        <View style={styles.reelsBar}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => setReelsOpen(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close reels"
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.reelsTitle} numberOfLines={1}>{community.name} reels</Text>
+        </View>
+        <ReelsFeed
+          scope={isJoined ? 'community' : 'community-announcements'}
+          communityIds={[id]}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']} testID="community-shell">
+      <ProfileShell
+        variant="community"
+        name={community.name}
+        subtitle={`${community.member_count} members · ${community.is_private ? 'Private' : 'Public'}`}
+        bio={community.description}
+        coverUrl={community.cover_image_url}
+        avatarUrl={community.cover_image_url}
+        live={live}
+        stats={[
+          { value: String(community.member_count), label: 'Members' },
+          { value: String(posts.length), label: 'Posts' },
+          { value: live ? 'LIVE' : String(rooms.length), label: live ? 'On air' : 'Rooms' },
+        ]}
+        onBack={handleBack}
+        primaryAction={
+          isJoined
+            ? { label: 'Joined' }
+            : { label: 'Join', onPress: handleJoinLeave, accessibilityLabel: `Join ${community.name}` }
+        }
+        secondaryAction={
+          isJoined
+            ? {
+                label: '# Channels',
+                onPress: () => router.push(`/community/channels/${id}` as any),
+                accessibilityLabel: `Open ${community.name} channels`,
+                testID: 'community-channels-link',
+              }
+            : undefined
+        }
+        populated={populated}
+        renderTab={renderTab}
+        testID="profile-shell"
+      />
+      {isJoined ? (
         <TouchableOpacity
           style={styles.fab}
           onPress={() => router.push({ pathname: '/community/create-post', params: { communityId: id } } as any)}
+          accessibilityRole="button"
+          accessibilityLabel="Create a post"
         >
-          <Ionicons name="add" size={28} color="#fff" />
+          <Ionicons name="add" size={28} color={inkOn(colors.primary)} />
         </TouchableOpacity>
-      )}
-
+      ) : null}
     </SafeAreaView>
   );
 }

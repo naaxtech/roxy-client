@@ -1,5 +1,6 @@
 import analytics from '@react-native-firebase/analytics';
 import { posthog } from './posthog';
+import { hashUserId } from './errorLogger';
 
 function safe(fn: () => Promise<void>): void {
   fn().catch(() => {});
@@ -16,14 +17,95 @@ export const Analytics = {
   },
 
   setUser: (userId: string | null) => {
-    safe(() => analytics().setUserId(userId));
+    safe(() => analytics().setUserId(userId ? hashUserId(userId) : null));
     // PostHog identify handled via posthog.identify() in _layout.tsx
+  },
+
+  // ── The WLW Archive ───────────────────────────────────────────────────────
+  //
+  // An archive event is about a WORK, not about a woman. Entries are identified
+  // by slug — a stable public identifier — never by title, because a title is
+  // content and content is how free text leaks into an event stream. Search
+  // records how many results came back and never what she typed: a query can
+  // hold a person's name, a place, or something she would not want attached to
+  // her session.
+  //
+  // `archive_vote_cast` carries `membership_status` because the funnel this
+  // feature is justified by runs across it: pending → first vote → approved →
+  // first review. Without the status on the vote there is no way to tell
+  // whether letting pending members in converts them.
+  archiveViewed: () => {
+    safe(() => analytics().logEvent('archive_viewed'));
+    ph('archive_viewed');
+  },
+  archiveSearch: (resultCount: number) => {
+    safe(() => analytics().logEvent('archive_search', { result_count: resultCount }));
+    ph('archive_search', { result_count: resultCount });
+  },
+  archiveEntryViewed: (entrySlug: string) => {
+    safe(() => analytics().logEvent('archive_entry_viewed', { entry: entrySlug }));
+    ph('archive_entry_viewed', { entry: entrySlug });
+  },
+  /**
+   * No entry slug, and no vote value.
+   *
+   * `setUserId(hashUserId(id))` gives both vendors a STABLE per-woman identity,
+   * and `archive_votes` carries `SELECT ... USING (profile_id = auth.uid())` —
+   * Roxy's own database will not show an individual vote to anyone, not even a
+   * moderator, and the entry screen promises her "Your score is public as a
+   * number only." Attaching the slug here built a per-person record, held by
+   * two US vendors, of which queer works she endorsed: finer-grained than
+   * anything Roxy itself will disclose, on the app where that inference is the
+   * sensitive one.
+   *
+   * Nothing is lost. Per-entry popularity is already aggregated in Postgres as
+   * `archive_entries.vote_count` / `up_count`.
+   *
+   * `membership_status` STAYS: pending → first vote → approved → first review
+   * is the funnel this whole surface exists to prove, and it is about a
+   * membership state, not about a title.
+   */
+  archiveVoteCast: (_entrySlug: string, _value: boolean, membershipStatus: string) => {
+    const payload = { membership_status: membershipStatus };
+    safe(() => analytics().logEvent('archive_vote_cast', payload));
+    ph('archive_vote_cast', payload);
+  },
+  archiveReviewPublished: (entrySlug: string) => {
+    safe(() => analytics().logEvent('archive_review_published', { entry: entrySlug }));
+    ph('archive_review_published', { entry: entrySlug });
+  },
+  archiveEntrySubmitted: () => {
+    // No slug: the entry does not have one until a mod approves it, and the
+    // title she typed is exactly the free text this module keeps out.
+    safe(() => analytics().logEvent('archive_entry_submitted'));
+    ph('archive_entry_submitted');
+  },
+  archiveEditSubmitted: (entrySlug: string) => {
+    safe(() => analytics().logEvent('archive_edit_submitted', { entry: entrySlug }));
+    ph('archive_edit_submitted', { entry: entrySlug });
+  },
+  // No slug: `archive_note_agreements` is private to her by RLS, and agreeing
+  // that a specific work carries a specific content warning is the one of these
+  // three that can imply why she knows.
+  archiveNoteAgreed: (_entrySlug: string) => {
+    safe(() => analytics().logEvent('archive_note_agreed'));
+    ph('archive_note_agreed');
+  },
+  // No slug: `archive_watchlist` is private to her by RLS too.
+  archiveWatchlistAdded: (_entrySlug: string) => {
+    safe(() => analytics().logEvent('archive_watchlist_added'));
+    ph('archive_watchlist_added');
+  },
+  membershipApproved: () => {
+    safe(() => analytics().logEvent('membership_approved'));
+    ph('membership_approved');
   },
 
   // Friends
   friendRequestSent: (targetUserId: string) => {
-    safe(() => analytics().logEvent('friend_request_sent', { target_user_id: targetUserId }));
-    ph('friend_request_sent', { target_user_id: targetUserId });
+    const hashed = hashUserId(targetUserId);
+    safe(() => analytics().logEvent('friend_request_sent', { target_user_id: hashed }));
+    ph('friend_request_sent', { target_user_id: hashed });
   },
   friendRequestAccepted: (friendshipId: string) => {
     safe(() => analytics().logEvent('friend_request_accepted', { friendship_id: friendshipId }));

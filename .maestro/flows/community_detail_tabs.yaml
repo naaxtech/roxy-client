@@ -1,11 +1,27 @@
-# Maestro flow: Community detail screen — tab pager and RSVP
-# Tests: horizontal tab pager (Posts/Events/Games), RSVP button.
+# Maestro flow: Community detail screen — the horizontal sub-tab pager.
+# Tests: Posts / Reels / Rooms / Games / Events pager.
 # Run: maestro test .maestro/flows/community_detail_tabs.yaml
-
+#
+# The sub-tabs are `TABS` in app/(tabs)/discover/community/[id].tsx and are
+# rendered in that order. Community detail is a ROOT route (`/community/<id>`)
+# in 3.0 — opening it never switches tabs.
 appId: com.roxy.app
 ---
+- runFlow: ../subflows/dismiss_first_run.yaml
+
 - tapOn:
-    text: "Discover"
+    id: "nav-slot-discover"
+
+- tapOn:
+    id: "discover-chips-comms"
+
+# Through "See all", not the rail. The rail is a HORIZONTAL ScrollView capped at
+# twelve cards, so `scrollUntilVisible … direction: DOWN` cannot reach a
+# community that is off to the right — it only ever passed when the seed order
+# happened to put this one in the first two or three visible cards. The browser
+# behind this link is a vertical list of all of them.
+- tapOn:
+    id: "rail-communities-link"
 
 - scrollUntilVisible:
     element:
@@ -16,32 +32,28 @@ appId: com.roxy.app
 - tapOn:
     text: "Queer Gamers"
 
-# Verify Posts tab is default active
+# Posts is the default page
 - assertVisible:
     text: "Posts"
+    timeout: 5000
 
-# Swipe to Events tab
 - tapOn:
     text: "Events"
-
 - waitForAnimationToEnd:
     timeout: 2000
-
 - assertVisible:
     text: "Events"
 
-# Swipe to Games tab
 - tapOn:
     text: "Games"
-
 - waitForAnimationToEnd:
     timeout: 2000
-
 - assertVisible:
     text: "Speed Dating"
 
-# Tap back to Posts
 - tapOn:
     text: "Posts"
+- waitForAnimationToEnd:
+    timeout: 2000
 
 - back

@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Animated, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { a11yState } from '../../lib/a11yState';
 
 interface PostActionRowProps {
   likeCount: number;
@@ -71,20 +72,19 @@ export function PostActionRow({
 
   return (
     <View style={s.row}>
-      {/* Like — plain tap, the Instagram/TikTok model. Roxy's like is the
-          flower, rendered as a vector (no emoji chrome). */}
+      {/* Like — plain tap, the Instagram/TikTok model. Heart, not a flower. */}
       <TouchableOpacity
         testID="action-like"
         style={[s.action, isLiked && s.actionActive]}
         onPress={handleLikePress}
         accessibilityRole="button"
         accessibilityLabel={isLiked ? 'Unlike post' : 'Like post'}
-        accessibilityState={{ selected: isLiked }}
+        {...a11yState({ selected: isLiked })}
         hitSlop={6}
       >
         <Animated.View style={{ transform: [{ scale: likeAnim.scale }] }}>
           <Ionicons
-            name={isLiked ? 'flower' : 'flower-outline'}
+            name={isLiked ? 'heart' : 'heart-outline'}
             size={20}
             color={isLiked ? colors.roxy : colors.textMuted}
           />

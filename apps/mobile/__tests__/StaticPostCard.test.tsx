@@ -12,6 +12,7 @@ function makePost(overrides: Partial<Post> = {}): Post {
     is_pinned: false, is_flagged: false, reaction_counts: {},
     comment_count: 2, like_count: 5, save_count: 1, feed_score: 10,
     blurhash: null, deleted_at: null,
+    posted_as_community: false, post_tags: [],
     video_url: null, video_thumbnail_url: null, video_duration_secs: null,
     video_aspect_ratio: null, link_type: null, link_entity_id: null,
     link_community_id: null, created_at: '', updated_at: '',

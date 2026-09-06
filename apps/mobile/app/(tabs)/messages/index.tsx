@@ -1,33 +1,39 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, TextInput,
+  View, Text, StyleSheet, TouchableOpacity, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { format, isToday, isYesterday } from 'date-fns';
-import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
 import { freshChannel } from '../../../lib/realtimeChannel';
 import { useAuthStore } from '../../../store/authStore';
 import { useConnectStore } from '../../../store/connectStore';
 import { useFriendStore, isOnline } from '../../../store/friendStore';
 import { Conversation } from '../../../types';
-import { avatarGradient } from '../../../lib/avatars';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { ScreenHeader } from '../../../components/ui/ScreenHeader';
-import { EmptyState } from '../../../components/ui/EmptyState';
+import { PinnedPersonaRow } from '../../../components/messages/PinnedPersonaRow';
+import { RequestsSheet } from '../../../components/messages/RequestsSheet';
+import { OfficialChatInbox } from '../../../components/messages/OfficialChatInbox';
+import { MessagesInbox, type InboxDm } from '../../../components/messages/MessagesInbox';
+import { useAccess } from '../../../hooks/useAccess';
+import { useCommunityStore } from '../../../store/communityStore';
+import { useProfileStore } from '../../../store/profileStore';
+import { readDmPermission, dmPermissionLabel } from '../../../lib/dmPermission';
+import {
+  fetchInboxCommunityMeta,
+  filterInboxByQuery,
+  inboxCommunityFromJoined,
+  type InboxCommunityMeta,
+} from '../../../lib/inboxCommunities';
+import { TYPE } from '../../../lib/typography';
+import { RADII, inkOn } from '../../../lib/theme';
+import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 
 type PartnerProfile = { id: string; display_name: string; username: string };
-type ChatItem = {
-  id: string;
-  participant_ids: string[];
-  last_message_at: string | null;
-  partner: PartnerProfile | null;
-  lastMessagePreview: string;
-  unreadCount: number;
-};
+type ChatItem = InboxDm;
 
 function formatTime(ts: string | null): string {
   if (!ts) return '';
@@ -37,15 +43,23 @@ function formatTime(ts: string | null): string {
   return format(d, 'dd MMM');
 }
 
-export default function MessagesScreen() {
+function MessagesScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
   const { setConversations, unreadCounts, clearUnread } = useConnectStore();
   const { friends } = useFriendStore();
+  const pendingCount = useFriendStore((st) => st.pendingCount);
+  const fetchAll = useFriendStore((st) => st.fetchAll);
+  const joinedCommunities = useCommunityStore((st) => st.joinedCommunities);
+  const hydrateCommunities = useCommunityStore((st) => st.hydrate);
+  const profile = useProfileStore((st) => st.profile);
+  const dmPermission = readDmPermission(profile as { dm_permission?: unknown } | null);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [requestsOpen, setRequestsOpen] = useState(false);
+  const [communityMeta, setCommunityMeta] = useState<Record<string, InboxCommunityMeta>>({});
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -137,6 +151,27 @@ export default function MessagesScreen() {
 
   useEffect(() => { load(); }, [load]);
 
+  // The requests entry and its badge both read `pendingCount`, so the inbox has
+  // to be the thing that keeps it fresh now that Grow's People screen is gone.
+  useEffect(() => {
+    if (!user?.id) return;
+    void fetchAll(user.id);
+    void hydrateCommunities(user.id);
+  }, [user?.id, fetchAll, hydrateCommunities]);
+
+  useEffect(() => {
+    const ids = joinedCommunities.map((c) => c.id);
+    if (ids.length === 0) {
+      setCommunityMeta({});
+      return;
+    }
+    let cancelled = false;
+    void fetchInboxCommunityMeta(ids)
+      .then((meta) => { if (!cancelled) setCommunityMeta(meta); })
+      .catch(() => { if (!cancelled) setCommunityMeta({}); });
+    return () => { cancelled = true; };
+  }, [joinedCommunities]);
+
   useEffect(() => {
     if (!user || chats.length === 0) return;
     const convIds = chats.map((c) => c.id);
@@ -162,11 +197,21 @@ export default function MessagesScreen() {
     router.push(`/chat/${item.id}` as any);
   };
 
-  const liveUnread = (id: string) => unreadCounts[id] ?? 0;
+  const inboxCommunities = useMemo(
+    () => joinedCommunities.map((c) => inboxCommunityFromJoined(c, communityMeta[c.id])),
+    [joinedCommunities, communityMeta],
+  );
 
-  const filtered = search
-    ? chats.filter((c) => (c.partner?.display_name ?? '').toLowerCase().includes(search.toLowerCase()))
-    : chats;
+  const filteredChats = filterInboxByQuery(
+    chats,
+    search,
+    (c) => `${c.partner?.display_name ?? ''} ${c.lastMessagePreview}`,
+  );
+  const filteredCommunities = filterInboxByQuery(
+    inboxCommunities,
+    search,
+    (c) => `${c.name} ${c.preview}`,
+  );
 
   const isPartnerOnline = (item: ChatItem) => {
     const partnerId = item.participant_ids.find((id) => id !== user?.id);
@@ -177,102 +222,77 @@ export default function MessagesScreen() {
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     iconBtn: {
-      width: 38, height: 38, borderRadius: 19,
-      backgroundColor: colors.surface,
+      width: 34, height: 34, borderRadius: RADII.pill,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
       alignItems: 'center', justifyContent: 'center',
     },
+    requestsChip: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 12,
+      borderRadius: RADII.pill, backgroundColor: colors.surface,
+      borderWidth: 1, borderColor: colors.line,
+    },
+    requestsChipText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '700' },
+    requestsBadge: {
+      backgroundColor: colors.primary, borderRadius: RADII.pill,
+      minWidth: 18, height: 18, paddingHorizontal: 6,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    requestsBadgeText: { ...TYPE.micro, color: inkOn(colors.primary), fontWeight: '800' },
     search: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
+      flexDirection: 'row', alignItems: 'center', gap: 9,
       backgroundColor: colors.surface, borderRadius: 14,
-      marginHorizontal: 18, marginBottom: 12,
-      paddingHorizontal: 14, paddingVertical: 10,
+      marginHorizontal: 14, marginTop: 10, marginBottom: 12,
+      paddingHorizontal: 13, paddingVertical: 9,
+      borderWidth: 1, borderColor: colors.line,
     },
-    searchText: { color: colors.textMuted, fontSize: 14, flex: 1 },
-    searchInput: { color: colors.textPrimary, fontSize: 14, flex: 1 },
-
-    // Roxy DM row
-    roxyRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 12,
-      paddingHorizontal: 18, paddingVertical: 13,
-      borderBottomWidth: 1, borderBottomColor: colors.surfaceLight,
+    searchInput: { ...TYPE.body, color: colors.textPrimary, flex: 1 },
+    personas: { paddingHorizontal: 14, gap: 8, paddingBottom: 6 },
+    footer: {
+      paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8,
     },
-    roxyAva: {
-      width: 48, height: 48, borderRadius: 24,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    roxyBody: { flex: 1, gap: 2 },
-    roxyTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    roxyName: { color: colors.textPrimary, fontWeight: '700', fontSize: 15 },
-    roxyTag: {
-      backgroundColor: colors.roxy + '20', borderRadius: 6,
-      paddingHorizontal: 6, paddingVertical: 1,
-    },
-    roxyTagText: { color: colors.roxy, fontSize: 10, fontWeight: '700' },
-    roxySub: { color: colors.textMuted, fontSize: 13 },
-
-    // Divider
-    divider: {
-      paddingHorizontal: 18, paddingVertical: 8,
-      color: colors.textMuted, fontSize: 11, fontWeight: '700',
-      letterSpacing: 0.8, textTransform: 'uppercase',
-    },
-
-    // DM rows
-    row: {
-      flexDirection: 'row', alignItems: 'center', gap: 12,
-      paddingHorizontal: 18, paddingVertical: 13,
-      borderBottomWidth: 1, borderBottomColor: colors.surfaceLight,
-    },
-    avaWrap: { position: 'relative' },
-    ava: {
-      width: 48, height: 48, borderRadius: 24,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    avaText: { color: '#fff', fontWeight: '700', fontSize: 18 },
-    onlineDot: {
-      position: 'absolute', bottom: 1, right: 1,
-      width: 12, height: 12, borderRadius: 6,
-      backgroundColor: '#22C55E',
-      borderWidth: 2, borderColor: colors.background,
-    },
-    content: { flex: 1, gap: 3 },
-    top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    name: { color: colors.textSecondary, fontWeight: '500', fontSize: 15, flex: 1 },
-    nameUnread: { color: colors.textPrimary, fontWeight: '700' },
-    time: { color: colors.textMuted, fontSize: 12, flexShrink: 0, marginLeft: 8 },
-    timeUnread: { color: colors.primary, fontWeight: '600' },
-    bottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    preview: { color: colors.textMuted, fontSize: 13, flex: 1 },
-    previewUnread: { color: colors.textSecondary, fontWeight: '500' },
-    badge: {
-      backgroundColor: colors.primary, borderRadius: 10,
-      minWidth: 20, height: 20, paddingHorizontal: 5,
-      alignItems: 'center', justifyContent: 'center', marginLeft: 8,
-    },
-    badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-
+    footerText: { ...TYPE.caption, color: colors.textMuted, fontWeight: '600' },
+    footerAccent: { color: colors.textSecondary, fontWeight: '700' },
   });
 
   return (
     <SafeAreaView style={s.container}>
-      {/* Header */}
       <ScreenHeader
         title="Messages"
-        eyebrow="Your people"
         actions={
-        <TouchableOpacity
-          style={s.iconBtn}
-          onPress={() => router.push('/(tabs)/messages/new' as any)}
-          accessibilityLabel="New message"
-        >
-          <Ionicons name="create-outline" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={s.requestsChip}
+              onPress={() => setRequestsOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                pendingCount > 0
+                  ? `${pendingCount} ${pendingCount === 1 ? 'request' : 'requests'} waiting`
+                  : 'Requests'
+              }
+              activeOpacity={0.85}
+              testID="messages-requests-entry"
+            >
+              <Text style={s.requestsChipText}>Requests</Text>
+              {pendingCount > 0 ? (
+                <View style={s.requestsBadge}>
+                  <Text style={s.requestsBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.iconBtn}
+              onPress={() => router.push('/(tabs)/messages/new' as any)}
+              accessibilityLabel="New message"
+            >
+              <Ionicons name="create-outline" size={17} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </>
         }
       />
 
-      {/* Search */}
       <View style={s.search}>
-        <Ionicons name="search-outline" size={16} color={colors.textMuted} />
+        <Ionicons name="search-outline" size={15} color={colors.textMuted} />
         <TextInput
           style={s.searchInput}
           placeholder="Search messages"
@@ -282,80 +302,45 @@ export default function MessagesScreen() {
         />
       </View>
 
-      {/* Roxy DM row — always pinned at top */}
-      <TouchableOpacity
-        style={s.roxyRow}
-        onPress={() => router.push('/(tabs)/grow/roxy-chat' as any)}
-        activeOpacity={0.8}
-      >
-        <LinearGradient colors={['#FF6A2E', '#E81C8E']} style={s.roxyAva}>
-          <Ionicons name="sparkles" size={22} color="#fff" />
-        </LinearGradient>
-        <View style={s.roxyBody}>
-          <View style={s.roxyTop}>
-            <Text style={s.roxyName}>Roxy</Text>
-            <View style={s.roxyTag}><Text style={s.roxyTagText}>Wingwoman</Text></View>
-          </View>
-          <Text style={s.roxySub} numberOfLines={1}>Tap me anytime — I'll help you break the ice 💜</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-      </TouchableOpacity>
+      <View style={s.personas}>
+        <PinnedPersonaRow persona="roxy" onPress={() => router.push('/roxy-chat' as never)} />
+        <PinnedPersonaRow persona="sister" onPress={() => router.push('/sister-button' as never)} />
+      </View>
 
-      <Text style={s.divider}>Direct messages</Text>
+      <MessagesInbox
+        chats={filteredChats}
+        communities={filteredCommunities}
+        unreadCounts={unreadCounts}
+        onOpenDm={handleOpen}
+        onOpenCommunity={(c) => router.push(`/community/channels/${c.id}` as never)}
+        onStartChat={() => router.push('/(tabs)/messages/new' as any)}
+        formatTime={formatTime}
+        isPartnerOnline={isPartnerOnline}
+        loading={loading}
+        onRefresh={load}
+        footer={
+          <TouchableOpacity
+            style={s.footer}
+            onPress={() => router.push('/(tabs)/you/settings' as never)}
+            accessibilityRole="button"
+            accessibilityLabel={`Who can message you: ${dmPermissionLabel(dmPermission)}. Change in Settings.`}
+          >
+            <Text style={s.footerText}>
+              Who can message you:{' '}
+              <Text style={s.footerAccent}>{dmPermissionLabel(dmPermission)}</Text>
+              {' · request-first inbox · change in Settings →'}
+            </Text>
+          </TouchableOpacity>
+        }
+      />
 
-      {loading ? (
-        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          onRefresh={load}
-          refreshing={loading}
-          contentContainerStyle={{ flexGrow: 1 }}
-          ListEmptyComponent={
-            <EmptyState
-              emoji="💬"
-              title="No messages yet"
-              body="Your people are in your communities — say hi in a feed or add friends from a member list 💜"
-              ctaLabel="Start a chat"
-              onCtaPress={() => router.push('/(tabs)/messages/new' as any)}
-            />
-          }
-          renderItem={({ item }) => {
-            const unread = liveUnread(item.id);
-            const hasUnread = unread > 0;
-            const online = isPartnerOnline(item);
-            const name = item.partner?.display_name ?? 'Unknown';
-            const grad = avatarGradient(name);
-            return (
-              <TouchableOpacity style={s.row} onPress={() => handleOpen(item)} activeOpacity={0.7}>
-                <View style={s.avaWrap}>
-                  <LinearGradient colors={grad} style={s.ava}>
-                    <Text style={s.avaText}>{name[0]?.toUpperCase() ?? '?'}</Text>
-                  </LinearGradient>
-                  {online && <View style={s.onlineDot} />}
-                </View>
-                <View style={s.content}>
-                  <View style={s.top}>
-                    <Text style={[s.name, hasUnread && s.nameUnread]} numberOfLines={1}>{name}</Text>
-                    <Text style={[s.time, hasUnread && s.timeUnread]}>{formatTime(item.last_message_at)}</Text>
-                  </View>
-                  <View style={s.bottom}>
-                    <Text style={[s.preview, hasUnread && s.previewUnread]} numberOfLines={1}>
-                      {item.lastMessagePreview}
-                    </Text>
-                    {hasUnread && (
-                      <View style={s.badge}>
-                        <Text style={s.badgeText}>{unread > 99 ? '99+' : unread}</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          }}
-        />
-      )}
+      <RequestsSheet visible={requestsOpen} onClose={() => setRequestsOpen(false)} />
     </SafeAreaView>
   );
+}
+
+export default function MessagesRoute() {
+  const { can } = useAccess();
+  if (!can('dms')) return <OfficialChatInbox />;
+  return <MessagesScreen />;
 }

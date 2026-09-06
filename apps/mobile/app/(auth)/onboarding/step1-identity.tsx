@@ -39,7 +39,7 @@ export default function Step1Identity() {
   const handleNext = async () => {
     if (!user) return;
     if (!usernameAvailable || !displayName || labels.length === 0) return;
-    logBreadcrumb('onboarding_step1_submit', { username: username.toLowerCase(), label_count: String(labels.length) });
+    logBreadcrumb('onboarding_step1_submit', { label_count: String(labels.length) });
     setLoading(true);
     const { error } = await supabase.from('profiles').upsert({
       id: user!.id,
@@ -68,6 +68,7 @@ export default function Step1Identity() {
     label: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', marginTop: 12 },
     input: { backgroundColor: colors.surface, borderRadius: 12, padding: 14, color: colors.textPrimary, fontSize: 16 },
     hint: { fontSize: 12, marginTop: 2 },
+    disclosure: { color: colors.textMuted, fontSize: 12, marginTop: 6, lineHeight: 17 },
     hintGood: { color: colors.success },
     hintBad: { color: colors.error },
     btn: { backgroundColor: colors.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 24 },
@@ -109,6 +110,11 @@ export default function Step1Identity() {
 
         <Text style={[styles.label, { marginTop: 16 }]}>Pronouns</Text>
         <ChipSelector options={PRONOUNS} selected={pronouns} onToggle={(v) => setPronouns((p) => p.includes(v) ? p.filter((x) => x !== v) : [...p, v])} />
+        <Text style={styles.disclosure}>
+          We use this to personalize your communities and matches. It's part of your public
+          profile, same as your name — you can change or clear it any time in Profile, or turn on
+          Ghost mode in Settings to hide your whole profile from discovery.
+        </Text>
 
         {(() => {
           const canProceed = usernameAvailable === true && displayName.trim().length > 0 && labels.length > 0;

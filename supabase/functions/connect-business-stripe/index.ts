@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   if (corsRes) return corsRes;
 
   console.log('[connect-business-stripe] stage: auth');
-  const auth = verifyJWT(req);
+  const auth = await verifyJWT(req);
   if (!auth) {
     console.error('[connect-business-stripe] auth failed — no valid JWT');
     return errorResponse('Unauthorized', 401);

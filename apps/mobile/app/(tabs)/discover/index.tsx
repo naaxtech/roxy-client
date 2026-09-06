@@ -1,531 +1,531 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Modal, Pressable, Animated,
-} from 'react-native';
-import { usePopIn } from '../../../components/ui/popIn';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Image as ExpoImage } from 'expo-image';
-import { supabase } from '../../../lib/supabase';
-import { avatarGradient } from '../../../lib/avatars';
+import { format } from 'date-fns';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import { useAuthStore } from '../../../store/authStore';
 import { useCommunityStore } from '../../../store/communityStore';
-import { useThemeColors } from '../../../hooks/useThemeColors';
-import { ScreenHeader } from '../../../components/ui/ScreenHeader';
-import { SectionHeader } from '../../../components/ui/SectionHeader';
-import { EmptyState } from '../../../components/ui/EmptyState';
+import { useBuildStore } from '../../../store/buildStore';
+import { TYPE, FONTS } from '../../../lib/typography';
+import { RADII, inkOn, type ThemeColors } from '../../../lib/theme';
+import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
+import { formatMoney } from '../../../lib/currency';
+import { isPlayableGameUrl } from '../../../lib/gameUrl';
+import { fetchUnreadNotificationCount } from '../../../lib/notifications';
+import { logError } from '../../../lib/errorLogger';
+import { Rail } from '../../../components/discover/Rail';
+import { ArchiveRail } from '../../../components/archive/ArchiveRail';
+import { fetchArchiveEntries, type ArchiveEntry } from '../../../lib/archive';
+import { archiveDetailPath } from '../../../lib/contentNavigation';
+import { FilterChips } from '../../../components/discover/FilterChips';
+import { PosterCard, RowCard, HeroCard } from '../../../components/discover/DiscoverCards';
+import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayCard';
+import { eventModeLabel } from '../../../components/events/EventModeBadge';
+import {
+  DISCOVER_CHIPS, EVENT_FILTERS, ECONOMY_FILTERS,
+  railVisible, eventMatchesFilter, economyKind, economyWlwOnly, economySavedOnly,
+  type DiscoverChip, type EventFilter, type EconomyFilter,
+} from '../../../components/discover/discoverFilters';
+import {
+  useLiveRooms, useEvents, useGames, useImpact, useSupport,
+} from '../../../components/discover/useDiscoverData';
+import { FeatureGate } from '../../../components/features/FeatureGate';
+import { officialFirst } from '../../../lib/officialGrant';
 
-const CATEGORY_EMOJI: Record<string, string> = {
-  dating: '⚡', icebreaker: '💞', party: '🃏', trivia: '🎯', other: '🎮',
-};
-
-const GRAD_COLORS = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
-const TILE_GRADS = [
-  ['#FF6A2E', '#E81C8E'],
-  ['#8B5CF6', '#E879A6'],
-  ['#FF2F71', '#8B5CF6'],
-  ['#F472B6', '#FF6A2E'],
-] as const;
-
-type Game = {
-  id: string; name: string; short_description: string;
-  category: string; publisher_type: 'roxy' | 'community';
-  url: string | null; thumbnail_url: string | null;
-};
-type CommunityGame = Game & {
-  community_name?: string;
-  /** Every community offering this game — one tile per game, tagged. */
-  offeredBy: { id: string; name: string }[];
-};
-type LiveRoom = {
-  id: string; name: string; participant_count: number;
-  community_name: string; status: string;
-  room_type: 'video' | 'audio'; banner_url: string | null;
-};
-
-function GameTile({
-  emoji, name, sub, grad, badge, onPress,
-}: {
-  emoji: string; name: string; sub: string;
-  grad: readonly [string, string]; badge?: string; onPress?: () => void;
-}) {
+/**
+ * Discover — search-first, then rails.
+ *
+ * This screen replaces three things at once: the old Play tab (games + rooms),
+ * the Build directory, and Connect's browse. The rails are the seam that makes
+ * that possible — each one is a category that used to be a tab, and the top chip
+ * row is the tab bar those tabs left behind.
+ *
+ * Every rail owns its own loading, empty and error state through `Rail`, and
+ * every rail loads independently — one slow edge function must not hold up six
+ * rails that already have their data. `discoverFilters.ts` owns which rails are
+ * on screen; this file only asks.
+ */
+function DiscoverScreen() {
   const colors = useThemeColors();
-  const s = StyleSheet.create({
-    tile: {
-      flex: 1, margin: 5, borderRadius: 18,
-      backgroundColor: colors.surface,
-      overflow: 'hidden',
-      shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
-    },
-    gradTop: { height: 72, alignItems: 'center', justifyContent: 'center' },
-    emoji: { fontSize: 28 },
-    body: { padding: 10, gap: 3 },
-    badge: {
-      position: 'absolute', top: 8, right: 8,
-      backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 8,
-      paddingHorizontal: 6, paddingVertical: 2,
-    },
-    badgeText: { fontSize: 10, fontWeight: '700', color: '#1A0A2E' },
-    name: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
-    sub: { color: colors.textMuted, fontSize: 11 },
-  });
+  const router = useRouter();
+  const s = styles(colors);
+
+  const user = useAuthStore((st) => st.user);
+  const allCommunities = useCommunityStore((st) => st.allCommunities);
+  const joinedIds = useCommunityStore((st) => st.joinedIds);
+  const officialCommunityIds = useCommunityStore((st) => st.officialCommunityIds);
+  const hydrate = useCommunityStore((st) => st.hydrate);
+
+  const businesses = useBuildStore((st) => st.businesses);
+  const bookmarkedIds = useBuildStore((st) => st.bookmarkedBusinessIds);
+  const loadBusinesses = useBuildStore((st) => st.loadBusinesses);
+  const loadBookmarks = useBuildStore((st) => st.loadBookmarks);
+
+  const [chip, setChip] = useState<DiscoverChip>('all');
+
+  // The rail's own slice of the Archive: the top few, plus the catalogue total
+  // so "Browse all N" promises the real number rather than the rail's length.
+  const [archiveEntries, setArchiveEntries] = useState<ArchiveEntry[]>([]);
+  const [archiveTotal, setArchiveTotal] = useState(0);
+  const [archiveStatus, setArchiveStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  const loadArchive = useCallback(async () => {
+    setArchiveStatus('loading');
+    try {
+      // Two queries rather than one: the rail shows the best few, and the
+      // count is of everything published. Deriving the total from the rail's
+      // own length would make the link under-promise by an order of magnitude.
+      const [top, all] = await Promise.all([
+        fetchArchiveEntries({ sort: 'top', limit: 12 }),
+        fetchArchiveEntries({ sort: 'voted', limit: 200 }),
+      ]);
+      setArchiveEntries(top);
+      setArchiveTotal(all.length);
+      setArchiveStatus('ready');
+    } catch {
+      // fetchArchiveEntries logs before throwing; logging again double-reports.
+      setArchiveStatus('error');
+    }
+  }, []);
+
+  useEffect(() => { void loadArchive(); }, [loadArchive]);
+  const [eventFilter, setEventFilter] = useState<EventFilter>('all');
+  const [economyFilter, setEconomyFilter] = useState<EconomyFilter>('all');
+  const [shopsStatus, setShopsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  const live = useLiveRooms();
+  const events = useEvents();
+  const games = useGames();
+  const impact = useImpact();
+  const support = useSupport();
+
+  useEffect(() => {
+    void hydrate(user?.id);
+    if (user?.id) void loadBookmarks(user.id);
+  }, [user?.id, hydrate, loadBookmarks]);
+
+  // The bell badge. `fetchUnreadNotificationCount` returns 0 on any failure
+  // including an unapplied migration 057, so an unknown count shows no badge
+  // rather than a wrong one.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    void fetchUnreadNotificationCount(user.id)
+      .then((n) => { if (!cancelled) setUnreadNotifications(n); })
+      .catch((e: unknown) => logError(e, 'discover.unreadNotifications'));
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  const loadShops = useCallback(async () => {
+    setShopsStatus('loading');
+    try {
+      await loadBusinesses([], economyWlwOnly(economyFilter));
+      setShopsStatus('ready');
+    } catch {
+      setShopsStatus('error');
+    }
+  }, [loadBusinesses, economyFilter]);
+
+  useEffect(() => { void loadShops(); }, [loadShops]);
+
+  const shownEvents = useMemo(
+    () => events.rows.filter((e) => eventMatchesFilter(e.event_type, eventFilter)),
+    [events.rows, eventFilter],
+  );
+
+  const shownShops = useMemo(
+    () => (economySavedOnly(economyFilter)
+      ? businesses.filter((b) => bookmarkedIds.has(b.id))
+      : businesses),
+    [businesses, bookmarkedIds, economyFilter],
+  );
+
+  const placedCommunities = useMemo(
+    () => officialFirst(allCommunities, officialCommunityIds ?? new Set()),
+    [allCommunities, officialCommunityIds],
+  );
+  const top10 = useMemo(() => placedCommunities.slice(0, 10), [placedCommunities]);
+  // The card's own query is `.in('community_id', communityIds)` — the ids she
+  // has joined, not the ids on screen. `joinedIds` is a Set for O(1) lookups
+  // elsewhere on this screen; the card wants an array to hand Supabase.
+  const qotdCommunityIds = useMemo(() => Array.from(joinedIds), [joinedIds]);
+  const heroEvent = shownEvents[0] ?? events.rows[0] ?? null;
+  const kind = economyKind(economyFilter);
+
+  const eventMeta = (e: typeof events.rows[number]) => {
+    const when = format(new Date(e.starts_at), 'EEE d MMM · h:mm a');
+    const where = e.location_text ?? e.community_name ?? 'Online';
+    return `${when} · ${where}`;
+  };
+
+  const eventPrice = (e: typeof events.rows[number]) =>
+    e.is_paid && e.price_cents ? formatMoney(e.price_cents) : 'Free';
+
+  // PosterCard's `badge` prop is a fixed BadgeKind enum — 'online' | 'inPerson'
+  // — with no hybrid value and no way to carry a component, so the real
+  // EventModeBadge can't slot in here without reshaping DiscoverCards, which
+  // is out of scope for this screen. Forcing hybrid onto 'inPerson' would
+  // repeat the exact lie EventModeBadge exists to stop — telling her to
+  // travel for something she could open from bed — so the pill is only
+  // offered where it can be truthful, composed from the actual values the
+  // column stores rather than "not online" by elimination.
+  const eventBadgeKind = (mode: typeof events.rows[number]['event_type']) => {
+    if (mode === 'online') return 'online' as const;
+    if (mode === 'in_person') return 'inPerson' as const;
+    return undefined;
+  };
+
   return (
-    <TouchableOpacity style={s.tile} onPress={onPress} activeOpacity={0.82}>
-      <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.gradTop}>
-        <Text style={s.emoji}>{emoji}</Text>
-        {badge && (
-          <View style={s.badge}><Text style={s.badgeText}>{badge}</Text></View>
-        )}
-      </LinearGradient>
-      <View style={s.body}>
-        <Text style={s.name} numberOfLines={1}>{name}</Text>
-        <Text style={s.sub} numberOfLines={1}>{sub}</Text>
+    <SafeAreaView edges={['top']} style={s.screen}>
+      <View style={s.header}>
+        <View style={s.titleRow}>
+          <Text style={s.wordmark} accessibilityRole="header">Discover</Text>
+          {/* The bell's only home used to be the Grow tab. It is here rather
+              than on Feed because Feed is a full-bleed pager with no chrome to
+              spare, and the prototype puts it in this header too. */}
+          <TouchableOpacity
+            onPress={() => router.push('/notifications' as never)}
+            accessibilityRole="button"
+            accessibilityLabel={
+              unreadNotifications > 0
+                ? `Notifications, ${unreadNotifications} unread`
+                : 'Notifications'
+            }
+            activeOpacity={0.85}
+            style={s.bell}
+            testID="discover-notifications"
+          >
+            <Ionicons name="notifications-outline" size={21} color={colors.textPrimary} />
+            {unreadNotifications > 0 ? (
+              <View style={s.bellDot} testID="discover-notifications-dot" />
+            ) : null}
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity
+          onPress={() => router.push('/search')}
+          accessibilityRole="button"
+          accessibilityLabel="Search Roxy"
+          activeOpacity={0.85}
+          style={s.search}
+          testID="discover-search"
+        >
+          <Ionicons name="search" size={17} color={colors.textSecondary} />
+          <Text style={s.searchText}>Search people, communities, events, shops…</Text>
+        </TouchableOpacity>
+        <FilterChips
+          chips={DISCOVER_CHIPS}
+          value={chip}
+          onChange={setChip}
+          label="Filter Discover"
+          emphasis="primary"
+          testID="discover-chips"
+        />
       </View>
-    </TouchableOpacity>
+
+      <ScrollView contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
+        {/* qotd leads the all-view, ahead of hero — a today thing below a
+            browse rail is a today thing nobody scrolls far enough to answer.
+            Gated on a real user id: the card's own query is
+            `.eq('user_id', userId)`, and an undefined id there is a query
+            that quietly matches nothing rather than an error. */}
+        {railVisible(chip, 'qotd') && user?.id ? (
+          <View style={s.qotd} testID="rail-qotd">
+            <QuestionOfTheDayCard communityIds={qotdCommunityIds} userId={user.id} />
+          </View>
+        ) : null}
+
+        {railVisible(chip, 'hero') && heroEvent ? (
+          <HeroCard
+            badge={eventBadgeKind(heroEvent.event_type)}
+            title={heroEvent.title}
+            // The mode leads the meta line for the same reason it leads the rail
+            // cards' subtitle: `eventBadgeKind` returns undefined for a hybrid
+            // event rather than lying, so this is where "BOTH" is said.
+            meta={`${eventModeLabel(heroEvent.event_type)} · ${eventMeta(heroEvent)}`}
+            body={heroEvent.community_name ? `Hosted by ${heroEvent.community_name}` : 'Open to members'}
+            cta={heroEvent.is_paid ? 'Get a ticket' : 'RSVP — it’s free'}
+            artSeed={heroEvent.id}
+            onPress={() => router.push(`/event/${heroEvent.id}` as never)}
+          />
+        ) : null}
+
+        {/* The Archive. Mounted here rather than left to global search, which
+            was its only route in — a catalogue you can only reach by already
+            knowing the name of something inside it is not a catalogue. It sits
+            above the community rails on purpose: it is the one surface a
+            PENDING member can use, and she reaches Discover before she has
+            joined anything. */}
+        {railVisible(chip, 'archive') ? (
+          <ArchiveRail
+            entries={archiveEntries}
+            total={archiveTotal}
+            status={archiveStatus}
+            onRetry={() => void loadArchive()}
+            onPressEntry={(entry) => router.push(archiveDetailPath(entry.slug) as never)}
+            onSeeAll={() => router.push('/archive' as never)}
+          />
+        ) : null}
+
+        {railVisible(chip, 'top10') ? (
+          <Rail
+            title="Top 10 communities"
+            status={allCommunities.length ? 'ready' : 'loading'}
+            count={top10.length}
+            emptyBody="No communities yet — yours could be the first."
+            onRetry={() => void hydrate(user?.id)}
+            testID="rail-top10"
+          >
+            {top10.map((c, i) => (
+              <PosterCard
+                key={c.id}
+                rank={i + 1}
+                title={c.name}
+                subtitle={`${officialCommunityIds?.has(c.id) ? 'Official · ' : ''}${c.member_count} members`}
+                badge="community"
+                artSeed={c.name}
+                onPress={() => router.push(`/community/${c.id}` as never)}
+                testID={`top10-${c.id}`}
+              />
+            ))}
+          </Rail>
+        ) : null}
+
+        {railVisible(chip, 'live') ? (
+          <Rail
+            title="Live now"
+            status={live.status}
+            count={live.rows.length}
+            emptyBody="Nothing live right now. Rooms open through the day."
+            onRetry={live.reload}
+            testID="rail-live"
+          >
+            {live.rows.map((room) => (
+              <RowCard
+                key={room.id}
+                icon={room.room_type === 'audio' ? 'mic' : 'videocam'}
+                badge="live"
+                title={room.name}
+                subtitle={`${room.participant_count} in${room.community_name ? ` · ${room.community_name}` : ''}`}
+                artSeed={room.name}
+                onPress={() => router.push(`/community-room-session?room_id=${room.id}` as never)}
+                testID={`live-${room.id}`}
+              />
+            ))}
+          </Rail>
+        ) : null}
+
+        {railVisible(chip, 'events') ? (
+          <Rail
+            title="Events"
+            status={events.status}
+            count={shownEvents.length}
+            emptyBody={
+              eventFilter === 'online'
+                ? 'No online events on the calendar yet.'
+                : eventFilter === 'in_person'
+                  ? 'No in-person events on the calendar yet.'
+                  : 'Nothing on the calendar yet.'
+            }
+            onRetry={events.reload}
+            testID="rail-events"
+            filters={
+              <FilterChips
+                chips={EVENT_FILTERS}
+                value={eventFilter}
+                onChange={setEventFilter}
+                label="Filter events"
+                testID="event-chips"
+              />
+            }
+          >
+            {shownEvents.map((e) => (
+              <PosterCard
+                key={e.id}
+                title={e.title}
+                // The word only leads the subtitle when the pill above cannot
+                // carry it. For `online` and `in_person` the pill already says
+                // it, and repeating it costs the start time: this subtitle is
+                // `numberOfLines={1}` at TYPE.micro on a 150pt card, so
+                // "IN PERSON · " pushes the one piece of information she came
+                // for off the end of the line.
+                subtitle={
+                  eventBadgeKind(e.event_type)
+                    ? `${eventPrice(e)} · ${eventMeta(e)}`
+                    : `${eventModeLabel(e.event_type)} · ${eventPrice(e)} · ${eventMeta(e)}`
+                }
+                badge={eventBadgeKind(e.event_type)}
+                artSeed={e.id}
+                onPress={() => router.push(`/event/${e.id}` as never)}
+                testID={`event-${e.id}`}
+              />
+            ))}
+          </Rail>
+        ) : null}
+
+        {railVisible(chip, 'economy') ? (
+          <Rail
+            title="WLW economy"
+            status={kind === 'shops' ? shopsStatus : kind === 'impact' ? impact.status : support.status}
+            count={kind === 'shops' ? shownShops.length : kind === 'impact' ? impact.rows.length : support.rows.length}
+            emptyBody={
+              kind === 'impact'
+                ? 'No impact projects yet.'
+                : kind === 'support'
+                  ? 'No ideas pitched yet — yours could be first.'
+                  : economySavedOnly(economyFilter)
+                    ? 'Nothing saved yet. Tap the heart on any shop.'
+                    : 'No shops here yet.'
+            }
+            onRetry={kind === 'shops' ? () => void loadShops() : kind === 'impact' ? impact.reload : support.reload}
+            testID="rail-economy"
+            filters={
+              <FilterChips
+                chips={ECONOMY_FILTERS}
+                value={economyFilter}
+                onChange={setEconomyFilter}
+                label="Filter the WLW economy"
+                testID="economy-chips"
+              />
+            }
+          >
+            {kind === 'shops' && shownShops.map((b) => (
+              <PosterCard
+                key={b.id}
+                title={b.name}
+                subtitle={b.location_city ?? b.category ?? 'WLW-owned'}
+                badge="shop"
+                artSeed={b.name}
+                onPress={() => router.push(`/business/${b.id}` as never)}
+                testID={`shop-${b.id}`}
+              />
+            ))}
+            {kind === 'impact' && impact.rows.map((p) => (
+              <PosterCard
+                key={p.id}
+                title={p.title}
+                subtitle={`${p.supporter_count} supporters`}
+                badge="impact"
+                artSeed={p.title}
+                onPress={() => router.push('/support' as never)}
+                testID={`impact-${p.id}`}
+              />
+            ))}
+            {kind === 'support' && support.rows.map((f) => (
+              <RowCard
+                key={f.id}
+                icon="bulb-outline"
+                title={f.title}
+                subtitle={`${f.vote_count} votes${f.type === 'planned' ? ' · Roxy pick' : ''}`}
+                artSeed={f.title}
+                onPress={() => router.push('/support' as never)}
+                testID={`support-${f.id}`}
+              />
+            ))}
+          </Rail>
+        ) : null}
+
+        {railVisible(chip, 'communities') ? (
+          <Rail
+            title="Communities"
+            status={allCommunities.length ? 'ready' : 'loading'}
+            count={allCommunities.length}
+            emptyBody="No communities yet."
+            onRetry={() => void hydrate(user?.id)}
+            linkLabel="See all"
+            onLinkPress={() => router.push('/communities' as never)}
+            testID="rail-communities"
+          >
+            {placedCommunities.slice(0, 12).map((c) => (
+              <PosterCard
+                key={c.id}
+                title={c.name}
+                subtitle={`${officialCommunityIds?.has(c.id) ? 'Official · ' : ''}${c.member_count} members${joinedIds.has(c.id) ? ' · joined' : ''}`}
+                badge="community"
+                artSeed={c.name}
+                onPress={() => router.push(`/community/${c.id}` as never)}
+                testID={`community-${c.id}`}
+              />
+            ))}
+          </Rail>
+        ) : null}
+
+        {railVisible(chip, 'games') ? (
+          <Rail
+            title="Games"
+            status={games.status}
+            count={games.rows.length}
+            emptyBody="No games yet."
+            onRetry={games.reload}
+            testID="rail-games"
+          >
+            {games.rows.map((g) => (
+              <RowCard
+                key={g.id}
+                icon="game-controller"
+                badge="game"
+                title={g.name}
+                subtitle={g.short_description}
+                artSeed={g.name}
+                onPress={() => {
+                  // Speed Dating is a native route, not a WebView game.
+                  if (g.name === 'Speed Dating') { router.push('/speed-dating' as never); return; }
+                  if (isPlayableGameUrl(g.url)) {
+                    router.push(`/(tabs)/discover/games/${g.id}` as never);
+                  }
+                }}
+                testID={`game-${g.id}`}
+              />
+            ))}
+          </Rail>
+        ) : null}
+
+        {/* Clears the floating tab bar and the Roxy FAB. */}
+        <View style={s.tail} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-export default function PlayScreen() {
-  const colors = useThemeColors();
-  const router = useRouter();
-  const { user } = useAuthStore();
-  const { joinedIds, joinedCommunities, hydrate } = useCommunityStore();
+const styles = (colors: ThemeColors) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
+  header: {
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, gap: 10,
+    backgroundColor: colors.backgroundAlt, borderBottomWidth: 1, borderBottomColor: colors.line,
+  },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  wordmark: {
+    ...TYPE.headline, color: colors.textPrimary,
+    fontFamily: FONTS.display.extrabold, letterSpacing: -0.2, flex: 1,
+  },
+  bell: {
+    width: 36, height: 36, borderRadius: RADII.pill,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+  },
+  bellDot: {
+    position: 'absolute', top: 6, right: 6,
+    width: 7, height: 7, borderRadius: 99,
+    backgroundColor: colors.primary, borderWidth: 1.5, borderColor: colors.surface,
+  },
+  search: {
+    flexDirection: 'row', alignItems: 'center', gap: 9,
+    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 13,
+    borderRadius: 14,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+  },
+  searchText: { ...TYPE.caption, color: colors.textSecondary },
+  body: { paddingBottom: 8 },
+  qotd: { marginHorizontal: 16, marginTop: 4, marginBottom: 10 },
+  tail: { height: 120 },
+});
 
-  const [originals, setOriginals] = useState<Game[]>([]);
-  const [communityGames, setCommunityGames] = useState<CommunityGame[]>([]);
-  const [liveRooms, setLiveRooms] = useState<LiveRoom[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState('');
-
-  useEffect(() => { void hydrate(user?.id); }, [user?.id]);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    const [origRes, liveRes] = await Promise.all([
-      supabase.from('games').select('*').eq('publisher_type', 'roxy').order('name'),
-      supabase
-        .from('community_rooms')
-        .select('id, name, participant_count, status, room_type, banner_url, communities(name)')
-        .eq('is_active', true)
-        .neq('status', 'closed')
-        .order('participant_count', { ascending: false })
-        .limit(6),
-    ]);
-    if (origRes.data) setOriginals(origRes.data as Game[]);
-    if (liveRes.data) {
-      setLiveRooms(liveRes.data.map((r: any) => ({
-        id: r.id, name: r.name,
-        participant_count: r.participant_count ?? 0,
-        community_name: (r.communities as any)?.name ?? 'Roxy',
-        status: r.status,
-        room_type: r.room_type ?? 'audio',
-        banner_url: r.banner_url ?? null,
-      })));
-    }
-
-    // Community games — dedupe to one tile per game, tagging every
-    // community that offers it (no more Speed Dating × 4).
-    if (joinedIds.size > 0) {
-      const ids = Array.from(joinedIds);
-      const { data } = await supabase
-        .from('community_games')
-        .select('community_id, games(*), communities(name)')
-        .in('community_id', ids);
-      if (data) {
-        const byGame = new Map<string, CommunityGame>();
-        for (const row of data as any[]) {
-          const g = row.games as Game;
-          if (!g?.id) continue;
-          const offer = { id: row.community_id as string, name: (row.communities as any)?.name ?? 'Community' };
-          const existing = byGame.get(g.id);
-          if (existing) {
-            existing.offeredBy.push(offer);
-          } else {
-            byGame.set(g.id, { ...g, community_name: offer.name, offeredBy: [offer] });
-          }
-        }
-        setCommunityGames([...byGame.values()]);
-      }
-    }
-    setLoading(false);
-  }, [joinedIds]);
-
-  useEffect(() => { void loadData(); }, [loadData]);
-
-  // Speed Dating gets a choice: random ("feeling wild") or via one of your
-  // communities. Other games route straight in.
-  const [speedDatingOptions, setSpeedDatingOptions] = useState<{ id: string; name: string }[] | null>(null);
-  const sdPop = usePopIn(speedDatingOptions !== null);
-
-  const navigateToGame = (game: Game | CommunityGame) => {
-    if (game.name === 'Speed Dating' || game.url === null) {
-      const offeredBy = 'offeredBy' in game && game.offeredBy.length > 0
-        ? game.offeredBy
-        : communityGames.find((g) => g.name === 'Speed Dating')?.offeredBy ?? [];
-      setSpeedDatingOptions(offeredBy);
-    } else if (game.url) {
-      router.push(game.url as any);
-    }
-  };
-
-  const s = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    searchRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      backgroundColor: colors.surface, borderRadius: 14,
-      marginHorizontal: 16, marginBottom: 10,
-      paddingHorizontal: 12, paddingVertical: 8,
-    },
-    searchInput: { color: colors.textPrimary, fontSize: 14, flex: 1, paddingVertical: 0 },
-    iconBtn: {
-      width: 38, height: 38, borderRadius: 19,
-      backgroundColor: colors.surface,
-      alignItems: 'center', justifyContent: 'center',
-    },
-
-    // Speed Dating Hero
-    hero: { marginHorizontal: 14, borderRadius: 22, overflow: 'hidden', marginBottom: 8 },
-    heroInner: { padding: 20 },
-    heroTags: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-    heroTag: {
-      backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 20,
-      paddingHorizontal: 10, paddingVertical: 4,
-    },
-    heroTagText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-    heroEmoji: { fontSize: 44, marginBottom: 8 },
-    heroTitle: { color: '#fff', fontSize: 24, fontWeight: '800', marginBottom: 6 },
-    heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 14, lineHeight: 20, marginBottom: 16 },
-    heroFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    heroLive: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    heroPulse: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
-    heroLiveText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-    heroPlayBtn: {
-      flexDirection: 'row', alignItems: 'center', gap: 6,
-      backgroundColor: '#fff', borderRadius: 999,
-      paddingHorizontal: 18, paddingVertical: 10,
-    },
-    heroPlayText: { color: '#E81C8E', fontWeight: '800', fontSize: 14 },
-
-    // Sections
-    section: { marginBottom: 20 },
-    gameGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 9 },
-
-    // Live rooms — banner rail
-    liveRail: { paddingHorizontal: 14, gap: 10 },
-    liveTile: {
-      width: 190, height: 116, borderRadius: 18,
-      overflow: 'hidden', justifyContent: 'space-between',
-      shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.12, shadowRadius: 10, elevation: 4,
-    },
-    liveTileBg: { ...StyleSheet.absoluteFillObject },
-    liveTileVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(26,10,46,0.32)' },
-    liveTileTop: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      padding: 8,
-    },
-    livePill: {
-      flexDirection: 'row', alignItems: 'center', gap: 4,
-      backgroundColor: '#E5484D', borderRadius: 999,
-      paddingHorizontal: 8, paddingVertical: 3,
-    },
-    livePulse: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
-    livePillText: { color: '#fff', fontSize: 10, fontWeight: '800' },
-    liveTypeBadge: {
-      width: 24, height: 24, borderRadius: 12,
-      alignItems: 'center', justifyContent: 'center',
-      backgroundColor: 'rgba(26,10,46,0.45)',
-    },
-    liveTileBottom: { padding: 10 },
-    liveTileName: { color: '#fff', fontWeight: '800', fontSize: 13, lineHeight: 17 },
-    liveTileMeta: { color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 2 },
-
-    // Pop modal (Speed Dating options)
-    popOverlay: {
-      flex: 1, backgroundColor: 'rgba(26,10,46,0.55)',
-      alignItems: 'center', justifyContent: 'center', padding: 28,
-    },
-    popCard: {
-      width: '100%', maxWidth: 340,
-      backgroundColor: colors.background, borderRadius: 22,
-      padding: 20, alignItems: 'center', gap: 8,
-      shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.3, shadowRadius: 24, elevation: 20,
-    },
-    popPlate: {
-      width: 56, height: 56, borderRadius: 18,
-      alignItems: 'center', justifyContent: 'center', marginBottom: 4,
-    },
-    popTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 19 },
-    popSub: { color: colors.textMuted, fontSize: 13, marginBottom: 6 },
-    popPrimary: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-      alignSelf: 'stretch', minHeight: 48, borderRadius: 16,
-      backgroundColor: colors.roxy,
-    },
-    popPrimaryText: { color: '#fff', fontWeight: '800', fontSize: 15 },
-    popOption: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      alignSelf: 'stretch', minHeight: 44, borderRadius: 14,
-      paddingHorizontal: 14,
-      backgroundColor: colors.surface,
-    },
-    popOptionText: { color: colors.textPrimary, fontWeight: '700', fontSize: 14, flex: 1 },
-    popCancel: { color: colors.textMuted, fontWeight: '700', fontSize: 13, paddingVertical: 10 },
-  });
-
-  // Fallback Roxy Originals in case DB is empty
-  const displayOriginals: Game[] = originals.length > 0 ? originals : [
-    { id: 'sd', name: 'Speed Dating', short_description: '1-on-1, 5 min each', category: 'dating', publisher_type: 'roxy', url: null, thumbnail_url: null },
-    { id: 'tt', name: 'Two Truths & a Lie', short_description: 'Break the ice', category: 'icebreaker', publisher_type: 'roxy', url: null, thumbnail_url: null },
-    { id: 'wyr', name: 'Would You Rather', short_description: 'Spicy or sweet', category: 'party', publisher_type: 'roxy', url: null, thumbnail_url: null },
-    { id: 'tot', name: 'This or That', short_description: 'Rapid-fire taste check', category: 'trivia', publisher_type: 'roxy', url: null, thumbnail_url: null },
-  ];
-
-  const q = query.trim().toLowerCase();
-  const matchesGame = (g: Game | CommunityGame) => !q
-    || g.name.toLowerCase().includes(q)
-    || (g.short_description ?? '').toLowerCase().includes(q)
-    || ('community_name' in g && (g.community_name ?? '').toLowerCase().includes(q));
-  // Speed Dating already owns the featured hero above — listing it again here
-  // is the "same game over and over" problem. Show only the other originals.
-  const shownOriginals = displayOriginals.filter((g) => g.name !== 'Speed Dating').filter(matchesGame);
-  const shownCommunityGames = communityGames.filter(matchesGame);
-
+export default function DiscoverRoute() {
   return (
-    <SafeAreaView style={s.container}>
-      {/* Header */}
-      <ScreenHeader
-        title="Play"
-        eyebrow="Games & Rooms"
-        actions={
-          <TouchableOpacity
-            style={s.iconBtn}
-            onPress={() => router.push('/communities' as any)}
-            accessibilityLabel="Browse communities"
-          >
-            <Ionicons name="people-outline" size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
-        }
-      />
-
-      {/* Quick search across all games */}
-      <View style={s.searchRow}>
-        <Ionicons name="search-outline" size={16} color={colors.textMuted} />
-        <TextInput
-          style={s.searchInput}
-          placeholder="Search games…"
-          placeholderTextColor={colors.textMuted}
-          value={query}
-          onChangeText={setQuery}
-          accessibilityLabel="Search games"
-        />
-        {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')} accessibilityLabel="Clear search">
-            <Ionicons name="close-circle" size={16} color={colors.textMuted} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Speed Dating Hero */}
-        <View style={s.hero}>
-          <LinearGradient
-            colors={GRAD_COLORS}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.heroInner}
-          >
-            <View style={s.heroTags}>
-              <View style={s.heroTag}><Text style={s.heroTagText}>ROXY ORIGINAL</Text></View>
-            </View>
-            <Text style={s.heroEmoji}>⚡</Text>
-            <Text style={s.heroTitle}>Speed Dating</Text>
-            <Text style={s.heroSub}>Five minutes, real connections. Get matched with sapphics near you.</Text>
-            <View style={s.heroFoot}>
-              <View style={s.heroLive}>
-                <View style={s.heroPulse} />
-                <Text style={s.heroLiveText}>Live now</Text>
-              </View>
-              <TouchableOpacity
-                style={s.heroPlayBtn}
-                onPress={() => setSpeedDatingOptions(
-                  communityGames.find((g) => g.name === 'Speed Dating')?.offeredBy ?? []
-                )}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="play" size={15} color="#E81C8E" />
-                <Text style={s.heroPlayText}>Play</Text>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* Live Rooms */}
-        {loading ? (
-          <ActivityIndicator color={colors.roxy} style={{ marginTop: 16, marginBottom: 24 }} />
-        ) : liveRooms.length > 0 && (
-          <View style={s.section}>
-            <SectionHeader
-              title="Live now"
-              icon="radio"
-              linkLabel="All"
-              onLinkPress={() => router.push('/(tabs)/connect' as any)}
-            />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.liveRail}>
-              {liveRooms.map((room) => (
-                <TouchableOpacity
-                  key={room.id}
-                  style={s.liveTile}
-                  onPress={() => router.push(`/community-room-session?room_id=${room.id}` as any)}
-                  activeOpacity={0.85}
-                  accessibilityLabel={`Join ${room.name}`}
-                >
-                  {room.banner_url ? (
-                    <ExpoImage source={{ uri: room.banner_url }} style={s.liveTileBg} contentFit="cover" />
-                  ) : (
-                    <LinearGradient
-                      colors={avatarGradient(room.name)}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={s.liveTileBg}
-                    />
-                  )}
-                  <View style={s.liveTileVeil} />
-                  <View style={s.liveTileTop}>
-                    <View style={s.livePill}>
-                      <View style={s.livePulse} />
-                      <Text style={s.livePillText}>LIVE</Text>
-                    </View>
-                    <View style={s.liveTypeBadge}>
-                      <Ionicons name={room.room_type === 'video' ? 'videocam' : 'mic'} size={13} color="#fff" />
-                    </View>
-                  </View>
-                  <View style={s.liveTileBottom}>
-                    <Text style={s.liveTileName} numberOfLines={2}>{room.name}</Text>
-                    <Text style={s.liveTileMeta} numberOfLines={1}>
-                      {room.community_name}{room.participant_count > 0 ? ` · ${room.participant_count} in` : ''}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Roxy Originals */}
-        {shownOriginals.length > 0 && (
-          <View style={s.section}>
-            <SectionHeader title="Roxy Originals" icon="sparkles" />
-            <View style={s.gameGrid}>
-              {shownOriginals.slice(0, 4).map((g, i) => (
-                <View key={g.id} style={{ width: '50%' }}>
-                  <GameTile
-                    emoji={CATEGORY_EMOJI[g.category] ?? '🎮'}
-                    name={g.name}
-                    sub={g.short_description}
-                    grad={TILE_GRADS[i % TILE_GRADS.length]}
-                    onPress={() => navigateToGame(g)}
-                  />
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* From Your Communities */}
-        <View style={s.section}>
-          <SectionHeader
-            title="From your communities"
-            icon="people"
-            linkLabel={joinedCommunities.length > 0 ? 'Browse' : undefined}
-            onLinkPress={joinedCommunities.length > 0 ? () => router.push('/communities' as any) : undefined}
-          />
-          {joinedIds.size === 0 ? (
-            <EmptyState
-              emoji="🎮"
-              title="Join a community to see their games"
-              ctaLabel="Browse communities →"
-              onCtaPress={() => router.push('/communities' as any)}
-            />
-          ) : shownCommunityGames.length === 0 ? (
-            <EmptyState
-              emoji="🎮"
-              title={q ? 'No games match your search' : 'No community games yet'}
-              body={q ? 'Try a different search.' : "Your communities haven't added games yet."}
-            />
-          ) : (
-            <View style={s.gameGrid}>
-              {shownCommunityGames.slice(0, 6).map((g, i) => (
-                <View key={g.id} style={{ width: '50%' }}>
-                  <GameTile
-                    emoji={CATEGORY_EMOJI[g.category] ?? '🎮'}
-                    name={g.name}
-                    sub={g.offeredBy.length > 1
-                      ? `${g.offeredBy.length} of your communities`
-                      : g.community_name ?? g.short_description}
-                    grad={TILE_GRADS[i % TILE_GRADS.length]}
-                    badge={g.offeredBy.length > 1
-                      ? `${g.offeredBy[0].name.split(' ')[0]} +${g.offeredBy.length - 1}`
-                      : g.community_name?.split(' ')[0]}
-                    onPress={() => navigateToGame(g)}
-                  />
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        <View style={{ height: 32 }} />
-      </ScrollView>
-
-      {/* Speed Dating join options — pop style, not a bottom drawer */}
-      <Modal
-        visible={speedDatingOptions !== null}
-        transparent
-        animationType="none"
-        onRequestClose={() => setSpeedDatingOptions(null)}
-      >
-        <Pressable style={s.popOverlay} onPress={() => setSpeedDatingOptions(null)}>
-          <Animated.View style={sdPop}>
-          <Pressable style={s.popCard} onPress={() => {}}>
-            <LinearGradient colors={['#FF6A2E', '#E81C8E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.popPlate}>
-              <Ionicons name="flash" size={24} color="#fff" />
-            </LinearGradient>
-            <Text style={s.popTitle}>Speed Dating</Text>
-            <Text style={s.popSub}>How do you want to play?</Text>
-            <TouchableOpacity
-              style={s.popPrimary}
-              onPress={() => { setSpeedDatingOptions(null); router.push('/speed-dating' as any); }}
-              accessibilityLabel="Join random speed dating"
-            >
-              <Ionicons name="flash" size={16} color="#fff" />
-              <Text style={s.popPrimaryText}>Feeling wild — join random</Text>
-            </TouchableOpacity>
-            {(speedDatingOptions ?? []).map((c) => (
-              <TouchableOpacity
-                key={c.id}
-                style={s.popOption}
-                onPress={() => {
-                  setSpeedDatingOptions(null);
-                  router.push(`/speed-dating?communityId=${c.id}` as any);
-                }}
-                accessibilityLabel={`Speed dating with ${c.name}`}
-              >
-                <Ionicons name="people" size={15} color={colors.roxy} />
-                <Text style={s.popOptionText} numberOfLines={1}>With {c.name}</Text>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity onPress={() => setSpeedDatingOptions(null)} accessibilityLabel="Cancel">
-              <Text style={s.popCancel}>Not tonight</Text>
-            </TouchableOpacity>
-          </Pressable>
-          </Animated.View>
-        </Pressable>
-      </Modal>
-    </SafeAreaView>
+    <FeatureGate feature="discover">
+      <DiscoverScreen />
+    </FeatureGate>
   );
 }

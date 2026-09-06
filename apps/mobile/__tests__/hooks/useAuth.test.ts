@@ -69,14 +69,38 @@ describe('useAuth', () => {
   });
 
   it('signUp calls supabase.auth.signUp with email and password', async () => {
+    mockSignUp.mockResolvedValueOnce({
+      data: {
+        user: { identities: [{ id: 'i1' }] },
+        session: { user: { email: 'test@example.com' } },
+      },
+      error: null,
+    });
     const { result } = renderHook(() => useAuth());
     await act(async () => {
       await result.current.signUp('test@example.com', 'password123');
     });
+    expect(mockSignOut).toHaveBeenCalled();
     expect(mockSignUp).toHaveBeenCalledWith({
       email: 'test@example.com',
       password: 'password123',
     });
+  });
+
+  it('refuses a leftover session that is not the email she typed', async () => {
+    mockSignUp.mockResolvedValueOnce({
+      data: {
+        user: { identities: [{ id: 'i1' }] },
+        session: { user: { email: 'naaxtech.official@gmail.com' } },
+      },
+      error: null,
+    });
+    const { result } = renderHook(() => useAuth());
+    let response: { error: { message: string } | null };
+    await act(async () => {
+      response = await result.current.signUp('thepurrfessionals@gmail.com', 'password123');
+    });
+    expect(response!.error?.message).toMatch(/did not open the new account/i);
   });
 
   it('signInWithPassword calls supabase.auth.signInWithPassword', async () => {
