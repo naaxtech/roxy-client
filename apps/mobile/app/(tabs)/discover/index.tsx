@@ -8,7 +8,7 @@ import { useThemeColors } from '../../../hooks/useThemeColors';
 import { useAuthStore } from '../../../store/authStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useBuildStore } from '../../../store/buildStore';
-import { TYPE } from '../../../lib/typography';
+import { TYPE, FONTS } from '../../../lib/typography';
 import { RADII, inkOn, type ThemeColors } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { formatMoney } from '../../../lib/currency';
@@ -32,6 +32,7 @@ import {
   useLiveRooms, useEvents, useGames, useImpact, useSupport,
 } from '../../../components/discover/useDiscoverData';
 import { FeatureGate } from '../../../components/features/FeatureGate';
+import { officialFirst } from '../../../lib/officialGrant';
 
 /**
  * Discover — search-first, then rails.
@@ -54,6 +55,7 @@ function DiscoverScreen() {
   const user = useAuthStore((st) => st.user);
   const allCommunities = useCommunityStore((st) => st.allCommunities);
   const joinedIds = useCommunityStore((st) => st.joinedIds);
+  const officialCommunityIds = useCommunityStore((st) => st.officialCommunityIds);
   const hydrate = useCommunityStore((st) => st.hydrate);
 
   const businesses = useBuildStore((st) => st.businesses);
@@ -141,7 +143,11 @@ function DiscoverScreen() {
     [businesses, bookmarkedIds, economyFilter],
   );
 
-  const top10 = useMemo(() => allCommunities.slice(0, 10), [allCommunities]);
+  const placedCommunities = useMemo(
+    () => officialFirst(allCommunities, officialCommunityIds ?? new Set()),
+    [allCommunities, officialCommunityIds],
+  );
+  const top10 = useMemo(() => placedCommunities.slice(0, 10), [placedCommunities]);
   // The card's own query is `.in('community_id', communityIds)` — the ids she
   // has joined, not the ids on screen. `joinedIds` is a Set for O(1) lookups
   // elsewhere on this screen; the card wants an array to hand Supabase.
@@ -194,11 +200,7 @@ function DiscoverScreen() {
           >
             <Ionicons name="notifications-outline" size={21} color={colors.textPrimary} />
             {unreadNotifications > 0 ? (
-              <View style={s.bellDot} testID="discover-notifications-dot">
-                <Text style={s.bellCount}>
-                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                </Text>
-              </View>
+              <View style={s.bellDot} testID="discover-notifications-dot" />
             ) : null}
           </TouchableOpacity>
         </View>
@@ -211,18 +213,17 @@ function DiscoverScreen() {
           testID="discover-search"
         >
           <Ionicons name="search" size={17} color={colors.textSecondary} />
-          <Text style={s.searchText}>Search communities, people, events…</Text>
+          <Text style={s.searchText}>Search people, communities, events, shops…</Text>
         </TouchableOpacity>
+        <FilterChips
+          chips={DISCOVER_CHIPS}
+          value={chip}
+          onChange={setChip}
+          label="Filter Discover"
+          emphasis="primary"
+          testID="discover-chips"
+        />
       </View>
-
-      <FilterChips
-        chips={DISCOVER_CHIPS}
-        value={chip}
-        onChange={setChip}
-        label="Filter Discover"
-        emphasis="primary"
-        testID="discover-chips"
-      />
 
       <ScrollView contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
         {/* qotd leads the all-view, ahead of hero — a today thing below a
@@ -282,7 +283,7 @@ function DiscoverScreen() {
                 key={c.id}
                 rank={i + 1}
                 title={c.name}
-                subtitle={`${c.member_count} members`}
+                subtitle={`${officialCommunityIds?.has(c.id) ? 'Official · ' : ''}${c.member_count} members`}
                 badge="community"
                 artSeed={c.name}
                 onPress={() => router.push(`/community/${c.id}` as never)}
@@ -437,11 +438,11 @@ function DiscoverScreen() {
             onLinkPress={() => router.push('/communities' as never)}
             testID="rail-communities"
           >
-            {allCommunities.slice(0, 12).map((c) => (
+            {placedCommunities.slice(0, 12).map((c) => (
               <PosterCard
                 key={c.id}
                 title={c.name}
-                subtitle={`${c.member_count} members${joinedIds.has(c.id) ? ' · joined' : ''}`}
+                subtitle={`${officialCommunityIds?.has(c.id) ? 'Official · ' : ''}${c.member_count} members${joinedIds.has(c.id) ? ' · joined' : ''}`}
                 badge="community"
                 artSeed={c.name}
                 onPress={() => router.push(`/community/${c.id}` as never)}
@@ -490,23 +491,29 @@ function DiscoverScreen() {
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: 16, paddingBottom: 10, gap: 10 },
+  header: {
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, gap: 10,
+    backgroundColor: colors.backgroundAlt, borderBottomWidth: 1, borderBottomColor: colors.line,
+  },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  wordmark: { ...TYPE.display, color: colors.textPrimary },
+  wordmark: {
+    ...TYPE.headline, color: colors.textPrimary,
+    fontFamily: FONTS.display.extrabold, letterSpacing: -0.2, flex: 1,
+  },
   bell: {
-    width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET,
+    width: 36, height: 36, borderRadius: RADII.pill,
     alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
   },
   bellDot: {
-    position: 'absolute', top: 6, right: 4,
-    minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: RADII.pill,
-    backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
+    position: 'absolute', top: 6, right: 6,
+    width: 7, height: 7, borderRadius: 99,
+    backgroundColor: colors.primary, borderWidth: 1.5, borderColor: colors.surface,
   },
-  bellCount: { ...TYPE.micro, color: inkOn(colors.primary), fontWeight: '800' },
   search: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 14,
-    borderRadius: RADII.pill,
+    flexDirection: 'row', alignItems: 'center', gap: 9,
+    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 13,
+    borderRadius: 14,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
   },
   searchText: { ...TYPE.caption, color: colors.textSecondary },

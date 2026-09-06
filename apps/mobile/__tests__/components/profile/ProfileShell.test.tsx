@@ -49,14 +49,43 @@ describe('ProfileShell — the header the prototype draws', () => {
     expect(view.getByText('Reactions')).toBeTruthy();
   });
 
+  it('uses the photo cover when a url is passed, instead of only the gradient', () => {
+    const view = renderShell({ coverUrl: 'https://cdn.example/cover.jpg' });
+    expect(view.getByTestId('profile-cover-photo')).toBeTruthy();
+  });
+
   it('shows the level band on the avatar when there are points', () => {
-    // ProfileCard's three bands, kept: Seedling / Bloom / Radiant. The
-    // prototype's lightning-12 is a level number Roxy's schema does not have —
-    // gamification points are what it has.
+    // The prototype paints ⚡12. The spoken label still names the band
+    // ProfileCard already shipped (Bloom) so a screen reader is not handed a
+    // number with no product meaning.
     const view = renderShell({ points: 240 });
     const badge = view.getByTestId('profile-level-badge');
+    expect(view.getByText('⚡12')).toBeTruthy();
     expect(badge.props.accessibilityLabel).toContain('Bloom');
     expect(badge.props.accessibilityLabel).toContain('240');
+  });
+
+  it('prints pronouns beside the name, not as another chip', () => {
+    const view = renderShell();
+    expect(view.getByTestId('profile-pronouns')).toBeTruthy();
+    expect(view.getByText('she/her')).toBeTruthy();
+  });
+
+  it('draws the self header extras the prototype puts next to Edit', () => {
+    const onBadges = jest.fn();
+    const onXp = jest.fn();
+    const view = renderShell({
+      variant: 'self',
+      primaryAction: { label: 'Edit', onPress: jest.fn() },
+      badgePreview: { emojis: '🌸🔥💎🎙️', extra: 2, onPress: onBadges },
+      xp: { label: '2,450 XP', progress: 0.82, onPress: onXp },
+    });
+    fireEvent.press(view.getByTestId('profile-badge-chip'));
+    fireEvent.press(view.getByTestId('profile-xp'));
+    expect(onBadges).toHaveBeenCalledTimes(1);
+    expect(onXp).toHaveBeenCalledTimes(1);
+    expect(view.getByText('2,450 XP')).toBeTruthy();
+    expect(view.getByText('+2')).toBeTruthy();
   });
 
   it('hides the level badge entirely when there are no points to show', () => {
@@ -86,6 +115,18 @@ describe('ProfileShell — the header the prototype draws', () => {
     const seller = renderShell({ variant: 'seller', sellerApproved: true });
     expect(seller.getByTestId('profile-seller-chip')).toBeTruthy();
     expect(renderShell().queryByTestId('profile-seller-chip')).toBeNull();
+  });
+
+  it('shows the official chip and a third action the prototype puts on a community', () => {
+    const onFollow = jest.fn();
+    const view = renderShell({
+      official: true,
+      primaryAction: { label: 'Join', onPress: jest.fn() },
+      secondaryAction: { label: 'Follow', onPress: onFollow, testID: 'profile-follow' },
+    });
+    expect(view.getByTestId('profile-official-chip')).toBeTruthy();
+    fireEvent.press(view.getByTestId('profile-follow'));
+    expect(onFollow).toHaveBeenCalledTimes(1);
   });
 });
 

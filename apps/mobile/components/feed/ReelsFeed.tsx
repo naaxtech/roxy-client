@@ -6,7 +6,10 @@ import { supabase } from '../../lib/supabase';
 import { logError } from '../../lib/errorLogger';
 import { normalizePost } from '../../lib/posts';
 import { contentDetailPath } from '../../lib/contentNavigation';
-import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../lib/supabaseQueries';
+import { COMMENT_WITH_AUTHOR, POST_WITH_AUTHOR_AND_COMMUNITY } from '../../lib/supabaseQueries';
+import type { Comment } from '../../types';
+import { useAuthStore } from '../../store/authStore';
+import { useFollowStore } from '../../store/followStore';
 import { excludeSeenReels, displayedLikeCount, initialReelIndex } from '../../lib/reels';
 import type { ReelRow } from '../../lib/reels';
 import { fetchAnnouncementVideos } from '../../lib/announcements';
@@ -21,6 +24,7 @@ import type { FeedPagerCell } from './FeedPager';
 import { FeedCell, feedItemType } from './FeedCell';
 import { FeedInterestCard } from './FeedInterestCard';
 import { FeedSafetySheet } from './FeedSafetySheet';
+import { CommentSheet } from './CommentSheet';
 import { reportPost } from './feedSafety';
 import type { ReportReason } from './feedSafety';
 
@@ -58,10 +62,9 @@ function toReelRows(data: unknown[] | null | undefined): ReelRow[] {
  *    inside a community, and RLS only returns it to members.
  *  - `community-announcements` — the public face of `communityIds` only: the
  *    video a non-member is allowed to see while she decides whether to join.
- *  - `following` — video by the people in `authorIds`. Roxy has no follow graph,
- *    so the Feed tab passes the viewer's accepted friends. That is a smaller set
- *    than "following" implies, and the empty state says so rather than pretending
- *    the segment is broken.
+ *  - `following` — video by the people in `authorIds`. The Feed tab passes the
+ *    viewer's `follows` ids. Friends are still request-first for DMs; they are
+ *    not this list.
  */
 export type ReelsScope =
   | 'announcements'
@@ -73,7 +76,7 @@ const EMPTY_BODY: Record<ReelsScope, string> = {
   announcements: 'When a community shares a video announcement, it plays here.',
   community: 'When members post video, it plays here.',
   'community-announcements': 'This community has not shared a video announcement yet.',
-  following: 'Video from your people lands here. Add friends in a community and this fills up.',
+  following: 'Video from people you follow lands here. Follow someone and this fills up.',
 };
 
 interface ReelsFeedProps {
@@ -116,6 +119,10 @@ export function ReelsFeed({
   const colors = useThemeColors();
   const router = useRouter();
   const reducedMotion = useReducedMotion();
+  const userId = useAuthStore((st) => st.user?.id ?? '');
+  const followingIds = useFollowStore((st) => st.followingIds);
+  const followAuthor = useFollowStore((st) => st.follow);
+  const unfollowAuthor = useFollowStore((st) => st.unfollow);
 
   const [reels, setReels] = useState<ReelRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -323,6 +330,42 @@ export function ReelsFeed({
    */
   const [safetyPost, setSafetyPost] = useState<ReelRow | null>(null);
   const [answeredPrompts, setAnsweredPrompts] = useState<ReadonlySet<string>>(new Set());
+  const [commentPostId, setCommentPostId] = useState<string | null>(null);
+  const [sheetComments, setSheetComments] = useState<Comment[]>([]);
+  const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
+
+  const openComments = useCallback(async (postId: string) => {
+    setCommentPostId(postId);
+    setSheetComments([]);
+    const { data, error: loadError } = await supabase
+      .from('comments')
+      .select(COMMENT_WITH_AUTHOR)
+      .eq('post_id', postId)
+      .is('parent_id', null)
+      .order('created_at', { ascending: true })
+      .limit(40);
+    if (loadError) {
+      logError(loadError, 'ReelsFeed.comments');
+      return;
+    }
+    setSheetComments((data ?? []) as Comment[]);
+  }, []);
+
+  const handleLikeComment = useCallback(async (commentId: string) => {
+    const wasLiked = likedCommentIds.has(commentId);
+    setLikedCommentIds((prev) => {
+      const next = new Set(prev);
+      if (wasLiked) next.delete(commentId);
+      else next.add(commentId);
+      return next;
+    });
+    if (wasLiked) {
+      await supabase.from('comment_likes').delete()
+        .eq('comment_id', commentId).eq('user_id', userId);
+    } else {
+      await supabase.from('comment_likes').insert({ comment_id: commentId });
+    }
+  }, [likedCommentIds, userId]);
 
   /**
    * Drop a post from this viewer's feed, now and in future.
@@ -424,12 +467,26 @@ export function ReelsFeed({
         onToggleMute={toggleMute}
         onLike={() => void toggleLike(item.id)}
         onSave={() => void toggleSave(item.id)}
-        // The detail route follows the post's type: video lives at
-        // /community/video/:id and everything else at /community/post/:id.
-        onOpenComments={() => router.push(contentDetailPath(item.id, item.post_type) as never)}
+        // Comments stay on this page — the sheet, not a detail route. Pushing
+        // /community/post/:id here is what made the comment button feel broken:
+        // she left the feed for another view just to type.
+        onOpenComments={() => { void openComments(item.id); }}
         onOpenPost={() => router.push(contentDetailPath(item.id, item.post_type) as never)}
         onOpenAuthor={() => router.push(`/user/${item.author_id}` as never)}
-        onOpenCommunity={() => router.push(`/community/${item.community_id}` as never)}
+        following={followingIds.has(item.author_id)}
+        onFollowAuthor={
+          userId && item.author_id !== userId
+            ? () => {
+                if (followingIds.has(item.author_id)) void unfollowAuthor(userId, item.author_id);
+                else void followAuthor(userId, item.author_id);
+              }
+            : undefined
+        }
+        onOpenCommunity={() => router.push(
+          (item.community_id
+            ? `/community/${item.community_id}`
+            : `/user/${item.author_id}`) as never,
+        )}
         onOpenSafety={() => setSafetyPost(item)}
         interestPrompt={asks ? (
           <FeedInterestCard
@@ -442,7 +499,8 @@ export function ReelsFeed({
     );
   }, [
     muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion, answeredPrompts,
-    toggleMute, toggleLike, toggleSave, router, answerPrompt, dropPost,
+    toggleMute, toggleLike, toggleSave, router, answerPrompt, dropPost, openComments,
+    followingIds, followAuthor, unfollowAuthor, userId,
   ]);
 
   // The three states this surface owes a viewer. Non-null means the pager shows
@@ -505,6 +563,18 @@ export function ReelsFeed({
         onReport={safetyPost ? handleReport(safetyPost) : noReport}
         onBlock={safetyPost ? () => handleBlock(safetyPost) : noBlock}
         onHide={safetyPost ? () => dropPost(safetyPost.id) : noHide}
+      />
+
+      <CommentSheet
+        visible={commentPostId !== null}
+        postId={commentPostId ?? ''}
+        comments={sheetComments}
+        likedCommentIds={likedCommentIds}
+        currentUserId={userId}
+        onClose={() => setCommentPostId(null)}
+        onCommentsChange={setSheetComments}
+        onLikeComment={(id) => { void handleLikeComment(id); }}
+        onReply={() => undefined}
       />
     </View>
   );

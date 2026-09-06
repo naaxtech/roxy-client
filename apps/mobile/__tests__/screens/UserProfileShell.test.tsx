@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import UserProfileScreen from '../../app/(tabs)/you/[userId]';
 
 /**
@@ -18,9 +18,16 @@ import UserProfileScreen from '../../app/(tabs)/you/[userId]';
  */
 
 const mockPush = jest.fn();
+const mockOpenReport = jest.fn();
+const mockBlock = jest.fn(async () => undefined);
 let mockProfile: Record<string, unknown> | null = null;
 let mockBadges: unknown[] = [];
 let mockPostCount = 0;
+let mockEvents: unknown[] = [];
+let mockRooms: unknown[] = [];
+let mockGames: unknown[] = [];
+let mockCover: string | null = null;
+let mockMembers: unknown[] = [];
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn() }),
@@ -50,6 +57,41 @@ jest.mock('../../store/friendStore', () => ({
     friends: [], pendingReceived: [], pendingSent: [],
     sendRequest: jest.fn(), acceptRequest: jest.fn(),
   }),
+}));
+
+jest.mock('../../store/followStore', () => ({
+  useFollowStore: (sel: (s: unknown) => unknown) => {
+    const state = {
+      followingIds: new Set<string>(),
+      hydrate: jest.fn(),
+      follow: jest.fn(),
+      unfollow: jest.fn(),
+    };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
+}));
+
+jest.mock('../../lib/confirm', () => ({
+  confirmAction: jest.fn(async () => true),
+  showAlert: jest.fn(),
+}));
+
+jest.mock('../../store/safetyStore', () => ({
+  useSafetyStore: (sel?: (s: { openReportModal: () => void; blockUser: () => Promise<void> }) => unknown) => {
+    const state = { openReportModal: mockOpenReport, blockUser: mockBlock };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
+}));
+
+jest.mock('../../store/communityStore', () => ({
+  useCommunityStore: (sel: (s: unknown) => unknown) => {
+    const state = {
+      joinedIds: new Set<string>(),
+      hydrate: jest.fn(),
+      joinCommunity: jest.fn(),
+    };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
 }));
 
 // The grid runs its own query; this suite is about which tabs exist, not what
@@ -86,6 +128,59 @@ jest.mock('../../lib/supabase', () => ({
           }),
         };
       }
+      if (table === 'events') {
+        const done = () => Promise.resolve({ data: mockEvents, error: null });
+        const tail: Record<string, unknown> = {};
+        const next = () => tail;
+        tail.select = next;
+        tail.eq = next;
+        tail.gte = next;
+        tail.in = next;
+        tail.order = done;
+        tail.then = (resolve: (v: unknown) => unknown) => done().then(resolve);
+        return tail;
+      }
+      if (table === 'community_rooms') {
+        const done = () => Promise.resolve({ data: mockRooms, error: null });
+        const tail: Record<string, unknown> = {};
+        const next = () => tail;
+        tail.select = next;
+        tail.eq = next;
+        tail.neq = next;
+        tail.order = done;
+        tail.then = (resolve: (v: unknown) => unknown) => done().then(resolve);
+        return tail;
+      }
+      if (table === 'communities') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({
+                data: { cover_image_url: mockCover },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'community_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              limit: () => Promise.resolve({ data: mockMembers, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'community_games') {
+        const done = () => Promise.resolve({ data: mockGames, error: null });
+        const tail: Record<string, unknown> = {};
+        const next = () => tail;
+        tail.select = next;
+        tail.eq = next;
+        tail.then = (resolve: (v: unknown) => unknown) => done().then(resolve);
+        return tail;
+      }
       return chain;
     }),
   },
@@ -116,6 +211,13 @@ beforeEach(() => {
   mockProfile = { ...aProfile };
   mockBadges = [aBadge];
   mockPostCount = 3;
+  mockEvents = [];
+  mockRooms = [];
+  mockGames = [];
+  mockCover = null;
+  mockMembers = [];
+  mockOpenReport.mockClear();
+  mockBlock.mockClear();
 });
 
 describe('user profile on the unified shell', () => {
@@ -126,7 +228,7 @@ describe('user profile on the unified shell', () => {
 
   it('keeps the earned badges that ProfileCard showed', async () => {
     const { getByTestId } = render(<UserProfileScreen />);
-    await waitFor(() => expect(getByTestId('profile-badges')).toBeTruthy());
+    await waitFor(() => expect(getByTestId('profile-badge-chip')).toBeTruthy());
   });
 
   it('shows Posts when she has media, and no Shop for a woman who has not applied to sell', async () => {
@@ -146,5 +248,63 @@ describe('user profile on the unified shell', () => {
     mockProfile = null;
     const { getByTestId } = render(<UserProfileScreen />);
     await waitFor(() => expect(getByTestId('profile-not-found')).toBeTruthy());
+  });
+
+  it('shows Follow on a person and Join on an official community account', async () => {
+    const person = render(<UserProfileScreen />);
+    await waitFor(() => expect(person.getByTestId('profile-follow')).toBeTruthy());
+    expect(person.queryByTestId('profile-join')).toBeNull();
+    person.unmount();
+
+    mockProfile = { ...aProfile, official_community_id: 'c-official' };
+    const official = render(<UserProfileScreen />);
+    await waitFor(() => expect(official.getByTestId('profile-join')).toBeTruthy());
+    expect(official.getByTestId('profile-follow')).toBeTruthy();
+    expect(official.getByTestId('profile-official-chip')).toBeTruthy();
+  });
+
+  it('shows Events when she hosts an upcoming night, and no empty Rooms / Games tabs', async () => {
+    mockEvents = [{
+      id: 'e1', title: 'Pub night', starts_at: '2026-10-01T19:00:00Z',
+      event_type: 'in_person', location_text: 'Soho', status: 'active',
+    }];
+    const { getByTestId, queryByTestId } = render(<UserProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-tab-events')).toBeTruthy());
+    expect(queryByTestId('profile-tab-rooms')).toBeNull();
+    expect(queryByTestId('profile-tab-games')).toBeNull();
+  });
+
+  it('shows Rooms and Games on an official account only when those rows exist', async () => {
+    mockProfile = { ...aProfile, official_community_id: 'c-official' };
+    mockRooms = [{
+      id: 'r1', name: 'Sunday lounge', status: 'live', room_type: 'audio',
+      description: null, scheduled_at: null, participant_count: 3,
+      max_participants: 12, created_by: 'u2',
+    }];
+    mockGames = [{ games: { id: 'g1', name: 'Quiz', short_description: 'Weekly', category: 'trivia', url: null, publisher_type: 'community' } }];
+    const { getByTestId } = render(<UserProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-tab-rooms')).toBeTruthy());
+    expect(getByTestId('profile-tab-games')).toBeTruthy();
+  });
+
+  it('uses the official community cover and an online-now row when members are live', async () => {
+    mockProfile = { ...aProfile, official_community_id: 'c-official' };
+    mockCover = 'https://cdn.example/wlw-cover.jpg';
+    mockMembers = [{
+      user_id: 'u3',
+      profiles: { display_name: 'Maya', avatar_url: null, last_seen_at: new Date().toISOString() },
+    }];
+    const { getByTestId, getByText } = render(<UserProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-cover-photo')).toBeTruthy());
+    expect(getByTestId('profile-online-row')).toBeTruthy();
+    expect(getByText(/1 online now · Maya/)).toBeTruthy();
+  });
+
+  it('opens Report from the header More, against this profile', async () => {
+    const { getByTestId } = render(<UserProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-more')).toBeTruthy());
+    fireEvent.press(getByTestId('profile-more'));
+    fireEvent.press(getByTestId('profile-more-report'));
+    expect(mockOpenReport).toHaveBeenCalledWith({ userId: 'u2', contentType: 'profile' });
   });
 });

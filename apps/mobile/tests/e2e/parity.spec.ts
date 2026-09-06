@@ -13,17 +13,26 @@ import { signInWithSeedUser, gotoTab } from './helpers/auth';
  * Each test asserts the LINK, not the destination screen. The screens have their
  * own coverage; what broke, and what will break again, is the way in.
  */
+/** People, badges and saved live in the TikTok More menu, not on the profile body. */
+async function openYouMore(page: import('@playwright/test').Page) {
+  await expect(page.getByTestId('you-more')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('you-more').click();
+  await expect(page.getByTestId('you-more-menu')).toBeVisible({ timeout: 15_000 });
+}
+
 test.describe('Restored entry points', () => {
   test('You reaches My people and Badges — their only links in the app', async ({ page }) => {
     await signInWithSeedUser(page);
     await gotoTab(page, 'you');
 
-    await expect(page.getByTestId('you-people')).toBeVisible({ timeout: 30_000 });
+    await openYouMore(page);
+    await expect(page.getByTestId('you-people')).toBeVisible();
     await page.getByTestId('you-people').click();
     await expect(page).toHaveURL(/\/people$/, { timeout: 15_000 });
 
     await page.goBack();
     await gotoTab(page, 'you');
+    await openYouMore(page);
     await page.getByTestId('you-badges').click();
     await expect(page).toHaveURL(/\/badges$/, { timeout: 15_000 });
   });
@@ -32,11 +41,13 @@ test.describe('Restored entry points', () => {
     await signInWithSeedUser(page);
     await gotoTab(page, 'you');
 
-    await expect(page.getByTestId('you-saved')).toBeVisible({ timeout: 30_000 });
+    await openYouMore(page);
+    await expect(page.getByTestId('you-saved')).toBeVisible();
     await page.getByTestId('you-saved').click();
 
     // The row used to push `/(tabs)/feed`. Her saved posts are on this screen.
     await expect(page).toHaveURL(/\/you$/);
+    await expect(page.getByTestId('you-more-menu')).toHaveCount(0);
   });
 
   test('the communities rail offers a way past its twelve cards', async ({ page }) => {

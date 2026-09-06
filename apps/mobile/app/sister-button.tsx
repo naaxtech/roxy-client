@@ -18,6 +18,7 @@ import { useAuthStore } from '../store/authStore';
 import { callEdgeFunction } from '../lib/supabase';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { showAlert } from '../lib/confirm';
+import { inkOn } from '../lib/theme';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -39,7 +40,7 @@ export default function SisterButtonScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0d0520' },
+    container: { flex: 1, backgroundColor: colors.background },
 
     header: {
       flexDirection: 'row',
@@ -47,29 +48,32 @@ export default function SisterButtonScreen() {
       paddingHorizontal: 12,
       paddingVertical: 10,
       gap: 10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: 'rgba(255,255,255,0.08)',
+      backgroundColor: colors.backgroundAlt,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.line,
     },
     headerPlate: {
       width: 38, height: 38, borderRadius: 13,
       alignItems: 'center', justifyContent: 'center',
     },
     backButton: {
-      width: 40,
-      alignItems: 'center',
+      width: 30, height: 30, borderRadius: 99,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1, borderColor: colors.line,
     },
     headerCenter: {
       flex: 1,
     },
     headerTitle: {
-      fontSize: 17,
-      fontWeight: '800',
-      color: '#fff',
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
     },
     headerSubtitle: {
-      fontSize: 11.5,
-      color: '#B9A8D8',
+      fontSize: 10.5,
+      color: colors.textMuted,
       marginTop: 1,
+      letterSpacing: 0.2,
     },
 
     messageList: { flex: 1 },
@@ -99,21 +103,19 @@ export default function SisterButtonScreen() {
       justifyContent: 'center', marginTop: 10,
     },
     chip: {
-      borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9,
-      backgroundColor: 'rgba(142,124,247,0.14)',
-      borderWidth: 1, borderColor: 'rgba(142,124,247,0.35)',
+      borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8,
+      backgroundColor: 'transparent',
+      borderWidth: 1, borderColor: colors.sister,
     },
-    chipText: { color: '#CFC3EE', fontSize: 13, fontWeight: '600' },
-    // Sister is always a dark stage — fixed light text, never theme tokens
-    // (light-theme tokens would render dark-on-dark here).
+    chipText: { color: colors.sisterInk, fontSize: 12, fontWeight: '600' },
     emptyTitle: {
-      color: '#FFFFFF',
+      color: colors.textPrimary,
       fontSize: 20,
       fontWeight: '800',
       marginTop: 6,
     },
     emptyBody: {
-      color: '#C9BCE4',
+      color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 22,
       fontSize: 15,
@@ -137,14 +139,14 @@ export default function SisterButtonScreen() {
       overflow: 'hidden',
     },
     bubbleAssistant: {
-      backgroundColor: 'rgba(255,255,255,0.07)',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.line,
       borderBottomLeftRadius: 6,
     },
-    messageText: { fontSize: 15, lineHeight: 22 },
-    // Her own words sit on the #8E7CF7 → #C86DD7 lilac; white on those is
-    // 3.29:1 and 3.17:1. Dark ink is 5.66:1 and 5.88:1.
-    messageTextUser: { color: '#fff' },
-    messageTextAssistant: { color: '#EDE7F8' },
+    messageText: { fontSize: 13.5, lineHeight: 22 },
+    messageTextUser: { color: inkOn('#8E7CF7') },
+    messageTextAssistant: { color: colors.textPrimary },
 
     thinkingWrap: {
       flexDirection: 'row',
@@ -208,12 +210,12 @@ export default function SisterButtonScreen() {
     inputArea: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
       borderTopWidth: 1,
-      borderTopColor: colors.surface,
-      gap: 10,
-      backgroundColor: '#0d0520',
+      borderTopColor: colors.line,
+      gap: 8,
+      backgroundColor: colors.background,
     },
     input: {
       flex: 1,
@@ -244,9 +246,16 @@ export default function SisterButtonScreen() {
       opacity: 0.4,
     },
     sendButtonText: {
-      color: '#fff',
+      color: inkOn('#8E7CF7'),
       fontWeight: '700',
       fontSize: 15,
+    },
+    privacyNote: {
+      textAlign: 'center',
+      fontSize: 10,
+      fontWeight: '500',
+      color: colors.textMuted,
+      paddingBottom: 8,
     },
     restartBtn: {
       marginTop: 16,
@@ -335,7 +344,7 @@ export default function SisterButtonScreen() {
           </LinearGradient>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Sister</Text>
-            <Text style={styles.headerSubtitle}>Private - gentle - judgement-free</Text>
+            <Text style={styles.headerSubtitle}>private · gentle · judgement-free</Text>
           </View>
         </View>
 
@@ -473,10 +482,11 @@ export default function SisterButtonScreen() {
             accessibilityLabel="Send message"
           >
             <LinearGradient colors={['#8E7CF7', '#C86DD7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.sendButtonInner}>
-              <Ionicons name="send" size={16} color="#fff" />
+              <Ionicons name="send" size={16} color={inkOn('#8E7CF7')} />
             </LinearGradient>
           </TouchableOpacity>
         </View>
+        <Text style={styles.privacyNote}>Nothing here is shared, scored, or saved to your profile.</Text>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

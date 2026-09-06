@@ -77,11 +77,12 @@ export function ThemeToggle() {
 }
 
 const styles = (_colors: ThemeColors) => StyleSheet.create({
-  row: { flexDirection: 'row', gap: 8 },
+  row: { flexDirection: 'row', gap: 5, width: '100%' },
   choice: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 14,
-    borderRadius: RADII.pill, borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 10,
+    borderRadius: RADII.sm, borderWidth: 1,
   },
   label: { ...TYPE.caption, fontWeight: '700' },
 });

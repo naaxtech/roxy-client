@@ -13,7 +13,7 @@ import {
 } from '../lib/notifications';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useAccess } from '../hooks/useAccess';
-import { canOpenPath } from '../lib/features';
+import { featureForPath } from '../lib/features';
 
 const TYPE_EMOJI: Record<RoxyNotification['type'], string> = {
   friend_request: '🌸',
@@ -25,7 +25,11 @@ export default function NotificationsScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
-  const { tier } = useAccess();
+  const { can } = useAccess();
+  const pathOpen = (path: string) => {
+    const feature = featureForPath(path);
+    return feature == null || can(feature);
+  };
   const [items, setItems] = useState<RoxyNotification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,7 +51,7 @@ export default function NotificationsScreen() {
         x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x
       ));
     }
-    if (n.link_path && canOpenPath(n.link_path, tier)) {
+    if (n.link_path && pathOpen(n.link_path)) {
       router.push(n.link_path as any);
     }
   };
@@ -134,7 +138,7 @@ export default function NotificationsScreen() {
           }
           renderItem={({ item }) => {
             const isUnread = item.read_at === null;
-            const gated = !!(item.link_path && !canOpenPath(item.link_path, tier));
+            const gated = !!(item.link_path && !pathOpen(item.link_path));
             return (
               <TouchableOpacity
                 style={[styles.row, isUnread && styles.rowUnread]}

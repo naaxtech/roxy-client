@@ -2,7 +2,11 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
+import { getHostScope } from '@/lib/hostScope';
 import { InviteCodesClient, type InviteCodeItem, type CommunityOption } from './InviteCodesClient';
+import { resolveAccountKind } from '@/lib/accountKind';
+import { groupRedeemersByCode, type InviteRedeemer } from '@/lib/inviteRedeemers';
+import { isMissingFunction } from '@/lib/schema-availability';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,12 +27,6 @@ interface CodeRow {
   communities: { name: string } | null;
 }
 
-interface MembershipRow {
-  community_id: string;
-  role: string;
-  communities: { name: string } | null;
-}
-
 /**
  * Invite codes — the only way anyone gets into Roxy.
  *
@@ -37,9 +35,9 @@ interface MembershipRow {
  * administers, and Roxy staff to all of them. A second copy of that rule here
  * would be one more thing that can drift away from the one protecting the data.
  *
- * The membership query is separate and does have a filter, because it answers a
- * different question: not "which codes may I see" but "which communities may I
- * mint a code for" — the list behind the create form.
+ * The community list answers a different question: not "which codes may I see"
+ * but "which communities may I mint a code for". Roxy core may mint for every
+ * community. Everyone else stays scoped to the ones they administer or patrol.
  */
 export default async function InvitesPage() {
   const supabase = await createClient();
@@ -47,12 +45,8 @@ export default async function InvitesPage() {
   const userId = claimsData?.claims?.sub;
   if (!userId) notFound();
 
-  const [memberships, codes] = await Promise.all([
-    supabase
-      .from('community_members')
-      .select('community_id, role, communities(name)')
-      .eq('user_id', userId)
-      .in('role', ['admin', 'border_patrol']),
+  const [scope, codes, redeemersRes] = await Promise.all([
+    getHostScope(supabase, userId, ['admin', 'border_patrol']),
     supabase
       .from('invite_codes')
       .select(
@@ -60,16 +54,45 @@ export default async function InvitesPage() {
       )
       .order('created_at', { ascending: false })
       .limit(CODE_LIMIT),
+    supabase.rpc('invite_code_redeemers'),
   ]);
 
-  const membershipRows = (memberships.data ?? []) as unknown as MembershipRow[];
-  const communities: CommunityOption[] = membershipRows.map((row) => ({
-    id: row.community_id,
-    name: row.communities?.name ?? 'Unnamed community',
+  const communities: CommunityOption[] = scope.communities.map((community) => ({
+    id: community.id,
+    name: community.name,
   }));
 
   const codeRows = (codes.data ?? []) as unknown as CodeRow[];
   const communityNames = new Map(communities.map((c) => [c.id, c.name]));
+  const redeemerRows = isMissingFunction(redeemersRes.error)
+    ? []
+    : ((redeemersRes.data ?? []) as {
+        code_id: string;
+        user_id: string;
+        display_name: string;
+        username: string | null;
+        vetting_status: string | null;
+        access_tier: string | null;
+        staff_role: string | null;
+        is_staff: boolean | null;
+        is_community_owner: boolean | null;
+        used_at: string;
+      }[]);
+  const redeemersByCode = groupRedeemersByCode(
+    redeemerRows.map((row): InviteRedeemer => ({
+      codeId: row.code_id,
+      userId: row.user_id,
+      displayName: row.display_name,
+      username: row.username,
+      accountKind: resolveAccountKind({
+        staff_role: row.staff_role,
+        is_staff: row.is_staff,
+        is_community_owner: row.is_community_owner,
+        vetting_status: row.vetting_status,
+      }),
+      usedAt: row.used_at,
+    })),
+  );
   const items: InviteCodeItem[] = codeRows.map((row) => ({
     id: row.id,
     code: row.code,
@@ -82,6 +105,12 @@ export default async function InvitesPage() {
     revokedAt: row.revoked_at,
     lockedAt: row.locked_at,
     createdAt: row.created_at,
+    redeemers: (redeemersByCode.get(row.id) ?? []).map((person) => ({
+      displayName: person.displayName,
+      username: person.username,
+      accountKind: person.accountKind,
+      usedAt: person.usedAt,
+    })),
   }));
 
   return (
@@ -95,18 +124,20 @@ export default async function InvitesPage() {
         </p>
       </div>
 
-      {memberships.error ? (
+      {scope.error ? (
         <ErrorPanel>
           We could not load the communities you administer, so the create form is unavailable.
           Reload the page — if it keeps failing, your session may have expired.
         </ErrorPanel>
       ) : communities.length === 0 ? (
         <div className="border rounded-lg p-8 space-y-3">
-          <p className="font-medium">You do not administer a community yet</p>
+          <p className="font-medium">
+            {scope.isCore ? 'There are no communities yet' : 'You do not administer a community yet'}
+          </p>
           <p className="text-sm text-muted-foreground max-w-prose">
-            Invite codes belong to a community — that is what makes an invitation attributable
-            and what decides who reviews the application afterwards. Create a community, or ask
-            an admin of yours to make you one, and this page opens.
+            {scope.isCore
+              ? 'Invite codes belong to a community. Create one and you can mint a code for it from here.'
+              : 'Invite codes belong to a community — that is what makes an invitation attributable and what decides who reviews the application afterwards. Create a community, or ask an admin of yours to make you one, and this page opens.'}
           </p>
           <Button asChild variant="outline" size="sm">
             <Link href="/community">Go to Community</Link>
@@ -119,7 +150,7 @@ export default async function InvitesPage() {
         </ErrorPanel>
       ) : null}
 
-      {communities.length > 0 && !memberships.error && (
+      {communities.length > 0 && !scope.error && (
         <InviteCodesClient
           userId={userId}
           communities={communities}

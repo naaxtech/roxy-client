@@ -1,8 +1,14 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import ArchiveBrowseScreen from '../../app/archive/index';
 import { useArchiveStore } from '../../store/archiveStore';
+import { useProfileStore } from '../../store/profileStore';
+import { THEMES } from '../../lib/theme';
 import type { ArchiveEntry } from '../../lib/archive';
+
+const flat = (node: { props: { style?: unknown } }) =>
+  StyleSheet.flatten(node.props.style as never) as Record<string, string | number>;
 
 /**
  * The Archive's front door, and the one screen a pending member can use.
@@ -73,6 +79,7 @@ beforeEach(() => {
   mockSetFilters.mockReset();
   mockHydrateMine.mockReset().mockResolvedValue(undefined);
   mockStatus = 'approved';
+  useProfileStore.setState({ profile: { vetting_status: 'approved' } as never });
   seed();
 });
 
@@ -96,11 +103,28 @@ describe('the Archive browse screen', () => {
   it('shows the pending banner to a pending member and not to an approved one', () => {
     const approved = render(<ArchiveBrowseScreen />);
     expect(approved.queryByTestId('archive-pending-banner')).toBeNull();
+    expect(approved.queryByTestId('account-status-tag')).toBeNull();
     approved.unmount();
 
     mockStatus = 'pending';
+    useProfileStore.setState({ profile: { vetting_status: 'pending' } as never });
     const pending = render(<ArchiveBrowseScreen />);
     expect(pending.getByTestId('archive-pending-banner')).toBeTruthy();
+    expect(pending.getByTestId('account-status-tag')).toBeTruthy();
+  });
+
+  it('paints a regular centered search bar you can actually read', () => {
+    const { getByTestId } = render(<ArchiveBrowseScreen />);
+    const wrap = getByTestId('archive-search-wrap');
+    const input = getByTestId('archive-search');
+    const wrapStyle = flat(wrap);
+    const inputStyle = flat(input);
+    expect(wrapStyle.alignSelf).toBe('center');
+    expect(wrapStyle.backgroundColor).toBe(THEMES.dark.surfaceLight);
+    expect(wrapStyle.backgroundColor).not.toBe(THEMES.dark.background);
+    expect(inputStyle.color).toBe(THEMES.dark.textPrimary);
+    expect(inputStyle.backgroundColor).toBe(THEMES.dark.surfaceLight);
+    expect(input.props.placeholderTextColor).toBe(THEMES.dark.textSecondary);
   });
 
   it('pushes the typed query into the store filters', () => {

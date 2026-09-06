@@ -4,6 +4,7 @@ import {
   ScrollView, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
@@ -11,40 +12,44 @@ import { supabase } from '../../../lib/supabase';
 import { exportUserData, describeExportResult } from '../../../lib/dataExport';
 import { confirmAction, showAlert } from '../../../lib/confirm';
 import { useThemeColors } from '../../../hooks/useThemeColors';
-import { useThemeStore } from '../../../store/themeStore';
 import { a11yState } from '../../../lib/a11yState';
 import { ThemeToggle } from '../../../components/ui/ThemeToggle';
+import { ViewAsPicker } from '../../../components/settings/ViewAsPicker';
 import { useSafetyStore } from '../../../store/safetyStore';
 import {
   readDmPermission, nextDmPermission, dmPermissionLabel, dmPermissionDescription,
 } from '../../../lib/dmPermission';
 import { useAccess } from '../../../hooks/useAccess';
+import { useViewAsStore } from '../../../store/viewAsStore';
+import { TYPE } from '../../../lib/typography';
+import { RADII, type ThemeColors } from '../../../lib/theme';
+import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 
+/**
+ * Settings & safety — same sections and copy as the 3.0 prototype.
+ *
+ * Dating / Ghost stay behind beta (or a core preview of staff). The HQ
+ * preview picker is extra chrome that only core sees.
+ */
 export default function SettingsScreen() {
   const { user } = useAuthStore();
   const { profile, updateProfile } = useProfileStore();
-  const { isBeta } = useAccess();
+  const { isBeta, isCore } = useAccess();
   const router = useRouter();
   const colors = useThemeColors();
-  const { theme } = useThemeStore();
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
-  // `(tabs)/_layout.tsx` hydrates this once per session, so the count is here
-  // without this screen fetching anything.
   const blockedCount = useSafetyStore((s) => s.blockedUserIds.length);
+  const s = styles(colors);
 
   if (!user || !profile) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <ActivityIndicator color={colors.roxy} />
+      <SafeAreaView style={s.container}>
+        <ActivityIndicator color={colors.primary} />
       </SafeAreaView>
     );
   }
 
-  // Migration 093 is written and NOT applied, so this key is absent from every
-  // profile row today. `readDmPermission` answers `everyone` for that, which is
-  // exactly how the app already behaves — anyone may message, and the inbox
-  // files strangers under Requests.
   const dmPermission = readDmPermission(profile as { dm_permission?: unknown });
 
   const handleSignOut = async () => {
@@ -52,7 +57,9 @@ export default function SettingsScreen() {
     if (!confirmed) return;
     await supabase.auth.signOut();
     useAuthStore.getState().signOut();
-    router.replace('/(auth)/welcome');
+    useProfileStore.getState().setProfile(null);
+    useViewAsStore.getState().setPreview(null);
+    router.replace('/(auth)/code');
   };
 
   const handleExportData = async () => {
@@ -61,235 +68,269 @@ export default function SettingsScreen() {
     setExportError(null);
     const outcome = await exportUserData();
     setExporting(false);
-
     const { title, body } = describeExportResult(outcome);
     if (outcome.status === 'error') setExportError(body);
     showAlert(title, body);
   };
 
-  const handleDeleteAccount = () => {
-    router.push('/(tabs)/you/delete-account' as any);
-  };
-
-  const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    scroll: { padding: 16, gap: 16 },
-    header: {
-      flexDirection: 'row', alignItems: 'center',
-      justifyContent: 'space-between', marginBottom: 4,
-    },
-    backButton: { padding: 4 },
-    backText: { color: colors.roxy, fontSize: 16, fontWeight: '500' },
-    headerTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
-    headerSpacer: { width: 56 },
-    section: {
-      backgroundColor: colors.surface, borderRadius: 16,
-      paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, width: '100%',
-    },
-    sectionHeader: {
-      color: colors.textMuted, fontSize: 11, fontWeight: '600',
-      textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8,
-    },
-    row: {
-      flexDirection: 'row', alignItems: 'center',
-      justifyContent: 'space-between', paddingVertical: 10,
-    },
-    rowLabelGroup: { flex: 1, marginRight: 12 },
-    rowLabel: { color: colors.textPrimary, fontSize: 15, fontWeight: '500' },
-    rowDescription: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-    rowValue: { color: colors.textMuted, fontSize: 14 },
-    separator: { height: 1, backgroundColor: colors.textMuted + '30', marginHorizontal: -16 },
-    actionRow: { paddingVertical: 14 },
-    actionRowBusy: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    actionRowLabel: { color: colors.textPrimary, fontSize: 15, fontWeight: '500' },
-    actionRowLabelDisabled: { color: colors.textMuted },
-    actionRowError: { color: colors.error, fontSize: 12, marginTop: 6 },
-    signOutButton: {
-      width: '100%', backgroundColor: colors.surface, borderRadius: 16,
-      padding: 16, alignItems: 'center',
-      borderWidth: 1, borderColor: colors.error + '60',
-    },
-    signOutText: { color: colors.error, fontSize: 16, fontWeight: '600' },
-    dangerText: { color: colors.error, fontSize: 15, fontWeight: '500' },
-    segmentedControl: {
-      flexDirection: 'row', borderRadius: 8,
-      backgroundColor: colors.surfaceLight, padding: 2,
-    },
-    segment: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6 },
-    segmentActive: { backgroundColor: colors.primary },
-    segmentText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
-    segmentTextActive: { color: '#FFFFFF' },
-  });
-
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+    <SafeAreaView style={s.container}>
+      <View style={s.topBar}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={s.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Settings & safety</Text>
+      </View>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backText}>{'← Back'}</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Settings</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
-        {/* Account section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Account</Text>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Email</Text>
-            <Text style={styles.rowValue}>{user?.email ?? '—'}</Text>
+      <ScrollView contentContainerStyle={s.scroll}>
+        <View style={s.block}>
+          <Text style={s.sectionLabel}>Account</Text>
+          <View style={s.card}>
+            <View style={s.row}>
+              <Text style={s.rowLabel}>Email</Text>
+              <Text style={s.rowValue} numberOfLines={1}>{user.email ?? '—'}</Text>
+            </View>
           </View>
         </View>
 
-        {/* Preferences section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Preferences</Text>
+        {isCore ? (
+          <View style={s.block}>
+            <Text style={s.sectionLabel}>Roxy core</Text>
+            <View style={[s.card, s.cardPad]}>
+              <ViewAsPicker />
+            </View>
+          </View>
+        ) : null}
 
-          {isBeta ? (
-            <>
-              <View style={styles.row}>
-                <View style={styles.rowLabelGroup}>
-                  <Text style={styles.rowLabel}>Dating mode</Text>
+        <View style={s.block}>
+          <Text style={s.sectionLabel}>Visibility & safety</Text>
+          <View style={s.card}>
+            {isBeta ? (
+              <>
+                <View style={s.row}>
+                  <View style={s.rowLabelGroup}>
+                    <Text style={s.rowLabel}>Dating mode</Text>
+                    <Text style={s.rowHint}>Show up in Speed Dating & matches</Text>
+                  </View>
+                  <Switch
+                    value={profile.is_dating_mode ?? false}
+                    onValueChange={async (value) => {
+                      try { await updateProfile({ is_dating_mode: value }); }
+                      catch { showAlert('Error', 'Could not save preference'); }
+                    }}
+                    trackColor={{ false: colors.surfaceLight, true: colors.primary }}
+                    thumbColor={colors.backgroundAlt}
+                    accessibilityLabel="Dating mode"
+                  />
                 </View>
-                <Switch
-                  value={profile.is_dating_mode ?? false}
-                  onValueChange={async (value) => {
-                    try { await updateProfile({ is_dating_mode: value }); }
-                    catch { showAlert('Error', 'Could not save preference'); }
-                  }}
-                  trackColor={{ false: colors.surface, true: colors.roxy }}
-                  thumbColor={colors.textPrimary}
-                />
-              </View>
-
-              <View style={styles.separator} />
-
-              <View style={styles.row}>
-                <View style={styles.rowLabelGroup}>
-                  <Text style={styles.rowLabel}>Ghost mode</Text>
-                  <Text style={styles.rowDescription}>Hide from discovery</Text>
+                <View style={s.divider} />
+                <View style={s.row}>
+                  <View style={s.rowLabelGroup}>
+                    <Text style={s.rowLabel}>Ghost mode</Text>
+                    <Text style={s.rowHint}>Hide me from discovery & search</Text>
+                  </View>
+                  <Switch
+                    value={profile.is_ghost ?? false}
+                    onValueChange={async (value) => {
+                      try { await updateProfile({ is_ghost: value }); }
+                      catch { showAlert('Error', 'Could not save preference'); }
+                    }}
+                    trackColor={{ false: colors.surfaceLight, true: colors.primary }}
+                    thumbColor={colors.backgroundAlt}
+                    accessibilityLabel="Ghost mode"
+                  />
                 </View>
-                <Switch
-                  value={profile.is_ghost ?? false}
-                  onValueChange={async (value) => {
-                    try { await updateProfile({ is_ghost: value }); }
-                    catch { showAlert('Error', 'Could not save preference'); }
-                  }}
-                  trackColor={{ false: colors.surface, true: colors.roxy }}
-                  thumbColor={colors.textPrimary}
-                />
+                <View style={s.divider} />
+              </>
+            ) : null}
+
+            <TouchableOpacity
+              style={s.row}
+              onPress={async () => {
+                const next = nextDmPermission(dmPermission);
+                try {
+                  await updateProfile({ dm_permission: next } as never);
+                } catch {
+                  showAlert(
+                    'Not saved',
+                    'Could not save who can message you. Your setting is unchanged.',
+                  );
+                }
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Who can message me: ${dmPermissionLabel(dmPermission)}. Change.`}
+              testID="settings-dm-permission"
+            >
+              <View style={s.rowLabelGroup}>
+                <Text style={s.rowLabel}>Who can message me</Text>
+                <Text style={s.rowHint}>Everyone else lands in Requests</Text>
               </View>
+              <Text style={s.rowAccent}>{dmPermissionLabel(dmPermission)} ›</Text>
+            </TouchableOpacity>
+            <View style={s.divider} />
+            <TouchableOpacity
+              style={s.row}
+              onPress={() => router.push('/(tabs)/you/blocked' as never)}
+              accessibilityRole="button"
+              accessibilityLabel={`Blocked, ${blockedCount} ${blockedCount === 1 ? 'person' : 'people'}`}
+              testID="settings-blocked"
+            >
+              <Text style={s.rowLabel}>Blocked</Text>
+              <Text style={s.rowValue}>{blockedCount} ›</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-              <View style={styles.separator} />
-            </>
-          ) : null}
-
-          {/* Who can message me — the prototype cycles the three values in
-              place rather than pushing a picker (behaviour 1637). The write
-              can fail on this branch because migration 093 is not applied
-              yet, and it says so instead of showing a value it did not save. */}
-          <TouchableOpacity
-            style={styles.row}
-            onPress={async () => {
-              const next = nextDmPermission(dmPermission);
-              try {
-                await updateProfile({ dm_permission: next } as never);
-              } catch {
-                showAlert(
-                  'Not saved',
-                  'Could not save who can message you. Your setting is unchanged.'
-                );
-              }
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={`Who can message me: ${dmPermissionLabel(dmPermission)}. Change.`}
-            testID="settings-dm-permission"
-          >
-            <View style={styles.rowLabelGroup}>
-              <Text style={styles.rowLabel}>Who can message me</Text>
-              <Text style={styles.rowDescription}>{dmPermissionDescription(dmPermission)}</Text>
-            </View>
-            <Text style={styles.rowValue}>{dmPermissionLabel(dmPermission)} ›</Text>
-          </TouchableOpacity>
-
-          <View style={styles.separator} />
-
-          {/* "Blocked", not the prototype's "Blocked & muted": this app has no
-              mute, and naming one would send her looking for it. */}
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => router.push('/(tabs)/you/blocked' as never)}
-            accessibilityRole="button"
-            accessibilityLabel={`Blocked, ${blockedCount} ${blockedCount === 1 ? 'person' : 'people'}`}
-            testID="settings-blocked"
-          >
-            <View style={styles.rowLabelGroup}>
-              <Text style={styles.rowLabel}>Blocked</Text>
-              <Text style={styles.rowDescription}>Who cannot see or reach you</Text>
-            </View>
-            <Text style={styles.rowValue}>{blockedCount} ›</Text>
-          </TouchableOpacity>
-
-          <View style={styles.separator} />
-
-          <View style={styles.row}>
-            <View style={styles.rowLabelGroup}>
-              <Text style={styles.rowLabel}>Appearance</Text>
-              <Text style={styles.rowDescription}>{theme === 'dark' ? 'Dark mode' : 'Light mode'}</Text>
-            </View>
+        <View style={s.block}>
+          <Text style={s.sectionLabel}>Appearance</Text>
+          <View style={[s.card, s.appearanceCard]}>
             <ThemeToggle />
           </View>
         </View>
 
-        {/* Sign out */}
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign out</Text>
+        <View style={s.block}>
+          <Text style={s.sectionLabel}>Support</Text>
+          <View style={s.card}>
+            <TouchableOpacity
+              style={s.row}
+              onPress={() => router.push('/(tabs)/you/feedback')}
+              accessibilityRole="button"
+              accessibilityLabel="Feedback and ideas"
+            >
+              <Text style={s.rowLabel}>Feedback & ideas</Text>
+              <Text style={s.chevron}>›</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={s.block}>
+          <Text style={s.sectionLabel}>Data & privacy</Text>
+          <View style={s.card}>
+            <TouchableOpacity
+              style={s.row}
+              onPress={() => void handleExportData()}
+              disabled={exporting}
+              accessibilityRole="button"
+              accessibilityLabel="Export my data"
+              {...a11yState({ disabled: exporting, busy: exporting })}
+            >
+              <View style={s.rowLabelGroup}>
+                <Text style={[s.rowLabel, exporting && s.rowMuted]}>
+                  {exporting ? 'Preparing your file…' : 'Export my data'}
+                </Text>
+                {exportError ? <Text style={s.rowError}>{exportError}</Text> : null}
+              </View>
+              {exporting
+                ? <ActivityIndicator size="small" color={colors.primary} />
+                : <Text style={s.chevron}>›</Text>}
+            </TouchableOpacity>
+            <View style={s.divider} />
+            <TouchableOpacity
+              style={s.row}
+              onPress={() => router.push('/(tabs)/you/delete-account' as never)}
+              accessibilityRole="button"
+              accessibilityLabel="Delete my account"
+            >
+              <Text style={s.danger}>Delete my account</Text>
+              <Text style={s.chevron}>›</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={s.signOut}
+          onPress={() => void handleSignOut()}
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
+        >
+          <Text style={s.signOutText}>Sign out</Text>
         </TouchableOpacity>
-
-        {/* Support section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Support</Text>
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={() => router.push('/(tabs)/you/feedback')}
-          >
-            <Text style={styles.actionRowLabel}>Send feedback / report a bug</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Data & Privacy section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Data & Privacy</Text>
-
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={handleExportData}
-            disabled={exporting}
-            accessibilityRole="button"
-            accessibilityLabel="Export my data"
-            {...a11yState({ disabled: exporting, busy: exporting })}
-          >
-            <View style={styles.actionRowBusy}>
-              {exporting && <ActivityIndicator size="small" color={colors.roxy} />}
-              <Text style={[styles.actionRowLabel, exporting && styles.actionRowLabelDisabled]}>
-                {exporting ? 'Preparing your file…' : 'Export my data'}
-              </Text>
-            </View>
-            {exportError !== null && (
-              <Text style={styles.actionRowError}>{exportError}</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.separator} />
-
-          <TouchableOpacity style={styles.actionRow} onPress={handleDeleteAccount}>
-            <Text style={styles.dangerText}>Delete my account</Text>
-          </TouchableOpacity>
-        </View>
-
+        <Text style={s.footer}>Roxy 3.0 · made with ✿ in London</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: colors.backgroundAlt,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  backBtn: {
+    width: MIN_TOUCH_TARGET - 4,
+    height: MIN_TOUCH_TARGET - 4,
+    borderRadius: RADII.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: { ...TYPE.title, color: colors.textPrimary, fontWeight: '700' },
+  scroll: { padding: 14, gap: 14, paddingBottom: 40 },
+  block: { gap: 7 },
+  sectionLabel: {
+    ...TYPE.micro,
+    color: colors.textMuted,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    paddingLeft: 2,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: RADII.md,
+    overflow: 'hidden',
+  },
+  cardPad: { padding: 12 },
+  appearanceCard: { padding: 6 },
+  row: {
+    minHeight: MIN_TOUCH_TARGET,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    gap: 12,
+  },
+  rowLabelGroup: { flex: 1, minWidth: 0 },
+  rowLabel: { ...TYPE.body, color: colors.textPrimary, fontWeight: '700' },
+  rowHint: { ...TYPE.caption, color: colors.textMuted, marginTop: 1 },
+  rowValue: { ...TYPE.caption, color: colors.textMuted, fontWeight: '600', flexShrink: 1 },
+  rowAccent: { ...TYPE.caption, color: colors.primaryInk, fontWeight: '700' },
+  rowMuted: { color: colors.textMuted },
+  rowError: { ...TYPE.caption, color: colors.error, marginTop: 4 },
+  chevron: { ...TYPE.bodyLg, color: colors.textMuted },
+  divider: { height: 1, backgroundColor: colors.line },
+  danger: { ...TYPE.body, color: colors.error, fontWeight: '700' },
+  signOut: {
+    minHeight: MIN_TOUCH_TARGET,
+    borderRadius: RADII.md,
+    borderWidth: 1,
+    borderColor: colors.primaryInk,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  signOutText: { ...TYPE.bodyLg, color: colors.primaryInk, fontWeight: '700' },
+  footer: {
+    ...TYPE.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+});

@@ -20,6 +20,9 @@ import { THEMES } from '../lib/theme';
 import { useAppFonts } from '../hooks/useAppFonts';
 import { WebAppFrame } from '../components/ui/WebAppFrame';
 import { shouldRedirectToPending, shouldRedirectToApplication } from '../lib/authRouting';
+import { storedProfileIsForUser } from '../lib/signupSession';
+import { effectiveVettingStatus, resolveAccountKind } from '../lib/features';
+import { useViewAsStore } from '../store/viewAsStore';
 import { useGateStore } from '../store/gateStore';
 import { LaunchGate } from '../components/features/FeatureGate';
 
@@ -37,6 +40,7 @@ function AppNavigator() {
   // Outfit + Figtree. `ready` also goes true on failure — see useAppFonts.
   const { ready: fontsReady } = useAppFonts();
   const themeName = useThemeStore((s) => s.theme);
+  const viewAsPreview = useViewAsStore((s) => s.preview);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -77,6 +81,13 @@ function AppNavigator() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (loading) return;
+
+    // A leftover profile from the previous login must not decide routing.
+    // Sign-out used to leave themjuicypeach in memory; the next signup then
+    // treated that completed core profile as this session.
+    const liveProfile = storedProfileIsForUser(profile?.id, user?.id) ? profile : null;
+    if (profile && !liveProfile) setProfile(null);
+
     // segments is [] on the very first render before Expo Router initialises.
     // Acting on empty segments means inAuth/inOnboarding are both false —
     // triggering the profile-fetch block and redirecting mid-onboarding users
@@ -115,7 +126,14 @@ function AppNavigator() {
           // exist. She waits, and completes onboarding once a human says yes.
           // Exempts /(auth)/application, which an applicant must be able to open
           // while 'pending' — see shouldRedirectToPending.
-          if (shouldRedirectToPending(data?.vetting_status, segments, pathname)) {
+          if (shouldRedirectToPending(
+            effectiveVettingStatus(
+              data?.vetting_status,
+              resolveAccountKind(data) === 'core' ? useViewAsStore.getState().preview : null,
+            ),
+            segments,
+            pathname,
+          )) {
             router.replace('/(auth)/pending');
             return;
           }
@@ -152,7 +170,7 @@ function AppNavigator() {
 
     // Also fire when profile is in store but onboarding was never completed —
     // prevents a partially-onboarded user from accessing the dashboard.
-    if (user && !inAuth && (!profile || !profile.onboarding_completed)) {
+    if (user && !inAuth && (!liveProfile || !liveProfile.onboarding_completed)) {
       if (fetchingForUserRef.current === user.id) return;
       fetchingForUserRef.current = user.id;
       void Promise.resolve(supabase.from('profiles').select('*').eq('id', user.id).maybeSingle())
@@ -162,7 +180,14 @@ function AppNavigator() {
           // Same precedence as above: a decision that lands while the app is
           // open (or an account rejected after admission) pulls the user out of
           // the tabs rather than leaving her on a screen RLS has emptied.
-          if (shouldRedirectToPending(data?.vetting_status, segments, pathname)) {
+          if (shouldRedirectToPending(
+            effectiveVettingStatus(
+              data?.vetting_status,
+              resolveAccountKind(data) === 'core' ? useViewAsStore.getState().preview : null,
+            ),
+            segments,
+            pathname,
+          )) {
             router.replace('/(auth)/pending');
             return;
           }
@@ -182,7 +207,7 @@ function AppNavigator() {
   // Supabase creates a new user object reference with the same ID.
   // pathname added alongside segments: pathname is stable during Stack push
   // animations whereas segments can transiently drop child routes mid-transition.
-  }, [user?.id, loading, segments, pathname]);
+  }, [user?.id, loading, segments, pathname, viewAsPreview]);
 
   const STRIPE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 

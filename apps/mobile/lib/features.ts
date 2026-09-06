@@ -6,8 +6,9 @@
  * tagged `beta`. A missing or unknown value fails closed to public so a
  * new account never inherits the full app by accident.
  *
- * This is not `vetting_status`. Pending members already browse Archive;
- * beta is a separate product tag for testers who should see the rest.
+ * This is not `vetting_status`. Pending members already browse Archive
+ * with a status chip; Official chat unlocks when a reviewer admits them.
+ * Beta is a separate product tag for testers who should see the rest.
  */
 
 export const OFFICIAL_COMMUNITY_SLUG = 'roxy-official';
@@ -48,6 +49,75 @@ export function canAccessCommunity(
 ): boolean {
   if (tier === 'beta') return true;
   return slug === OFFICIAL_COMMUNITY_SLUG;
+}
+
+/**
+ * Who is looking at the app — the real account, or a core preview of one.
+ *
+ * Core and staff see the full product. Approved members get Archive + Official
+ * chat. Community owners are approved members who may also open community chat
+ * (tagged only by core, never self-serve). Pending browses Archive with a
+ * status chip; Official chat unlocks on approval.
+ */
+export type AccountKind = 'core' | 'staff' | 'member' | 'communityOwner' | 'pending';
+
+export const ACCOUNT_KIND_LABEL: Record<AccountKind, string> = {
+  core: 'Roxy core',
+  staff: 'Staff',
+  member: 'Member',
+  communityOwner: 'Community owner',
+  pending: 'Pending',
+};
+
+const KIND_FEATURES: Record<AccountKind, readonly Feature[] | 'all'> = {
+  core: 'all',
+  staff: 'all',
+  communityOwner: ['archive', 'officialChat', 'communities'],
+  member: PUBLIC_FEATURES,
+  pending: ['archive'],
+};
+
+export function resolveAccountKind(profile: {
+  staff_role?: string | null;
+  is_staff?: boolean | null;
+  is_community_owner?: boolean | null;
+  vetting_status?: string | null;
+} | null | undefined): AccountKind {
+  if (profile?.staff_role === 'core') return 'core';
+  if (profile?.staff_role === 'staff' || profile?.is_staff) return 'staff';
+  if (profile?.vetting_status === 'pending' || profile?.vetting_status === 'rejected') {
+    return 'pending';
+  }
+  if (profile?.is_community_owner) return 'communityOwner';
+  return 'member';
+}
+
+export function canUseFeatureForKind(feature: Feature, kind: AccountKind): boolean {
+  const allowed = KIND_FEATURES[kind];
+  return allowed === 'all' || allowed.includes(feature);
+}
+
+export function canAccessCommunityForKind(
+  slug: string | null | undefined,
+  kind: AccountKind,
+): boolean {
+  if (kind === 'core' || kind === 'staff') return true;
+  if (kind === 'pending') return false;
+  if (kind === 'communityOwner') return true;
+  return slug === OFFICIAL_COMMUNITY_SLUG;
+}
+
+export function accessTierForKind(kind: AccountKind): AccessTier {
+  return kind === 'core' || kind === 'staff' ? 'beta' : 'public';
+}
+
+export function effectiveVettingStatus(
+  real: string | null | undefined,
+  preview: AccountKind | null,
+): string | null | undefined {
+  if (preview === 'pending') return 'pending';
+  if (preview) return 'approved';
+  return real;
 }
 
 const YOU_ALLOWED = new Set([
@@ -188,6 +258,21 @@ const COPY: Record<Feature, { title: string; body: string }> = {
   },
 };
 
+const PENDING_COPY: Partial<Record<Feature, { title: string; body: string }>> = {
+  officialChat: {
+    title: 'Official chat unlocks when you’re approved',
+    body: 'Only approved members can open Roxy Official chat. You’re still pending — a reviewer is reading your application, and this unlocks when they admit you.',
+  },
+  communities: {
+    title: 'Community chat unlocks when you’re approved',
+    body: 'Only approved members can join community chat. You’re still pending — this opens after a reviewer admits you.',
+  },
+  dms: {
+    title: 'Messages unlock when you’re approved',
+    body: 'Private messages are for approved members. You’re still pending — we’ll open this when a reviewer admits you.',
+  },
+};
+
 /**
  * Root-layout gate. Tab-hosted routes stay null so Feed / Discover /
  * Messages / You can render Coming soon (or Archive / official chat)
@@ -209,7 +294,16 @@ export function launchGateFeature(pathname: string): Feature | null {
   return featureForPath(pathname);
 }
 
-export function comingSoonCopy(feature: Feature): { title: string; body: string } {
+const PENDING_FALLBACK = {
+  title: 'This unlocks when you’re approved',
+  body: 'Only approved members can open this part of Roxy. You’re still pending — a reviewer is reading your application, and this unlocks when they admit you.',
+};
+
+export function comingSoonCopy(
+  feature: Feature,
+  kind?: AccountKind,
+): { title: string; body: string } {
+  if (kind === 'pending') return PENDING_COPY[feature] ?? PENDING_FALLBACK;
   return COPY[feature];
 }
 
@@ -218,4 +312,10 @@ export function canOpenPath(pathname: string, tier: AccessTier): boolean {
   const feature = featureForPath(pathname);
   if (feature == null) return true;
   return canUseFeature(feature, tier);
+}
+
+export function canOpenPathForKind(pathname: string, kind: AccountKind): boolean {
+  const feature = featureForPath(pathname);
+  if (feature == null) return true;
+  return canUseFeatureForKind(feature, kind);
 }

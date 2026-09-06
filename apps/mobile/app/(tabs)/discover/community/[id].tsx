@@ -35,6 +35,7 @@ import { RADII, inkOn } from '../../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../../lib/touchTargets';
 import { useAccess } from '../../../../hooks/useAccess';
 import { ComingSoon } from '../../../../components/features/ComingSoon';
+import { OFFICIAL_COMMUNITY_SLUG } from '../../../../lib/features';
 
 /**
  * A community on the unified profile shell.
@@ -443,7 +444,11 @@ export default function CommunityDetailScreen() {
   }
 
   if (!canCommunity(community.slug)) {
-    return <ComingSoon feature="communities" />;
+    return (
+      <ComingSoon
+        feature={community.slug === OFFICIAL_COMMUNITY_SLUG ? 'officialChat' : 'communities'}
+      />
+    );
   }
 
   const live = rooms.some((r) => r.status === 'live');

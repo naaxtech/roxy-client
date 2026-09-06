@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { officialCommunityIdsFromProfiles } from '../lib/officialGrant';
 
 export type Community = {
   id: string; name: string; slug: string; description: string | null;
@@ -11,23 +12,35 @@ type CommunityStore = {
   joinedCommunities: Community[];
   allCommunities: Community[];
   joinedIds: Set<string>;
+  officialCommunityIds: Set<string>;
   hydrated: boolean;
   fetchJoined: (userId: string) => Promise<void>;
   fetchAll: () => Promise<void>;
+  fetchOfficialIds: () => Promise<void>;
   hydrate: (userId?: string) => Promise<void>;
   joinCommunity: (communityId: string, userId: string) => Promise<void>;
   leaveCommunity: (communityId: string, userId: string) => Promise<void>;
 };
 
 export const useCommunityStore = create<CommunityStore>((set, get) => ({
-  joinedCommunities: [], allCommunities: [], joinedIds: new Set(), hydrated: false,
+  joinedCommunities: [], allCommunities: [], joinedIds: new Set(),
+  officialCommunityIds: new Set(), hydrated: false,
 
   hydrate: async (userId) => {
     await Promise.all([
       get().fetchAll(),
+      get().fetchOfficialIds(),
       userId ? get().fetchJoined(userId) : Promise.resolve(),
     ]);
     set({ hydrated: true });
+  },
+
+  fetchOfficialIds: async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('official_community_id')
+      .not('official_community_id', 'is', null);
+    set({ officialCommunityIds: new Set(officialCommunityIdsFromProfiles(data ?? [])) });
   },
 
   fetchJoined: async (userId) => {

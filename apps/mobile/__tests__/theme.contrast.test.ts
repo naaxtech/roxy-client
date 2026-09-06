@@ -182,7 +182,7 @@ describe('WCAG arithmetic', () => {
   });
 
   it('matches the helper shipped in lib/theme.ts', () => {
-    for (const hex of ['#000000', '#FFFFFF', '#8B7AA8', '#FAF2F6', BRAND_INK]) {
+    for (const hex of ['#000000', '#FFFFFF', '#8B7AA8', '#F7F5EE', BRAND_INK]) {
       expect(shippedLuminance(hex)).toBeCloseTo(luminance(hex), 10);
     }
   });

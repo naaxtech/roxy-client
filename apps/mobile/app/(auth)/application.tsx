@@ -366,7 +366,7 @@ export default function ApplicationScreen() {
 
           <View style={s.footer}>
             <TouchableOpacity
-              onPress={() => router.replace('/(auth)/pending')}
+              onPress={() => router.replace('/(tabs)/feed')}
               disabled={missingRequired.length > 0}
               accessibilityLabel="Send application for review"
             >

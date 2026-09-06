@@ -53,13 +53,13 @@ jest.mock('../../store/authStore', () => {
   return { useAuthStore };
 });
 
-jest.mock('../../store/friendStore', () => {
+jest.mock('../../store/followStore', () => {
   const state = {
-    friends: [] as { profile: { id: string } }[],
-    fetchAll: jest.fn(() => Promise.resolve()),
+    followingIds: new Set<string>(),
+    hydrate: jest.fn(() => Promise.resolve()),
   };
-  const useFriendStore = (selector: (s: typeof state) => unknown): unknown => selector(state);
-  return { useFriendStore };
+  const useFollowStore = (selector: (s: typeof state) => unknown): unknown => selector(state);
+  return { useFollowStore };
 });
 
 // Two joined communities, no more — enough to prove "all of them" is really

@@ -56,6 +56,10 @@ export default function EditProfileScreen() {
     },
     backBtn: { width: 40 },
     headerTitle: { flex: 1, textAlign: 'center', color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
+    headerEyebrow: {
+      color: colors.primaryInk, fontSize: 10, fontWeight: '800',
+      letterSpacing: 1, textTransform: 'uppercase',
+    },
     // Bottom padding clears the fixed tab bar + Roxy FAB, same fix as profile/index.tsx.
     scroll: { padding: 16, paddingBottom: 100, gap: 14, alignItems: 'center' },
 
@@ -184,7 +188,10 @@ export default function EditProfileScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={styles.headerEyebrow}>Voxel · cute mode later</Text>
+          <Text style={styles.headerTitle}>Avatar studio</Text>
+        </View>
         <View style={{ width: 40 }} />
       </View>
 
@@ -243,6 +250,10 @@ export default function EditProfileScreen() {
           <Text style={styles.label}>Display Name</Text>
           <Text style={styles.readOnlyText}>{profile.display_name}</Text>
           <Text style={styles.hint}>Set during onboarding — contact support to change</Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Identity — shown on your profile</Text>
         </View>
 
         {/* Pronouns */}

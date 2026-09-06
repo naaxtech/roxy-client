@@ -3,6 +3,7 @@ import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 import { RoomClaimError, deleteDailyRoom, ensureDailyRoom } from '../_shared/daily.ts';
+import { isRoxyCore } from '../_shared/roxyCore.ts';
 
 Deno.serve(async (req) => {
   const corsRes = handleCors(req);
@@ -50,7 +51,8 @@ Deno.serve(async (req) => {
       .eq('user_id', auth.userId)
       .maybeSingle();
 
-    if (!membership || !['admin', 'moderator'].includes(membership.role)) {
+    const coreOwns = await isRoxyCore(supabase, auth.userId);
+    if ((!membership || !['admin', 'moderator'].includes(membership.role)) && !coreOwns) {
       return errorResponse('Only community admins or moderators can create rooms', 403);
     }
 
@@ -94,7 +96,8 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   const canManage = auth.userId === room.created_by ||
-    (membership && ['admin', 'moderator'].includes(membership.role));
+    (membership && ['admin', 'moderator'].includes(membership.role)) ||
+    await isRoxyCore(supabase, auth.userId);
   if (!canManage) return errorResponse('Access denied', 403);
 
   // ── UPDATE ────────────────────────────────────────────────────────────────

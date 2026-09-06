@@ -9,12 +9,12 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { isPresetAvatar, presetEmoji, presetColor, avatarGradient } from '../../lib/avatars';
 import { TYPE } from '../../lib/typography';
 import {
-  RADII, LIVE_GRADIENT, inkOn, inkOnGradient, type ThemeColors,
+  RADII, LIVE_GRADIENT, BRAND_GRADIENT, inkOn, inkOnGradient, type ThemeColors,
 } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
 import {
-  visibleTabs, resolveActiveTab, profileLevel, TAB_LABELS,
+  visibleTabs, resolveActiveTab, profileLevel, profileXpLevel, TAB_LABELS,
   type ProfileTab, type ProfileVariant, type PopulatedTabs,
 } from './profileVariant';
 
@@ -72,6 +72,20 @@ export type ProfileAction = {
 
 export type ProfileStat = { value: string; label: string };
 
+/** The prototype's header badge chip — earned emoji, not a tab. */
+export type ProfileBadgePreview = {
+  emojis: string;
+  extra?: number;
+  onPress: () => void;
+};
+
+/** The XP pill under Edit on the self variant. */
+export type ProfileXp = {
+  label: string;
+  progress: number;
+  onPress?: () => void;
+};
+
 /** Whether the tab content is still loading, failed, or is ready to show. */
 export type ProfileBodyStatus = 'loading' | 'ready' | 'error';
 
@@ -86,12 +100,20 @@ export interface ProfileShellProps {
   /** Rendered inline beside the name, the way the prototype prints pronouns. */
   pronouns?: string[];
   identityLabels?: string[];
+  /** Relationship / looking-for chip — the second tag in the prototype. */
+  statusLabels?: string[];
+  /** Self (and seller) header chip. Opens /badges. */
+  badgePreview?: ProfileBadgePreview | null;
+  /** Self-only XP pill. Opens Mini Wins. */
+  xp?: ProfileXp | null;
   coverUrl?: string | null;
   avatarUrl?: string | null;
   /** `profiles.gamification_points`. Omit or null and the badge is not drawn. */
   points?: number | null;
   verified?: boolean;
   sellerApproved?: boolean;
+  /** Official community grant — Claude Design community frame + OFFICIAL chip. */
+  official?: boolean;
   live?: boolean;
   stats?: ProfileStat[];
 
@@ -101,6 +123,8 @@ export interface ProfileShellProps {
   /** Exactly one per variant: Message · Join / Joined · Edit. */
   primaryAction: ProfileAction;
   secondaryAction?: ProfileAction;
+  /** Official profiles: Follow sits here so Join/Channels keep the prototype pair. */
+  tertiaryAction?: ProfileAction;
 
   // — body ————————————————————————————————————————————————————
   populated: PopulatedTabs;
@@ -146,17 +170,22 @@ export function ProfileShell({
   bio,
   pronouns = [],
   identityLabels = [],
+  statusLabels = [],
+  badgePreview = null,
+  xp = null,
   coverUrl,
   avatarUrl,
   points,
   verified = false,
   sellerApproved = false,
+  official = false,
   live = false,
   stats = [],
   onBack,
   headerActions = [],
   primaryAction,
   secondaryAction,
+  tertiaryAction,
   populated,
   renderTab,
   selectedTab,
@@ -180,7 +209,7 @@ export function ProfileShell({
   };
   const active = resolveActiveTab(tabs, selected);
 
-  const isCommunity = variant === 'community';
+  const isCommunity = variant === 'community' || official;
   const level = typeof points === 'number' ? profileLevel(points) : null;
   const initial = (name || '?').charAt(0).toUpperCase();
   const hasPreset = !!avatarUrl && isPresetAvatar(avatarUrl);
@@ -195,7 +224,14 @@ export function ProfileShell({
 
   const renderCover = () => {
     if (coverUrl) {
-      return <ExpoImage source={{ uri: coverUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />;
+      return (
+        <ExpoImage
+          source={{ uri: coverUrl }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          testID="profile-cover-photo"
+        />
+      );
     }
     // A per-subject gradient, which is what the prototype paints (`pvCover` is
     // the subject's own ramp). Deliberately NOT `BRAND_GRADIENT`: that ramp is
@@ -241,6 +277,7 @@ export function ProfileShell({
     const box = kind === 'primary' ? s.primaryBtn : s.secondaryBtn;
     const label = kind === 'primary' ? s.primaryLabel : s.secondaryLabel;
     const iconColor = kind === 'primary' ? inkOn(colors.primary) : colors.primaryInk;
+    const selfEdit = variant === 'self' && kind === 'primary' && !!action.onPress;
 
     if (!action.onPress) {
       // A state, not an action. Role `text` so a screen reader reads it as the
@@ -249,6 +286,26 @@ export function ProfileShell({
         <View style={[box, s.statusPill]} testID={id} accessibilityRole="text">
           <Text style={[label, s.statusPillLabel]}>{action.label}</Text>
         </View>
+      );
+    }
+
+    if (selfEdit) {
+      return (
+        <TouchableOpacity
+          onPress={action.onPress}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={action.accessibilityLabel ?? action.label}
+          testID={id}
+        >
+          <LinearGradient
+            colors={['#F22481', '#8B5CF6']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={s.selfEditBtn}
+          >
+            <Text style={s.selfEditLabel}>{action.label}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       );
     }
 
@@ -387,26 +444,79 @@ export function ProfileShell({
             </View>
             {level ? (
               <View
-                style={s.levelBadge}
+                style={s.levelBadgeWrap}
                 accessible
                 accessibilityRole="text"
-                accessibilityLabel={`Level ${level.label}, ${points} points`}
+                accessibilityLabel={`Level ${profileXpLevel(points)} ${level.label}, ${points} points`}
                 testID="profile-level-badge"
               >
-                <Text style={s.levelBadgeText}>{level.emoji} {level.label}</Text>
+                <LinearGradient
+                  colors={[...BRAND_GRADIENT]}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={s.levelBadge}
+                >
+                  <Text style={s.levelBadgeText}>⚡{profileXpLevel(points)}</Text>
+                </LinearGradient>
               </View>
             ) : null}
           </View>
 
-          <View style={s.actionRow}>
-            {secondaryAction ? renderAction(secondaryAction, 'secondary') : null}
-            {renderAction(primaryAction, 'primary')}
+          <View style={s.actionCol}>
+            <View style={s.actionRow}>
+              {tertiaryAction ? renderAction(tertiaryAction, 'secondary') : null}
+              {badgePreview ? (
+                <TouchableOpacity
+                  style={s.badgeChip}
+                  onPress={badgePreview.onPress}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    badgePreview.extra
+                      ? `Badges, ${badgePreview.extra} more`
+                      : 'Badges'
+                  }
+                  testID="profile-badge-chip"
+                >
+                  <Text style={s.badgeChipEmojis}>{badgePreview.emojis}</Text>
+                  {badgePreview.extra ? (
+                    <Text style={s.badgeChipExtra}>+{badgePreview.extra}</Text>
+                  ) : null}
+                </TouchableOpacity>
+              ) : null}
+              {secondaryAction ? renderAction(secondaryAction, 'secondary') : null}
+              {renderAction(primaryAction, 'primary')}
+            </View>
+            {xp ? (
+              <TouchableOpacity
+                style={s.xpPill}
+                onPress={xp.onPress}
+                disabled={!xp.onPress}
+                activeOpacity={0.85}
+                accessibilityRole={xp.onPress ? 'button' : 'text'}
+                accessibilityLabel={`XP progress, ${xp.label}`}
+                testID="profile-xp"
+              >
+                <Text style={s.xpLabel}>{xp.label}</Text>
+                <View style={s.xpTrack}>
+                  <LinearGradient
+                    colors={['#F22481', '#8B5CF6']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={[s.xpFill, { width: `${Math.round(Math.min(1, Math.max(0, xp.progress)) * 100)}%` }]}
+                  />
+                </View>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
 
         <View style={s.nameBlock}>
           <View style={s.nameRow}>
             <Text style={s.name} numberOfLines={2}>{name}</Text>
+            {pronounChips.length > 0 ? (
+              <Text style={s.pronounsBeside} testID="profile-pronouns">
+                {pronounChips.join(' · ')}
+              </Text>
+            ) : null}
             {verified ? (
               <Ionicons
                 name="shield-checkmark"
@@ -415,6 +525,11 @@ export function ProfileShell({
                 accessibilityLabel="Verified"
                 testID="profile-verified"
               />
+            ) : null}
+            {official ? (
+              <View style={s.sellerChip} testID="profile-official-chip">
+                <Text style={s.sellerChipText}>OFFICIAL</Text>
+              </View>
             ) : null}
             {sellerApproved ? (
               <View style={s.sellerChip} testID="profile-seller-chip">
@@ -437,15 +552,15 @@ export function ProfileShell({
 
           {subtitle ? <Text style={s.subtitle}>{subtitle}</Text> : null}
 
-          {pronounChips.length > 0 || identityChips.length > 0 ? (
+          {identityChips.length > 0 || statusLabels.length > 0 ? (
             <View style={s.chipRow}>
-              {pronounChips.map((chip) => (
-                <View key={`pronoun-${chip}`} style={s.pronounChip}>
+              {identityChips.map((chip) => (
+                <View key={`identity-${chip}`} style={s.pronounChip}>
                   <Text style={s.pronounChipText}>{chip}</Text>
                 </View>
               ))}
-              {identityChips.map((chip) => (
-                <View key={`identity-${chip}`} style={s.identityChip}>
+              {statusLabels.filter((c) => !RETIRED_CHIPS.has(c)).map((chip) => (
+                <View key={`status-${chip}`} style={s.identityChip}>
                   <Text style={s.identityChipText}>{chip}</Text>
                 </View>
               ))}
@@ -519,17 +634,42 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   avatarFallback: { backgroundColor: colors.surfaceLight },
   avatarEmoji: { ...TYPE.display, color: colors.textPrimary },
   avatarInitial: { ...TYPE.display, color: colors.textPrimary },
+  levelBadgeWrap: { position: 'absolute', bottom: -6, right: -10 },
   levelBadge: {
-    position: 'absolute', bottom: -6, right: -10,
     flexDirection: 'row', alignItems: 'center',
-    borderRadius: RADII.pill, paddingHorizontal: 8, paddingVertical: 3,
-    backgroundColor: colors.gold,
+    borderRadius: RADII.pill, paddingHorizontal: 7, paddingVertical: 2.5,
     borderWidth: 2, borderColor: colors.background,
   },
-  levelBadgeText: { ...TYPE.micro, color: inkOn(colors.gold), fontWeight: '800' },
+  levelBadgeText: { ...TYPE.micro, color: inkOnGradient(BRAND_GRADIENT), fontWeight: '800' },
 
   // — actions ——————————————————————————————————————————————————
-  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 4, flexShrink: 1 },
+  actionCol: { flex: 1, alignItems: 'flex-end', gap: 6, paddingBottom: 4 },
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, flexWrap: 'wrap', justifyContent: 'flex-end' },
+  badgeChip: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    borderRadius: RADII.pill, paddingHorizontal: 10, paddingVertical: 5,
+    minHeight: MIN_TOUCH_TARGET,
+  },
+  badgeChipEmojis: { fontSize: 12, letterSpacing: 1 },
+  badgeChipExtra: { ...TYPE.micro, color: colors.primaryInk, fontWeight: '800', marginLeft: 2 },
+  selfEditBtn: {
+    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 13,
+    borderRadius: RADII.pill, alignItems: 'center', justifyContent: 'center',
+  },
+  selfEditLabel: { ...TYPE.caption, color: inkOnGradient(['#F22481', '#8B5CF6']), fontWeight: '700' },
+  xpPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    borderRadius: RADII.pill, paddingHorizontal: 10, paddingVertical: 5,
+    minHeight: MIN_TOUCH_TARGET,
+  },
+  xpLabel: { ...TYPE.micro, color: colors.textPrimary, fontWeight: '800' },
+  xpTrack: {
+    width: 52, height: 5, borderRadius: RADII.pill,
+    backgroundColor: colors.surfaceLight, overflow: 'hidden',
+  },
+  xpFill: { height: '100%', borderRadius: RADII.pill },
   primaryBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 18,
@@ -550,6 +690,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   nameBlock: { gap: 5 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   name: { ...TYPE.headline, color: colors.textPrimary, flexShrink: 1 },
+  pronounsBeside: { ...TYPE.caption, color: colors.textMuted, fontWeight: '600' },
   subtitle: { ...TYPE.caption, color: colors.textMuted },
   sellerChip: {
     borderRadius: RADII.pill, paddingHorizontal: 8, paddingVertical: 3,

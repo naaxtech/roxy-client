@@ -286,12 +286,15 @@ export const THEMES: Record<Theme, ThemeColors> = {
     devPanel: '#FF1493',
   },
   light: {
-    background: '#FAF2F6',
-    backgroundAlt: '#FFFDFE',
-    surface: '#FFFDFE',
-    surfaceLight: '#F6EAF2',
-    line: '#EBDAE7',
-    lineStrong: '#D9C2D6',
+    // Warm paper, not blush. Same job as Studio's light `--background`:
+    // a faint yellow-white so long sessions are easier on the eye than
+    // the old #FAF2F6 / #F6EAF2 pink wash.
+    background: '#F7F5EE',
+    backgroundAlt: '#FBF9F3',
+    surface: '#FBF9F3',
+    surfaceLight: '#F0EDE4',
+    line: '#E3DFD4',
+    lineStrong: '#D0CBBE',
 
     textPrimary: '#241234',
     textSecondary: '#5D4980',

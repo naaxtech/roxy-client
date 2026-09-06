@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getOwnedBusiness } from '@/lib/business';
 import { Badge } from '@/components/ui/badge';
+import { Notice } from '@/components/Notice';
 import { StripeOnboardingClient } from './StripeOnboardingClient';
 
 export default async function StripeOnboardingPage() {
@@ -37,12 +38,10 @@ export default async function StripeOnboardingPage() {
       </div>
 
       {pendingApproval && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
-          <p className="font-medium text-amber-300">Business approval pending</p>
-          <p className="text-amber-400/80 mt-0.5 text-xs">
-            Your business is under review by the Roxy team. You&apos;ll receive an email once approved and can then connect Stripe and list products.
-          </p>
-        </div>
+        <Notice title="Business approval pending">
+          Your business is under review by the Roxy team. You&apos;ll receive an email once approved
+          and can then connect Stripe and list products.
+        </Notice>
       )}
 
       <div className="border rounded-lg p-6 space-y-4">

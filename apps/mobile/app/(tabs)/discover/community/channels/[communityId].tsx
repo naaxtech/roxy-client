@@ -25,6 +25,7 @@ import {
 import { useSafetyStore } from '../../../../../store/safetyStore';
 import { useAccess } from '../../../../../hooks/useAccess';
 import { ComingSoon } from '../../../../../components/features/ComingSoon';
+import { OFFICIAL_COMMUNITY_SLUG } from '../../../../../lib/features';
 
 /**
  * Community channels (design markup 655–697).
@@ -256,7 +257,11 @@ export default function CommunityChannelsScreen() {
   });
 
   if (!loading && communitySlug && !canCommunity(communitySlug)) {
-    return <ComingSoon feature="communities" />;
+    return (
+      <ComingSoon
+        feature={communitySlug === OFFICIAL_COMMUNITY_SLUG ? 'officialChat' : 'communities'}
+      />
+    );
   }
 
   const body = () => {

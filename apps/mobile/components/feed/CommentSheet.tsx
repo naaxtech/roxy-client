@@ -90,7 +90,7 @@ export function CommentSheet({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose} />
-        <Animated.View style={[styles.sheet, pop]}>
+        <Animated.View style={[styles.sheet, pop]} testID="comment-sheet">
           <View style={styles.handle} />
           <View style={styles.header}>
             <Text style={styles.title}>Comments ({comments.length})</Text>

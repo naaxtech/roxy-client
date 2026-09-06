@@ -29,6 +29,18 @@ describe('ComingSoon', () => {
     fireEvent.press(getByTestId('coming-soon-archive'));
     expect(mockReplace).toHaveBeenCalledWith('/(tabs)/feed');
   });
+
+  it('tells a pending applicant Official chat unlocks on approval', () => {
+    useProfileStore.setState({ profile: { vetting_status: 'pending' } as never });
+    const { getByText, getByTestId, queryByText } = render(
+      <ComingSoon feature="officialChat" />,
+    );
+    expect(getByText('Waiting for approval')).toBeTruthy();
+    expect(getByText(comingSoonCopy('officialChat', 'pending').title)).toBeTruthy();
+    expect(getByTestId('account-status-tag')).toBeTruthy();
+    expect(queryByText(/coming soon/i)).toBeNull();
+    expect(queryByText(/more communities/i)).toBeNull();
+  });
 });
 
 describe('FeatureGate', () => {

@@ -97,9 +97,20 @@ jest.mock('../../store/feedStore', () => {
   return { useFeedStore };
 });
 
-jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn(), back: jest.fn() }) }));
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush, back: jest.fn() }) }));
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => false }));
+jest.mock('../../components/feed/CommentSheet', () => {
+  const ReactLocal = require('react');
+  const { View } = require('react-native');
+  return {
+    CommentSheet: ({ visible, postId }: { visible: boolean; postId: string }) =>
+      visible
+        ? ReactLocal.createElement(View, { testID: 'comment-sheet', accessibilityLabel: postId })
+        : null,
+  };
+});
 
 interface ReelCellSpyProps {
   post: ReelRow;
@@ -107,6 +118,7 @@ interface ReelCellSpyProps {
   activeIndex: number;
   activeItemId: string | null;
   onOpenSafety: () => void;
+  onOpenComments: () => void;
   interestPrompt?: React.ReactElement;
 }
 
@@ -170,6 +182,7 @@ function safetyStoreMock(): { blockUser: jest.Mock } {
 
 beforeEach(() => {
   captured().length = 0;
+  mockPush.mockClear();
   // The store mocks are module-scoped, so a "was never called with" assertion
   // would otherwise read the previous test's calls.
   feedStoreMock().markSeen.mockClear();
@@ -335,6 +348,21 @@ describe('ReelsFeed safety', () => {
     // landed. The feed reads the envelope.
     await waitFor(() => expect(view.queryByTestId('safety-error')).not.toBeNull());
     expect(view.queryByTestId('safety-done')).toBeNull();
+  });
+});
+
+describe('ReelsFeed comments', () => {
+  it('opens the comment sheet on this feed and does not push a detail route', async () => {
+    const { view, list } = await mountFeedView();
+
+    expect(view.queryByTestId('comment-sheet')).toBeNull();
+
+    const cell = list.renderItem({ item: list.data[0], index: 0 });
+    act(() => { cell.props.onOpenComments(); });
+
+    await waitFor(() => expect(view.getByTestId('comment-sheet')).toBeTruthy());
+    expect(view.getByTestId('comment-sheet').props.accessibilityLabel).toBe(VIDEO_ID);
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });
 

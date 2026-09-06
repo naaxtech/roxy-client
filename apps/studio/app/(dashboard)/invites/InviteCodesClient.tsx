@@ -17,6 +17,14 @@ import {
   formatUtcDate,
   todayUtcInputValue,
 } from '@/lib/dates';
+import { accountKindLabel, type AccountKind } from '@/lib/accountKind';
+
+export type InviteRedeemerView = {
+  displayName: string;
+  username: string | null;
+  accountKind: AccountKind;
+  usedAt: string;
+};
 
 export interface InviteCodeItem {
   id: string;
@@ -29,6 +37,7 @@ export interface InviteCodeItem {
   revokedAt: string | null;
   lockedAt: string | null;
   createdAt: string;
+  redeemers: InviteRedeemerView[];
 }
 
 export interface CommunityOption {
@@ -510,7 +519,7 @@ export function InviteCodesClient({
                     <th scope="col" className="text-left px-4 py-2.5 font-medium">Code</th>
                     <th scope="col" className="text-left px-4 py-2.5 font-medium">For</th>
                     <th scope="col" className="text-left px-4 py-2.5 font-medium">Community</th>
-                    <th scope="col" className="text-left px-4 py-2.5 font-medium">Uses</th>
+                    <th scope="col" className="text-left px-4 py-2.5 font-medium">Used by</th>
                     <th scope="col" className="text-left px-4 py-2.5 font-medium">Expires</th>
                     <th scope="col" className="text-left px-4 py-2.5 font-medium">Created</th>
                     <th scope="col" className="text-left px-4 py-2.5 font-medium">Status</th>
@@ -529,7 +538,33 @@ export function InviteCodesClient({
                         {item.label ?? <span className="text-muted-foreground">—</span>}
                       </td>
                       <td className="px-4 py-3">{item.communityName}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{usesText(item)}</td>
+                      <td className="px-4 py-3">
+                        <p className="whitespace-nowrap">{usesText(item)}</p>
+                        {item.redeemers.length === 0 ? (
+                          <p className="text-xs text-muted-foreground mt-1">Nobody yet</p>
+                        ) : (
+                          <ul className="mt-1 space-y-1">
+                            {item.redeemers.map((person) => (
+                              <li key={`${item.id}-${person.username ?? person.displayName}-${person.usedAt}`}>
+                                <p className="text-foreground font-medium leading-tight">
+                                  {person.displayName}
+                                  {person.username ? (
+                                    <span className="text-muted-foreground font-normal">
+                                      {' '}
+                                      @{person.username}
+                                    </span>
+                                  ) : null}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {accountKindLabel(person.accountKind)}
+                                  {' · '}
+                                  {formatUtcDate(person.usedAt)}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {item.expiresAt ? formatUtcDate(item.expiresAt) : 'Never'}
                       </td>

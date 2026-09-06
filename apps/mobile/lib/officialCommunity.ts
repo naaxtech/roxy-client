@@ -36,3 +36,26 @@ export async function ensureOfficialMembership(
 
   if (error) logError(error, 'officialCommunity.ensureMembership');
 }
+
+export async function fetchOwnedCommunities(userId: string): Promise<OfficialCommunity[]> {
+  const { data, error } = await supabase
+    .from('community_members')
+    .select('role, communities(id, name, slug, description)')
+    .eq('user_id', userId)
+    .in('role', ['owner', 'admin']);
+
+  if (error) {
+    logError(error, 'officialCommunity.fetchOwned');
+    return [];
+  }
+
+  const rows = (data ?? []) as Array<{
+    communities: OfficialCommunity | OfficialCommunity[] | null;
+  }>;
+
+  return rows.flatMap((row) => {
+    const community = Array.isArray(row.communities) ? row.communities[0] : row.communities;
+    if (!community?.id || community.slug === OFFICIAL_COMMUNITY_SLUG) return [];
+    return [community];
+  });
+}

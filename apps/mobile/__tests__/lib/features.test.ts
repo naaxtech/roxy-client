@@ -4,12 +4,17 @@ import {
   OFFICIAL_COMMUNITY_SLUG,
   PUBLIC_FEATURES,
   canAccessCommunity,
-  canUseFeature,
+  canAccessCommunityForKind,
   canOpenPath,
+  canOpenPathForKind,
+  canUseFeature,
+  canUseFeatureForKind,
   comingSoonCopy,
+  effectiveVettingStatus,
   featureForPath,
   launchGateFeature,
   parseAccessTier,
+  resolveAccountKind,
 } from '../../lib/features';
 
 /**
@@ -180,6 +185,21 @@ describe('comingSoonCopy', () => {
     expect(comingSoonCopy('discover').title).toMatch(/coming soon/i);
     expect(comingSoonCopy('officialChat').title.length).toBeGreaterThan(0);
   });
+
+  it('tells a pending applicant Official chat unlocks on approval, not that more communities are coming', () => {
+    const official = comingSoonCopy('officialChat', 'pending');
+    expect(official.title).toMatch(/approved/i);
+    expect(official.body).toMatch(/pending/i);
+    expect(official.body).not.toMatch(/coming soon/i);
+
+    const communities = comingSoonCopy('communities', 'pending');
+    expect(communities.body).toMatch(/approved/i);
+    expect(communities.title).not.toMatch(/coming soon/i);
+
+    const discover = comingSoonCopy('discover', 'pending');
+    expect(discover.title).toMatch(/approved/i);
+    expect(discover.title).not.toMatch(/coming soon/i);
+  });
 });
 
 describe('migration 108', () => {
@@ -205,5 +225,112 @@ describe('migration 109', () => {
     expect(sql).toMatch(/create or replace function public\.set_access_tier/);
     expect(sql).toMatch(/is_roxy_staff/);
     expect(sql).not.toMatch(/grant update\s*\([^)]*access_tier/i);
+  });
+});
+
+describe('migration 110', () => {
+  const sql = readFileSync(
+    join(__dirname, '..', '..', '..', '..', 'supabase', 'migrations', '110_roxy_core_staff_role.sql'),
+    'utf8',
+  );
+
+  it('seeds the two HQ inboxes as core and never grants a client UPDATE', () => {
+    expect(sql).toMatch(/naaxtech\.official@gmail\.com/);
+    expect(sql).toMatch(/naaxtech\.marketing@gmail\.com/);
+    expect(sql).toMatch(/create or replace function public\.set_staff_role/);
+    expect(sql).toMatch(/is_roxy_core/);
+    expect(sql).not.toMatch(/grant update\s*\([^)]*staff_role/i);
+    expect(sql).toMatch(/cannot change a core account/);
+  });
+});
+
+describe('resolveAccountKind', () => {
+  it('reads core before staff, and pending before a community-owner tag', () => {
+    expect(resolveAccountKind({ staff_role: 'core', is_staff: true })).toBe('core');
+    expect(resolveAccountKind({ staff_role: 'staff', is_staff: true })).toBe('staff');
+    expect(resolveAccountKind({ is_staff: true })).toBe('staff');
+    expect(resolveAccountKind({
+      is_community_owner: true,
+      vetting_status: 'pending',
+    })).toBe('pending');
+    expect(resolveAccountKind({
+      is_community_owner: true,
+      vetting_status: 'approved',
+    })).toBe('communityOwner');
+    expect(resolveAccountKind({ vetting_status: 'approved' })).toBe('member');
+    expect(resolveAccountKind(null)).toBe('member');
+  });
+});
+
+describe('canUseFeatureForKind', () => {
+  it('gives core and staff the full app, members Archive + Official, owners community chat too', () => {
+    expect(canUseFeatureForKind('dms', 'core')).toBe(true);
+    expect(canUseFeatureForKind('dms', 'staff')).toBe(true);
+    expect(canUseFeatureForKind('dms', 'member')).toBe(false);
+    expect(canUseFeatureForKind('officialChat', 'member')).toBe(true);
+    expect(canUseFeatureForKind('communities', 'member')).toBe(false);
+    expect(canUseFeatureForKind('communities', 'communityOwner')).toBe(true);
+    expect(canUseFeatureForKind('dms', 'communityOwner')).toBe(false);
+    expect(canUseFeatureForKind('archive', 'pending')).toBe(true);
+    expect(canUseFeatureForKind('officialChat', 'pending')).toBe(false);
+  });
+});
+
+describe('canAccessCommunityForKind', () => {
+  it('lets owners into any community and members into Official only', () => {
+    expect(canAccessCommunityForKind('wlw-london', 'communityOwner')).toBe(true);
+    expect(canAccessCommunityForKind('wlw-london', 'member')).toBe(false);
+    expect(canAccessCommunityForKind('roxy-official', 'member')).toBe(true);
+    expect(canAccessCommunityForKind('roxy-official', 'pending')).toBe(false);
+  });
+});
+
+describe('canOpenPathForKind', () => {
+  it('lets a community owner open /communities and still refuses DMs', () => {
+    expect(canOpenPathForKind('/communities', 'communityOwner')).toBe(true);
+    expect(canOpenPathForKind('/chat/abc', 'communityOwner')).toBe(false);
+    expect(canOpenPathForKind('/communities', 'member')).toBe(false);
+  });
+});
+
+describe('effectiveVettingStatus', () => {
+  it('only pretends pending when core is previewing that kind', () => {
+    expect(effectiveVettingStatus('approved', 'pending')).toBe('pending');
+    expect(effectiveVettingStatus('approved', 'member')).toBe('approved');
+    expect(effectiveVettingStatus('pending', null)).toBe('pending');
+  });
+});
+
+describe('migration 111', () => {
+  const sql = readFileSync(
+    join(__dirname, '..', '..', '..', '..', 'supabase', 'migrations', '111_community_owner_tag.sql'),
+    'utf8',
+  );
+
+  it('lets core tag an approved member and never grants a client UPDATE', () => {
+    expect(sql).toMatch(/is_community_owner/);
+    expect(sql).toMatch(/create or replace function public\.set_community_owner/);
+    expect(sql).toMatch(/is_roxy_core/);
+    expect(sql).toMatch(/only approved members/);
+    expect(sql).toMatch(/cannot tag staff/);
+    expect(sql).toMatch(/cannot tag a core/);
+    expect(sql).not.toMatch(/grant update\s*\([^)]*is_community_owner/i);
+  });
+});
+
+describe('migration 116', () => {
+  const sql = readFileSync(
+    join(__dirname, '..', '..', '..', '..', 'supabase', 'migrations', '116_follows_and_official_community.sql'),
+    'utf8',
+  );
+
+  it('adds follows and an official community FK that clients cannot UPDATE', () => {
+    expect(sql).toMatch(/create table if not exists public\.follows/);
+    expect(sql).toMatch(/follows_no_self/);
+    expect(sql).toMatch(/official_community_id/);
+    expect(sql).toMatch(/profiles_official_community_unique/);
+    expect(sql).toMatch(/create or replace function public\.set_community_owner/);
+    expect(sql).toMatch(/community_channels/);
+    expect(sql).not.toMatch(/grant update\s*\([^)]*official_community_id/i);
   });
 });

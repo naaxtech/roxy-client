@@ -6,8 +6,8 @@ import type { PostgrestError } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { QuickSearch } from '@/components/QuickSearch';
 import { Select } from '@/components/ui/select';
 import { isMissingFunction } from '@/lib/schema-availability';
 
@@ -192,16 +192,14 @@ export function MembersClient({
         </p>
       </div>
 
-      <div className="max-w-sm space-y-1.5">
-        <Label htmlFor="member-search">Search members</Label>
-        <Input
-          id="member-search"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Name or username"
-        />
-      </div>
+      <QuickSearch
+        id="member-search"
+        label="Search members"
+        value={query}
+        placeholder="Name or username"
+        onChange={setQuery}
+        className="max-w-sm"
+      />
 
       {error && (
         <div role="alert" className="border border-destructive/40 bg-destructive/5 rounded-lg px-4 py-3">

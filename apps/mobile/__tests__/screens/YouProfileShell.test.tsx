@@ -25,6 +25,7 @@ jest.mock('../../components/profile/SelfControls', () => ({
   },
 }));
 jest.mock('../../components/grow/MiniWinsCard', () => ({ MiniWinsCard: () => null }));
+jest.mock('../../components/feed/MiniWinsSheet', () => ({ MiniWinsSheet: () => null }));
 jest.mock('../../components/build/OrderDetailSheet', () => ({ OrderDetailSheet: () => null }));
 
 const thenable = (data: unknown, count = 0) => {
@@ -79,8 +80,8 @@ jest.mock('../../store/marketplaceStore', () => {
   };
 });
 jest.mock('../../store/archiveStore', () => ({
-  useArchiveStore: (sel: (s: { hydrateMine: () => void }) => unknown) =>
-    sel({ hydrateMine: jest.fn() }),
+  useArchiveStore: (sel: (s: { hydrateMine: () => void; watchlist: string[] }) => unknown) =>
+    sel({ hydrateMine: jest.fn(), watchlist: [] }),
 }));
 
 import ProfileScreen from '../../app/(tabs)/you/index';
@@ -108,15 +109,19 @@ describe('You on the unified shell', () => {
     await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
     expect(getByText('Her')).toBeTruthy();
     expect(getByTestId('you-coming-soon')).toBeTruthy();
+    expect(getByTestId('self-controls')).toBeTruthy();
+    expect(getByTestId('you-more')).toBeTruthy();
     expect(getByTestId('profile-tab-saved')).toBeTruthy();
     expect(getByText('Edit')).toBeTruthy();
+    expect(getByText('40 XP')).toBeTruthy();
   });
 
-  it('shows the full self controls once she is tagged beta', async () => {
+  it('still shows self controls once she is tagged beta, without the public coming-soon card', async () => {
     useProfileStore.setState({
       profile: { ...useProfileStore.getState().profile, access_tier: 'beta' } as never,
     });
-    const { getByTestId } = render(<ProfileScreen />);
+    const { getByTestId, queryByTestId } = render(<ProfileScreen />);
     await waitFor(() => expect(getByTestId('self-controls')).toBeTruthy());
+    expect(queryByTestId('you-coming-soon')).toBeNull();
   });
 });

@@ -23,6 +23,7 @@ jest.mock('../../components/profile/SavedWatchlist', () => ({ SavedWatchlist: ()
 jest.mock('../../components/profile/BadgeRow', () => ({ BadgeRow: () => null }));
 jest.mock('../../components/profile/SelfControls', () => ({ SelfControls: () => null }));
 jest.mock('../../components/grow/MiniWinsCard', () => ({ MiniWinsCard: () => null }));
+jest.mock('../../components/feed/MiniWinsSheet', () => ({ MiniWinsSheet: () => null }));
 jest.mock('../../components/build/OrderDetailSheet', () => ({ OrderDetailSheet: () => null }));
 jest.mock('../../lib/notifications', () => ({ fetchUnreadNotificationCount: jest.fn(async () => 0) }));
 
@@ -65,8 +66,8 @@ jest.mock('../../store/marketplaceStore', () => {
   };
 });
 jest.mock('../../store/archiveStore', () => ({
-  useArchiveStore: (sel: (s: { hydrateMine: () => void }) => unknown) =>
-    sel({ hydrateMine: jest.fn() }),
+  useArchiveStore: (sel: (s: { hydrateMine: () => void; watchlist: string[] }) => unknown) =>
+    sel({ hydrateMine: jest.fn(), watchlist: [] }),
 }));
 
 import ProfileScreen from '../../app/(tabs)/you/index';

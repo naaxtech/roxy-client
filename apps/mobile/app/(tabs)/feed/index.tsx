@@ -17,7 +17,7 @@ import { logError } from '../../../lib/errorLogger';
 import { useAuthStore } from '../../../store/authStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useCommunityFilterStore } from '../../../store/communityFilterStore';
-import { useFriendStore } from '../../../store/friendStore';
+import { useFollowStore } from '../../../store/followStore';
 import { a11yState } from '../../../lib/a11yState';
 import { useAccess } from '../../../hooks/useAccess';
 import ArchiveBrowseScreen from '../../archive/index';
@@ -45,8 +45,8 @@ function FeedScreen() {
   const joinedIds = useCommunityStore((s) => s.joinedIds);
   const joinedCommunities = useCommunityStore((s) => s.joinedCommunities);
   const hydrate = useCommunityStore((s) => s.hydrate);
-  const friends = useFriendStore((s) => s.friends);
-  const fetchAll = useFriendStore((s) => s.fetchAll);
+  const followingIds = useFollowStore((s) => s.followingIds);
+  const hydrateFollows = useFollowStore((s) => s.hydrate);
   const selectedCommunityId = useCommunityFilterStore((s) => s.selectedCommunityId);
   const setFilterable = useCommunityFilterStore((s) => s.setFilterable);
 
@@ -58,8 +58,8 @@ function FeedScreen() {
   useEffect(() => {
     if (!user?.id) return;
     void hydrate(user.id);
-    void fetchAll(user.id);
-  }, [user?.id, hydrate, fetchAll]);
+    void hydrateFollows(user.id);
+  }, [user?.id, hydrate, hydrateFollows]);
 
   // First open of a day gets the sheet once. AsyncStorage rather than store
   // state: the point is "once today", and store state dies with the process.
@@ -77,7 +77,7 @@ function FeedScreen() {
   }, [user?.id]);
 
   const communityIds = useMemo(() => Array.from(joinedIds), [joinedIds]);
-  const authorIds = useMemo(() => friends.map((f) => f.profile.id), [friends]);
+  const authorIds = useMemo(() => Array.from(followingIds), [followingIds]);
   const switcherCommunities = useMemo(
     () => joinedCommunities.map((c) => ({ id: c.id, name: c.name })),
     [joinedCommunities]

@@ -1,15 +1,20 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { QuickSearch } from '@/components/QuickSearch';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { formatUtcDateTime } from '@/lib/dates';
+import { feedbackReplyMailto, feedbackReporterName } from '@/lib/feedbackReply';
 import { updateFeedbackStatus, updateFeedbackNotes } from './actions';
 
 type FeedbackCategory = 'bug' | 'broken' | 'other';
 type FeedbackStatus = 'open' | 'in_review' | 'resolved' | 'wontfix';
 
-interface Feedback {
+export interface Feedback {
   id: string;
   user_id: string;
   category: FeedbackCategory;
@@ -21,6 +26,8 @@ interface Feedback {
   status: FeedbackStatus;
   internal_notes: string | null;
   created_at: string;
+  reporterName: string;
+  reporterEmail: string | null;
 }
 
 const STATUS_COLORS: Record<FeedbackStatus, string> = {
@@ -47,6 +54,16 @@ function FeedbackRow({ feedback }: { feedback: Feedback }) {
   const [status, setStatus] = useState<FeedbackStatus>(feedback.status);
   const [notes, setNotes] = useState(feedback.internal_notes ?? '');
   const [isPending, startTransition] = useTransition();
+  const reportedAt = formatUtcDateTime(feedback.created_at);
+  const mailto = feedback.reporterEmail
+    ? feedbackReplyMailto({
+        email: feedback.reporterEmail,
+        reporterName: feedback.reporterName,
+        reportedAt,
+        message: feedback.message,
+        categoryLabel: CATEGORY_LABELS[feedback.category],
+      })
+    : null;
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const s = e.target.value as FeedbackStatus;
@@ -67,25 +84,38 @@ function FeedbackRow({ feedback }: { feedback: Feedback }) {
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="text-[10px] px-2 py-0">{CATEGORY_LABELS[feedback.category]}</Badge>
             {feedback.rating != null && <span className="text-xs text-muted-foreground">{'⭐'.repeat(feedback.rating)}</span>}
-            <span className="text-[10px] text-muted-foreground/50">
-              {new Date(feedback.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-            </span>
           </div>
-          <p className="text-sm text-foreground leading-relaxed">{feedback.message}</p>
+          <p className="text-sm font-medium text-foreground">{feedback.reporterName}</p>
+          <p className="text-xs text-muted-foreground">{reportedAt}</p>
+          <p className="text-sm text-foreground leading-relaxed pt-1">{feedback.message}</p>
           <p className="text-[10px] text-muted-foreground/50">
             {feedback.screen_context ?? 'unknown screen'} · v{feedback.app_version ?? '?'} · {feedback.platform ?? '?'}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge className={cn('text-[11px] px-2 py-0.5', STATUS_COLORS[status])}>
-            {STATUS_LABELS[status]}
-          </Badge>
-          <Select value={status} onChange={handleStatusChange} disabled={isPending} className="h-8 w-32 text-xs">
-            <option value="open">Open</option>
-            <option value="in_review">In Review</option>
-            <option value="resolved">Resolved</option>
-            <option value="wontfix">Won&apos;t Fix</option>
-          </Select>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <Badge className={cn('text-[11px] px-2 py-0.5', STATUS_COLORS[status])}>
+              {STATUS_LABELS[status]}
+            </Badge>
+            <Select value={status} onChange={handleStatusChange} disabled={isPending} className="h-8 w-32 text-xs">
+              <option value="open">Open</option>
+              <option value="in_review">In Review</option>
+              <option value="resolved">Resolved</option>
+              <option value="wontfix">Won&apos;t Fix</option>
+            </Select>
+          </div>
+          {mailto ? (
+            <Button asChild variant="outline" size="sm">
+              <a href={mailto}>
+                <Mail className="h-3.5 w-3.5" />
+                Email {feedback.reporterName}
+              </a>
+            </Button>
+          ) : (
+            <p className="text-xs text-muted-foreground max-w-[12rem] text-right">
+              No email on file for this account.
+            </p>
+          )}
         </div>
       </div>
       <textarea
@@ -103,11 +133,23 @@ function FeedbackRow({ feedback }: { feedback: Feedback }) {
 export function FeedbackClient({ initialFeedback }: { initialFeedback: Feedback[] }) {
   const [categoryFilter, setCategoryFilter] = useState<'all' | FeedbackCategory>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | FeedbackStatus>('all');
+  const [query, setQuery] = useState('');
 
   const filtered = initialFeedback.filter((f) => {
     if (categoryFilter !== 'all' && f.category !== categoryFilter) return false;
     if (statusFilter !== 'all' && f.status !== statusFilter) return false;
-    return true;
+    const needle = query.trim().toLowerCase();
+    if (!needle) return true;
+    const haystack = [
+      f.message,
+      f.reporterName,
+      f.reporterEmail ?? '',
+      f.screen_context ?? '',
+      f.internal_notes ?? '',
+    ]
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(needle);
   });
 
   const open = initialFeedback.filter((f) => f.status === 'open').length;
@@ -131,7 +173,15 @@ export function FeedbackClient({ initialFeedback }: { initialFeedback: Feedback[
         </div>
       </div>
 
-      <div className="flex gap-3 flex-wrap items-center">
+      <div className="flex gap-3 flex-wrap items-end">
+        <QuickSearch
+          id="feedback-q"
+          label="Search reports"
+          value={query}
+          placeholder="Message, name, email…"
+          onChange={setQuery}
+          className="min-w-[14rem] max-w-sm"
+        />
         <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as typeof categoryFilter)} className="h-9 w-40 text-sm">
           <option value="all">All categories</option>
           <option value="bug">Crash</option>

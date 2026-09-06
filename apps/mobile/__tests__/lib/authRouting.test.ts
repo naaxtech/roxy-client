@@ -39,23 +39,24 @@ describe('shouldRedirectToPending — the application screen is reachable', () =
   });
 });
 
-describe('shouldRedirectToPending — the gate still holds everywhere else', () => {
-  it('redirects a pending applicant away from the tabs', () => {
-    expect(shouldRedirectToPending('pending', ['(tabs)', 'grow'], '/(tabs)/grow')).toBe(true);
+describe('shouldRedirectToPending — pending stays in the app; rejected still waits', () => {
+  it('does not trap a pending applicant on a wait screen', () => {
+    expect(shouldRedirectToPending('pending', ['(tabs)', 'feed'], '/(tabs)/feed')).toBe(false);
+    expect(shouldRedirectToPending('pending', ['(tabs)', 'grow'], '/(tabs)/grow')).toBe(false);
   });
 
-  it('redirects a rejected applicant away from the tabs', () => {
+  it('redirects a rejected applicant away from the tabs so she can appeal', () => {
     expect(shouldRedirectToPending('rejected', ['(tabs)', 'grow'], '/(tabs)/grow')).toBe(true);
   });
 
-  it('redirects a pending applicant away from onboarding', () => {
+  it('lets a pending applicant finish onboarding', () => {
     expect(
       shouldRedirectToPending(
         'pending',
         ['(auth)', 'onboarding', 'step1-identity'],
         '/(auth)/onboarding/step1-identity',
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('leaves an approved member alone', () => {

@@ -1,13 +1,13 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { QuickSearch } from '@/components/QuickSearch';
 import { isMissingFunction } from '@/lib/schema-availability';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 
 export type AccessTier = 'public' | 'beta';
 
@@ -67,8 +67,15 @@ export function LaunchAccessClient({
     if (nextQuery.trim()) params.set('q', nextQuery.trim());
     if (nextFilter !== 'all') params.set('tier', nextFilter);
     const qs = params.toString();
-    router.push(qs ? `/staff/launch?${qs}` : '/staff/launch');
+    router.replace(qs ? `/staff/launch?${qs}` : '/staff/launch');
   };
+  const debouncedQuery = useDebouncedValue(query, 220);
+
+  useEffect(() => {
+    if (debouncedQuery.trim() === initialQuery.trim()) return;
+    applySearch(debouncedQuery, filter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuery]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -126,22 +133,15 @@ export function LaunchAccessClient({
       </div>
 
       <div className="flex flex-wrap items-end gap-4">
-        <div className="max-w-sm space-y-1.5 flex-1 min-w-[12rem]">
-          <Label htmlFor="launch-search">Search members</Label>
-          <Input
-            id="launch-search"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') applySearch();
-            }}
-            placeholder="Name or username"
-          />
-          <Button type="button" size="sm" variant="outline" onClick={() => applySearch()}>
-            Search
-          </Button>
-        </div>
+        <QuickSearch
+          id="launch-search"
+          label="Search members"
+          value={query}
+          placeholder="Name or username"
+          onChange={setQuery}
+          onSubmit={(next) => applySearch(next, filter)}
+          className="max-w-sm"
+        />
         <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by launch access">
           {(['all', 'public', 'beta'] as const).map((value) => (
             <Button

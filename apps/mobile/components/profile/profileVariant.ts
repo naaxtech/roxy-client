@@ -128,3 +128,49 @@ export function profileLevel(points: number | null | undefined): ProfileLevel {
   if (score >= 100) return { label: 'Bloom', emoji: '🌸' };
   return { label: 'Seedling', emoji: '🌱' };
 }
+
+const XP_PER_LEVEL = 20;
+
+/**
+ * The lightning number the prototype paints on the avatar (`⚡12`).
+ *
+ * Schema still only has `gamification_points`. Twenty points per level is the
+ * smallest integer that makes the mock's 240-point Bloom land on 12 — the
+ * number the design already taught people to look for — without inventing a
+ * second score.
+ */
+export function profileXpLevel(points: number | null | undefined): number {
+  const score = typeof points === 'number' && Number.isFinite(points) ? Math.max(0, points) : 0;
+  return Math.max(1, Math.floor(score / XP_PER_LEVEL));
+}
+
+/** The XP pill next to Edit: label plus 0–1 fill inside the current band. */
+export function profileXpBar(points: number | null | undefined): { label: string; progress: number } {
+  const score = typeof points === 'number' && Number.isFinite(points) ? Math.max(0, points) : 0;
+  const into = score % XP_PER_LEVEL;
+  const progress = score === 0 ? 0 : (into === 0 ? 1 : into / XP_PER_LEVEL);
+  return {
+    label: `${score.toLocaleString('en-US')} XP`,
+    progress,
+  };
+}
+
+export type BadgePreviewSource = {
+  earned_at: string | null;
+  badges: { emoji?: string | null } | null;
+};
+
+/**
+ * The header chip (`🌸🔥💎🎙️ +2`). Locked rows do not count: showing a
+ * badge she has not earned is the same lie as a Shop tab on an unvetted seller.
+ */
+export function badgePreviewFromEarned(
+  badges: readonly BadgePreviewSource[],
+): { emojis: string; extra: number } | null {
+  const earned = badges.filter((b) => b.earned_at);
+  if (earned.length === 0) return null;
+  const shown = earned.slice(0, 4);
+  const extra = Math.max(0, earned.length - shown.length);
+  const emojis = shown.map((b) => b.badges?.emoji ?? '🏅').join('');
+  return { emojis, extra };
+}

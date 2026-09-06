@@ -8,7 +8,7 @@ import {
   ShoppingBag, Package, ShoppingCart, DollarSign, Settings,
   Shield, CheckSquare, Mail, RefreshCw, AlertTriangle, Building2,
   ChevronRight, LogOut, Lightbulb, Bug, UserCheck, Ticket, UserCog,
-  Archive, UserPlus, GitPullRequest, Flag, Unlock,
+  Archive, UserPlus, GitPullRequest, Flag, Unlock, Crown, BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOutAction } from '@/app/auth/signout-action';
@@ -18,62 +18,136 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 
-const mainNav = [
-  { href: '/dashboard',   label: 'Dashboard',     icon: LayoutDashboard },
-  { href: '/events',      label: 'Events',         icon: Calendar },
-  { href: '/rooms',       label: 'Rooms',          icon: Video },
-  { href: '/games',       label: 'Games',          icon: Gamepad2 },
-  // `exact` because /community now has a child route in this list; without it
-  // both entries highlight at once.
-  { href: '/community',   label: 'Community',      icon: Users, exact: true },
-  { href: '/community/members', label: 'Members',  icon: UserCog },
-  // The invite gate, in the order it happens: issue a code, then decide on the
-  // application it produces. Both are community-admin work, not staff work.
-  { href: '/invites',     label: 'Invite codes',   icon: Ticket },
-  // Community admins and border patrol both land here. The page itself resolves
-  // capability -- RLS decides which applications, if any, are visible.
-  { href: '/applications', label: 'Applications',  icon: UserCheck },
+type NavItemDef = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  exact?: boolean;
+  coreOnly?: boolean;
+};
+
+export type NavGroupDef = {
+  title: string;
+  staff?: boolean;
+  items: NavItemDef[];
+};
+
+/**
+ * Host tools first, then Roxy ops. Section titles are the grouping —
+ * labels inside a section drop the repeated prefix (Archive Entries → Entries).
+ */
+export const NAV_GROUPS: NavGroupDef[] = [
+  {
+    title: 'Host',
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    title: 'Community',
+    items: [
+      { href: '/community', label: 'Community', icon: Users, exact: true },
+      { href: '/community/members', label: 'Members', icon: UserCog },
+      { href: '/invites', label: 'Invite codes', icon: Ticket },
+      { href: '/applications', label: 'Applications', icon: UserCheck },
+    ],
+  },
+  {
+    title: 'Live',
+    items: [
+      { href: '/events', label: 'Events', icon: Calendar },
+      { href: '/rooms', label: 'Rooms', icon: Video },
+      { href: '/games', label: 'Games', icon: Gamepad2 },
+    ],
+  },
+  {
+    title: 'Shop',
+    items: [
+      { href: '/stripe-onboarding', label: 'Sell on Roxy', icon: ShoppingBag },
+      { href: '/products', label: 'Products', icon: Package },
+      { href: '/orders', label: 'Orders', icon: ShoppingCart },
+      { href: '/seller-payouts', label: 'Seller payouts', icon: DollarSign },
+      { href: '/payouts', label: 'Event payouts', icon: Wallet },
+    ],
+  },
+  {
+    title: 'Roxy',
+    staff: true,
+    items: [
+      { href: '/staff', label: 'Overview', icon: Shield, exact: true },
+      { href: '/staff/launch', label: 'Launch access', icon: Unlock },
+      { href: '/staff/team', label: 'Roxy team', icon: Crown, coreOnly: true },
+    ],
+  },
+  {
+    title: 'Archive',
+    staff: true,
+    items: [
+      { href: '/staff/archive', label: 'Dashboard', icon: Archive, exact: true },
+      { href: '/staff/archive/entries', label: 'Entries', icon: BookOpen },
+      { href: '/staff/archive/members', label: 'Members', icon: UserPlus },
+      { href: '/staff/archive/revisions', label: 'Revisions', icon: GitPullRequest },
+      { href: '/staff/archive/reports', label: 'Reports', icon: Flag },
+    ],
+  },
+  {
+    title: 'Approvals',
+    staff: true,
+    items: [
+      { href: '/staff/businesses', label: 'Businesses', icon: Building2 },
+      { href: '/staff/products', label: 'Products', icon: CheckSquare },
+      { href: '/staff/games', label: 'Games', icon: Gamepad2 },
+    ],
+  },
+  {
+    title: 'Inbox',
+    staff: true,
+    items: [
+      { href: '/staff/feature-requests', label: 'Feature requests', icon: Lightbulb },
+      { href: '/staff/feedback', label: 'Feedback', icon: Bug },
+      { href: '/staff/email-queue', label: 'Email queue', icon: Mail },
+    ],
+  },
+  {
+    title: 'Money',
+    staff: true,
+    items: [
+      { href: '/staff/reconciliation', label: 'Reconciliation', icon: RefreshCw },
+      { href: '/staff/disputes', label: 'Disputes', icon: AlertTriangle },
+    ],
+  },
 ];
 
-const sellerNav = [
-  { href: '/stripe-onboarding', label: 'Sell on Roxy',    icon: ShoppingBag },
-  { href: '/products',          label: 'Products',         icon: Package },
-  { href: '/orders',            label: 'Orders',           icon: ShoppingCart },
-  { href: '/seller-payouts',    label: 'Seller Payouts',   icon: DollarSign },
-  { href: '/payouts',           label: 'Event Payouts',    icon: Wallet },
-];
+export function navGroupsFor(role: { isStaff: boolean; isCore: boolean }): NavGroupDef[] {
+  return NAV_GROUPS
+    .filter((group) => !group.staff || role.isStaff)
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.coreOnly || role.isCore),
+    }))
+    .filter((group) => group.items.length > 0);
+}
 
-const staffNav = [
-  { href: '/staff',                        label: 'Overview',           icon: Shield },
-  { href: '/staff/businesses',             label: 'Business Approvals', icon: Building2 },
-  { href: '/staff/products',               label: 'Product Approval',   icon: CheckSquare },
-  { href: '/staff/feature-requests',       label: 'Feature Requests',   icon: Lightbulb },
-  { href: '/staff/feedback',               label: 'Feedback',           icon: Bug },
-  { href: '/staff/email-queue',            label: 'Email Queue',        icon: Mail },
-  { href: '/staff/reconciliation',         label: 'Reconciliation',     icon: RefreshCw },
-  { href: '/staff/disputes',               label: 'Disputes',           icon: AlertTriangle },
-  { href: '/staff/games',                  label: 'Game Reviews',       icon: Gamepad2 },
-  // WLW Archive moderator tooling. `exact` on the dashboard entry only —
-  // without it, visiting any /staff/archive/* subpage would also light up
-  // "Archive Dashboard" (see NavItem's startsWith match below).
-  { href: '/staff/launch',                 label: 'Launch access',      icon: Unlock },
-  { href: '/staff/archive',                label: 'Archive Dashboard',  icon: Archive, exact: true },
-  { href: '/staff/archive/members',        label: 'Archive Members',    icon: UserPlus },
-  { href: '/staff/archive/revisions',      label: 'Archive Revisions',  icon: GitPullRequest },
-  { href: '/staff/archive/reports',        label: 'Archive Reports',    icon: Flag },
-];
+export function headerMetaFor(pathname: string): { title: string; section?: string } {
+  if (pathname === '/settings') return { title: 'Settings' };
+  for (const group of NAV_GROUPS) {
+    const match = [...group.items]
+      .sort((a, b) => b.href.length - a.href.length)
+      .find((item) => pathname === item.href || (!item.exact && pathname.startsWith(`${item.href}/`)));
+    if (match) return { title: match.label, section: group.title };
+  }
+  return { title: 'Studio' };
+}
 
 interface NavItemProps {
   href: string;
   label: string;
   icon: React.ElementType;
   pathname: string;
-  indent?: boolean;
-  /** Set on a parent whose own child route is also in the nav, so only one lights up. */
   exact?: boolean;
 }
 
-function NavItem({ href, label, icon: Icon, pathname, indent, exact }: NavItemProps) {
+function NavItem({ href, label, icon: Icon, pathname, exact }: NavItemProps) {
   const isActive =
     pathname === href || (!exact && href !== '/dashboard' && pathname.startsWith(href));
   return (
@@ -81,7 +155,6 @@ function NavItem({ href, label, icon: Icon, pathname, indent, exact }: NavItemPr
       href={href}
       className={cn(
         'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
-        indent && 'ml-2',
         isActive
           ? 'sidebar-item-active text-primary'
           : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
@@ -95,7 +168,7 @@ function NavItem({ href, label, icon: Icon, pathname, indent, exact }: NavItemPr
       />
       <span className="truncate">{label}</span>
       {isActive && (
-        <ChevronRight className="ml-auto h-3 w-3 text-primary/60 shrink-0" />
+        <ChevronRight className="ml-auto h-3.5 w-3.5 text-primary/60 shrink-0" />
       )}
     </Link>
   );
@@ -114,17 +187,18 @@ function NavSection({ title, children }: { title: string; children: React.ReactN
 
 interface AppSidebarProps {
   isStaff?: boolean;
+  isCore?: boolean;
   userEmail?: string;
   userInitials?: string;
 }
 
-export function AppSidebar({ isStaff = false, userEmail, userInitials = 'R' }: AppSidebarProps) {
+export function AppSidebar({ isStaff = false, isCore = false, userEmail, userInitials = 'R' }: AppSidebarProps) {
   const pathname = usePathname();
+  const groups = navGroupsFor({ isStaff, isCore });
 
   return (
     <TooltipProvider delayDuration={0}>
       <aside className="flex h-screen w-[240px] shrink-0 flex-col border-r border-border/60 bg-background/80 backdrop-blur-sm">
-        {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-border/60 px-5">
           <Image
             src="/brand/roxy-logo-primary.svg"
@@ -137,37 +211,23 @@ export function AppSidebar({ isStaff = false, userEmail, userInitials = 'R' }: A
           <p className="text-[10px] text-muted-foreground leading-none">Host dashboard</p>
         </div>
 
-        {/* Nav */}
         <ScrollArea className="flex-1 px-3 py-4">
-          <div className="space-y-6">
-            <NavSection title="Menu">
-              {mainNav.map(item => (
-                <NavItem key={item.href} {...item} pathname={pathname} />
-              ))}
-            </NavSection>
-
-            <Separator className="opacity-30" />
-
-            <NavSection title="Marketplace">
-              {sellerNav.map(item => (
-                <NavItem key={item.href} {...item} pathname={pathname} />
-              ))}
-            </NavSection>
-
-            {isStaff && (
-              <>
-                <Separator className="opacity-30" />
-                <NavSection title="Staff">
-                  {staffNav.map(item => (
-                    <NavItem key={item.href} {...item} pathname={pathname} indent />
+          <div className="space-y-5">
+            {groups.map((group, index) => (
+              <div key={group.title} className="space-y-5">
+                {index > 0 && group.staff && !groups[index - 1]?.staff ? (
+                  <Separator className="opacity-30" />
+                ) : null}
+                <NavSection title={group.title}>
+                  {group.items.map((item) => (
+                    <NavItem key={item.href} {...item} pathname={pathname} />
                   ))}
                 </NavSection>
-              </>
-            )}
+              </div>
+            ))}
           </div>
         </ScrollArea>
 
-        {/* Footer — settings + user */}
         <div className="border-t border-border/60 p-3 space-y-1">
           <NavItem href="/settings" label="Settings" icon={Settings} pathname={pathname} />
           <Separator className="opacity-20 my-1" />
@@ -180,7 +240,9 @@ export function AppSidebar({ isStaff = false, userEmail, userInitials = 'R' }: A
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-foreground truncate">{userEmail ?? 'Host'}</p>
-              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Signed in</p>
+              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">
+                {isCore ? 'Roxy core' : isStaff ? 'Staff' : 'Signed in'}
+              </p>
             </div>
             <ThemeSwitcher />
             <Tooltip>

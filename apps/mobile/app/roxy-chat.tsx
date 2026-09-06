@@ -12,7 +12,8 @@ import { callEdgeFunction } from '../lib/supabase';
 import { Analytics } from '../lib/analytics';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { showAlert } from '../lib/confirm';
-import { BRAND_GRADIENT } from '../lib/theme';
+import { BRAND_GRADIENT, RADII, inkOn } from '../lib/theme';
+import { TYPE, FONTS } from '../lib/typography';
 
 type Message = { role: 'user' | 'roxy'; content: string };
 
@@ -103,18 +104,30 @@ export default function RoxyChatScreen() {
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
-      flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 16, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: colors.surfaceLight,
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingHorizontal: 12, paddingVertical: 10,
+      backgroundColor: colors.backgroundAlt,
+      borderBottomWidth: 1, borderBottomColor: colors.primary,
     },
-    backBtn: { minWidth: 60, minHeight: 44, flexDirection: 'row', alignItems: 'center' },
-    backLabel: { fontSize: 15, color: colors.roxy, fontWeight: '600', marginLeft: 2 },
-    headerCenter: {
-      flex: 1, flexDirection: 'row', alignItems: 'center',
-      justifyContent: 'center', gap: 4,
+    backBtn: {
+      width: 30, height: 30, borderRadius: RADII.pill,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+      alignItems: 'center', justifyContent: 'center',
     },
-    headerTitle: { fontSize: 20, fontWeight: '800', color: colors.roxy, letterSpacing: 0.5 },
-    headerSpacer: { minWidth: 60 },
+    headerMark: { width: 38, height: 38, borderRadius: RADII.pill, padding: 2 },
+    headerMarkInner: {
+      flex: 1, borderRadius: RADII.pill, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.backgroundAlt,
+    },
+    headerCenter: { flex: 1, gap: 2 },
+    headerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+    headerTitle: { ...TYPE.body, fontFamily: FONTS.display.bold, color: colors.textPrimary },
+    headerTag: {
+      borderRadius: RADII.pill, borderWidth: 1, borderColor: colors.primary,
+      backgroundColor: colors.surfaceLight, paddingHorizontal: 7, paddingVertical: 2,
+    },
+    headerTagText: { ...TYPE.micro, color: colors.primaryInk, fontWeight: '800', letterSpacing: 0.8 },
+    headerSub: { ...TYPE.micro, color: colors.successInk, fontWeight: '600' },
 
     messageList: { flex: 1 },
     messageListContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 10, flexGrow: 1 },
@@ -171,7 +184,7 @@ export default function RoxyChatScreen() {
       shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 1,
     },
     bubbleText: { fontSize: 15, lineHeight: 22 },
-    bubbleTextUser: { color: '#fff' },
+    bubbleTextUser: { color: inkOn(colors.primary) },
     bubbleTextRoxy: { color: colors.textPrimary },
 
     thinkingWrap: { flexDirection: 'row', alignItems: 'flex-end', marginVertical: 4 },
@@ -196,7 +209,7 @@ export default function RoxyChatScreen() {
     sendBtn: { borderRadius: 24, minHeight: 44, minWidth: 76, overflow: 'hidden' },
     sendBtnGradient: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
     sendBtnDisabled: { opacity: 0.4 },
-    sendBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+    sendBtnText: { color: inkOn(BRAND_GRADIENT[1]), fontWeight: '700', fontSize: 15 },
   });
 
   return (
@@ -214,14 +227,22 @@ export default function RoxyChatScreen() {
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Ionicons name="chevron-back" size={24} color={colors.roxy} />
-            <Text style={styles.backLabel}>Back</Text>
+            <Ionicons name="chevron-back" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
+          <LinearGradient colors={BRAND_GRADIENT} style={styles.headerMark}>
+            <View style={styles.headerMarkInner}>
+              <Ionicons name="sparkles" size={16} color={colors.primaryInk} />
+            </View>
+          </LinearGradient>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>ROXY</Text>
-            <Ionicons name="sparkles" size={16} color={colors.roxy} />
+            <View style={styles.headerNameRow}>
+              <Text style={styles.headerTitle}>Roxy</Text>
+              <View style={styles.headerTag}>
+                <Text style={styles.headerTagText}>WINGWOMAN</Text>
+              </View>
+            </View>
+            <Text style={styles.headerSub}>● always on — replies instantly</Text>
           </View>
-          <View style={styles.headerSpacer} />
         </View>
 
         {/* Messages */}

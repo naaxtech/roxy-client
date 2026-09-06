@@ -20,6 +20,7 @@ import { countByType, type TypeCounts } from '../../lib/archiveTypes';
 import { fetchArchiveEntries } from '../../lib/archive';
 import { SortChips } from '../../components/archive/SortChips';
 import { PendingBanner } from '../../components/archive/PendingBanner';
+import { AccountStatusTag } from '../../components/account/AccountStatusTag';
 import type { ArchiveEntry } from '../../lib/archive';
 
 /**
@@ -111,15 +112,19 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
     },
     backBtn: { minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
     title: { ...TYPE.headline, color: colors.textPrimary },
+    searchRow: { width: '100%', paddingHorizontal: 16 },
     searchWrap: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      marginHorizontal: 16, paddingHorizontal: 12,
+      flexDirection: 'row', alignItems: 'center', alignSelf: 'center',
+      width: '100%', gap: 8, paddingHorizontal: 12,
       minHeight: MIN_TOUCH_TARGET,
-      borderRadius: RADII.pill,
-      backgroundColor: colors.surface,
-      borderWidth: 1, borderColor: colors.line,
+      borderRadius: RADII.md,
+      backgroundColor: colors.surfaceLight,
+      borderWidth: 1, borderColor: colors.lineStrong,
     },
-    search: { flex: 1, ...TYPE.body, color: colors.textPrimary, paddingVertical: 8 },
+    search: {
+      flex: 1, ...TYPE.body, color: colors.textPrimary,
+      backgroundColor: colors.surfaceLight, paddingVertical: 8,
+    },
     bannerWrap: { paddingHorizontal: 16, paddingTop: 8 },
     list: { padding: 16, gap: 10 },
     state: { padding: 24, gap: 10, alignItems: 'flex-start' },
@@ -211,22 +216,25 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
             <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
           </Pressable>
         )}
-        <Text style={s.title}>The WLW Archive</Text>
+        <Text style={[s.title, { flex: 1 }]}>The WLW Archive</Text>
+        <AccountStatusTag />
       </View>
 
-      <View style={s.searchWrap}>
-        <Ionicons name="search" size={16} color={colors.textMuted} />
+      <View style={s.searchRow}>
+        <View style={s.searchWrap} testID="archive-search-wrap">
+        <Ionicons name="search" size={16} color={colors.textSecondary} />
         <TextInput
           style={s.search}
           value={filters.query}
           onChangeText={(query) => setFilters({ query })}
           placeholder="Search films, shows, books, comics, music"
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={colors.textSecondary}
           testID="archive-search"
           accessibilityLabel="Search the Archive"
           returnKeyType="search"
           onSubmitEditing={() => Analytics.archiveSearch(entries.length)}
         />
+        </View>
       </View>
 
       {membership.status === 'pending' ? (

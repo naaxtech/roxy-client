@@ -6,6 +6,8 @@ import { TYPE } from '../../lib/typography';
 import { RADII, inkOn, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { comingSoonCopy, type Feature } from '../../lib/features';
+import { useAccess } from '../../hooks/useAccess';
+import { AccountStatusTag } from '../account/AccountStatusTag';
 
 type Props = {
   feature: Feature;
@@ -18,13 +20,16 @@ type Props = {
 export function ComingSoon({ feature }: Props) {
   const colors = useThemeColors();
   const router = useRouter();
-  const copy = comingSoonCopy(feature);
+  const { kind } = useAccess();
+  const copy = comingSoonCopy(feature, kind);
   const s = styles(colors);
+  const waiting = kind === 'pending';
 
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.wrap} testID="coming-soon">
-        <Text style={s.eyebrow}>ROXY</Text>
+        <AccountStatusTag />
+        <Text style={s.eyebrow}>{waiting ? 'Waiting for approval' : '✿ Coming soon'}</Text>
         <Text style={s.title}>{copy.title}</Text>
         <Text style={s.body}>{copy.body}</Text>
         <TouchableOpacity

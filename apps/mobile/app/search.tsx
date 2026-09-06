@@ -14,6 +14,19 @@ import { avatarGradient } from '../lib/avatars';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { TYPE } from '../lib/typography';
+import { RADII, inkOn } from '../lib/theme';
+
+type SearchTab = 'all' | 'people' | 'communities' | 'events' | 'shops' | 'archive';
+const SEARCH_TABS: { id: SearchTab; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'people', label: 'People' },
+  { id: 'communities', label: 'Communities' },
+  { id: 'events', label: 'Events' },
+  { id: 'shops', label: 'Shops' },
+  { id: 'archive', label: 'Archive' },
+];
+const TRENDING = ['sapphic cinema', 'WLW London', 'events this week', 'shops'];
 
 const DEBOUNCE_MS = 300;
 const EMPTY_RESULTS: GlobalSearchResult = { communities: [], people: [], events: [], businesses: [], archive: [] };
@@ -26,6 +39,7 @@ export default function GlobalSearchScreen() {
   const requestIdRef = useRef(0);
 
   const [query, setQuery] = useState('');
+  const [tab, setTab] = useState<SearchTab>('all');
   const [results, setResults] = useState<GlobalSearchResult>(EMPTY_RESULTS);
   const [loading, setLoading] = useState(false);
 
@@ -64,81 +78,131 @@ export default function GlobalSearchScreen() {
     };
   }, [query]);
 
+  const show = (kind: Exclude<SearchTab, 'all'>) => tab === 'all' || tab === kind;
   const hasQuery = query.trim().length > 0;
   const hasResults =
-    results.communities.length > 0 ||
-    results.people.length > 0 ||
-    results.events.length > 0 ||
-    results.businesses.length > 0 ||
-    results.archive.length > 0;
+    (show('communities') && results.communities.length > 0) ||
+    (show('people') && results.people.length > 0) ||
+    (show('events') && results.events.length > 0) ||
+    (show('shops') && results.businesses.length > 0) ||
+    (show('archive') && results.archive.length > 0);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
-      flexDirection: 'row', alignItems: 'center', gap: 10,
-      paddingHorizontal: 16, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: colors.surface,
+      paddingHorizontal: 12, paddingTop: 10, paddingBottom: 10, gap: 9,
+      backgroundColor: colors.backgroundAlt, borderBottomWidth: 1, borderBottomColor: colors.line,
     },
-    backBtn: { padding: 4 },
+    searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    backBtn: {
+      width: 32, height: 32, borderRadius: RADII.pill,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+      alignItems: 'center', justifyContent: 'center',
+    },
     inputWrap: {
       flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
-      backgroundColor: colors.surface, borderRadius: 20,
-      paddingHorizontal: 14, height: 40,
+      backgroundColor: colors.surface, borderRadius: 13,
+      paddingHorizontal: 13, minHeight: 40,
+      borderWidth: 1, borderColor: colors.primary,
     },
-    input: { flex: 1, color: colors.textPrimary, fontSize: 15 },
+    input: { flex: 1, ...TYPE.body, color: colors.textPrimary },
     clearBtn: { padding: 2 },
+    tabs: { flexDirection: 'row', gap: 6 },
+    tab: {
+      borderRadius: RADII.pill, paddingHorizontal: 12, paddingVertical: 6,
+      borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface,
+    },
+    tabOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+    tabText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '700' },
+    tabTextOn: { color: inkOn(colors.primary) },
+    trendLabel: {
+      ...TYPE.micro, color: colors.textMuted, fontWeight: '800',
+      letterSpacing: 1.4, paddingHorizontal: 14, paddingTop: 16, paddingBottom: 8,
+    },
+    trendWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingHorizontal: 14 },
+    trendChip: {
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+      borderRadius: RADII.pill, paddingHorizontal: 14, paddingVertical: 8,
+    },
+    trendText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '700' },
     scroll: { flex: 1 },
     row: {
-      flexDirection: 'row', alignItems: 'center', gap: 12,
-      paddingHorizontal: 18, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: colors.surfaceLight,
+      flexDirection: 'row', alignItems: 'center', gap: 11,
+      marginHorizontal: 14, marginBottom: 8,
+      paddingHorizontal: 12, paddingVertical: 10,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+      borderRadius: RADII.md,
     },
     iconPlate: {
-      width: 40, height: 40, borderRadius: 20,
+      width: 40, height: 40, borderRadius: 13,
       alignItems: 'center', justifyContent: 'center',
-      backgroundColor: colors.surface,
+      backgroundColor: colors.surfaceLight,
     },
     avatar: {
-      width: 40, height: 40, borderRadius: 20,
+      width: 40, height: 40, borderRadius: RADII.pill,
       alignItems: 'center', justifyContent: 'center',
     },
-    avatarText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+    avatarText: { color: inkOn(colors.secondary), fontWeight: '800', fontSize: 15 },
     rowInfo: { flex: 1 },
-    rowTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 15 },
-    rowSub: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
+    rowTitle: { ...TYPE.body, color: colors.textPrimary, fontWeight: '700' },
+    rowSub: { ...TYPE.caption, color: colors.textMuted, marginTop: 1 },
+    kind: {
+      ...TYPE.micro, color: colors.textMuted, fontWeight: '800', letterSpacing: 0.8,
+      borderWidth: 1, borderColor: colors.line, borderRadius: RADII.pill,
+      paddingHorizontal: 8, paddingVertical: 3,
+    },
     loadingWrap: { paddingVertical: 24, alignItems: 'center' },
-    section: { paddingTop: 14 },
+    section: { paddingTop: 10 },
   });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Back">
-          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.inputWrap}>
-          <Ionicons name="search" size={17} color={colors.textMuted} />
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
-            placeholder="Search communities, people, events…"
-            placeholderTextColor={colors.textMuted}
-            value={query}
-            onChangeText={setQuery}
-            autoCorrect={false}
-            testID="global-search-input"
-            returnKeyType="search"
-          />
-          {query.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setQuery('')}
-              style={styles.clearBtn}
-              accessibilityLabel="Clear search"
-            >
-              <Ionicons name="close-circle" size={17} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
+        <View style={styles.searchRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Back">
+            <Ionicons name="chevron-back" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <View style={styles.inputWrap}>
+            <Ionicons name="search" size={16} color={colors.textMuted} />
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              placeholder="Search communities, people, events, shops…"
+              placeholderTextColor={colors.textMuted}
+              value={query}
+              onChangeText={setQuery}
+              autoCorrect={false}
+              testID="global-search-input"
+              returnKeyType="search"
+            />
+            {query.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setQuery('')}
+                style={styles.clearBtn}
+                accessibilityLabel="Clear search"
+              >
+                <Ionicons name="close-circle" size={17} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
+          {SEARCH_TABS.map((t) => {
+            const on = tab === t.id;
+            return (
+              <TouchableOpacity
+                key={t.id}
+                style={[styles.tab, on && styles.tabOn]}
+                onPress={() => setTab(t.id)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={t.label}
+              >
+                <Text style={[styles.tabText, on && styles.tabTextOn]}>{t.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {loading && (
@@ -148,24 +212,35 @@ export default function GlobalSearchScreen() {
       )}
 
       {!loading && !hasQuery && (
-        <EmptyState
-          emoji="🔍"
-          title="Search communities, people, events…"
-          body="Find your people, your spaces, and what's happening 💜"
-        />
+        <View>
+          <Text style={styles.trendLabel}>TRENDING THIS WEEK</Text>
+          <View style={styles.trendWrap}>
+            {TRENDING.map((term) => (
+              <TouchableOpacity
+                key={term}
+                style={styles.trendChip}
+                onPress={() => setQuery(term)}
+                accessibilityRole="button"
+                accessibilityLabel={`Search ${term}`}
+              >
+                <Text style={styles.trendText}>{term}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       )}
 
       {!loading && hasQuery && !hasResults && (
         <EmptyState
-          emoji="🌸"
-          title="No results"
-          body={`Nothing matched "${query.trim()}" — try a different search`}
+          emoji="✿"
+          title={`Nothing for “${query.trim()}” yet.`}
+          body="Try sapphic cinema — or start this community yourself."
         />
       )}
 
       {!loading && hasQuery && hasResults && (
         <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
-          {results.communities.length > 0 && (
+          {show('communities') && results.communities.length > 0 && (
             <View style={styles.section}>
               <SectionHeader title="Communities" icon="people" />
               {results.communities.map((c) => (
@@ -190,7 +265,7 @@ export default function GlobalSearchScreen() {
             </View>
           )}
 
-          {results.people.length > 0 && (
+          {show('people') && results.people.length > 0 && (
             <View style={styles.section}>
               <SectionHeader title="People" icon="person" />
               {results.people.map((p) => {
@@ -218,7 +293,7 @@ export default function GlobalSearchScreen() {
             </View>
           )}
 
-          {results.events.length > 0 && (
+          {show('events') && results.events.length > 0 && (
             <View style={styles.section}>
               <SectionHeader title="Events" icon="calendar" />
               {results.events.map((e) => (
@@ -243,7 +318,7 @@ export default function GlobalSearchScreen() {
             </View>
           )}
 
-          {results.archive.length > 0 && (
+          {show('archive') && results.archive.length > 0 && (
             <View style={styles.section}>
               <SectionHeader title="Archive" icon="film" />
               {results.archive.map((a) => {
@@ -277,7 +352,7 @@ export default function GlobalSearchScreen() {
             </View>
           )}
 
-          {results.businesses.length > 0 && (
+          {show('shops') && results.businesses.length > 0 && (
             <View style={styles.section}>
               <SectionHeader title="Businesses" icon="briefcase" />
               {results.businesses.map((b) => (

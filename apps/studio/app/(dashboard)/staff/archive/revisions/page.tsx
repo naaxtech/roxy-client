@@ -2,23 +2,14 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { isMissingTable } from '@/lib/schema-availability';
 import { Badge } from '@/components/ui/badge';
-import { RevisionQueueClient, type RevisionItem } from './RevisionQueueClient';
+import { RevisionQueueClient } from './RevisionQueueClient';
+import {
+  ARCHIVE_REVISION_QUEUE_SELECT,
+  revisionRowToItem,
+  type ArchiveRevisionQueueRow,
+} from '@/lib/archiveRevisionQueue';
 
 export const dynamic = 'force-dynamic';
-
-interface RevisionRow {
-  id: string;
-  entry_id: string | null;
-  submitted_by: string;
-  patch: Record<string, unknown>;
-  prev: Record<string, unknown> | null;
-  kind: 'create' | 'edit';
-  status: 'pending' | 'approved' | 'rejected';
-  review_note: string | null;
-  created_at: string;
-  archive_entries: { title: string; slug: string } | null;
-  profiles: { display_name: string | null } | null;
-}
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
@@ -89,13 +80,10 @@ export default async function StaffArchiveRevisionsPage() {
     );
   }
 
-  const selectCols =
-    'id, entry_id, submitted_by, patch, prev, kind, status, review_note, created_at, archive_entries(title, slug), profiles(display_name)';
-
   const [pending, decided] = await Promise.all([
     supabase
       .from('archive_revisions')
-      .select(selectCols)
+      .select(ARCHIVE_REVISION_QUEUE_SELECT)
       .eq('status', 'pending')
       .neq('submitted_by', userId)
       .order('created_at', { ascending: true }),
@@ -104,7 +92,7 @@ export default async function StaffArchiveRevisionsPage() {
     // over an entry state that traces back to her own proposal.
     supabase
       .from('archive_revisions')
-      .select(selectCols)
+      .select(ARCHIVE_REVISION_QUEUE_SELECT)
       .eq('status', 'approved')
       .neq('submitted_by', userId)
       .order('created_at', { ascending: false })
@@ -122,25 +110,12 @@ export default async function StaffArchiveRevisionsPage() {
     );
   }
 
-  const toItem = (row: unknown): RevisionItem => {
-    const r = row as RevisionRow;
-    return {
-      id: r.id,
-      entryId: r.entry_id,
-      entryTitle: r.archive_entries?.title ?? null,
-      entrySlug: r.archive_entries?.slug ?? null,
-      submittedByName: r.profiles?.display_name ?? 'A member',
-      patch: r.patch ?? {},
-      prev: r.prev,
-      kind: r.kind,
-      status: r.status,
-      reviewNote: r.review_note,
-      createdAt: r.created_at,
-    };
-  };
-
-  const pendingItems = (pending.data ?? []).map(toItem);
-  const decidedItems = (decided.data ?? []).map(toItem);
+  const pendingItems = ((pending.data ?? []) as unknown as ArchiveRevisionQueueRow[]).map(
+    revisionRowToItem,
+  );
+  const decidedItems = ((decided.data ?? []) as unknown as ArchiveRevisionQueueRow[]).map(
+    revisionRowToItem,
+  );
 
   return (
     <PageShell>

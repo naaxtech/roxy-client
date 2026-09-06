@@ -90,9 +90,8 @@ export interface FeedCellChromeProps {
   onOpenPost: () => void;
   /**
    * Wire this and the avatar grows its follow badge. Left out, the badge is not
-   * rendered at all: there is no follow graph in this schema yet — only
-   * `friendships`, which is a mutual, notifying relationship and not the same
-   * promise — and an affordance that silently does nothing is worse than one
+   * rendered at all. Follow writes `follows` — a feed subscription, not a
+   * friend request. An affordance that silently does nothing is worse than one
    * that is honestly absent.
    */
   onFollowAuthor?: () => void;
@@ -453,7 +452,7 @@ export function FeedCellChrome({
             style={s.railBtn}
             onPress={onOpenComments}
             accessibilityRole="button"
-            accessibilityLabel={`View comments, ${post.comment_count} comments`}
+            accessibilityLabel={`Comment, ${post.comment_count} comments`}
           >
             <Ionicons name="chatbubble-outline" size={27} color="#fff" style={CHROME_SHADOW} />
             <Text style={[s.railCount, CHROME_SHADOW]}>{post.comment_count}</Text>
@@ -542,8 +541,9 @@ const s = StyleSheet.create({
    * 44 = the box's 48 minus the 4dp it is allowed to overlap the avatar plate.
    * The plate renders at 52 (46 ring + 3 padding each side), so ceding 4 leaves
    * it exactly `MIN_TOUCH_TARGET`. Applied conditionally because `onFollowAuthor`
-   * is unwired today — there is no follow graph — and 44dp of empty rail for a
-   * badge that is not drawn would push the rest of the column off a short page.
+   * is only passed when this viewer can follow that author, and 44dp of empty
+   * rail for a badge that is not drawn would push the rest of the column off a
+   * short page.
    */
   authorFollowable: { paddingBottom: MIN_TOUCH_TARGET - 4 },
   avatarPlate: {

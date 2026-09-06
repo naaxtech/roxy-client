@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
   const [profileRes, memberRes] = await Promise.all([
     supabase
       .from('profiles')
-      .select('display_name')
+      .select('display_name, staff_role')
       .eq('id', auth.userId)
       .single(),
     supabase
@@ -118,14 +118,16 @@ Deno.serve(async (req) => {
       .single(),
   ]);
 
-  // Block non-members from joining
-  if (!memberRes.data && auth.userId !== room.created_by) {
+  const isCore = profileRes.data?.staff_role === 'core';
+
+  // Block non-members from joining. Roxy core owns every room.
+  if (!memberRes.data && auth.userId !== room.created_by && !isCore) {
     return errorResponse('You are not a member of this community', 403);
   }
 
   const displayName = profileRes.data?.display_name ?? 'Guest';
   const role = memberRes.data?.role ?? 'member';
-  const isOwner = role === 'admin' || role === 'moderator' || auth.userId === room.created_by;
+  const isOwner = isCore || role === 'admin' || role === 'moderator' || auth.userId === room.created_by;
 
   // Get creator display name
   let creatorDisplayName: string | null = null;

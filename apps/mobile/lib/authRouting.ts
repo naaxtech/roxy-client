@@ -25,9 +25,9 @@ export const isApplicationRoute = (
 /**
  * Should this profile be sent to the pending screen?
  *
- * 'pending' and 'rejected' both mean a human has not admitted her, so she can
- * read nothing and belongs on the pending screen — with one exception, which is
- * the entire point of this function.
+ * A rejected applicant belongs on the pending screen so she can appeal.
+ * A pending applicant stays in the app — Archive plus a status chip — so this
+ * redirect is only for rejection. The application screen is still exempt.
  *
  * The application screen is where an applicant fills in her application, and an
  * applicant is 'pending' by definition. Without the exemption the redirect fires
@@ -44,7 +44,9 @@ export const shouldRedirectToPending = (
   segments: readonly string[],
   pathname: string,
 ): boolean => {
-  if (vettingStatus !== 'pending' && vettingStatus !== 'rejected') return false;
+  // Pending applicants stay in the app (Archive + a status chip). Only a
+  // rejection still needs this full-screen wait so she can appeal.
+  if (vettingStatus !== 'rejected') return false;
   return !isApplicationRoute(segments, pathname);
 };
 

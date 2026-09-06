@@ -110,13 +110,13 @@ function NewMessageScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ flexGrow: 1 }}
           ListHeaderComponent={
-            friends.length > 0 ? <Text style={styles.hint}>Your people</Text> : null
+            friends.length > 0 ? <Text style={styles.hint}>FRIENDS</Text> : null
           }
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>🌸</Text>
               <Text style={styles.emptyText}>
-                Add friends in your communities first — chats start with your people 💜
+                Add friends in your communities first — chats start with people you already know.
               </Text>
               <TouchableOpacity
                 style={styles.emptyCTA}

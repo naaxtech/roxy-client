@@ -1,7 +1,9 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { isMissingTable } from '@/lib/schema-availability';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { formatUtcDate } from '@/lib/dates';
 
 export const dynamic = 'force-dynamic';
@@ -41,6 +43,11 @@ function PageShell({ children }: { children: React.ReactNode }) {
           What is in the Archive, what has not earned a public score yet, and what the
           community is voting on this week.
         </p>
+        <div className="mt-3">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/staff/archive/entries">Manage entries</Link>
+          </Button>
+        </div>
       </div>
       {children}
     </div>
@@ -211,7 +218,11 @@ export default async function StaffArchiveDashboardPage() {
               <tbody className="divide-y">
                 {belowGateRows.map((entry) => (
                   <tr key={entry.id}>
-                    <td className="px-4 py-3 font-medium">{entry.title}</td>
+                    <td className="px-4 py-3 font-medium">
+                      <Link href={`/staff/archive/entries/${entry.id}`} className="hover:underline">
+                        {entry.title}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground capitalize">
                       {entry.media_type}
                     </td>

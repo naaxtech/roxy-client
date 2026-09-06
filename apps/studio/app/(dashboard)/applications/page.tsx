@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { isMissingColumn } from '@/lib/schema-availability';
 import { Badge } from '@/components/ui/badge';
 import { ReviewQueueClient, ReviewerAgreement } from './ReviewQueueClient';
 
@@ -29,16 +30,33 @@ export default async function ApplicationsPage() {
   const userId = claimsData?.claims?.sub;
   if (!userId) notFound();
 
-  const { data: profile } = await supabase
+  const first = await supabase
     .from('profiles')
-    .select('is_staff, vetting_status')
+    .select('is_staff, staff_role, vetting_status')
     .eq('id', userId)
     .single();
 
+  let profile = first.data as {
+    is_staff: boolean | null;
+    staff_role?: string | null;
+    vetting_status: string | null;
+  } | null;
+
+  if (isMissingColumn(first.error)) {
+    const fallback = await supabase
+      .from('profiles')
+      .select('is_staff, vetting_status')
+      .eq('id', userId)
+      .single();
+    profile = fallback.data ? { ...fallback.data, staff_role: null } : null;
+  }
+
   // A reviewer must herself be vetted. A grandfathered 'unvetted' admin has
   // full app access but has never been checked by anyone, and applicant files
-  // contain legal names and identity outcomes.
+  // contain legal names and identity outcomes. Roxy core owns review — they
+  // do not sit behind those member gates.
   if (!profile) notFound();
+  const isCore = profile.staff_role === 'core';
 
   const { data: settings } = await supabase
     .from('reviewer_settings')
@@ -47,7 +65,7 @@ export default async function ApplicationsPage() {
     .maybeSingle();
 
   const hasAgreement = Boolean(settings?.reviewer_agreement_at);
-  const canReview = profile.vetting_status === 'approved';
+  const canReview = isCore || profile.vetting_status === 'approved';
 
   if (!canReview) {
     return (
@@ -65,7 +83,7 @@ export default async function ApplicationsPage() {
     );
   }
 
-  if (!hasAgreement) {
+  if (!isCore && !hasAgreement) {
     return <ReviewerAgreement userId={userId} />;
   }
 
@@ -113,8 +131,9 @@ export default async function ApplicationsPage() {
           {sorted.length > 0 && <Badge variant="destructive">{sorted.length}</Badge>}
         </h1>
         <p className="text-muted-foreground mt-1">
-          Every person here was invited by a code your community issued. A human decides on
-          each one — the score only changes what you see first.
+          {isCore
+            ? 'Every pending application on Roxy. You decide — the score only changes what you see first.'
+            : 'Every person here was invited by a code your community issued. A human decides on each one — the score only changes what you see first.'}
         </p>
       </div>
 

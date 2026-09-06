@@ -15,6 +15,14 @@ export interface Profile {
    * fails closed to public.
    */
   access_tier?: 'public' | 'beta';
+  is_staff?: boolean;
+  staff_role?: 'staff' | 'core' | null;
+  is_community_owner?: boolean;
+  /**
+   * Official community grant (migration 116). Join and chat attach to this
+   * row. Posts still live on this profile's author_id.
+   */
+  official_community_id?: string | null;
   bio: string | null;
   avatar_url: string | null;
   pronouns: string[];
@@ -71,6 +79,13 @@ export interface CommunityMember {
   user_id: string;
   role: 'member' | 'moderator' | 'admin';
   joined_at: string;
+}
+
+/** Feed subscription. Never grants chat. */
+export interface Follow {
+  follower_id: string;
+  followed_id: string;
+  created_at: string;
 }
 
 export interface Friendship {
@@ -149,7 +164,8 @@ export type VideoAspectRatio = '4:5' | '16:9' | '1:1';
 export interface Post {
   id: string;
   author_id: string;
-  community_id: string;
+  /** Leftover folder id. New posts are null — the wall is author_id. */
+  community_id: string | null;
   content: string;
   media_urls: string[];
   post_type: PostType;

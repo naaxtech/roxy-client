@@ -5,6 +5,9 @@ import {
   type PopulatedTabs,
   resolveActiveTab,
   profileLevel,
+  profileXpLevel,
+  profileXpBar,
+  badgePreviewFromEarned,
 } from '../../../components/profile/profileVariant';
 
 /** Nothing has content. Every test starts from here and turns exactly one thing on. */
@@ -174,6 +177,51 @@ describe('profileLevel — ProfileCard bands, kept', () => {
     expect(profileLevel(null).label).toBe('Seedling');
     expect(profileLevel(undefined).label).toBe('Seedling');
     expect(profileLevel(-5).label).toBe('Seedling');
+  });
+});
+
+describe('profileXpLevel — the prototype lightning number, derived from points', () => {
+  it('maps 240 points to level 12, the number the mock paints on the avatar', () => {
+    expect(profileXpLevel(240)).toBe(12);
+  });
+
+  it('never paints level 0 — a new row is still ⚡1', () => {
+    expect(profileXpLevel(0)).toBe(1);
+    expect(profileXpLevel(null)).toBe(1);
+  });
+});
+
+describe('profileXpBar — the XP pill next to Edit', () => {
+  it('formats the score the way the prototype prints it', () => {
+    expect(profileXpBar(2450).label).toBe('2,450 XP');
+    expect(profileXpBar(40).label).toBe('40 XP');
+  });
+
+  it('fills the bar inside the current 20-point band', () => {
+    expect(profileXpBar(240).progress).toBe(1);
+    expect(profileXpBar(10).progress).toBe(0.5);
+    expect(profileXpBar(0).progress).toBe(0);
+  });
+});
+
+describe('badgePreviewFromEarned — the header chip, not a tab', () => {
+  it('joins the first four earned emoji and counts the rest', () => {
+    const preview = badgePreviewFromEarned([
+      { earned_at: '2026-01-01', badges: { emoji: '🌸' } },
+      { earned_at: '2026-01-02', badges: { emoji: '🔥' } },
+      { earned_at: '2026-01-03', badges: { emoji: '💎' } },
+      { earned_at: '2026-01-04', badges: { emoji: '🎙️' } },
+      { earned_at: '2026-01-05', badges: { emoji: '🎨' } },
+      { earned_at: '2026-01-06', badges: { emoji: '☕' } },
+    ]);
+    expect(preview).toEqual({ emojis: '🌸🔥💎🎙️', extra: 2 });
+  });
+
+  it('ignores locked badges and answers null when none are earned', () => {
+    expect(badgePreviewFromEarned([
+      { earned_at: null, badges: { emoji: '🌸' } },
+    ])).toBeNull();
+    expect(badgePreviewFromEarned([])).toBeNull();
   });
 });
 

@@ -11,6 +11,8 @@ import { format } from 'date-fns';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore } from '../../store/gateStore';
 import { useAuth } from '../../hooks/useAuth';
+import { useAccess } from '../../hooks/useAccess';
+import { useViewAsStore } from '../../store/viewAsStore';
 import { showAlert } from '../../lib/confirm';
 import { BRAND_GRADIENT } from '../../lib/theme';
 
@@ -27,14 +29,20 @@ export default function PendingScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { signOut } = useAuth();
+  const { isPreviewing, kind } = useAccess();
+  const setPreview = useViewAsStore((s) => s.setPreview);
   const { application, loadingApplication, loadError, loadApplication, requestAppeal } =
     useGateStore();
+  const previewingPending = isPreviewing && kind === 'pending';
 
   const [appealText, setAppealText] = useState('');
   const [sending, setSending] = useState(false);
   const [appealSent, setAppealSent] = useState(false);
 
-  useEffect(() => { void loadApplication(); }, [loadApplication]);
+  useEffect(() => {
+    if (previewingPending) return;
+    void loadApplication();
+  }, [loadApplication, previewingPending]);
 
   const handleAppeal = async () => {
     if (appealText.trim().length < MIN_APPEAL) return;
@@ -88,6 +96,34 @@ export default function PendingScreen() {
     muted: { color: colors.textMuted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
     doneRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   });
+
+  const leavePreview = () => {
+    setPreview(null);
+    router.replace('/(tabs)/feed' as never);
+  };
+
+  if (previewingPending) {
+    return (
+      <SafeAreaView style={s.container}>
+        <View style={s.centred}>
+          <Ionicons name="hourglass-outline" size={40} color={colors.roxy} />
+          <Text style={s.cardTitle}>Viewing the pending wait screen</Text>
+          <Text style={s.cardBody}>
+            This is what an applicant sees while Roxy reads her application.
+            Your core account is unchanged.
+          </Text>
+          <TouchableOpacity
+            onPress={leavePreview}
+            accessibilityRole="button"
+            accessibilityLabel="Leave preview and return to Roxy core"
+            testID="exit-pending-preview"
+          >
+            <Text style={s.link}>Leave preview</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loadingApplication) {
     return (

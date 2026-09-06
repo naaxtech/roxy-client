@@ -148,7 +148,7 @@ describe('FeedCellChrome right rail', () => {
     expect(view.getByTestId('rail-like').props.accessibilityLabel)
       .toBe('Like poll, 12 likes');
     expect(view.getByTestId('rail-comment').props.accessibilityLabel)
-      .toBe('View comments, 4 comments');
+      .toBe('Comment, 4 comments');
     expect(view.getByTestId('rail-save').props.accessibilityLabel).toBe('Save poll');
     expect(view.getByTestId('rail-share').props.accessibilityLabel).toBe('Share poll');
   });

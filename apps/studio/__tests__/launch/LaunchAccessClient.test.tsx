@@ -8,11 +8,12 @@ import {
 
 const mockRpc = jest.fn();
 const mockPush = jest.fn();
+const mockReplace = jest.fn();
 jest.mock('@/lib/supabase/client', () => ({
   createClient: jest.fn(() => ({ rpc: (...args: unknown[]) => mockRpc(...args) })),
 }));
 jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(() => ({ refresh: jest.fn(), push: mockPush })),
+  useRouter: jest.fn(() => ({ refresh: jest.fn(), push: mockPush, replace: mockReplace })),
 }));
 
 const MEMBERS: LaunchMember[] = [
@@ -60,6 +61,7 @@ describe('LaunchAccessClient', () => {
   beforeEach(() => {
     mockRpc.mockReset();
     mockPush.mockReset();
+    mockReplace.mockReset();
   });
 
   it('lists each member with her current launch tag', () => {
@@ -110,8 +112,8 @@ describe('LaunchAccessClient', () => {
   it('asks the server for a name that may sit past the first 500', () => {
     render(<LaunchAccessClient members={MEMBERS} truncated={false} />);
     fireEvent.change(screen.getByLabelText(/search members/i), { target: { value: 'ari' } });
-    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
-    expect(mockPush).toHaveBeenCalledWith('/staff/launch?q=ari');
+    fireEvent.keyDown(screen.getByLabelText(/search members/i), { key: 'Enter' });
+    expect(mockReplace).toHaveBeenCalledWith('/staff/launch?q=ari');
   });
 
   it('shows an honest empty state', () => {

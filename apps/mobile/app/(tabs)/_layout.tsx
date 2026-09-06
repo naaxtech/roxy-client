@@ -10,6 +10,8 @@ import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
 import { useSafetyStore } from '../../store/safetyStore';
 import { useAccess } from '../../hooks/useAccess';
+import { ViewAsBanner } from '../../components/settings/ViewAsBanner';
+import { PendingStatusHost } from '../../components/account/PendingStatusHost';
 import { navSlotsFor } from '../../components/nav/navSlots3';
 import { supabase } from '../../lib/supabase';
 import { freshChannel } from '../../lib/realtimeChannel';
@@ -108,6 +110,8 @@ export default function TabLayout() {
   // on every render of the navigator. The declarations went with the folders.
   return (
     <View style={{ flex: 1 }}>
+      <ViewAsBanner />
+      <PendingStatusHost />
       <Tabs
         screenOptions={{ headerShown: false }}
         tabBar={(props) => (

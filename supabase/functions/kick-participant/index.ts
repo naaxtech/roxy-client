@@ -3,6 +3,7 @@ import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 import { RoomClaimError, ejectParticipants } from '../_shared/daily.ts';
+import { isRoxyCore } from '../_shared/roxyCore.ts';
 
 Deno.serve(async (req) => {
   const corsRes = handleCors(req);
@@ -37,7 +38,8 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   const canManage = auth.userId === room.created_by ||
-    (membership && ['admin', 'moderator'].includes(membership.role));
+    (membership && ['admin', 'moderator'].includes(membership.role)) ||
+    await isRoxyCore(supabase, auth.userId);
   if (!canManage) return errorResponse('Access denied', 403);
 
   const dailyApiKey = Deno.env.get('DAILY_API_KEY');

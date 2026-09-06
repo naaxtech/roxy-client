@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { formatUtcDate } from '@/lib/dates';
+import { getHostScope } from '@/lib/hostScope';
 import { isMissingTable } from '@/lib/schema-availability';
 import {
   MembersClient,
@@ -21,12 +22,6 @@ const ROLE_RANK: Record<string, number> = {
   moderator: 2,
   member: 3,
 };
-
-interface MembershipRow {
-  community_id: string;
-  role: string;
-  communities: { name: string } | null;
-}
 
 interface MemberRow {
   community_id: string;
@@ -55,15 +50,11 @@ export default async function CommunityMembersPage() {
   const userId = claimsData?.claims?.sub;
   if (!userId) notFound();
 
-  const { data: membershipData, error: membershipError } = await supabase
-    .from('community_members')
-    .select('community_id, role, communities(name)')
-    .eq('user_id', userId)
-    .in('role', ['admin', 'border_patrol']);
+  const scope = await getHostScope(supabase, userId, ['admin', 'border_patrol']);
 
-  if (membershipError) {
+  if (scope.error) {
     return (
-      <PageShell>
+      <PageShell isCore={scope.isCore}>
         <div
           role="alert"
           className="border border-destructive/40 bg-destructive/5 rounded-lg px-4 py-3 max-w-prose"
@@ -77,23 +68,23 @@ export default async function CommunityMembersPage() {
     );
   }
 
-  const membershipRows = (membershipData ?? []) as unknown as MembershipRow[];
-  const communities: ManagedCommunity[] = membershipRows
-    .map((row) => ({
-      id: row.community_id,
-      name: row.communities?.name ?? 'Unnamed community',
-      callerRole: row.role,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const communities: ManagedCommunity[] = scope.communities.map((community) => ({
+    id: community.id,
+    name: community.name,
+    callerRole: community.callerRole,
+  }));
 
   if (communities.length === 0) {
     return (
-      <PageShell>
+      <PageShell isCore={scope.isCore}>
         <div className="border rounded-lg p-8 space-y-3">
-          <p className="font-medium">You do not run a community yet</p>
+          <p className="font-medium">
+            {scope.isCore ? 'There are no communities yet' : 'You do not run a community yet'}
+          </p>
           <p className="text-sm text-muted-foreground max-w-prose">
-            This page lists the members of communities you administer or patrol. Create one, or
-            ask an admin of yours to give you a role, and your roster appears here.
+            {scope.isCore
+              ? 'Create a community and its roster appears here. You can set every role from this page.'
+              : 'This page lists the members of communities you administer or patrol. Create one, or ask an admin of yours to give you a role, and your roster appears here.'}
           </p>
           <Button asChild variant="outline" size="sm">
             <Link href="/community">Go to Community</Link>
@@ -121,7 +112,7 @@ export default async function CommunityMembersPage() {
 
   if (roster.error) {
     return (
-      <PageShell>
+      <PageShell isCore={scope.isCore}>
         <div
           role="alert"
           className="border border-destructive/40 bg-destructive/5 rounded-lg px-4 py-3 max-w-prose"
@@ -162,7 +153,7 @@ export default async function CommunityMembersPage() {
     });
 
   return (
-    <PageShell>
+    <PageShell isCore={scope.isCore}>
       <MembersClient
         currentUserId={userId}
         communities={communities}
@@ -174,14 +165,15 @@ export default async function CommunityMembersPage() {
   );
 }
 
-function PageShell({ children }: { children: React.ReactNode }) {
+function PageShell({ children, isCore = false }: { children: React.ReactNode; isCore?: boolean }) {
   return (
     <div className="max-w-5xl space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Members and roles</h1>
         <p className="text-muted-foreground mt-1 max-w-prose">
-          Who is in your community, and what each of them can do. Roles decide who can invite,
-          who can moderate, and who is allowed to read an applicant&apos;s legal name.
+          {isCore
+            ? 'Every community on Roxy, and who is in each one. You can change any role — this is HQ.'
+            : "Who is in your community, and what each of them can do. Roles decide who can invite, who can moderate, and who is allowed to read an applicant's legal name."}
         </p>
       </div>
       {children}
