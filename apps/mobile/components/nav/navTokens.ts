@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
+import type { NavIconName } from './NavIcons';
 
 /**
  * The brand ramp, re-exported so the shell's call sites keep reading in the
@@ -49,18 +49,15 @@ export const PILL_MIN_BOTTOM = 12;
  */
 export const ACTIVE_TINT_ALPHA = '14';
 
-type IoniconName = keyof typeof Ionicons.glyphMap;
-
 export type NavSlot =
   | {
       kind: 'route';
       /** The Expo Router folder this slot drives. */
       routeName: string;
       label: string;
-      icon: IoniconName;
-      iconInactive: IoniconName;
+      icon: NavIconName;
     }
-  | { kind: 'action'; key: string; label: string; icon: IoniconName };
+  | { kind: 'action'; key: string; label: string };
 
 /*
  * `NAV_SLOTS` and `HOME_CATEGORIES` used to live here.

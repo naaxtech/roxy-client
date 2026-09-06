@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { type ThemeColors } from '../../lib/theme';
+import { FONTS } from '../../lib/typography';
 import { NAV_SLOTS_3 } from './navSlots3';
+import { NavIcon, type NavIconName } from './NavIcons';
 import type { NavSlot } from './navTokens';
 import { a11yState } from '../../lib/a11yState';
 import {
@@ -47,12 +48,11 @@ function Badge({ value, slotKey, colors }: { value: number | string; slotKey: st
 }
 
 function RouteSlot({
-  route, label, icon, iconInactive, isFocused, badge, colors, reducedMotion, onPress,
+  route, label, icon, isFocused, badge, colors, reducedMotion, onPress,
 }: {
   route: TabBarRoute;
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  iconInactive: keyof typeof Ionicons.glyphMap;
+  icon: NavIconName;
   isFocused: boolean;
   badge: number | string | undefined;
   colors: ThemeColors;
@@ -90,19 +90,23 @@ function RouteSlot({
     >
       <Animated.View pointerEvents="none" style={[s.indicator, { opacity: indicator }]} />
       <View style={s.iconWrap}>
-        <Ionicons name={isFocused ? icon : iconInactive} size={21} color={tint} />
+        <NavIcon name={icon} color={tint} />
         {badge !== undefined && <Badge value={badge} slotKey={route.name} colors={colors} />}
       </View>
-      <Text style={[s.label, { color: tint }]} numberOfLines={1}>{label}</Text>
+      <Text
+        style={[s.label, { color: tint, fontFamily: isFocused ? FONTS.text.bold : FONTS.text.semibold }]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
 
 function CreateSlot({
-  label, icon, colors, onPress,
+  label, colors, onPress,
 }: {
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
   colors: ThemeColors;
   onPress: () => void;
 }) {
@@ -115,7 +119,7 @@ function CreateSlot({
       activeOpacity={0.85}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityHint="Choose a room to post in"
+      accessibilityHint="Choose what to create"
     >
       <View style={s.iconWrap}>
         <LinearGradient
@@ -124,7 +128,7 @@ function CreateSlot({
           end={{ x: 1, y: 1 }}
           style={s.createPlate}
         >
-          <Ionicons testID="nav-create-icon" name={icon} size={22} color={CREATE_INK} />
+          <Text testID="nav-create-icon" style={s.createPlus}>+</Text>
         </LinearGradient>
       </View>
       <Text style={[s.label, { color: colors.textPrimary }]} numberOfLines={1}>{label}</Text>
@@ -175,7 +179,6 @@ export function FloatingTabBar({
               <CreateSlot
                 key={slot.key}
                 label={slot.label}
-                icon={slot.icon}
                 colors={colors}
                 onPress={onCreatePress}
               />
@@ -190,7 +193,6 @@ export function FloatingTabBar({
               route={route}
               label={slot.label}
               icon={slot.icon}
-              iconInactive={slot.iconInactive}
               isFocused={isFocused}
               badge={descriptors[route.key]?.options.tabBarBadge}
               colors={colors}
@@ -243,15 +245,28 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   // Fixed width so the badge, which is absolutely positioned inside it, stays
   // within its parent's bounds — Android clips an overflowing absolute child.
-  iconWrap: { width: 46, height: 26, alignItems: 'center', justifyContent: 'center' },
+  iconWrap: { width: 46, height: 32, alignItems: 'center', justifyContent: 'center' },
   createPlate: {
     width: 46,
-    height: 26,
-    borderRadius: 10,
+    height: 32,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  label: { fontSize: 11, fontWeight: '700', marginTop: 2, letterSpacing: -0.1 },
+  createPlus: {
+    color: CREATE_INK,
+    fontFamily: FONTS.display.bold,
+    fontSize: 21,
+    fontWeight: '700',
+    lineHeight: 21,
+    marginTop: -1,
+  },
+  label: {
+    fontSize: 10,
+    lineHeight: 13,
+    fontFamily: FONTS.text.semibold,
+    marginTop: 3,
+  },
   badge: {
     position: 'absolute',
     top: -2,
@@ -268,5 +283,10 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   // The old bar hardcoded `#fff` on `#E81C8E`, which measures 3.19:1. inkOn()
   // answers 6.85:1 in dark and 5.24:1 in light.
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800', lineHeight: 13 },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    lineHeight: 13,
+    fontFamily: FONTS.display.extrabold,
+  },
 });

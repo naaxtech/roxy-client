@@ -5,8 +5,13 @@ import { render, fireEvent } from '@testing-library/react-native';
 const mockInsets = jest.fn(() => ({ top: 0, bottom: 34, left: 0, right: 0 }));
 const mockReducedMotion = jest.fn(() => false);
 
-jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
+jest.mock('react-native-svg', () => ({
+  __esModule: true,
+  default: 'Svg',
+  Circle: 'Circle',
+  Path: 'Path',
+}));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => mockInsets(),
 }));
@@ -162,7 +167,7 @@ describe('FloatingTabBar', () => {
   // src: https://www.w3.org/TR/WCAG22/#non-text-contrast · read 2026-08-06
   it('carries white ink on the create plate, per the brand decision', () => {
     const { getByTestId } = renderBar();
-    expect(getByTestId('nav-create-icon').props.color).toBe('#fff');
+    expect(flat(getByTestId('nav-create-icon')).color).toBe('#fff');
   });
 
   it('clears the home indicator using the live safe-area inset, not a constant', () => {

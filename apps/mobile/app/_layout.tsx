@@ -25,6 +25,9 @@ import { effectiveVettingStatus, resolveAccountKind } from '../lib/features';
 import { useViewAsStore } from '../store/viewAsStore';
 import { useGateStore } from '../store/gateStore';
 import { LaunchGate } from '../components/features/FeatureGate';
+import { applyBrandType } from '../lib/applyBrandType';
+
+applyBrandType();
 
 
 function AppNavigator() {

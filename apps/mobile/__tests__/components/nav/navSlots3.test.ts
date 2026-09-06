@@ -47,8 +47,8 @@ describe('NAV_SLOTS_3', () => {
     }
   });
 
-  it('gives every slot a distinct icon pair so the bar reads without labels', () => {
-    const icons = NAV_SLOTS_3.map((s) => s.icon);
+  it('gives every route slot a distinct Claude Design mark', () => {
+    const icons = NAV_SLOTS_3.filter((s) => s.kind === 'route').map((s) => s.icon);
     expect(new Set(icons).size).toBe(icons.length);
   });
 
