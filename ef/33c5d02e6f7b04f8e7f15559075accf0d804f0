@@ -1,0 +1,83 @@
+apps/studio/app/error.tsx
+  s_02997141a06547::t_047026a78fc689 1-29
+apps/mobile/lib/posthogErrorTracking.ts
+  s_02997141a06547::t_f9249c997aedc3 1-11
+apps/studio/lib/posthogErrorTracking.ts
+  s_02997141a06547::t_89ba3270ceb05e 1-11
+apps/studio/instrumentation-client.ts
+  s_02997141a06547::t_84c8ea91dbc93b 1-3
+apps/studio/lib/supabase/invokeFunction.ts
+  s_02997141a06547::t_a461a1f2e146fd 39-40,43
+  s_02997141a06547::t_6568df5f2bd59a 51-55
+  s_02997141a06547::t_c7bafe18f752eb 2
+  s_02997141a06547::t_60d48ed88ba1d6 61
+apps/mobile/__tests__/lib/errorLoggerCapture.test.ts
+  s_02997141a06547::t_614bd5964bd9ca 23
+  s_02997141a06547::t_21c1b3fb513eba 1-6,9-11,19-22,24-26,29-33,35-44,47-53,55-73
+  s_02997141a06547::t_4e3fb96803af82 27-28,34,45-46,54
+  s_02997141a06547::t_eca247a7b3fd72 7-8,12-18
+apps/mobile/lib/posthog.ts
+  s_02997141a06547::t_0be77155787395 28
+  s_02997141a06547::t_8e4e12598c4597 2-4
+apps/studio/lib/errorLogger.ts
+  s_02997141a06547::t_7d4e7a1c67b1d7 1-37
+apps/studio/lib/posthog.ts
+  s_02997141a06547::t_36c26e888da083 1-31
+apps/mobile/__mocks__/posthog-react-native.js
+  s_02997141a06547::t_a818669d5346b4 4
+apps/mobile/__tests__/lib/errorLoggerNeverThrows.test.ts
+  s_02997141a06547::t_2fe827ee699994 25-33
+apps/mobile/lib/errorLogger.ts
+  s_02997141a06547::t_3d4a1a9b176305 46-47,49,51
+  s_02997141a06547::t_1eb5a5404a044e 115,117
+  s_02997141a06547::t_4ada674f1db7d9 3
+apps/studio/app/layout.tsx
+  s_02997141a06547::t_c9895c32b50a60 6
+  s_02997141a06547::t_491dcf9f6cde05 40
+apps/studio/__tests__/lib/posthogErrorTracking.test.ts
+  s_02997141a06547::t_a64ec04c888e31 1-11
+apps/studio/lib/posthog-server.ts
+  s_02997141a06547::t_7bf1420ffdb80c 1-21,24-30
+  s_02997141a06547::t_ed964c1c9e4238 22-23
+apps/studio/components/PostHogInit.tsx
+  s_02997141a06547::t_e1fbe4dbea111a 1-11
+apps/studio/instrumentation.ts
+  s_02997141a06547::t_a19fbc52d35197 6,14-17
+  s_02997141a06547::t_f053fb7293d541 1-5,7-13,18
+apps/studio/components/PostHogIdentify.tsx
+  s_02997141a06547::t_4e989a9a043300 1-16
+apps/studio/app/(dashboard)/layout.tsx
+  s_02997141a06547::t_53ff4c24d6e2f4 65
+  s_02997141a06547::t_a5323335e400b8 6
+apps/mobile/__tests__/lib/posthogErrorTracking.test.ts
+  s_02997141a06547::t_19f820dfd83392 1-11
+apps/studio/__tests__/lib/errorLogger.test.ts
+  s_02997141a06547::t_7212352a23ce16 2-4,6-18,20-24,26-34,36-50
+  s_02997141a06547::t_a380278b7d672d 1,5,19,25,35
+apps/studio/app/global-error.tsx
+  s_02997141a06547::t_7755d5910a896e 1-29
+apps/studio/.env.example
+  s_02997141a06547::t_b32519bb123384 5-8
+apps/studio/lib/posthog-browser.ts
+  s_02997141a06547::t_1ab283de71bbde 1-26
+apps/studio/package-lock.json
+  s_02997141a06547::t_7351eb916b462c 27-28,2350-2374,3824-3830,5490-5503,5807-5815,6649-6654,9943-10010,10104-10109,11972-11984
+apps/studio/package.json
+  s_02997141a06547::t_5bac2616f0623d 33-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ef33c5d02e6f7b04f8e7f15559075accf0d804f0",
+  "prompts": {},
+  "sessions": {
+    "s_02997141a06547": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eeb5e1d1-aac6-4653-9c90-afb5f6db1d41",
+        "model": "grok-4.6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
