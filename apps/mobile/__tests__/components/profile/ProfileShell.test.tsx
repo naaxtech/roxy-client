@@ -96,6 +96,27 @@ describe('ProfileShell — the header the prototype draws', () => {
     expect(view.getByTestId('profile-header')).toBeTruthy();
   });
 
+  it('keeps badges, Edit and XP in the same band as the avatar', () => {
+    // The seam fix pinned the photo absolutely. The action column used to
+    // start below the cover, so badges / Edit / XP dropped a row. They share
+    // the avatar's 76px band (prototype 473–511).
+    const view = renderShell({
+      variant: 'self',
+      primaryAction: { label: 'Edit', onPress: jest.fn() },
+      badgePreview: { emojis: '🌸🔥💎🎙️', extra: 2, onPress: jest.fn() },
+      xp: { label: 'Lvl 4', progress: 0.4 },
+    });
+    const row = StyleSheet.flatten(view.getByTestId('profile-identity-row').props.style) as {
+      marginTop?: number;
+      height?: number;
+      minHeight?: number;
+      alignItems?: string;
+    };
+    expect(row.marginTop).toBe(-PROFILE_AVATAR_SEAM);
+    expect(row.height ?? row.minHeight).toBe(PROFILE_AVATAR_SIZE);
+    expect(row.alignItems).toBe('center');
+  });
+
   it('shows the level band on the avatar when there are points', () => {
     // The prototype paints ⚡12. The spoken label still names the band
     // ProfileCard already shipped (Bloom) so a screen reader is not handed a

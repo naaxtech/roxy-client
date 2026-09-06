@@ -155,12 +155,12 @@ export interface ProfileShellProps {
  * her, which is the opposite of what an identity chip is for.
  */
 /**
- * Prototype profile header (`Roxy App.dc.html` 456–475).
+ * Prototype profile header (`Roxy App.dc.html` 456–511).
  *
- * Cover is 112. Avatar is 76. The avatar is pinned to the cover's bottom
- * edge, not to the action row — 48dp Edit / XP pills used to be taller than
- * the avatar, and `alignItems: 'flex-end'` dropped the photo onto the white
- * body. Half the avatar sits on the cover; half sits on the page.
+ * Cover is 112. Avatar is 76. The photo is pinned to the cover seam so
+ * 48dp pills cannot drag it onto the body. Badges, Edit and XP sit in
+ * that same 76px band — they overlap the cover with the avatar, they do
+ * not start a new row under it.
  */
 export const PROFILE_COVER_HEIGHT = 112;
 export const PROFILE_AVATAR_SIZE = 76;
@@ -495,6 +495,7 @@ export function ProfileShell({
                   style={s.badgeChip}
                   onPress={badgePreview.onPress}
                   activeOpacity={0.85}
+                  hitSlop={12}
                   accessibilityRole="button"
                   accessibilityLabel={
                     badgePreview.extra
@@ -518,6 +519,7 @@ export function ProfileShell({
                 onPress={xp.onPress}
                 disabled={!xp.onPress}
                 activeOpacity={0.85}
+                hitSlop={12}
                 accessibilityRole={xp.onPress ? 'button' : 'text'}
                 accessibilityLabel={`XP progress, ${xp.label}`}
                 testID="profile-xp"
@@ -691,11 +693,14 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   body: { paddingHorizontal: 16, gap: 10 },
   identityRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'flex-end',
-    minHeight: PROFILE_AVATAR_SEAM,
+    marginTop: -PROFILE_AVATAR_SEAM,
+    minHeight: PROFILE_AVATAR_SIZE,
+    overflow: 'visible',
     paddingHorizontal: 16,
     paddingLeft: 16 + AVATAR_SIZE + 8,
+    zIndex: 2,
   },
   avatarOnSeam: {
     position: 'absolute',
@@ -728,13 +733,12 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   levelBadgeText: { ...TYPE.micro, color: ON_COLOR, fontWeight: '800' },
 
   // — actions ——————————————————————————————————————————————————
-  actionCol: { flex: 1, alignItems: 'flex-end', gap: 6, paddingBottom: 4 },
+  actionCol: { flex: 1, alignItems: 'flex-end', justifyContent: 'center', gap: 6 },
   actionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, flexWrap: 'wrap', justifyContent: 'flex-end' },
   badgeChip: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
     borderRadius: RADII.pill, paddingHorizontal: 10, paddingVertical: 5,
-    minHeight: MIN_TOUCH_TARGET,
   },
   badgeChipEmojis: { fontSize: 12, letterSpacing: 1 },
   badgeChipExtra: { ...TYPE.micro, color: colors.primaryInk, fontWeight: '800', marginLeft: 2 },
@@ -747,7 +751,6 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 7,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
     borderRadius: RADII.pill, paddingHorizontal: 10, paddingVertical: 5,
-    minHeight: MIN_TOUCH_TARGET,
   },
   xpLabel: { ...TYPE.micro, color: colors.textPrimary, fontWeight: '800' },
   xpTrack: {
