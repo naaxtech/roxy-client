@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { isMissingColumn } from '@/lib/schema-availability';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Header } from '@/components/Header';
+import { PostHogIdentify } from '@/components/PostHogIdentify';
 
 export default async function DashboardLayout({
   children,
@@ -61,6 +62,7 @@ export default async function DashboardLayout({
     // /applications and /products were affected. Making <main> a containing block
     // keeps such nodes clipped to the scroll container on every dashboard route.
     <div className="relative flex h-screen overflow-hidden bg-background">
+      <PostHogIdentify userId={userId} />
       <AppSidebar isStaff={isStaff} isCore={isCore} userEmail={userEmail} userInitials={initials} />
       <div className="flex flex-1 flex-col min-h-0">
         <Header isStaff={isStaff} isCore={isCore} />

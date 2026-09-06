@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { logError } from '@/lib/errorLogger';
 
 export interface InvokeResult<T> {
   data: T | null;
@@ -35,9 +36,11 @@ export async function invokeFunction<T = unknown>(
       } catch {
         parsedBody = undefined;
       }
+      const message = parsedBody?.error ?? error.message ?? 'Request failed';
+      logError(new Error(message), `invokeFunction:${name}`);
       return {
         data: null,
-        error: parsedBody?.error ?? error.message ?? 'Request failed',
+        error: message,
         status: (error as { context?: Response }).context?.status,
       };
     }
@@ -45,12 +48,17 @@ export async function invokeFunction<T = unknown>(
     // Unwrap the { success, data, error } envelope from successResponse/errorResponse.
     if (data && typeof data === 'object' && 'success' in data) {
       const envelope = data as { success: boolean; data: T; error: string | null };
-      if (!envelope.success) return { data: null, error: envelope.error ?? 'Request failed' };
+      if (!envelope.success) {
+        const message = envelope.error ?? 'Request failed';
+        logError(new Error(message), `invokeFunction:${name}`);
+        return { data: null, error: message };
+      }
       return { data: envelope.data, error: null };
     }
 
     return { data: data as T, error: null };
   } catch (err) {
+    logError(err, `invokeFunction:${name}`);
     return { data: null, error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }

@@ -22,7 +22,15 @@ jest.mock('@react-native-firebase/crashlytics', () => () => ({
 }));
 
 jest.mock('../../lib/posthog', () => ({
-  posthog: { capture: () => { throw new Error('posthog is unavailable'); } },
+  posthog: {
+    capture: () => { throw new Error('posthog is unavailable'); },
+    captureException: () => { throw new Error('posthog is unavailable'); },
+  },
+  ERROR_TRACKING_AUTOCAPTURE: {
+    uncaughtExceptions: true,
+    unhandledRejections: true,
+    console: ['error'],
+  },
 }));
 
 import {

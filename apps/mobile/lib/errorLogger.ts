@@ -1,5 +1,6 @@
 import crashlytics from '@react-native-firebase/crashlytics';
 import { posthog } from './posthog';
+import { APP_NAME } from './posthogErrorTracking';
 
 /**
  * Log an error to Crashlytics + PostHog with full stack trace and context.
@@ -42,14 +43,12 @@ export function logError(e: unknown, context?: string): void {
     crashlytics().recordError(error);
   } catch {}
 
-  // PostHog — capture as a named event so errors appear in analytics funnels.
+  // PostHog Error Tracking — `$exception` is what the Errors inbox groups.
+  // Guarded: telemetry must never break the thing it is observing.
   try {
-    posthog?.capture('app_error', {
-      error_name: error.name,
-      error_message: error.message,
+    posthog?.captureException?.(error, {
       error_context: context ?? null,
-      // Truncate stack for PostHog property limits.
-      error_stack: error.stack?.slice(0, 2000) ?? null,
+      app: APP_NAME,
     });
   } catch {}
 }
@@ -113,12 +112,10 @@ export function logBoundaryError(error: Error, componentStack: string): void {
   } catch {}
 
   try {
-    posthog?.capture('app_error', {
-      error_name: error.name,
-      error_message: error.message,
+    posthog?.captureException?.(error, {
       error_context: 'ErrorBoundary',
+      app: APP_NAME,
       component_stack: componentStack.slice(0, 2000),
-      error_stack: error.stack?.slice(0, 2000) ?? null,
     });
   } catch {}
 }

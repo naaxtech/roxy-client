@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { PostHogInit } from "@/components/PostHogInit";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -36,6 +37,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <PostHogInit />
           <Analytics />
           <SpeedInsights />
         </ThemeProvider>
