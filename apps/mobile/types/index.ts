@@ -160,7 +160,7 @@ export type PostType =
   | 'standard' | 'event' | 'poll' | 'resource'
   | 'photo' | 'gallery' | 'video' | 'roxy_link';
 
-export type LinkType = 'game' | 'room' | 'event';
+export type LinkType = 'game' | 'room' | 'event' | 'product';
 export type VideoAspectRatio = '4:5' | '16:9' | '1:1';
 
 export interface Post {

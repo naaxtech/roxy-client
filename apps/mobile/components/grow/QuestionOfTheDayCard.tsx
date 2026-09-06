@@ -45,12 +45,12 @@ function LivePulse({ color }: { color: string }) {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(anim, { toValue: 0.3, duration: 750, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 1, duration: 750, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 1.35, duration: 160, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 1, duration: 160, useNativeDriver: true }),
       ])
     ).start();
   }, [anim]);
-  return <Animated.View style={[q.pulseDot, { backgroundColor: color, opacity: anim }]} />;
+  return <Animated.View style={[q.pulseDot, { backgroundColor: color, transform: [{ scale: anim }] }]} />;
 }
 
 export function QuestionOfTheDayCard({ communityIds, userId }: Props) {

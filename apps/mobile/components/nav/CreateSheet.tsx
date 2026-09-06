@@ -11,6 +11,8 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { RADII, BRAND_GRADIENT, type ThemeColors } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { deriveSellerStatus, canSell, type SellerStatus } from '../../lib/sellerStatus';
+import { eventBlockedReason } from '../../lib/createAccess';
+import { isOfficialAccount } from '../../lib/officialGrant';
 import { TAB_MIN_TOUCH } from './navTokens';
 import { a11yState } from '../../lib/a11yState';
 
@@ -37,21 +39,31 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
   const colors = useThemeColors();
   const router = useRouter();
   const [seller, setSeller] = useState<SellerStatus>('none');
+  const [official, setOfficial] = useState(false);
 
-  const loadSeller = useCallback(async () => {
+  const loadAccess = useCallback(async () => {
     if (!userId) return;
-    const { data, error } = await supabase
-      .from('businesses')
-      .select('is_verified, can_sell, stripe_account_id')
-      .eq('owner_id', userId);
+    const [{ data, error }, { data: profile, error: profileErr }] = await Promise.all([
+      supabase
+        .from('businesses')
+        .select('is_verified, can_sell, stripe_account_id')
+        .eq('owner_id', userId),
+      supabase
+        .from('profiles')
+        .select('official_community_id')
+        .eq('id', userId)
+        .maybeSingle(),
+    ]);
     setSeller(deriveSellerStatus(error ? [] : data));
+    setOfficial(isOfficialAccount(profile));
     if (error) logError(error, 'CreateSheet.sellerStatus');
+    if (profileErr) logError(profileErr, 'CreateSheet.official');
   }, [userId]);
 
   useEffect(() => {
     if (!visible) return;
-    void loadSeller();
-  }, [visible, loadSeller]);
+    void loadAccess();
+  }, [visible, loadAccess]);
 
   const s = styles(colors);
 
@@ -79,7 +91,7 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
       icon: 'ticket-outline',
       title: 'Event',
       subtitle: 'In person with tickets, or an online room',
-      blockedReason: 'Hosts create events in Roxy Studio.',
+      blockedReason: eventBlockedReason(official),
     },
     {
       kind: 'room',
@@ -107,6 +119,10 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
   const onKind = (row: KindRow) => {
     if (row.blockedReason) return;
     if (row.kind === 'post') openComposer();
+    if (row.kind === 'event') {
+      onClose();
+      router.push({ pathname: '/community/create-event' });
+    }
   };
 
   return (

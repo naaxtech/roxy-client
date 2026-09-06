@@ -129,15 +129,17 @@ export const RADII = {
 } as const;
 
 /**
- * Motion. Two durations and one curve; anything else is improvisation.
+ * Motion durations for the few places that still time a property (rail
+ * scrolls, spin). Entrance and press use `lib/motion.ts` springs — scale and
+ * translate, never opacity.
  *
  * `bezier` is `cubic-bezier(.32,.72,0,1)` from the prototype — spread it into
  * `Easing.bezier(...MOTION.bezier)`.
  */
 export const MOTION = {
-  /** Chips, toggles, reaction burst. */
+  /** Chips, toggles. */
   fast: 160,
-  /** Screen-level fades, rail scrolls. */
+  /** Rail scrolls. */
   base: 220,
   /** Sheets in and out. */
   sheet: 320,

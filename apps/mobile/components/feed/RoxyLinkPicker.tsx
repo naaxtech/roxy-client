@@ -95,7 +95,7 @@ export function RoxyLinkPicker({ visible, onSelect, onClose }: RoxyLinkPickerPro
     setLoading(false);
   };
 
-  const TYPE_ICON: Record<LinkType, string> = { game: '🎮', room: '🎙', event: '📅' };
+  const TYPE_ICON: Record<LinkType, string> = { game: '🎮', room: '🎙', event: '📅', product: '🛍️' };
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>

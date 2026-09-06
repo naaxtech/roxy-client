@@ -17,6 +17,7 @@ jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 jest.mock('../../components/profile/ProfileCard', () => ({ ProfileCard: () => null }));
 jest.mock('../../components/profile/ProfileShell', () => ({ ProfileShell: () => null }));
 jest.mock('../../components/profile/ProfilePhotoGrid', () => ({ ProfilePhotoGrid: () => null }));
+jest.mock('../../components/profile/ProfilePostsGrid', () => ({ ProfilePostsGrid: () => null }));
 jest.mock('../../components/profile/ProfileFavorites', () => ({ ProfileFavorites: () => null }));
 jest.mock('../../components/profile/SavedPosts', () => ({ SavedPosts: () => null }));
 jest.mock('../../components/profile/SavedWatchlist', () => ({ SavedWatchlist: () => null }));
@@ -32,12 +33,17 @@ jest.mock('../../lib/supabase', () => ({
   supabase: {
     from: jest.fn(() => ({
       select: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          single: mockSingle,
-          maybeSingle: mockSingle,
-          order: jest.fn(() => Promise.resolve({ data: [], error: null })),
-          in: jest.fn(() => Promise.resolve({ count: 0, error: null })),
-        })),
+        eq: jest.fn(() => {
+          const resolved = Promise.resolve({ data: [], count: 0, error: null });
+          return {
+            single: mockSingle,
+            maybeSingle: mockSingle,
+            order: jest.fn(() => Promise.resolve({ data: [], error: null })),
+            in: jest.fn(() => Promise.resolve({ count: 0, error: null })),
+            is: jest.fn(() => Promise.resolve({ count: 0, error: null })),
+            then: resolved.then.bind(resolved),
+          };
+        }),
         in: jest.fn(() => Promise.resolve({ data: [], error: null })),
       })),
     })),

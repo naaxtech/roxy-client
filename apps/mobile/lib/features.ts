@@ -142,6 +142,8 @@ const ALWAYS_ALLOWED = new Set([
   '/messages',
   '/notifications',
   '/support',
+  '/community/create-post',
+  '/community/create-event',
   '/blocked',
   ...YOU_ALLOWED,
   ...AUTH_ALLOWED,

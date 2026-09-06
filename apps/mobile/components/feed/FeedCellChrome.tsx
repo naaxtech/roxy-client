@@ -155,6 +155,7 @@ export function FeedCellChrome({
   onFollowAuthor,
 }: FeedCellChromeProps): ReactElement {
   const [expanded, setExpanded] = useState(false);
+  const shopId = post.link_type === 'product' ? post.link_entity_id : null;
 
   const noun = POST_NOUN[post.post_type] ?? 'post';
   const authorName = post.profiles?.display_name ?? '';
@@ -276,6 +277,29 @@ export function FeedCellChrome({
           {interestPrompt}
 
           <View testID="feed-cell-identity" style={s.identity} pointerEvents="box-none">
+            {shopId ? (
+              <TouchableOpacity
+                testID="feed-cell-shop"
+                style={s.shopChip}
+                onPress={() => {
+                  const href = Linking.createURL(`/product/${shopId}`);
+                  if (typeof Linking.openURL === 'function') void Linking.openURL(href);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Open the tagged shop item"
+              >
+                <LinearGradient
+                  colors={['#F22481', '#8B5CF6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={s.shopChipFill}
+                >
+                  <Ionicons name="bag-handle" size={13} color="#FFF8FB" />
+                  <Text style={s.shopChipText}>Shop item</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : null}
+
             {handleLabel ? (
               <TouchableOpacity
                 testID="feed-cell-handle-hit"
@@ -596,6 +620,13 @@ const s = StyleSheet.create({
    * and makes them tappable. Net cost to the band's height is ~23dp rather than
    * the ~32 the padding alone would have added.
    */
+  shopChip: { alignSelf: 'flex-start', marginBottom: 6 },
+  shopChipFill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    minHeight: MIN_INLINE_TOUCH_TARGET, paddingHorizontal: 13,
+    borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,249,251,0.35)',
+  },
+  shopChipText: { color: '#FFF8FB', fontWeight: '700', fontSize: 12 },
   identity: {
     paddingLeft: 18, paddingRight: RAIL_GUTTER, paddingBottom: CHROME_BOTTOM, gap: 2,
   },

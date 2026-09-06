@@ -99,6 +99,9 @@ jest.mock('../../store/communityStore', () => ({
 jest.mock('../../components/profile/ProfilePhotoGrid', () => ({
   ProfilePhotoGrid: () => null,
 }));
+jest.mock('../../components/profile/ProfilePostsGrid', () => ({
+  ProfilePostsGrid: () => null,
+}));
 
 jest.mock('../../lib/supabase', () => ({
   supabase: {
@@ -123,7 +126,7 @@ jest.mock('../../lib/supabase', () => ({
         return {
           select: () => ({
             eq: () => ({
-              in: () => Promise.resolve({ count: mockPostCount, error: null }),
+              is: () => Promise.resolve({ count: mockPostCount, error: null }),
             }),
           }),
         };

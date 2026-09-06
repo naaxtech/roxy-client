@@ -21,7 +21,7 @@ jest.mock('../../../hooks/useReducedMotion', () => ({
 
 import { FloatingTabBar } from '../../../components/nav/FloatingTabBar';
 import {
-  ACTIVE_TINT_ALPHA, indicatorFadeDuration, TAB_MIN_TOUCH,
+  ACTIVE_TINT_ALPHA, indicatorSnapsInstantly, TAB_MIN_TOUCH,
 } from '../../../components/nav/navTokens';
 import { THEMES, contrastRatio } from '../../../lib/theme';
 
@@ -190,9 +190,9 @@ describe('FloatingTabBar', () => {
     expect(queryByTestId('nav-badge-feed')).toBeNull();
   });
 
-  it('drops the indicator crossfade when Reduce Motion is on', () => {
-    expect(indicatorFadeDuration(false)).toBeGreaterThan(0);
-    expect(indicatorFadeDuration(true)).toBe(0);
+  it('snaps the indicator instantly when Reduce Motion is on', () => {
+    expect(indicatorSnapsInstantly(false)).toBe(false);
+    expect(indicatorSnapsInstantly(true)).toBe(true);
   });
 
   // The active tint lightens the surface toward `roxy`, which is the colour the

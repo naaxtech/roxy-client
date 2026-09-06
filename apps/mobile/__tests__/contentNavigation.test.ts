@@ -60,6 +60,13 @@ describe('linkedEntityPath', () => {
     expect(path).toBe('/event/evt-9');
   });
 
+  it('sends a shop-tagged post to the product', async () => {
+    const path = await linkedEntityPath(
+      makeLinkPost({ link_type: 'product', link_entity_id: 'prod-1' }),
+    );
+    expect(path).toBe('/product/prod-1');
+  });
+
   it('returns null for a game link that resolves to no row', async () => {
     const path = await linkedEntityPath(
       makeLinkPost({ link_type: 'game', link_entity_id: 'game-x' }),

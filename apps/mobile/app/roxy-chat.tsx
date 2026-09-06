@@ -13,6 +13,7 @@ import { Analytics } from '../lib/analytics';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { showAlert } from '../lib/confirm';
 import { BRAND_GRADIENT, RADII, inkOn } from '../lib/theme';
+import { POP_FROM, SNAP_SPRING } from '../lib/motion';
 import { TYPE, FONTS } from '../lib/typography';
 
 type Message = { role: 'user' | 'roxy'; content: string };
@@ -39,7 +40,7 @@ export default function RoxyChatScreen() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const heroAnim = useRef(new Animated.Value(0)).current;
+  const heroAnim = useRef(new Animated.Value(POP_FROM)).current;
 
   const conversationId = `roxy-${user?.id ?? 'anon'}`;
 
@@ -53,12 +54,8 @@ export default function RoxyChatScreen() {
     }
   }, [messages]);
 
-  // Hero "pop" entrance for the greeting card + suggestion chips — no slide,
-  // just a soft scale/opacity spring on first mount.
   useEffect(() => {
-    Animated.spring(heroAnim, {
-      toValue: 1, friction: 7, tension: 60, useNativeDriver: true,
-    }).start();
+    Animated.spring(heroAnim, { toValue: 1, ...SNAP_SPRING }).start();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -256,10 +253,7 @@ export default function RoxyChatScreen() {
             <Animated.View
               style={[
                 styles.heroWrap,
-                {
-                  opacity: heroAnim,
-                  transform: [{ scale: heroAnim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }],
-                },
+                { transform: [{ scale: heroAnim }] },
               ]}
             >
               <LinearGradient colors={BRAND_GRADIENT} style={styles.heroAvatarRing}>

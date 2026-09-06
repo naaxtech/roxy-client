@@ -154,9 +154,22 @@ export interface ProfileShellProps {
  * them makes a profile read as mislabelled by the app rather than described by
  * her, which is the opposite of what an identity chip is for.
  */
-const COVER_HEIGHT = 120;
-const AVATAR_SIZE = 76;
-const AVATAR_FRAME = 3;
+/**
+ * Prototype profile header (`Roxy App.dc.html` 456–475).
+ *
+ * Cover is 112. Avatar is 76. The avatar is pinned to the cover's bottom
+ * edge, not to the action row — 48dp Edit / XP pills used to be taller than
+ * the avatar, and `alignItems: 'flex-end'` dropped the photo onto the white
+ * body. Half the avatar sits on the cover; half sits on the page.
+ */
+export const PROFILE_COVER_HEIGHT = 112;
+export const PROFILE_AVATAR_SIZE = 76;
+export const PROFILE_AVATAR_FRAME = 3;
+export const PROFILE_AVATAR_SEAM = PROFILE_AVATAR_SIZE / 2;
+
+const COVER_HEIGHT = PROFILE_COVER_HEIGHT;
+const AVATAR_SIZE = PROFILE_AVATAR_SIZE;
+const AVATAR_FRAME = PROFILE_AVATAR_FRAME;
 const ON_COLOR = '#FFFFFF';
 const BIO_COLLAPSE_LINES = 2;
 
@@ -410,70 +423,70 @@ export function ProfileShell({
       showsVerticalScrollIndicator={false}
       testID={testID}
     >
-      <View style={s.coverWrap} testID="profile-cover">
-        {renderCover()}
-        {/* The scrim is what keeps a white icon legible on a light cover photo. */}
-        <LinearGradient
-          colors={[colors.backgroundAlt + '00', colors.backgroundAlt + '66']}
-          style={StyleSheet.absoluteFill}
-        />
-        {onBack ? (
-          <TouchableOpacity
-            style={[s.coverBtn, s.coverBtnLeft]}
-            onPress={onBack}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            testID="profile-back"
-          >
-            <Ionicons name="chevron-back" size={20} color={ON_COLOR} />
-          </TouchableOpacity>
-        ) : null}
-        {headerActions.length > 0 ? (
-          <View style={s.coverActions}>
-            {headerActions.map((action) => (
-              <TouchableOpacity
-                key={action.testID ?? action.label}
-                style={s.coverBtn}
-                onPress={action.onPress}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel={action.label}
-                testID={action.testID}
-              >
-                <Ionicons name={action.icon} size={19} color={ON_COLOR} />
-                {action.badge ? <View style={s.coverBtnDot} /> : null}
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : null}
-      </View>
-
-      <View style={s.body}>
-        <View style={s.identityRow}>
-          <View style={s.avatarWrap} testID="profile-avatar">
-            <View style={[s.avatarFrame, isCommunity ? s.avatarFrameSquare : s.avatarFrameRound]}>
-              {renderAvatar()}
-            </View>
-            {level ? (
-              <View
-                style={s.levelBadgeWrap}
-                accessible
-                accessibilityRole="text"
-                accessibilityLabel={`Level ${profileXpLevel(points)} ${level.label}, ${points} points`}
-                testID="profile-level-badge"
-              >
-                <LinearGradient
-                  colors={[...BRAND_GRADIENT]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={s.levelBadge}
+      <View style={s.headerBlock} testID="profile-header">
+        <View style={s.coverWrap} testID="profile-cover">
+          {renderCover()}
+          {/* The scrim is what keeps a white icon legible on a light cover photo. */}
+          <LinearGradient
+            colors={[colors.backgroundAlt + '00', colors.backgroundAlt + '66']}
+            style={StyleSheet.absoluteFill}
+          />
+          {onBack ? (
+            <TouchableOpacity
+              style={[s.coverBtn, s.coverBtnLeft]}
+              onPress={onBack}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              testID="profile-back"
+            >
+              <Ionicons name="chevron-back" size={20} color={ON_COLOR} />
+            </TouchableOpacity>
+          ) : null}
+          {headerActions.length > 0 ? (
+            <View style={s.coverActions}>
+              {headerActions.map((action) => (
+                <TouchableOpacity
+                  key={action.testID ?? action.label}
+                  style={s.coverBtn}
+                  onPress={action.onPress}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel={action.label}
+                  testID={action.testID}
                 >
-                  <Text style={s.levelBadgeText}>⚡{profileXpLevel(points)}</Text>
-                </LinearGradient>
-              </View>
-            ) : null}
-          </View>
+                  <Ionicons name={action.icon} size={19} color={ON_COLOR} />
+                  {action.badge ? <View style={s.coverBtnDot} /> : null}
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
+        </View>
 
+        <View style={s.avatarOnSeam} testID="profile-avatar">
+          <View style={[s.avatarFrame, isCommunity ? s.avatarFrameSquare : s.avatarFrameRound]}>
+            {renderAvatar()}
+          </View>
+          {level ? (
+            <View
+              style={s.levelBadgeWrap}
+              accessible
+              accessibilityRole="text"
+              accessibilityLabel={`Level ${profileXpLevel(points)} ${level.label}, ${points} points`}
+              testID="profile-level-badge"
+            >
+              <LinearGradient
+                colors={[...BRAND_GRADIENT]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={s.levelBadge}
+              >
+                <Text style={s.levelBadgeText}>⚡{profileXpLevel(points)}</Text>
+              </LinearGradient>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={s.identityRow} testID="profile-identity-row">
           <View style={s.actionCol}>
             <View style={s.actionRow}>
               {tertiaryAction ? renderAction(tertiaryAction, 'secondary') : null}
@@ -521,7 +534,9 @@ export function ProfileShell({
             ) : null}
           </View>
         </View>
+      </View>
 
+      <View style={s.body}>
         <View style={s.nameBlock}>
           <View style={s.nameRow}>
             <Text style={s.name} numberOfLines={2}>{name}</Text>
@@ -643,10 +658,19 @@ export function ProfileShell({
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.background },
-  scrollContent: { paddingBottom: 100 },
+  scrollContent: { paddingBottom: 100, overflow: 'visible' },
 
   // — cover ——————————————————————————————————————————————————
-  coverWrap: { height: COVER_HEIGHT, backgroundColor: colors.surfaceLight, position: 'relative' },
+  headerBlock: {
+    position: 'relative',
+    backgroundColor: colors.background,
+    zIndex: 1,
+  },
+  coverWrap: {
+    height: COVER_HEIGHT,
+    backgroundColor: colors.surfaceLight,
+    overflow: 'hidden',
+  },
   coverBtn: {
     width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET,
     minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET,
@@ -666,9 +690,20 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   // — identity ————————————————————————————————————————————————
   body: { paddingHorizontal: 16, gap: 10 },
   identityRow: {
-    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
-    // Half the avatar sits on the cover, half on the body — the seam.
-    marginTop: -(AVATAR_SIZE / 2), gap: 8,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-end',
+    minHeight: PROFILE_AVATAR_SEAM,
+    paddingHorizontal: 16,
+    paddingLeft: 16 + AVATAR_SIZE + 8,
+  },
+  avatarOnSeam: {
+    position: 'absolute',
+    left: 16,
+    top: COVER_HEIGHT - PROFILE_AVATAR_SEAM,
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    zIndex: 3,
   },
   avatarWrap: { width: AVATAR_SIZE, height: AVATAR_SIZE },
   avatarFrame: {

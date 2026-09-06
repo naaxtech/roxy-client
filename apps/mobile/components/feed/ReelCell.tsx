@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming,
+  useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
@@ -76,8 +76,7 @@ export function ReelCell({
 
   const burst = useSharedValue(0);
   const burstStyle = useAnimatedStyle(() => ({
-    opacity: burst.value,
-    transform: [{ scale: 0.7 + burst.value * 0.45 }],
+    transform: [{ scale: burst.value }],
   }));
 
   const handleDoubleTap = useCallback(() => {
@@ -86,8 +85,8 @@ export function ReelCell({
     if (!liked) onLike();
     if (reducedMotion) return;
     burst.value = withSequence(
-      withTiming(1, { duration: 160 }),
-      withDelay(340, withTiming(0, { duration: 240 })),
+      withSpring(1.28, { damping: 10, stiffness: 420 }),
+      withDelay(80, withSpring(0, { damping: 14, stiffness: 380 })),
     );
   }, [liked, onLike, reducedMotion, burst]);
 

@@ -11,25 +11,29 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase, callEdgeFunction } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
-import { postDestination, buildPostPayload, destinationLabel } from '../../../../lib/postComposer';
+import { useProfileStore } from '../../../../store/profileStore';
+import {
+  postDestination, buildPostPayload, destinationLabel, afterPublishPath,
+} from '../../../../lib/postComposer';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
-import { RoxyLinkPicker, RoxyLinkSelection } from '../../../../components/feed/RoxyLinkPicker';
+import { ShopItemPicker, type ShopItemSelection } from '../../../../components/feed/ShopItemPicker';
 import { showAlert } from '../../../../lib/confirm';
 import { logError } from '../../../../lib/errorLogger';
 import { uploadImageAsset, assetExtension, UploadError } from '../../../../lib/uploads';
+import { canTagShop } from '../../../../lib/createAccess';
+import { isOfficialAccount } from '../../../../lib/officialGrant';
+import { deriveSellerStatus, canSell } from '../../../../lib/sellerStatus';
+import { textCardScale } from '../../../../lib/textCard';
+import { BRAND_GRADIENT } from '../../../../lib/theme';
 import type { PostType } from '../../../../types';
 import { TYPE } from '../../../../lib/typography';
 
 const MAX_PHOTOS = 10;
 const MAX_VIDEO_SECONDS = 180;
 
-type Step = 'type-picker' | 'composer';
+type Step = 'type-picker' | 'media-source' | 'composer';
+type MediaKind = 'photo' | 'video';
 
-/**
- * Turn an upload failure into something worth reading, without putting a
- * storage path (which starts with the user's id) in front of the user.
- * The underlying error still goes to logError with its reason code intact.
- */
 function uploadFailureMessage(e: unknown): string {
   if (e instanceof UploadError) {
     switch (e.reason) {
@@ -44,75 +48,71 @@ function uploadFailureMessage(e: unknown): string {
   return 'Could not upload your photos. Please try again.';
 }
 
+/**
+ * Claude Design: one composer, three renderers (video / photo / text card).
+ * Camera or camera roll, TikTok-style. Community accounts can also tag a shop item.
+ */
 export default function CreatePostScreen() {
   const colors = useThemeColors();
   const destination = postDestination();
   const router = useRouter();
   const { user } = useAuthStore();
+  const profile = useProfileStore((s) => s.profile);
 
   const [step, setStep] = useState<Step>('type-picker');
   const [postType, setPostType] = useState<PostType>('standard');
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [showLinkPicker, setShowLinkPicker] = useState(false);
-  const [roxyLink, setRoxyLink] = useState<RoxyLinkSelection | null>(null);
   const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [video, setVideo] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [shopItem, setShopItem] = useState<ShopItemSelection | null>(null);
+  const [showShopPicker, setShowShopPicker] = useState(false);
+  const [sellerApproved, setSellerApproved] = useState(false);
+
+  React.useEffect(() => {
+    if (!user?.id) return;
+    void supabase
+      .from('businesses')
+      .select('is_verified, can_sell, stripe_account_id')
+      .eq('owner_id', user.id)
+      .then(({ data, error }) => {
+        if (error) logError(error, 'createPost.seller');
+        else setSellerApproved(canSell(deriveSellerStatus(data)));
+      });
+  }, [user?.id]);
+
+  const shopAllowed = canTagShop({
+    official: isOfficialAccount(profile),
+    sellerApproved,
+  });
+
+  const shopLink = shopItem
+    ? { linkType: 'product', entityId: shopItem.productId }
+    : null;
 
   const TYPE_OPTIONS: { type: PostType; icon: keyof typeof Ionicons.glyphMap; grad: readonly [string, string]; label: string; sub: string }[] = [
-    { type: 'standard',  icon: 'create',   grad: ['#8E7CF7', '#C86DD7'], label: 'Text',            sub: "Share what's on your mind" },
-    { type: 'photo',     icon: 'images',   grad: ['#FF6A2E', '#E81C8E'], label: 'Photo / Gallery', sub: 'Up to 10 photos' },
-    { type: 'video',     icon: 'videocam', grad: ['#FF2F71', '#E81C8E'], label: 'Video',           sub: '3 min max, 720p' },
-    { type: 'roxy_link', icon: 'link',     grad: ['#2BB673', '#1E9E62'], label: 'Roxy Link',       sub: 'Share a game, room, or event' },
+    { type: 'standard', icon: 'create', grad: ['#8E7CF7', '#C86DD7'], label: 'Text card', sub: 'Full-bleed words on the brand gradient' },
+    { type: 'photo', icon: 'images', grad: ['#FF6A2E', '#E81C8E'], label: 'Photo', sub: 'Capture or upload — up to 10' },
+    { type: 'video', icon: 'videocam', grad: ['#FF2F71', '#E81C8E'], label: 'Video', sub: 'Capture or upload — 3 min max' },
   ];
 
   const handleSelectType = (type: PostType) => {
     setPostType(type);
-    if (type === 'roxy_link') {
-      setShowLinkPicker(true);
-    } else if (type === 'photo') {
-      void handlePickPhoto();
-    } else if (type === 'video') {
-      void handlePickVideo();
+    if (type === 'photo' || type === 'video') {
+      setStep('media-source');
     } else {
       setStep('composer');
     }
   };
 
-  const handleLinkSelected = (sel: RoxyLinkSelection) => {
-    setRoxyLink(sel);
-    setShowLinkPicker(false);
+  const acceptPhotos = (assets: ImagePicker.ImagePickerAsset[]) => {
+    if (assets.length === 0) return;
+    setPhotos((prev) => [...prev, ...assets].slice(0, MAX_PHOTOS));
     setStep('composer');
   };
 
-  const handlePickPhoto = async () => {
-    const remaining = MAX_PHOTOS - photos.length;
-    if (remaining <= 0) return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      selectionLimit: remaining,
-      quality: 0.85,
-    });
-    if (!result.canceled && result.assets.length > 0) {
-      // Keep the picked assets — the previous version discarded them, so
-      // photo posts published with no media. Cap at MAX_PHOTOS.
-      setPhotos((prev) => [...prev, ...result.assets].slice(0, MAX_PHOTOS));
-      setStep('composer');
-    }
-  };
-
-  const removePhoto = (uri: string) => setPhotos((prev) => prev.filter((p) => p.uri !== uri));
-
-  const handlePickVideo = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-      allowsMultipleSelection: false,
-      quality: 1,
-    });
-    if (result.canceled || result.assets.length === 0) return;
-    const asset = result.assets[0];
+  const acceptVideo = (asset: ImagePicker.ImagePickerAsset) => {
     const durationSeconds = asset.duration ? asset.duration / 1000 : 0;
     if (durationSeconds > MAX_VIDEO_SECONDS) {
       showAlert('Video too long', `Videos are capped at ${MAX_VIDEO_SECONDS / 60} minutes.`);
@@ -122,47 +122,73 @@ export default function CreatePostScreen() {
     setStep('composer');
   };
 
+  const captureMedia = async (kind: MediaKind) => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      showAlert('Camera needed', 'Allow camera access to capture a photo or video.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: kind === 'photo'
+        ? ImagePicker.MediaTypeOptions.Images
+        : ImagePicker.MediaTypeOptions.Videos,
+      quality: kind === 'photo' ? 0.85 : 1,
+      videoMaxDuration: MAX_VIDEO_SECONDS,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    if (kind === 'photo') acceptPhotos(result.assets);
+    else acceptVideo(result.assets[0]);
+  };
+
+  const uploadMedia = async (kind: MediaKind) => {
+    const remaining = kind === 'photo' ? MAX_PHOTOS - photos.length : 1;
+    if (remaining <= 0) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: kind === 'photo'
+        ? ImagePicker.MediaTypeOptions.Images
+        : ImagePicker.MediaTypeOptions.Videos,
+      allowsMultipleSelection: kind === 'photo',
+      selectionLimit: remaining,
+      quality: kind === 'photo' ? 0.85 : 1,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    if (kind === 'photo') acceptPhotos(result.assets);
+    else acceptVideo(result.assets[0]);
+  };
+
+  const removePhoto = (uri: string) => setPhotos((prev) => prev.filter((p) => p.uri !== uri));
   const removeVideo = () => setVideo(null);
 
-  // Upload the picked video to Cloudflare Stream via a TUS upload session.
-  // 1. Insert the post row first (need a real id — Cloudflare's upload
-  //    session is tagged with it as metadata so cloudflare-video-webhook
-  //    can find the right row once processing finishes).
-  // 2. Get a TUS uploadURL scoped to that postId from get-video-upload-url.
-  // 3. PATCH the raw video bytes to that URL per the TUS protocol (single
-  //    request: Upload-Offset 0, Content-Type application/offset+octet-stream).
-  const uploadVideoAndCreatePost = async (): Promise<{ error: string | null }> => {
-    if (!user?.id || !video) return { error: 'Missing video' };
+  const resolveAuthorId = async (): Promise<string | null> => {
+    if (user?.id) return user.id;
+    const { data } = await supabase.auth.getUser();
+    return data.user?.id ?? null;
+  };
+
+  const uploadVideoAndCreatePost = async (authorId: string): Promise<{ error: string | null }> => {
+    if (!video) return { error: 'Missing video' };
 
     setUploadStatus('Creating post…');
     const { data: newPost, error: insertErr } = await supabase
       .from('posts')
       .insert(buildPostPayload({
-        authorId: user.id,
+        authorId,
         destination,
         content,
         postType: 'video',
         postedAsCommunity: false,
+        roxyLink: shopLink,
       }))
       .select('id')
       .single();
 
     if (insertErr || !newPost) {
-      // The raw Postgres text ("new row violates row-level security policy for
-      // table \"posts\"") is a debugging aid, not a sentence to show a user.
-      // Keep it in the log, hand back something actionable.
       logError(insertErr ?? new Error('posts insert returned no row'), 'createPost_videoInsert');
       return { error: 'Could not create the post. Please try again.' };
     }
 
     try {
       setUploadStatus('Preparing upload…');
-      // Deliberately a Blob here, unlike the photo path: this PATCH goes
-      // through React Native's own fetch, which handles Blob request bodies
-      // natively. An ArrayBuffer body is base64-encoded across the bridge and
-      // would materialise a 3-minute video in memory several times over. The
-      // storage-js FormData trap that breaks photo uploads cannot apply — no
-      // FormData is involved in this request.
       const blob = await (await fetch(video.uri)).blob();
       if (blob.size === 0) throw new Error('video read as 0 bytes');
 
@@ -186,7 +212,6 @@ export default function CreatePostScreen() {
 
       return { error: null };
     } catch (e) {
-      // Don't leave an orphaned post with no video attached.
       await supabase.from('posts').delete().eq('id', newPost.id);
       logError(e, 'createPost_videoUpload');
       return { error: 'Your video could not be uploaded. Check your connection and try again.' };
@@ -195,20 +220,14 @@ export default function CreatePostScreen() {
     }
   };
 
-  // Upload picked photos to post-media/<userId>/... and return their public
-  // URLs. Path folder MUST be the user id — the bucket RLS checks
-  // auth.uid() = foldername(name)[1]. Bytes go through uploadImageAsset:
-  // handing storage-js a Blob on React Native uploads 0 bytes on iOS and
-  // throws on Android (see lib/uploads.ts).
-  const uploadPhotos = async (): Promise<string[]> => {
-    if (!user?.id) return [];
+  const uploadPhotos = async (authorId: string): Promise<string[]> => {
     const urls: string[] = [];
     for (let i = 0; i < photos.length; i++) {
       const asset = photos[i];
       urls.push(
         await uploadImageAsset({
           bucket: 'post-media',
-          pathPrefix: user.id,
+          pathPrefix: authorId,
           fileName: `${Date.now()}-${i}.${assetExtension(asset)}`,
           asset,
           upsert: false,
@@ -219,51 +238,49 @@ export default function CreatePostScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!user?.id || submitting) return;
-    // Per-type validation: a photo post needs a photo (caption optional);
-    // a video post needs a video; text/standard needs text; roxy_link needs
-    // a linked entity.
+    if (submitting) return;
+    const authorId = await resolveAuthorId();
+    if (!authorId) {
+      showAlert('Sign in to post', 'Your session expired. Open the app again and retry.');
+      return;
+    }
     if (postType === 'photo' && photos.length === 0) {
-      showAlert('Add a photo', 'Pick at least one photo for a photo post.');
+      showAlert('Add a photo', 'Capture or upload at least one photo.');
       return;
     }
     if (postType === 'video' && !video) {
-      showAlert('Add a video', 'Pick a video for a video post.');
+      showAlert('Add a video', 'Capture or upload a video.');
       return;
     }
     if (postType === 'standard' && !content.trim()) {
-      showAlert('Add some text', 'Your post needs content.');
+      showAlert('Add some text', 'A text card needs words.');
       return;
     }
     setSubmitting(true);
 
-    // Video posts go through Cloudflare Stream (insert-first, then upload)
-    // rather than the shared payload-insert path below — the video isn't
-    // ready to attach at insert time, it arrives later via
-    // cloudflare-video-webhook once processing finishes.
     if (postType === 'video') {
-      const { error } = await uploadVideoAndCreatePost();
+      const { error } = await uploadVideoAndCreatePost(authorId);
       setSubmitting(false);
       if (error) {
         showAlert('Upload failed', error);
         return;
       }
-      router.back();
+      router.replace(afterPublishPath());
       return;
     }
 
     const payload = buildPostPayload({
-      authorId: user.id,
+      authorId,
       destination,
       content,
       postType,
       postedAsCommunity: false,
-      roxyLink: postType === 'roxy_link' ? roxyLink : null,
+      roxyLink: shopLink,
     });
 
     if (postType === 'photo') {
       try {
-        payload.media_urls = await uploadPhotos();
+        payload.media_urls = await uploadPhotos(authorId);
       } catch (e) {
         logError(e, 'createPost_uploadPhotos');
         setSubmitting(false);
@@ -280,7 +297,7 @@ export default function CreatePostScreen() {
       showAlert('Post failed', 'Could not publish. Please try again.');
       return;
     }
-    router.back();
+    router.replace(afterPublishPath());
   };
 
   const styles = StyleSheet.create({
@@ -296,6 +313,7 @@ export default function CreatePostScreen() {
       color: colors.textMuted,
       paddingHorizontal: 16,
       paddingTop: 12,
+      paddingBottom: 16,
     },
     headerTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
     publishBtn: {
@@ -316,11 +334,26 @@ export default function CreatePostScreen() {
     typeInfo: { flex: 1 },
     typeLabel: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
     typeSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-    linkPreview: {
-      backgroundColor: colors.surface, margin: 16,
-      padding: 12, borderRadius: 10,
+    sourceBody: { flex: 1, padding: 16, gap: 10 },
+    sourceBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 14,
+      padding: 18, backgroundColor: colors.surface, borderRadius: 14,
     },
-    linkPreviewText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
+    sourceTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
+    sourceSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+    cardPreview: {
+      margin: 16, borderRadius: 18, overflow: 'hidden', minHeight: 220,
+      paddingHorizontal: 22, paddingVertical: 28, justifyContent: 'center', gap: 12,
+    },
+    cardKick: {
+      alignSelf: 'flex-start',
+      fontSize: 10.5, fontWeight: '800', letterSpacing: 1.6,
+      color: 'rgba(255,249,251,0.85)',
+      borderWidth: 1, borderColor: 'rgba(255,249,251,0.4)',
+      borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5,
+    },
+    cardWords: { color: '#FFF8FB', fontFamily: 'Outfit' },
+    cardFlower: { fontSize: 44, lineHeight: 44, color: 'rgba(255,249,251,0.16)' },
     captionInput: {
       flex: 1, padding: 16,
       color: colors.textPrimary, fontSize: 16,
@@ -345,25 +378,39 @@ export default function CreatePostScreen() {
       margin: 16, padding: 12, borderRadius: 12, backgroundColor: colors.surface,
     },
     videoPreviewText: { color: colors.textPrimary, fontSize: 14, flex: 1 },
+    shopRow: {
+      marginHorizontal: 16, marginTop: 8, padding: 12, borderRadius: 12,
+      backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: 10,
+    },
+    shopText: { flex: 1, color: colors.textPrimary, fontWeight: '600', fontSize: 14 },
     uploadStatus: { color: colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: 8 },
   });
 
+  const header = (
+    left: string,
+    onLeft: () => void,
+    title: string,
+    right?: React.ReactNode,
+  ) => (
+    <View style={styles.header}>
+      <TouchableOpacity onPress={onLeft} hitSlop={8}>
+        <Text style={styles.cancelBtn}>{left}</Text>
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>{title}</Text>
+      {right ?? <View style={{ width: 60 }} />}
+    </View>
+  );
+
   if (step === 'type-picker') {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <Text style={styles.cancelBtn}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>New Post</Text>
-          <View style={{ width: 60 }} />
-        </View>
-
+      <SafeAreaView style={styles.container} testID="create-post">
+        {header('Cancel', () => router.back(), 'New Post')}
         <ScrollView style={styles.typePicker}>
-          {TYPE_OPTIONS.map(opt => (
+          {TYPE_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.type}
               style={styles.typeOption}
+              testID={`create-type-${opt.type}`}
               onPress={() => handleSelectType(opt.type)}
             >
               <LinearGradient colors={opt.grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.typeIconPlate}>
@@ -377,44 +424,86 @@ export default function CreatePostScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-
-        <RoxyLinkPicker
-          visible={showLinkPicker}
-          userId={user?.id ?? ''}
-          onSelect={handleLinkSelected}
-          onClose={() => setShowLinkPicker(false)}
-        />
       </SafeAreaView>
     );
   }
 
+  if (step === 'media-source') {
+    const kind: MediaKind = postType === 'video' ? 'video' : 'photo';
+    return (
+      <SafeAreaView style={styles.container} testID="create-media-source">
+        {header('Back', () => setStep('type-picker'), kind === 'video' ? 'Video' : 'Photo')}
+        <View style={styles.sourceBody}>
+          <TouchableOpacity
+            style={styles.sourceBtn}
+            testID="create-capture"
+            onPress={() => void captureMedia(kind)}
+            accessibilityRole="button"
+            accessibilityLabel={kind === 'video' ? 'Record a video' : 'Take a photo'}
+          >
+            <LinearGradient colors={['#FF6A2E', '#E81C8E']} style={styles.typeIconPlate}>
+              <Ionicons name={kind === 'video' ? 'videocam' : 'camera'} size={20} color="#fff" />
+            </LinearGradient>
+            <View style={styles.typeInfo}>
+              <Text style={styles.sourceTitle}>{kind === 'video' ? 'Record' : 'Take photo'}</Text>
+              <Text style={styles.sourceSub}>Use your camera, like TikTok</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.sourceBtn}
+            testID="create-upload"
+            onPress={() => void uploadMedia(kind)}
+            accessibilityRole="button"
+            accessibilityLabel={kind === 'video' ? 'Upload a video' : 'Upload photos'}
+          >
+            <LinearGradient colors={['#8E7CF7', '#C86DD7']} style={styles.typeIconPlate}>
+              <Ionicons name="images" size={20} color="#fff" />
+            </LinearGradient>
+            <View style={styles.typeInfo}>
+              <Text style={styles.sourceTitle}>Upload</Text>
+              <Text style={styles.sourceSub}>Choose from your camera roll</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const words = content.trim();
+  const cardStep = textCardScale(words.length || 12);
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => setStep('type-picker')} hitSlop={8}>
-          <Text style={styles.cancelBtn}>Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {postType === 'roxy_link' && roxyLink ? roxyLink.entityName : 'New Post'}
-        </Text>
+      {header(
+        'Back',
+        () => setStep(postType === 'standard' ? 'type-picker' : 'media-source'),
+        'New Post',
         <TouchableOpacity
-          onPress={handleSubmit}
+          onPress={() => void handleSubmit()}
           disabled={submitting}
           style={styles.publishBtn}
+          testID="create-publish"
         >
           {submitting
             ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={styles.publishBtnText}>Publish</Text>
-          }
-        </TouchableOpacity>
-      </View>
+            : <Text style={styles.publishBtnText}>Publish</Text>}
+        </TouchableOpacity>,
+      )}
 
-      {postType === 'roxy_link' && roxyLink && (
-        <View style={styles.linkPreview}>
-          <Text style={styles.linkPreviewText}>
-            Linking to: {roxyLink.entityName}
+      {postType === 'standard' && (
+        <LinearGradient
+          colors={BRAND_GRADIENT}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardPreview}
+          testID="text-card-preview"
+        >
+          <Text style={styles.cardKick}>TEXT CARD</Text>
+          <Text style={[styles.cardWords, cardStep]} numberOfLines={6}>
+            {words || "What's on your mind?"}
           </Text>
-        </View>
+          <Text style={styles.cardFlower}>✿</Text>
+        </LinearGradient>
       )}
 
       {postType === 'photo' && (
@@ -439,7 +528,7 @@ export default function CreatePostScreen() {
           {photos.length < MAX_PHOTOS && (
             <TouchableOpacity
               style={styles.photoAdd}
-              onPress={handlePickPhoto}
+              onPress={() => setStep('media-source')}
               accessibilityLabel="Add more photos"
             >
               <Ionicons name="add" size={26} color={colors.primary} />
@@ -461,21 +550,40 @@ export default function CreatePostScreen() {
         </View>
       )}
 
+      {shopAllowed && (
+        <TouchableOpacity
+          style={styles.shopRow}
+          onPress={() => setShowShopPicker(true)}
+          testID="create-tag-shop"
+        >
+          <Ionicons name="bag-handle-outline" size={18} color={colors.primary} />
+          <Text style={styles.shopText}>
+            {shopItem ? `${shopItem.label} · Shop →` : 'Tag a shop item'}
+          </Text>
+          {shopItem ? (
+            <TouchableOpacity onPress={() => setShopItem(null)} hitSlop={8} accessibilityLabel="Remove shop tag">
+              <Ionicons name="close" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : (
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          )}
+        </TouchableOpacity>
+      )}
+
       <TextInput
         style={styles.captionInput}
         placeholder={
-          postType === 'roxy_link'
-            ? 'Add a caption (optional)…'
-            : postType === 'photo' || postType === 'video'
-              ? 'Add a caption (optional)…'
-              : "What's on your mind?"
+          postType === 'standard'
+            ? 'Write the card…'
+            : 'Add a caption (optional)…'
         }
         placeholderTextColor={colors.textMuted}
         value={content}
         onChangeText={setContent}
         multiline
-        autoFocus={postType !== 'photo' && postType !== 'video'}
+        autoFocus={postType === 'standard'}
         maxLength={1000}
+        testID="create-caption"
       />
 
       <Text style={styles.destination} testID="create-post-destination">
@@ -483,7 +591,16 @@ export default function CreatePostScreen() {
       </Text>
 
       {uploadStatus && <Text style={styles.uploadStatus}>{uploadStatus}</Text>}
+
+      <ShopItemPicker
+        visible={showShopPicker}
+        userId={user?.id ?? ''}
+        onSelect={(sel) => {
+          setShopItem(sel);
+          setShowShopPicker(false);
+        }}
+        onClose={() => setShowShopPicker(false)}
+      />
     </SafeAreaView>
   );
 }
-

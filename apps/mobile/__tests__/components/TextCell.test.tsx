@@ -135,6 +135,15 @@ function composite(stop: string, veil: typeof VEIL): string {
 }
 
 describe('TextCell canvas', () => {
+  it('marks the card with the prototype flower, left-aligned like Claude Design', () => {
+    const view = text();
+    expect(view.getByTestId('text-cell-flower').props.children).toBe('✿');
+    const body = view.getByTestId('text-cell-body');
+    expect(body.props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ textAlign: 'left' })]),
+    );
+  });
+
   it('stands on the brand gradient rather than a black letterbox', () => {
     const view = text();
 

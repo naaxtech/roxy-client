@@ -121,6 +121,8 @@ describe('featureForPath', () => {
       '/blocked',
       '/community/channels',
       '/community/channels/abc',
+      '/community/create-post',
+      '/community/create-event',
       '/code',
       '/(auth)/pending',
     ]) {
@@ -332,6 +334,19 @@ describe('migration 116', () => {
     expect(sql).toMatch(/create or replace function public\.set_community_owner/);
     expect(sql).toMatch(/community_channels/);
     expect(sql).not.toMatch(/grant update\s*\([^)]*official_community_id/i);
+  });
+});
+
+describe('migration 119', () => {
+  const sql = readFileSync(
+    join(__dirname, '..', '..', '..', '..', 'supabase', 'migrations', '119_product_link_on_posts.sql'),
+    'utf8',
+  );
+
+  it('lets a regular post carry a shop item', () => {
+    expect(sql).toMatch(/posts_link_type_check/);
+    expect(sql).toMatch(/'product'/);
+    expect(sql).toMatch(/'game'/);
   });
 });
 

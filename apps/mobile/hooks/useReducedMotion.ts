@@ -4,7 +4,7 @@ import { AccessibilityInfo } from 'react-native';
 /**
  * Whether the OS "Reduce Motion" setting is on.
  *
- * Used to strip decorative motion — the heart burst, the tab crossfade — and to
+ * Used to strip decorative motion — the heart burst, the tab snap — and to
  * stop video from autoplaying, which WCAG 2.2 SC 2.2.2 requires for any motion
  * that runs longer than five seconds without a pause control.
  *
@@ -23,15 +23,19 @@ export function useReducedMotion(): boolean {
 
   useEffect(() => {
     let mounted = true;
-    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
-      if (mounted) setReduced(enabled);
+    // Jest's RN mock can return undefined instead of a Promise. Wrap so a
+    // missing answer never throws — we stay at the `false` default.
+    void Promise.resolve(AccessibilityInfo.isReduceMotionEnabled()).then((enabled) => {
+      // Default is already false. Only flip when the platform says yes, so a
+      // missing Jest answer does not schedule a no-op state update.
+      if (mounted && enabled) setReduced(true);
     });
     const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (enabled) => {
       if (mounted) setReduced(enabled);
     });
     return () => {
       mounted = false;
-      sub.remove();
+      sub?.remove?.();
     };
   }, []);
 

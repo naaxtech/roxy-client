@@ -22,6 +22,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore } from '../../store/gateStore';
 import { showAlert } from '../../lib/confirm';
 import { BRAND_GRADIENT } from '../../lib/theme';
+import { POP_FROM, SNAP_SPRING } from '../../lib/motion';
 
 // Roxy brand gradient — same 3 stops as the Grow hero card.
 
@@ -41,10 +42,9 @@ export default function WelcomeScreen() {
   const [resetSent, setResetSent] = useState(false);
   const { signUp, signInWithPassword, resetPassword, signInWithApple, signInWithGoogle } = useAuth();
 
-  // Gentle entrance: logo fades/rises once on mount (200ms-class micro-motion).
-  const heroAnim = useRef(new Animated.Value(0)).current;
+  const heroAnim = useRef(new Animated.Value(POP_FROM)).current;
   useEffect(() => {
-    Animated.timing(heroAnim, { toValue: 1, duration: 450, useNativeDriver: true }).start();
+    Animated.spring(heroAnim, { toValue: 1, ...SNAP_SPRING }).start();
   }, [heroAnim]);
 
   const handleSubmit = async () => {
@@ -290,12 +290,7 @@ export default function WelcomeScreen() {
         <Animated.View
           style={[
             styles.hero,
-            {
-              opacity: heroAnim,
-              transform: [{
-                translateY: heroAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }),
-              }],
-            },
+            { transform: [{ scale: heroAnim }] },
           ]}
         >
           <View style={styles.logoPlate}>

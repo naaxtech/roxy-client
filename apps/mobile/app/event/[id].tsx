@@ -15,6 +15,7 @@ import { TicketCard } from '../../components/TicketCard';
 import { TicketConfirmation } from '../../components/TicketConfirmation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatDuration, openCalendar, eventStage, eventCta, eventSafetyLine } from '../../lib/eventUtils';
+import { SNAP_SPRING } from '../../lib/motion';
 import { purchaseTicket, subscribeToTicket } from '../../lib/stripe';
 import { toggleUserFavorite } from '../../components/profile/ProfileFavorites';
 import { EventModeBadge } from '../../components/events/EventModeBadge';
@@ -136,7 +137,8 @@ export default function EventDetailScreen() {
 
   const animateTicketIn = (code: string) => {
     setTicketCode(code);
-    Animated.timing(ticketAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    ticketAnim.setValue(0.72);
+    Animated.spring(ticketAnim, { toValue: 1, ...SNAP_SPRING }).start();
   };
 
   const handleRsvp = async () => {
@@ -465,7 +467,7 @@ export default function EventDetailScreen() {
         )}
 
         {going ? (
-          <Animated.View style={{ opacity: ticketAnim }}>
+          <Animated.View style={{ transform: [{ scale: ticketAnim }] }}>
             <View style={styles.divider} />
             <TicketCard
               eventTitle={event.title}

@@ -10,13 +10,13 @@ import { NAV_SLOTS_3 } from './navSlots3';
 import { NavIcon, type NavIconName } from './NavIcons';
 import type { NavSlot } from './navTokens';
 import { a11yState } from '../../lib/a11yState';
+import { PRESS_SPRING, SNAP_SPRING, runSnap } from '../../lib/motion';
 import {
   ACTIVE_TINT_ALPHA,
   BRAND_GRADIENT,
   PILL_INSET,
   PILL_MIN_BOTTOM,
   TAB_MIN_TOUCH,
-  indicatorFadeDuration,
 } from './navTokens';
 
 export type TabBarRoute = { key: string; name: string };
@@ -61,20 +61,30 @@ function RouteSlot({
 }) {
   const s = styles(colors);
   const indicator = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
-  // The indicator is born at its resting value, so the first render has nothing
-  // to cross-fade. Animating it anyway would schedule a state update on mount
-  // for every slot in the bar, five times over, to move nothing.
+  const iconPop = useRef(new Animated.Value(1)).current;
+  const press = useRef(new Animated.Value(1)).current;
+  // Born at rest so the first paint does not schedule a spring on every slot.
   const wasFocused = useRef(isFocused);
 
   useEffect(() => {
     if (wasFocused.current === isFocused) return;
     wasFocused.current = isFocused;
-    Animated.timing(indicator, {
-      toValue: isFocused ? 1 : 0,
-      duration: indicatorFadeDuration(reducedMotion),
-      useNativeDriver: true,
-    }).start();
-  }, [isFocused, reducedMotion, indicator]);
+    if (reducedMotion) {
+      indicator.setValue(isFocused ? 1 : 0);
+      iconPop.setValue(1);
+      return;
+    }
+    if (isFocused) {
+      indicator.setValue(0.4);
+      iconPop.setValue(0.82);
+      Animated.parallel([
+        Animated.spring(indicator, { toValue: 1, ...SNAP_SPRING }),
+        Animated.spring(iconPop, { toValue: 1, ...PRESS_SPRING }),
+      ]).start();
+      return;
+    }
+    runSnap(indicator, 0);
+  }, [isFocused, reducedMotion, indicator, iconPop]);
 
   const tint = isFocused ? colors.roxy : colors.textMuted;
 
@@ -83,55 +93,68 @@ function RouteSlot({
       testID={`nav-slot-${route.name}`}
       style={s.slot}
       onPress={onPress}
-      activeOpacity={0.8}
+      onPressIn={() => { if (!reducedMotion) Animated.spring(press, { toValue: 0.88, ...PRESS_SPRING }).start(); }}
+      onPressOut={() => runSnap(press, 1, reducedMotion)}
+      activeOpacity={1}
       accessibilityRole="tab"
       {...a11yState({ selected: isFocused })}
       accessibilityLabel={label}
     >
-      <Animated.View pointerEvents="none" style={[s.indicator, { opacity: indicator }]} />
-      <View style={s.iconWrap}>
-        <NavIcon name={icon} color={tint} />
-        {badge !== undefined && <Badge value={badge} slotKey={route.name} colors={colors} />}
-      </View>
-      <Text
-        style={[s.label, { color: tint, fontFamily: isFocused ? FONTS.text.bold : FONTS.text.semibold }]}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
+      <Animated.View
+        pointerEvents="none"
+        style={[s.indicator, { transform: [{ scale: indicator }] }]}
+      />
+      <Animated.View style={{ transform: [{ scale: press }], alignItems: 'center' }}>
+        <Animated.View style={[s.iconWrap, { transform: [{ scale: iconPop }] }]}>
+          <NavIcon name={icon} color={tint} />
+          {badge !== undefined && <Badge value={badge} slotKey={route.name} colors={colors} />}
+        </Animated.View>
+        <Text
+          style={[s.label, { color: tint, fontFamily: isFocused ? FONTS.text.bold : FONTS.text.semibold }]}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+      </Animated.View>
     </TouchableOpacity>
   );
 }
 
 function CreateSlot({
-  label, colors, onPress,
+  label, colors, reducedMotion, onPress,
 }: {
   label: string;
   colors: ThemeColors;
+  reducedMotion: boolean;
   onPress: () => void;
 }) {
   const s = styles(colors);
+  const press = useRef(new Animated.Value(1)).current;
   return (
     <TouchableOpacity
       testID="nav-slot-create"
       style={s.slot}
       onPress={onPress}
-      activeOpacity={0.85}
+      onPressIn={() => { if (!reducedMotion) Animated.spring(press, { toValue: 0.88, ...PRESS_SPRING }).start(); }}
+      onPressOut={() => runSnap(press, 1, reducedMotion)}
+      activeOpacity={1}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityHint="Choose what to create"
     >
-      <View style={s.iconWrap}>
-        <LinearGradient
-          colors={BRAND_GRADIENT}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.createPlate}
-        >
-          <Text testID="nav-create-icon" style={s.createPlus}>+</Text>
-        </LinearGradient>
-      </View>
-      <Text style={[s.label, { color: colors.textPrimary }]} numberOfLines={1}>{label}</Text>
+      <Animated.View style={{ transform: [{ scale: press }], alignItems: 'center' }}>
+        <View style={s.iconWrap}>
+          <LinearGradient
+            colors={BRAND_GRADIENT}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.createPlate}
+          >
+            <Text testID="nav-create-icon" style={s.createPlus}>+</Text>
+          </LinearGradient>
+        </View>
+        <Text style={[s.label, { color: colors.textPrimary }]} numberOfLines={1}>{label}</Text>
+      </Animated.View>
     </TouchableOpacity>
   );
 }
@@ -180,6 +203,7 @@ export function FloatingTabBar({
                 key={slot.key}
                 label={slot.label}
                 colors={colors}
+                reducedMotion={reducedMotion}
                 onPress={onCreatePress}
               />
             );

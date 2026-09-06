@@ -14,6 +14,7 @@ jest.mock('expo-router', () => ({
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 jest.mock('../../lib/notifications', () => ({ fetchUnreadNotificationCount: jest.fn(async () => 0) }));
 jest.mock('../../components/profile/ProfilePhotoGrid', () => ({ ProfilePhotoGrid: () => null }));
+jest.mock('../../components/profile/ProfilePostsGrid', () => ({ ProfilePostsGrid: () => null }));
 jest.mock('../../components/profile/ProfileFavorites', () => ({ ProfileFavorites: () => null }));
 jest.mock('../../components/profile/SavedPosts', () => ({ SavedPosts: () => null }));
 jest.mock('../../components/profile/SavedWatchlist', () => ({ SavedWatchlist: () => null }));
@@ -33,6 +34,7 @@ const thenable = (data: unknown, count = 0) => {
   const next = () => chain;
   chain.select = next;
   chain.eq = next;
+  chain.is = next;
   chain.in = () => Promise.resolve({ data, count, error: null });
   chain.single = () => Promise.resolve({ data, error: null });
   chain.then = (resolve: (v: unknown) => unknown) =>

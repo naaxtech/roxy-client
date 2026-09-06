@@ -46,6 +46,11 @@ export function destinationLabel(
   return 'your profile';
 }
 
+/** After publish she should land on You, where the new post actually lives. */
+export function afterPublishPath(): '/you' {
+  return '/you';
+}
+
 export function buildPostPayload(input: PostPayloadInput): Record<string, unknown> {
   const { authorId, content, postType, roxyLink } = input;
 

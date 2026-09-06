@@ -75,10 +75,9 @@ export type NavSlot =
  */
 
 /**
- * How long the active-slot indicator takes to cross-fade. Zero under Reduce
- * Motion, which makes the indicator appear instantly rather than not at all —
- * the state still has to be visible, only the transition goes away.
+ * Whether the active-slot indicator jumps instead of springing. Reduce Motion
+ * still has to show the selected slot — only the pop goes away.
  */
-export function indicatorFadeDuration(reducedMotion: boolean): number {
-  return reducedMotion ? 0 : 160;
+export function indicatorSnapsInstantly(reducedMotion: boolean): boolean {
+  return reducedMotion;
 }

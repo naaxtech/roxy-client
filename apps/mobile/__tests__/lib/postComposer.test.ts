@@ -2,6 +2,7 @@ import {
   postDestination,
   destinationLabel,
   buildPostPayload,
+  afterPublishPath,
 } from '../../lib/postComposer';
 
 describe('postDestination', () => {
@@ -10,6 +11,12 @@ describe('postDestination', () => {
     expect(postDestination(undefined)).toEqual({ kind: 'profile' });
     expect(postDestination(null)).toEqual({ kind: 'profile' });
     expect(postDestination('')).toEqual({ kind: 'profile' });
+  });
+});
+
+describe('afterPublishPath', () => {
+  it('sends her to You so the new post is actually visible', () => {
+    expect(afterPublishPath()).toBe('/you');
   });
 });
 

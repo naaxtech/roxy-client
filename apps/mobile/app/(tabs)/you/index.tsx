@@ -10,7 +10,7 @@ import { useMarketplaceStore } from '../../../store/marketplaceStore';
 import { supabase } from '../../../lib/supabase';
 import { ProfileShell } from '../../../components/profile/ProfileShell';
 import type { PopulatedTabs, ProfileTab } from '../../../components/profile/profileVariant';
-import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
+import { ProfilePostsGrid } from '../../../components/profile/ProfilePostsGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
 import { SavedPosts } from '../../../components/profile/SavedPosts';
 import { SavedWatchlist } from '../../../components/profile/SavedWatchlist';
@@ -144,7 +144,7 @@ export default function ProfileScreen() {
       .from('posts')
       .select('id', { count: 'exact', head: true })
       .eq('author_id', user.id)
-      .in('post_type', ['photo', 'video'])
+      .is('deleted_at', null)
       .then(({ count, error }) => {
         if (error) logError(error, 'you_postCount');
         else setPostCount(count ?? 0);
@@ -314,7 +314,7 @@ export default function ProfileScreen() {
 
   const renderTab = (tab: ProfileTab) => {
     if (!user?.id) return null;
-    if (tab === 'posts') return <ProfilePhotoGrid userId={user.id} editable />;
+    if (tab === 'posts') return <ProfilePostsGrid userId={user.id} />;
     if (tab === 'shop' && shop?.id) {
       return (
         <TouchableOpacity

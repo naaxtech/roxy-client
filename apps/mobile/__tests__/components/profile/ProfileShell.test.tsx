@@ -6,7 +6,13 @@ jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 jest.mock('expo-image', () => ({ Image: 'ExpoImage' }));
 
-import { ProfileShell, type ProfileShellProps } from '../../../components/profile/ProfileShell';
+import {
+  ProfileShell,
+  PROFILE_AVATAR_SEAM,
+  PROFILE_AVATAR_SIZE,
+  PROFILE_COVER_HEIGHT,
+  type ProfileShellProps,
+} from '../../../components/profile/ProfileShell';
 import type { PopulatedTabs, ProfileTab } from '../../../components/profile/profileVariant';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 
@@ -72,6 +78,22 @@ describe('ProfileShell — the header the prototype draws', () => {
   it('uses the photo cover when a url is passed, instead of only the gradient', () => {
     const view = renderShell({ coverUrl: 'https://cdn.example/cover.jpg' });
     expect(view.getByTestId('profile-cover-photo')).toBeTruthy();
+  });
+
+  it('pins the avatar to the cover/body seam the prototype draws', () => {
+    expect(PROFILE_COVER_HEIGHT).toBe(112);
+    expect(PROFILE_AVATAR_SIZE).toBe(76);
+    expect(PROFILE_AVATAR_SEAM).toBe(PROFILE_AVATAR_SIZE / 2);
+    const view = renderShell({
+      variant: 'self',
+      primaryAction: { label: 'Edit', onPress: jest.fn() },
+      xp: { label: 'Lvl 4', progress: 0.4 },
+    });
+    const avatar = view.getByTestId('profile-avatar');
+    const style = StyleSheet.flatten(avatar.props.style) as { top?: number; height?: number };
+    expect(style.top).toBe(PROFILE_COVER_HEIGHT - PROFILE_AVATAR_SEAM);
+    expect(style.height).toBe(PROFILE_AVATAR_SIZE);
+    expect(view.getByTestId('profile-header')).toBeTruthy();
   });
 
   it('shows the level band on the avatar when there are points', () => {

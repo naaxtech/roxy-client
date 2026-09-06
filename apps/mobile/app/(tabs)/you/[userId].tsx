@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
@@ -8,7 +8,7 @@ import {
   badgePreviewFromEarned,
   type PopulatedTabs, type ProfileTab, type ProfileVariant,
 } from '../../../components/profile/profileVariant';
-import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
+import { ProfilePostsGrid } from '../../../components/profile/ProfilePostsGrid';
 import { type EarnedBadge } from '../../../components/profile/BadgeRow';
 import { EventModeBadge, type EventMode } from '../../../components/events/EventModeBadge';
 import { deriveSellerStatus, canSell, type SellerBusinessRow } from '../../../lib/sellerStatus';
@@ -23,6 +23,7 @@ import { RADII } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { confirmAction, showAlert } from '../../../lib/confirm';
 import { useSafetyStore } from '../../../store/safetyStore';
+import { usePopIn } from '../../../components/ui/popIn';
 import type { CommunityRoom, Event, Profile } from '../../../types';
 import { FeatureGate } from '../../../components/features/FeatureGate';
 import { isOfficialAccount } from '../../../lib/officialGrant';
@@ -45,9 +46,6 @@ type HostedGame = {
   url: string | null;
   publisher_type: string | null;
 };
-
-/** Post types that put something in the photo grid. */
-const MEDIA_POST_TYPES = ['photo', 'video'];
 
 /**
  * Another woman's profile, on the unified shell.
@@ -86,6 +84,7 @@ function UserProfileScreen() {
   const blockUser = useSafetyStore((s) => s.blockUser);
   const colors = useThemeColors();
   const [safetyOpen, setSafetyOpen] = useState(false);
+  const safetyPop = usePopIn(safetyOpen);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [badges, setBadges] = useState<EarnedBadge[]>([]);
@@ -111,7 +110,7 @@ function UserProfileScreen() {
         .from('posts')
         .select('id', { count: 'exact', head: true })
         .eq('author_id', userId)
-        .in('post_type', MEDIA_POST_TYPES),
+        .is('deleted_at', null),
       supabase
         .from('businesses')
         .select('id, name, is_verified, can_sell, stripe_account_id')
@@ -363,7 +362,7 @@ function UserProfileScreen() {
         </TouchableOpacity>
       );
     }
-    if (tab === 'posts' && userId) return <ProfilePhotoGrid userId={userId} />;
+    if (tab === 'posts' && userId) return <ProfilePostsGrid userId={userId} />;
     if (tab === 'events') {
       return (
         <View style={rowStyles.list}>
@@ -493,11 +492,11 @@ function UserProfileScreen() {
       <Modal
         visible={safetyOpen}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={() => setSafetyOpen(false)}
       >
         <Pressable style={rowStyles.scrim} onPress={() => setSafetyOpen(false)}>
-          <View style={rowStyles.sheet} testID="profile-more-sheet">
+          <Animated.View style={[rowStyles.sheet, safetyPop]} testID="profile-more-sheet">
             <Text style={rowStyles.sheetTitle}>Safety</Text>
             <TouchableOpacity
               style={rowStyles.sheetRow}
@@ -537,7 +536,7 @@ function UserProfileScreen() {
             >
               <Text style={rowStyles.sheetDanger}>Block</Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         </Pressable>
       </Modal>
     </SafeAreaView>

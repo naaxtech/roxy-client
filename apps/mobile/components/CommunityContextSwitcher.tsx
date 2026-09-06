@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal, TextInput, FlatList,
   Animated,
@@ -8,6 +8,7 @@ import { useThemeColors } from '../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../hooks/useAppWidth';
 import { STAGE } from './feed/stageColors';
 import { MIN_TOUCH_TARGET } from '../lib/touchTargets';
+import { usePopIn } from './ui/popIn';
 
 type CommunityOption = { id: string; name: string };
 
@@ -39,7 +40,7 @@ export function CommunityContextSwitcher({ communities, onStage = false }: Props
   const { selectedCommunityId, setSelectedCommunity } = useCommunityFilterStore();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const popAnim = useRef(new Animated.Value(0.94)).current; // pop, not slide-from-below
+  const pop = usePopIn(open);
 
   const triggerBg = onStage ? STAGE.surface : colors.surface;
   const triggerBorder = onStage ? STAGE.primaryInk : colors.primary + '60';
@@ -128,20 +129,6 @@ export function CommunityContextSwitcher({ communities, onStage = false }: Props
     },
   });
 
-  // Pop the sheet in when the modal opens (no slide-from-below drawers)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (open) {
-      popAnim.setValue(0.94);
-      Animated.spring(popAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 220,
-      }).start();
-    }
-  }, [open]);
-
   const selected = communities.find((c) => c.id === selectedCommunityId);
   const rawLabel = selected ? selected.name : 'All';
   const label = rawLabel.length > 12 ? rawLabel.slice(0, 10) + '… ▾' : rawLabel + ' ▾';
@@ -189,14 +176,14 @@ export function CommunityContextSwitcher({ communities, onStage = false }: Props
         transparent
         onRequestClose={() => { setOpen(false); setSearch(''); }}
       >
-        {/* Overlay appears instantly — only the sheet slides up */}
+        {/* Overlay is instant — the sheet pops, never fades */}
         <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}
           onPress={() => { setOpen(false); setSearch(''); }}
         >
           <Animated.View
-            style={[styles.sheet, { opacity: popAnim, transform: [{ scale: popAnim }] }]}
+            style={[styles.sheet, pop]}
             onStartShouldSetResponder={() => true}
           >
             <View style={styles.handle} />

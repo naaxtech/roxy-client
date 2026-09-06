@@ -29,6 +29,7 @@ const LINK_KIND: Record<LinkType, { icon: IoniconName; cta: string; meta: string
   game: { icon: 'game-controller-outline', cta: 'Join Game', meta: 'Game' },
   room: { icon: 'mic-outline', cta: 'Join Room', meta: 'Room' },
   event: { icon: 'calendar-outline', cta: 'View Event', meta: 'Event' },
+  product: { icon: 'bag-handle-outline', cta: 'View item', meta: 'Shop' },
 };
 
 export function extractUrl(content: string): string | null {

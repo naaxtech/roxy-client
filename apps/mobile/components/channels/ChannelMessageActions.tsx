@@ -1,4 +1,5 @@
-import { Modal, Text, Pressable, StyleSheet } from 'react-native';
+import { Animated, Modal, Text, Pressable, StyleSheet } from 'react-native';
+import { usePopIn } from '../ui/popIn';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII } from '../../lib/theme';
@@ -35,6 +36,7 @@ export function ChannelMessageActions({
   title, actions, visible, onClose, testID = 'channel-actions',
 }: Props) {
   const colors = useThemeColors();
+  const pop = usePopIn(visible);
 
   const s = StyleSheet.create({
     scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
@@ -68,7 +70,7 @@ export function ChannelMessageActions({
   });
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <Pressable
         style={s.scrim}
         onPress={onClose}
@@ -76,6 +78,7 @@ export function ChannelMessageActions({
         accessibilityLabel="Close menu"
       >
         {/* Stops a tap inside the sheet from closing it via the scrim. */}
+        <Animated.View style={pop}>
         <Pressable style={s.sheet} onPress={() => {}} accessible={false} testID={testID}>
           <Text style={s.title} numberOfLines={1}>{title}</Text>
 
@@ -107,6 +110,7 @@ export function ChannelMessageActions({
             <Text style={s.cancelText}>Cancel</Text>
           </Pressable>
         </Pressable>
+        </Animated.View>
       </Pressable>
     </Modal>
   );

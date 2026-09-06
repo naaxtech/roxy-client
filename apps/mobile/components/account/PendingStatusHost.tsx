@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Modal, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
+import { Animated, Modal, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
+import { usePopIn } from '../ui/popIn';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useAccess } from '../../hooks/useAccess';
@@ -22,6 +23,7 @@ export function PendingStatusHost() {
   const { kind } = useAccess();
   const userId = useAuthStore((s) => s.user?.id ?? null);
   const [open, setOpen] = useState(false);
+  const pop = usePopIn(open);
   const s = styles(colors);
 
   useEffect(() => {
@@ -53,10 +55,11 @@ export function PendingStatusHost() {
     <Modal
       visible
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={dismiss}
     >
       <Pressable style={s.backdrop} onPress={dismiss} accessibilityLabel="Dismiss account status">
+        <Animated.View style={pop}>
         <Pressable style={s.card} onPress={() => undefined} testID="pending-status-sheet">
           <Text style={s.eyebrow}>Account status</Text>
           <Text style={s.title}>You’re pending</Text>
@@ -85,6 +88,7 @@ export function PendingStatusHost() {
             <Text style={s.link}>Add to your application</Text>
           </TouchableOpacity>
         </Pressable>
+        </Animated.View>
       </Pressable>
     </Modal>
   );

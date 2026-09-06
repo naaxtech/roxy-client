@@ -3,17 +3,29 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 
 const mockPush = jest.fn();
 const mockBusinessQuery = jest.fn();
+const mockProfileQuery = jest.fn();
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock('../../../lib/supabase', () => ({
   supabase: {
-    from: () => ({
-      select: () => ({
-        eq: (...args: unknown[]) => mockBusinessQuery(...args),
-      }),
-    }),
+    from: (table: string) => {
+      if (table === 'profiles') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => mockProfileQuery(),
+            }),
+          }),
+        };
+      }
+      return {
+        select: () => ({
+          eq: (...args: unknown[]) => mockBusinessQuery(...args),
+        }),
+      };
+    },
   },
 }));
 
@@ -25,6 +37,8 @@ beforeEach(() => {
   mockPush.mockClear();
   mockBusinessQuery.mockReset();
   mockBusinessQuery.mockResolvedValue({ data: [], error: null });
+  mockProfileQuery.mockReset();
+  mockProfileQuery.mockResolvedValue({ data: { official_community_id: null }, error: null });
 });
 
 describe('CreateSheet', () => {
@@ -45,7 +59,20 @@ describe('CreateSheet', () => {
     const { findByTestId } = render(<CreateSheet visible userId="u1" onClose={jest.fn()} />);
     const event = await findByTestId('create-kind-event');
     expect(event.props.accessibilityState).toEqual({ disabled: true });
-    expect(String(event.props.accessibilityLabel)).toContain('Roxy Studio');
+    expect(String(event.props.accessibilityLabel)).toContain('Studio');
+  });
+
+  it('unlocks Event for an official community account', async () => {
+    mockProfileQuery.mockResolvedValue({ data: { official_community_id: 'c-official' }, error: null });
+    const onClose = jest.fn();
+    const { findByTestId } = render(<CreateSheet visible userId="u1" onClose={onClose} />);
+    await waitFor(async () => {
+      const event = await findByTestId('create-kind-event');
+      expect(event.props.accessibilityState).toEqual({ disabled: false });
+    });
+    fireEvent.press(await findByTestId('create-kind-event'));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: '/community/create-event' });
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('locks Product for a woman who has not been approved to sell', async () => {

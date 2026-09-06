@@ -12,6 +12,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore, CODE_MESSAGES } from '../../store/gateStore';
 import { normaliseInviteCode, INVITE_CODE_LENGTH } from '../../lib/inviteCode';
 import { BRAND_GRADIENT } from '../../lib/theme';
+import { POP_FROM, SNAP_SPRING } from '../../lib/motion';
 
 export default function CodeGateScreen() {
   const colors = useThemeColors();
@@ -21,9 +22,9 @@ export default function CodeGateScreen() {
   const [focused, setFocused] = useState(false);
   const { validateCode, checking, codeError, validatedCommunityName, clearCode } = useGateStore();
 
-  const heroAnim = useRef(new Animated.Value(0)).current;
+  const heroAnim = useRef(new Animated.Value(POP_FROM)).current;
   useEffect(() => {
-    Animated.timing(heroAnim, { toValue: 1, duration: 450, useNativeDriver: true }).start();
+    Animated.spring(heroAnim, { toValue: 1, ...SNAP_SPRING }).start();
   }, [heroAnim]);
 
   const compact = height < 760;
@@ -115,10 +116,7 @@ export default function CodeGateScreen() {
     >
       <SafeAreaView style={styles.flex} edges={['top']}>
         <Animated.View
-          style={[styles.hero, {
-            opacity: heroAnim,
-            transform: [{ translateY: heroAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
-          }]}
+          style={[styles.hero, { transform: [{ scale: heroAnim }] }]}
         >
           <View style={styles.logoPlate}>
             <RoxyWordmark variant="primary" height={compact ? 60 : 88} />

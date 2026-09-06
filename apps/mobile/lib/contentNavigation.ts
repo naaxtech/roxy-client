@@ -22,9 +22,9 @@ export function contentDetailPath(postId: string, postType: PostType): string {
  * card cannot drift into three.
  *
  * NOT done, deliberately: adding 'archive' to `posts.link_type`. That CHECK is
- * `('game','room','event')` (migration 045), so posting an Archive entry AS a
- * Roxy Link is a schema change and a composer change — a feature, not a deep
- * link. The prototype's share action copies a URL; this is that URL.
+ * `('game','room','event','product')` (migrations 045 + 119), so posting an
+ * Archive entry AS a Roxy Link is still a feature, not a deep link. The
+ * prototype's share action copies a URL; this is that URL.
  */
 export function archiveDetailPath(slug: string): string {
   return `/archive/${slug}`;
@@ -46,6 +46,8 @@ export async function linkedEntityPath(post: Post): Promise<string | null> {
       return `/community-room-session?room_id=${entityId}`;
     case 'event':
       return `/event/${entityId}`;
+    case 'product':
+      return `/product/${entityId}`;
     case 'game': {
       const { data } = await supabase
         .from('games')
