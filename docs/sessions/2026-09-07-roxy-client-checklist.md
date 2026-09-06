@@ -27,7 +27,7 @@ Status key:
 - [x] **TREE** Other profile header More: Report + Block
 
 - [ ] **NEXT** Archive Watch / Read / Listen links + outbound click log
-- [ ] **NOW** Commit / push / deploy mobile + Studio (always, while rushing)
+- [x] **LIVE** Commit / push / deploy mobile + Studio (`33e3460`, 7 Sep 2026)
 
 ## Done in this tree — not live
 
