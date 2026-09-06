@@ -70,7 +70,11 @@ export function ScorePill({ score, testID }: Props) {
       testID={testID}
       // A flower is not a sentence. Assistive tech gets the claim the pill is
       // actually making, including the sample size it rests on.
-      accessibilityLabel={`${score.percent}% of ${score.total} members recommend it`}
+      accessibilityLabel={
+        score.average != null
+          ? `${score.label} out of 5 from ${score.total} members`
+          : `${score.percent}% of ${score.total} members recommend it`
+      }
     >
       {icon ? <Text style={[s.text, { color: ink }]}>{icon}</Text> : null}
       <Text style={[s.text, { color: ink }]}>{score.label}</Text>

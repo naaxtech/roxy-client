@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useArchiveStore } from '../../../store/archiveStore';
+import { useAuthStore } from '../../../store/authStore';
 import { useMembership } from '../../../hooks/useMembership';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { TYPE } from '../../../lib/typography';
@@ -12,9 +13,11 @@ import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { Analytics } from '../../../lib/analytics';
 import { logError } from '../../../lib/errorLogger';
 import {
-  fetchArchiveEntry, fetchArchiveEntryDetail, formatScore, firstVoteLanded,
+  applyLocalStarVote, fetchArchiveEntry, fetchArchiveEntryDetail,
+  firstVoteLanded, scoreFromEntry, starsToRecommend,
   type ArchiveEntry, type ArchiveEntryDetail,
 } from '../../../lib/archive';
+import { submitReview } from '../../../components/archive/composerActions';
 import { ScoreRing } from '../../../components/archive/ScoreRing';
 import { VerdictLine } from '../../../components/archive/VerdictLine';
 import { VoteCard } from '../../../components/archive/VoteCard';
@@ -43,12 +46,14 @@ export default function ArchiveEntryScreen() {
   const colors = useThemeColors();
   const membership = useMembership();
 
+  const userId = useAuthStore((s) => s.user?.id ?? null);
   const myVotes = useArchiveStore((s) => s.myVotes);
   const watchlist = useArchiveStore((s) => s.watchlist);
   const noteAgreements = useArchiveStore((s) => s.noteAgreements);
   const vote = useArchiveStore((s) => s.vote);
   const toggleWatch = useArchiveStore((s) => s.toggleWatch);
   const agreeNote = useArchiveStore((s) => s.agreeNote);
+  const hydrateMine = useArchiveStore((s) => s.hydrateMine);
 
   const [entry, setEntry] = useState<ArchiveEntry | null>(null);
   const [detail, setDetail] = useState<ArchiveEntryDetail>({ notes: [], reviews: [], lastEdit: null });
@@ -59,6 +64,8 @@ export default function ArchiveEntryScreen() {
   // each of them.
   const [actionError, setActionError] = useState<string | null>(null);
   const [firstVoteOpen, setFirstVoteOpen] = useState(false);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewBusy, setReviewBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -77,6 +84,10 @@ export default function ArchiveEntryScreen() {
   }, [slug]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (userId) void hydrateMine(userId);
+  }, [userId, hydrateMine]);
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -183,8 +194,8 @@ export default function ArchiveEntryScreen() {
     );
   }
 
-  const score = formatScore(entry.up_count, entry.vote_count);
-  const myVote = entry.id in myVotes ? (myVotes[entry.id] ? 'up' : 'down') : null;
+  const score = scoreFromEntry(entry);
+  const myStars = entry.id in myVotes ? myVotes[entry.id] : null;
   const watched = watchlist.includes(entry.id);
   const lastEdit = detail.lastEdit;
   const notes = visibleNotes(
@@ -209,15 +220,41 @@ export default function ArchiveEntryScreen() {
     }
   };
 
-  const castVote = async (value: boolean) => {
+  const castVote = async (stars: number) => {
     // Analytics AFTER the write, not before: firing first counted votes that
     // never landed, which is the same lie in the metrics as in the UI.
-    const wasFirst = firstVoteLanded(myVote !== null, entry.vote_count);
+    const wasFirst = firstVoteLanded(myStars !== null, entry.vote_count);
+    const previous = myStars ?? undefined;
     await runAction('vote', async () => {
-      await vote(entry.id, value);
-      Analytics.archiveVoteCast(entry.slug, value, membership.status);
+      await vote(entry.id, stars);
+      setEntry((current) => current ? applyLocalStarVote(current, previous, stars) : current);
+      Analytics.archiveVoteCast(entry.slug, starsToRecommend(stars), membership.status);
       if (wasFirst) setFirstVoteOpen(true);
     });
+  };
+
+  const postReview = async () => {
+    const body = reviewComment.trim();
+    if (!body || !membership.canReview) return;
+    setReviewBusy(true);
+    await runAction('review', async () => {
+      const res = await submitReview(
+        entry.id,
+        body,
+        myStars != null ? starsToRecommend(myStars) : true,
+        true,
+      );
+      if (res.error) throw new Error(res.error);
+      setReviewComment('');
+      const [fresh, nextDetail] = await Promise.all([
+        fetchArchiveEntry(entry.slug),
+        fetchArchiveEntryDetail(entry.id),
+      ]);
+      if (fresh) setEntry(fresh);
+      setDetail(nextDetail);
+      Analytics.archiveReviewPublished(entry.slug);
+    });
+    setReviewBusy(false);
   };
 
   const requireApproved = (then: () => void) => {
@@ -259,8 +296,8 @@ export default function ArchiveEntryScreen() {
             </Text>
             <Text style={s.unratedBody}>
               {score.total === 0
-                ? 'Yours would be the first. One question, one tap — it counts from the moment you cast it.'
-                : 'A few more and this shows a community score.'}
+                ? 'Yours would be the first. Rate it out of 5 — it counts from the moment you cast it.'
+                : 'A few more and this shows a community average.'}
             </Text>
           </View>
         )}
@@ -273,7 +310,7 @@ export default function ArchiveEntryScreen() {
           <View style={s.sheet} testID="archive-first-vote">
             <Text style={s.unratedTitle}>You rated this first</Text>
             <Text style={s.unratedBody}>
-              That vote is live. A review is the second loop — only if you want it.
+              That rating is live. A review is the second loop — only if you want it.
             </Text>
             {membership.canReview ? (
               <Pressable
@@ -306,13 +343,17 @@ export default function ArchiveEntryScreen() {
 
         <View style={s.voteWrap}>
         <VoteCard
-          myVote={myVote}
-          onUp={() => void castVote(true)}
-          onDown={() => void castVote(false)}
+          myStars={myStars}
+          onRate={(stars) => void castVote(stars)}
+          canComment={membership.canReview}
+          comment={reviewComment}
+          onCommentChange={setReviewComment}
+          onSubmitComment={() => void postReview()}
+          commentBusy={reviewBusy}
           note={
             membership.canReview
-              ? 'Your score is public as a number only — your review carries your name.'
-              : 'Scoring works while pending. Written reviews unlock on approval.'
+              ? 'Stars are the score. A review comment is optional and carries your name.'
+              : 'Star ratings work while pending. Written reviews unlock on approval.'
           }
           testID="archive-vote"
           footer={

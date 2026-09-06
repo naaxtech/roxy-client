@@ -1,6 +1,14 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { formatScore, SCORE_GATE, verdictFor, firstVoteLanded } from '../../lib/archive';
+import {
+  applyLocalStarVote,
+  clampStars,
+  formatScore,
+  SCORE_GATE,
+  starsToRecommend,
+  verdictFor,
+  firstVoteLanded,
+} from '../../lib/archive';
 
 /**
  * One score, one question, and one gate.
@@ -100,6 +108,72 @@ describe('the gate the database RANKS by', () => {
     const generated = sql.match(/has_score\s+boolean\s+GENERATED ALWAYS AS \(vote_count >= (\d+)\)/);
     expect(generated).not.toBeNull();
     expect(Number(generated![1])).toBe(SCORE_GATE);
+  });
+});
+
+describe('a 5-star community average', () => {
+  it('labels the average out of 5 from the first rating', () => {
+    const s = formatScore(0, 1, 5);
+    expect(s.hasScore).toBe(true);
+    expect(s.average).toBe(5);
+    expect(s.label).toBe('5.0');
+    expect(s.percent).toBe(100);
+  });
+
+  it('rounds the average to one decimal', () => {
+    // 21 stars across 5 votes = 4.2
+    const s = formatScore(0, 5, 21);
+    expect(s.average).toBe(4.2);
+    expect(s.label).toBe('4.2');
+  });
+
+  it('never reports more than 5.0', () => {
+    expect(formatScore(0, 2, 20).average).toBe(5);
+    expect(formatScore(0, 2, 20).label).toBe('5.0');
+  });
+
+  it('keeps the percent path when no star sum has been recorded yet', () => {
+    expect(formatScore(84, 100).label).toBe('84%');
+    expect(formatScore(84, 100).average).toBeNull();
+  });
+
+  it('does not treat a zero star sum as an average of 0.0', () => {
+    expect(formatScore(84, 100, 0).label).toBe('84%');
+    expect(formatScore(84, 100, 0).average).toBeNull();
+  });
+});
+
+describe('clampStars / starsToRecommend', () => {
+  it('keeps a rating inside 1–5', () => {
+    expect(clampStars(0)).toBe(1);
+    expect(clampStars(6)).toBe(5);
+    expect(clampStars(3)).toBe(3);
+  });
+
+  it('treats 4 and 5 as a recommend for the legacy up-count', () => {
+    expect(starsToRecommend(4)).toBe(true);
+    expect(starsToRecommend(5)).toBe(true);
+    expect(starsToRecommend(3)).toBe(false);
+  });
+});
+
+describe('applyLocalStarVote', () => {
+  const base = {
+    vote_count: 10, up_count: 8, star_sum: 40,
+  };
+
+  it('adds a first rating to the tallies', () => {
+    const next = applyLocalStarVote(base, undefined, 5);
+    expect(next.vote_count).toBe(11);
+    expect(next.star_sum).toBe(45);
+    expect(next.up_count).toBe(9);
+  });
+
+  it('replaces an existing rating without growing the sample', () => {
+    const next = applyLocalStarVote(base, 5, 2);
+    expect(next.vote_count).toBe(10);
+    expect(next.star_sum).toBe(37);
+    expect(next.up_count).toBe(7);
   });
 });
 

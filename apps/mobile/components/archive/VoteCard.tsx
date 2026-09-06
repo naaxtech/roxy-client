@@ -1,19 +1,20 @@
 import type { ReactNode } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
-import { RADII, inkOn } from '../../lib/theme';
+import { RADII } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
-import { SCORE_GRADIENT } from './archiveTokens';
-
-export type MyVote = 'up' | 'down' | null;
 
 interface Props {
-  myVote: MyVote;
-  onUp: () => void;
-  onDown: () => void;
+  myStars: number | null;
+  onRate: (stars: number) => void;
+  comment?: string;
+  onCommentChange?: (text: string) => void;
+  onSubmitComment?: () => void;
+  canComment?: boolean;
+  commentBusy?: boolean;
   /** The pending-member line, or the "your score is public as a number" line. */
   note?: string;
   /** Watchlist / write-a-review, which the entry screen owns. */
@@ -21,20 +22,22 @@ interface Props {
   testID?: string;
 }
 
-const QUESTION = 'Seen it? Would you recommend it to another wlw?';
+const QUESTION = 'Seen it? Rate it out of 5.';
+const STARS = [1, 2, 3, 4, 5] as const;
 
 /**
- * The whole scoring surface: one question, two answers.
+ * 5-star rating plus an optional named review.
  *
- * Her answer is marked with a **tick as well as a colour**. Both buttons are
- * coloured whatever she picks, so colour alone cannot say which one is hers —
- * WCAG 1.4.1, and in practice the difference between a green and a red button
- * is invisible to a large minority of the people this app is for.
- *
- * src: docs/handoff/roxy-3.0/Roxy App.dc.html · behaviour 2008–2018 · 2026-09-01
+ * A tap on a star is the score. The comment is a second loop — only for
+ * approved members, and only if she wants to write one. Colour alone does
+ * not mark her rating: each filled star is also `aria-selected`.
  */
-export function VoteCard({ myVote, onUp, onDown, note, footer, testID }: Props) {
+export function VoteCard({
+  myStars, onRate, comment, onCommentChange, onSubmitComment,
+  canComment, commentBusy, note, footer, testID,
+}: Props) {
   const colors = useThemeColors();
+  const filled = myStars ?? 0;
 
   const s = StyleSheet.create({
     card: {
@@ -43,73 +46,90 @@ export function VoteCard({ myVote, onUp, onDown, note, footer, testID }: Props) 
       borderRadius: RADII.md,
       backgroundColor: colors.surface,
       borderWidth: 1,
-      borderColor: myVote ? colors.primary : colors.line,
+      borderColor: filled ? colors.primary : colors.line,
     },
     question: { ...TYPE.body, color: colors.textPrimary, fontWeight: '700' },
-    answers: { flexDirection: 'row', gap: 10 },
-    answer: {
-      flex: 1,
+    stars: { flexDirection: 'row', justifyContent: 'space-between' },
+    star: {
+      minWidth: MIN_TOUCH_TARGET,
+      minHeight: MIN_TOUCH_TARGET,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    comment: {
+      minHeight: 88,
+      padding: 10,
+      borderRadius: RADII.md,
+      borderWidth: 1,
+      borderColor: colors.line,
+      backgroundColor: colors.surfaceLight,
+      color: colors.textPrimary,
+      ...TYPE.body,
+      textAlignVertical: 'top',
+    },
+    submit: {
       minHeight: MIN_TOUCH_TARGET,
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: RADII.pill,
-      backgroundColor: colors.surfaceLight,
-      borderWidth: 1,
-      borderColor: colors.line,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 14,
     },
-    answerText: { ...TYPE.body, color: colors.textPrimary, fontWeight: '800' },
+    submitText: { ...TYPE.caption, color: '#fff', fontWeight: '800' },
     note: { ...TYPE.micro, color: colors.textMuted },
   });
-
-  const answer = (
-    side: 'up' | 'down',
-    label: string,
-    spoken: string,
-    onPress: () => void
-  ) => {
-    const selected = myVote === side;
-    const gradient = side === 'up' ? SCORE_GRADIENT.good : SCORE_GRADIENT.poor;
-    const text = `${label}${selected ? ' ✓' : ''}`;
-    const id = testID ? `${testID}-${side}` : undefined;
-
-    // The a11y identity and the testID sit on the painted node, not on the
-    // Pressable around it — RN's Pressable drops `aria-*`, and
-    // accessibilityState alone renders nothing on react-native-web 0.19.
-    const common = {
-      testID: id,
-      accessibilityRole: 'button' as const,
-      accessibilityLabel: spoken,
-      ...a11yState({ selected }),
-    };
-
-    return (
-      <Pressable style={{ flex: 1 }} onPress={onPress} accessible={false}>
-        {selected ? (
-          <LinearGradient
-            colors={gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.answer}
-            {...common}
-          >
-            <Text style={[s.answerText, { color: inkOn(gradient[1]) }]}>{text}</Text>
-          </LinearGradient>
-        ) : (
-          <View style={s.answer} {...common}>
-            <Text style={s.answerText}>{text}</Text>
-          </View>
-        )}
-      </Pressable>
-    );
-  };
 
   return (
     <View style={s.card} testID={testID}>
       <Text style={s.question}>{QUESTION}</Text>
-      <View style={s.answers}>
-        {answer('up', '👍 Yes', 'Yes, I would recommend it to another wlw', onUp)}
-        {answer('down', '👎 No', 'No, I would not recommend it', onDown)}
+      <View style={s.stars}>
+        {STARS.map((n) => {
+          const selected = n <= filled;
+          const id = testID ? `${testID}-star-${n}` : undefined;
+          return (
+            <Pressable key={n} style={{ flex: 1 }} onPress={() => onRate(n)} accessible={false}>
+              <View
+                testID={id}
+                style={s.star}
+                accessibilityRole="button"
+                accessibilityLabel={`${n} star${n === 1 ? '' : 's'}`}
+                {...a11yState({ selected })}
+              >
+                <Ionicons
+                  name={selected ? 'star' : 'star-outline'}
+                  size={28}
+                  color={selected ? colors.primary : colors.textMuted}
+                />
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
+      {canComment ? (
+        <>
+          <TextInput
+            testID={testID ? `${testID}-comment` : undefined}
+            style={s.comment}
+            value={comment}
+            onChangeText={onCommentChange}
+            placeholder="A short review — no spoilers about the ending."
+            placeholderTextColor={colors.textMuted}
+            multiline
+            maxLength={4000}
+            accessibilityLabel="Review comment"
+          />
+          <Pressable
+            testID={testID ? `${testID}-review-submit` : undefined}
+            style={s.submit}
+            onPress={onSubmitComment}
+            disabled={commentBusy || !(comment ?? '').trim()}
+            accessibilityRole="button"
+            accessibilityLabel="Post review"
+          >
+            <Text style={s.submitText}>{commentBusy ? 'Posting…' : 'Post review'}</Text>
+          </Pressable>
+        </>
+      ) : null}
       {note ? (
         <Text style={s.note} testID={testID ? `${testID}-note` : undefined}>{note}</Text>
       ) : null}

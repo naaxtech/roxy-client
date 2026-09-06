@@ -1,14 +1,9 @@
 import { render, fireEvent } from '@testing-library/react-native';
 import { Text, StyleSheet } from 'react-native';
 import { VoteCard } from '../../../components/archive/VoteCard';
-import { SCORE_GRADIENT } from '../../../components/archive/archiveTokens';
 import { THEMES } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { useThemeStore } from '../../../store/themeStore';
-
-// House convention: host component so `colors` stays the raw array rather than
-// processColor's integers.
-jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 
 const flat = (node: { props: { style?: unknown } }) =>
   StyleSheet.flatten(node.props.style as never) as Record<string, string | number>;
@@ -16,78 +11,83 @@ const flat = (node: { props: { style?: unknown } }) =>
 afterEach(() => useThemeStore.setState({ theme: 'dark' }));
 
 describe('VoteCard', () => {
-  it('asks the one question the Archive scores', () => {
-    const v = render(<VoteCard myVote={null} onUp={jest.fn()} onDown={jest.fn()} />);
-    expect(v.getByText('Seen it? Would you recommend it to another wlw?')).toBeTruthy();
+  it('asks her to rate out of 5 stars', () => {
+    const v = render(<VoteCard myStars={null} onRate={jest.fn()} />);
+    expect(v.getByText('Seen it? Rate it out of 5.')).toBeTruthy();
   });
 
-  it('calls back on each answer', () => {
-    const onUp = jest.fn();
-    const onDown = jest.fn();
-    const v = render(<VoteCard myVote={null} onUp={onUp} onDown={onDown} testID="v" />);
-    fireEvent.press(v.getByTestId('v-up'));
-    expect(onUp).toHaveBeenCalledTimes(1);
-    fireEvent.press(v.getByTestId('v-down'));
-    expect(onDown).toHaveBeenCalledTimes(1);
+  it('calls back with the star she tapped', () => {
+    const onRate = jest.fn();
+    const v = render(<VoteCard myStars={null} onRate={onRate} testID="v" />);
+    fireEvent.press(v.getByTestId('v-star-4'));
+    expect(onRate).toHaveBeenCalledWith(4);
   });
 
-  it('marks her answer with a tick as well as a colour', () => {
-    // Colour alone is not an indicator (SC 1.4.1), and on a two-button row the
-    // unselected button is still coloured.
-    const v = render(<VoteCard myVote="up" onUp={jest.fn()} onDown={jest.fn()} testID="v" />);
-    expect(v.getByText('👍 Yes ✓')).toBeTruthy();
-    expect(v.getByText('👎 No')).toBeTruthy();
+  it('marks every star up to her rating as selected', () => {
+    const v = render(<VoteCard myStars={3} onRate={jest.fn()} testID="v" />);
+    expect(v.getByTestId('v-star-1').props['aria-selected']).toBe(true);
+    expect(v.getByTestId('v-star-3').props['aria-selected']).toBe(true);
+    expect(v.getByTestId('v-star-4').props['aria-selected']).toBe(false);
   });
 
-  it('paints the chosen answer with its band gradient', () => {
-    const up = render(<VoteCard myVote="up" onUp={jest.fn()} onDown={jest.fn()} testID="v" />);
-    expect(up.getByTestId('v-up').props.colors).toEqual(SCORE_GRADIENT.good);
-    up.unmount();
-
-    const down = render(<VoteCard myVote="down" onUp={jest.fn()} onDown={jest.fn()} testID="v" />);
-    expect(down.getByTestId('v-down').props.colors).toEqual(SCORE_GRADIENT.poor);
+  it('sizes each star to the touch-target floor', () => {
+    const v = render(<VoteCard myStars={null} onRate={jest.fn()} testID="v" />);
+    expect(flat(v.getByTestId('v-star-1')).minHeight).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
+    expect(flat(v.getByTestId('v-star-5')).minWidth).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
   });
 
-  it('leaves both answers on a plain surface until she picks one', () => {
-    const v = render(<VoteCard myVote={null} onUp={jest.fn()} onDown={jest.fn()} testID="v" />);
-    expect(flat(v.getByTestId('v-up')).backgroundColor).toBe(THEMES.dark.surfaceLight);
-    expect(flat(v.getByTestId('v-down')).backgroundColor).toBe(THEMES.dark.surfaceLight);
+  it('shows a review comment box when she is allowed to write one', () => {
+    const onCommentChange = jest.fn();
+    const v = render(
+      <VoteCard
+        myStars={5}
+        onRate={jest.fn()}
+        canComment
+        comment="Loved it"
+        onCommentChange={onCommentChange}
+        onSubmitComment={jest.fn()}
+        testID="v"
+      />,
+    );
+    expect(v.getByTestId('v-comment')).toBeTruthy();
+    fireEvent.changeText(v.getByTestId('v-comment'), 'The gloves scene.');
+    expect(onCommentChange).toHaveBeenCalledWith('The gloves scene.');
+  });
+
+  it('hides the comment box while she cannot write a review', () => {
+    const v = render(
+      <VoteCard myStars={4} onRate={jest.fn()} canComment={false} testID="v" />,
+    );
+    expect(v.queryByTestId('v-comment')).toBeNull();
+    expect(v.queryByTestId('v-review-submit')).toBeNull();
+  });
+
+  it('publishes the comment when she submits', () => {
+    const onSubmitComment = jest.fn();
+    const v = render(
+      <VoteCard
+        myStars={5}
+        onRate={jest.fn()}
+        canComment
+        comment="Loved it"
+        onCommentChange={jest.fn()}
+        onSubmitComment={onSubmitComment}
+        testID="v"
+      />,
+    );
+    fireEvent.press(v.getByTestId('v-review-submit'));
+    expect(onSubmitComment).toHaveBeenCalledTimes(1);
   });
 
   it('resolves in the light theme', () => {
     useThemeStore.setState({ theme: 'light' });
-    const v = render(<VoteCard myVote={null} onUp={jest.fn()} onDown={jest.fn()} testID="v" />);
+    const v = render(<VoteCard myStars={null} onRate={jest.fn()} testID="v" />);
     expect(flat(v.getByTestId('v')).backgroundColor).toBe(THEMES.light.surface);
-  });
-
-  it('announces which answer is hers without relying on the emoji', () => {
-    const v = render(<VoteCard myVote="up" onUp={jest.fn()} onDown={jest.fn()} testID="v" />);
-    const up = v.getByTestId('v-up');
-    expect(up.props.accessibilityRole).toBe('button');
-    expect(up.props.accessibilityLabel).toBe('Yes, I would recommend it to another wlw');
-    expect(up.props['aria-selected']).toBe(true);
-    expect(v.getByTestId('v-down').props['aria-selected']).toBe(false);
-  });
-
-  it('sizes both answers to the touch-target floor', () => {
-    const v = render(<VoteCard myVote={null} onUp={jest.fn()} onDown={jest.fn()} testID="v" />);
-    expect(flat(v.getByTestId('v-up')).minHeight).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
-    expect(flat(v.getByTestId('v-down')).minHeight).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
-  });
-
-  it('shows the note under the buttons when it is given one, and nothing when not', () => {
-    const withNote = render(
-      <VoteCard myVote={null} onUp={jest.fn()} onDown={jest.fn()} note="Scoring works while pending." />
-    );
-    expect(withNote.getByText('Scoring works while pending.')).toBeTruthy();
-
-    const without = render(<VoteCard myVote={null} onUp={jest.fn()} onDown={jest.fn()} testID="v" />);
-    expect(without.queryByTestId('v-note')).toBeNull();
   });
 
   it('hosts the row of secondary actions the entry screen puts in this card', () => {
     const v = render(
-      <VoteCard myVote={null} onUp={jest.fn()} onDown={jest.fn()} footer={<Text>+ Watchlist</Text>} />
+      <VoteCard myStars={null} onRate={jest.fn()} footer={<Text>+ Watchlist</Text>} />,
     );
     expect(v.getByText('+ Watchlist')).toBeTruthy();
   });

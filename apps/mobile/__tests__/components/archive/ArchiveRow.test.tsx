@@ -66,6 +66,14 @@ describe('ArchiveRow', () => {
     expect(v.getByText(/1 vote/)).toBeTruthy();
   });
 
+  it('shows the community average out of 5 when stars have been recorded', () => {
+    const v = render(
+      <ArchiveRow entry={entry({ vote_count: 100, up_count: 89, star_sum: 420 })} onPress={jest.fn()} testID="row" />,
+    );
+    expect(v.getByText('4.2')).toBeTruthy();
+    expect(v.getByTestId('row').props.accessibilityLabel).toContain('4.2');
+  });
+
   it('shows at most the top two content notes', () => {
     const notes = [
       { id: 'a', label: 'grief', agreeCount: 30, agreed: false },

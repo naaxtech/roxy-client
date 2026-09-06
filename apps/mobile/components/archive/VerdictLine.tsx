@@ -10,7 +10,7 @@ interface Props {
 }
 
 /** The one-line statement of what the Archive is, under every score. */
-const PRODUCT_LINE = 'One score, one question. No critics, no stars.';
+const PRODUCT_LINE = 'Rated out of 5 by members. No critics.';
 
 /**
  * The sentence under the ring.
@@ -35,9 +35,12 @@ export function VerdictLine({ score, reviewCount }: Props) {
 
   if (!score.verdict) return null;
 
-  const voted = `${score.total} members voted`;
+  const voted = `${score.total} ${score.total === 1 ? 'member voted' : 'members voted'}`;
+  const average = score.average != null ? `${score.label} / 5 · ` : '';
   const meta =
-    typeof reviewCount === 'number' ? `${voted} · ${reviewCount} wrote reviews` : voted;
+    typeof reviewCount === 'number'
+      ? `${average}${voted} · ${reviewCount} wrote reviews`
+      : `${average}${voted}`;
 
   return (
     <View style={s.wrap}>

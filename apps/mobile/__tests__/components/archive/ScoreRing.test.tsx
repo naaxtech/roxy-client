@@ -40,6 +40,13 @@ describe('ScoreRing', () => {
     expect(v.getByText('REC')).toBeTruthy();
   });
 
+  it('renders the community average without a REC caption when stars have been recorded', () => {
+    const v = render(<ScoreRing score={formatScore(84, 100, 420)} />);
+    expect(v.getByText('4.2')).toBeTruthy();
+    expect(v.queryByText('REC')).toBeNull();
+    expect(v.queryByText('/ 5')).toBeNull();
+  });
+
   it('draws no arc at all when nobody has rated it', () => {
     // A coloured ring over nothing reads as a score whatever the label says.
     const v = render(<ScoreRing score={formatScore(0, 0)} testID="r" />);

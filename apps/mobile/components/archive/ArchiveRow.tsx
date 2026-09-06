@@ -6,7 +6,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
-import { formatScore, type ArchiveEntry } from '../../lib/archive';
+import { scoreFromEntry, type ArchiveEntry } from '../../lib/archive';
 import { ScorePill } from './ScorePill';
 import { ContentNoteChip, visibleNotes, type ArchiveNote } from './ContentNoteChip';
 import { coverGradientFor } from '../../lib/coverGradient';
@@ -41,7 +41,7 @@ export function ArchiveRow({ entry, notes = [], onPress, testID }: Props) {
   const colors = useThemeColors();
   const [coverFailed, setCoverFailed] = useState(false);
 
-  const score = formatScore(entry.up_count, entry.vote_count);
+  const score = scoreFromEntry(entry);
   const shown = visibleNotes(notes, NOTES_ON_A_ROW);
 
   // "0 votes" beside a pill already saying "Unreviewed" is the same fact twice,

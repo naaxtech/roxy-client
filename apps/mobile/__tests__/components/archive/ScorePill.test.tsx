@@ -63,4 +63,10 @@ describe('ScorePill', () => {
     const fresh = render(<ScorePill score={formatScore(0, 0)} testID="q" />);
     expect(fresh.getByTestId('q').props.accessibilityLabel).toBe('Not reviewed yet');
   });
+
+  it('shows the community average out of 5 when stars have been recorded', () => {
+    const v = render(<ScorePill score={formatScore(84, 100, 420)} testID="p" />);
+    expect(v.getByText('4.2')).toBeTruthy();
+    expect(v.getByTestId('p').props.accessibilityLabel).toBe('4.2 out of 5 from 100 members');
+  });
 });

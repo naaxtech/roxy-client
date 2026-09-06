@@ -23,6 +23,7 @@ describe('VerdictLine', () => {
     // The sample size is never hidden — that is what keeps a verdict off three
     // votes honest rather than authoritative.
     expect(v.getByText('3 members voted')).toBeTruthy();
+    expect(render(<VerdictLine score={formatScore(1, 1)} />).getByText('1 member voted')).toBeTruthy();
   });
 
   it('says how many members voted', () => {
@@ -36,6 +37,11 @@ describe('VerdictLine', () => {
 
   it('carries the product line under it', () => {
     const v = render(<VerdictLine score={formatScore(84, 100)} />);
-    expect(v.getByText('One score, one question. No critics, no stars.')).toBeTruthy();
+    expect(v.getByText('Rated out of 5 by members. No critics.')).toBeTruthy();
+  });
+
+  it('prints the average out of 5 next to the vote count', () => {
+    const v = render(<VerdictLine score={formatScore(84, 100, 420)} reviewCount={12} />);
+    expect(v.getByText('4.2 / 5 · 100 members voted · 12 wrote reviews')).toBeTruthy();
   });
 });

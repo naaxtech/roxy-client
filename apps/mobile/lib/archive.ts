@@ -5,10 +5,9 @@ import { ilikePattern } from './ilikePattern';
 /**
  * The WLW Archive — scoring, and the queries behind it.
  *
- * One score, one question: "would you recommend this to another wlw?" Yes or
- * no, aggregated into a single % recommend. No stars, no critic score, no
- * sub-scores — the whole point is that a woman deciding what to watch tonight
- * gets one number from people like her.
+ * One score, one question: rate it out of 5. The community average is
+ * star_sum / vote_count. 4★ and 5★ still count as a recommend so the
+ * existing up_count ranking keeps working. No critic score, no sub-scores.
  *
  * Every surface reads the score through `formatScore`. That is not a style
  * preference: the gate below is the only thing standing between the browse list
@@ -47,14 +46,51 @@ export type ArchiveVerdict =
 export type ArchiveScore = {
   /** Whether the entry has earned a number. */
   hasScore: boolean;
-  /** 0–100, or null below the gate. Never a number the entry has not earned. */
+  /** 0–100 fill for the ring, or null when nobody has rated it. */
   percent: number | null;
-  /** What to render: "84%" or "NEW · 3 votes". */
+  /** Community average out of 5, or null when we only have a recommend %. */
+  average: number | null;
+  /** What to render: "4.2" or "84%" or "Unreviewed". */
   label: string;
-  /** The sentence under the ring, or null below the gate. */
+  /** The sentence under the ring, or null when nobody has rated it. */
   verdict: ArchiveVerdict | null;
   total: number;
 };
+
+/** A tap on the star row is always 1–5, even if a caller sends junk. */
+export function clampStars(value: number): number {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(5, Math.max(1, Math.round(value)));
+}
+
+/** 4★ and 5★ still count as a recommend for the legacy up_count tally. */
+export function starsToRecommend(stars: number): boolean {
+  return clampStars(stars) >= 4;
+}
+
+/** A stored vote may be the old boolean, or the new 1–5. Both become stars. */
+export function starsFromVoteRow(row: { stars?: number | null; value?: boolean }): number {
+  if (typeof row.stars === 'number') return clampStars(row.stars);
+  return row.value ? 5 : 2;
+}
+
+export function applyLocalStarVote<T extends {
+  vote_count: number;
+  up_count: number;
+  star_sum?: number | null;
+}>(entry: T, previousStars: number | undefined, nextStars: number): T {
+  const next = clampStars(nextStars);
+  const wasNew = previousStars == null;
+  const prev = wasNew ? 0 : clampStars(previousStars);
+  const prevUp = !wasNew && starsToRecommend(prev);
+  const nextUp = starsToRecommend(next);
+  return {
+    ...entry,
+    vote_count: entry.vote_count + (wasNew ? 1 : 0),
+    star_sum: (entry.star_sum ?? 0) - prev + next,
+    up_count: entry.up_count - (prevUp ? 1 : 0) + (nextUp ? 1 : 0),
+  };
+}
 
 /**
  * The verdict bands, from the prototype's own thresholds.
@@ -71,12 +107,30 @@ export function verdictFor(percent: number): ArchiveVerdict {
   return 'Most of us said skip it';
 }
 
-export function formatScore(up: number, total: number): ArchiveScore {
+export function formatScore(up: number, total: number, starSum?: number | null): ArchiveScore {
   // Nobody has rated it. There is no statistic to show and none to imply —
   // "0%" would read as a verdict and "NEW · 0 votes" reads as a defect. It is
   // simply unreviewed, and saying so is an invitation rather than an absence.
   if (total <= 0) {
-    return { hasScore: false, percent: null, label: 'Unreviewed', verdict: null, total: 0 };
+    return {
+      hasScore: false, percent: null, average: null, label: 'Unreviewed', verdict: null, total: 0,
+    };
+  }
+
+  // star_sum of 0 with real votes is an un-backfilled baseline, not an
+  // average of 0.0 — fall through to the recommend % until stars exist.
+  if (starSum != null && Number.isFinite(starSum) && starSum > 0) {
+    const raw = starSum / total;
+    const average = Math.min(5, Math.max(0, Math.round(raw * 10) / 10));
+    const percent = Math.round((average / 5) * 100);
+    return {
+      hasScore: true,
+      percent,
+      average,
+      label: average.toFixed(1),
+      verdict: verdictFor(percent),
+      total,
+    };
   }
 
   // A denormalized up_count above vote_count means a counter trigger drifted.
@@ -88,6 +142,7 @@ export function formatScore(up: number, total: number): ArchiveScore {
   return {
     hasScore: true,
     percent,
+    average: null,
     label: `${percent}%`,
     verdict: verdictFor(percent),
     total,
@@ -106,6 +161,12 @@ export type ScoreTone = 'good' | 'mixed' | 'poor' | 'none';
  */
 export function firstVoteLanded(alreadyVoted: boolean, previousTotal: number): boolean {
   return !alreadyVoted && previousTotal === 0;
+}
+
+export function scoreFromEntry(
+  entry: Pick<ArchiveEntry, 'up_count' | 'vote_count' | 'star_sum'>,
+): ArchiveScore {
+  return formatScore(entry.up_count, entry.vote_count, entry.star_sum);
 }
 
 export function scoreTone(score: ArchiveScore): ScoreTone {
@@ -130,6 +191,8 @@ export type ArchiveEntry = {
   cover_gradient: string | null;
   vote_count: number;
   up_count: number;
+  /** Sum of 1–5 star votes. Average is star_sum / vote_count. */
+  star_sum?: number | null;
   review_count: number;
   has_score: boolean;
   published_at: string | null;
@@ -139,7 +202,16 @@ export type ArchiveSort = 'top' | 'voted' | 'newest' | 'needs';
 
 const ENTRY_COLUMNS =
   'id, slug, title, media_type, release_year, creator, length_label, summary, ' +
+  'cover_url, cover_gradient, vote_count, up_count, star_sum, review_count, has_score, published_at';
+
+const ENTRY_COLUMNS_LEGACY =
+  'id, slug, title, media_type, release_year, creator, length_label, summary, ' +
   'cover_url, cover_gradient, vote_count, up_count, review_count, has_score, published_at';
+
+function missingStarSum(error: { message?: string; code?: string } | null): boolean {
+  const message = error?.message ?? '';
+  return error?.code === '42703' || /star_sum/i.test(message);
+}
 
 export type ArchiveQuery = {
   query?: string;
@@ -189,7 +261,16 @@ export async function fetchArchiveEntries(opts: ArchiveQuery = {}): Promise<Arch
   else if (sort === 'voted') q = q.order('vote_count', { ascending: false });
   else q = q.order('published_at', { ascending: false });
 
-  const { data, error } = await q.limit(limit);
+  let { data, error } = await q.limit(limit);
+  if (error && missingStarSum(error)) {
+    const fallback = supabase
+      .from('archive_entries')
+      .select(ENTRY_COLUMNS_LEGACY)
+      .eq('status', 'published');
+    const retried = await (mediaType ? fallback.eq('media_type', mediaType) : fallback).limit(limit);
+    data = retried.data;
+    error = retried.error;
+  }
   if (error) {
     logError(error, 'archive.fetchArchiveEntries');
     throw error;
@@ -207,8 +288,12 @@ export async function fetchArchiveEntries(opts: ArchiveQuery = {}): Promise<Arch
     const tier = (e: ArchiveEntry) => (e.has_score ? 0 : e.vote_count > 0 ? 1 : 2);
     return [...rows].sort((a, b) => {
       if (tier(a) !== tier(b)) return tier(a) - tier(b);
-      const ra = a.vote_count > 0 ? a.up_count / a.vote_count : 0;
-      const rb = b.vote_count > 0 ? b.up_count / b.vote_count : 0;
+      const ra = a.vote_count > 0
+        ? (a.star_sum ?? a.up_count) / a.vote_count
+        : 0;
+      const rb = b.vote_count > 0
+        ? (b.star_sum ?? b.up_count) / b.vote_count
+        : 0;
       if (rb !== ra) return rb - ra;
       return b.vote_count - a.vote_count;
     });
@@ -226,12 +311,23 @@ export async function fetchArchiveEntries(opts: ArchiveQuery = {}): Promise<Arch
 }
 
 export async function fetchArchiveEntry(slug: string): Promise<ArchiveEntry | null> {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('archive_entries')
     .select(ENTRY_COLUMNS)
     .eq('slug', slug)
     .eq('status', 'published')
     .maybeSingle();
+
+  if (error && missingStarSum(error)) {
+    const retried = await supabase
+      .from('archive_entries')
+      .select(ENTRY_COLUMNS_LEGACY)
+      .eq('slug', slug)
+      .eq('status', 'published')
+      .maybeSingle();
+    data = retried.data;
+    error = retried.error;
+  }
 
   if (error) {
     logError(error, 'archive.fetchArchiveEntry');
@@ -322,7 +418,7 @@ export async function fetchArchiveEntryDetail(entryId: string): Promise<ArchiveE
       .order('agree_count', { ascending: false }),
     supabase
       .from('archive_reviews')
-      .select('id, body, is_recommend, helpful_count, created_at, author:profiles(id, display_name, username, avatar_url)')
+      .select('id, body, is_recommend, helpful_count, created_at, author:profiles!archive_reviews_author_id_fkey(id, display_name, username, avatar_url)')
       .eq('entry_id', entryId)
       .eq('status', 'published')
       .order('helpful_count', { ascending: false })

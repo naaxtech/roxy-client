@@ -7,7 +7,7 @@ import { TYPE } from '../../lib/typography';
 import { RADII } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { logError } from '../../lib/errorLogger';
-import { fetchArchiveEntries, formatScore, type ArchiveEntry } from '../../lib/archive';
+import { fetchArchiveEntries, scoreFromEntry, type ArchiveEntry } from '../../lib/archive';
 import { ScorePill } from '../archive/ScorePill';
 
 /**
@@ -86,7 +86,7 @@ export function SavedWatchlist() {
         // Through formatScore like every other surface — the >=10-vote gate has
         // one home, and a row doing its own division is how a one-vote entry
         // ends up showing 100%.
-        const score = formatScore(entry.up_count, entry.vote_count);
+        const score = scoreFromEntry(entry);
         return (
           <Pressable
             key={entry.id}

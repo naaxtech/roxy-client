@@ -5,9 +5,13 @@ jest.mock('../../lib/supabase', () => ({
   },
 }));
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
-jest.mock('../../lib/archive', () => ({
-  fetchArchiveEntries: jest.fn(),
-}));
+jest.mock('../../lib/archive', () => {
+  const actual = jest.requireActual('../../lib/archive');
+  return {
+    ...actual,
+    fetchArchiveEntries: jest.fn(),
+  };
+});
 
 import { act, renderHook } from '@testing-library/react-native';
 import { useArchiveStore } from '../../store/archiveStore';
@@ -142,13 +146,13 @@ describe('archiveStore.hydrateMine', () => {
       await result.current.hydrateMine('user-1');
     });
 
-    expect(result.current.myVotes).toEqual({ e1: true, e2: false });
+    expect(result.current.myVotes).toEqual({ e1: 5, e2: 2 });
     expect(result.current.watchlist).toEqual(['e3']);
     expect(result.current.noteAgreements).toEqual(['n1']);
   });
 
   it('keeps existing votes when the votes query fails — a failed refresh must never look like "you voted on nothing"', async () => {
-    useArchiveStore.setState({ myVotes: { e9: true } });
+    useArchiveStore.setState({ myVotes: { e9: 5 } });
     supabase.from.mockImplementation((table: string) => {
       if (table === 'archive_votes') return makeChain({ data: null, error: { message: 'boom' } });
       return makeChain({ data: [], error: null });
@@ -159,7 +163,7 @@ describe('archiveStore.hydrateMine', () => {
       await result.current.hydrateMine('user-1');
     });
 
-    expect(result.current.myVotes).toEqual({ e9: true });
+    expect(result.current.myVotes).toEqual({ e9: 5 });
     expect(logError).toHaveBeenCalled();
   });
 });
@@ -174,39 +178,42 @@ describe('archiveStore.vote', () => {
 
     const { result } = renderHook(() => useArchiveStore());
     await act(async () => {
-      await result.current.vote('e1', true);
+      await result.current.vote('e1', 5);
     });
 
     expect(updateChain.upsert).not.toHaveBeenCalled();
     expect(insertChain.upsert).not.toHaveBeenCalled();
     expect(updateChain.update).toHaveBeenCalledWith({
       value: true,
+      stars: 5,
       updated_at: expect.any(String),
     });
     expect(insertChain.insert).toHaveBeenCalledWith({
       entry_id: 'e1',
       profile_id: 'user-1',
       value: true,
+      stars: 5,
     });
-    expect(result.current.myVotes['e1']).toBe(true);
+    expect(result.current.myVotes['e1']).toBe(5);
   });
 
   it('changes an existing vote by updating only value and updated_at', async () => {
-    useArchiveStore.setState({ myVotes: { e1: false } });
-    const updateChain = makeChain({ data: { value: true }, error: null });
+    useArchiveStore.setState({ myVotes: { e1: 2 } });
+    const updateChain = makeChain({ data: { value: true, stars: 5 }, error: null });
     supabase.from.mockReturnValue(updateChain);
 
     const { result } = renderHook(() => useArchiveStore());
     await act(async () => {
-      await result.current.vote('e1', true);
+      await result.current.vote('e1', 5);
     });
 
     expect(updateChain.update).toHaveBeenCalledWith({
       value: true,
+      stars: 5,
       updated_at: expect.any(String),
     });
     expect(updateChain.insert).not.toHaveBeenCalled();
-    expect(result.current.myVotes['e1']).toBe(true);
+    expect(result.current.myVotes['e1']).toBe(5);
   });
 
   it('applies optimistically before the write resolves', () => {
@@ -214,10 +221,10 @@ describe('archiveStore.vote', () => {
 
     const { result } = renderHook(() => useArchiveStore());
     act(() => {
-      void result.current.vote('e1', true);
+      void result.current.vote('e1', 5);
     });
 
-    expect(result.current.myVotes['e1']).toBe(true);
+    expect(result.current.myVotes['e1']).toBe(5);
   });
 
   it('keeps the vote when the write is confirmed', async () => {
@@ -225,28 +232,28 @@ describe('archiveStore.vote', () => {
 
     const { result } = renderHook(() => useArchiveStore());
     await act(async () => {
-      await result.current.vote('e1', true);
+      await result.current.vote('e1', 5);
     });
 
-    expect(result.current.myVotes['e1']).toBe(true);
+    expect(result.current.myVotes['e1']).toBe(5);
   });
 
   it('rolls back to the previous vote on a DB error', async () => {
-    useArchiveStore.setState({ myVotes: { e1: false } });
+    useArchiveStore.setState({ myVotes: { e1: 2 } });
     supabase.from.mockReturnValue(makeChain({ data: null, error: { message: 'db error' } }));
 
     const { result } = renderHook(() => useArchiveStore());
     let thrown: unknown;
     await act(async () => {
       try {
-        await result.current.vote('e1', true);
+        await result.current.vote('e1', 5);
       } catch (e) {
         thrown = e;
       }
     });
 
     expect(thrown).toBeDefined();
-    expect(result.current.myVotes['e1']).toBe(false);
+    expect(result.current.myVotes['e1']).toBe(2);
   });
 
   it('clears the key entirely on rollback when she had never voted before (absent, not false)', async () => {
@@ -256,7 +263,7 @@ describe('archiveStore.vote', () => {
     let thrown: unknown;
     await act(async () => {
       try {
-        await result.current.vote('e1', true);
+        await result.current.vote('e1', 5);
       } catch (e) {
         thrown = e;
       }
@@ -268,39 +275,39 @@ describe('archiveStore.vote', () => {
   });
 
   it('rolls back on a 200-with-zero-rows response — "no error" is not "it happened"', async () => {
-    useArchiveStore.setState({ myVotes: { e1: false } });
+    useArchiveStore.setState({ myVotes: { e1: 2 } });
     supabase.from.mockReturnValue(makeChain({ data: null, error: null }));
 
     const { result } = renderHook(() => useArchiveStore());
     let thrown: unknown;
     await act(async () => {
       try {
-        await result.current.vote('e1', true);
+        await result.current.vote('e1', 5);
       } catch (e) {
         thrown = e;
       }
     });
 
     expect(thrown).toBeDefined();
-    expect(result.current.myVotes['e1']).toBe(false);
+    expect(result.current.myVotes['e1']).toBe(2);
   });
 
   it('rolls back and throws when there is no session', async () => {
-    useArchiveStore.setState({ myVotes: { e1: false } });
+    useArchiveStore.setState({ myVotes: { e1: 2 } });
     signedOut();
 
     const { result } = renderHook(() => useArchiveStore());
     let thrown: unknown;
     await act(async () => {
       try {
-        await result.current.vote('e1', true);
+        await result.current.vote('e1', 5);
       } catch (e) {
         thrown = e;
       }
     });
 
     expect(thrown).toBeDefined();
-    expect(result.current.myVotes['e1']).toBe(false);
+    expect(result.current.myVotes['e1']).toBe(2);
   });
 });
 

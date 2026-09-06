@@ -39,11 +39,30 @@ export function ScoreRing({ score, size = DEFAULT_SIZE, testID }: Props) {
   const centre = size / 2;
   const stroke = scoreRingColor(tone, colors);
 
+  const numberSize = Math.round(size * 0.24);
+  const captionSize = Math.max(9, Math.round(size * 0.13));
   const s = StyleSheet.create({
     wrap: { width: size, height: size, alignItems: 'center', justifyContent: 'center' },
-    hole: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-    percent: { ...TYPE.title, color: colors.textPrimary, fontWeight: '800' },
-    caption: { ...TYPE.micro, color: colors.textMuted, fontWeight: '800' },
+    hole: {
+      ...StyleSheet.absoluteFillObject,
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    percent: {
+      ...TYPE.title,
+      fontSize: numberSize,
+      lineHeight: numberSize + 2,
+      color: colors.textPrimary,
+      fontWeight: '800',
+    },
+    caption: {
+      ...TYPE.micro,
+      fontSize: captionSize,
+      lineHeight: captionSize + 2,
+      color: colors.textMuted,
+      fontWeight: '800',
+    },
     newLabel: { ...TYPE.body, color: colors.textSecondary, fontWeight: '800' },
   });
 
@@ -94,7 +113,7 @@ export function ScoreRing({ score, size = DEFAULT_SIZE, testID }: Props) {
         {scored ? (
           <>
             <Text style={s.percent}>{score.label}</Text>
-            <Text style={s.caption}>REC</Text>
+            {score.average == null ? <Text style={s.caption}>REC</Text> : null}
           </>
         ) : (
           // Nobody has rated it. "0 votes" reads as a defect; "Unreviewed"

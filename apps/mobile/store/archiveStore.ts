@@ -2,7 +2,10 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { logError } from '../lib/errorLogger';
 import {
+  clampStars,
   fetchArchiveEntries,
+  starsFromVoteRow,
+  starsToRecommend,
   type ArchiveEntry,
   type ArchiveMediaType,
   type ArchiveSort,
@@ -37,8 +40,8 @@ interface ArchiveState {
   error: string | null;
   filters: ArchiveFilters;
 
-  /** Her own vote per entry. An absent key means "never voted" — never coerce it to false. */
-  myVotes: Record<string, boolean>;
+  /** Her own stars per entry (1–5). An absent key means "never voted". */
+  myVotes: Record<string, number>;
   /** Entry ids on her watchlist. */
   watchlist: string[];
   /** Content-note ids she has agreed with. One-way: 096 gives archive_note_agreements no DELETE policy. */
@@ -47,7 +50,7 @@ interface ArchiveState {
   load: () => Promise<void>;
   setFilters: (patch: Partial<ArchiveFilters>) => void;
   hydrateMine: (userId: string) => Promise<void>;
-  vote: (entryId: string, value: boolean) => Promise<void>;
+  vote: (entryId: string, stars: number) => Promise<void>;
   toggleWatch: (entryId: string) => Promise<void>;
   agreeNote: (noteId: string) => Promise<void>;
 }
@@ -96,7 +99,7 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
    */
   hydrateMine: async (userId) => {
     const [votesRes, watchlistRes, notesRes] = await Promise.all([
-      supabase.from('archive_votes').select('entry_id, value').eq('profile_id', userId),
+      supabase.from('archive_votes').select('entry_id, value, stars').eq('profile_id', userId),
       supabase.from('archive_watchlist').select('entry_id').eq('profile_id', userId),
       supabase.from('archive_note_agreements').select('note_id').eq('profile_id', userId),
     ]);
@@ -107,9 +110,9 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
       if (votesRes.error) {
         logError(votesRes.error, 'archiveStore.hydrateMine.votes');
       } else {
-        const myVotes: Record<string, boolean> = {};
-        for (const row of (votesRes.data ?? []) as { entry_id: string; value: boolean }[]) {
-          myVotes[row.entry_id] = row.value;
+        const myVotes: Record<string, number> = {};
+        for (const row of (votesRes.data ?? []) as { entry_id: string; value?: boolean; stars?: number | null }[]) {
+          myVotes[row.entry_id] = starsFromVoteRow(row);
         }
         next.myVotes = myVotes;
       }
@@ -140,14 +143,16 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
    * checks those privileges on `INSERT … ON CONFLICT DO UPDATE`, even when
    * there is no conflict — so an upsert of `{entry_id, profile_id, value}`
    * fails every vote, first one included. Changing her mind writes only
-   * `value` and `updated_at`, the two columns she is still allowed to PATCH.
+   * `value`, `stars` and `updated_at`, the columns she is still allowed to PATCH.
    *
    * `.select()` asks for the row back so "no error" and "it actually
    * happened" cannot come apart here.
    */
-  vote: async (entryId, value) => {
+  vote: async (entryId, rawStars) => {
+    const stars = clampStars(rawStars);
+    const value = starsToRecommend(stars);
     const previous = get().myVotes[entryId];
-    set((s) => ({ myVotes: { ...s.myVotes, [entryId]: value } }));
+    set((s) => ({ myVotes: { ...s.myVotes, [entryId]: stars } }));
 
     const rollback = () => {
       set((s) => {
@@ -166,10 +171,10 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
 
     const { data: updated, error: updateError } = await supabase
       .from('archive_votes')
-      .update({ value, updated_at: new Date().toISOString() })
+      .update({ value, stars, updated_at: new Date().toISOString() })
       .eq('entry_id', entryId)
       .eq('profile_id', userId)
-      .select('value')
+      .select('value, stars')
       .maybeSingle();
 
     if (updateError) {
@@ -181,18 +186,18 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
 
     const { data, error } = await supabase
       .from('archive_votes')
-      .insert({ entry_id: entryId, profile_id: userId, value })
-      .select('value')
+      .insert({ entry_id: entryId, profile_id: userId, value, stars })
+      .select('value, stars')
       .maybeSingle();
 
     if (error) {
       if (error.code === '23505') {
         const retry = await supabase
           .from('archive_votes')
-          .update({ value, updated_at: new Date().toISOString() })
+          .update({ value, stars, updated_at: new Date().toISOString() })
           .eq('entry_id', entryId)
           .eq('profile_id', userId)
-          .select('value')
+          .select('value, stars')
           .maybeSingle();
         if (!retry.error && retry.data) return;
         if (retry.error) logError(retry.error, 'archiveStore.vote');

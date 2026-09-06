@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { globalSearch, GlobalSearchResult } from '../lib/globalSearch';
-import { formatScore } from '../lib/archive';
+import { scoreFromEntry } from '../lib/archive';
 import { archiveDetailPath } from '../lib/contentNavigation';
 import { avatarGradient } from '../lib/avatars';
 import { SectionHeader } from '../components/ui/SectionHeader';
@@ -326,7 +326,7 @@ export default function GlobalSearchScreen() {
                 // a search row computing its own percentage is exactly how a
                 // one-vote entry ends up advertising 100% on the busiest screen
                 // in the app.
-                const score = formatScore(a.up_count, a.vote_count);
+                const score = scoreFromEntry(a);
                 return (
                   <TouchableOpacity
                     key={a.id}

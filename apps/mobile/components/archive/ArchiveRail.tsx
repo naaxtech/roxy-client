@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
-import { formatScore, type ArchiveEntry } from '../../lib/archive';
+import { scoreFromEntry, type ArchiveEntry } from '../../lib/archive';
 import { ScorePill } from './ScorePill';
 import { coverGradientFor } from '../../lib/coverGradient';
 import { archiveTypeLabel } from '../../lib/archiveTypes';
@@ -141,7 +141,7 @@ export function ArchiveRail({
     return (
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.rail}>
         {entries.map((entry) => {
-          const score = formatScore(entry.up_count, entry.vote_count);
+          const score = scoreFromEntry(entry);
           // "0 votes" beside a pill already reading "Unreviewed" is the same
           // fact twice, and the second telling reads as a defect. Same rule
           // ArchiveRow follows — it was fixed there and missed here, which is

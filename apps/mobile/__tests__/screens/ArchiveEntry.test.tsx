@@ -12,6 +12,11 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ slug: 'carol' }),
 }));
 
+jest.mock('../../store/authStore', () => ({
+  useAuthStore: (sel: (s: { user: { id: string } | null }) => unknown) =>
+    sel({ user: { id: 'u1' } }),
+}));
+
 jest.mock('../../hooks/useMembership', () => ({
   useMembership: () => ({
     status: mockStatus,
@@ -26,12 +31,14 @@ jest.mock('../../lib/analytics', () => ({
     archiveEntryViewed: jest.fn(),
     archiveVoteCast: jest.fn(),
     archiveWatchlistAdded: jest.fn(),
+    archiveReviewPublished: jest.fn(),
     archiveNoteAgreed: jest.fn(),
   },
 }));
 
 const mockFetchEntry = jest.fn();
 const mockFetchDetail = jest.fn();
+const mockSubmitReview = jest.fn();
 jest.mock('../../lib/archive', () => {
   const actual = jest.requireActual('../../lib/archive');
   return {
@@ -40,23 +47,28 @@ jest.mock('../../lib/archive', () => {
     fetchArchiveEntryDetail: (...a: unknown[]) => mockFetchDetail(...a),
   };
 });
+jest.mock('../../components/archive/composerActions', () => ({
+  submitReview: (...a: unknown[]) => mockSubmitReview(...a),
+}));
 
 const entry: ArchiveEntry = {
   id: 'e1', slug: 'carol', title: 'Carol', media_type: 'film', release_year: 2015,
   creator: 'Todd Haynes', length_label: '1h 58m',
   summary: 'A shopgirl and a woman in a fur coat.',
-  cover_url: null, cover_gradient: null, vote_count: 100, up_count: 89,
+  cover_url: null, cover_gradient: null, vote_count: 100, up_count: 89, star_sum: 420,
   review_count: 2, has_score: true, published_at: '2026-08-01T00:00:00Z',
 };
 
 const mockVote = jest.fn();
 const mockToggleWatch = jest.fn();
 const mockAgreeNote = jest.fn();
+const mockHydrateMine = jest.fn();
 
 function seedStore(over: Record<string, unknown> = {}) {
   useArchiveStore.setState({
     myVotes: {}, watchlist: [], noteAgreements: [],
     vote: mockVote, toggleWatch: mockToggleWatch, agreeNote: mockAgreeNote,
+    hydrateMine: mockHydrateMine,
     ...over,
   } as never);
 }
@@ -64,9 +76,11 @@ function seedStore(over: Record<string, unknown> = {}) {
 beforeEach(() => {
   mockPush.mockClear();
   mockStatus = 'approved';
+  mockHydrateMine.mockReset().mockResolvedValue(undefined);
   mockVote.mockReset().mockResolvedValue(undefined);
   mockToggleWatch.mockReset().mockResolvedValue(undefined);
   mockAgreeNote.mockReset().mockResolvedValue(undefined);
+  mockSubmitReview.mockReset().mockResolvedValue({ error: null });
   mockFetchEntry.mockReset().mockResolvedValue(entry);
   mockFetchDetail.mockReset().mockResolvedValue({
     notes: [{ id: 'n1', label: 'Period homophobia', agreeCount: 22, agreed: false }],
@@ -80,33 +94,36 @@ beforeEach(() => {
 });
 
 describe('the Archive entry screen', () => {
+  it('hydrates her existing rating so the stars refill', async () => {
+    render(<ArchiveEntryScreen />);
+    await waitFor(() => expect(mockHydrateMine).toHaveBeenCalledWith('u1'));
+  });
+
   it('renders the entry, its score and its verdict', async () => {
     const { getByText } = render(<ArchiveEntryScreen />);
     await waitFor(() => expect(getByText('Carol')).toBeTruthy());
-    expect(getByText('89%')).toBeTruthy();
-    // 89 of 100 — a real rating, so the ring shows.
-    // 89% is 'Worth your night' — 'Community favourite' starts at 90, and
-    // asserting the band boundary is the point of picking 89 here.
+    expect(getByText('4.2')).toBeTruthy();
+    // 420 stars across 100 votes is 4.2 / 5 (84%) — Worth your night.
     expect(getByText('Worth your night')).toBeTruthy();
   });
 
-  it('records a yes and a no through the store', async () => {
+  it('records a star rating through the store', async () => {
     const { getByTestId } = render(<ArchiveEntryScreen />);
-    await waitFor(() => expect(getByTestId('archive-vote-up')).toBeTruthy());
+    await waitFor(() => expect(getByTestId('archive-vote-star-5')).toBeTruthy());
 
-    fireEvent.press(getByTestId('archive-vote-up'));
-    await waitFor(() => expect(mockVote).toHaveBeenCalledWith('e1', true));
+    fireEvent.press(getByTestId('archive-vote-star-5'));
+    await waitFor(() => expect(mockVote).toHaveBeenCalledWith('e1', 5));
 
-    fireEvent.press(getByTestId('archive-vote-down'));
-    await waitFor(() => expect(mockVote).toHaveBeenCalledWith('e1', false));
+    fireEvent.press(getByTestId('archive-vote-star-2'));
+    await waitFor(() => expect(mockVote).toHaveBeenCalledWith('e1', 2));
   });
 
-  it('lets a PENDING member vote — that is the whole point of the feature', async () => {
+  it('lets a PENDING member rate — that is the whole point of the feature', async () => {
     mockStatus = 'pending';
     const { getByTestId } = render(<ArchiveEntryScreen />);
-    await waitFor(() => expect(getByTestId('archive-vote-up')).toBeTruthy());
-    fireEvent.press(getByTestId('archive-vote-up'));
-    await waitFor(() => expect(mockVote).toHaveBeenCalledWith('e1', true));
+    await waitFor(() => expect(getByTestId('archive-vote-star-5')).toBeTruthy());
+    fireEvent.press(getByTestId('archive-vote-star-5'));
+    await waitFor(() => expect(mockVote).toHaveBeenCalledWith('e1', 5));
   });
 
   it('locks writing a review for a pending member, with an explanation', async () => {
@@ -159,6 +176,24 @@ describe('the Archive entry screen', () => {
     await waitFor(() => expect(getByTestId('archive-entry-error')).toBeTruthy());
     fireEvent.press(getByTestId('archive-entry-retry'));
     await waitFor(() => expect(mockFetchEntry).toHaveBeenCalledTimes(2));
+  });
+
+  it('posts a named review comment after she rates it', async () => {
+    seedStore({ myVotes: { e1: 5 } });
+    const { getByTestId } = render(<ArchiveEntryScreen />);
+    await waitFor(() => expect(getByTestId('archive-vote-comment')).toBeTruthy());
+    fireEvent.changeText(getByTestId('archive-vote-comment'), 'The gloves scene.');
+    fireEvent.press(getByTestId('archive-vote-review-submit'));
+    await waitFor(() =>
+      expect(mockSubmitReview).toHaveBeenCalledWith('e1', 'The gloves scene.', true, true),
+    );
+  });
+
+  it('hides the review comment box while she is pending', async () => {
+    mockStatus = 'pending';
+    const { queryByTestId } = render(<ArchiveEntryScreen />);
+    await waitFor(() => expect(queryByTestId('archive-vote-star-5')).toBeTruthy());
+    expect(queryByTestId('archive-vote-comment')).toBeNull();
   });
 
   it('offers the invitation instead of an empty ring when nobody has rated it', async () => {
