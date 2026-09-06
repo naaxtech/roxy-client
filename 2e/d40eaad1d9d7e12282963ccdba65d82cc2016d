@@ -1,0 +1,21 @@
+docs/sessions/2026-09-07-roxy-client-checklist.md
+  s_02997141a06547::t_d6fa1140bdc1ee 61
+  s_02997141a06547::t_c0565c8f5e8bb3 32
+  s_02997141a06547::t_0623a7a656a7be 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2ed40eaad1d9d7e12282963ccdba65d82cc2016d",
+  "prompts": {},
+  "sessions": {
+    "s_02997141a06547": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eeb5e1d1-aac6-4653-9c90-afb5f6db1d41",
+        "model": "grok-4.6"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
