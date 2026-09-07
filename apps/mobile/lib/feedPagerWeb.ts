@@ -95,10 +95,82 @@ export function findWebNode(ref: { current: unknown }): HTMLElement | null {
 }
 
 /** FlashList's first scrollToOffset on web is often a no-op. Write the scroller. */
+/**
+ * How long a page takes to glide into place.
+ *
+ * TikTok's transition is fast and eased, not instant. This was
+ * `scroller.scrollTop = offset` — a teleport — so the web feed changed posts
+ * without ever appearing to move, which is the opposite of satisfying and made
+ * it impossible to tell which direction you had just gone.
+ *
+ * 280ms sits inside the controller's 420ms gesture lock, so an animation is
+ * always finished before the next swipe is allowed to start one.
+ */
+export const PAGE_GLIDE_MS = 280;
+
+/** Ease-out cubic: quick off the mark, settling gently. */
+export function easeOutCubic(t: number): number {
+  const clamped = Math.min(1, Math.max(0, t));
+  return 1 - (1 - clamped) ** 3;
+}
+
+/** Cancels any glide already running on this scroller. */
+const running = new WeakMap<HTMLElement, number>();
+
+function cancelGlide(scroller: HTMLElement): void {
+  const id = running.get(scroller);
+  if (id !== undefined && typeof cancelAnimationFrame === 'function') {
+    cancelAnimationFrame(id);
+  }
+  running.delete(scroller);
+}
+
+/**
+ * Whether the viewer has asked for less movement. An animation is a nicety; her
+ * setting is not.
+ */
+function prefersReducedMotion(): boolean {
+  if (typeof matchMedia !== 'function') return false;
+  try {
+    return matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
 export function applyWebPageOffset(root: HTMLElement, offset: number): void {
   const scroller = findOverflowScroller(root);
   if (!scroller || !Number.isFinite(offset)) return;
-  scroller.scrollTop = offset;
+
+  // A second request supersedes the first; two glides on one element fight and
+  // the page ends up between two posts.
+  cancelGlide(scroller);
+
+  const from = scroller.scrollTop;
+  const distance = offset - from;
+  if (
+    distance === 0
+    || prefersReducedMotion()
+    || typeof requestAnimationFrame !== 'function'
+    || typeof performance === 'undefined'
+  ) {
+    scroller.scrollTop = offset;
+    return;
+  }
+
+  const started = performance.now();
+  const step = () => {
+    const elapsed = performance.now() - started;
+    const progress = elapsed / PAGE_GLIDE_MS;
+    if (progress >= 1) {
+      scroller.scrollTop = offset;
+      running.delete(scroller);
+      return;
+    }
+    scroller.scrollTop = from + distance * easeOutCubic(progress);
+    running.set(scroller, requestAnimationFrame(step));
+  };
+  running.set(scroller, requestAnimationFrame(step));
 }
 
 export function findOverflowScroller(root: HTMLElement): HTMLElement | null {

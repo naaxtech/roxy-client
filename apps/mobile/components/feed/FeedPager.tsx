@@ -286,10 +286,13 @@ export function FeedPager<TItem>({
   const goToPage = useCallback((index: number) => {
     applyActiveIndex(index);
     const offset = index * pageHRef.current;
-    listRef.current?.scrollToOffset({
-      offset,
-      animated: Platform.OS !== 'web',
-    });
+    // Web is handled entirely by applyWebPageOffset, which glides. Calling
+    // scrollToOffset first with `animated: false` teleported to the target and
+    // left the glide with zero distance to cover — the page changed without the
+    // screen ever appearing to move.
+    if (Platform.OS !== 'web') {
+      listRef.current?.scrollToOffset({ offset, animated: true });
+    }
     const node = resolveFrameNode();
     if (node) applyWebPageOffset(node, offset);
   }, [applyActiveIndex, resolveFrameNode]);
