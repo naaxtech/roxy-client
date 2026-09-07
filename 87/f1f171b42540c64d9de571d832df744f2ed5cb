@@ -1,0 +1,39 @@
+apps/mobile/app/archive/[slug]/index.tsx
+  s_488a1686f9c1af::t_7b0467264b2bbb 16-17,55,226-235
+apps/mobile/components/archive/VoteCard.tsx
+  s_488a1686f9c1af::t_fefb7e40dd2a5c 52-57,90,95-99,101,106-110,123-130
+apps/mobile/store/archiveStore.ts
+  s_488a1686f9c1af::t_d09229f8ae95b2 54-62,160-192
+apps/mobile/tests/e2e/feed-touch-snap.spec.ts
+  s_488a1686f9c1af::t_2867468a2098bc 1-54
+apps/mobile/components/archive/VerdictLine.tsx
+  s_488a1686f9c1af::t_fefb7e40dd2a5c 42
+apps/mobile/lib/feedPagerWeb.ts
+  s_488a1686f9c1af::t_23107dc639cbbd 212-288
+apps/mobile/lib/archive.ts
+  s_488a1686f9c1af::t_d09229f8ae95b2 95-116
+apps/mobile/__tests__/lib/archiveWithdraw.test.ts
+  s_488a1686f9c1af::t_34f371ff4f1fc1 1-58
+apps/mobile/components/feed/FeedPager.tsx
+  s_488a1686f9c1af::t_8daf7cca67aed3 337-341
+  s_488a1686f9c1af::t_23107dc639cbbd 12-13,325-329
+apps/mobile/__tests__/components/archive/VoteCard.test.tsx
+  s_488a1686f9c1af::t_0e386ca76d5e66 107,116,125,133,137
+  s_488a1686f9c1af::t_62dfd97912ac9b 94-106,108-115,117-124,126-132,134-136,138-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "87f1f171b42540c64d9de571d832df744f2ed5cb",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
