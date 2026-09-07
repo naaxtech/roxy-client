@@ -1,0 +1,26 @@
+apps/mobile/components/profile/ThoughtRow.tsx
+  s_488a1686f9c1af::t_87ec469d238cb4 1-231
+apps/mobile/tests/e2e/studio-login.spec.ts
+  s_488a1686f9c1af::t_ddca69310801b8 11
+apps/mobile/components/profile/ProfileThoughts.tsx
+  s_488a1686f9c1af::t_2d1e2198aadfc0 11-12,15-16,23-24,54-62,78-81,96-114,176-178,181-206
+apps/mobile/tests/e2e/thoughts-reply.spec.ts
+  s_488a1686f9c1af::t_b4ff6c84473882 1-26,37-55
+  s_488a1686f9c1af::t_5f200b988ddc88 27-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "21b0d1b3b8ac29cf1c8525cffc980b9c24470759",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
