@@ -59,6 +59,25 @@ export function railVisible(chip: DiscoverChip, rail: DiscoverRail): boolean {
   return RAILS_BY_CHIP[chip].includes(rail);
 }
 
+/** Rails side by side, or one category filling the screen. */
+export type DiscoverLayout = 'rail' | 'grid';
+
+/**
+ * How a section lays itself out under the current chip.
+ *
+ * A horizontal rail is the right shape for `All`: it is a sampler, and the
+ * sideways swipe is what lets nine categories share one screen. It is the wrong
+ * shape the moment she has picked ONE of them — she has said "show me shops",
+ * and a single strip of shops that still has to be swiped sideways gives her a
+ * worse view of shops than the sampler did, on a screen with nothing else on it.
+ *
+ * So: pick a category and it fills the space, scrolling the way the phone
+ * already scrolls. Browsing is vertical; the rail is only for the mixed view.
+ */
+export function discoverLayout(chip: DiscoverChip): DiscoverLayout {
+  return chip === 'all' ? 'rail' : 'grid';
+}
+
 /** The Events rail's own chips. Maps to `events.event_type` in the schema. */
 export type EventFilter = 'all' | 'online' | 'in_person';
 

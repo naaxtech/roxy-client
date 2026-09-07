@@ -25,7 +25,7 @@ import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayC
 import { eventModeLabel } from '../../../components/events/EventModeBadge';
 import {
   DISCOVER_CHIPS, EVENT_FILTERS, ECONOMY_FILTERS,
-  railVisible, eventMatchesFilter, economyKind, economyWlwOnly, economySavedOnly,
+  discoverLayout, railVisible, eventMatchesFilter, economyKind, economyWlwOnly, economySavedOnly,
   type DiscoverChip, type EventFilter, type EconomyFilter,
 } from '../../../components/discover/discoverFilters';
 import {
@@ -64,6 +64,8 @@ function DiscoverScreen() {
   const loadBookmarks = useBuildStore((st) => st.loadBookmarks);
 
   const [chip, setChip] = useState<DiscoverChip>('all');
+  // Rails while she is browsing everything; a filled grid once she has chosen.
+  const layout = discoverLayout(chip);
 
   // The rail's own slice of the Archive: the top few, plus the catalogue total
   // so "Browse all N" promises the real number rather than the rail's length.
@@ -271,6 +273,7 @@ function DiscoverScreen() {
 
         {railVisible(chip, 'top10') ? (
           <Rail
+            layout={layout}
             title="Top 10 communities"
             status={allCommunities.length ? 'ready' : 'loading'}
             count={top10.length}
@@ -295,6 +298,7 @@ function DiscoverScreen() {
 
         {railVisible(chip, 'live') ? (
           <Rail
+            layout={layout}
             title="Live now"
             status={live.status}
             count={live.rows.length}
@@ -319,6 +323,7 @@ function DiscoverScreen() {
 
         {railVisible(chip, 'events') ? (
           <Rail
+            layout={layout}
             title="Events"
             status={events.status}
             count={shownEvents.length}
@@ -367,6 +372,7 @@ function DiscoverScreen() {
 
         {railVisible(chip, 'economy') ? (
           <Rail
+            layout={layout}
             title="WLW economy"
             status={kind === 'shops' ? shopsStatus : kind === 'impact' ? impact.status : support.status}
             count={kind === 'shops' ? shownShops.length : kind === 'impact' ? impact.rows.length : support.rows.length}
@@ -429,6 +435,7 @@ function DiscoverScreen() {
 
         {railVisible(chip, 'communities') ? (
           <Rail
+            layout={layout}
             title="Communities"
             status={allCommunities.length ? 'ready' : 'loading'}
             count={allCommunities.length}
@@ -454,6 +461,7 @@ function DiscoverScreen() {
 
         {railVisible(chip, 'games') ? (
           <Rail
+            layout={layout}
             title="Games"
             status={games.status}
             count={games.rows.length}

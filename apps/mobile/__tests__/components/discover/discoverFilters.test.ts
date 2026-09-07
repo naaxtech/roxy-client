@@ -6,6 +6,7 @@
  * them wrong by not asking.
  */
 import {
+  discoverLayout,
   DISCOVER_CHIPS,
   EVENT_FILTERS,
   ECONOMY_FILTERS,
@@ -172,6 +173,35 @@ describe('the Archive on Discover', () => {
     // not-equals — the same reason the rest of this module avoids elimination.
     for (const chip of ['events', 'shops', 'live', 'comms', 'games'] as const) {
       expect(railVisible(chip, 'archive')).toBe(false);
+    }
+  });
+});
+
+/**
+ * Browsing one category is a vertical activity.
+ *
+ * A horizontal rail is right for `All` — it is a sampler, and the sideways
+ * swipe is what lets nine categories share a screen. It is wrong the moment she
+ * has picked one of them: she asked for shops, and a single strip of shops that
+ * still has to be swiped sideways is a WORSE view of shops than the sampler
+ * was, on a screen with nothing else competing for the space.
+ */
+describe('discoverLayout', () => {
+  it('keeps rails for the mixed view', () => {
+    expect(discoverLayout('all')).toBe('rail');
+  });
+
+  it('fills the screen for every single category', () => {
+    // Every chip but `all`, taken from the list itself — a new category added
+    // later must not quietly default back to a rail.
+    for (const { key } of DISCOVER_CHIPS.filter((c) => c.key !== 'all')) {
+      expect(discoverLayout(key)).toBe('grid');
+    }
+  });
+
+  it('covers every chip, so none is left without a layout', () => {
+    for (const { key } of DISCOVER_CHIPS) {
+      expect(['rail', 'grid']).toContain(discoverLayout(key));
     }
   });
 });

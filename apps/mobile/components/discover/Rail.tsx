@@ -5,6 +5,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
+import type { DiscoverLayout } from './discoverFilters';
 
 export type RailStatus = 'loading' | 'ready' | 'error';
 
@@ -19,6 +20,12 @@ interface Props {
   children: ReactNode;
   /** An optional chip row rendered under the title, above the cards. */
   filters?: ReactNode;
+  /**
+   * `rail` scrolls sideways (the mixed All view); `grid` wraps and fills the
+   * screen (one category chosen). Defaults to `rail` so no caller changes
+   * behaviour by omission.
+   */
+  layout?: DiscoverLayout;
   /** Optional "see all" affordance. */
   linkLabel?: string;
   onLinkPress?: () => void;
@@ -40,7 +47,7 @@ interface Props {
  */
 export function Rail({
   title, status, count, emptyBody, onRetry, children, filters,
-  linkLabel, onLinkPress, testID,
+  layout = 'rail', linkLabel, onLinkPress, testID,
 }: Props) {
   const colors = useThemeColors();
   const s = styles(colors);
@@ -98,14 +105,24 @@ export function Rail({
           is mounted in EVERY status — so an e2e assertion written against it
           passed for a rail that was still spinning, or erroring. */}
       {status === 'ready' && count > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.cards}
-          testID={testID ? `${testID}-cards` : undefined}
-        >
-          {children}
-        </ScrollView>
+        layout === 'grid' ? (
+          // No ScrollView: the page already scrolls, and nesting a vertical
+          // scroller inside it would trap the gesture. The cards keep their own
+          // widths and wrap, so two fit a phone and three a tablet without the
+          // grid having to know either number.
+          <View style={s.grid} testID={testID ? `${testID}-cards` : undefined}>
+            {children}
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.cards}
+            testID={testID ? `${testID}-cards` : undefined}
+          >
+            {children}
+          </ScrollView>
+        )
       )}
     </View>
   );
@@ -113,6 +130,12 @@ export function Rail({
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
   wrap: { gap: 8, paddingVertical: 10 },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingHorizontal: 16,
+  },
   head: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16,
