@@ -1,0 +1,55 @@
+apps/mobile/components/profile/ProfileThoughts.tsx
+  s_488a1686f9c1af::t_0dab9063079836 24-27,43,52-62,66,83
+apps/mobile/app/(tabs)/you/settings.tsx
+  s_488a1686f9c1af::t_32fcd4d52afcb5 21
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_488a1686f9c1af::t_0dab9063079836 30,497-504
+  s_488a1686f9c1af::t_22123ef0c9056e 485-487
+apps/mobile/lib/posthogErrorTracking.ts
+  s_488a1686f9c1af::t_b5b32126139a7c 10-14
+apps/mobile/components/messages/MessagesInbox.tsx
+  s_488a1686f9c1af::t_298adfe272e5a4 47-58
+apps/mobile/__tests__/components/messages/MessagesInbox.test.tsx
+  s_488a1686f9c1af::t_5d6dfdfbdb42ca 25
+apps/mobile/lib/feedPagerWeb.ts
+  s_488a1686f9c1af::t_b80354026a5c95 85-91
+apps/mobile/lib/officialCommunity.ts
+  s_488a1686f9c1af::t_c124fb17f8710a 52,54
+apps/mobile/app/business/[id].tsx
+  s_488a1686f9c1af::t_22123ef0c9056e 363-365
+apps/mobile/__tests__/components/nav/navSlots3.test.ts
+  s_488a1686f9c1af::t_b80354026a5c95 51-56
+apps/mobile/components/feed/RoxyLinkCard.tsx
+  s_488a1686f9c1af::t_b80354026a5c95 27-31
+apps/mobile/app/(tabs)/you/[userId].tsx
+  s_488a1686f9c1af::t_c124fb17f8710a 12,282,361
+  s_488a1686f9c1af::t_f65c889ec0e97b 106-108
+apps/mobile/lib/signupSession.ts
+  s_488a1686f9c1af::t_c124fb17f8710a 18
+apps/mobile/lib/profileHosted.ts
+  s_488a1686f9c1af::t_5d6dfdfbdb42ca 1
+apps/mobile/lib/features.ts
+  s_488a1686f9c1af::t_c124fb17f8710a 152
+apps/mobile/app/(tabs)/discover/index.tsx
+  s_488a1686f9c1af::t_32fcd4d52afcb5 12
+apps/mobile/components/messages/PinnedPersonaRow.tsx
+  s_488a1686f9c1af::t_32fcd4d52afcb5 6
+apps/mobile/__tests__/screens/CommunityProfileShell.test.tsx
+  s_488a1686f9c1af::t_e4e4fea4753f27 89-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "28c0633200039f246fdb1095c546766e3f63b6d7",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
