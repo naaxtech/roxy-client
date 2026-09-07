@@ -51,6 +51,15 @@ interface ArchiveState {
   setFilters: (patch: Partial<ArchiveFilters>) => void;
   hydrateMine: (userId: string) => Promise<void>;
   vote: (entryId: string, stars: number) => Promise<void>;
+  /**
+   * Take a rating back.
+   *
+   * A DELETE, not `stars = 0`: `archive_vote_stars_range` is
+   * CHECK (stars >= 1 AND stars <= 5), so zero is not a value this column can
+   * hold — and it should not be. "I have not rated this" is the absence of a
+   * row, not a row saying nothing.
+   */
+  withdrawVote: (entryId: string) => Promise<void>;
   toggleWatch: (entryId: string) => Promise<void>;
   agreeNote: (noteId: string) => Promise<void>;
 }
@@ -148,6 +157,39 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
    * `.select()` asks for the row back so "no error" and "it actually
    * happened" cannot come apart here.
    */
+  withdrawVote: async (entryId) => {
+    const previous = get().myVotes[entryId];
+    if (previous === undefined) return;
+
+    set((s) => {
+      const next = { ...s.myVotes };
+      delete next[entryId];
+      return { myVotes: next };
+    });
+    const rollback = () => set((s) => ({ myVotes: { ...s.myVotes, [entryId]: previous } }));
+
+    const userId = await currentUserId();
+    if (!userId) {
+      rollback();
+      throw new Error(SIGN_IN_AGAIN);
+    }
+
+    // `count` because PostgREST answers 200 for a delete that matched no rows.
+    // Reporting success over that is how a UI ends up showing a rating removed
+    // that is still in the database.
+    const { error, count } = await supabase
+      .from('archive_votes')
+      .delete({ count: 'exact' })
+      .eq('entry_id', entryId)
+      .eq('profile_id', userId);
+
+    if (error || !count) {
+      if (error) logError(error, 'archiveStore.withdrawVote');
+      rollback();
+      throw new Error(GENERIC_VOTE_ERROR);
+    }
+  },
+
   vote: async (entryId, rawStars) => {
     const stars = clampStars(rawStars);
     const value = starsToRecommend(stars);

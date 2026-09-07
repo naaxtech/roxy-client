@@ -13,7 +13,8 @@ import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { Analytics } from '../../../lib/analytics';
 import { logError } from '../../../lib/errorLogger';
 import {
-  applyLocalStarVote, fetchArchiveEntry, fetchArchiveEntryDetail,
+  applyLocalStarVote,
+  applyLocalStarWithdraw, fetchArchiveEntry, fetchArchiveEntryDetail,
   firstVoteLanded, scoreFromEntry, starsToRecommend,
   type ArchiveEntry, type ArchiveEntryDetail,
 } from '../../../lib/archive';
@@ -51,6 +52,7 @@ export default function ArchiveEntryScreen() {
   const watchlist = useArchiveStore((s) => s.watchlist);
   const noteAgreements = useArchiveStore((s) => s.noteAgreements);
   const vote = useArchiveStore((s) => s.vote);
+  const withdrawVote = useArchiveStore((s) => s.withdrawVote);
   const toggleWatch = useArchiveStore((s) => s.toggleWatch);
   const agreeNote = useArchiveStore((s) => s.agreeNote);
   const hydrateMine = useArchiveStore((s) => s.hydrateMine);
@@ -221,6 +223,16 @@ export default function ArchiveEntryScreen() {
   };
 
   const castVote = async (stars: number) => {
+    // 0 is "take it back", not a score. The stars column cannot hold zero and
+    // should not: not having rated something is the absence of a row.
+    if (stars === 0) {
+      const previous = myStars ?? undefined;
+      await runAction('vote', async () => {
+        await withdrawVote(entry.id);
+        setEntry((current) => (current ? applyLocalStarWithdraw(current, previous) : current));
+      });
+      return;
+    }
     // Analytics AFTER the write, not before: firing first counted votes that
     // never landed, which is the same lie in the metrics as in the UI.
     const wasFirst = firstVoteLanded(myStars !== null, entry.vote_count);

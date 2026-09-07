@@ -39,7 +39,7 @@ export function VerdictLine({ score, reviewCount }: Props) {
   const average = score.average != null ? `${score.label} / 5 · ` : '';
   const meta =
     typeof reviewCount === 'number'
-      ? `${average}${voted} · ${reviewCount} wrote reviews`
+      ? `${average}${voted} · ${reviewCount} ${reviewCount === 1 ? 'wrote a review' : 'wrote reviews'}`
       : `${average}${voted}`;
 
   return (

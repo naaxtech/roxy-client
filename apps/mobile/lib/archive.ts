@@ -93,6 +93,28 @@ export function applyLocalStarVote<T extends {
 }
 
 /**
+ * The entry's tallies with one member's vote removed.
+ *
+ * The mirror of `applyLocalStarVote`. Clamped at zero on every counter: a
+ * local estimate that has drifted must never render a negative vote count, and
+ * the next fetch is what corrects it.
+ */
+export function applyLocalStarWithdraw<T extends {
+  vote_count: number;
+  up_count: number;
+  star_sum?: number | null;
+}>(entry: T, previousStars: number | undefined): T {
+  if (previousStars == null) return entry;
+  const prev = clampStars(previousStars);
+  return {
+    ...entry,
+    vote_count: Math.max(0, entry.vote_count - 1),
+    star_sum: Math.max(0, (entry.star_sum ?? 0) - prev),
+    up_count: Math.max(0, entry.up_count - (starsToRecommend(prev) ? 1 : 0)),
+  };
+}
+
+/**
  * The verdict bands, from the prototype's own thresholds.
  *
  * Composed as a descending ladder rather than by elimination. This codebase has

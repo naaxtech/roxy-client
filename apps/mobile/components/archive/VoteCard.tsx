@@ -49,7 +49,12 @@ export function VoteCard({
       borderColor: filled ? colors.primary : colors.line,
     },
     question: { ...TYPE.body, color: colors.textPrimary, fontWeight: '700' },
-    stars: { flexDirection: 'row', justifyContent: 'space-between' },
+    // Grouped, not spread. `justifyContent: 'space-between'` flung the five
+    // across the whole card, where they read as five unrelated icons instead of
+    // one control — which is what made the scale feel wrong to use.
+    starRow: { alignItems: 'flex-start', gap: 2 },
+    stars: { flexDirection: 'row', alignSelf: 'flex-start' },
+    value: { ...TYPE.micro, color: colors.textMuted, paddingHorizontal: 4 },
     star: {
       minWidth: MIN_TOUCH_TARGET,
       minHeight: MIN_TOUCH_TARGET,
@@ -82,17 +87,27 @@ export function VoteCard({
   return (
     <View style={s.card} testID={testID}>
       <Text style={s.question}>{QUESTION}</Text>
+      <View style={s.starRow}>
       <View style={s.stars}>
         {STARS.map((n) => {
           const selected = n <= filled;
           const id = testID ? `${testID}-star-${n}` : undefined;
+          // Tapping the star she already chose clears the rating. Without this
+          // the scale ran 1..5 with no way back: the lowest thing she could say
+          // was one star, and a rating cast by accident could only be moved,
+          // never withdrawn. `onRate(0)` is what makes it 0..5 exactly.
+          const next = n === filled ? 0 : n;
           return (
-            <Pressable key={n} style={{ flex: 1 }} onPress={() => onRate(n)} accessible={false}>
+            <Pressable key={n} onPress={() => onRate(next)} accessible={false}>
               <View
                 testID={id}
                 style={s.star}
                 accessibilityRole="button"
-                accessibilityLabel={`${n} star${n === 1 ? '' : 's'}`}
+                accessibilityLabel={
+                  n === filled
+                    ? `Clear your rating of ${n} star${n === 1 ? '' : 's'}`
+                    : `Rate ${n} of 5`
+                }
                 {...a11yState({ selected })}
               >
                 <Ionicons
@@ -104,6 +119,14 @@ export function VoteCard({
             </Pressable>
           );
         })}
+      </View>
+      {/* Five icons with no readout is a control that never confirms it heard
+          her — and nothing would otherwise tell her the tap can be undone. */}
+      <Text style={s.value} testID={testID ? `${testID}-value` : undefined}>
+        {filled > 0
+          ? `Your rating: ${filled} of 5 · tap it again to clear`
+          : 'Tap to rate, 1 to 5'}
+      </Text>
       </View>
       {canComment ? (
         <>

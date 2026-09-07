@@ -91,4 +91,50 @@ describe('VoteCard', () => {
     );
     expect(v.getByText('+ Watchlist')).toBeTruthy();
   });
+
+  /**
+   * "0 star to 5 stars exactly."
+   *
+   * The scale ran 1..5 with no way back. Once she had tapped anything, the
+   * lowest thing she could say about a work was one star — and a rating cast by
+   * accident could never be taken back, only moved. A rating control that
+   * cannot return to unrated is not a 0..5 scale; it is a 1..5 scale with a
+   * trap door.
+   */
+  it('clears the rating when she taps the star she already chose', () => {
+    const onRate = jest.fn();
+    const v = render(
+      <VoteCard myStars={3} onRate={onRate} testID="vote" />,
+    );
+    fireEvent.press(v.getByTestId('vote-star-3'));
+    expect(onRate).toHaveBeenCalledWith(0);
+  });
+
+  it('still sets a different star normally', () => {
+    const onRate = jest.fn();
+    const v = render(
+      <VoteCard myStars={3} onRate={onRate} testID="vote" />,
+    );
+    fireEvent.press(v.getByTestId('vote-star-5'));
+    expect(onRate).toHaveBeenCalledWith(5);
+  });
+
+  it('tapping one star while unrated sets one star, never clears', () => {
+    const onRate = jest.fn();
+    const v = render(
+      <VoteCard myStars={null} onRate={onRate} testID="vote" />,
+    );
+    fireEvent.press(v.getByTestId('vote-star-1'));
+    expect(onRate).toHaveBeenCalledWith(1);
+  });
+
+  it('says what she has chosen, and what tapping again will do', () => {
+    // Five icons with no readout is a control that never confirms it heard you.
+    const rated = render(<VoteCard myStars={4} onRate={jest.fn()} testID="vote" />);
+    expect(rated.getByTestId('vote-value')).toBeTruthy();
+    expect(rated.getByText(/4 of 5/)).toBeTruthy();
+
+    const unrated = render(<VoteCard myStars={null} onRate={jest.fn()} testID="vote" />);
+    expect(unrated.getByText(/Tap to rate/i)).toBeTruthy();
+  });
 });

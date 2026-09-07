@@ -9,6 +9,8 @@ import { activeIndexFromScroll } from '../../lib/reels';
 import { snapPageOffset } from '../../lib/feedPagerSnap';
 import {
   applyWebPageOffset,
+  applyTouchSnap,
+  isTouchPointer,
   attachFeedPagerWebGestures,
   createFeedPagerWebController,
   findWebNode,
@@ -320,6 +322,11 @@ export function FeedPager<TItem>({
     if (Platform.OS !== 'web' || !showsList) return;
     const node = resolveFrameNode();
     if (!node) return;
+    // A finger is left to the browser. CSS scroll-snap runs on the compositor
+    // and carries the platform's own momentum curve; intercepting pointer
+    // events to jump a page fights that momentum, which is exactly the stutter
+    // this pager was reported for on a phone.
+    if (isTouchPointer()) return applyTouchSnap(node, pageHRef.current);
     const controller = createFeedPagerWebController({
       getPageH: () => pageHRef.current,
       getCount: () => itemsLenRef.current,
@@ -327,7 +334,11 @@ export function FeedPager<TItem>({
       goToIndex: goToPage,
     });
     return attachFeedPagerWebGestures(node, controller);
-  }, [showsList, goToPage, resolveFrameNode]);
+    // `items.length` is in the deps because the scroller does not EXIST until
+    // the list has enough content to overflow. Without it this ran once on an
+    // empty list, found nothing, and never looked again — so the snap was never
+    // applied on a device that needed it.
+  }, [showsList, goToPage, resolveFrameNode, pageH, items.length]);
 
   /** WHICH item is active, not merely which slot. */
   const activeItem: TItem | undefined = items[activeIndex];

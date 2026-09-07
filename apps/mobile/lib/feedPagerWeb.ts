@@ -209,3 +209,80 @@ export function attachFeedPagerWebGestures(
     node.removeEventListener('click', onClick, true);
   };
 }
+
+/**
+ * Does this device drive the feed with a finger?
+ *
+ * `(pointer: coarse)` is the touch case — a phone or a tablet. It is the one
+ * that must be left alone: a finger already gets momentum scrolling from the
+ * browser, and JS that intercepts pointerdown/pointerup to jump a page fights
+ * that momentum instead of riding it. The result is the stutter this exists to
+ * remove.
+ */
+export function isTouchPointer(): boolean {
+  if (typeof matchMedia !== 'function') return false;
+  try {
+    return matchMedia('(pointer: coarse)').matches;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Hand paging to CSS on touch devices.
+ *
+ * `scroll-snap-type: y mandatory` is what TikTok's own web build uses, and it
+ * is the only way to get the real thing on a phone: the snap runs on the
+ * compositor, follows the finger, and carries the platform's own momentum
+ * curve. No JS timer can imitate that — the JS pager was computing a target and
+ * jumping to it, which is why it felt like a slideshow rather than a scroll.
+ *
+ * `overscroll-behavior-y: contain` stops a flick at the end of the feed from
+ * scrolling the page behind it or triggering pull-to-refresh mid-swipe.
+ *
+ * Returns a cleanup that restores whatever was there before, so the effect can
+ * re-run without stacking.
+ */
+export function applyTouchSnap(root: HTMLElement, pageH: number): (() => void) | undefined {
+  const scroller = findOverflowScroller(root);
+  if (!scroller || !(pageH > 0)) return undefined;
+
+  const style = scroller.style as CSSStyleDeclaration & { webkitOverflowScrolling?: string };
+  const previous = {
+    scrollSnapType: style.scrollSnapType,
+    overscrollBehaviorY: style.overscrollBehaviorY,
+    webkitOverflowScrolling: style.webkitOverflowScrolling ?? '',
+  };
+
+  style.scrollSnapType = 'y mandatory';
+  style.overscrollBehaviorY = 'contain';
+  style.webkitOverflowScrolling = 'touch';
+
+  // Each page announces where it should come to rest. The cells are whatever
+  // the list renderer produced, so they are found by height rather than by a
+  // class name the renderer is free to change.
+  const cells = pageCells(scroller, pageH);
+  for (const cell of cells) cell.style.scrollSnapAlign = 'start';
+
+  return () => {
+    style.scrollSnapType = previous.scrollSnapType;
+    style.overscrollBehaviorY = previous.overscrollBehaviorY;
+    style.webkitOverflowScrolling = previous.webkitOverflowScrolling;
+    for (const cell of cells) cell.style.scrollSnapAlign = '';
+  };
+}
+
+/**
+ * The elements that are one page tall.
+ *
+ * Measured, not matched by selector: the list renderer owns its own DOM and a
+ * class name is not a contract. A cell within 2px of the page height is a page.
+ */
+export function pageCells(scroller: HTMLElement, pageH: number): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  for (const child of Array.from(scroller.querySelectorAll<HTMLElement>('*'))) {
+    const h = child.getBoundingClientRect().height;
+    if (Math.abs(h - pageH) <= 2 && child.children.length > 0) out.push(child);
+  }
+  return out;
+}
