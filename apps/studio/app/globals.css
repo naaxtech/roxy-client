@@ -105,6 +105,37 @@
   .gradient-amber {
     background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.04) 100%);
   }
+  /*
+   * The brand surface, pinned.
+   *
+   * `:root` is the dark theme and `.light` overrides it, so a host whose OS
+   * asks for light gets a cream sign-in page under a plum-and-pink logo. A
+   * sign-in screen is the one place the brand should not be negotiable, so
+   * this re-states the dark tokens locally and wins over `.light` by sitting
+   * on the element itself.
+   *
+   * Scoped deliberately: everything past sign-in still follows her choice.
+   */
+  .brand-dark {
+    --background: 268 64% 11%;
+    --foreground: 0 0% 100%;
+    --card: 264 49% 21%;
+    --card-foreground: 0 0% 100%;
+    --popover: 264 49% 21%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 330 73% 70%;
+    --primary-foreground: 268 64% 11%;
+    --secondary: 258 89% 66%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 263 37% 27%;
+    --muted-foreground: 270 21% 77%;
+    --accent: 323 86% 70%;
+    --accent-foreground: 268 64% 11%;
+    --border: 263 37% 27%;
+    --input: 263 37% 27%;
+    --ring: 330 73% 70%;
+  }
+
   .text-gradient {
     background: linear-gradient(135deg, #E879A6, #8B5CF6);
     -webkit-background-clip: text;

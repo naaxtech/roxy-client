@@ -201,10 +201,10 @@ export function AppSidebar({ isStaff = false, isCore = false, userEmail, userIni
       <aside className="flex h-screen w-[240px] shrink-0 flex-col border-r border-border/60 bg-background/80 backdrop-blur-sm">
         <div className="flex h-16 items-center gap-3 border-b border-border/60 px-5">
           <Image
-            src="/brand/roxy-logo-primary.svg"
+            src="/brand/roxy-wordmark.svg"
             alt="Roxy"
-            width={120}
-            height={68}
+            width={359}
+            height={100}
             priority
             className="h-8 w-auto"
           />

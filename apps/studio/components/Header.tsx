@@ -18,10 +18,10 @@ export function Header({ isStaff = false, isCore = false }: HeaderProps) {
   return (
     <header className="relative z-40 flex h-16 shrink-0 items-center overflow-visible border-b border-border/60 bg-background/60 backdrop-blur-sm px-6 gap-4">
       <Image
-        src="/brand/roxy-logo-primary.svg"
+        src="/brand/roxy-wordmark.svg"
         alt="Roxy"
-        width={120}
-        height={68}
+        width={359}
+        height={100}
         className="h-6 w-auto"
       />
 
