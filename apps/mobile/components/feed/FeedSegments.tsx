@@ -55,7 +55,9 @@ export function FeedSegments({ value, onChange }: Props) {
 }
 
 const s = StyleSheet.create({
-  row: { flexDirection: 'row', justifyContent: 'center', gap: 22 },
+  // TikTok keeps these tight so the content owns the screen. The touch height
+  // stays at MIN_TOUCH_TARGET; what comes off is the gap and the rule's gutter.
+  row: { flexDirection: 'row', justifyContent: 'center', gap: 18 },
   tab: {
     minHeight: MIN_TOUCH_TARGET,
     justifyContent: 'center',
@@ -65,7 +67,7 @@ const s = StyleSheet.create({
   label: { ...TYPE.bodyLg },
   labelOn: { color: STAGE.textPrimary, fontWeight: '700' },
   labelOff: { color: STAGE.textSecondary, fontWeight: '600' },
-  rule: { height: 2, width: '100%', marginTop: 4, borderRadius: 2 },
+  rule: { height: 2, width: '100%', marginTop: 2, borderRadius: 2 },
   ruleOn: { backgroundColor: STAGE.primaryInk },
   ruleOff: { backgroundColor: 'transparent' },
 });

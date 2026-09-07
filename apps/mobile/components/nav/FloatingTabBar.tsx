@@ -234,7 +234,9 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   bar: {
     backgroundColor: colors.background,
     paddingHorizontal: PILL_INSET,
-    paddingTop: 6,
+    // TikTok gives the bottom bar as little of the screen as it can and hands
+    // the rest to the content. Every pixel trimmed here is a pixel of post.
+    paddingTop: 4,
   },
   pill: {
     flexDirection: 'row',
@@ -246,7 +248,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.textPrimary + '14',
     paddingHorizontal: 6,
-    paddingVertical: 4,
+    paddingVertical: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.28,
@@ -255,12 +257,13 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   slot: {
     flex: 1,
-    minHeight: TAB_MIN_TOUCH + 2,
+    // Exactly the floor, not a pixel over: TAB_MIN_TOUCH is the Play Console
+    // pre-launch minimum and the one number here that must not move.
+    minHeight: TAB_MIN_TOUCH,
     minWidth: TAB_MIN_TOUCH,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 20,
-    paddingVertical: 2,
   },
   indicator: {
     ...StyleSheet.absoluteFillObject,
@@ -269,7 +272,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   // Fixed width so the badge, which is absolutely positioned inside it, stays
   // within its parent's bounds — Android clips an overflowing absolute child.
-  iconWrap: { width: 46, height: 32, alignItems: 'center', justifyContent: 'center' },
+  iconWrap: { width: 46, height: 28, alignItems: 'center', justifyContent: 'center' },
   createPlate: {
     width: 46,
     height: 32,
@@ -287,9 +290,9 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   label: {
     fontSize: 10,
-    lineHeight: 13,
+    lineHeight: 12,
     fontFamily: FONTS.text.semibold,
-    marginTop: 3,
+    marginTop: 1,
   },
   badge: {
     position: 'absolute',
