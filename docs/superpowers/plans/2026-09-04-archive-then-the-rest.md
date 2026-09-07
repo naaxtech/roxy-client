@@ -195,3 +195,36 @@ Remove, the leaked policy text, the a11y split, real avatars, the live stage).
 
 - **Every realtime INSERT triggers a full 50-row refetch with a profiles join.**
   Correct, and wasteful on a busy channel.
+
+---
+
+## Phase D — requested 2026-09-07, in order
+
+**D1 · Profile chrome (in progress)**
+- Edit button was a circle: `minHeight: 48` + 13px padding + pill radius on a
+  four-letter label. Design is `padding: 7px 13px`. Fixed; target kept via hitSlop.
+- Badges chip and XP tag verified against markup 490–495.
+- Remove the Posts / Badges / Orders stat card — shelved, not redesigned.
+- Dating mode and Ghost mode already exist in Settings under "Visibility &
+  safety". The profile was duplicating them; the profile copy goes.
+- The win streak moves to Settings beside them.
+
+**D2 · Thoughts tab.** Text posts read badly in a photo grid. They get their own
+tab, rendered the way Threads does it — full-width, text-first, no crop.
+
+**D3 · Feed density + snap.** TikTok keeps the bottom bar and the For You /
+Following / Communities segments tight so the content owns the screen. Tighten
+both, then make the vertical scroll snap one post at a time, smoothly.
+
+**D4 · Discover browsing model.** A horizontal rail is right for "All". The
+moment she picks ONE category (Archive, Events, Shops, Live, Communities), the
+rail is wrong: that category should fill the screen and scroll vertically as a
+list or grid. Browse-all is always list or grid, never a rail.
+
+**D5 · Top 10 Users** replaces Top 10 Communities on Discover. Each carries a
+tag assigned by Roxy staff from Roxy Studio — so this needs a column, an RLS
+rule that only staff may write it, and a Studio surface. Not a client-only change.
+
+**D6 · Gamification, the Duolingo lesson.** Earning a badge must feel like
+something: a confetti moment on award, not a number changing. And the loop
+should push toward going outside — events attended, not just posts read.
