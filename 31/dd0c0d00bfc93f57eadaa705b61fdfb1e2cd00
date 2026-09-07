@@ -1,0 +1,48 @@
+apps/mobile/__tests__/components/profile/ProfileShell.test.tsx
+  s_488a1686f9c1af::t_398fe56a7f0374 20,240,347,364
+apps/mobile/__tests__/components/profile/ProfilePostsGrid.test.tsx
+  s_488a1686f9c1af::t_1b61b70a6ceaaf 38,41,52-58
+apps/mobile/__tests__/screens/YouProfileShell.test.tsx
+  s_488a1686f9c1af::t_a3efc263ba0086 121-123,129,134,137-151
+apps/mobile/__tests__/lib/postKind.test.ts
+  s_488a1686f9c1af::t_ba252576861bc3 1-40
+apps/mobile/components/profile/ProfilePostsGrid.tsx
+  s_488a1686f9c1af::t_518764f8b1bc36 13,49-52,65-66
+apps/mobile/app/(tabs)/you/index.tsx
+  s_488a1686f9c1af::t_5b86ae8362cd2e 142-143
+  s_488a1686f9c1af::t_518764f8b1bc36 19,299-301,313
+  s_488a1686f9c1af::t_3755427ce26b46 481-486
+  s_488a1686f9c1af::t_9d9a43e65d8c28 426-430
+apps/mobile/app/(tabs)/you/settings.tsx
+  s_488a1686f9c1af::t_3755427ce26b46 112-129
+  s_488a1686f9c1af::t_108de9e3c67a0e 8,41,275-280,310-311
+apps/mobile/components/profile/profileVariant.ts
+  s_488a1686f9c1af::t_518764f8b1bc36 33,65-71,77
+apps/mobile/components/profile/ProfileThoughts.tsx
+  s_488a1686f9c1af::t_f752a8c654875f 1-190
+apps/mobile/lib/postKind.ts
+  s_488a1686f9c1af::t_ba252576861bc3 1-26
+apps/mobile/components/profile/ProfileShell.tsx
+  s_488a1686f9c1af::t_b9bb7e9cfc561b 323-325,332-334,750-754,756
+apps/mobile/tests/e2e/profile-shot.spec.ts
+  s_488a1686f9c1af::t_fecfe10c2496f1 1-22
+apps/mobile/__tests__/components/profile/profileVariant.test.ts
+  s_488a1686f9c1af::t_1b61b70a6ceaaf 101,108,114,140
+  s_488a1686f9c1af::t_398fe56a7f0374 15,20,107,113,235,245,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "31dd0c0d00bfc93f57eadaa705b61fdfb1e2cd00",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
