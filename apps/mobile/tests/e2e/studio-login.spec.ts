@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
 test.use({ viewport: { width: 1280, height: 900 } });
 
 test('studio login wears the real mark', async ({ page }) => {
-  await page.goto('http://localhost:3111/auth/login');
+  await page.goto(process.env.STUDIO_URL ?? 'http://localhost:3111/auth/login');
   const mark = page.getByAltText('Roxy');
   await expect(mark).toBeVisible();
   await expect(mark).toHaveAttribute('src', /roxy-wordmark/);

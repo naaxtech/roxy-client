@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
@@ -9,15 +8,20 @@ import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { contentDetailPath } from '../../lib/contentNavigation';
 import { logError } from '../../lib/errorLogger';
 import { isThought } from '../../lib/postKind';
+import { useFeedStore } from '../../store/feedStore';
+import { ThoughtRow, type Thought, type ThoughtAuthor } from './ThoughtRow';
 import type { PostType } from '../../types';
 
-type Thought = {
+/** The row shape as the database returns it, before it becomes a `Thought`. */
+type ThoughtRowData = {
   id: string;
   content: string;
   post_type: PostType;
   created_at: string;
   reaction_counts: Record<string, number> | null;
   comment_count: number | null;
+  like_count: number | null;
+  profiles: ThoughtAuthor | null;
 };
 
 interface Props {
@@ -47,6 +51,15 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
+  // Likes are the feed's business, not a second implementation here: the store
+  // owns the optimistic flip, the upsert-not-insert that survives a double tap,
+  // and the rollback when the write fails.
+  const likedPostIds = useFeedStore((st) => st.likedPostIds);
+  const toggleLike = useFeedStore((st) => st.toggleLike);
+  // The store's own count lives on ITS post list, which this screen does not
+  // use — so the visible number is adjusted here and reconciled on next load.
+  const [likeDelta, setLikeDelta] = useState<Record<string, number>>({});
+
   const load = useCallback(async () => {
     setLoading(true);
     // One column or the other, never both and never neither: a query with no
@@ -62,7 +75,10 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
 
     const { data, error } = await supabase
       .from('posts')
-      .select('id, content, post_type, created_at, reaction_counts, comment_count')
+      .select(
+        'id, content, post_type, created_at, reaction_counts, comment_count, like_count, '
+        + 'profiles!posts_author_id_fkey(id, display_name, username, avatar_url)',
+      )
       .eq(scopeColumn, scopeValue)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
@@ -77,7 +93,25 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
     // Filtered here rather than in the query: `isThought` is the one definition
     // the Posts grid also reads, and a `.in('post_type', [...])` here would be
     // a second copy of it that drifts the day a type is added.
-    setThoughts(((data ?? []) as Thought[]).filter((p) => isThought(p.post_type)));
+    const rows = (data ?? []) as unknown as ThoughtRowData[];
+    setThoughts(
+      rows
+        .filter((row) => isThought(row.post_type))
+        .map((row) => ({
+          id: row.id,
+          content: row.content,
+          post_type: row.post_type,
+          created_at: row.created_at,
+          replyCount: row.comment_count ?? 0,
+          // `like_count` is the column the feed maintains. `reaction_counts` is
+          // the emoji map and summing it here would show a different number to
+          // the one the same post shows in the feed.
+          likeCount: row.like_count ?? 0,
+          author: row.profiles ?? null,
+        })),
+    );
+    // A fresh load is the truth; drop any local adjustments it supersedes.
+    setLikeDelta({});
     setFailed(false);
     setLoading(false);
   }, [userId, communityId]);
@@ -139,66 +173,37 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
     );
   }
 
+  const open = (t: Thought) =>
+    router.push(contentDetailPath(t.id, t.post_type) as never);
+
   return (
     <View style={s.wrap} testID={testID}>
-      {thoughts.map((thought, i) => {
-        const likes = Object.values(thought.reaction_counts ?? {}).reduce((a, b) => a + b, 0);
-        const replies = thought.comment_count ?? 0;
-        return (
-          <View key={thought.id}>
-            <TouchableOpacity
-              activeOpacity={0.75}
-              onPress={() => router.push(contentDetailPath(thought.id, thought.post_type) as never)}
-              accessibilityRole="button"
-              accessibilityLabel={`Open post: ${thought.content.slice(0, 60)}`}
-              testID={`${testID}-${thought.id}`}
-            >
-              <View style={s.row}>
-                <View style={s.railCol}>
-                  {i < thoughts.length - 1 ? <View style={s.rail} /> : null}
-                </View>
-                <View style={s.body}>
-                  <View style={s.head}>
-                    <Text style={s.when}>{relativeWhen(thought.created_at)}</Text>
-                  </View>
-                  <Text style={s.text}>{thought.content}</Text>
-                  <View style={s.counts}>
-                    <View style={s.count}>
-                      <Ionicons name="chatbubble-outline" size={13} color={colors.textMuted} />
-                      <Text style={s.countText}>{replies}</Text>
-                    </View>
-                    <View style={s.count}>
-                      <Ionicons name="heart-outline" size={13} color={colors.textMuted} />
-                      <Text style={s.countText}>{likes}</Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-            {i < thoughts.length - 1 ? <View style={s.sep} /> : null}
-          </View>
-        );
-      })}
+      {thoughts.map((thought, i) => (
+        <ThoughtRow
+          key={thought.id}
+          thought={{
+            ...thought,
+            likeCount: Math.max(0, thought.likeCount + (likeDelta[thought.id] ?? 0)),
+          }}
+          liked={likedPostIds.has(thought.id)}
+          connected={i < thoughts.length - 1}
+          onOpen={() => open(thought)}
+          // Reply lands on the post's own page, where the composer and the
+          // existing comment thread already live. A second comment surface here
+          // would be a second place for a reply to go missing.
+          onReply={() => open(thought)}
+          onLike={() => {
+            const wasLiked = likedPostIds.has(thought.id);
+            setLikeDelta((d) => ({
+              ...d,
+              [thought.id]: (d[thought.id] ?? 0) + (wasLiked ? -1 : 1),
+            }));
+            void toggleLike(thought.id);
+          }}
+          onPressAuthor={(id) => router.push(`/user/${id}` as never)}
+          testID={`${testID}-${thought.id}`}
+        />
+      ))}
     </View>
   );
-}
-
-/**
- * "2h", "3d", "12 Aug".
- *
- * Built from elapsed milliseconds, never by shifting a Date across a month
- * boundary — `setMonth(getMonth() - 1)` overflows on a day the target month
- * does not have, which is the arithmetic `.claude/rules/tests.md` names.
- */
-export function relativeWhen(iso: string, now: Date = new Date()): string {
-  const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return '';
-  const mins = Math.floor((now.getTime() - at.getTime()) / 60_000);
-  if (mins < 1) return 'now';
-  if (mins < 60) return `${mins}m`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d`;
-  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
