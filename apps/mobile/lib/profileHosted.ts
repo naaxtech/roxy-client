@@ -1,3 +1,4 @@
+import { supabase } from './supabase';
 /**
  * What a profile's Events / Rooms / Games strip is allowed to show.
  *
@@ -54,7 +55,6 @@ export async function loadHostedProfile(
   userId: string,
   officialCommunityId: string | null,
 ): Promise<{ events: HostedEvent[]; rooms: HostedRoom[]; games: HostedGame[] }> {
-  const { supabase } = await import('./supabase');
   const now = new Date().toISOString();
   const [eventsRes, roomsRes, gamesRes] = await Promise.all([
     supabase

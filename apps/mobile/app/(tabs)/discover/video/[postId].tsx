@@ -11,7 +11,6 @@ import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { CommentSheet } from '../../../../components/feed/CommentSheet';
 import { FeedVideoPlayer } from '../../../../components/feed/FeedVideoPlayer';
 import type { Comment, Post } from '../../../../types';
-import { supabase } from '../../../../lib/supabase';
 import { fetchPostById } from '../../../../lib/posts';
 import { routeParam } from '../../../../lib/routeParams';
 import { loadPostComments, toggleCommentLike } from '../../../../lib/comments';

@@ -360,6 +360,9 @@ export default function BusinessStorefrontScreen() {
   const approved = canSell(deriveSellerStatus([business]));
   const populated: PopulatedTabs = {
     posts: false,
+    // A storefront's wall is product photography. It has no written feed, so
+    // the tab would open on an empty state every time.
+    thoughts: false,
     shop: approved,
     events: false,
     rooms: false,

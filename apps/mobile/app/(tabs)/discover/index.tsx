@@ -9,7 +9,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useBuildStore } from '../../../store/buildStore';
 import { TYPE, FONTS } from '../../../lib/typography';
-import { RADII, inkOn, type ThemeColors } from '../../../lib/theme';
+import { RADII, type ThemeColors } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { formatMoney } from '../../../lib/currency';
 import { isPlayableGameUrl } from '../../../lib/gameUrl';

@@ -15,7 +15,7 @@ export function sessionEmailMatches(
 }
 
 export function isGhostSignupUser(
-  user: { identities?: Array<{ id?: string }> | null } | null,
+  user: { identities?: { id?: string }[] | null } | null,
 ): boolean {
   return !!user && Array.isArray(user.identities) && user.identities.length === 0;
 }

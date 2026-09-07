@@ -82,8 +82,13 @@ export function findWebNode(ref: { current: unknown }): HTMLElement | null {
     | null;
   if (!value) return null;
   if (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement) return value;
-  if (typeof value.getNode === 'function') {
-    const node = value.getNode();
+  // `value` is still the union here: the instanceof above narrows only the
+  // branch it returns from. React Native Web's ref may be a host node or a
+  // legacy wrapper exposing getNode(), so ask for the property rather than
+  // assuming the shape.
+  const wrapper = value as { getNode?: () => unknown };
+  if (typeof wrapper.getNode === 'function') {
+    const node = wrapper.getNode();
     if (node instanceof HTMLElement) return node;
   }
   return null;

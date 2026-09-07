@@ -22,6 +22,7 @@ const aCommunity = {
   channelCount: 4,
   preview: '#general · Tasha: I can do a cab-share from Soho',
   unreadCount: 2,
+  muted: false,
 };
 
 const renderInbox = (

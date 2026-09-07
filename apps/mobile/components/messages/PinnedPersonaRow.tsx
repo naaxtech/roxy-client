@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
-import { RADII, BRAND_GRADIENT, inkOn, type ThemeColors } from '../../lib/theme';
+import { RADII, BRAND_GRADIENT, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
 export type Persona = 'roxy' | 'sister';

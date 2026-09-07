@@ -21,7 +21,10 @@ type Thought = {
 };
 
 interface Props {
-  userId: string;
+  /** A member's own written posts. */
+  userId?: string;
+  /** A community's written posts. Exactly one of the two is given. */
+  communityId?: string;
   testID?: string;
 }
 
@@ -37,7 +40,7 @@ interface Props {
  * a quiet count row underneath. The rail down the left is Threads' own device —
  * it makes a column of separate posts read as one continuous voice.
  */
-export function ProfileThoughts({ userId, testID = 'profile-thoughts' }: Props) {
+export function ProfileThoughts({ userId, communityId, testID = 'profile-thoughts' }: Props) {
   const colors = useThemeColors();
   const router = useRouter();
   const [thoughts, setThoughts] = useState<Thought[]>([]);
@@ -46,10 +49,21 @@ export function ProfileThoughts({ userId, testID = 'profile-thoughts' }: Props) 
 
   const load = useCallback(async () => {
     setLoading(true);
+    // One column or the other, never both and never neither: a query with no
+    // scope would return the whole table's newest 60 posts and render them as
+    // this profile's own.
+    const scopeColumn = communityId ? 'community_id' : 'author_id';
+    const scopeValue = communityId ?? userId;
+    if (!scopeValue) {
+      setThoughts([]);
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('posts')
       .select('id, content, post_type, created_at, reaction_counts, comment_count')
-      .eq('author_id', userId)
+      .eq(scopeColumn, scopeValue)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(60);
@@ -66,7 +80,7 @@ export function ProfileThoughts({ userId, testID = 'profile-thoughts' }: Props) 
     setThoughts(((data ?? []) as Thought[]).filter((p) => isThought(p.post_type)));
     setFailed(false);
     setLoading(false);
-  }, [userId]);
+  }, [userId, communityId]);
 
   useEffect(() => { void load(); }, [load]);
 

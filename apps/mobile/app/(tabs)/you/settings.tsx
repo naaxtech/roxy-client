@@ -18,7 +18,7 @@ import { ThemeToggle } from '../../../components/ui/ThemeToggle';
 import { ViewAsPicker } from '../../../components/settings/ViewAsPicker';
 import { useSafetyStore } from '../../../store/safetyStore';
 import {
-  readDmPermission, nextDmPermission, dmPermissionLabel, dmPermissionDescription,
+  readDmPermission, nextDmPermission, dmPermissionLabel,
 } from '../../../lib/dmPermission';
 import { useAccess } from '../../../hooks/useAccess';
 import { useViewAsStore } from '../../../store/viewAsStore';

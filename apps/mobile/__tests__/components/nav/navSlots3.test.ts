@@ -48,7 +48,12 @@ describe('NAV_SLOTS_3', () => {
   });
 
   it('gives every route slot a distinct Claude Design mark', () => {
-    const icons = NAV_SLOTS_3.filter((s) => s.kind === 'route').map((s) => s.icon);
+    // Narrowed by the predicate, not merely filtered: `NavSlot` is a union and
+    // the action slot carries no `icon`, so a plain `.filter` leaves the
+    // compiler looking at the whole union.
+    const icons = NAV_SLOTS_3
+      .filter((s): s is Extract<typeof s, { kind: 'route' }> => s.kind === 'route')
+      .map((s) => s.icon);
     expect(new Set(icons).size).toBe(icons.length);
   });
 

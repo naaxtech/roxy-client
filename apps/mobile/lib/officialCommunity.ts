@@ -49,9 +49,9 @@ export async function fetchOwnedCommunities(userId: string): Promise<OfficialCom
     return [];
   }
 
-  const rows = (data ?? []) as Array<{
+  const rows = (data ?? []) as {
     communities: OfficialCommunity | OfficialCommunity[] | null;
-  }>;
+  }[];
 
   return rows.flatMap((row) => {
     const community = Array.isArray(row.communities) ? row.communities[0] : row.communities;

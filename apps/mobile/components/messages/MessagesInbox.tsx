@@ -44,8 +44,18 @@ type Props = {
   footer?: ReactNode;
 };
 
-type DirectSection = { key: 'direct'; title: 'DIRECT'; data: InboxDm[] };
-type CommunitySection = { key: 'community'; title: 'COMMUNITY CHATS'; data: InboxCommunity[] };
+/**
+ * A row is a person or a community, and the two carry different fields.
+ *
+ * `SectionList` infers ONE item type across every section, so a union of two
+ * differently-shaped sections does not satisfy `SectionListData<ItemT, SectionT>`
+ * — the community rows are not assignable to the DM row type. The item type is
+ * therefore the union, and `section.key` discriminates it at the render site,
+ * which is what the code was already doing.
+ */
+type InboxRow = InboxDm | InboxCommunity;
+type DirectSection = { key: 'direct'; title: 'DIRECT'; data: InboxRow[] };
+type CommunitySection = { key: 'community'; title: 'COMMUNITY CHATS'; data: InboxRow[] };
 type InboxSection = DirectSection | CommunitySection;
 
 export function MessagesInbox({

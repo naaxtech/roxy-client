@@ -9,6 +9,7 @@ import {
   type PopulatedTabs, type ProfileTab, type ProfileVariant,
 } from '../../../components/profile/profileVariant';
 import { ProfilePostsGrid } from '../../../components/profile/ProfilePostsGrid';
+import { ProfileThoughts } from '../../../components/profile/ProfileThoughts';
 import { type EarnedBadge } from '../../../components/profile/BadgeRow';
 import { EventModeBadge, type EventMode } from '../../../components/events/EventModeBadge';
 import { deriveSellerStatus, canSell, type SellerBusinessRow } from '../../../lib/sellerStatus';
@@ -88,7 +89,6 @@ function UserProfileScreen() {
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [badges, setBadges] = useState<EarnedBadge[]>([]);
-  const [postCount, setPostCount] = useState(0);
   const [seller, setSeller] = useState<SellerRow[]>([]);
   const [events, setEvents] = useState<HostedEvent[]>([]);
   const [rooms, setRooms] = useState<CommunityRoom[]>([]);
@@ -103,14 +103,11 @@ function UserProfileScreen() {
     setStatus('loading');
     setNotFound(false);
 
-    const [profileRes, badgesRes, postsRes, sellerRes] = await Promise.all([
+    // The post count went with the stat card. Its HEAD query went too — a round
+    // trip on every profile open, for a number nothing renders.
+    const [profileRes, badgesRes, sellerRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('user_badge_progress').select('*, badges(*)').eq('user_id', userId),
-      supabase
-        .from('posts')
-        .select('id', { count: 'exact', head: true })
-        .eq('author_id', userId)
-        .is('deleted_at', null),
       supabase
         .from('businesses')
         .select('id, name, is_verified, can_sell, stripe_account_id')
@@ -131,9 +128,6 @@ function UserProfileScreen() {
     // was built on top of went unnoticed for so long.
     if (badgesRes.error) logError(badgesRes.error, 'userProfile_fetchBadges');
     else setBadges((badgesRes.data ?? []) as EarnedBadge[]);
-
-    if (postsRes.error) logError(postsRes.error, 'userProfile_fetchPostCount');
-    else setPostCount(postsRes.count ?? 0);
 
     if (sellerRes.error) logError(sellerRes.error, 'userProfile_fetchSeller');
     else setSeller((sellerRes.data ?? []) as SellerRow[]);
@@ -285,6 +279,7 @@ function UserProfileScreen() {
   });
   const populated: PopulatedTabs = {
     posts: true,
+    thoughts: true,
     shop: approved,
     events: hosted.events,
     rooms: hosted.rooms,
@@ -363,6 +358,7 @@ function UserProfileScreen() {
       );
     }
     if (tab === 'posts' && userId) return <ProfilePostsGrid userId={userId} />;
+    if (tab === 'thoughts' && userId) return <ProfileThoughts userId={userId} />;
     if (tab === 'events') {
       return (
         <View style={rowStyles.list}>

@@ -27,6 +27,7 @@ import { isPlayableGameUrl } from '../../../../lib/gameUrl';
 import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../../lib/supabaseQueries';
 import { EventsCalendar } from '../../../../components/events/EventsCalendar';
 import { freshChannel } from '../../../../lib/realtimeChannel';
+import { ProfileThoughts } from '../../../../components/profile/ProfileThoughts';
 import { ProfileShell } from '../../../../components/profile/ProfileShell';
 import type { PopulatedTabs, ProfileTab } from '../../../../components/profile/profileVariant';
 import { EventModeBadge, type EventMode } from '../../../../components/events/EventModeBadge';
@@ -481,6 +482,9 @@ export default function CommunityDetailScreen() {
 
   const populated: PopulatedTabs = {
     posts: isJoined || posts.length > 0,
+    // Same rule as Posts: the tab owns its own empty state, and whether a
+    // community has written anything is not known until it has fetched.
+    thoughts: isJoined || posts.length > 0,
     shop: false,
     events: events.length > 0,
     rooms: rooms.length > 0,
@@ -490,6 +494,14 @@ export default function CommunityDetailScreen() {
   };
 
   const renderTab = (tab: ProfileTab) => {
+    if (tab === 'thoughts') {
+      return (
+        <View>
+          {isJoined ? null : joinNotice}
+          <ProfileThoughts communityId={id as string} />
+        </View>
+      );
+    }
     if (tab === 'posts') {
       return (
         <View>

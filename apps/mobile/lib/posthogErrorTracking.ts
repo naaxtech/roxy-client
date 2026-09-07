@@ -7,5 +7,9 @@ export const APP_NAME = 'roxy-client';
 export const ERROR_TRACKING_AUTOCAPTURE = {
   uncaughtExceptions: true,
   unhandledRejections: true,
-  console: ['error'] as const,
+  // `['error'] as const` types this readonly, which the SDK's
+  // AutocaptureOptions rejects; a plain `['error']` widens to string[], which
+  // is too loose for its literal union. A mutable array of the literal is the
+  // one spelling that satisfies both.
+  console: ['error' as const],
 };

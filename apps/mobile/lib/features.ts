@@ -149,7 +149,7 @@ const ALWAYS_ALLOWED = new Set([
   ...AUTH_ALLOWED,
 ]);
 
-const PATH_FEATURES: Array<[prefix: string, feature: Feature]> = [
+const PATH_FEATURES: [prefix: string, feature: Feature][] = [
   ['/messages/new', 'dms'],
   ['/chat', 'dms'],
   ['/roxy-chat', 'roxyCompanion'],

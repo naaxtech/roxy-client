@@ -86,6 +86,10 @@ const thenable = (data: unknown) => {
   chain.order = next;
   chain.limit = () => Promise.resolve({ data, error: null });
   chain.single = () => Promise.resolve({ data, error: null });
+  // The official-community lookup ends in `.maybeSingle()`. Without it the
+  // chain returned undefined and the screen threw before it ever rendered —
+  // a mock that is missing one terminal fails the whole screen, not one query.
+  chain.maybeSingle = () => Promise.resolve({ data: null, error: null });
   chain.delete = next;
   chain.insert = () => Promise.resolve({ data, error: null });
   chain.then = (resolve: (v: unknown) => unknown) =>
