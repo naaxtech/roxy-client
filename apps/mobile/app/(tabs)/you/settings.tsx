@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { MiniWinsSheet } from '../../../components/feed/MiniWinsSheet';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
@@ -37,6 +38,7 @@ export default function SettingsScreen() {
   const { isBeta, isCore } = useAccess();
   const router = useRouter();
   const colors = useThemeColors();
+  const [miniWinsOpen, setMiniWinsOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const blockedCount = useSafetyStore((s) => s.blockedUserIds.length);
@@ -106,6 +108,24 @@ export default function SettingsScreen() {
             </View>
           </View>
         ) : null}
+
+        <View style={s.block}>
+          <Text style={s.sectionLabel}>Your streak</Text>
+          <TouchableOpacity
+            style={[s.card, s.cardPad, s.streakRow]}
+            onPress={() => setMiniWinsOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Open Mini Wins"
+            testID="settings-mini-wins"
+          >
+            <Text style={s.streakEmoji}>🔥</Text>
+            <View style={s.rowLabelGroup}>
+              <Text style={s.rowLabel}>Mini Wins</Text>
+              <Text style={s.rowHint}>Three small things today — keep the streak alive</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
 
         <View style={s.block}>
           <Text style={s.sectionLabel}>Visibility & safety</Text>
@@ -252,6 +272,12 @@ export default function SettingsScreen() {
         </TouchableOpacity>
         <Text style={s.footer}>Roxy 3.0 · made with ✿ in London</Text>
       </ScrollView>
+      <MiniWinsSheet
+        visible={miniWinsOpen}
+        userId={user.id}
+        onClose={() => setMiniWinsOpen(false)}
+      />
+
     </SafeAreaView>
   );
 }
@@ -281,6 +307,8 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   headerTitle: { ...TYPE.title, color: colors.textPrimary, fontWeight: '700' },
   scroll: { padding: 14, gap: 14, paddingBottom: 40 },
   block: { gap: 7 },
+  streakRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  streakEmoji: { fontSize: 22 },
   sectionLabel: {
     ...TYPE.micro,
     color: colors.textMuted,

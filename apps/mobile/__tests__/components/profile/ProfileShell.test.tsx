@@ -17,7 +17,7 @@ import type { PopulatedTabs, ProfileTab } from '../../../components/profile/prof
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 
 const NONE: PopulatedTabs = {
-  posts: false, shop: false, events: false, rooms: false,
+  posts: false, thoughts: false, shop: false, events: false, rooms: false,
   games: false, about: false, saved: false,
 };
 
@@ -237,7 +237,7 @@ describe('ProfileShell — exactly one primary action per variant', () => {
 });
 
 describe('ProfileShell — a tab with no content is not rendered at all', () => {
-  const populated: PopulatedTabs = { ...NONE, posts: true, rooms: true, about: true };
+  const populated: PopulatedTabs = { ...NONE, posts: true, thoughts: true, rooms: true, about: true };
 
   it('renders only the populated tabs, in prototype order', () => {
     const view = renderShell({ variant: 'community', populated });
@@ -344,7 +344,7 @@ describe('ProfileShell — every control is reachable', () => {
   it('keeps the actions and the tabs tappable too', () => {
     const view = renderShell({
       secondaryAction: { label: 'Follow', onPress: jest.fn() },
-      populated: { ...NONE, posts: true, about: true },
+      populated: { ...NONE, posts: true, thoughts: true, about: true },
     });
     for (const id of ['profile-primary-action', 'profile-secondary-action', 'profile-tab-posts']) {
       expect(sizeOf(view.getByTestId(id)).height).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
@@ -361,7 +361,7 @@ describe('ProfileShell — a parent can drive the strip', () => {
     const onSelectTab = jest.fn();
     const view = renderShell({
       variant: 'self',
-      populated: { ...NONE, posts: true, saved: true },
+      populated: { ...NONE, posts: true, thoughts: true, saved: true },
       selectedTab: 'saved',
       onSelectTab,
     });

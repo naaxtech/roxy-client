@@ -30,7 +30,7 @@
 export type ProfileVariant = 'user' | 'seller' | 'community' | 'self';
 
 export type ProfileTab =
-  | 'posts' | 'shop' | 'events' | 'rooms' | 'games' | 'about' | 'saved'
+  | 'posts' | 'thoughts' | 'shop' | 'events' | 'rooms' | 'games' | 'about' | 'saved'
   // Storefront-only. The design names six tabs, but a real shop also carries a
   // photo wall and its shipping and returns terms — and folding policies into
   // About would bury the one section a buyer reads before she pays.
@@ -62,15 +62,19 @@ export type PopulatedTabs =
  * self is `['Posts','Saved']` with Shop appended once she is approved.
  */
 const ALLOWED_TABS: Record<ProfileVariant, readonly ProfileTab[]> = {
-  user: ['posts', 'events', 'rooms', 'games', 'about'],
-  seller: ['posts', 'shop', 'photos', 'events', 'rooms', 'games', 'about', 'policies'],
-  community: ['posts', 'rooms', 'events', 'games', 'about'],
-  self: ['posts', 'saved', 'shop', 'events', 'rooms', 'games', 'about'],
+  // Thoughts sits straight after Posts everywhere Posts appears: the two are
+  // one wall split by shape, and separating them in the strip would read as
+  // two unrelated features.
+  user: ['posts', 'thoughts', 'events', 'rooms', 'games', 'about'],
+  seller: ['posts', 'thoughts', 'shop', 'photos', 'events', 'rooms', 'games', 'about', 'policies'],
+  community: ['posts', 'thoughts', 'rooms', 'events', 'games', 'about'],
+  self: ['posts', 'thoughts', 'saved', 'shop', 'events', 'rooms', 'games', 'about'],
 };
 
 /** Human labels for the strip. One spelling, so no two screens disagree. */
 export const TAB_LABELS: Record<ProfileTab, string> = {
   posts: 'Posts',
+  thoughts: 'Thoughts',
   photos: 'Photos',
   policies: 'Policies',
   shop: 'Shop',

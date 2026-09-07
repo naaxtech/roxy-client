@@ -10,6 +10,7 @@ import { TextCardFace } from '../feed/TextCardFace';
 import { parseTextCard } from '../../lib/textCard';
 import { contentDetailPath } from '../../lib/contentNavigation';
 import { logError } from '../../lib/errorLogger';
+import { isMediaPost } from '../../lib/postKind';
 import type { PostType } from '../../types';
 
 type GridPost = {
@@ -45,7 +46,10 @@ export function ProfilePostsGrid({ userId }: Props) {
       .order('created_at', { ascending: false })
       .limit(60);
     if (error) logError(error, 'ProfilePostsGrid.load');
-    setPosts((data ?? []) as GridPost[]);
+    // Text posts live in the Thoughts tab now. A square is the wrong container
+    // for a sentence — it crops the one thing the post is made of — and a wall
+    // of cropped paragraphs read as broken image tiles.
+    setPosts(((data ?? []) as GridPost[]).filter((post) => isMediaPost(post.post_type)));
     setLoading(false);
   }, [userId]);
 
@@ -58,8 +62,8 @@ export function ProfilePostsGrid({ userId }: Props) {
   if (posts.length === 0) {
     return (
       <View style={s.empty} testID="profile-posts-grid">
-        <Text style={s.emptyTitle}>No posts yet</Text>
-        <Text style={s.emptyBody}>Text cards, photos and videos you publish land here.</Text>
+        <Text style={s.emptyTitle}>No photos or videos yet</Text>
+        <Text style={s.emptyBody}>Anything you post with a picture lands here. Words go in Thoughts.</Text>
       </View>
     );
   }

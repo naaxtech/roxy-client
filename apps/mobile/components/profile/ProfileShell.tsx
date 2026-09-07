@@ -320,13 +320,18 @@ export function ProfileShell({
         <TouchableOpacity
           onPress={action.onPress}
           activeOpacity={0.85}
+          // The button keeps the design's 28px height; the tappable area is a
+          // full 44 either side of it.
+          hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel={action.accessibilityLabel ?? action.label}
           testID={id}
         >
           <LinearGradient
             colors={['#F22481', '#8B5CF6']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            // 120deg in the design's CSS: left to right with a downward tilt,
+            // not the flat horizontal sweep this had.
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
             style={s.selfEditBtn}
           >
             <Text style={s.selfEditLabel}>{action.label}</Text>
@@ -742,8 +747,13 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   badgeChipEmojis: { fontSize: 12, letterSpacing: 1 },
   badgeChipExtra: { ...TYPE.micro, color: colors.primaryInk, fontWeight: '800', marginLeft: 2 },
+  // The design's own numbers: padding 7x13 around an 11.5px label, which is a
+  // pill about 28 tall. `minHeight: MIN_TOUCH_TARGET` here made it 48 tall and
+  // 52 wide, and a pill radius on a near-square box is a circle — which is
+  // what shipped. The 44pt target is restored with hitSlop, which grows the
+  // touch area without growing the button, the same split the chips use.
   selfEditBtn: {
-    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 13,
+    paddingHorizontal: 13, paddingVertical: 7,
     borderRadius: RADII.pill, alignItems: 'center', justifyContent: 'center',
   },
   selfEditLabel: { ...TYPE.caption, color: ON_COLOR, fontWeight: '700' },

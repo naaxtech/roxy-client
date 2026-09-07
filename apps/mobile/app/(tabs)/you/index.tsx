@@ -16,7 +16,7 @@ import { SavedPosts } from '../../../components/profile/SavedPosts';
 import { SavedWatchlist } from '../../../components/profile/SavedWatchlist';
 import { type EarnedBadge } from '../../../components/profile/BadgeRow';
 import { useArchiveStore } from '../../../store/archiveStore';
-import { SelfControls } from '../../../components/profile/SelfControls';
+import { ProfileThoughts } from '../../../components/profile/ProfileThoughts';
 import { YouMoreMenu } from '../../../components/profile/YouMoreMenu';
 import { fetchUnreadNotificationCount } from '../../../lib/notifications';
 import { MiniWinsSheet } from '../../../components/feed/MiniWinsSheet';
@@ -59,7 +59,6 @@ export default function ProfileScreen() {
   const [shellTab, setShellTab] = useState<ProfileTab | null>(null);
   const [miniWinsOpen, setMiniWinsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [postCount, setPostCount] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [sellerRows, setSellerRows] = useState<SellerBusinessRow[]>([]);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
@@ -140,15 +139,8 @@ export default function ProfileScreen() {
 
     void loadBookmarks(user.id);
     void fetchOrders();
-    void supabase
-      .from('posts')
-      .select('id', { count: 'exact', head: true })
-      .eq('author_id', user.id)
-      .is('deleted_at', null)
-      .then(({ count, error }) => {
-        if (error) logError(error, 'you_postCount');
-        else setPostCount(count ?? 0);
-      });
+    // The post count went with the stat card. A HEAD count on every profile
+    // open, for a number nothing renders, is a round trip bought for nothing.
     void fetchUnreadNotificationCount(user.id)
       .then(setUnreadNotifs)
       .catch((e: unknown) => logError(e, 'you_unreadNotifs'));
@@ -304,6 +296,9 @@ export default function ProfileScreen() {
   });
   const populated: PopulatedTabs = {
     posts: true,
+    // Both tabs own their empty state, the same way `posts` already did — the
+    // counts are not known until each has fetched.
+    thoughts: true,
     shop: sellerApproved,
     events: hostedFlags.events,
     rooms: hostedFlags.rooms,
@@ -315,6 +310,7 @@ export default function ProfileScreen() {
   const renderTab = (tab: ProfileTab) => {
     if (!user?.id) return null;
     if (tab === 'posts') return <ProfilePostsGrid userId={user.id} />;
+    if (tab === 'thoughts') return <ProfileThoughts userId={user.id} />;
     if (tab === 'shop' && shop?.id) {
       return (
         <TouchableOpacity
@@ -427,6 +423,11 @@ export default function ProfileScreen() {
       ) : null}
       <ProfileShell
         variant="self"
+        // No `stats`. Posts / Badges / Orders was three numbers about the
+        // account rather than anything a woman comes to her own profile to do,
+        // and two of the three are already tabs. Shelved deliberately —
+        // ProfileShell still accepts `stats`, so a considered version later is
+        // a prop, not a rebuild.
         name={profile.display_name ?? profile.username}
         subtitle={profile.username ? `@${profile.username}` : null}
         bio={profile.bio}
@@ -451,11 +452,6 @@ export default function ProfileScreen() {
           ...profileXpBar(profile.gamification_points),
           onPress: () => setMiniWinsOpen(true),
         }}
-        stats={[
-          { value: String(postCount), label: 'Posts' },
-          { value: String(badges.length), label: 'Badges' },
-          { value: String(orders.length), label: 'Orders' },
-        ]}
         headerActions={[
           {
             icon: 'notifications-outline',
@@ -482,10 +478,12 @@ export default function ProfileScreen() {
         beforeTabs={
           user?.id ? (
             <View>
-              <SelfControls
-                userId={user.id}
-                onOpenDaily={() => setMiniWinsOpen(true)}
-              />
+              {/* Dating mode, Ghost mode and the streak used to sit here. All
+                  three are settings, not identity: the first two already
+                  existed in Settings under "Visibility & safety" — the profile
+                  was showing a second copy of the same switches — and the
+                  streak now sits beside them. A profile is for who she is, not
+                  for the switches that govern her account. */}
               {!isBeta ? (
                 <View style={styles.comingSoonCard} testID="you-coming-soon">
                   <Text style={styles.comingSoonTitle}>

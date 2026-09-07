@@ -35,10 +35,10 @@ describe('ProfilePostsGrid', () => {
   it('shows an empty wall when she has not published yet', async () => {
     const { getByTestId, getByText } = render(<ProfilePostsGrid userId="u1" />);
     await waitFor(() => expect(getByTestId('profile-posts-grid')).toBeTruthy());
-    expect(getByText(/No posts yet/i)).toBeTruthy();
+    expect(getByText(/No photos or videos yet/i)).toBeTruthy();
   });
 
-  it('renders a text card tile from a standard post', async () => {
+  it('leaves a text post to the Thoughts tab rather than cropping it into a square', async () => {
     mockOrder.mockResolvedValue({
       data: [{
         id: 'p1',
@@ -49,7 +49,12 @@ describe('ProfilePostsGrid', () => {
       }],
       error: null,
     });
-    const { findByTestId } = render(<ProfilePostsGrid userId="u1" />);
-    expect(await findByTestId('profile-post-p1')).toBeTruthy();
+    // A square is the wrong container for a sentence: it crops the one thing
+    // the post is made of, and a wall of cropped paragraphs read as broken
+    // image tiles. `isThought` is the single definition both tabs share, so a
+    // post cannot appear in both or fall out of both.
+    const { findByTestId, queryByTestId } = render(<ProfilePostsGrid userId="u1" />);
+    await findByTestId('profile-posts-grid');
+    expect(queryByTestId('profile-post-p1')).toBeNull();
   });
 });

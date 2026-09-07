@@ -116,20 +116,37 @@ describe('You on the unified shell', () => {
     await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
     expect(getByText('Her')).toBeTruthy();
     expect(getByTestId('you-coming-soon')).toBeTruthy();
-    expect(getByTestId('self-controls')).toBeTruthy();
     expect(getByTestId('you-more')).toBeTruthy();
     expect(getByTestId('profile-tab-posts')).toBeTruthy();
+    // Text posts get their own tab: a square crops the one thing a written
+    // post is made of.
+    expect(getByTestId('profile-tab-thoughts')).toBeTruthy();
     expect(getByTestId('profile-tab-saved')).toBeTruthy();
     expect(getByText('Edit')).toBeTruthy();
     expect(getByText('40 XP')).toBeTruthy();
   });
 
-  it('still shows self controls once she is tagged beta, without the public coming-soon card', async () => {
+  it('drops the coming-soon card once she is tagged beta', async () => {
     useProfileStore.setState({
       profile: { ...useProfileStore.getState().profile, access_tier: 'beta' } as never,
     });
     const { getByTestId, queryByTestId } = render(<ProfileScreen />);
-    await waitFor(() => expect(getByTestId('self-controls')).toBeTruthy());
+    await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
     expect(queryByTestId('you-coming-soon')).toBeNull();
+  });
+
+  it('keeps account switches off the profile entirely', async () => {
+    // Dating mode, Ghost mode and the streak are settings, not identity — and
+    // the first two already existed in Settings under "Visibility & safety",
+    // so the profile was rendering a second copy of the same switches.
+    const { getByTestId, queryByTestId } = render(<ProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
+    expect(queryByTestId('self-controls')).toBeNull();
+  });
+
+  it('shows no stat card — Posts / Badges / Orders was shelved', async () => {
+    const { getByTestId, queryByTestId } = render(<ProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
+    expect(queryByTestId('profile-stats')).toBeNull();
   });
 });

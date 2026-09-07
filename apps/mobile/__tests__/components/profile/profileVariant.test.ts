@@ -12,12 +12,12 @@ import {
 
 /** Nothing has content. Every test starts from here and turns exactly one thing on. */
 const NONE: PopulatedTabs = {
-  posts: false, shop: false, events: false, rooms: false,
+  posts: false, thoughts: false, shop: false, events: false, rooms: false,
   games: false, about: false, saved: false,
 };
 
 const ALL: PopulatedTabs = {
-  posts: true, shop: true, events: true, rooms: true,
+  posts: true, thoughts: true, shop: true, events: true, rooms: true,
   games: true, about: true, saved: true,
 };
 
@@ -98,20 +98,20 @@ describe('visibleTabs — order follows the prototype', () => {
   it('orders a community Posts · Rooms · Events · Games · About', () => {
     // Prototype `tabsFor.wlw` — behaviour line 1523.
     expect(visibleTabs('community', ALL)).toEqual<ProfileTab[]>([
-      'posts', 'rooms', 'events', 'games', 'about',
+      'posts', 'thoughts', 'rooms', 'events', 'games', 'about',
     ]);
   });
 
   it('orders a seller Posts · Shop · Events', () => {
     // Prototype `tabsFor.maya`.
-    expect(visibleTabs('seller', { ...NONE, posts: true, shop: true, events: true }))
-      .toEqual<ProfileTab[]>(['posts', 'shop', 'events']);
+    expect(visibleTabs('seller', { ...NONE, posts: true, thoughts: true, shop: true, events: true }))
+      .toEqual<ProfileTab[]>(['posts', 'thoughts', 'shop', 'events']);
   });
 
   it('orders self Posts · Saved · Shop', () => {
     // Prototype: `['Posts','Saved'].concat(seller==='approved' ? ['Shop'] : [])`.
-    expect(visibleTabs('self', { ...NONE, posts: true, saved: true, shop: true }))
-      .toEqual<ProfileTab[]>(['posts', 'saved', 'shop']);
+    expect(visibleTabs('self', { ...NONE, posts: true, thoughts: true, saved: true, shop: true }))
+      .toEqual<ProfileTab[]>(['posts', 'thoughts', 'saved', 'shop']);
   });
 
   it('is stable — the same input gives the same order every time', () => {
@@ -137,7 +137,7 @@ describe('visibleTabs — pure', () => {
 
 describe('resolveActiveTab — the strip can change under her', () => {
   it('keeps her selection when it is still on the strip', () => {
-    expect(resolveActiveTab(['posts', 'rooms', 'about'], 'rooms')).toBe('rooms');
+    expect(resolveActiveTab(['posts', 'thoughts', 'rooms', 'about'], 'rooms')).toBe('rooms');
   });
 
   it('falls back to the FIRST visible tab, never to a hardcoded Posts', () => {
@@ -232,7 +232,7 @@ describe('a storefront keeps what a storefront needs', () => {
     // and folding policies into About would bury the one section a buyer looks
     // for before she pays. Allowed for `seller` only.
     const tabs = visibleTabs('seller', {
-      posts: false, shop: true, events: false, rooms: false,
+      posts: false, thoughts: false, shop: true, events: false, rooms: false,
       games: false, about: true, saved: false, photos: true, policies: true,
     });
     expect(tabs).toContain('photos');
@@ -242,7 +242,7 @@ describe('a storefront keeps what a storefront needs', () => {
   it('gives nobody else a policies tab', () => {
     for (const variant of ['user', 'community', 'self'] as const) {
       const tabs = visibleTabs(variant, {
-        posts: true, shop: true, events: true, rooms: true,
+        posts: true, thoughts: true, shop: true, events: true, rooms: true,
         games: true, about: true, saved: true, photos: true, policies: true,
       });
       expect(tabs).not.toContain('policies');
@@ -251,7 +251,7 @@ describe('a storefront keeps what a storefront needs', () => {
 
   it('still hides them when there is nothing in them', () => {
     const tabs = visibleTabs('seller', {
-      posts: false, shop: true, events: false, rooms: false,
+      posts: false, thoughts: false, shop: true, events: false, rooms: false,
       games: false, about: false, saved: false, photos: false, policies: false,
     });
     expect(tabs).toEqual(['shop']);
