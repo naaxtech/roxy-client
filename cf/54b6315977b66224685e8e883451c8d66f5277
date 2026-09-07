@@ -1,0 +1,21 @@
+apps/mobile/components/nav/FloatingTabBar.tsx
+  s_488a1686f9c1af::t_e92312b6e4bfae 237-239,251,260-262,275,293,295
+apps/mobile/components/feed/FeedSegments.tsx
+  s_488a1686f9c1af::t_e92312b6e4bfae 58-60,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "cf54b6315977b66224685e8e883451c8d66f5277",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
