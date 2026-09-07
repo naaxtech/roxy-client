@@ -8,6 +8,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { avatarGradient, isPresetAvatar, presetColor, presetEmoji } from '../../lib/avatars';
+import { ReactionRow } from './ReactionRow';
 import type { PostType } from '../../types';
 
 export type ThoughtAuthor = {
@@ -24,6 +25,7 @@ export type Thought = {
   created_at: string;
   replyCount: number;
   likeCount: number;
+  reactionCounts: Record<string, number> | null;
   author: ThoughtAuthor | null;
 };
 
@@ -32,6 +34,13 @@ interface Props {
   liked: boolean;
   /** True while this is not the last row — draws the continuity rail. */
   connected: boolean;
+  /** Whether its replies are open, so the control says which way it goes. */
+  expanded?: boolean;
+  /** Emoji she has tapped this session. The tally stores no per-viewer row. */
+  myReactions: ReadonlySet<string>;
+  onReact: (emoji: string) => void;
+  picking: boolean;
+  onTogglePicker: () => void;
   onOpen: () => void;
   onReply: () => void;
   onLike: () => void;
@@ -56,7 +65,8 @@ const AVATAR = 38;
  * system on this screen would be a second place for a reply to go missing.
  */
 export function ThoughtRow({
-  thought, liked, connected, onOpen, onReply, onLike, onPressAuthor, testID,
+  thought, liked, connected, expanded = false, myReactions, onReact, picking,
+  onTogglePicker, onOpen, onReply, onLike, onPressAuthor, testID,
 }: Props) {
   const colors = useThemeColors();
   const name = thought.author?.display_name?.trim()
@@ -168,11 +178,23 @@ export function ThoughtRow({
               style={s.action}
               onPress={onReply}
               accessibilityRole="button"
-              accessibilityLabel={`Reply. ${thought.replyCount} ${thought.replyCount === 1 ? 'reply' : 'replies'}`}
+              accessibilityLabel={
+                expanded
+                  ? 'Hide replies'
+                  : `Reply. ${thought.replyCount} ${thought.replyCount === 1 ? 'reply' : 'replies'}`
+              }
+              accessibilityState={{ expanded }}
+              aria-expanded={expanded}
               testID={testID ? `${testID}-reply` : undefined}
             >
-              <Ionicons name="chatbubble-outline" size={16} color={colors.textMuted} />
-              <Text style={s.count}>{thought.replyCount > 0 ? thought.replyCount : 'Reply'}</Text>
+              <Ionicons
+                name={expanded ? 'chatbubble' : 'chatbubble-outline'}
+                size={16}
+                color={expanded ? colors.roxy : colors.textMuted}
+              />
+              <Text style={[s.count, expanded && s.countOn]}>
+                {thought.replyCount > 0 ? thought.replyCount : 'Reply'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -204,6 +226,15 @@ export function ThoughtRow({
               <Ionicons name="arrow-redo-outline" size={16} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
+
+          <ReactionRow
+            counts={thought.reactionCounts}
+            mine={myReactions}
+            onReact={onReact}
+            picking={picking}
+            onTogglePicker={onTogglePicker}
+            testID={testID ? `${testID}-reactions` : undefined}
+          />
         </View>
       </View>
     </View>

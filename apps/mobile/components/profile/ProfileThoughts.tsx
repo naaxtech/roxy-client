@@ -5,11 +5,13 @@ import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
-import { contentDetailPath } from '../../lib/contentNavigation';
 import { logError } from '../../lib/errorLogger';
 import { isThought } from '../../lib/postKind';
 import { useFeedStore } from '../../store/feedStore';
 import { ThoughtRow, type Thought, type ThoughtAuthor } from './ThoughtRow';
+import { InlineReplies } from './InlineReplies';
+import { reactToPost, withLocalReaction } from '../../lib/postReactions';
+import { useAuthStore } from '../../store/authStore';
 import type { PostType } from '../../types';
 
 /** The row shape as the database returns it, before it becomes a `Thought`. */
@@ -44,6 +46,9 @@ interface Props {
  * a quiet count row underneath. The rail down the left is Threads' own device —
  * it makes a column of separate posts read as one continuous voice.
  */
+/** Shared so an unreacted row does not allocate a Set on every render. */
+const EMPTY_SET: ReadonlySet<string> = new Set();
+
 export function ProfileThoughts({ userId, communityId, testID = 'profile-thoughts' }: Props) {
   const colors = useThemeColors();
   const router = useRouter();
@@ -59,6 +64,16 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
   // The store's own count lives on ITS post list, which this screen does not
   // use — so the visible number is adjusted here and reconciled on next load.
   const [likeDelta, setLikeDelta] = useState<Record<string, number>>({});
+  // Which thought has its replies open. One at a time: several expanded threads
+  // turn a profile into a wall of half-read conversations, and X and Threads
+  // both keep it to one.
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [replyDelta, setReplyDelta] = useState<Record<string, number>>({});
+  const currentUserId = useAuthStore((st) => st.user?.id) ?? null;
+  // Which emoji she has tapped, for the life of this screen. The tally is not a
+  // ballot — there is no per-viewer row — so this must not claim to be one.
+  const [myReactions, setMyReactions] = useState<Record<string, Set<string>>>({});
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -107,6 +122,7 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
           // the emoji map and summing it here would show a different number to
           // the one the same post shows in the feed.
           likeCount: row.like_count ?? 0,
+          reactionCounts: row.reaction_counts ?? null,
           author: row.profiles ?? null,
         })),
     );
@@ -173,25 +189,47 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
     );
   }
 
-  const open = (t: Thought) =>
-    router.push(contentDetailPath(t.id, t.post_type) as never);
+  // Expand in place rather than pushing a screen. A one-line answer should not
+  // cost her the scroll position and the thread she was reading.
+  const toggle = (t: Thought) => setOpenId((current) => (current === t.id ? null : t.id));
 
   return (
     <View style={s.wrap} testID={testID}>
       {thoughts.map((thought, i) => (
+        <View key={thought.id}>
         <ThoughtRow
-          key={thought.id}
           thought={{
             ...thought,
             likeCount: Math.max(0, thought.likeCount + (likeDelta[thought.id] ?? 0)),
+            replyCount: Math.max(0, thought.replyCount + (replyDelta[thought.id] ?? 0)),
           }}
           liked={likedPostIds.has(thought.id)}
+          expanded={openId === thought.id}
+          myReactions={myReactions[thought.id] ?? EMPTY_SET}
+          picking={pickerFor === thought.id}
+          onTogglePicker={() => setPickerFor((c) => (c === thought.id ? null : thought.id))}
+          onReact={(emoji) => {
+            // Painted first, then written. increment_reaction is atomic and
+            // SECURITY DEFINER, so two women reacting at once cannot lose one
+            // another's tap.
+            setThoughts((list) => list.map((t) => (
+              t.id === thought.id
+                ? { ...t, reactionCounts: withLocalReaction(t.reactionCounts, emoji) }
+                : t
+            )));
+            setMyReactions((m) => ({
+              ...m,
+              [thought.id]: new Set([...(m[thought.id] ?? []), emoji]),
+            }));
+            setPickerFor(null);
+            void reactToPost(thought.id, emoji).catch((e) => {
+              logError(e, 'ProfileThoughts.react');
+              void load();
+            });
+          }}
           connected={i < thoughts.length - 1}
-          onOpen={() => open(thought)}
-          // Reply lands on the post's own page, where the composer and the
-          // existing comment thread already live. A second comment surface here
-          // would be a second place for a reply to go missing.
-          onReply={() => open(thought)}
+          onOpen={() => toggle(thought)}
+          onReply={() => toggle(thought)}
           onLike={() => {
             const wasLiked = likedPostIds.has(thought.id);
             setLikeDelta((d) => ({
@@ -203,6 +241,18 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
           onPressAuthor={(id) => router.push(`/user/${id}` as never)}
           testID={`${testID}-${thought.id}`}
         />
+        {openId === thought.id ? (
+          <InlineReplies
+            postId={thought.id}
+            currentUserId={currentUserId}
+            onCountChange={(count) => setReplyDelta((d) => ({
+              ...d,
+              [thought.id]: count - thought.replyCount,
+            }))}
+            testID={`${testID}-replies-${thought.id}`}
+          />
+        ) : null}
+        </View>
       ))}
     </View>
   );

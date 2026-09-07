@@ -28,20 +28,22 @@ test('Reply lands on the thought, with somewhere to write', async ({ page }) => 
 
   await replies.first().click();
 
-  // Off the profile and onto the post.
-  await expect(page).not.toHaveURL(/\/you$/, { timeout: 20_000 });
+  // She must STILL be on her profile: the whole point is that a one-line answer
+  // does not cost her the scroll position and the thread she was reading.
+  await expect(page).toHaveURL(/\/you$/);
 
   // Targeted by placeholder, not by `input[type=text]`: react-native-web
   // renders a TextInput with NO type attribute, so the type selector matched
-  // nothing and the first version of this test failed over a working screen.
-  const composer = page.getByPlaceholder('Add a comment…');
+  // nothing and an earlier version of this test failed over a working screen.
+  const composer = page.getByPlaceholder('Write a reply…');
   await expect(composer).toBeVisible({ timeout: 20_000 });
+  await composer.fill('replying inline');
+  await expect(composer).toHaveValue('replying inline');
+  await page.screenshot({ path: 'shots/thought-inline-reply.png', fullPage: true });
 
-  // She can actually type in it — visible is not the same as usable.
-  await composer.fill('replying from the thoughts tab');
-  await expect(composer).toHaveValue('replying from the thoughts tab');
-
-  await page.screenshot({ path: 'shots/thought-detail.png', fullPage: true });
+  // And it collapses again, so the profile does not fill with open threads.
+  await replies.first().click();
+  await expect(composer).toBeHidden({ timeout: 10_000 });
 });
 
 test('Like marks itself as pressed, so the tap is not silent', async ({ page }) => {
@@ -63,4 +65,47 @@ test('Like marks itself as pressed, so the tap is not silent', async ({ page }) 
 
   // The state a screen reader announces has to change, not only the icon.
   expect(after).not.toBe(before);
+});
+
+test('the replies panel settles instead of spinning forever', async ({ page }) => {
+  await signInWithSeedUser(page);
+  await page.goto('/you');
+  await page.getByTestId('profile-tab-thoughts').click();
+
+  const replies = page.locator('[data-testid$="-reply"]');
+  await replies.first().waitFor({ state: 'visible', timeout: 30_000 });
+  await replies.first().click();
+
+  // Either replies, or the empty line. A spinner still turning after this long
+  // means the load never resolved, and a permanent spinner is how a surface
+  // says "broken" without saying anything.
+  const panel = page.locator('[data-testid*="-replies-"]').first();
+  await expect(panel).toBeVisible({ timeout: 15_000 });
+  await page.waitForTimeout(4000);
+
+  const stillLoading = await panel.locator('[data-testid$="-loading"]').count();
+  expect(stillLoading, 'the replies panel is still spinning').toBe(0);
+});
+
+test('reacting with an emoji sticks, and the tally goes up', async ({ page }) => {
+  await signInWithSeedUser(page);
+  await page.goto('/you');
+  await page.getByTestId('profile-tab-thoughts').click();
+
+  const add = page.locator('[data-testid$="-reactions-add"]').first();
+  await add.waitFor({ state: 'visible', timeout: 30_000 });
+  await add.click();
+
+  // The picker offers the same six the chat bar does.
+  const heart = page.locator('[data-testid$="-reactions-pick-❤️"]').first();
+  await expect(heart).toBeVisible();
+  await heart.click();
+
+  // A chip appears carrying the emoji and a count — the reaction is part of
+  // reading the post, not hidden behind the picker.
+  const chip = page.locator('[data-testid$="-reactions-chip-❤️"]').first();
+  await expect(chip).toBeVisible({ timeout: 10_000 });
+  await expect(chip).toHaveAttribute('aria-pressed', 'true');
+
+  await page.screenshot({ path: 'shots/thought-reactions.png', fullPage: true });
 });
