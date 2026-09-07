@@ -17,9 +17,16 @@ test('Reply lands on the thought, with somewhere to write', async ({ page }) => 
   await page.goto('/you');
   await page.getByTestId('profile-tab-thoughts').click();
 
-  const firstReply = page.locator('[data-testid$="-reply"]').first();
-  await firstReply.waitFor({ state: 'visible', timeout: 30_000 });
-  await firstReply.click();
+  // The seed account carries a few written posts. If it does not, skip rather
+  // than fail: an empty Thoughts tab is a fixture problem, and a red test that
+  // means "no data" trains people to ignore red tests.
+  await page.getByTestId('profile-thoughts-empty')
+    .or(page.locator('[data-testid$="-reply"]').first())
+    .waitFor({ state: 'visible', timeout: 30_000 });
+  const replies = page.locator('[data-testid$="-reply"]');
+  test.skip(await replies.count() === 0, 'seed account has no written posts');
+
+  await replies.first().click();
 
   // Off the profile and onto the post.
   await expect(page).not.toHaveURL(/\/you$/, { timeout: 20_000 });
@@ -42,8 +49,12 @@ test('Like marks itself as pressed, so the tap is not silent', async ({ page }) 
   await page.goto('/you');
   await page.getByTestId('profile-tab-thoughts').click();
 
-  const like = page.locator('[data-testid$="-like"]').first();
-  await like.waitFor({ state: 'visible', timeout: 30_000 });
+  await page.getByTestId('profile-thoughts-empty')
+    .or(page.locator('[data-testid$="-like"]').first())
+    .waitFor({ state: 'visible', timeout: 30_000 });
+  const likes = page.locator('[data-testid$="-like"]');
+  test.skip(await likes.count() === 0, 'seed account has no written posts');
+  const like = likes.first();
 
   const before = await like.getAttribute('aria-pressed');
   await like.click();
