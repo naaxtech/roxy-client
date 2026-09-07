@@ -7,6 +7,7 @@ import { TYPE } from '../../lib/typography';
 import { RADII, inkOn } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { loadPostComments, submitComment, appendComment } from '../../lib/comments';
+import { Analytics } from '../../lib/analytics';
 import { relativeWhen } from './ThoughtRow';
 import type { Comment } from '../../types';
 
@@ -67,6 +68,9 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
       setError(res.error ?? 'That reply did not send.');
       return;
     }
+    // After the write, never before: firing first counts replies that never
+    // landed, which is the same lie in the metrics as in the UI.
+    Analytics.thoughtReplySent('profile');
     const next = appendComment(comments, res.comment);
     setComments(next);
     setDraft('');

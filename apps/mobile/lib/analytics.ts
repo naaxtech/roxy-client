@@ -96,6 +96,37 @@ export const Analytics = {
     safe(() => analytics().logEvent('archive_watchlist_added'));
     ph('archive_watchlist_added');
   },
+  // ── The Thoughts loop ────────────────────────────────────────────────────
+  //
+  // The question these three exist to answer: did opening replies IN PLACE
+  // make people reply? Tapping a post used to push a whole screen, and the
+  // drop-off between "opened the thread" and "actually said something" is the
+  // only way to tell whether removing that navigation worked.
+  //
+  // `surface` distinguishes the profile's inline panel from a post's own page,
+  // because both write the same comment row and otherwise look identical here.
+  //
+  // No post id, no author, no text. A comment is public, so naming the post
+  // would not disclose anything the app hides — but nothing in this funnel
+  // needs it, and an event carries what the question needs and no more. The
+  // same reasoning removed the entry slug from archive_vote_cast.
+  thoughtRepliesOpened: (surface: 'profile' | 'detail') => {
+    safe(() => analytics().logEvent('thought_replies_opened', { surface }));
+    ph('thought_replies_opened', { surface });
+  },
+  thoughtReplySent: (surface: 'profile' | 'detail') => {
+    safe(() => analytics().logEvent('thought_reply_sent', { surface }));
+    ph('thought_reply_sent', { surface });
+  },
+  /**
+   * The emoji IS the event's content: it is a fixed six-value vocabulary the
+   * app defines, not anything she typed, so it discloses nothing about her.
+   */
+  postReacted: (emoji: string, surface: 'profile' | 'detail') => {
+    safe(() => analytics().logEvent('post_reacted', { emoji, surface }));
+    ph('post_reacted', { emoji, surface });
+  },
+
   membershipApproved: () => {
     safe(() => analytics().logEvent('membership_approved'));
     ph('membership_approved');

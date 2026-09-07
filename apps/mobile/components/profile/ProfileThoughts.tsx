@@ -11,6 +11,7 @@ import { useFeedStore } from '../../store/feedStore';
 import { ThoughtRow, type Thought, type ThoughtAuthor } from './ThoughtRow';
 import { InlineReplies } from './InlineReplies';
 import { reactToPost, withLocalReaction } from '../../lib/postReactions';
+import { Analytics } from '../../lib/analytics';
 import { useAuthStore } from '../../store/authStore';
 import type { PostType } from '../../types';
 
@@ -191,7 +192,13 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
 
   // Expand in place rather than pushing a screen. A one-line answer should not
   // cost her the scroll position and the thread she was reading.
-  const toggle = (t: Thought) => setOpenId((current) => (current === t.id ? null : t.id));
+  const toggle = (t: Thought) => setOpenId((current) => {
+    const next = current === t.id ? null : t.id;
+    // Only on OPEN. Counting the close too would double every session and make
+    // the open-to-sent rate — the one number this funnel exists for — meaningless.
+    if (next !== null) Analytics.thoughtRepliesOpened('profile');
+    return next;
+  });
 
   return (
     <View style={s.wrap} testID={testID}>
@@ -222,6 +229,7 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
               [thought.id]: new Set([...(m[thought.id] ?? []), emoji]),
             }));
             setPickerFor(null);
+            Analytics.postReacted(emoji, 'profile');
             void reactToPost(thought.id, emoji).catch((e) => {
               logError(e, 'ProfileThoughts.react');
               void load();
