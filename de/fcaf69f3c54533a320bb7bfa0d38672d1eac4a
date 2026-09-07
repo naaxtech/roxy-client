@@ -1,0 +1,25 @@
+apps/mobile/__tests__/lib/feedPagerGlide.test.ts
+  s_488a1686f9c1af::t_95413633cee8d3 1-56
+apps/mobile/components/feed/FeedPager.tsx
+  s_488a1686f9c1af::t_0c3188d12235ab 289-295
+apps/mobile/tests/e2e/feed-snap.spec.ts
+  s_488a1686f9c1af::t_5521339a0aad3c 1-57
+apps/mobile/lib/feedPagerWeb.ts
+  s_488a1686f9c1af::t_d0471f50f7ae49 98-140,144-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "defcaf69f3c54533a320bb7bfa0d38672d1eac4a",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
