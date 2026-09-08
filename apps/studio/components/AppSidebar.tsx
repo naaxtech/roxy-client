@@ -8,7 +8,7 @@ import {
   ShoppingBag, Package, ShoppingCart, DollarSign, Settings,
   Shield, CheckSquare, Mail, RefreshCw, AlertTriangle, Building2,
   ChevronRight, LogOut, Lightbulb, Bug, UserCheck, Ticket, UserCog,
-  Archive, UserPlus, GitPullRequest, Flag, Unlock, Crown, BookOpen,
+  Archive, UserPlus, GitPullRequest, Flag, Unlock, Crown, BookOpen, Tag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOutAction } from '@/app/auth/signout-action';
@@ -77,6 +77,9 @@ export const NAV_GROUPS: NavGroupDef[] = [
       { href: '/staff', label: 'Overview', icon: Shield, exact: true },
       { href: '/staff/launch', label: 'Launch access', icon: Unlock },
       { href: '/staff/team', label: 'Roxy team', icon: Crown, coreOnly: true },
+      // Discover's Top 10 is the only place these appear. A page nothing links
+      // to is a feature nobody can find.
+      { href: '/staff/member-tags', label: 'Member tags', icon: Tag },
     ],
   },
   {

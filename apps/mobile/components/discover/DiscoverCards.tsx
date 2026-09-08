@@ -15,7 +15,7 @@ import { RankNumeral } from './RankNumeral';
  * because "is this happening right now" is the one piece of state on this screen
  * a viewer acts on immediately, and SC 1.4.1 is not satisfied by a red pill.
  */
-export type BadgeKind = 'live' | 'inPerson' | 'online' | 'shop' | 'game' | 'community' | 'impact';
+export type BadgeKind = 'live' | 'inPerson' | 'online' | 'shop' | 'game' | 'community' | 'impact' | 'member';
 
 const BADGE_TEXT: Record<BadgeKind, string> = {
   live: 'LIVE',
@@ -24,6 +24,7 @@ const BADGE_TEXT: Record<BadgeKind, string> = {
   shop: 'SHOP',
   game: 'GAME',
   community: 'COMMUNITY',
+  member: 'MEMBER',
   impact: 'IMPACT',
 };
 

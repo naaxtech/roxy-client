@@ -28,6 +28,7 @@ import {
   discoverLayout, railVisible, eventMatchesFilter, economyKind, economyWlwOnly, economySavedOnly,
   type DiscoverChip, type EventFilter, type EconomyFilter,
 } from '../../../components/discover/discoverFilters';
+import { fetchTopMembers, memberName, memberSubtitle, type TopMember } from '../../../lib/topMembers';
 import {
   useLiveRooms, useEvents, useGames, useImpact, useSupport,
 } from '../../../components/discover/useDiscoverData';
@@ -149,7 +150,21 @@ function DiscoverScreen() {
     () => officialFirst(allCommunities, officialCommunityIds ?? new Set()),
     [allCommunities, officialCommunityIds],
   );
-  const top10 = useMemo(() => placedCommunities.slice(0, 10), [placedCommunities]);
+  const [topMembers, setTopMembers] = useState<TopMember[]>([]);
+  const [topMembersStatus, setTopMembersStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  const loadTopMembers = useCallback(async () => {
+    setTopMembersStatus('loading');
+    try {
+      setTopMembers(await fetchTopMembers());
+      setTopMembersStatus('ready');
+    } catch (e) {
+      logError(e, 'discover_topMembers');
+      setTopMembersStatus('error');
+    }
+  }, []);
+
+  useEffect(() => { void loadTopMembers(); }, [loadTopMembers]);
   // The card's own query is `.in('community_id', communityIds)` — the ids she
   // has joined, not the ids on screen. `joinedIds` is a Set for O(1) lookups
   // elsewhere on this screen; the card wants an array to hand Supabase.
@@ -274,23 +289,25 @@ function DiscoverScreen() {
         {railVisible(chip, 'top10') ? (
           <Rail
             layout={layout}
-            title="Top 10 communities"
-            status={allCommunities.length ? 'ready' : 'loading'}
-            count={top10.length}
-            emptyBody="No communities yet — yours could be the first."
-            onRetry={() => void hydrate(user?.id)}
+            title="Top 10 members"
+            status={topMembersStatus}
+            count={topMembers.length}
+            emptyBody="Nobody on the board yet."
+            onRetry={() => void loadTopMembers()}
             testID="rail-top10"
           >
-            {top10.map((c, i) => (
+            {topMembers.map((m, i) => (
               <PosterCard
-                key={c.id}
+                key={m.id}
                 rank={i + 1}
-                title={c.name}
-                subtitle={`${officialCommunityIds?.has(c.id) ? 'Official · ' : ''}${c.member_count} members`}
-                badge="community"
-                artSeed={c.name}
-                onPress={() => router.push(`/community/${c.id}` as never)}
-                testID={`top10-${c.id}`}
+                title={memberName(m)}
+                // The staff tag when there is one — it is the editorial reason
+                // she is on the chart. Points otherwise.
+                subtitle={memberSubtitle(m)}
+                badge="member"
+                artSeed={memberName(m)}
+                onPress={() => router.push(`/user/${m.id}` as never)}
+                testID={`top10-${m.id}`}
               />
             ))}
           </Rail>
