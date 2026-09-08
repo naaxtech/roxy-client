@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { invokeFunction } from '@/lib/supabase/invokeFunction';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RoomModal } from './RoomModal';
@@ -38,6 +39,24 @@ function minutesUntil(scheduledAt: string): number {
   return Math.floor((new Date(scheduledAt).getTime() - Date.now()) / 60000);
 }
 
+/**
+ * Going live can fail for reasons the host can act on and reasons only an
+ * operator can. Collapsing them into "Please try again" sent hosts to retry a
+ * button that could never work — an unset DAILY_API_KEY is the common case and
+ * retrying it forever is the wrong instruction.
+ */
+function goLiveErrorCopy(message: string | null, status?: number): string {
+  if (status === 403) return 'Only an admin or moderator of this community can open its rooms.';
+  if (status === 404) return 'That room no longer exists. Refresh the page.';
+  if (status === 503 || (message ?? '').includes('DAILY_API_KEY')) {
+    return 'Live rooms are not configured yet — DAILY_API_KEY is not set on the Supabase project.';
+  }
+  if (message && /network|fetch|failed to fetch/i.test(message)) {
+    return 'Network error — check your connection and try again.';
+  }
+  return message ? `Could not go live: ${message}` : 'Could not go live. Please try again.';
+}
+
 export function RoomsClient({ rooms: initialRooms, communities }: RoomsClientProps) {
   const router = useRouter();
   const [rooms, setRooms] = useState<Room[]>(initialRooms);
@@ -66,25 +85,35 @@ export function RoomsClient({ rooms: initialRooms, communities }: RoomsClientPro
     setLoadingId(roomId);
     setError(null);
     const supabase = createClient();
-    const { data: res } = await supabase.functions.invoke('manage-room', {
-      body: { action: 'open', room_id: roomId },
-    });
+    const { data, error: openError, status } = await invokeFunction<{
+      room_id?: string;
+      already_live?: boolean;
+    }>(supabase, 'manage-room', { action: 'open', room_id: roomId });
     setLoadingId(null);
-    if (res?.data?.room_id || res?.data?.already_live) {
-      router.push(`/rooms/${roomId}`);
-    } else {
-      setError('Failed to go live. Please try again.');
+
+    if (openError || !(data?.room_id || data?.already_live)) {
+      setError(goLiveErrorCopy(openError, status));
+      return;
     }
+    router.push(`/rooms/${roomId}`);
   };
 
   const endRoom = async (roomId: string) => {
     if (!confirm('End this room for all participants?')) return;
     setLoadingId(roomId);
+    setError(null);
     const supabase = createClient();
-    await supabase.functions.invoke('manage-room', {
-      body: { action: 'close', room_id: roomId },
-    });
+    const { error: closeError } = await invokeFunction(
+      supabase, 'manage-room', { action: 'close', room_id: roomId },
+    );
     setLoadingId(null);
+
+    // No optimistic close. Marking the card "closed" before the write landed
+    // told the host the room had ended while participants were still in it.
+    if (closeError) {
+      setError(`Could not end that room: ${closeError}. It is still live.`);
+      return;
+    }
     setRooms(prev => prev.map(r => r.id === roomId ? { ...r, status: 'closed' } : r));
   };
 

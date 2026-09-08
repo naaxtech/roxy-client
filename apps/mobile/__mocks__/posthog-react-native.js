@@ -1,6 +1,7 @@
 class PostHog {
   constructor() {}
   capture() {}
+  captureException() {}
   identify() {}
   screen() {}
   reset() {}

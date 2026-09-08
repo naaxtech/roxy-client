@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { getHostScope } from '@/lib/hostScope';
 import { Badge } from '@/components/ui/badge';
 import { CreateEventForm } from './CreateEventForm';
 
@@ -9,17 +10,9 @@ export default async function EventsPage() {
   const userId = claimsData?.claims?.sub;
   if (!userId) return null;
 
-  const { data: memberRows } = await supabase
-    .from('community_members')
-    .select('communities(id, name)')
-    .eq('user_id', userId)
-    .eq('role', 'admin');
-
-  const communities = (memberRows ?? [])
-    .map((r: any) => r.communities)
-    .filter(Boolean) as { id: string; name: string }[];
-
-  const communityIds = communities.map(c => c.id);
+  const scope = await getHostScope(supabase, userId, ['admin']);
+  const communities = scope.communities.map((c) => ({ id: c.id, name: c.name }));
+  const communityIds = communities.map((c) => c.id);
 
   const { data: events } = await supabase
     .from('events')
@@ -40,7 +33,11 @@ export default async function EventsPage() {
     <div className="space-y-8 max-w-3xl">
       <div>
         <h1 className="text-2xl font-bold">Events</h1>
-        <p className="text-muted-foreground mt-1">Create and manage your events.</p>
+        <p className="text-muted-foreground mt-1">
+          {scope.isCore
+            ? 'Every event on Roxy. Create, edit, and cancel any of them.'
+            : 'Create and manage your events.'}
+        </p>
       </div>
 
       {communities.length > 0 ? (
@@ -50,12 +47,14 @@ export default async function EventsPage() {
         />
       ) : (
         <p className="text-muted-foreground text-sm">
-          You are not an admin of any community yet.
+          {scope.isCore
+            ? 'There are no communities yet, so there is nowhere to put an event.'
+            : 'You are not an admin of any community yet.'}
         </p>
       )}
 
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold">Your Events</h2>
+        <h2 className="text-lg font-semibold">{scope.isCore ? 'All events' : 'Your Events'}</h2>
         {(events ?? []).length === 0 ? (
           <p className="text-muted-foreground text-sm">No events yet.</p>
         ) : (

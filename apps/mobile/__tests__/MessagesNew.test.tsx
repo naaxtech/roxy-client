@@ -21,6 +21,15 @@ jest.mock('../store/friendStore', () => ({
   sortByPresence: (f: any[]) => f,
 }));
 
+jest.mock('../hooks/useAccess', () => ({
+  useAccess: () => ({
+    tier: 'beta',
+    isBeta: true,
+    can: () => true,
+    canCommunity: () => true,
+  }),
+}));
+
 const { openDirectChat } = jest.requireMock('../lib/directMessages');
 
 describe('NewMessageScreen', () => {

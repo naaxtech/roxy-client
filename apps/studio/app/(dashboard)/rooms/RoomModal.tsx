@@ -7,8 +7,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { createClient } from '@/lib/supabase/client';
+import { invokeFunction } from '@/lib/supabase/invokeFunction';
 
 interface Community { id: string; name: string }
+
+/** Name the actual reason a save was refused; "try again" is only useful when retrying can work. */
+function saveErrorCopy(message: string | null, status: number | undefined, isEdit: boolean): string {
+  if (status === 403) {
+    return 'Only an admin or moderator of that community can manage its rooms.';
+  }
+  if (status === 404) return 'That room no longer exists. Close this and refresh.';
+  if (status === 400 && message) return message;
+  if (message && /network|fetch|failed to fetch/i.test(message)) {
+    return 'Network error — your changes were not saved. Check your connection and retry.';
+  }
+  const action = isEdit ? 'save those changes' : 'create that room';
+  return message ? `Could not ${action}: ${message}` : `Could not ${action}. Please try again.`;
+}
 
 interface RoomModalProps {
   communities: Community[];
@@ -67,31 +82,35 @@ export function RoomModal({ communities, onClose, onCreated, editRoom }: RoomMod
     setError(null);
 
     const supabase = createClient();
-    const { data: res } = await supabase.functions.invoke('manage-room', {
-      body: {
-        action:           isEdit ? 'update' : 'create',
-        room_id:          isEdit ? editRoom!.id : undefined,
-        community_id:     isEdit ? undefined : communityId,
-        name:             name.trim(),
-        description:      description.trim() || null,
-        room_type:        roomType,
-        scheduled_at:     scheduleEnabled && scheduledAt
-                            ? new Date(scheduledAt).toISOString()
-                            : null,
-        max_participants: maxParticipants ? parseInt(maxParticipants, 10) : null,
-      },
+    const { data, error: saveError, status } = await invokeFunction<{
+      room_id?: string;
+      updated?: boolean;
+    }>(supabase, 'manage-room', {
+      action:           isEdit ? 'update' : 'create',
+      room_id:          isEdit ? editRoom!.id : undefined,
+      community_id:     isEdit ? undefined : communityId,
+      name:             name.trim(),
+      description:      description.trim() || null,
+      room_type:        roomType,
+      scheduled_at:     scheduleEnabled && scheduledAt
+                          ? new Date(scheduledAt).toISOString()
+                          : null,
+      max_participants: maxParticipants ? parseInt(maxParticipants, 10) : null,
     });
 
-    const roomId = res?.data?.room_id ?? editRoom?.id;
-    if (!roomId && !res?.data?.updated) {
+    // Check the RESPONSE, not a value we already had. This previously read
+    // `res?.data?.room_id ?? editRoom?.id`, which on an edit fell back to the id
+    // passed in as a prop — always truthy — so a rejected update (403, 400, a
+    // dropped connection) rendered as a successful save and closed the modal.
+    if (saveError || !(data?.room_id || data?.updated)) {
       setLoading(false);
-      setError('Failed to save room. Please try again.');
+      setError(saveErrorCopy(saveError, status, isEdit));
       return;
     }
 
     // Banner upload — path is <community_id>/<room_id> so the storage RLS
     // (migration 059) can verify admin/moderator membership.
-    const finalRoomId = roomId ?? editRoom!.id;
+    const finalRoomId = data.room_id ?? editRoom!.id;
     const bannerCommunityId = isEdit ? editRoom!.community_id : communityId;
     if (bannerFile && bannerCommunityId) {
       const path = `${bannerCommunityId}/${finalRoomId}`;

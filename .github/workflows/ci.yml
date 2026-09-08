@@ -1,10 +1,15 @@
 name: CI
 
+# `version*` matters: all Roxy work moved to `version2` on 2026-08-05 (standing
+# order), and that branch matched neither trigger — so every job here, including
+# the edge-function Deno suite, sat idle through an entire day of commits while
+# the only thing actually gating anything was a human running npx by hand.
+# A workflow that never fires is not CI.
 on:
   push:
-    branches: [main, 'session-*']
+    branches: [main, 'session-*', 'version*']
   pull_request:
-    branches: [main]
+    branches: [main, 'version*']
 
 jobs:
   test:
@@ -17,9 +22,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 22, not 20. `@supabase/realtime-js` throws at import on any Node
+      # without a global WebSocket — "Node.js 20 detected without native
+      # WebSocket support" — and global WebSocket only became available in Node
+      # 22. So every suite that touches lib/supabase failed here with "Test suite
+      # failed to run" while passing on a developer machine running a newer Node.
+      # Fifteen suites, including the whole feed set, had never once run in CI.
+      # A test that never runs is not a test.
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: apps/mobile/package-lock.json
 
@@ -41,7 +53,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: apps/mobile/package-lock.json
 
@@ -63,7 +75,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: apps/mobile/package-lock.json
 
@@ -72,6 +84,41 @@ jobs:
 
       - name: ESLint
         run: npx eslint . --ext .ts,.tsx --max-warnings 0
+
+  edge-functions:
+    name: Edge Function Tests (Deno)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supabase/functions
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # --no-check: stripe-node 14.25.0 pins `apiVersion` in its types to
+      # '2023-10-16', while create-product-order and create-payment-intent both
+      # pass '2024-06-20' (valid at runtime — it is just the Stripe-Version
+      # header). Type-checking here would fail on that pre-existing mismatch and
+      # tell us nothing about the tests. Drop this flag once the pin is resolved.
+      # --allow-read: _shared/rateLimit.guard.test.ts reads the other functions'
+      # source to prove none of them reintroduces the split checkRateLimit /
+      # logAiCall pair. Because --no-check is on, that grep is the ONLY gate on
+      # it — the type checker never sees these files.
+      #
+      # --node-modules-dir=auto: two suites import handlers that pull
+      # `npm:stripe@14`. With no deno.json in this repo there is nothing to
+      # resolve npm specifiers from, so those two files failed at IMPORT — before
+      # a single assertion ran — with "Could not find a matching package". They
+      # were reported as a passing suite because the runner counted the other 42.
+      # The flag is used rather than a deno.json because adding one changes what
+      # `supabase functions deploy` picks up as config, and this is a test
+      # concern.
+      - name: Run edge function tests
+        run: deno test --no-check --allow-net --allow-env --allow-read --node-modules-dir=auto .
 
   studio-e2e:
     name: Studio E2E (Playwright)
@@ -90,7 +137,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: apps/studio/package-lock.json
 

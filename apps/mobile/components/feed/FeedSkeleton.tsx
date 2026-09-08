@@ -6,23 +6,23 @@ function SkeletonBlock({ width, height, style }: {
   width: number | string; height: number; style?: object;
 }) {
   const colors = useThemeColors();
-  const opacity = useRef(new Animated.Value(0.3)).current;
+  const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.7, duration: 700, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.3, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.04, duration: 180, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 180, useNativeDriver: true }),
       ])
     );
     anim.start();
     return () => anim.stop();
-  }, [opacity]);
+  }, [pulse]);
 
   return (
     <Animated.View
       style={[
-        { width, height, backgroundColor: colors.surface, borderRadius: 6, opacity },
+        { width, height, backgroundColor: colors.surface, borderRadius: 6, transform: [{ scale: pulse }] },
         style,
       ]}
     />

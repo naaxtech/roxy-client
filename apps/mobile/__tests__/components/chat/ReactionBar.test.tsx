@@ -16,7 +16,7 @@ const makeReaction = (overrides: Partial<MessageReaction> = {}): MessageReaction
 
 describe('QuickReactBar', () => {
   it('renders 6 quick emoji buttons', () => {
-    const { getByText } = render(<QuickReactBar onReact={jest.fn()} />);
+    const { getByText } = render(<QuickReactBar onReact={jest.fn()} onMore={jest.fn()} />);
     expect(getByText('❤️')).toBeTruthy();
     expect(getByText('😂')).toBeTruthy();
     expect(getByText('💜')).toBeTruthy();
@@ -24,16 +24,25 @@ describe('QuickReactBar', () => {
 
   it('calls onReact with the tapped emoji', () => {
     const onReact = jest.fn();
-    const { getByText } = render(<QuickReactBar onReact={onReact} />);
+    const { getByText } = render(<QuickReactBar onReact={onReact} onMore={jest.fn()} />);
     fireEvent.press(getByText('❤️'));
     expect(onReact).toHaveBeenCalledWith('❤️');
   });
 
   it('calls onReact with the correct emoji when different emoji pressed', () => {
     const onReact = jest.fn();
-    const { getByText } = render(<QuickReactBar onReact={onReact} />);
+    const { getByText } = render(<QuickReactBar onReact={onReact} onMore={jest.fn()} />);
     fireEvent.press(getByText('😂'));
     expect(onReact).toHaveBeenCalledWith('😂');
+  });
+
+  // The six shortcuts are a fast path, not the vocabulary. Before this existed,
+  // a reaction the six did not cover was simply unreachable.
+  it('offers a way out of the six shortcuts to any emoji', () => {
+    const onMore = jest.fn();
+    const { getByLabelText } = render(<QuickReactBar onReact={jest.fn()} onMore={onMore} />);
+    fireEvent.press(getByLabelText('Choose any emoji'));
+    expect(onMore).toHaveBeenCalled();
   });
 });
 

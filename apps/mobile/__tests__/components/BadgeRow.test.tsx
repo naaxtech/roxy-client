@@ -66,4 +66,36 @@ describe('BadgeRow', () => {
     fireEvent.press(getByText('💜'));
     expect(queryByText('Badge 1')).toBeNull();
   });
+
+  describe('expanded — empty state', () => {
+    it('names Roxy and what to do instead of rendering a blank tab', () => {
+      const { getByTestId, getByText } = render(<BadgeRow badges={[]} expanded />);
+
+      expect(getByTestId('badge-row-empty')).toBeTruthy();
+      expect(getByText('Your first badge is waiting')).toBeTruthy();
+      // Roxy is the wingwoman — never "the AI"/"assistant"/"chatbot".
+      const body = getByTestId('badge-row-empty-body').props.children as string;
+      expect(body).toContain('Roxy');
+      expect(body).not.toMatch(/\b(the AI|assistant|chatbot)\b/i);
+      // The four things that actually award a badge today.
+      expect(body).toMatch(/communit/i);
+      expect(body).toMatch(/message/i);
+      expect(body).toMatch(/friend/i);
+      expect(body).toMatch(/speed date/i);
+    });
+
+    it('renders the locked grid rather than the empty state once rows exist', () => {
+      const { queryByTestId, getByText } = render(
+        <BadgeRow badges={[makeBadge('1', '🏅', false)]} expanded />
+      );
+
+      expect(queryByTestId('badge-row-empty')).toBeNull();
+      expect(getByText('🏅')).toBeTruthy();
+    });
+
+    it('stays silent in the compact row when there is nothing to show', () => {
+      const { toJSON } = render(<BadgeRow badges={[]} />);
+      expect(toJSON()).toBeNull();
+    });
+  });
 });

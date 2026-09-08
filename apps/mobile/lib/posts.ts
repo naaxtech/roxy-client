@@ -44,6 +44,13 @@ export function normalizePost(row: Record<string, unknown>): Post {
     feed_score: Number(row.feed_score ?? 0),
     blurhash: (row.blurhash as string | null) ?? null,
     deleted_at: (row.deleted_at as string | null) ?? null,
+    // Defaults matter here: every post written before migration 073 comes back
+    // without these columns selected, and an undefined flag would read as
+    // falsy-but-not-false in the feed filters.
+    posted_as_community: Boolean(row.posted_as_community),
+    post_tags: Array.isArray(row.post_tags)
+      ? (row.post_tags as unknown[]).filter((t): t is string => typeof t === 'string')
+      : [],
     video_url: (row.video_url as string | null) ?? null,
     video_thumbnail_url: (row.video_thumbnail_url as string | null) ?? null,
     video_duration_secs: row.video_duration_secs != null ? Number(row.video_duration_secs) : null,

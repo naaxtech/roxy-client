@@ -1,17 +1,27 @@
 -- ============================================================
 -- ROXY DEV SEED — paste into Supabase Dashboard > SQL Editor
--- No destructive operations. Safe to re-run.
+-- Account-owned posts. Official communities are special profiles.
+-- Login: maya@seed.roxy.app / seed-password
+-- Official: official@seed.roxy.app / seed-password
+-- Safe to re-run. Does not delete real members.
 -- ============================================================
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 DO $$
 DECLARE
-  u1 uuid; u2 uuid; u3 uuid; u4 uuid;
-  c1 uuid; c2 uuid; c3 uuid;
+  maya uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  zoe uuid := 'aaaaaaaa-0000-0000-0000-000000000002';
+  cam uuid := 'aaaaaaaa-0000-0000-0000-000000000004';
+  sky uuid := 'aaaaaaaa-0000-0000-0000-000000000005';
+  roxy uuid := 'bbbbbbbb-0000-0000-0000-000000000001';
+  lol uuid := 'bbbbbbbb-0000-0000-0000-000000000002';
+  books uuid := 'bbbbbbbb-0000-0000-0000-000000000003';
+  c_roxy uuid;
+  c_lol uuid;
+  c_books uuid;
 BEGIN
 
--- ── Auth users (WHERE NOT EXISTS avoids constraint issues) ────
--- instance_id/aud + the empty-string token columns are required: GoTrue's Go struct
--- scan fails with a generic 500 ("Database error querying schema") if these are NULL.
 INSERT INTO auth.users (
   id, instance_id, aud, email, encrypted_password, email_confirmed_at,
   created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
@@ -20,21 +30,24 @@ INSERT INTO auth.users (
   email_change_token_new, email_change_token_current,
   phone_change, phone_change_token, reauthentication_token
 )
-SELECT gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'authenticated', t.email,
-       crypt('Password123!', gen_salt('bf')),
+SELECT v.id, '00000000-0000-0000-0000-000000000000', 'authenticated', v.email,
+       extensions.crypt('seed-password', extensions.gen_salt('bf')),
        now(), now(), now(),
        '{"provider":"email","providers":["email"]}'::jsonb,
-       '{}'::jsonb, false, 'authenticated',
+       jsonb_build_object('display_name', v.display_name),
+       false, 'authenticated',
        '', '', '', '', '', '', '', ''
 FROM (VALUES
-  ('alex@roxy.dev'),
-  ('jamie@roxy.dev'),
-  ('river@roxy.dev'),
-  ('morgan@roxy.dev')
-) AS t(email)
-WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = t.email);
+  (maya, 'maya@seed.roxy.app', 'Maya Chen'),
+  (zoe, 'zoe@seed.roxy.app', 'Zoe Williams'),
+  (cam, 'cam@seed.roxy.app', 'Cam Reyes'),
+  (sky, 'sky@seed.roxy.app', 'Sky Nakamura'),
+  (roxy, 'official@seed.roxy.app', 'Roxy Official'),
+  (lol, 'london@seed.roxy.app', 'Lesbians of London'),
+  (books, 'books@seed.roxy.app', 'Queer Book Club')
+) AS v(id, email, display_name)
+WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE id = v.id OR email = v.email);
 
--- ── Auth identities ───────────────────────────────────────────
 INSERT INTO auth.identities (
   id, user_id, identity_data, provider, provider_id,
   last_sign_in_at, created_at, updated_at
@@ -43,128 +56,128 @@ SELECT gen_random_uuid(), u.id,
        jsonb_build_object('sub', u.id::text, 'email', u.email),
        'email', u.email, now(), now(), now()
 FROM auth.users u
-WHERE u.email IN ('alex@roxy.dev','jamie@roxy.dev','river@roxy.dev','morgan@roxy.dev')
+WHERE u.id IN (maya, zoe, cam, sky, roxy, lol, books)
   AND NOT EXISTS (
     SELECT 1 FROM auth.identities i
     WHERE i.user_id = u.id AND i.provider = 'email'
   );
 
--- ── Read actual UUIDs ─────────────────────────────────────────
-SELECT id INTO u1 FROM auth.users WHERE email = 'alex@roxy.dev';
-SELECT id INTO u2 FROM auth.users WHERE email = 'jamie@roxy.dev';
-SELECT id INTO u3 FROM auth.users WHERE email = 'river@roxy.dev';
-SELECT id INTO u4 FROM auth.users WHERE email = 'morgan@roxy.dev';
-
--- ── Profiles ──────────────────────────────────────────────────
-INSERT INTO profiles (
-  id, username, display_name, bio, pronouns, identity_labels,
-  location_city, location_country, is_dating_mode, is_active, gamification_points
-)
+INSERT INTO public.communities (name, slug, description, category, is_private, created_by)
 VALUES
-  (u1, 'alex_wlw',   'Alex',   'Bookworm, dog mum, sunset chaser 🌅', ARRAY['she/her'],       ARRAY['lesbian'],   'London',     'UK', true,  true, 420),
-  (u2, 'jamie_star', 'Jamie',  'Musician & community organiser 🎸',   ARRAY['they/them'],     ARRAY['queer'],     'Manchester', 'UK', true,  true, 280),
-  (u3, 'river_sky',  'River',  'Artist, nature lover, cat parent 🐱', ARRAY['she/they'],      ARRAY['bisexual'],  'London',     'UK', false, true, 150),
-  (u4, 'morgan_jay', 'Morgan', 'Chef & proud WLW 🍳',                 ARRAY['she/her','any'], ARRAY['pansexual'], 'Bristol',    'UK', true,  true, 90)
-ON CONFLICT DO NOTHING;
-
--- ── Communities ───────────────────────────────────────────────
-INSERT INTO communities (name, slug, description, category, member_count, is_private, created_by)
-VALUES
-  ('WLW London',        'wlw-london',        'Social community for women who love women in London',       'location', 42, false, u1),
-  ('Queer Book Club',   'queer-book-club',   'Monthly reads, big feelings, great company 📚',             'interest', 18, false, u2),
-  ('WLW Entrepreneurs', 'wlw-entrepreneurs', 'Business owners, freelancers & side-hustlers who are WLW', 'interest', 27, false, u4)
+  ('Roxy Official', 'roxy-official', 'News and chat with the Roxy team.', 'support', false, roxy),
+  ('Lesbians of London', 'lesbians-of-london', 'Socials, walks, and a standing invitation.', 'location', false, lol),
+  ('Queer Book Club', 'queer-book-club', 'Monthly reads, big feelings.', 'interest', false, books)
 ON CONFLICT (slug) DO NOTHING;
 
-SELECT id INTO c1 FROM communities WHERE slug = 'wlw-london';
-SELECT id INTO c2 FROM communities WHERE slug = 'queer-book-club';
-SELECT id INTO c3 FROM communities WHERE slug = 'wlw-entrepreneurs';
+SELECT id INTO c_roxy FROM public.communities WHERE slug = 'roxy-official';
+SELECT id INTO c_lol FROM public.communities WHERE slug = 'lesbians-of-london';
+SELECT id INTO c_books FROM public.communities WHERE slug = 'queer-book-club';
 
--- ── Community members ─────────────────────────────────────────
-INSERT INTO community_members (community_id, user_id, role)
+INSERT INTO public.profiles (
+  id, username, display_name, bio, pronouns, identity_labels, interests, custom_tags,
+  location_city, location_country, vetting_status, access_tier, admitted_at,
+  onboarding_completed, is_community_owner, official_community_id,
+  can_create_room, can_submit_game, is_active
+)
 VALUES
-  (c1, u1, 'admin'),  (c1, u2, 'member'), (c1, u3, 'member'), (c1, u4, 'member'),
-  (c2, u2, 'admin'),  (c2, u1, 'member'), (c2, u3, 'member'),
-  (c3, u4, 'admin'),  (c3, u1, 'member')
+  (maya, 'maya_chen', 'Maya Chen',
+   'Soft butch, dim sum, hiking. Building community one brunch at a time.',
+   ARRAY['she/her','they/them'], ARRAY['lesbian','queer','wlw'],
+   ARRAY['outdoors','food','community'], ARRAY['brunch'],
+   'London', 'UK', 'approved', 'beta', now(), true, false, NULL, false, false, true),
+  (zoe, 'zoe_williams', 'Zoe Williams',
+   'Bi woman, too many books, a very opinionated cat.',
+   ARRAY['she/her'], ARRAY['bisexual','bi+','wlw'],
+   ARRAY['books','coffee'], ARRAY['cat mum'],
+   'London', 'UK', 'approved', 'beta', now(), true, false, NULL, false, false, true),
+  (cam, 'cam_reyes', 'Cam Reyes',
+   'Pansexual founder. Ethical fashion and better collaborators.',
+   ARRAY['she/they'], ARRAY['pansexual','queer','wlw'],
+   ARRAY['fashion','business'], ARRAY['founder'],
+   'London', 'UK', 'approved', 'beta', now(), true, false, NULL, false, false, true),
+  (sky, 'sky_nakamura', 'Sky Nakamura',
+   'Trans lesbian, game dev by day, DnD forever by night.',
+   ARRAY['she/her'], ARRAY['lesbian','trans','wlw'],
+   ARRAY['games','tech'], ARRAY['game dev'],
+   'London', 'UK', 'approved', 'beta', now(), true, false, NULL, false, false, true),
+  (roxy, 'roxy_official', 'Roxy Official',
+   'News, updates, and chat with the Roxy team.',
+   ARRAY['they/them'], ARRAY['queer','wlw'],
+   ARRAY['community','news'], ARRAY['official'],
+   'London', 'UK', 'approved', 'beta', now(), true, true, c_roxy, true, true, true),
+  (lol, 'lesbians_of_london', 'Lesbians of London',
+   'Socials, walks, and a standing invitation to show up as yourself.',
+   ARRAY['she/her','they/them'], ARRAY['lesbian','wlw'],
+   ARRAY['community','outdoors'], ARRAY['official'],
+   'London', 'UK', 'approved', 'beta', now(), true, true, c_lol, true, true, true),
+  (books, 'queer_book_club', 'Queer Book Club',
+   'Monthly reads, big feelings, great company.',
+   ARRAY['they/them'], ARRAY['queer','wlw'],
+   ARRAY['books'], ARRAY['official'],
+   'London', 'UK', 'approved', 'beta', now(), true, true, c_books, true, true, true)
+ON CONFLICT (id) DO UPDATE SET
+  official_community_id = EXCLUDED.official_community_id,
+  is_community_owner = EXCLUDED.is_community_owner,
+  vetting_status = 'approved',
+  access_tier = 'beta';
+
+INSERT INTO public.community_members (community_id, user_id, role)
+VALUES
+  (c_roxy, roxy, 'admin'), (c_lol, lol, 'admin'), (c_books, books, 'admin'),
+  (c_roxy, maya, 'member'), (c_lol, maya, 'member'), (c_books, zoe, 'member')
 ON CONFLICT DO NOTHING;
 
--- ── Posts ─────────────────────────────────────────────────────
-INSERT INTO posts (author_id, community_id, content, post_type, reaction_counts, comment_count)
-SELECT * FROM (VALUES
-  (u1, c1, 'Just hit 12 days of daily journaling. Feels so good to have a habit that''s actually sticking 🌱', 'standard', '{"heart":14}'::jsonb, 3),
-  (u2, c2, 'Anyone else find that the queer community makes every hobby 10x better? 💜',                       'standard', '{"heart":22}'::jsonb, 7),
-  (u3, c1, 'Finished my first painting in months. Depression is real but so is getting back up 🎨',           'standard', '{"heart":31}'::jsonb, 11),
-  (u4, c3, 'Cooked a full Sunday roast for 8 people. Hosting is my love language 🍗',                         'standard', '{"heart":8}'::jsonb,  2),
-  (u1, c3, 'Just launched my freelance writing site! WLW creatives — let''s support each other 🚀',           'standard', '{"heart":19}'::jsonb, 5),
-  (u4, c3, 'Looking for WLW-owned suppliers for my catering business. Drop your recs below 👇',               'standard', '{"heart":6}'::jsonb,  9)
-) AS v(author_id, community_id, content, post_type, reaction_counts, comment_count)
-WHERE NOT EXISTS (
-  SELECT 1 FROM posts WHERE author_id = v.author_id AND content = v.content
-);
-
--- ── Events ────────────────────────────────────────────────────
--- starts_at is relative to whenever this script runs, so a stale row from a
--- previous run would otherwise sit in the past forever — delete by title
--- before inserting so re-running always refreshes these to be upcoming.
-DELETE FROM events WHERE title IN (
-  'WLW London Autumn Social', 'Book Club: October Pick',
-  'WLW Biz Networking Brunch', 'Online Queer Crafting Night'
-);
-INSERT INTO events (host_id, community_id, title, description, event_type, starts_at, location_text, max_attendees)
+INSERT INTO public.community_channels (community_id, slug, name, topic, position, is_default, created_by)
 VALUES
-  (u1, c1, 'WLW London Autumn Social',    'Casual drinks and good vibes at The Chameleon Bar',           'in_person', now() + interval '5 days',  'The Chameleon Bar, Soho', 30),
-  (u2, c2, 'Book Club: October Pick',     'Discussing "Fingersmith" by Sarah Waters — bring your feels', 'in_person', now() + interval '10 days', 'Foyles Café, London',     12),
-  (u4, c3, 'WLW Biz Networking Brunch',   'Pitch your idea, meet your next collab partner',              'in_person', now() + interval '14 days', 'Brew & Co, Brixton',      20),
-  (u3, c1, 'Online Queer Crafting Night', 'Bring your WIP, chat, create. Zoom link on join.',            'online',    now() + interval '3 days',  NULL::text,                50);
+  (c_roxy, 'general', 'general', 'Official updates and chat.', 0, true, roxy),
+  (c_lol, 'general', 'general', 'Community chat.', 0, true, lol),
+  (c_books, 'general', 'general', 'Community chat.', 0, true, books)
+ON CONFLICT (community_id, slug) DO NOTHING;
 
--- ── Businesses ────────────────────────────────────────────────
-INSERT INTO businesses (owner_id, name, description, category, location_city, is_wlw_owned, is_verified)
+INSERT INTO public.follows (follower_id, followed_id)
+VALUES
+  (maya, zoe), (maya, sky), (maya, lol), (maya, roxy),
+  (zoe, maya), (zoe, books), (sky, maya), (cam, zoe)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.posts (author_id, content, post_type, post_tags, video_url, video_thumbnail_url, video_duration_secs, video_aspect_ratio, like_count, feed_score)
 SELECT * FROM (VALUES
-  (u4, 'Morgan''s Kitchen',   'Private chef & catering for events, hen dos, celebrations', 'food',     'Bristol',    true, true),
-  (u1, 'Alex Writes',         'Copywriting & content strategy for purpose-led brands',     'creative', 'London',     true, false),
-  (u2, 'Queer Sounds Studio', 'Music production and vocal coaching for queer artists',     'creative', 'Manchester', true, true)
-) AS v(owner_id, name, description, category, location_city, is_wlw_owned, is_verified)
+  (maya, 'Community walk vlog. Muddy boots, good company.', 'video',
+   ARRAY['outdoors','community'],
+   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4',
+   'https://picsum.photos/seed/walk-vlog/800/450', 90, '16:9', 42, 88),
+  (sky, 'Dev log — queer visual novel.', 'video',
+   ARRAY['games','tech'],
+   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+   'https://picsum.photos/seed/devlog-thumb/800/450', 60, '16:9', 67, 94),
+  (roxy, 'Posts live on your profile now. Follow someone and they show up here.', 'video',
+   ARRAY['news','community'],
+   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+   'https://picsum.photos/seed/roxy-update/800/450', 40, '16:9', 88, 99)
+) AS v(author_id, content, post_type, post_tags, video_url, thumb, dur, ratio, likes, score)
 WHERE NOT EXISTS (
-  SELECT 1 FROM businesses WHERE owner_id = v.owner_id AND name = v.name
+  SELECT 1 FROM public.posts p WHERE p.author_id = v.author_id AND p.content = v.content
 );
 
--- ── Impact projects ───────────────────────────────────────────
-INSERT INTO impact_projects (creator_id, title, description, category, supporter_count, status)
+INSERT INTO public.posts (author_id, content, post_type, post_tags, like_count, feed_score)
 SELECT * FROM (VALUES
-  (u2, 'Safe Space Fund',        'Emergency hardship fund for queer women in crisis',       'mutual_aid', 34, 'active'),
-  (u3, 'Visibility Zine Vol. 2', 'WLW artists & writers — second edition, printed & free', 'mutual_aid', 52, 'active'),
-  (u1, 'Queer History Archive',  'Digitising local queer history for future generations',   'mutual_aid',  9, 'active')
-) AS v(creator_id, title, description, category, supporter_count, status)
+  (zoe, 'October pick is Fingersmith. Bring your feelings and a pastry.', 'standard', ARRAY['books'], 28, 64),
+  (lol, 'Sunday walk, same route, new faces. Come as you are.', 'standard', ARRAY['outdoors'], 54, 81),
+  (books, 'This month we are reading something that will ruin you in the best way.', 'standard', ARRAY['books'], 22, 58)
+) AS v(author_id, content, post_type, post_tags, likes, score)
 WHERE NOT EXISTS (
-  SELECT 1 FROM impact_projects WHERE creator_id = v.creator_id AND title = v.title
+  SELECT 1 FROM public.posts p WHERE p.author_id = v.author_id AND p.content = v.content
 );
 
--- ── Speed date session (only if none upcoming) ────────────────
-INSERT INTO speed_date_sessions (scheduled_at, duration_seconds, participant_ids, status, prompts)
-SELECT now() + interval '2 minutes', 300, '{}', 'scheduled',
-  ARRAY[
-    'What''s the most spontaneous thing you''ve ever done?',
-    'Describe your perfect Sunday morning.',
-    'What''s something you''re proud of that most people don''t know?',
-    'If you could live anywhere for a year, where would it be?',
-    'What''s a small thing that always makes you smile?'
-  ]
-WHERE NOT EXISTS (
-  SELECT 1 FROM speed_date_sessions
-  WHERE status IN ('scheduled', 'active') AND scheduled_at > now()
+DELETE FROM public.events WHERE title IN (
+  'Sunday community walk', 'Book Club: Fingersmith', 'Roxy house update'
 );
+INSERT INTO public.events (host_id, community_id, title, description, event_type, starts_at, location_text, max_attendees, status)
+VALUES
+  (roxy, c_roxy, 'Roxy house update', 'What shipped this week.', 'online', now() + interval '3 days', NULL, 80, 'active'),
+  (lol, c_lol, 'Sunday community walk', 'Hampstead, slow pace, coffee after.', 'in_person', now() + interval '5 days', 'Hampstead Heath, London', 30, 'active'),
+  (books, c_books, 'Book Club: Fingersmith', 'Bring the book and a pastry.', 'in_person', now() + interval '10 days', 'Foyles Café, London', 12, 'active');
 
--- ── Conversations ─────────────────────────────────────────────
-INSERT INTO conversations (participant_ids, conversation_type, last_message_at)
-SELECT * FROM (VALUES
-  (ARRAY[u1, u2], 'direct'::text,     (now() - interval '2 hours')::timestamptz),
-  (ARRAY[u1, u3], 'direct'::text,     (now() - interval '1 day')::timestamptz),
-  (ARRAY[u2, u4], 'speed_date'::text, (now() - interval '3 days')::timestamptz)
-) AS v(participant_ids, conversation_type, last_message_at)
-WHERE NOT EXISTS (
-  SELECT 1 FROM conversations
-  WHERE participant_ids = v.participant_ids AND conversation_type = v.conversation_type
-);
-
-RAISE NOTICE 'Seed complete. Login: alex@roxy.dev / Password123!';
+RAISE NOTICE 'Seed complete. Login: maya@seed.roxy.app / seed-password';
 
 END $$;

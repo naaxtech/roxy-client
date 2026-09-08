@@ -1,0 +1,21 @@
+# Clear anything the app opens by itself, so a flow's first tap is its own.
+#
+# Feed is the initial tab, and it shows the Mini Wins sheet once per calendar
+# day per device. It is a Modal, so its scrim covers the tab bar: a flow that
+# navigates before dismissing it fails on an intercepted tap that has nothing to
+# do with what the flow was testing. Whether it appears depends on the day and
+# the device, so both branches have to be fine — hence `when: visible`.
+#
+# Run this at the top of every flow that navigates. It is a no-op when the sheet
+# is not there.
+appId: com.roxy.app
+---
+- runFlow:
+    when:
+      visible:
+        id: "mini-wins-sheet"
+    commands:
+      - tapOn:
+          id: "mini-wins-close"
+      - assertNotVisible:
+          id: "mini-wins-sheet"

@@ -1,20 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { Animated, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Animated, View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { Comment } from '../../types';
 
 const REPLY_PREVIEW_COUNT = 2;
-
-const COMMENT_GRADS: [string, string][] = [
-  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
-  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
-];
-function commentGrad(name: string): [string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return COMMENT_GRADS[Math.abs(h) % COMMENT_GRADS.length];
-}
 
 interface CommentThreadProps {
   postId: string;
@@ -36,8 +27,8 @@ function CommentRow({
 }) {
   const colors = useThemeColors();
   const heartScale = useRef(new Animated.Value(1)).current;
-  const authorName = comment.profiles?.display_name ?? '?';
-  const grad = commentGrad(authorName);
+  const authorName = comment.profiles?.display_name ?? 'Someone';
+  const avatarUrl = comment.profiles?.avatar_url;
 
   const styles = StyleSheet.create({
     commentRow: {
@@ -45,19 +36,24 @@ function CommentRow({
       paddingVertical: 10, gap: 10,
     },
     replyRow: { paddingLeft: 48 },
-    avatarCircle: {
-      width: 30, height: 30, borderRadius: 15,
+    avatar: {
+      width: 32, height: 32, borderRadius: 16,
+      backgroundColor: colors.surfaceLight,
       alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      overflow: 'hidden',
     },
-    avatarLetter: { color: '#fff', fontWeight: '800', fontSize: 12 },
+    avatarLetter: { color: colors.textPrimary, fontWeight: '800', fontSize: 12 },
     commentBody: { flex: 1 },
     commentAuthor: { color: colors.textPrimary, fontWeight: '600', fontSize: 13 },
     commentContent: { color: colors.textSecondary, fontSize: 13, marginTop: 2, lineHeight: 18 },
     deletedText: { color: colors.textMuted, fontStyle: 'italic', fontSize: 13, marginTop: 2 },
-    commentActions: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 6 },
-    likeAction: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    actionText: { color: colors.textMuted, fontSize: 12 },
-    likedText: { color: colors.primary },
+    commentActions: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 },
+    likeAction: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      minHeight: MIN_TOUCH_TARGET - 16,
+    },
+    actionText: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
+    likedText: { color: colors.roxy },
   });
 
   const isDeleted = comment.deleted_at !== null;
@@ -68,13 +64,15 @@ function CommentRow({
   };
   return (
     <View style={[styles.commentRow, indent && styles.replyRow]}>
-      <LinearGradient colors={grad} style={styles.avatarCircle}>
-        <Text style={styles.avatarLetter}>
-          {authorName[0]?.toUpperCase() ?? '?'}
-        </Text>
-      </LinearGradient>
+      <View style={styles.avatar}>
+        {avatarUrl ? (
+          <Image source={{ uri: avatarUrl }} style={{ width: 32, height: 32 }} />
+        ) : (
+          <Text style={styles.avatarLetter}>{authorName[0]?.toUpperCase() ?? '?'}</Text>
+        )}
+      </View>
       <View style={styles.commentBody}>
-        <Text style={styles.commentAuthor}>{comment.profiles?.display_name ?? ''}</Text>
+        <Text style={styles.commentAuthor}>{authorName}</Text>
         {isDeleted ? (
           <Text style={styles.deletedText}>This comment was removed.</Text>
         ) : (
@@ -87,14 +85,26 @@ function CommentRow({
               onPress={handleLike}
               accessibilityRole="button"
               accessibilityLabel={isLiked ? 'Unlike comment' : 'Like comment'}
+              testID={`comment-like-${comment.id}`}
               hitSlop={6}
             >
-              <Animated.Text style={{ transform: [{ scale: heartScale }] }}>
-                <Text style={{ fontSize: 14, opacity: isLiked ? 1 : 0.5 }}>🌸</Text>
-              </Animated.Text>
-              <Text style={[styles.actionText, isLiked && styles.likedText]}>{comment.like_count}</Text>
+              <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                <Ionicons
+                  name={isLiked ? 'heart' : 'heart-outline'}
+                  size={16}
+                  color={isLiked ? colors.roxy : colors.textMuted}
+                />
+              </Animated.View>
+              {comment.like_count > 0 ? (
+                <Text style={[styles.actionText, isLiked && styles.likedText]}>{comment.like_count}</Text>
+              ) : null}
             </TouchableOpacity>
-            <TouchableOpacity onPress={onReply}>
+            <TouchableOpacity
+              onPress={onReply}
+              accessibilityRole="button"
+              accessibilityLabel={`Reply to ${authorName}`}
+              hitSlop={8}
+            >
               <Text style={styles.actionText}>Reply</Text>
             </TouchableOpacity>
           </View>
@@ -116,8 +126,8 @@ function CommentWithReplies({
   const [showAllReplies, setShowAllReplies] = useState(false);
 
   const styles = StyleSheet.create({
-    viewMore: { paddingLeft: 48, paddingBottom: 8 },
-    viewMoreText: { color: colors.primary, fontSize: 12 },
+    viewMore: { paddingLeft: 48, paddingBottom: 8, minHeight: MIN_TOUCH_TARGET - 8, justifyContent: 'center' },
+    viewMoreText: { color: colors.textSecondary, fontSize: 12, fontWeight: '700' },
   });
 
   const replies = comment.replies ?? [];
@@ -132,13 +142,13 @@ function CommentWithReplies({
         onLike={() => onLikeComment(comment.id)}
         onReply={() => onReply(comment)}
       />
-      {visibleReplies.map(r => (
+      {visibleReplies.map((r) => (
         <CommentRow
           key={r.id}
           comment={r}
           isLiked={likedCommentIds.has(r.id)}
           onLike={() => onLikeComment(r.id)}
-          onReply={() => onReply(comment)}
+          onReply={() => onReply(r)}
           indent
         />
       ))}
@@ -148,7 +158,7 @@ function CommentWithReplies({
           style={styles.viewMore}
           onPress={() => setShowAllReplies(true)}
         >
-          <Text style={styles.viewMoreText}>View {hiddenCount} more replies</Text>
+          <Text style={styles.viewMoreText}>View {hiddenCount} more {hiddenCount === 1 ? 'reply' : 'replies'}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -160,7 +170,7 @@ export function CommentThread({
 }: CommentThreadProps) {
   return (
     <View>
-      {comments.map(c => (
+      {comments.map((c) => (
         <CommentWithReplies
           key={c.id}
           comment={c}

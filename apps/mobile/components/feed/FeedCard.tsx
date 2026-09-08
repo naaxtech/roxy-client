@@ -23,7 +23,7 @@ interface FeedCardProps extends FeedCardHandlers {
   onLinkPress?: () => void;
 }
 
-const LINK_TYPE_LABELS = { game: 'Game', room: 'Room', event: 'Event' } as const;
+const LINK_TYPE_LABELS = { game: 'Game', room: 'Room', event: 'Event', product: 'Shop' } as const;
 
 export function FeedCard({ post, linkEntityName, onLinkPress, ...handlers }: FeedCardProps) {
   switch (post.post_type) {

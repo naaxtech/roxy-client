@@ -16,6 +16,33 @@ try {
   DailyMediaView = mod?.DailyMediaView ?? null;
 } catch {}
 
+/**
+ * daily-js supports exactly ONE call object per process and its factory throws
+ * `Duplicate DailyIframe instances are not allowed` when a second one is made
+ * while the first is still alive. Each screen constructs its own DailyProvider,
+ * so the barrier that serialises teardown against the next join has to be
+ * module-scoped — a per-instance promise would not be seen by the next screen.
+ * src: https://docs.daily.co/reference/daily-js/factory-methods/create-call-object · react-native-daily-js 0.83 (daily-js 0.86) · 2026-08-02
+ */
+let pendingTeardown: Promise<void> = Promise.resolve();
+
+/**
+ * Release whatever call object is still registered with daily-js, whoever
+ * created it. A screen that unmounted while its teardown was still in flight
+ * used to leave the instance alive, and every later join — audio or video —
+ * then failed until the app was restarted.
+ * src: https://docs.daily.co/reference/daily-js/static-methods/get-call-instance · daily-js 0.86 · 2026-08-02
+ */
+async function releaseLiveCall(): Promise<void> {
+  await pendingTeardown.catch(() => {});
+  const existing = typeof DailyCall?.getCallInstance === 'function'
+    ? DailyCall.getCallInstance()
+    : null;
+  if (!existing) return;
+  if (typeof existing.isDestroyed === 'function' && existing.isDestroyed()) return;
+  await existing.destroy().catch(() => {});
+}
+
 function makeRemoteParticipant(p: any): RemoteParticipant {
   return {
     id: p.session_id,
@@ -45,6 +72,9 @@ export class DailyProvider implements VideoCallProvider {
     if (!DailyCall) throw new Error('Daily.co not available');
     this.onStateChange?.('connecting');
     try {
+      // Never construct a second call object over a live one — that throws and
+      // used to surface as the generic "Failed to connect to the room".
+      await releaseLiveCall();
       this._call = DailyCall.createCallObject();
 
       this._call.on('joining-meeting', () => this.onStateChange?.('connecting'));
@@ -83,9 +113,27 @@ export class DailyProvider implements VideoCallProvider {
     await this._call?.leave().catch(() => {});
   }
 
+  /**
+   * Fire-and-forget by contract — it is called from unmount cleanup, where a
+   * rejected promise has nobody to catch it. The teardown is still sequenced
+   * (leave settles before destroy) and recorded in `pendingTeardown`, so the
+   * next join waits for it instead of racing it.
+   */
   destroy(): void {
-    this._call?.destroy().catch(() => {});
+    const call = this._call;
     this._call = null;
+    if (!call) return;
+
+    pendingTeardown = (async () => {
+      try {
+        if (typeof call.isDestroyed === 'function' && call.isDestroyed()) return;
+        await call.leave().catch(() => {});
+        await call.destroy();
+      } catch {
+        // Swallowed deliberately: an unmount has no error surface. If the
+        // instance survived, releaseLiveCall() reclaims it on the next join.
+      }
+    })();
   }
 
   toggleMic(): void {

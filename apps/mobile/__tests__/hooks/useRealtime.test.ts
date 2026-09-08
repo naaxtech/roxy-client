@@ -7,7 +7,13 @@ jest.mock('../../lib/supabase', () => {
   on.mockReturnValue({ on, subscribe });
   channel.mockReturnValue({ on, subscribe });
 
-  return { supabase: { channel, removeChannel } };
+  // `freshChannel` (lib/realtimeChannel) sweeps existing channels for the same
+  // topic before subscribing, so the mock has to answer getChannels. Without it
+  // every test here dies on "getChannels is not a function" — which reads as a
+  // hook bug and is a gap in this stub.
+  const getChannels = jest.fn(() => []);
+
+  return { supabase: { channel, removeChannel, getChannels } };
 });
 
 import { act, renderHook } from '@testing-library/react-native';

@@ -1,4 +1,4 @@
-import { formatDuration, buildCalendarUrl } from '../../lib/eventUtils';
+import { formatDuration, buildCalendarUrl, eventSafetyLine } from '../../lib/eventUtils';
 
 describe('formatDuration', () => {
   it('returns null when endsAt is null', () => {
@@ -67,5 +67,39 @@ describe('buildCalendarUrl', () => {
       communityName: 'Queer Manila',
     });
     expect(url).toContain('Queer');
+  });
+});
+
+describe('eventSafetyLine', () => {
+  it('tells the truth about an online room instead of inventing a venue', () => {
+    expect(eventSafetyLine({
+      event_type: 'online',
+      is_private: false,
+      communityName: 'WLW London',
+    })).toBe('Lurk-friendly — mics optional. Doors open 10 min early.');
+  });
+
+  it('names the host and the attendee-list rule for an in-person public event', () => {
+    expect(eventSafetyLine({
+      event_type: 'in_person',
+      is_private: false,
+      communityName: 'WLW London',
+    })).toBe('Public venue · hosted by WLW London · attendee list visible to members only');
+  });
+
+  it('does not claim a public venue for a private event', () => {
+    expect(eventSafetyLine({
+      event_type: 'in_person',
+      is_private: true,
+      communityName: null,
+    })).toBe('Private event · community hosted · attendee list hidden');
+  });
+
+  it('says both modes for a hybrid event, never just one', () => {
+    expect(eventSafetyLine({
+      event_type: 'hybrid',
+      is_private: false,
+      communityName: 'Camden Queer Collective',
+    })).toBe('Online and in person · hosted by Camden Queer Collective · attendee list visible to members only');
   });
 });

@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  /* :root IS the dark theme — there is deliberately no `.dark` block. next-themes
+     writes `class="dark"` or `class="light"` on <html>; `dark` simply leaves these
+     values in place, while `.light` below overrides them. Adding a `.dark` block
+     would duplicate this one, so change dark-mode colours here. */
   :root {
     --background: 268 64% 11%;
     --foreground: 0 0% 100%;
@@ -28,17 +32,28 @@
   }
 
   .light {
-    --background: 340 100% 98%;
-    --foreground: 268 64% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 268 64% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 268 64% 11%;
-    --muted: 340 60% 94%;
-    --muted-foreground: 300 20% 45%;
-    --border: 340 40% 88%;
-    --input: 340 40% 88%;
-    /* primary, secondary, accent, ring, radius unchanged — brand is consistent */
+    /* Warm paper, not candy-pink. Hue 46 is a faint yellow-white so long
+       sessions stay easier on the eye than the old 340/100% blush. */
+    --background: 46 28% 97.5%;
+    --foreground: 30 18% 16%;
+    --card: 42 40% 99%;
+    --card-foreground: 30 18% 16%;
+    --popover: 42 40% 99%;
+    --popover-foreground: 30 18% 16%;
+    --muted: 44 18% 93%;
+    --muted-foreground: 30 10% 38%;
+    --border: 40 12% 86%;
+    --input: 40 12% 86%;
+
+    /* Brand hues stay; only lightness drops so they stay legible on paper
+       white. Dark-mode primaries fail WCAG AA on this surface. */
+    --primary: 330 73% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 258 60% 45%;
+    --secondary-foreground: 0 0% 100%;
+    --destructive: 0 72% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 330 73% 38%;
   }
 }
 
@@ -90,6 +105,37 @@
   .gradient-amber {
     background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.04) 100%);
   }
+  /*
+   * The brand surface, pinned.
+   *
+   * `:root` is the dark theme and `.light` overrides it, so a host whose OS
+   * asks for light gets a cream sign-in page under a plum-and-pink logo. A
+   * sign-in screen is the one place the brand should not be negotiable, so
+   * this re-states the dark tokens locally and wins over `.light` by sitting
+   * on the element itself.
+   *
+   * Scoped deliberately: everything past sign-in still follows her choice.
+   */
+  .brand-dark {
+    --background: 268 64% 11%;
+    --foreground: 0 0% 100%;
+    --card: 264 49% 21%;
+    --card-foreground: 0 0% 100%;
+    --popover: 264 49% 21%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 330 73% 70%;
+    --primary-foreground: 268 64% 11%;
+    --secondary: 258 89% 66%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 263 37% 27%;
+    --muted-foreground: 270 21% 77%;
+    --accent: 323 86% 70%;
+    --accent-foreground: 268 64% 11%;
+    --border: 263 37% 27%;
+    --input: 263 37% 27%;
+    --ring: 330 73% 70%;
+  }
+
   .text-gradient {
     background: linear-gradient(135deg, #E879A6, #8B5CF6);
     -webkit-background-clip: text;
@@ -106,5 +152,19 @@
   .card-hover:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 30px rgba(232, 121, 166, 0.1);
+  }
+
+  /* Pale amber utilities are for dark surfaces. On warm paper they vanish. */
+  .notice-icon {
+    color: hsl(38 92% 62%);
+  }
+  .light .notice-icon {
+    color: hsl(28 75% 32%);
+  }
+  .light .text-amber-300 {
+    color: hsl(28 72% 28%);
+  }
+  .light .text-amber-400 {
+    color: hsl(28 65% 32%);
   }
 }

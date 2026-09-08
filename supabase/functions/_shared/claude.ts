@@ -26,11 +26,17 @@ export async function isAiEnabled(): Promise<boolean> {
   return true;
 }
 
+// Edge-function touchpoints default to haiku per the $0.50/user/month AI cost
+// target (CLAUDE.md §4/§6). Pass model: 'claude-sonnet-5' for a touchpoint
+// that needs stronger reasoning — never hardcode a model id at the call site.
+const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
+
 export async function callClaude(params: {
   system: string;
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
   maxTokens?: number;
   mockResponse?: string;
+  model?: string;
 }): Promise<string> {
   const enabled = await isAiEnabled();
 
@@ -40,7 +46,7 @@ export async function callClaude(params: {
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: params.model ?? DEFAULT_MODEL,
       max_tokens: params.maxTokens ?? 256,
       system: params.system,
       messages: params.messages,

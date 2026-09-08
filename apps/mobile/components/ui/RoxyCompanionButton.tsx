@@ -3,70 +3,65 @@ import { TouchableOpacity, StyleSheet, Animated, View, Text, Modal, Pressable, F
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useCommunityStore } from '../../store/communityStore';
 import { useCommunityFilterStore } from '../../store/communityFilterStore';
+import { BRAND_GRADIENT } from '../../lib/theme';
+import { PRESS_SPRING, SNAP_SPRING } from '../../lib/motion';
+import { a11yState } from '../../lib/a11yState';
 
 interface Props {
   visible?: boolean;
 }
 
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
-// "Filter this view" only makes sense where a CommunityContextSwitcher lives.
-const FILTERABLE_SEGMENTS = ['/connect', '/build'];
+// Whether "Filter this view" can do anything is not a property of the route.
+//
+// It used to be decided by matching the pathname — first against `/connect` and
+// `/build`, two tabs the 3.0 shell retired, and then against `/feed`. Both were
+// wrong in the same way: the Feed honours a community filter on ONE of its
+// three segments, and a pathname cannot tell them apart. On For You the action
+// rendered enabled, opened the radio list, wrote a selection and changed
+// nothing on screen. The filterable surface now says so itself, in
+// `communityFilterStore`.
 
 export function RoxyCompanionButton({ visible = true }: Props) {
   const colors = useThemeColors();
   const router = useRouter();
-  const pathname = usePathname();
-  const canFilter = FILTERABLE_SEGMENTS.some((seg) => pathname.includes(seg));
 
   const joinedCommunities = useCommunityStore((s) => s.joinedCommunities);
+  const canFilter = useCommunityFilterStore((s) => s.filterable);
   const selectedCommunityId = useCommunityFilterStore((s) => s.selectedCommunityId);
   const setSelectedCommunity = useCommunityFilterStore((s) => s.setSelectedCommunity);
 
-  const fabOpacity = useRef(new Animated.Value(0)).current;
-  const fabTranslateY = useRef(new Animated.Value(20)).current;
+  const fabScale = useRef(new Animated.Value(0.55)).current;
 
   const [open, setOpen] = useState(false);
   const [filterExpanded, setFilterExpanded] = useState(false);
-  const scrimOpacity = useRef(new Animated.Value(0)).current;
   const pillAnims = useRef(
     [0, 1, 2].map(() => ({
-      translateY: new Animated.Value(24),
-      opacity: new Animated.Value(0),
+      translateY: new Animated.Value(18),
+      scale: new Animated.Value(0.7),
     }))
   ).current;
 
-  // Entrance animation for the FAB itself — unchanged from the original.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fabOpacity, { toValue: 1, duration: 300, delay: 400, useNativeDriver: true }),
-      Animated.timing(fabTranslateY, { toValue: 0, duration: 300, delay: 400, useNativeDriver: true }),
-    ]).start();
+    Animated.spring(fabScale, { toValue: 1, ...PRESS_SPRING }).start();
   }, []);
 
-  // Pop-out stack animation: dim scrim fade + staggered spring pills.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!open) {
       setFilterExpanded(false);
       return;
     }
-    scrimOpacity.setValue(0);
-    Animated.timing(scrimOpacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
     pillAnims.forEach((anim, i) => {
-      anim.translateY.setValue(24);
-      anim.opacity.setValue(0);
+      anim.translateY.setValue(18);
+      anim.scale.setValue(0.7);
       Animated.parallel([
-        Animated.spring(anim.translateY, {
-          toValue: 0, friction: 7, tension: 140, delay: i * 60, useNativeDriver: true,
-        }),
-        Animated.timing(anim.opacity, {
-          toValue: 1, duration: 200, delay: i * 60, useNativeDriver: true,
-        }),
+        Animated.spring(anim.translateY, { toValue: 0, delay: i * 40, ...SNAP_SPRING }),
+        Animated.spring(anim.scale, { toValue: 1, delay: i * 40, ...SNAP_SPRING }),
       ]).start();
     });
   }, [open]);
@@ -136,7 +131,7 @@ export function RoxyCompanionButton({ visible = true }: Props) {
 
   const goToChat = () => {
     setOpen(false);
-    router.push('/(tabs)/grow/roxy-chat' as any);
+    router.push('/roxy-chat' as any);
   };
 
   const goToSearch = () => {
@@ -156,13 +151,13 @@ export function RoxyCompanionButton({ visible = true }: Props) {
 
   return (
     <>
-      <Animated.View style={[styles.fabWrap, { opacity: fabOpacity, transform: [{ translateY: fabTranslateY }] }]}>
+      <Animated.View style={[styles.fabWrap, { transform: [{ scale: fabScale }] }]}>
         <TouchableOpacity
           testID="fab-button"
           style={styles.button}
           onPress={() => setOpen(true)}
           onLongPress={goToChat}
-          activeOpacity={0.85}
+          activeOpacity={1}
           accessibilityLabel="Roxy companion menu"
         >
           <LinearGradient colors={BRAND_GRADIENT} style={styles.buttonGradient}>
@@ -178,14 +173,14 @@ export function RoxyCompanionButton({ visible = true }: Props) {
         </TouchableOpacity>
       </Animated.View>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={closeSheet}>
+      <Modal visible={open} transparent animationType="none" onRequestClose={closeSheet}>
         <Pressable style={styles.scrim} onPress={closeSheet} accessibilityLabel="Close Roxy menu">
-          <Animated.View style={[styles.scrimFill, { opacity: scrimOpacity }]} />
+          <View style={styles.scrimFill} />
         </Pressable>
 
         <View style={styles.sheetWrap} pointerEvents="box-none">
           <Animated.View
-            style={[styles.pill, { opacity: pillAnims[0].opacity, transform: [{ translateY: pillAnims[0].translateY }] }]}
+            style={[styles.pill, { transform: [{ translateY: pillAnims[0].translateY }, { scale: pillAnims[0].scale }] }]}
           >
             <TouchableOpacity style={styles.pillTouchable} onPress={goToChat} accessibilityLabel="Chat with Roxy">
               <Text style={styles.pillEmoji}>✦</Text>
@@ -194,7 +189,7 @@ export function RoxyCompanionButton({ visible = true }: Props) {
           </Animated.View>
 
           <Animated.View
-            style={[styles.pill, { opacity: pillAnims[1].opacity, transform: [{ translateY: pillAnims[1].translateY }] }]}
+            style={[styles.pill, { transform: [{ translateY: pillAnims[1].translateY }, { scale: pillAnims[1].scale }] }]}
           >
             <TouchableOpacity style={styles.pillTouchable} onPress={goToSearch} accessibilityLabel="Search Roxy">
               <Ionicons name="search" size={16} color={colors.roxy} />
@@ -203,19 +198,19 @@ export function RoxyCompanionButton({ visible = true }: Props) {
           </Animated.View>
 
           <Animated.View
-            style={[styles.pill, { opacity: pillAnims[2].opacity, transform: [{ translateY: pillAnims[2].translateY }] }]}
+            style={[styles.pill, { transform: [{ translateY: pillAnims[2].translateY }, { scale: pillAnims[2].scale }] }]}
           >
             <TouchableOpacity
               style={[styles.pillTouchable, !canFilter && styles.pillDisabled]}
               onPress={handleFilterPress}
               accessibilityLabel="Filter this view"
-              accessibilityHint={canFilter ? undefined : 'Works on Connect & Build'}
-              accessibilityState={{ disabled: !canFilter }}
+              accessibilityHint={canFilter ? undefined : 'Works on Feed › Communities'}
+              {...a11yState({ disabled: !canFilter })}
             >
               <Ionicons name="options" size={16} color={canFilter ? colors.roxy : colors.textMuted} />
               <Text style={[styles.pillText, !canFilter && styles.pillTextDisabled]}>Filter this view</Text>
             </TouchableOpacity>
-            {!canFilter && <Text style={styles.pillHint}>Works on Connect & Build</Text>}
+            {!canFilter && <Text style={styles.pillHint}>Works on Feed › Communities</Text>}
 
             {canFilter && filterExpanded && (
               <View style={styles.communityList}>

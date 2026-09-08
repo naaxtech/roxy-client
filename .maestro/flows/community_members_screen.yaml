@@ -1,29 +1,46 @@
-# Test: Navigate to full-screen members page from community detail.
+# Test: Navigate to the full-screen members page from community detail.
+# The members link is the "N members" row under the community name.
 appId: com.roxy.app
 ---
+- runFlow: ../subflows/dismiss_first_run.yaml
+
 - tapOn:
-    text: "Discover"
+    id: "nav-slot-discover"
+
+- tapOn:
+    id: "discover-chips-comms"
+
+# Through "See all", not the rail. The rail is a HORIZONTAL ScrollView capped at
+# twelve cards, so `scrollUntilVisible … direction: DOWN` cannot reach a
+# community that is off to the right — it only ever passed when the seed order
+# happened to put this one in the first two or three visible cards. The browser
+# behind this link is a vertical list of all of them.
+- tapOn:
+    id: "rail-communities-link"
+
 - scrollUntilVisible:
     element:
       text: "Queer Gamers"
     direction: DOWN
     timeout: 5000
+
 - tapOn:
     text: "Queer Gamers"
+
 - tapOn:
     text: "members"
+
 - assertVisible:
     text: "Members"
     timeout: 3000
-- assertNotVisible:
-    text: "Members"
-    index: 1
-# Verify it's a stack screen (back button present, not a modal)
+
+# Verify it's a stack screen (back returns to detail, it is not a modal)
 - assertVisible:
     text: "Add Friend"
     timeout: 3000
+
 - back
-# Back to community detail
+
 - assertVisible:
     text: "Posts"
     timeout: 2000
