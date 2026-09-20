@@ -1,0 +1,38 @@
+apps/mobile/app/(tabs)/you/[userId].tsx
+  s_aad034b763a056::t_716bd33d482ec8 105
+  s_aad034b763a056::t_4615db80e6495f 26
+  s_aad034b763a056::t_5b58fadb43f503 626-635
+  s_aad034b763a056::t_b5fce30ce4e337 382-404
+  s_aad034b763a056::t_5a9cb9aaf3f1c4 17
+  s_aad034b763a056::t_6506bc68af744d 622
+apps/mobile/components/feed/FeedCellChrome.tsx
+  s_aad034b763a056::t_beb45b08f997d8 281
+  s_aad034b763a056::t_c679852e668280 16
+apps/mobile/components/feed/ShoppableProductCard.tsx
+  s_aad034b763a056::t_e5dce38c97c10b 1-109
+apps/mobile/app/(tabs)/you/index.tsx
+  s_aad034b763a056::t_1c5317b7826e99 32,34
+  s_aad034b763a056::t_f470fce770850e 67
+  s_aad034b763a056::t_3d89d435fd7bfb 271-280
+  s_aad034b763a056::t_c01f8a6f5d175b 356-378
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_aad034b763a056::t_df34988bc8aa79 8
+  s_aad034b763a056::t_1a8142fee3853e 589-601
+  s_aad034b763a056::t_6e67095842a896 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a7233ea6981649f5b303a76cd3c0ca2080f1c36e",
+  "prompts": {},
+  "sessions": {
+    "s_aad034b763a056": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f432b9799ffeDcfBi82rkzzSd1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
