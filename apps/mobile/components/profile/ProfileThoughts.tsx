@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
+import { RADII } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { logError } from '../../lib/errorLogger';
 import { isThought } from '../../lib/postKind';
@@ -36,16 +37,17 @@ interface Props {
 }
 
 /**
- * The Thoughts tab — text posts, read the way Threads reads them.
+ * The Thoughts tab — text posts, read as cards.
  *
  * These used to sit in the photo grid, where a paragraph was cropped into a
  * square thumbnail. A square is the wrong container for a sentence: it crops
  * the one thing the post is made of, and a wall of cropped paragraphs reads as
  * broken image tiles rather than as things somebody said.
  *
- * So: full width, no crop, text at reading size, a hairline between entries and
- * a quiet count row underneath. The rail down the left is Threads' own device —
- * it makes a column of separate posts read as one continuous voice.
+ * So: full width, no crop, text at reading size, one card per thought with a
+ * reply / like / share / react row underneath. Replies expand in place. The
+ * same component serves a user's profile and a community's, so the two always
+ * read the same.
  */
 /** Shared so an unreacted row does not allocate a Set on every render. */
 const EMPTY_SET: ReadonlySet<string> = new Set();
@@ -136,22 +138,20 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
   useEffect(() => { void load(); }, [load]);
 
   const s = StyleSheet.create({
-    wrap: { paddingTop: 4 },
-    row: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 14 },
-    // Threads' continuity rail: a thin line under each post joining it to the
-    // next, so a column of separate posts reads as one voice.
-    railCol: { width: 2, alignItems: 'center' },
-    rail: { flex: 1, width: 2, borderRadius: 1, backgroundColor: colors.line },
-    body: { flex: 1, minWidth: 0, paddingBottom: 14 },
-    head: { flexDirection: 'row', alignItems: 'baseline', gap: 7 },
-    when: { ...TYPE.micro, color: colors.textMuted },
-    // Reading size, and never clamped. The whole point of this tab is that the
-    // words are not cropped.
-    text: { ...TYPE.bodyLg, color: colors.textPrimary, marginTop: 3 },
-    counts: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 9 },
-    count: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-    countText: { ...TYPE.micro, color: colors.textMuted },
-    sep: { height: StyleSheet.hairlineWidth, backgroundColor: colors.line, marginLeft: 44 },
+    wrap: { paddingTop: 8, paddingBottom: 8 },
+    // A card, not a Threads rail: each thought is a bounded surface, so the
+    // words read as a thing that was said rather than a line in a log. The row
+    // inside (`ThoughtRow`) is content-only; this owns the chrome.
+    card: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.line,
+      borderRadius: RADII.lg,
+      marginHorizontal: 16,
+      marginBottom: 10,
+      padding: 14,
+      overflow: 'hidden',
+    },
     empty: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 32, gap: 6 },
     emptyTitle: { ...TYPE.title, color: colors.textPrimary, textAlign: 'center' },
     emptyBody: { ...TYPE.caption, color: colors.textSecondary, textAlign: 'center' },
@@ -202,8 +202,8 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
 
   return (
     <View style={s.wrap} testID={testID}>
-      {thoughts.map((thought, i) => (
-        <View key={thought.id}>
+      {thoughts.map((thought) => (
+        <View key={thought.id} style={s.card}>
         <ThoughtRow
           thought={{
             ...thought,
@@ -235,7 +235,6 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
               void load();
             });
           }}
-          connected={i < thoughts.length - 1}
           onOpen={() => toggle(thought)}
           onReply={() => toggle(thought)}
           onLike={() => {

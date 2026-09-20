@@ -32,8 +32,6 @@ export type Thought = {
 interface Props {
   thought: Thought;
   liked: boolean;
-  /** True while this is not the last row — draws the continuity rail. */
-  connected: boolean;
   /** Whether its replies are open, so the control says which way it goes. */
   expanded?: boolean;
   /** Emoji she has tapped this session. The tally stores no per-viewer row. */
@@ -51,7 +49,7 @@ interface Props {
 const AVATAR = 38;
 
 /**
- * One thought, laid out the way X and Threads lay out a post.
+ * One thought, laid out as a card.
  *
  * The first version showed a timestamp and a body and nothing else. That reads
  * as a log, not as something somebody said to people: there was no face, no
@@ -60,12 +58,13 @@ const AVATAR = 38;
  * the profile.
  *
  * So: avatar and name at the top, the words at reading size beneath, and a
- * three-action row under that. Reply opens the post's own page, where the
- * composer and the existing comment thread already live — a second comment
- * system on this screen would be a second place for a reply to go missing.
+ * three-action row under that. Reply expands in place (the container owns the
+ * thread), reactions are emoji chips — the card surface, border and radius
+ * live on the container in `ProfileThoughts`, so user and community thoughts
+ * read the same.
  */
 export function ThoughtRow({
-  thought, liked, connected, expanded = false, myReactions, onReact, picking,
+  thought, liked, expanded = false, myReactions, onReact, picking,
   onTogglePicker, onOpen, onReply, onLike, onPressAuthor, testID,
 }: Props) {
   const colors = useThemeColors();
@@ -76,9 +75,9 @@ export function ThoughtRow({
   const avatarUrl = thought.author?.avatar_url ?? null;
 
   const s = StyleSheet.create({
-    row: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingTop: 14 },
-    // The avatar column doubles as the rail's gutter, so the thread line sits
-    // under the face it belongs to — Threads' own arrangement.
+    // Content-only: the container in `ProfileThoughts` draws the card surface,
+    // border and radius around this. Nothing here owns its own chrome.
+    row: { flexDirection: 'row', gap: 12 },
     left: { width: AVATAR, alignItems: 'center' },
     avatar: {
       width: AVATAR, height: AVATAR, borderRadius: 99,
@@ -86,8 +85,7 @@ export function ThoughtRow({
     },
     initial: { ...TYPE.caption, color: '#FFF8FB', fontWeight: '800' },
     emoji: { fontSize: 19 },
-    rail: { flex: 1, width: 2, marginTop: 8, borderRadius: 1, backgroundColor: colors.line },
-    body: { flex: 1, minWidth: 0, paddingBottom: 14 },
+    body: { flex: 1, minWidth: 0 },
     head: { flexDirection: 'row', alignItems: 'center', gap: 5 },
     name: { ...TYPE.caption, fontWeight: '800', color: colors.textPrimary, flexShrink: 1 },
     handle: { ...TYPE.micro, color: colors.textMuted, flexShrink: 1 },
@@ -156,7 +154,6 @@ export function ThoughtRow({
           >
             {face}
           </TouchableOpacity>
-          {connected ? <View style={s.rail} /> : null}
         </View>
 
         <View style={s.body}>

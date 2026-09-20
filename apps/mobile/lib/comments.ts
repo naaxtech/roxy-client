@@ -31,14 +31,20 @@ export async function submitComment(params: {
   authorId: string;
   content: string;
   parentId?: string | null;
+  gifUrl?: string | null;
+  mediaUrl?: string | null;
 }): Promise<{ comment: Comment | null; error: string | null }> {
   const { data, error } = await supabase
     .from('comments')
     .insert({
       post_id: params.postId,
       author_id: params.authorId,
-      content: params.content.trim(),
+      // A GIF-only reply has no caption; the CHECK (content OR media OR gif)
+      // is what keeps a truly empty comment out.
+      content: params.content?.trim() || null,
       parent_id: params.parentId ?? null,
+      gif_url: params.gifUrl ?? null,
+      media_url: params.mediaUrl ?? null,
     })
     .select(COMMENT_WITH_AUTHOR)
     .single();

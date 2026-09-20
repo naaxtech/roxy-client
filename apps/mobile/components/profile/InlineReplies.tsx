@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet,
+  View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII, inkOn } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { loadPostComments, submitComment, appendComment } from '../../lib/comments';
+import { GifPicker } from '../chat/GifPicker';
 import { Analytics } from '../../lib/analytics';
 import { relativeWhen } from './ThoughtRow';
 import type { Comment } from '../../types';
@@ -41,6 +43,7 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [showGif, setShowGif] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,6 +81,23 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
     onCountChange?.(countAll(next));
   };
 
+  const sendGif = async (url: string) => {
+    if (!currentUserId || sending) return;
+    setSending(true);
+    const res = await submitComment({ postId, authorId: currentUserId, content: '', gifUrl: url });
+    setSending(false);
+    if (res.error || !res.comment) {
+      setError(res.error ?? 'That GIF did not send.');
+      return;
+    }
+    Analytics.thoughtReplySent('profile');
+    const next = appendComment(comments, res.comment);
+    setComments(next);
+    setDraft('');
+    setError(null);
+    onCountChange?.(countAll(next));
+  };
+
   const s = StyleSheet.create({
     wrap: {
       marginTop: 4,
@@ -93,6 +113,11 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
     name: { ...TYPE.micro, fontWeight: '800', color: colors.textPrimary },
     when: { ...TYPE.micro, color: colors.textMuted },
     body: { ...TYPE.caption, color: colors.textSecondary },
+    gif: { width: 160, height: 120, borderRadius: RADII.md, marginTop: 4 },
+    gifBtn: {
+      minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET,
+      alignItems: 'center', justifyContent: 'center',
+    },
     composer: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
     input: {
       flex: 1,
@@ -141,12 +166,30 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
             </Text>
             <Text style={s.when}>{relativeWhen(comment.created_at)}</Text>
           </View>
-          <Text style={s.body}>{comment.content}</Text>
+          {comment.gif_url || comment.media_url ? (
+            <Image
+              source={{ uri: (comment.gif_url ?? comment.media_url)! }}
+              style={s.gif}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={s.body}>{comment.content}</Text>
+          )}
         </View>
       ))}
 
       {currentUserId ? (
         <View style={s.composer}>
+          <TouchableOpacity
+            style={s.gifBtn}
+            onPress={() => setShowGif(true)}
+            disabled={sending}
+            accessibilityRole="button"
+            accessibilityLabel="Reply with a GIF"
+            testID={`${testID}-gif`}
+          >
+            <Ionicons name="image-outline" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
           <TextInput
             style={s.input}
             value={draft}
@@ -176,6 +219,12 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
       ) : (
         <Text style={s.note}>Sign in to reply.</Text>
       )}
+
+      <GifPicker
+        visible={showGif}
+        onGifSelected={(url) => { void sendGif(url); }}
+        onClose={() => setShowGif(false)}
+      />
 
       {error ? <Text style={s.error} testID={`${testID}-error`}>{error}</Text> : null}
     </View>

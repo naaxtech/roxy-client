@@ -75,6 +75,12 @@ function CommentRow({
         <Text style={styles.commentAuthor}>{authorName}</Text>
         {isDeleted ? (
           <Text style={styles.deletedText}>This comment was removed.</Text>
+        ) : comment.gif_url || comment.media_url ? (
+          <Image
+            source={{ uri: (comment.gif_url ?? comment.media_url)! }}
+            style={{ width: 180, height: 135, borderRadius: 10, marginTop: 2 }}
+            resizeMode="cover"
+          />
         ) : (
           <Text style={styles.commentContent}>{comment.content}</Text>
         )}
