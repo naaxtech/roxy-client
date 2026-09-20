@@ -19,6 +19,7 @@ const TYPE_EMOJI: Record<RoxyNotification['type'], string> = {
   friend_request: '🌸',
   friend_accept: '💜',
   community_event: '🗓️',
+  message: '💬',
 };
 
 export default function NotificationsScreen() {
@@ -132,7 +133,7 @@ export default function NotificationsScreen() {
               <Text style={styles.emptyIcon}>🔔</Text>
               <Text style={styles.emptyTitle}>Nothing yet</Text>
               <Text style={styles.emptyText}>
-                Friend requests and new community events will land here 💜
+                Messages, friend requests and community events will land here 💜
               </Text>
             </View>
           }

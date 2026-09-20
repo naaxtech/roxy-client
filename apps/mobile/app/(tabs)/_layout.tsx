@@ -15,6 +15,7 @@ import { PendingStatusHost } from '../../components/account/PendingStatusHost';
 import { navSlotsFor } from '../../components/nav/navSlots3';
 import { supabase } from '../../lib/supabase';
 import { freshChannel } from '../../lib/realtimeChannel';
+import { registerPushToken } from '../../lib/push';
 
 /**
  * The companion FAB pins itself 90pt above its parent's bottom edge, a number
@@ -67,6 +68,13 @@ export default function TabLayout() {
     if (!user?.id) return;
     void loadBlockedUsers();
   }, [user?.id, loadBlockedUsers]);
+
+  // One device push token per signed-in user, so the server can reach her for
+  // messages and friend requests with the app closed.
+  useEffect(() => {
+    if (!user?.id) return;
+    void registerPushToken(user.id);
+  }, [user?.id]);
 
   const unreadCounts = useConnectStore((s) => s.unreadCounts);
   const totalUnread = Object.values(unreadCounts).reduce((sum, n) => sum + n, 0);

@@ -510,6 +510,13 @@ export default function ChatScreen() {
       }
 
       Analytics.messageSent(conversationId);
+      // Fire-and-forget push to the recipient. The in-app notification is
+      // created server-side by trg_notify_direct_message; this is the alert
+      // that reaches her when the app is closed.
+      void callEdgeFunction('send-message-push', {
+        conversation_id: conversationId,
+        message_preview: content.trim() || (type === 'image' ? '📷 sent you a photo' : null),
+      });
       supabase
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })
