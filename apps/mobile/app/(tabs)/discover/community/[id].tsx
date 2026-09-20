@@ -5,6 +5,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter, usePathname } from 'expo-router';
 import { format } from 'date-fns';
 import { supabase } from '../../../../lib/supabase';
@@ -29,7 +30,7 @@ import { ProfileShell } from '../../../../components/profile/ProfileShell';
 import type { PopulatedTabs, ProfileTab } from '../../../../components/profile/profileVariant';
 import { EventModeBadge, type EventMode } from '../../../../components/events/EventModeBadge';
 import { TYPE } from '../../../../lib/typography';
-import { RADII, inkOn } from '../../../../lib/theme';
+import { RADII, inkOn, BRAND_GRADIENT } from '../../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../../lib/touchTargets';
 import { useAccess } from '../../../../hooks/useAccess';
 import { ComingSoon } from '../../../../components/features/ComingSoon';
@@ -585,9 +586,19 @@ export default function CommunityDetailScreen() {
                   <Text style={styles.gameDesc}>{game.short_description}</Text>
                 </View>
                 {game.publisher_type === 'roxy' && (
-                  <Text style={{ fontSize: 10, color: colors.roxy, fontWeight: '700', marginRight: 6 }}>
-                    Roxy Original
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 6 }}>
+                    <LinearGradient
+                      colors={BRAND_GRADIENT}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{ width: 15, height: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Ionicons name="sparkles" size={9} color="#FFF8FB" />
+                    </LinearGradient>
+                    <Text style={{ fontSize: 10, color: colors.roxy, fontWeight: '700' }}>
+                      Roxy Original
+                    </Text>
+                  </View>
                 )}
                 {canPlay && (
                   <View style={styles.playBtn}>

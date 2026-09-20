@@ -29,8 +29,9 @@ import { isOfficialAccount } from '../../../lib/officialGrant';
 import { hostedTabFlags, loadHostedProfile } from '../../../lib/profileHosted';
 import { canSell, deriveSellerStatus, type SellerBusinessRow } from '../../../lib/sellerStatus';
 import { EventModeBadge, type EventMode } from '../../../components/events/EventModeBadge';
+import { EventsCalendar } from '../../../components/events/EventsCalendar';
 import { isPlayableGameUrl } from '../../../lib/gameUrl';
-import { RADII } from '../../../lib/theme';
+import { RADII, inkOn } from '../../../lib/theme';
 import type { Business, Profile } from '../../../types';
 import { useAccess } from '../../../hooks/useAccess';
 import { AccountStatusTag } from '../../../components/account/AccountStatusTag';
@@ -63,6 +64,7 @@ export default function ProfileScreen() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [reelsOpen, setReelsOpen] = useState(false);
   const [reelInitialId, setReelInitialId] = useState<string | null>(null);
+  const [eventsView, setEventsView] = useState<'list' | 'calendar'>('list');
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [sellerRows, setSellerRows] = useState<SellerBusinessRow[]>([]);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
@@ -266,6 +268,16 @@ export default function ProfileScreen() {
       backgroundColor: colors.primary,
       paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADII.pill,
     },
+    viewToggleRow: {
+      flexDirection: 'row', gap: 6, justifyContent: 'flex-end',
+      marginBottom: 6,
+    },
+    viewToggleBtn: {
+      width: 34, height: 30, borderRadius: 10,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.surface,
+    },
+    viewToggleBtnActive: { backgroundColor: colors.roxy },
   });
 
   if (!user || !profile) {
@@ -341,7 +353,29 @@ export default function ProfileScreen() {
     if (tab === 'events') {
       return (
         <View style={styles.hostedList}>
-          {hosted.events.map((event) => (
+          <View style={styles.viewToggleRow}>
+            {(['list', 'calendar'] as const).map((v) => (
+              <TouchableOpacity
+                key={v}
+                style={[styles.viewToggleBtn, eventsView === v && styles.viewToggleBtnActive]}
+                onPress={() => setEventsView(v)}
+                accessibilityRole="button"
+                accessibilityLabel={v === 'list' ? 'List view' : 'Calendar view'}
+              >
+                <Ionicons
+                  name={v === 'list' ? 'list' : 'calendar'}
+                  size={16}
+                  color={eventsView === v ? inkOn(colors.roxy) : colors.textMuted}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+          {eventsView === 'calendar' ? (
+            <EventsCalendar
+              events={hosted.events.map((e) => ({ id: e.id, title: e.title, starts_at: e.starts_at, subtitle: e.location_text }))}
+              onEventPress={(eventId) => router.push(`/event/${eventId}` as never)}
+            />
+          ) : hosted.events.map((event) => (
             <TouchableOpacity
               key={event.id}
               style={styles.hostedRow}

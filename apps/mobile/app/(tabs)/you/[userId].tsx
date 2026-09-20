@@ -14,6 +14,7 @@ import { ProfileThoughts } from '../../../components/profile/ProfileThoughts';
 import { ReelsFeed } from '../../../components/feed/ReelsFeed';
 import { type EarnedBadge } from '../../../components/profile/BadgeRow';
 import { EventModeBadge, type EventMode } from '../../../components/events/EventModeBadge';
+import { EventsCalendar } from '../../../components/events/EventsCalendar';
 import { deriveSellerStatus, canSell, type SellerBusinessRow } from '../../../lib/sellerStatus';
 import { logError } from '../../../lib/errorLogger';
 import { useAuthStore } from '../../../store/authStore';
@@ -22,7 +23,7 @@ import { useFollowStore } from '../../../store/followStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { TYPE } from '../../../lib/typography';
-import { RADII } from '../../../lib/theme';
+import { RADII, inkOn } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { confirmAction, showAlert } from '../../../lib/confirm';
 import { useSafetyStore } from '../../../store/safetyStore';
@@ -101,6 +102,7 @@ function UserProfileScreen() {
   const [notFound, setNotFound] = useState(false);
   const [reelsOpen, setReelsOpen] = useState(false);
   const [reelInitialId, setReelInitialId] = useState<string | null>(null);
+  const [eventsView, setEventsView] = useState<'list' | 'calendar'>('list');
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -377,7 +379,29 @@ function UserProfileScreen() {
     if (tab === 'events') {
       return (
         <View style={rowStyles.list}>
-          {events.map((event) => (
+          <View style={rowStyles.viewToggleRow}>
+            {(['list', 'calendar'] as const).map((v) => (
+              <TouchableOpacity
+                key={v}
+                style={[rowStyles.viewToggleBtn, eventsView === v && rowStyles.viewToggleBtnActive]}
+                onPress={() => setEventsView(v)}
+                accessibilityRole="button"
+                accessibilityLabel={v === 'list' ? 'List view' : 'Calendar view'}
+              >
+                <Ionicons
+                  name={v === 'list' ? 'list' : 'calendar'}
+                  size={16}
+                  color={eventsView === v ? inkOn(colors.roxy) : colors.textMuted}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+          {eventsView === 'calendar' ? (
+            <EventsCalendar
+              events={events.map((e) => ({ id: e.id, title: e.title, starts_at: e.starts_at, subtitle: e.location_text }))}
+              onEventPress={(eventId) => router.push(`/event/${eventId}` as never)}
+            />
+          ) : events.map((event) => (
             <TouchableOpacity
               key={event.id}
               style={rowStyles.row}
@@ -595,10 +619,20 @@ function hostedStyles(colors: ReturnType<typeof useThemeColors>) {
       ...TYPE.micro, color: colors.primary, fontWeight: '800', letterSpacing: 0.8,
     },
     play: {
-      ...TYPE.caption, color: colors.primaryInk, fontWeight: '800',
+      ...TYPE.caption, color: '#FFFFFF', fontWeight: '800',
       backgroundColor: colors.primary, overflow: 'hidden',
       paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADII.pill,
     },
+    viewToggleRow: {
+      flexDirection: 'row', gap: 6, justifyContent: 'flex-end',
+      marginBottom: 6,
+    },
+    viewToggleBtn: {
+      width: 34, height: 30, borderRadius: 10,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.surface,
+    },
+    viewToggleBtnActive: { backgroundColor: colors.roxy },
     online: {
       flexDirection: 'row',
       alignItems: 'center',

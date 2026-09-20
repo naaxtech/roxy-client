@@ -13,6 +13,7 @@ import { MIN_INLINE_TOUCH_TARGET, MIN_TOUCH_TARGET } from '../../lib/touchTarget
 import type { ReelRow } from '../../lib/reels';
 import type { PostType } from '../../types';
 import { CommunityCrest } from './CommunityCrest';
+import { ShoppableProductCard } from './ShoppableProductCard';
 import { a11yState } from '../../lib/a11yState';
 import {
   CAPTION_CAP, CAPTION_COLLAPSED_LINES, CAPTION_EXPANDED_CAP, CAPTION_EXPANDED_LINES,
@@ -277,28 +278,7 @@ export function FeedCellChrome({
           {interestPrompt}
 
           <View testID="feed-cell-identity" style={s.identity} pointerEvents="box-none">
-            {shopId ? (
-              <TouchableOpacity
-                testID="feed-cell-shop"
-                style={s.shopChip}
-                onPress={() => {
-                  const href = Linking.createURL(`/product/${shopId}`);
-                  if (typeof Linking.openURL === 'function') void Linking.openURL(href);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Open the tagged shop item"
-              >
-                <LinearGradient
-                  colors={['#F22481', '#8B5CF6']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={s.shopChipFill}
-                >
-                  <Ionicons name="bag-handle" size={13} color="#FFF8FB" />
-                  <Text style={s.shopChipText}>Shop item</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            ) : null}
+            {shopId ? <ShoppableProductCard productId={shopId} /> : null}
 
             {handleLabel ? (
               <TouchableOpacity
@@ -620,13 +600,6 @@ const s = StyleSheet.create({
    * and makes them tappable. Net cost to the band's height is ~23dp rather than
    * the ~32 the padding alone would have added.
    */
-  shopChip: { alignSelf: 'flex-start', marginBottom: 6 },
-  shopChipFill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    minHeight: MIN_INLINE_TOUCH_TARGET, paddingHorizontal: 13,
-    borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,249,251,0.35)',
-  },
-  shopChipText: { color: '#FFF8FB', fontWeight: '700', fontSize: 12 },
   identity: {
     paddingLeft: 18, paddingRight: RAIL_GUTTER, paddingBottom: CHROME_BOTTOM, gap: 2,
   },
