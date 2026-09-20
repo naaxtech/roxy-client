@@ -1,0 +1,22 @@
+supabase/demo_seed.sql
+  s_aad034b763a056::t_cad66cee28a1c5 115-117
+  s_aad034b763a056::t_e9b6a3d16ddb17 1-33,35-49,74-75,88-89,93-94,99-100,105-106,111-114,118-125,127-136
+  s_aad034b763a056::t_54a700d3792047 34,50-73,76-78,84-87,90-92,95-98,101-104,107-110,126
+  s_aad034b763a056::t_b7639d3e46e445 79-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d7bb73d787ca3d20f9a4873d101c6859654e34d9",
+  "prompts": {},
+  "sessions": {
+    "s_aad034b763a056": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f432b9799ffeDcfBi82rkzzSd1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
