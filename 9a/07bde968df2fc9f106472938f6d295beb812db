@@ -1,0 +1,42 @@
+apps/mobile/app/(tabs)/you/[userId].tsx
+  s_aad034b763a056::t_6cc65a038843dd 4
+  s_aad034b763a056::t_b892e7e0acc108 14
+  s_aad034b763a056::t_548d620810f8bc 102-103
+  s_aad034b763a056::t_c79e35a1619a2a 370-375
+  s_aad034b763a056::t_65e4579bd222e5 459-477
+  s_aad034b763a056::t_9801b02efa6b82 264-269
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  s_aad034b763a056::t_91add574a73386 3
+  s_aad034b763a056::t_7d129cb74e7b6b 502,510-513
+  s_aad034b763a056::t_7c85c3f125c7e9 27
+  s_aad034b763a056::t_90090b6256680d 80
+  s_aad034b763a056::t_72262539608c3e 85
+  s_aad034b763a056::t_6ac81e8ad10515 713
+apps/mobile/components/profile/ProfilePostsGrid.tsx
+  s_aad034b763a056::t_2218850ca9d754 37,46-61,65,75
+  s_aad034b763a056::t_c0d4420b7269b5 104-107
+  s_aad034b763a056::t_e7bd34df5518de 25-30
+apps/mobile/app/(tabs)/you/index.tsx
+  s_aad034b763a056::t_4bca361954c271 322-327
+  s_aad034b763a056::t_d7539aca8f6af1 432-450
+  s_aad034b763a056::t_860b9ca122ce05 64-65
+  s_aad034b763a056::t_0b42b8f83013a6 15
+  s_aad034b763a056::t_0b41829b101730 212-217
+  s_aad034b763a056::t_e0d7c3130394d1 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9a07bde968df2fc9f106472938f6d295beb812db",
+  "prompts": {},
+  "sessions": {
+    "s_aad034b763a056": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f432b9799ffeDcfBi82rkzzSd1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
