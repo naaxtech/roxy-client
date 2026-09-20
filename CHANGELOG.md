@@ -36,6 +36,43 @@ finer-grained engineering log lives in `.claude/log.md`.
     rule, and a test fails the seed if it breaks it.
 
 ### Fixed
+- **Password reset works.** It never had, in any build: the reset email pointed
+  at `localhost`, and there was nowhere for it to point *to*. Four layers, all
+  broken, none of which a green test suite could see:
+  - `resetPasswordForEmail` was called with no `redirectTo`, so GoTrue fell back
+    to the project's Site URL — `http://localhost:3000` on a default Supabase
+    project. Every reset email Roxy ever sent pointed at the recipient's own
+    machine.
+  - The hosted Site URL had since been set to `https://roxy.expo.app/**` — a
+    glob where an exact URL belongs, so the link resolved to a literal `/**`
+    path. Now `https://roxy.expo.app` exactly, with the glob where it belongs,
+    in `uri_allow_list`, alongside `roxy://**` for native (which the allow list
+    had been silently rejecting and falling back from).
+  - **There was no reset screen.** No route, no `updateUser({password})` call
+    anywhere in the app, and `detectSessionInUrl: false` — so even a correct
+    link dead-ended. `app/(auth)/reset-password.tsx` is the destination: it
+    consumes the token, takes it back out of the address bar, and sets the new
+    password, checking the write instead of announcing it.
+  - The root layout's redirect cascade fired the moment the recovery session
+    landed and replaced the form with the feed — spending a single-use token on
+    a screen she never got to use. The recovery route is now exempt, the way
+    `/application` already was.
+- **Any route opened with a `#fragment` was launch-gated as unknown.**
+  `normalizePath` stripped `?query` but not `#fragment`, so the path missed
+  every exact-match set and fell through to `featureForPath`'s `discover`
+  default. A recovery link is *always* a fragment, so `LaunchGate` drew its
+  `pointerEvents="auto"` "Discover is coming soon" panel over the reset form:
+  the screen rendered perfectly and silently ate every tap. Found with
+  `elementFromPoint`, not by a test — and it would have hit any future
+  fragment-carrying link the same way.
+- **A password reset could walk a code-holder past vetting.** The second
+  redirect block in `app/_layout.tsx` checked `shouldRedirectToPending` but
+  never `shouldRedirectToApplication`, which was survivable only while every
+  code-holder entered through the first block. Recovery is the first flow that
+  lands a signed-in user straight on a tab route, which turned the omission into
+  the exact bypass `authRouting.ts` documents: no profile row plus an unredeemed
+  code led to onboarding, and onboarding creates the row at the default
+  `vetting_status` — with no reviewer ever involved.
 - **The moderation loop could be opened but not closed.** Four gaps, each found
   by building the screen that needed it: nothing could *file* an archive report
   (`reports.content_type` had no archive member); no mod could *read* one

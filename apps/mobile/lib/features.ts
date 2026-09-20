@@ -129,11 +129,25 @@ const YOU_ALLOWED = new Set([
   '/you/feedback',
 ]);
 
+/**
+ * Auth screens are never launch-gated.
+ *
+ * `featureForPath` ends in `return 'discover'`, so anything not listed here is
+ * gated by default — the safe default for a product surface, the wrong one for
+ * the screens a woman uses to get *in*. LaunchGate draws ComingSoon in an
+ * `absoluteFill` with `pointerEvents="auto"`, so a gated auth screen still
+ * paints and quietly eats every tap.
+ *
+ * `/reset-password` was missing here when it was added and the reset form was
+ * dead on arrival — visible, complete, and unsubmittable. Any new auth route
+ * belongs in this set on the same commit that creates it.
+ */
 const AUTH_ALLOWED = new Set([
   '/code',
   '/welcome',
   '/application',
   '/pending',
+  '/reset-password',
 ]);
 
 const ALWAYS_ALLOWED = new Set([
@@ -169,8 +183,20 @@ const PATH_FEATURES: [prefix: string, feature: Feature][] = [
   ['/discover', 'discover'],
 ];
 
+/**
+ * A route path, with everything that is not the route taken off.
+ *
+ * The fragment has to go for the same reason the query does, and it is easy to
+ * miss because most routes never carry one. A password-recovery link always
+ * does — GoTrue returns its tokens as `#access_token=…` — so `/reset-password`
+ * arrived here as `/reset-password#access_token=…`, matched none of the
+ * exact-match sets, and fell through to the `discover` default at the bottom of
+ * featureForPath. The gate then drew ComingSoon over the reset form while the
+ * same route with no hash behaved perfectly.
+ */
 function normalizePath(pathname: string): string {
   const stripped = pathname
+    .split('#')[0]
     .split('?')[0]
     .replace(/\/\([^/]+\)/g, '')
     .replace(/\/+$/, '');

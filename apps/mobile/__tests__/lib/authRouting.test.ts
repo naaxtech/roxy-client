@@ -2,6 +2,7 @@ import {
   isApplicationRoute,
   shouldRedirectToPending,
   shouldRedirectToApplication,
+  isResetPasswordRoute,
 } from '../../lib/authRouting';
 
 /**
@@ -132,5 +133,58 @@ describe('isApplicationRoute', () => {
 
   it('does not match an empty segment list on first render', () => {
     expect(isApplicationRoute([], '/')).toBe(false);
+  });
+});
+
+/**
+ * The trap that makes a "fixed" password reset still fail.
+ *
+ * Consuming the recovery token creates a real session. The moment it lands, the
+ * root layout's cascade (`user && inAuth && !inOnboarding`) fetches her profile
+ * and replaces the route with the feed, onboarding, or the pending screen —
+ * yanking the reset form away before she can type a new password. The recovery
+ * route needs the same exemption the application screen already has.
+ */
+describe('isResetPasswordRoute', () => {
+  it('matches on an exact segment', () => {
+    expect(isResetPasswordRoute(['(auth)', 'reset-password'], '/(auth)')).toBe(true);
+  });
+
+  it('matches on pathname', () => {
+    expect(isResetPasswordRoute(['(auth)'], '/(auth)/reset-password')).toBe(true);
+  });
+
+  /**
+   * Route groups are invisible in the browser URL, so the deployed web app
+   * reports the path as `/reset-password` — the form the emailed link uses.
+   */
+  it('matches the URL the email actually lands on, with no group in it', () => {
+    expect(isResetPasswordRoute(['(auth)', 'reset-password'], '/reset-password')).toBe(true);
+  });
+
+  it('does not match the welcome screen', () => {
+    expect(isResetPasswordRoute(['(auth)', 'welcome'], '/(auth)/welcome')).toBe(false);
+  });
+
+  it('does not match an empty segment list on first render', () => {
+    expect(isResetPasswordRoute([], '/')).toBe(false);
+  });
+});
+
+describe('shouldRedirectToPending — a recovery session is not a routing decision', () => {
+  it('leaves a rejected applicant on the reset screen long enough to reset', () => {
+    // Her account being rejected does not make the password change illegitimate,
+    // and bouncing her to /pending mid-reset loses the one-time token for good.
+    expect(
+      shouldRedirectToPending('rejected', ['(auth)', 'reset-password'], '/reset-password'),
+    ).toBe(false);
+  });
+});
+
+describe('shouldRedirectToApplication — holding a code does not interrupt a reset', () => {
+  it('leaves a code-holder on the reset screen', () => {
+    expect(
+      shouldRedirectToApplication(false, true, ['(auth)', 'reset-password'], '/reset-password'),
+    ).toBe(false);
   });
 });
