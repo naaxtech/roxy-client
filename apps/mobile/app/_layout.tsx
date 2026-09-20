@@ -11,6 +11,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useProfileStore } from '../store/profileStore';
 import { supabase } from '../lib/supabase';
 import { DevPanel } from '../components/dev/DevPanel';
+import { BadgeCelebration } from '../components/gamification/BadgeCelebration';
+import { useCelebrationStore } from '../store/celebrationStore';
 import { Analytics } from '../lib/analytics';
 import { logError, logBreadcrumb, setCrashlyticsUser, hashUserId } from '../lib/errorLogger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -240,6 +242,7 @@ function AppNavigator() {
           </ErrorBoundary>
         </WebAppFrame>
         {__DEV__ && <DevPanel />}
+        <BadgeCelebrationHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
@@ -268,4 +271,19 @@ export default function RootLayout() {
       <AppNavigator />
     </PostHogProvider>
   );
+}
+
+/**
+ * Mounted once, at the root.
+ *
+ * A badge can be earned anywhere — `syncMyBadges` runs on the badges screen
+ * today and after a vote or an RSVP tomorrow — so the celebration lives above
+ * all of them rather than on the screen that happened to trigger it. No future
+ * caller has to remember to render it.
+ */
+function BadgeCelebrationHost() {
+  const pending = useCelebrationStore((s) => s.pending);
+  const dismiss = useCelebrationStore((s) => s.dismiss);
+  if (pending.length === 0) return null;
+  return <BadgeCelebration badges={pending} onDismiss={dismiss} />;
 }

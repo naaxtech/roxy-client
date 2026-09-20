@@ -6,9 +6,22 @@ import { render, waitFor } from '@testing-library/react-native';
 // resolves; the queue lets a test hand back different rows per fetch.
 jest.mock('../../lib/supabase', () => {
   const queue: { data: unknown; error: unknown }[] = [];
-  const order = jest.fn(() =>
-    Promise.resolve(queue.length > 1 ? queue.shift() : (queue[0] ?? { data: [], error: null }))
-  );
+  const take = (): { data: unknown; error: unknown } =>
+    queue.length > 1 ? queue.shift()! : (queue[0] ?? { data: [], error: null });
+
+  // `order` is awaited directly by the badge list (`fetchBadges`) and followed
+  // by `.limit()` by `fetchJustEarned`. Return an object that is both a thenable
+  // and a `.limit()` carrier, so each query consumes the queue exactly once.
+  const order = jest.fn(() => {
+    const chain: any = {
+      limit: jest.fn(() => Promise.resolve(take())),
+    };
+    chain.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (r: unknown) => unknown) =>
+      Promise.resolve(take()).then(onFulfilled, onRejected);
+    chain.catch = (onRejected: (r: unknown) => unknown) =>
+      Promise.resolve(take()).catch(onRejected);
+    return chain;
+  });
   return {
     __queue: queue,
     __order: order,
@@ -16,11 +29,13 @@ jest.mock('../../lib/supabase', () => {
       from: jest.fn(() => ({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
+        not: jest.fn().mockReturnThis(),
         order,
       })),
       rpc: jest.fn(() => Promise.resolve({ data: 0, error: null })),
     },
   };
+
 });
 
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));

@@ -6,6 +6,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { syncMyBadges } from '../lib/badges';
+import { useCelebrationStore } from '../store/celebrationStore';
 import { useAuthStore } from '../store/authStore';
 import { useThemeColors } from '../hooks/useThemeColors';
 
@@ -71,6 +72,11 @@ export default function BadgesScreen() {
       if (cancelled) return;
       setSyncFailed(result.status === 'failed');
       if (result.status !== 'synced') return;
+      // Earned in silence is not earned. The store fetches which badges landed
+      // and the root host takes the screen.
+      if (result.newlyEarned > 0) {
+        void useCelebrationStore.getState().celebrate(result.newlyEarned);
+      }
 
       // 3. Re-read so anything the sync just awarded — or any progress bar it
       //    moved — shows up in this visit, not the next one.

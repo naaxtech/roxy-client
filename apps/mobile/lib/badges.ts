@@ -97,3 +97,56 @@ export async function syncMyBadges(
     return { status: 'failed' };
   }
 }
+
+/** Enough of a badge to celebrate it. */
+export interface EarnedBadgeCard {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string | null;
+  points: number;
+}
+
+/**
+ * The badges she just earned, newest first.
+ *
+ * `sync_my_badges` returns a COUNT, which is enough to know something happened
+ * and useless for saying what. A celebration that cannot name the badge is a
+ * toast, and Duolingo's whole lesson is that the moment has to be about the
+ * specific thing you did.
+ *
+ * Ordered by `earned_at` and capped at the count the sync reported, so a member
+ * who earned two sees exactly those two and not her whole history.
+ */
+export async function fetchJustEarned(count: number): Promise<EarnedBadgeCard[]> {
+  if (count <= 0) return [];
+
+  const { data, error } = await supabase
+    .from('user_badge_progress')
+    .select('earned_at, badges(id, name, emoji, description, points_value)')
+    .not('earned_at', 'is', null)
+    .order('earned_at', { ascending: false })
+    .limit(count);
+
+  if (error) {
+    logError(new Error(`fetchJustEarned failed: ${error.message}`), 'badges.justEarned');
+    return [];
+  }
+
+  // PostgREST types an embedded resource as an array even when the FK makes it
+  // one row, so it is normalised here rather than trusted either way.
+  return (data ?? [])
+    .flatMap((row) => {
+      const embedded = (row as unknown as { badges: unknown }).badges;
+      const list = Array.isArray(embedded) ? embedded : [embedded];
+      return list.filter((b): b is Record<string, unknown> => !!b && typeof b === 'object');
+    })
+    .map((b) => ({
+      id: String(b.id),
+      name: String(b.name ?? 'A badge'),
+      // A badge with no emoji still gets a face rather than an empty circle.
+      emoji: String(b.emoji ?? '🏅'),
+      description: (b.description as string | null) ?? null,
+      points: typeof b.points_value === 'number' ? b.points_value : 0,
+    }));
+}
