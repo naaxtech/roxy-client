@@ -1,0 +1,36 @@
+apps/mobile/__tests__/globalSearch.test.ts
+  s_aad034b763a056::t_58d01821c97634 17,25
+  s_aad034b763a056::t_6c99fbe5398d3d 44
+apps/mobile/lib/globalSearch.ts
+  s_aad034b763a056::t_b0ed7c0e324987 55,60
+  s_aad034b763a056::t_d59c33d5833561 41,44-46
+  s_aad034b763a056::t_c4b04c94827adf 142,179-193,196
+  s_aad034b763a056::t_860764f5fa3c35 8-16
+apps/mobile/app/(tabs)/feed/index.tsx
+  s_aad034b763a056::t_109e156438670a 207-216
+  s_aad034b763a056::t_6e76f1dfd13bc0 46
+  s_aad034b763a056::t_0f352f82884635 5
+  s_aad034b763a056::t_2d59dbb9432f52 153-161
+  s_aad034b763a056::t_7eeb01ee707916 152
+apps/mobile/app/search.tsx
+  s_aad034b763a056::t_ce642f8953fc1a 147
+  s_aad034b763a056::t_a59942c30871e2 250-281
+  s_aad034b763a056::t_8ced9534e6d247 89
+  s_aad034b763a056::t_3513c38b5d552b 8,13,20,22,25,35-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9f15d484becc6c1c5723b1a009fd0763ff7bd87f",
+  "prompts": {},
+  "sessions": {
+    "s_aad034b763a056": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f432b9799ffeDcfBi82rkzzSd1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
