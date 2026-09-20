@@ -5,21 +5,24 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { globalSearch, GlobalSearchResult } from '../lib/globalSearch';
 import { scoreFromEntry } from '../lib/archive';
-import { archiveDetailPath } from '../lib/contentNavigation';
+import { archiveDetailPath, contentDetailPath } from '../lib/contentNavigation';
 import { avatarGradient } from '../lib/avatars';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { TYPE } from '../lib/typography';
 import { RADII, inkOn } from '../lib/theme';
+import type { PostType } from '../types';
 
-type SearchTab = 'all' | 'people' | 'communities' | 'events' | 'shops' | 'archive';
+type SearchTab = 'all' | 'posts' | 'people' | 'communities' | 'events' | 'shops' | 'archive';
 const SEARCH_TABS: { id: SearchTab; label: string }[] = [
   { id: 'all', label: 'All' },
+  { id: 'posts', label: 'Posts' },
   { id: 'people', label: 'People' },
   { id: 'communities', label: 'Communities' },
   { id: 'events', label: 'Events' },
@@ -29,7 +32,9 @@ const SEARCH_TABS: { id: SearchTab; label: string }[] = [
 const TRENDING = ['sapphic cinema', 'WLW London', 'events this week', 'shops'];
 
 const DEBOUNCE_MS = 300;
-const EMPTY_RESULTS: GlobalSearchResult = { communities: [], people: [], events: [], businesses: [], archive: [] };
+const EMPTY_RESULTS: GlobalSearchResult = {
+  communities: [], people: [], events: [], businesses: [], archive: [], posts: [],
+};
 
 export default function GlobalSearchScreen() {
   const colors = useThemeColors();
@@ -81,6 +86,7 @@ export default function GlobalSearchScreen() {
   const show = (kind: Exclude<SearchTab, 'all'>) => tab === 'all' || tab === kind;
   const hasQuery = query.trim().length > 0;
   const hasResults =
+    (show('posts') && results.posts.length > 0) ||
     (show('communities') && results.communities.length > 0) ||
     (show('people') && results.people.length > 0) ||
     (show('events') && results.events.length > 0) ||
@@ -138,6 +144,7 @@ export default function GlobalSearchScreen() {
       alignItems: 'center', justifyContent: 'center',
       backgroundColor: colors.surfaceLight,
     },
+    thumb: { width: 48, height: 48, borderRadius: 8 },
     avatar: {
       width: 40, height: 40, borderRadius: RADII.pill,
       alignItems: 'center', justifyContent: 'center',
@@ -240,6 +247,38 @@ export default function GlobalSearchScreen() {
 
       {!loading && hasQuery && hasResults && (
         <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
+          {show('posts') && results.posts.length > 0 && (
+            <View style={styles.section}>
+              <SectionHeader title="Posts" icon="videocam" />
+              {results.posts.map((p) => {
+                const name = p.profiles?.display_name ?? p.profiles?.username ?? 'Someone';
+                const thumb = p.video_thumbnail_url ?? p.media_urls?.[0] ?? null;
+                const isVideo = p.post_type === 'video';
+                return (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={styles.row}
+                    onPress={() => router.push(contentDetailPath(p.id, p.post_type as PostType) as any)}
+                    accessibilityLabel={`Open post by ${name}`}
+                  >
+                    {thumb ? (
+                      <Image source={{ uri: thumb }} style={styles.thumb} contentFit="cover" />
+                    ) : (
+                      <View style={styles.iconPlate}>
+                        <Ionicons name={isVideo ? 'videocam' : 'document-text'} size={20} color={colors.roxy} />
+                      </View>
+                    )}
+                    <View style={styles.rowInfo}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>{name}</Text>
+                      {p.content ? <Text style={styles.rowSub} numberOfLines={1}>{p.content}</Text> : null}
+                    </View>
+                    {isVideo && <Ionicons name="play-circle" size={20} color={colors.roxy} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
           {show('communities') && results.communities.length > 0 && (
             <View style={styles.section}>
               <SectionHeader title="Communities" icon="people" />

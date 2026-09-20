@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ReelsFeed } from '../../../components/feed/ReelsFeed';
 import { FeedSegments, type FeedSegment } from '../../../components/feed/FeedSegments';
@@ -42,6 +43,7 @@ const todayKey = () => new Date().toISOString().slice(0, 10);
  */
 function FeedScreen() {
   const user = useAuthStore((s) => s.user);
+  const router = useRouter();
   const joinedIds = useCommunityStore((s) => s.joinedIds);
   const joinedCommunities = useCommunityStore((s) => s.joinedCommunities);
   const hydrate = useCommunityStore((s) => s.hydrate);
@@ -148,6 +150,16 @@ function FeedScreen() {
           )}
           <View style={s.spacer} pointerEvents="none" />
           <TouchableOpacity
+            testID="feed-search"
+            onPress={() => router.push('/search' as never)}
+            accessibilityRole="button"
+            accessibilityLabel="Search"
+            activeOpacity={0.85}
+            style={s.searchBtn}
+          >
+            <Ionicons name="search" size={15} color={STAGE.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity
             testID="feed-now-toggle"
             onPress={() => setNowOpen((v) => !v)}
             accessibilityRole="button"
@@ -192,6 +204,16 @@ const s = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   spacer: { flex: 1 },
   railWrap: { },
+  searchBtn: {
+    minHeight: MIN_TOUCH_TARGET,
+    minWidth: MIN_TOUCH_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: RADII.pill,
+    backgroundColor: STAGE.surface,
+    borderWidth: 1,
+    borderColor: STAGE.line,
+  },
   nowBtn: {
     flexDirection: 'row',
     alignItems: 'center',

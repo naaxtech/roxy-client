@@ -5,6 +5,15 @@ export type SearchCommunity = { id: string; name: string; description: string | 
 export type SearchPerson = { id: string; display_name: string | null; username: string | null };
 export type SearchEvent = { id: string; title: string; starts_at: string };
 export type SearchBusiness = { id: string; name: string; description: string | null };
+/** A post (text or video), as search returns it — the TikTok-style half of search. */
+export type SearchPost = {
+  id: string;
+  content: string | null;
+  post_type: string;
+  video_thumbnail_url: string | null;
+  media_urls: string[] | null;
+  profiles: { display_name: string | null; username: string | null } | null;
+};
 /**
  * An Archive entry, as global search returns it.
  *
@@ -29,9 +38,12 @@ export type GlobalSearchResult = {
   events: SearchEvent[];
   businesses: SearchBusiness[];
   archive: SearchArchiveEntry[];
+  posts: SearchPost[];
 };
 
-const EMPTY_RESULT: GlobalSearchResult = { communities: [], people: [], events: [], businesses: [], archive: [] };
+const EMPTY_RESULT: GlobalSearchResult = {
+  communities: [], people: [], events: [], businesses: [], archive: [], posts: [],
+};
 const LIMIT = 5;
 
 /**
@@ -40,12 +52,12 @@ const LIMIT = 5;
  * section instead of blanking the whole search screen.
  */
 async function safeQuery<T>(
-  promise: PromiseLike<{ data: T[] | null; error: unknown }>
+  promise: PromiseLike<{ data: unknown; error: unknown }>
 ): Promise<T[]> {
   try {
     const { data, error } = await promise;
     if (error) return [];
-    return data ?? [];
+    return (data ?? []) as T[];
   } catch {
     return [];
   }
@@ -127,7 +139,7 @@ export async function globalSearch(q: string): Promise<GlobalSearchResult> {
 
   if (patterns.length === 0) return EMPTY_RESULT;
 
-  const [communities, people, events, businesses, archive] = await Promise.all([
+  const [communities, people, events, businesses, archive, posts] = await Promise.all([
     safeQuery<SearchCommunity>(
       andIlike(supabase.from('communities').select('id,name,description'), 'name', patterns).limit(LIMIT)
     ),
@@ -164,7 +176,22 @@ export async function globalSearch(q: string): Promise<GlobalSearchResult> {
         patterns
       ).limit(LIMIT)
     ),
+    safeQuery<SearchPost>(
+      // Caption search, like TikTok: the words someone actually wrote. Deleted
+      // posts are gone from the feed and must be gone from search too.
+      andIlike(
+        supabase
+          .from('posts')
+          .select(
+            'id, content, post_type, video_thumbnail_url, media_urls, '
+            + 'profiles!posts_author_id_fkey(display_name, username)',
+          )
+          .is('deleted_at', null),
+        'content',
+        patterns,
+      ).limit(LIMIT)
+    ),
   ]);
 
-  return { communities, people, events, businesses, archive };
+  return { communities, people, events, businesses, archive, posts };
 }

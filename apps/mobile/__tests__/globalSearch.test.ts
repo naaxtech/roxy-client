@@ -14,7 +14,7 @@ type QueryResult = { data: unknown; error: unknown };
  * term — `.ilike().ilike().limit()` — and a stub that returned a bare `{limit}`
  * could only ever model the single-term case.
  */
-type Chain = { limit: jest.Mock; ilike: jest.Mock; or: jest.Mock; eq: jest.Mock };
+type Chain = { limit: jest.Mock; ilike: jest.Mock; or: jest.Mock; eq: jest.Mock; is: jest.Mock };
 
 function chain(result: QueryResult): Chain {
   const c: Chain = {
@@ -22,6 +22,7 @@ function chain(result: QueryResult): Chain {
     ilike: jest.fn(() => c),
     or: jest.fn(() => c),
     eq: jest.fn(() => c),
+    is: jest.fn(() => c),
   };
   return c;
 }
@@ -40,7 +41,7 @@ describe('globalSearch', () => {
 
   it('returns safe-empty results for a blank query without touching supabase', async () => {
     const result = await globalSearch('   ');
-    expect(result).toEqual({ communities: [], people: [], events: [], businesses: [], archive: [] });
+    expect(result).toEqual({ communities: [], people: [], events: [], businesses: [], archive: [], posts: [] });
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
