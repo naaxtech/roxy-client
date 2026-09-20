@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  Share, Platform,
+  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,17 +16,15 @@ import { Analytics } from '../../../../lib/analytics';
 import { showAlert } from '../../../../lib/confirm';
 import { CommunityRoomCard } from '../../../../components/community/CommunityRoomCard';
 import { CommunityRoom, Post } from '../../../../types';
-import { FeedCard } from '../../../../components/feed/FeedCard';
 import { ReelsFeed } from '../../../../components/feed/ReelsFeed';
-import { EmptyState } from '../../../../components/ui/EmptyState';
 import { useFeedStore } from '../../../../store/feedStore';
 import { normalizePost } from '../../../../lib/posts';
-import { contentDetailPath, linkedEntityPath } from '../../../../lib/contentNavigation';
 import { isPlayableGameUrl } from '../../../../lib/gameUrl';
 import { POST_WITH_AUTHOR_AND_COMMUNITY } from '../../../../lib/supabaseQueries';
 import { EventsCalendar } from '../../../../components/events/EventsCalendar';
 import { freshChannel } from '../../../../lib/realtimeChannel';
 import { ProfileThoughts } from '../../../../components/profile/ProfileThoughts';
+import { ProfilePostsGrid } from '../../../../components/profile/ProfilePostsGrid';
 import { ProfileShell } from '../../../../components/profile/ProfileShell';
 import type { PopulatedTabs, ProfileTab } from '../../../../components/profile/profileVariant';
 import { EventModeBadge, type EventMode } from '../../../../components/events/EventModeBadge';
@@ -80,14 +77,12 @@ export default function CommunityDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [reelsOpen, setReelsOpen] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [postsLoading, setPostsLoading] = useState(true);
-  const [postsError, setPostsError] = useState(false);
+  const [reelInitialId, setReelInitialId] = useState<string | null>(null);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [eventsView, setEventsView] = useState<'list' | 'calendar'>('list');
   const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
   const {
-    likedPostIds, savedPostIds,
-    init: initFeed, toggleLike: feedToggleLike, toggleSave,
+    init: initFeed,
   } = useFeedStore();
   const [rooms, setRooms] = useState<(CommunityRoom & { creator_display_name: string | null })[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
@@ -122,8 +117,6 @@ export default function CommunityDetailScreen() {
    */
   const loadPosts = useCallback(async () => {
     if (!id) return;
-    setPostsLoading(true);
-    setPostsError(false);
     const { data: owner } = await supabase
       .from('profiles')
       .select('id')
@@ -131,7 +124,6 @@ export default function CommunityDetailScreen() {
       .maybeSingle();
     if (!owner?.id) {
       setPosts([]);
-      setPostsLoading(false);
       return;
     }
     const { data, error } = await supabase
@@ -143,12 +135,10 @@ export default function CommunityDetailScreen() {
       .limit(30);
     if (error) {
       logError(error, 'community.loadPosts');
-      setPostsError(true);
       setPosts([]);
     } else {
       setPosts((data as Record<string, unknown>[]).map(normalizePost));
     }
-    setPostsLoading(false);
   }, [id]);
 
   const loadEvents = useCallback(async () => {
@@ -509,7 +499,7 @@ export default function CommunityDetailScreen() {
           {hasVideo ? (
             <TouchableOpacity
               style={styles.reelsEntry}
-              onPress={() => setReelsOpen(true)}
+              onPress={() => { setReelInitialId(null); setReelsOpen(true); }}
               accessibilityRole="button"
               accessibilityLabel={`Watch ${community.name} reels`}
               testID="community-reels-entry"
@@ -517,49 +507,10 @@ export default function CommunityDetailScreen() {
               <Text style={styles.reelsEntryText}>Watch reels</Text>
             </TouchableOpacity>
           ) : null}
-          {postsLoading ? (
-            <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
-          ) : postsError ? (
-            <View style={styles.emptyCenter}>
-              <Text style={styles.emptyIcon}>📡</Text>
-              <Text style={styles.emptyTitle}>Could not load posts</Text>
-              <TouchableOpacity
-                onPress={() => void loadPosts()}
-                accessibilityRole="button"
-                accessibilityLabel="Try loading posts again"
-              >
-                <Text style={styles.retryLink}>Try again</Text>
-              </TouchableOpacity>
-            </View>
-          ) : posts.length === 0 ? (
-            <EmptyState
-              emoji="📝"
-              title="No posts yet"
-              body={isJoined
-                ? `${community.name} has not posted yet.`
-                : `${community.name} has not posted yet. Join to get into the chat.`}
-            />
-          ) : (
-            posts.map((post) => (
-              <FeedCard
-                key={post.id}
-                post={post}
-                onLinkPress={() => {
-                  void linkedEntityPath(post).then((path) => {
-                    router.push((path ?? contentDetailPath(post.id, post.post_type)) as any);
-                  });
-                }}
-                onAuthorPress={() => router.push(`/user/${post.author_id}` as any)}
-                isLiked={likedPostIds.has(post.id)}
-                isSaved={savedPostIds.has(post.id)}
-                onLike={() => void feedToggleLike(post.id)}
-                onSave={() => void toggleSave(post.id)}
-                onComment={() => router.push(contentDetailPath(post.id, post.post_type) as any)}
-                onShare={() => void Share.share({ message: 'Check this out on Roxy!' })}
-                onPress={() => router.push(contentDetailPath(post.id, post.post_type) as any)}
-              />
-            ))
-          )}
+          <ProfilePostsGrid
+            communityId={id}
+            onVideoPress={(postId) => { setReelInitialId(postId); setReelsOpen(true); }}
+          />
         </View>
       );
     }
@@ -759,6 +710,7 @@ export default function CommunityDetailScreen() {
         <ReelsFeed
           scope={isJoined ? 'community' : 'community-announcements'}
           communityIds={[id]}
+          initialPostId={reelInitialId}
         />
       </SafeAreaView>
     );

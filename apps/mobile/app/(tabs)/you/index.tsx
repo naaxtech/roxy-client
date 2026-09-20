@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
@@ -11,6 +12,7 @@ import { supabase } from '../../../lib/supabase';
 import { ProfileShell } from '../../../components/profile/ProfileShell';
 import type { PopulatedTabs, ProfileTab } from '../../../components/profile/profileVariant';
 import { ProfilePostsGrid } from '../../../components/profile/ProfilePostsGrid';
+import { ReelsFeed } from '../../../components/feed/ReelsFeed';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
 import { SavedPosts } from '../../../components/profile/SavedPosts';
 import { SavedWatchlist } from '../../../components/profile/SavedWatchlist';
@@ -59,6 +61,8 @@ export default function ProfileScreen() {
   const [shellTab, setShellTab] = useState<ProfileTab | null>(null);
   const [miniWinsOpen, setMiniWinsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [reelsOpen, setReelsOpen] = useState(false);
+  const [reelInitialId, setReelInitialId] = useState<string | null>(null);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [sellerRows, setSellerRows] = useState<SellerBusinessRow[]>([]);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
@@ -205,6 +209,12 @@ export default function ProfileScreen() {
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+    reelsBar: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      paddingHorizontal: 12, paddingVertical: 8,
+      backgroundColor: colors.background,
+    },
+    reelsTitle: { ...TYPE.bodyLg, color: colors.textPrimary, fontWeight: '700', flex: 1 },
     statusRow: { paddingHorizontal: 14, paddingTop: 8, alignItems: 'flex-start' },
     orderRow: {
       flexDirection: 'row',
@@ -309,7 +319,12 @@ export default function ProfileScreen() {
 
   const renderTab = (tab: ProfileTab) => {
     if (!user?.id) return null;
-    if (tab === 'posts') return <ProfilePostsGrid userId={user.id} />;
+    if (tab === 'posts') return (
+      <ProfilePostsGrid
+        userId={user.id}
+        onVideoPress={(postId) => { setReelInitialId(postId); setReelsOpen(true); }}
+      />
+    );
     if (tab === 'thoughts') return <ProfileThoughts userId={user.id} />;
     if (tab === 'shop' && shop?.id) {
       return (
@@ -413,6 +428,25 @@ export default function ProfileScreen() {
     }
     return <ProfileFavorites userId={user.id} editable />;
   };
+
+  if (reelsOpen && user?.id) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.reelsBar}>
+          <TouchableOpacity
+            onPress={() => setReelsOpen(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close reels"
+            hitSlop={6}
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.reelsTitle}>Reels</Text>
+        </View>
+        <ReelsFeed scope="following" authorIds={[user.id]} initialPostId={reelInitialId} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']} testID="you-shell">

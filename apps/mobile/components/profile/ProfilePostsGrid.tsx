@@ -22,14 +22,19 @@ type GridPost = {
 };
 
 interface Props {
-  userId: string;
+  /** A member's own wall. */
+  userId?: string;
+  /** A community's wall — its official account's posts. */
+  communityId?: string;
+  /** Fired instead of pushing a detail route when a video tile is tapped. */
+  onVideoPress?: (postId: string) => void;
 }
 
 /**
  * The Posts tab. ProfilePhotoGrid is the edit-screen gallery of `profile_photos`.
  * This is the wall — text cards, photos and videos she actually published.
  */
-export function ProfilePostsGrid({ userId }: Props) {
+export function ProfilePostsGrid({ userId, communityId, onVideoPress }: Props) {
   const colors = useThemeColors();
   const router = useRouter();
   const [posts, setPosts] = useState<GridPost[]>([]);
@@ -38,10 +43,26 @@ export function ProfilePostsGrid({ userId }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    // A community's posts live on its official account (author_id), not on the
+    // community row — resolve the owner first, same as community/[id].tsx did.
+    let authorId = userId ?? null;
+    if (communityId) {
+      const { data: owner } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('official_community_id', communityId)
+        .maybeSingle();
+      authorId = owner?.id ?? null;
+    }
+    if (!authorId) {
+      setPosts([]);
+      setLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from('posts')
       .select('id, content, post_type, media_urls, video_thumbnail_url')
-      .eq('author_id', userId)
+      .eq('author_id', authorId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(60);
@@ -51,7 +72,7 @@ export function ProfilePostsGrid({ userId }: Props) {
     // of cropped paragraphs read as broken image tiles.
     setPosts(((data ?? []) as GridPost[]).filter((post) => isMediaPost(post.post_type)));
     setLoading(false);
-  }, [userId]);
+  }, [userId, communityId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -80,7 +101,10 @@ export function ProfilePostsGrid({ userId }: Props) {
               key={post.id}
               style={s.tile}
               testID={`profile-post-${post.id}`}
-              onPress={() => router.push(contentDetailPath(post.id, post.post_type) as never)}
+              onPress={() => {
+                if (post.post_type === 'video' && onVideoPress) { onVideoPress(post.id); return; }
+                router.push(contentDetailPath(post.id, post.post_type) as never);
+              }}
               accessibilityRole="button"
               accessibilityLabel={isText ? parseTextCard(post.content).prompt.slice(0, 80) || 'Text post' : 'Open post'}
             >

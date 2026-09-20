@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { ProfileShell } from '../../../components/profile/ProfileShell';
@@ -10,6 +11,7 @@ import {
 } from '../../../components/profile/profileVariant';
 import { ProfilePostsGrid } from '../../../components/profile/ProfilePostsGrid';
 import { ProfileThoughts } from '../../../components/profile/ProfileThoughts';
+import { ReelsFeed } from '../../../components/feed/ReelsFeed';
 import { type EarnedBadge } from '../../../components/profile/BadgeRow';
 import { EventModeBadge, type EventMode } from '../../../components/events/EventModeBadge';
 import { deriveSellerStatus, canSell, type SellerBusinessRow } from '../../../lib/sellerStatus';
@@ -97,6 +99,8 @@ function UserProfileScreen() {
   const [presence, setPresence] = useState<PresenceMember[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [notFound, setNotFound] = useState(false);
+  const [reelsOpen, setReelsOpen] = useState(false);
+  const [reelInitialId, setReelInitialId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -257,6 +261,12 @@ function UserProfileScreen() {
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     notFound: { ...TYPE.body, color: colors.textMuted, textAlign: 'center', marginTop: 60 },
+    reelsBar: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      paddingHorizontal: 12, paddingVertical: 8,
+      backgroundColor: colors.background,
+    },
+    reelsTitle: { ...TYPE.bodyLg, color: colors.textPrimary, fontWeight: '700', flex: 1 },
   });
 
   if (notFound) {
@@ -357,7 +367,12 @@ function UserProfileScreen() {
         </TouchableOpacity>
       );
     }
-    if (tab === 'posts' && userId) return <ProfilePostsGrid userId={userId} />;
+    if (tab === 'posts' && userId) return (
+      <ProfilePostsGrid
+        userId={userId}
+        onVideoPress={(postId) => { setReelInitialId(postId); setReelsOpen(true); }}
+      />
+    );
     if (tab === 'thoughts' && userId) return <ProfileThoughts userId={userId} />;
     if (tab === 'events') {
       return (
@@ -440,6 +455,25 @@ function UserProfileScreen() {
     }
     return null;
   };
+
+  if (reelsOpen && userId) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.reelsBar}>
+          <TouchableOpacity
+            onPress={() => setReelsOpen(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close reels"
+            hitSlop={6}
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.reelsTitle}>Reels</Text>
+        </View>
+        <ReelsFeed scope="following" authorIds={[userId]} initialPostId={reelInitialId} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
