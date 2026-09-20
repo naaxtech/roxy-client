@@ -1,0 +1,42 @@
+supabase/migrations/125_comment_gif.sql
+  s_aad034b763a056::t_f58e51eaf6d060 1-10
+apps/mobile/components/profile/ThoughtRow.tsx
+  s_aad034b763a056::t_99e02ae2e6dd9c 52,61-64
+  s_aad034b763a056::t_b7951e4fcda50c 78-80,88
+  s_aad034b763a056::t_de036b8a83802d 67
+apps/mobile/components/feed/CommentThread.tsx
+  s_aad034b763a056::t_ffaa5e66c6ba4c 78-83
+apps/mobile/components/profile/InlineReplies.tsx
+  s_aad034b763a056::t_6d3167e4880608 223-228
+  s_aad034b763a056::t_e865152495dd40 169-177
+  s_aad034b763a056::t_c3bd78c97754a9 116-120
+  s_aad034b763a056::t_b834a641e69955 46
+  s_aad034b763a056::t_ce715cb31fa3ee 3,5,11
+  s_aad034b763a056::t_996596a883f3b6 84-100
+  s_aad034b763a056::t_ed5deaeeb29c91 183-192
+apps/mobile/lib/comments.ts
+  s_aad034b763a056::t_aeb28e5523eb78 34-35,42-44,46-47
+supabase/downs/125_comment_gif_down.sql
+  s_aad034b763a056::t_122fadbc1f4983 1-4
+apps/mobile/components/profile/ProfileThoughts.tsx
+  s_aad034b763a056::t_1732773121e108 205-206
+  s_aad034b763a056::t_301029d37d073c 141-154
+  s_aad034b763a056::t_23ab30f28598fa 7
+  s_aad034b763a056::t_f23406f9f2bfe2 40,47-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bd36a86f17d4f0598e27fe7a002ba360dce3910c",
+  "prompts": {},
+  "sessions": {
+    "s_aad034b763a056": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f432b9799ffeDcfBi82rkzzSd1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
