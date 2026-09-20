@@ -254,81 +254,34 @@ export async function fetchArchiveEntries(opts: ArchiveQuery = {}): Promise<Arch
   const { query, mediaType, sort = 'top', limit = 50 } = opts;
 
   let q = supabase
-    .from('archive_entries')
-    .select(ENTRY_COLUMNS)
-    .eq('status', 'published');
+    .from('archive_ranked_view')
+    .select('*');
 
   if (mediaType) q = q.eq('media_type', mediaType);
   if (query && query.trim()) {
-    // Reuses the escaper every other search path in this app goes through: a
-    // comma reads as PostgREST's clause separator and `%` / `_` are ILIKE
-    // wildcards, so an unescaped title with a comma in it silently empties the
-    // Archive.
     const pattern = ilikePattern(query);
     if (pattern) q = q.or(`title.ilike.${pattern},creator.ilike.${pattern}`);
   }
 
-  if (sort === 'top' || sort === 'needs') {
-    // Neither of these can be expressed in SQL — one ranks by a ratio, the
-    // other by "has anyone rated this" — so both fetch and sort below.
-    //
-    // `top` used to add `.eq('has_score', true)`, and that was a latent
-    // catastrophe: it was invisible while every entry carried seeded vote
-    // weight, and the moment 104 removed the fabricated votes the DEFAULT view
-    // returned zero rows and 45 real titles rendered as an empty Archive.
-    // The >=10 rule is a reason to rank an unrated entry BELOW a rated one,
-    // never a reason to pretend it is not in the catalogue.
+  if (sort === 'top') {
+    q = q.order('rank_priority', { ascending: true }).order('calculated_percent', { ascending: false }).order('vote_count', { ascending: false });
+  }
+  else if (sort === 'voted') {
     q = q.order('vote_count', { ascending: false });
   }
-  else if (sort === 'voted') q = q.order('vote_count', { ascending: false });
-  else q = q.order('published_at', { ascending: false });
-
-  let { data, error } = await q.limit(limit);
-  if (error && missingStarSum(error)) {
-    const fallback = supabase
-      .from('archive_entries')
-      .select(ENTRY_COLUMNS_LEGACY)
-      .eq('status', 'published');
-    const retried = await (mediaType ? fallback.eq('media_type', mediaType) : fallback).limit(limit);
-    data = retried.data;
-    error = retried.error;
+  else if (sort === 'needs') {
+    q = q.order('rank_priority', { ascending: false }).order('vote_count', { ascending: true });
   }
+  else {
+    q = q.order('published_at', { ascending: false });
+  }
+
+  const { data, error } = await q.limit(limit);
   if (error) {
     logError(error, 'archive.fetchArchiveEntries');
     throw error;
   }
 
-  const rows = (data ?? []) as unknown as ArchiveEntry[];
-
-  if (sort === 'top') {
-    // Three tiers, in this order:
-    //   1. past the gate — a rating the community has actually earned
-    //   2. rated but under the gate — real, just thin
-    //   3. unrated
-    // Within each, by ratio, then by sample size so 100% of ten does not
-    // outrank 100% of a thousand. The gate ranks; it no longer hides.
-    const tier = (e: ArchiveEntry) => (e.has_score ? 0 : e.vote_count > 0 ? 1 : 2);
-    return [...rows].sort((a, b) => {
-      if (tier(a) !== tier(b)) return tier(a) - tier(b);
-      const ra = a.vote_count > 0
-        ? (a.star_sum ?? a.up_count) / a.vote_count
-        : 0;
-      const rb = b.vote_count > 0
-        ? (b.star_sum ?? b.up_count) / b.vote_count
-        : 0;
-      if (rb !== ra) return rb - ra;
-      return b.vote_count - a.vote_count;
-    });
-  }
-
-  if (sort === 'needs') {
-    // The contribution path: what the Archive most needs a woman to rate.
-    // Fewest votes first, so an entry nobody has touched leads.
-    return [...rows].sort((a, b) => a.vote_count - b.vote_count);
-  }
-  // The generated Database types do not know the archive tables yet, so the
-  // client infers PostgREST's error shape here. Cast through unknown rather
-  // than widening the row type and losing it everywhere else.
   return (data ?? []) as unknown as ArchiveEntry[];
 }
 

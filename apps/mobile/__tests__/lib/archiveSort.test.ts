@@ -1,14 +1,58 @@
 const mockRows: Record<string, unknown>[] = [];
 const mockOps: [string, unknown[]][] = [];
 
+const applySorting = (rows: any[]) => {
+  const orders: { col: string; asc: boolean }[] = [];
+  
+  // Extract order calls from the mock operations history
+  mockOps.forEach(([op, args]) => {
+    if (op === 'order') {
+      const [col, options] = args as [string, { ascending: boolean }];
+      orders.push({ col, asc: options.ascending });
+    }
+  });
+
+  return [...rows].sort((a, b) => {
+    for (const { col, asc } of orders) {
+      let valA: any = a[col];
+      let valB: any = b[col];
+
+      if (col === 'calculated_percent') {
+        // Mirror 123_archive_ranked_view: the number the client shows. Stars
+        // normalise the average to a percentage; without stars it is the
+        // recommend percentage. The mock rows carry no star_sum, so they fall
+        // to the up_count branch — the same fallback the view applies.
+        const calc = (r: any) => {
+          const votes = r.vote_count || 0;
+          const stars = r.star_sum || 0;
+          const ups = r.up_count || 0;
+          if (votes <= 0) return 0;
+          if (stars > 0) return (stars / votes) / 5 * 100;
+          return (ups / votes) * 100;
+        };
+        valA = calc(a);
+        valB = calc(b);
+      } else if (col === 'rank_priority') {
+        const tier = (v: number) => (v >= 10 ? 0 : v > 0 ? 1 : 2);
+        valA = tier(a.vote_count);
+        valB = tier(b.vote_count);
+      }
+
+      if (valA < valB) return asc ? -1 : 1;
+      if (valA > valB) return asc ? 1 : -1;
+    }
+    return 0;
+  });
+};
+
 jest.mock('../../lib/supabase', () => ({
   supabase: {
     from: () => {
-      const chain: Record<string, unknown> = {};
+      const chain: any = {};
       ['select', 'eq', 'or', 'order', 'ilike'].forEach((m) => {
-        chain[m] = (...args: unknown[]) => { mockOps.push([m, args]); return chain; };
+        chain[m] = (...args: any[]) => { mockOps.push([m, args]); return chain; };
       });
-      chain.limit = () => Promise.resolve({ data: mockRows, error: null });
+      chain.limit = () => Promise.resolve({ data: applySorting(mockRows), error: null });
       return chain;
     },
   },
