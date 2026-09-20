@@ -1,0 +1,40 @@
+apps/mobile/app/(tabs)/messages/index.tsx
+  s_aad034b763a056::t_f36c4be0ba0afe 64
+  s_aad034b763a056::t_87681673914ad7 27
+  s_aad034b763a056::t_9d907a4470e3bb 168,172-182
+  s_aad034b763a056::t_cadf1e3ed5f503 195-197
+  s_aad034b763a056::t_f45e1784bae0b4 214-220
+apps/mobile/lib/channels.ts
+  s_aad034b763a056::t_16b632a7e7e20d 246-259
+  s_aad034b763a056::t_5d14c418e03065 2
+apps/mobile/__tests__/screens/CommunityChannels.test.tsx
+  s_aad034b763a056::t_28caa45a27cfd1 46-47
+supabase/migrations/124_channel_read_state.sql
+  s_aad034b763a056::t_8b571407a26260 1-93
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  s_aad034b763a056::t_110bdf5c5a1101 135-137
+  s_aad034b763a056::t_856270fe99b21b 159-162
+  s_aad034b763a056::t_3818799635cca1 22
+docs/chat-message-tiering.md
+  s_aad034b763a056::t_fe3a2f07924a06 1-107
+apps/mobile/lib/inboxCommunities.ts
+  s_aad034b763a056::t_65457ea7cec59f 166-186
+supabase/downs/124_channel_read_state_down.sql
+  s_aad034b763a056::t_833b55a345eaf6 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "259ebd01b35fe4e043e95c5fae636e4f51dc8585",
+  "prompts": {},
+  "sessions": {
+    "s_aad034b763a056": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f432b9799ffeDcfBi82rkzzSd1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
