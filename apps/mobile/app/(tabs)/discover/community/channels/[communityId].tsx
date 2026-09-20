@@ -19,6 +19,7 @@ import { ChannelMessageActions, type ChannelAction } from '../../../../../compon
 import {
   fetchChannels, fetchChannelMessages, sendChannelMessage, deleteChannelMessage,
   initialChannel, fetchMyChannelRole, writeFailureMessage, authorName, fetchLiveStage,
+  markChannelRead,
   type LiveStage,
   type Channel, type ChannelMessage as Message,
 } from '../../../../../lib/channels';
@@ -131,6 +132,9 @@ export default function CommunityChannelsScreen() {
     setMessages([]);
     setMessageError(null);
     void loadMessages(active.id);
+    // Opening the channel is reading it. Clear its unread cursor so the inbox
+    // badge does not count messages she has already seen.
+    void markChannelRead(active.id);
   }, [active, loadMessages]);
 
   // Filtered by channel_id, never table-wide: a subscription to every message
@@ -152,6 +156,10 @@ export default function CommunityChannelsScreen() {
           // no joined author, and rendering it would flash "Someone who left"
           // beside every incoming message.
           void loadMessages(active.id);
+          // She is watching, so what lands is read. Clear the cursor as the
+          // message arrives, or it comes back as an unread badge after she
+          // leaves.
+          void markChannelRead(active.id);
         },
       )
       .subscribe();

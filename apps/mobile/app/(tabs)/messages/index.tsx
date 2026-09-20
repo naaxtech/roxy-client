@@ -24,6 +24,7 @@ import { useProfileStore } from '../../../store/profileStore';
 import { readDmPermission, dmPermissionLabel } from '../../../lib/dmPermission';
 import {
   fetchInboxCommunityMeta,
+  fetchCommunityUnread,
   filterInboxByQuery,
   inboxCommunityFromJoined,
   type InboxCommunityMeta,
@@ -60,6 +61,7 @@ function MessagesScreen() {
   const [search, setSearch] = useState('');
   const [requestsOpen, setRequestsOpen] = useState(false);
   const [communityMeta, setCommunityMeta] = useState<Record<string, InboxCommunityMeta>>({});
+  const [communityUnread, setCommunityUnread] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -163,12 +165,21 @@ function MessagesScreen() {
     const ids = joinedCommunities.map((c) => c.id);
     if (ids.length === 0) {
       setCommunityMeta({});
+      setCommunityUnread({});
       return;
     }
     let cancelled = false;
-    void fetchInboxCommunityMeta(ids)
-      .then((meta) => { if (!cancelled) setCommunityMeta(meta); })
-      .catch(() => { if (!cancelled) setCommunityMeta({}); });
+    void Promise.all([fetchInboxCommunityMeta(ids), fetchCommunityUnread(ids)])
+      .then(([meta, unread]) => {
+        if (cancelled) return;
+        setCommunityMeta(meta);
+        setCommunityUnread(unread);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCommunityMeta({});
+        setCommunityUnread({});
+      });
     return () => { cancelled = true; };
   }, [joinedCommunities]);
 
@@ -181,7 +192,9 @@ function MessagesScreen() {
         if (!convIds.includes(msg.conversation_id)) return;
         if (msg.sender_id === user.id) return;
         if (useConnectStore.getState().activeConversationId === msg.conversation_id) return;
-        useConnectStore.getState().incrementUnread(msg.conversation_id);
+        // The unread badge is owned by the tab layout's global listener — this
+        // one must NOT increment it too, or every message counts twice while the
+        // inbox is open. It only keeps the preview line live.
         setChats((prev) =>
           prev.map((c) =>
             c.id === msg.conversation_id ? { ...c, lastMessagePreview: msg.content ?? '' } : c
@@ -198,8 +211,13 @@ function MessagesScreen() {
   };
 
   const inboxCommunities = useMemo(
-    () => joinedCommunities.map((c) => inboxCommunityFromJoined(c, communityMeta[c.id])),
-    [joinedCommunities, communityMeta],
+    () => joinedCommunities.map((c) =>
+      inboxCommunityFromJoined(c, {
+        ...communityMeta[c.id],
+        unreadCount: communityUnread[c.id] ?? communityMeta[c.id]?.unreadCount ?? 0,
+      }),
+    ),
+    [joinedCommunities, communityMeta, communityUnread],
   );
 
   const filteredChats = filterInboxByQuery(

@@ -163,3 +163,24 @@ export async function fetchInboxCommunityMeta(
   }
   return meta;
 }
+
+/**
+ * Unread counts per community, from the server-side read cursors (migration
+ * 124). The inbox renders a badge from this so a member can see where a group
+ * is active without opening every community.
+ *
+ * Returns {} on any failure — an unread badge that is briefly absent is
+ * better than one that is wrong.
+ */
+export async function fetchCommunityUnread(communityIds: string[]): Promise<Record<string, number>> {
+  if (communityIds.length === 0) return {};
+  const { data, error } = await supabase.rpc('community_channel_unread', {
+    p_community_ids: communityIds,
+  });
+  if (error) return {};
+  const out: Record<string, number> = {};
+  for (const row of (data ?? []) as { community_id: string; unread: number }[]) {
+    out[row.community_id] = Number(row.unread) || 0;
+  }
+  return out;
+}

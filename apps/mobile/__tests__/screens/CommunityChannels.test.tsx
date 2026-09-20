@@ -43,6 +43,8 @@ jest.mock('../../lib/supabase', () => ({
     }),
     channel: () => ({ on: () => ({ subscribe: () => ({}) }) }),
     removeChannel: jest.fn(),
+    // markChannelRead (migration 124) posts a read cursor on channel open.
+    rpc: jest.fn(() => Promise.resolve({ data: null, error: null })),
   },
 }));
 

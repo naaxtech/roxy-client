@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logError } from './errorLogger';
 
 /**
  * Community channels — the design's `# general` chip row and its message list
@@ -241,4 +242,18 @@ export function channelLabel(channel: Channel): string {
 export function initialChannel(channels: Channel[]): Channel | null {
   if (channels.length === 0) return null;
   return channels.find((c) => c.is_default) ?? channels[0];
+}
+
+/**
+ * Mark a channel read.
+ *
+ * The cursor is per (member, channel) and lives server-side (migration 124).
+ * Called when she opens a channel and when a message lands while she is
+ * watching, so what she has already seen never comes back as an unread badge.
+ * A failed write is logged and ignored — a badge that is briefly stale is
+ * better than a screen that refused to open over a cursor.
+ */
+export async function markChannelRead(channelId: string): Promise<void> {
+  const { error } = await supabase.rpc('mark_channel_read', { p_channel_id: channelId });
+  if (error) logError(error, 'channels.markChannelRead');
 }
