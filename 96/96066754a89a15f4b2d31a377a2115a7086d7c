@@ -1,0 +1,54 @@
+apps/mobile/app/(tabs)/_layout.tsx
+  s_aad034b763a056::t_939f8e8f26977a 67,71-72
+supabase/migrations/127_mute.sql
+  s_aad034b763a056::t_69916248884b76 1-101
+apps/mobile/lib/push.ts
+  s_aad034b763a056::t_2e33f78d2fff3b 3,19-28
+  s_aad034b763a056::t_1af376d3c392dd 29
+apps/mobile/store/safetyStore.ts
+  s_aad034b763a056::t_6dd54fec777a6f 77
+  s_aad034b763a056::t_f37ecd4b5bfc2d 160-187
+  s_aad034b763a056::t_648101646d4eba 39-44
+apps/mobile/app/chat/[id].tsx
+  s_aad034b763a056::t_25d677c51d0218 609-620
+  s_aad034b763a056::t_992f385dd103d9 82
+  s_aad034b763a056::t_888ee5a2ba052e 1092-1107
+apps/mobile/components/feed/RoxyLinkCard.tsx
+  s_aad034b763a056::t_dde7dddcf3a427 97-103
+apps/mobile/lib/channels.ts
+  s_aad034b763a056::t_c07a4105461e7b 260-286
+apps/mobile/__tests__/screens/CommunityChannels.test.tsx
+  s_aad034b763a056::t_e6a24224ef9004 86-87
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  s_aad034b763a056::t_b4b3c6dd25749b 61
+  s_aad034b763a056::t_bf1fd67c206d58 22
+  s_aad034b763a056::t_c2a62b1459fe06 108-124
+  s_aad034b763a056::t_20dfa449b3afea 273-278
+  s_aad034b763a056::t_b5a83a511a24ed 428-441
+apps/mobile/lib/globalSearch.ts
+  s_aad034b763a056::t_d94f329c245a45 135,137,139-141,181-195
+apps/mobile/app/notifications.tsx
+  s_aad034b763a056::t_5dc13b98b8433f 23
+supabase/downs/127_mute_down.sql
+  s_aad034b763a056::t_43506aefd772c4 1-6
+supabase/migrations/128_channel_notifications.sql
+  s_aad034b763a056::t_dbf11f29bfa49c 1-66
+apps/mobile/lib/notifications.ts
+  s_aad034b763a056::t_3acca2b3742207 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9696066754a89a15f4b2d31a377a2115a7086d7c",
+  "prompts": {},
+  "sessions": {
+    "s_aad034b763a056": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f432b9799ffeDcfBi82rkzzSd1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
