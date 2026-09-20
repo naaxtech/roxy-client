@@ -1,0 +1,35 @@
+apps/mobile/app/chat/[id].tsx
+  s_aad034b763a056::t_903c65fea19f35 513-519
+apps/mobile/lib/notifications.ts
+  s_aad034b763a056::t_e6231607fc7d65 5
+apps/mobile/lib/push.ts
+  s_aad034b763a056::t_f25ba26d99deac 1-47
+apps/mobile/app/(tabs)/_layout.tsx
+  s_aad034b763a056::t_844ed33f5ae89b 72-78
+  s_aad034b763a056::t_dcbc0beda2e73a 18
+apps/mobile/app/notifications.tsx
+  s_aad034b763a056::t_701a569c037b48 22
+  s_aad034b763a056::t_926408e13655d0 136
+supabase/functions/send-message-push/index.ts
+  s_aad034b763a056::t_bb9b091ca7a452 1-72
+supabase/migrations/126_message_notifications.sql
+  s_aad034b763a056::t_a163a1b6a2ed9e 1-56
+supabase/downs/126_message_notifications_down.sql
+  s_aad034b763a056::t_56b5f29f867aca 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9603cd9b928573c9adf7b7dec89d8cadef02c01a",
+  "prompts": {},
+  "sessions": {
+    "s_aad034b763a056": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f432b9799ffeDcfBi82rkzzSd1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
