@@ -1,0 +1,34 @@
+supabase/downs/123_archive_ranked_view_down.sql
+  s_aad034b763a056::t_017596812e66e3 1
+apps/mobile/lib/archive.ts
+  s_aad034b763a056::t_791a35a0e9b3da 257-258,266,268-269,272,274-276,278-279
+  s_aad034b763a056::t_e2505a7ac51adb 267
+  s_aad034b763a056::t_00f60274ec5566 273
+apps/mobile/__tests__/lib/archiveSort.test.ts
+  s_aad034b763a056::t_2b459fc2caedff 4-6,9-10,12-16,19-20,35-47,55
+  s_aad034b763a056::t_beb9b542af3cfa 7-8,11,17-18,51,53
+  s_aad034b763a056::t_f8a516e557cd28 21-34
+supabase/migrations/123_archive_ranked_view.sql
+  s_aad034b763a056::t_c7203f97d5d1f0 1-66
+apps/mobile/__tests__/lib/archiveTopSort.test.ts
+  s_aad034b763a056::t_3c007720ff2049 20-33
+  s_aad034b763a056::t_7832cc9a6a645e 7,10,16-17,50,52
+  s_aad034b763a056::t_1541015c5f8c0d 98-100,103
+  s_aad034b763a056::t_6b5596cff7cfc6 2-6,8-9,11-15,18-19,34-45,51,53-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "36861319947b5b754d6557aae6ab9709c24b1e24",
+  "prompts": {},
+  "sessions": {
+    "s_aad034b763a056": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f432b9799ffeDcfBi82rkzzSd1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
