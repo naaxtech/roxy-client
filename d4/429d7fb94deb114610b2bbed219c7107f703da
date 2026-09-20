@@ -1,0 +1,47 @@
+apps/mobile/components/gamification/BadgeCelebration.tsx
+  s_488a1686f9c1af::t_86649a1349ca2c 1-157
+apps/mobile/store/celebrationStore.ts
+  s_488a1686f9c1af::t_c5041d23b175e1 1-35
+apps/mobile/app/badges.tsx
+  s_488a1686f9c1af::t_c883ae57368c04 9,75-79
+apps/mobile/components/gamification/Confetti.tsx
+  s_488a1686f9c1af::t_2eb03de23e5726 1-117
+apps/mobile/__tests__/screens/GrowBadges.test.tsx
+  s_aad034b763a056::t_70ff2a4013490d 9-24
+  s_aad034b763a056::t_8722694ca88702 38
+  s_aad034b763a056::t_2fbdd57b958311 32
+apps/mobile/__tests__/components/BadgeCelebration.test.tsx
+  s_488a1686f9c1af::t_1ac37bf1f28a0c 1-67
+apps/mobile/lib/badges.ts
+  s_488a1686f9c1af::t_684a292c34ec47 136-137,139-143
+  s_488a1686f9c1af::t_5a8e87d330ee7a 100-135,138,144-152
+apps/mobile/__tests__/store/celebrationStore.test.ts
+  s_488a1686f9c1af::t_c5041d23b175e1 1-46
+apps/mobile/app/_layout.tsx
+  s_488a1686f9c1af::t_c883ae57368c04 14-15,245,275-288
+  s_488a1686f9c1af::t_ff01b369aba25d 289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d4429d7fb94deb114610b2bbed219c7107f703da",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_aad034b763a056": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f432b9799ffeDcfBi82rkzzSd1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
