@@ -10,9 +10,9 @@ import { BadgeRow } from './BadgeRow';
 import { supabase } from '../../lib/supabase';
 import type { Profile, Business } from '../../types';
 import type { EarnedBadge } from './BadgeRow';
+import { BRAND_GRADIENT } from '../../lib/theme';
 
 const AVATAR_SIZE = 110;
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
 type MediaPost = { id: string; media_urls: string[]; post_type: string };
 type ProfileTab = 'photos' | 'about' | 'badges';

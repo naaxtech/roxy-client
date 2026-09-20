@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   Modal, ScrollView, ActivityIndicator, Animated,
@@ -6,6 +6,7 @@ import {
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { PRESET_AVATARS, PRESET_COLORS } from '../../lib/avatars';
+import { usePopIn } from '../ui/popIn';
 
 type Tab = 'photo' | 'avatar';
 
@@ -22,7 +23,7 @@ export function AvatarPickerSheet({
 }: AvatarPickerSheetProps) {
   const colors = useThemeColors();
   const [tab, setTab] = useState<Tab>('photo');
-  const popAnim = useRef(new Animated.Value(0.94)).current; // pop, not slide-from-below
+  const pop = usePopIn(visible);
 
   const styles = StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
@@ -64,25 +65,12 @@ export function AvatarPickerSheet({
     avatarEmoji: { fontSize: 30 },
   });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (visible) {
-      popAnim.setValue(0.94);
-      Animated.spring(popAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 220,
-      }).start();
-    }
-  }, [visible]);
-
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       {/* Backdrop appears instantly */}
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
       {/* The sheet pops in — no slide-from-below */}
-      <Animated.View style={[styles.sheet, { opacity: popAnim, transform: [{ scale: popAnim }] }]}>
+      <Animated.View style={[styles.sheet, pop]}>
         <View style={styles.handle} />
 
         <View style={styles.tabs}>

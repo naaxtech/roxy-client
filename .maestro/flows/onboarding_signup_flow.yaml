@@ -1,10 +1,11 @@
-# Test: New user signup → 4-step onboarding → Grow dashboard
+# Test: New user signup → 4-step onboarding → the Feed tab
 #
 # What this validates:
 #   1. After signup, user lands on step1-identity (not looped back)
 #   2. Each Next tap advances to the next step (no flicker/redirect loop)
-#   3. After step4, user reaches the Grow dashboard
-#   4. Dashboard is inaccessible until onboarding completes
+#   3. After step4, user reaches the Feed tab (step4-status.tsx replaces to
+#      '/(tabs)/feed' — Grow was dissolved by the 3.0 flattening)
+#   4. The app shell is inaccessible until onboarding completes
 #
 # Prerequisites:
 #   - Dev build installed on device/emulator (eas build --profile development)
@@ -15,6 +16,8 @@
 #
 # Test credentials — set via env or edit directly:
 #   MAESTRO_TEST_EMAIL / MAESTRO_TEST_PASSWORD
+#   MAESTRO_INVITE_CODE — a code the gate will accept. Roxy is invite-only, so
+#   there is no signup path without one.
 #
 appId: com.roxy.app
 ---
@@ -23,17 +26,26 @@ appId: com.roxy.app
 - launchApp:
     clearState: true
 
-# ── Welcome screen → Sign Up ───────────────────────────────────────────────────
+# ── Invite-code gate ───────────────────────────────────────────────────────────
+# The front door is the code gate, not the welcome screen. A code is what puts
+# the welcome screen into SIGN-UP mode at all: `isSignIn` is `!validatedCode`, so
+# arriving without one produces a sign-IN form and this flow would try to log
+# into an account that does not exist yet.
 - assertVisible:
-    text: "Welcome"
+    id: "code-gate-screen"
     timeout: 8000
 - tapOn:
-    text: "Sign Up"
+    id: "code-input"
+- inputText: "${MAESTRO_INVITE_CODE}"
+- tapOn:
+    id: "code-submit"
 
 # ── Sign-up form ───────────────────────────────────────────────────────────────
 - assertVisible:
-    text: "Create account"
-    timeout: 5000
+    id: "welcome-screen"
+    timeout: 8000
+- tapOn:
+    id: "use-email-link"
 - tapOn:
     id: "email-input"
 - inputText: "${MAESTRO_TEST_EMAIL}"
@@ -41,7 +53,7 @@ appId: com.roxy.app
     id: "password-input"
 - inputText: "${MAESTRO_TEST_PASSWORD}"
 - tapOn:
-    text: "Create account"
+    id: "auth-submit-btn"
 
 # ── Step 1 — Identity ──────────────────────────────────────────────────────────
 # Critical: must land here and NOT flicker back after filling in data
@@ -102,11 +114,16 @@ appId: com.roxy.app
 - tapOn:
     text: "Meet Roxy →"
 
-# ── Dashboard ──────────────────────────────────────────────────────────────────
-# After completion, user must reach Grow — not be stuck in onboarding
+# ── The app shell ──────────────────────────────────────────────────────────────────
+# She must land in the app, not be stuck in onboarding. Assert the screen AND
+# the bar: a testID on the screen alone would pass if the navigator failed to
+# mount its chrome, which is a broken app that still renders a feed.
 - assertVisible:
-    text: "Grow"
+    id: "feed-screen"
     timeout: 15000
+- assertVisible:
+    id: "nav-bar"
+    timeout: 5000
 
 # Confirm the onboarding screens are gone — back navigation should not reveal them
 - assertNotVisible:

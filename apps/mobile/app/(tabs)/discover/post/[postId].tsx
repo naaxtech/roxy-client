@@ -8,14 +8,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { supabase } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useFeedStore } from '../../../../store/feedStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { fetchPostById } from '../../../../lib/posts';
 import { routeParam } from '../../../../lib/routeParams';
-import { COMMENT_WITH_AUTHOR } from '../../../../lib/supabaseQueries';
-import { submitComment } from '../../../../lib/comments';
+import { loadPostComments, submitComment, toggleCommentLike } from '../../../../lib/comments';
 import { showAlert } from '../../../../lib/confirm';
 import { PostMediaCarousel } from '../../../../components/feed/PostMediaCarousel';
 import { CommentThread } from '../../../../components/feed/CommentThread';
@@ -97,56 +95,12 @@ export default function PostDetailScreen() {
   const loadComments = async (isCancelled?: () => boolean) => {
     if (!postId) return;
     setLoadingComments(true);
-    const { data, error } = await supabase
-      .from('comments')
-      .select(COMMENT_WITH_AUTHOR)
-      .eq('post_id', postId)
-      .is('parent_id', null)
-      .order('created_at', { ascending: true })
-      .limit(20);
-
+    const { comments: next, likedIds, error } = await loadPostComments(postId, user?.id);
     if (isCancelled?.()) return;
     if (error) { setLoadingComments(false); return; }
-
-    const topLevel = (data ?? []) as Comment[];
-    const topLevelIds = topLevel.map(c => c.id);
-
-    // Single batch query for all replies — replaces N+1
-    const repliesRes = topLevelIds.length
-      ? await supabase
-          .from('comments')
-          .select(COMMENT_WITH_AUTHOR)
-          .in('parent_id', topLevelIds)
-          .order('created_at', { ascending: true })
-      : { data: [] };
-
-    if (isCancelled?.()) return;
-
-    const repliesByParent = new Map<string, Comment[]>();
-    for (const r of (repliesRes.data ?? []) as Comment[]) {
-      if (!r.parent_id) continue;
-      const arr = repliesByParent.get(r.parent_id) ?? [];
-      arr.push(r);
-      repliesByParent.set(r.parent_id, arr);
-    }
-    const withReplies = topLevel.map(c => ({ ...c, replies: repliesByParent.get(c.id) ?? [] }));
-
-    if (user?.id) {
-      const ids = withReplies.flatMap(c => [c.id, ...c.replies.map(r => r.id)]);
-      if (ids.length) {
-        const { data: likes } = await supabase
-          .from('comment_likes')
-          .select('comment_id')
-          .in('comment_id', ids)
-          .eq('user_id', user.id);
-        if (!isCancelled?.()) setLikedCommentIds(new Set(likes?.map(l => l.comment_id) ?? []));
-      }
-    }
-
-    if (!isCancelled?.()) {
-      setComments(withReplies);
-      setLoadingComments(false);
-    }
+    setComments(next);
+    setLikedCommentIds(likedIds);
+    setLoadingComments(false);
   };
 
   const handleLikeComment = async (commentId: string) => {
@@ -156,12 +110,7 @@ export default function PostDetailScreen() {
       if (wasLiked) { next.delete(commentId); } else { next.add(commentId); }
       return next;
     });
-    if (wasLiked) {
-      await supabase.from('comment_likes').delete()
-        .eq('comment_id', commentId).eq('user_id', user?.id ?? '');
-    } else {
-      await supabase.from('comment_likes').insert({ comment_id: commentId });
-    }
+    if (user?.id) await toggleCommentLike({ commentId, userId: user.id, liked: wasLiked });
   };
 
   const handleSubmitComment = async () => {
@@ -332,7 +281,7 @@ export default function PostDetailScreen() {
             accessibilityRole="button"
             accessibilityLabel={isLiked ? 'Unlike post' : 'Like post'}
           >
-            <Text style={{ fontSize: 20, opacity: isLiked ? 1 : 0.45 }}>🌸</Text>
+            <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={20} color={isLiked ? colors.roxy : colors.textMuted} />
             <Text style={[styles.stickyCount, isLiked && styles.iconActive]}>
               {post.like_count}
             </Text>

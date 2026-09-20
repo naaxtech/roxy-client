@@ -24,6 +24,11 @@ const VARIANT_CONFIG: Record<LinkType, { icon: string; ctaLabel: string; countLa
   game:  { icon: '🎮', ctaLabel: 'Join Game',  countLabel: 'playing' },
   room:  { icon: '🎙', ctaLabel: 'Join Room',  countLabel: 'in room' },
   event: { icon: '📅', ctaLabel: 'View Event', countLabel: 'going' },
+  // `LinkType` gained 'product' and this map did not, so a shared product link
+  // read `VARIANT_CONFIG[undefined]` and rendered a card with no icon, no CTA
+  // and the word `undefined` where the count belongs. A Record over a union is
+  // exhaustive on purpose — the compiler asked for this entry.
+  product: { icon: '🛍', ctaLabel: 'View Item', countLabel: 'saved' },
 };
 
 export function RoxyLinkCard({
@@ -89,9 +94,13 @@ export function RoxyLinkCard({
         <Text style={styles.linkIcon}>{config.icon}</Text>
         <View style={styles.linkInfo}>
           <Text style={styles.linkName}>{entityName}</Text>
-          <Text style={styles.linkMeta}>
-            {participantCount} {config.countLabel}
-          </Text>
+          {/* A product has no "playing"/"going"/"saved" tally — the name and the
+              View Item CTA are the whole story. */}
+          {type !== 'product' && (
+            <Text style={styles.linkMeta}>
+              {participantCount} {config.countLabel}
+            </Text>
+          )}
         </View>
         <TouchableOpacity
           testID="roxy-link-cta"

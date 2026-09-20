@@ -1,38 +1,73 @@
-# Test: Send friend request from community members, then accept it.
-# Prerequisites: Two accounts available. Run with first account signed in.
-# Note: Full accept flow requires two devices/accounts — this tests the Requests tab UI.
+# Test: Send a friend request from community members, then find it in the inbox.
+# Prerequisites: Two accounts available. Run with the first account signed in.
+# Note: the full accept handshake needs two devices — this exercises the send
+# path and the Sent list, which is the half one device can prove.
+#
+# Roxy 3.0: requests are messages. A received request lands in the request-first
+# sheet on Messages, and the friends list moved to You → My people.
 appId: com.roxy.app
 ---
+- runFlow: ../subflows/dismiss_first_run.yaml
+
 - tapOn:
-    text: "Discover"
+    id: "nav-slot-discover"
+
+- tapOn:
+    id: "discover-chips-comms"
+
+# Through "See all", not the rail — the rail scrolls sideways and caps at
+# twelve, so a DOWN scroll cannot reach a community that is off to the right.
+- tapOn:
+    id: "rail-communities-link"
+
 - scrollUntilVisible:
     element:
       text: "Queer Gamers"
     direction: DOWN
     timeout: 5000
+
 - tapOn:
     text: "Queer Gamers"
+
 - tapOn:
     text: "members"
+
 - assertVisible:
     text: "Members"
     timeout: 3000
+
 - tapOn:
     text: "Add Friend"
     index: 0
+
 - assertVisible:
     text: "Requested"
     timeout: 3000
+
 - back
+- back
+
+# My people is the only door to the friends list — no other screen links to
+# `/people`. If this row disappears the whole screen becomes unreachable.
 - tapOn:
-    text: "Grow"
+    id: "nav-slot-you"
+
+- scrollUntilVisible:
+    element:
+      id: "you-people"
+    direction: DOWN
+    timeout: 5000
+
 - tapOn:
-    text: "My People"
+    id: "you-people"
+
 - assertVisible:
     text: "My People"
     timeout: 3000
+
 - tapOn:
     text: "Sent"
+
 - assertVisible:
     text: "Cancel"
     timeout: 3000

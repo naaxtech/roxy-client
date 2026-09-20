@@ -8,9 +8,17 @@ Deno.serve(async (req) => {
   const corsRes = handleCors(req);
   if (corsRes) return corsRes;
 
-  // Verify Cloudflare webhook signature
+  // Verify Cloudflare webhook signature — fail CLOSED: an unset secret must
+  // reject every request, not skip verification (previously failed open).
+  // Static-string comparison against a pre-shared secret, not Cloudflare's
+  // HMAC scheme; tracked as its own follow-up in _kernel/INBOX.md so the
+  // stronger verification goes through research-protocol rather than a
+  // guessed crypto implementation here.
+  if (!CF_WEBHOOK_SECRET) {
+    return errorResponse('Webhook not configured', 401);
+  }
   const sig = req.headers.get('Webhook-Signature') ?? '';
-  if (CF_WEBHOOK_SECRET && sig !== CF_WEBHOOK_SECRET) {
+  if (sig !== CF_WEBHOOK_SECRET) {
     return errorResponse('Invalid webhook signature', 401);
   }
 

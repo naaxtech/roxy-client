@@ -11,10 +11,9 @@ import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { CommentSheet } from '../../../../components/feed/CommentSheet';
 import { FeedVideoPlayer } from '../../../../components/feed/FeedVideoPlayer';
 import type { Comment, Post } from '../../../../types';
-import { supabase } from '../../../../lib/supabase';
 import { fetchPostById } from '../../../../lib/posts';
 import { routeParam } from '../../../../lib/routeParams';
-import { COMMENT_WITH_AUTHOR } from '../../../../lib/supabaseQueries';
+import { loadPostComments, toggleCommentLike } from '../../../../lib/comments';
 import { useAppWidth } from '../../../../hooks/useAppWidth';
 
 function VideoItem({
@@ -164,14 +163,9 @@ export default function VideoPlayerScreen() {
 
   const openComments = async (pid: string) => {
     setCommentSheetPostId(pid);
-    const { data } = await supabase
-      .from('comments')
-      .select(COMMENT_WITH_AUTHOR)
-      .eq('post_id', pid)
-      .is('parent_id', null)
-      .order('created_at', { ascending: true })
-      .limit(20);
-    setSheetComments((data ?? []) as Comment[]);
+    const { comments, likedIds } = await loadPostComments(pid, user?.id);
+    setSheetComments(comments);
+    setLikedCommentIds(likedIds);
   };
 
   if (!videoPosts.length) {
@@ -239,19 +233,13 @@ export default function VideoPlayerScreen() {
         onCommentsChange={setSheetComments}
         onLikeComment={async (commentId) => {
           const wasLiked = likedCommentIds.has(commentId);
-          setLikedCommentIds(s => {
+          setLikedCommentIds((s) => {
             const next = new Set(s);
             if (wasLiked) next.delete(commentId); else next.add(commentId);
             return next;
           });
-          if (wasLiked) {
-            await supabase.from('comment_likes').delete()
-              .eq('comment_id', commentId).eq('user_id', user?.id ?? '');
-          } else {
-            await supabase.from('comment_likes').insert({ comment_id: commentId });
-          }
+          if (user?.id) await toggleCommentLike({ commentId, userId: user.id, liked: wasLiked });
         }}
-        onReply={() => {}}
       />
     </View>
   );

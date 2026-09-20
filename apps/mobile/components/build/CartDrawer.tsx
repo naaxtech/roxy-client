@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Animated } from 'react-native';
 import { usePopIn } from '../ui/popIn';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,10 +18,22 @@ interface CartDrawerProps {
 export function CartDrawer({ businessId, businessName, visible, onClose, onCheckout }: CartDrawerProps) {
   const colors = useThemeColors();
   const pop = usePopIn(visible);
-  const { cartItems, removeFromCart, updateQuantity, getCartTotal, getCartCount } = useMarketplaceStore();
+  const {
+    cartItems, removeFromCart, updateQuantity, getCartTotal, getCartCount,
+    businessCurrency, fetchBusinessCurrency,
+  } = useMarketplaceStore();
   const items = cartItems[businessId] ?? [];
   const total = getCartTotal(businessId);
   const count = getCartCount(businessId);
+  /** The seller's own currency — the one create-product-order will charge in. */
+  const currency = businessCurrency(businessId);
+
+  // Self-sufficient rather than relying on whichever screen opened the drawer: a deep
+  // link into a product can reach checkout without the business page ever mounting.
+  useEffect(() => {
+    if (!visible) return;
+    void fetchBusinessCurrency(businessId);
+  }, [visible, businessId, fetchBusinessCurrency]);
 
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
@@ -79,7 +91,7 @@ export function CartDrawer({ businessId, businessName, visible, onClose, onCheck
                     <View style={styles.itemInfo}>
                       <Text style={styles.itemName} numberOfLines={1}>{item.product?.name ?? 'Product'}</Text>
                       {variantLabel ? <Text style={styles.itemVariant}>{variantLabel}</Text> : null}
-                      <Text style={styles.itemPrice}>{formatMoney(price, 'usd')} each</Text>
+                      <Text style={styles.itemPrice}>{formatMoney(price, currency)} each</Text>
                     </View>
                     <View style={styles.qtyRow}>
                       <TouchableOpacity onPress={() => updateQuantity(businessId, item.id, item.quantity - 1)} style={styles.qtyBtn}>
@@ -101,7 +113,7 @@ export function CartDrawer({ businessId, businessName, visible, onClose, onCheck
           <View style={styles.footer}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal</Text>
-              <Text style={styles.totalAmount}>{formatMoney(total, 'usd')}</Text>
+              <Text style={styles.totalAmount}>{formatMoney(total, currency)}</Text>
             </View>
             <Text style={styles.shippingNote}>+ shipping calculated at checkout</Text>
             <TouchableOpacity

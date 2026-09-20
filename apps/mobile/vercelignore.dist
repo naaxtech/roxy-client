@@ -1,0 +1,7 @@
+# Copied to dist/.vercelignore by `npm run web:deploy`.
+# The Vercel CLI ignores every path containing `node_modules` by default.
+# `expo export --platform web` emits the icon fonts to
+# dist/assets/node_modules/@expo/vector-icons/... — without this negation those
+# files are silently dropped from the upload and every icon 404s on the
+# deployed build (the local `serve dist` run looks fine, which hides it).
+!node_modules

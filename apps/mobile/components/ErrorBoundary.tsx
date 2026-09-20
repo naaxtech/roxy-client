@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
 import { logBoundaryError } from '../lib/errorLogger';
 import { useThemeColors } from '../hooks/useThemeColors';
 
@@ -25,8 +26,19 @@ function ErrorFallback({ errorMessage, onRetry }: FallbackProps) {
       fontSize: 12, color: colors.error, marginBottom: 16,
       textAlign: 'center', fontFamily: 'monospace',
     },
-    retry: { color: colors.primary, fontWeight: '600', fontSize: 14 },
+    retry: { color: colors.primary, fontWeight: '600', fontSize: 14, marginBottom: 16 },
+    report: { color: colors.textMuted, fontWeight: '500', fontSize: 13 },
   });
+
+  const handleReport = () => {
+    router.push({
+      pathname: '/(tabs)/you/feedback',
+      params: {
+        category: 'bug',
+        prefillMessage: errorMessage ? `App crashed: ${errorMessage}` : 'App crashed.',
+      },
+    });
+  };
 
   return (
     <View style={styles.container}>
@@ -36,6 +48,9 @@ function ErrorFallback({ errorMessage, onRetry }: FallbackProps) {
       ) : null}
       <TouchableOpacity onPress={onRetry}>
         <Text style={styles.retry}>Try again</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={handleReport} accessibilityLabel="Report this problem">
+        <Text style={styles.report}>Report this</Text>
       </TouchableOpacity>
     </View>
   );

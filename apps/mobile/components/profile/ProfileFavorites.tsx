@@ -19,7 +19,13 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
   const [loading, setLoading] = useState(true);
 
   const styles = StyleSheet.create({
-    wrap: { marginTop: 16, paddingHorizontal: 16 },
+    // width:'100%' is load-bearing, not decoration. profile/edit.tsx lays its
+    // ScrollView content out with alignItems:'center', which replaces the
+    // default 'stretch' and makes every direct child hug its own content
+    // width. The row below is a HORIZONTAL ScrollView, which has no intrinsic
+    // width, so without this the whole section collapsed and stretched on the
+    // edit screen while looking fine on profile/index.tsx.
+    wrap: { marginTop: 16, paddingHorizontal: 16, width: '100%' },
     label: { color: colors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 8 },
     row: { gap: 8, paddingBottom: 4 },
     chip: {
@@ -30,6 +36,10 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
     chipIcon: { fontSize: 14 },
     chipText: { color: colors.textPrimary, fontSize: 13, fontWeight: '600', flexShrink: 1 },
     hint: { color: colors.textMuted, fontSize: 13 },
+    emptyCard: {
+      backgroundColor: colors.surface, borderRadius: 16,
+      padding: 16, width: '100%',
+    },
   });
 
   const load = useCallback(async () => {
@@ -82,8 +92,22 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
   if (loading) return <ActivityIndicator color={colors.primary} style={{ margin: 16 }} />;
   if (!items.length && !editable) return null;
 
+  // Empty state used to be bare text with no visual container, floating
+  // inconspicuously below the styled Photos grid -- looked unstyled/broken
+  // next to it. Give it the same card treatment as the rest of the sections.
+  if (!items.length && editable) {
+    return (
+      <View style={styles.wrap} testID="profile-favorites">
+        <Text style={styles.label}>Favourites</Text>
+        <View style={styles.emptyCard}>
+          <Text style={styles.hint}>Save events and games from Roxy to show them here.</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.wrap}>
+    <View style={styles.wrap} testID="profile-favorites">
       <Text style={styles.label}>Favourites</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {items.map((f) => (
@@ -97,9 +121,6 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
             )}
           </TouchableOpacity>
         ))}
-        {!items.length && editable && (
-          <Text style={styles.hint}>Save events and games from Roxy to show them here.</Text>
-        )}
       </ScrollView>
     </View>
   );

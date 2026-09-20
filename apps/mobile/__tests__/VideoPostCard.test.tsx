@@ -12,6 +12,7 @@ function makeVideoPost(overrides: Partial<Post> = {}): Post {
     is_pinned: false, is_flagged: false, reaction_counts: {},
     comment_count: 14, like_count: 890, save_count: 12, feed_score: 50,
     blurhash: null, deleted_at: null,
+    posted_as_community: false, post_tags: [],
     video_url: 'https://cf.stream/abc/manifest.m3u8',
     video_thumbnail_url: 'u1/v1/thumb.jpg',
     video_duration_secs: 42,

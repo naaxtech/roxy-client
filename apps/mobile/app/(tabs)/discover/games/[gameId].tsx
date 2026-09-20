@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Share, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGamesStore } from '../../../../store/gamesStore';
 import { useAuthStore } from '../../../../store/authStore';
 import { buildRoxySDK } from '../../../../lib/roxyGameSdk';
+import { isPlayableGameUrl } from '../../../../lib/gameUrl';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
 
 // react-native-webview guarded import
@@ -18,10 +19,23 @@ export default function GameLaunchScreen() {
   const { gameId } = useLocalSearchParams<{ gameId: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
-  const { games } = useGamesStore();
+  const { games, fetchGameById } = useGamesStore();
   const webViewRef = useRef<any>(null);
+  const [resolving, setResolving] = useState(true);
 
   const game = games.find((g) => g.id === gameId);
+
+  // The tile that got us here holds its own copy of the games list, and a shared
+  // link arrives with no list at all — so the route resolves the game itself.
+  useEffect(() => {
+    if (!gameId) { setResolving(false); return; }
+    let active = true;
+    void (async () => {
+      await fetchGameById(gameId);
+      if (active) setResolving(false);
+    })();
+    return () => { active = false; };
+  }, [gameId, fetchGameById]);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -42,14 +56,25 @@ export default function GameLaunchScreen() {
     },
   });
 
-  if (!game || !game.url) {
+  if (resolving) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.empty}>
+          <ActivityIndicator color={colors.primary} size="large" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // No row, or a URL we will not hand to a WebView (see lib/gameUrl.ts).
+  if (!game || !isPlayableGameUrl(game.url)) {
     return (
       <SafeAreaView style={styles.container}>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} hitSlop={8}>
           <Ionicons name="close" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>Game not available</Text>
+          <Text style={styles.emptyText}>This game isn&apos;t available to play yet</Text>
         </View>
       </SafeAreaView>
     );

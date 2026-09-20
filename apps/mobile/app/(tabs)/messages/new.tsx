@@ -13,8 +13,9 @@ import { logError } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
 import { avatarGradient } from '../../../lib/avatars';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { FeatureGate } from '../../../components/features/FeatureGate';
 
-export default function NewMessageScreen() {
+function NewMessageScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -109,13 +110,13 @@ export default function NewMessageScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ flexGrow: 1 }}
           ListHeaderComponent={
-            friends.length > 0 ? <Text style={styles.hint}>Your people</Text> : null
+            friends.length > 0 ? <Text style={styles.hint}>FRIENDS</Text> : null
           }
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>🌸</Text>
               <Text style={styles.emptyText}>
-                Add friends in your communities first — chats start with your people 💜
+                Add friends in your communities first — chats start with people you already know.
               </Text>
               <TouchableOpacity
                 style={styles.emptyCTA}
@@ -154,5 +155,13 @@ export default function NewMessageScreen() {
         />
       )}
     </SafeAreaView>
+  );
+}
+
+export default function NewMessageRoute() {
+  return (
+    <FeatureGate feature="dms">
+      <NewMessageScreen />
+    </FeatureGate>
   );
 }

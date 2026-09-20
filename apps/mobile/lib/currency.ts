@@ -8,6 +8,16 @@
  */
 
 /**
+ * Placeholder used only while a seller's `businesses.currency` is still loading.
+ *
+ * Mirrors the column default in migration 031, so the placeholder is a value a real row
+ * could actually hold. It is a loading state, never a decision: every price a buyer can
+ * act on has to come from the business, product or order row it belongs to. Marketplace
+ * sellers price in their own currency and that is what Stripe is handed at checkout.
+ */
+export const DEFAULT_CURRENCY = 'usd';
+
+/**
  * Normalize currency code to uppercase ISO 4217.
  * Defaults to USD if not provided or invalid.
  * @param currency - Currency code (case-insensitive), e.g. 'usd', 'gbp', 'eur'

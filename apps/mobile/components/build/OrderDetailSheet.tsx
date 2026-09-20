@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { formatMoney } from '../../lib/currency';
-import type { OrderWithItems } from '../../types/marketplace';
+import type { OrderWithItems, OrderEventType } from '../../types/marketplace';
 
 const STATUS_COLORS: Record<string, string> = {
   paid: '#3B82F6',
@@ -13,6 +13,18 @@ const STATUS_COLORS: Record<string, string> = {
   delivered: '#10B981',
   refunded: '#EF4444',
   cancelled: '#6B7280',
+};
+
+// order_events stores a constrained `event` code plus an optional free-text `note`
+// (migration 032). The note is null for machine-written events, so the timeline
+// reads off this map rather than printing a blank line.
+const EVENT_LABEL: Record<OrderEventType, string> = {
+  payment_confirmed: 'Payment confirmed',
+  shipped: 'Shipped',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+  refunded: 'Refunded',
+  note_added: 'Update',
 };
 
 interface OrderDetailSheetProps {
@@ -71,8 +83,10 @@ export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
             <Text style={styles.sectionTitle}>Items</Text>
             {order.order_items.map((item) => (
               <View key={item.id} style={styles.itemRow}>
-                <Text style={styles.itemName} numberOfLines={1}>{item.product_name} × {item.quantity}</Text>
-                <Text style={styles.itemPrice}>{formatMoney(item.total_price_cents, order.currency)}</Text>
+                <Text style={styles.itemName} numberOfLines={1}>
+                  {item.product_name}{item.variant_label ? ` · ${item.variant_label}` : ''} × {item.quantity}
+                </Text>
+                <Text style={styles.itemPrice}>{formatMoney(item.line_total_cents, order.currency)}</Text>
               </View>
             ))}
             {/* Totals */}
@@ -117,8 +131,8 @@ export function OrderDetailSheet({ order, onClose }: OrderDetailSheetProps) {
                   <View key={event.id} style={styles.eventRow}>
                     <View style={styles.eventDot} />
                     <View style={styles.eventInfo}>
-                      <Text style={styles.eventType}>{event.event_type.replace(/_/g, ' ').toUpperCase()}</Text>
-                      <Text style={styles.eventDesc}>{event.description}</Text>
+                      <Text style={styles.eventType}>{event.event.replace(/_/g, ' ').toUpperCase()}</Text>
+                      <Text style={styles.eventDesc}>{event.note ?? EVENT_LABEL[event.event]}</Text>
                       <Text style={styles.eventDate}>{new Date(event.created_at).toLocaleDateString()}</Text>
                     </View>
                   </View>

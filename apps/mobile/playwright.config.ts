@@ -12,6 +12,7 @@ export default defineConfig({
   timeout: 90_000,
   reporter: process.env.CI ? 'github' : 'list',
 
+  outputDir: 'shots/demo',
   use: {
     baseURL,
     trace: 'on-first-retry',

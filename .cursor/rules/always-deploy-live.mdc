@@ -1,0 +1,15 @@
+---
+description: Always ship Roxy client and Studio to production after work lands
+alwaysApply: true
+---
+
+# Always deploy live
+
+Nicole tests on the live apps, not the working tree. After any finished slice:
+
+1. Commit and push the branch.
+2. Deploy **production** immediately so she can tap it:
+   - Mobile web: `npm run web:export` from `apps/mobile`, then `eas deploy --prod`, then `vercel link --project roxy-web` and `vercel deploy --prod` from `apps/mobile/dist`
+   - Studio: `npx vercel deploy --prod --yes --scope team_0HiBgsTPVZVWgzW5UyBwtn8W` from `apps/studio`
+3. Do not leave a finished feature only in the working tree. Do not wait to be asked again.
+4. Apply SQL with `node scripts/apply-migration.mjs <file.sql>` when the slice needs a migration.

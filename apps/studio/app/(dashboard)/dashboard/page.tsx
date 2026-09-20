@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import {
   Calendar, Users, DollarSign, Package,
-  ShoppingCart, ArrowUpRight, AlertCircle,
-  Zap,
+  ShoppingCart, ArrowUpRight, Zap,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { getHostScope } from '@/lib/hostScope';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Notice } from '@/components/Notice';
 import { cn } from '@/lib/utils';
 
 interface MetricCardProps {
@@ -43,7 +44,7 @@ function MetricCard({ title, value, description, icon: Icon, gradient, iconColor
         </div>
         {description && <p className="text-xs text-muted-foreground mt-1.5">{description}</p>}
         {href && (
-          <p className="mt-3 text-xs text-primary/70 flex items-center gap-1 group-hover:text-primary transition-colors">
+          <p className="mt-3 text-xs text-muted-foreground flex items-center gap-1 group-hover:text-foreground transition-colors">
             View details <ArrowUpRight className="h-3 w-3" />
           </p>
         )}
@@ -63,17 +64,17 @@ export default async function DashboardPage() {
 
   const [
     { data: stripeAccount },
-    { data: memberRows },
+    scope,
     { data: profile },
     { data: ownedBusiness },
   ] = await Promise.all([
     supabase.from('host_stripe_accounts').select('stripe_account_id, onboarding_complete').eq('user_id', userId).maybeSingle(),
-    supabase.from('community_members').select('communities(id, name)').eq('user_id', userId).eq('role', 'admin'),
+    getHostScope(supabase, userId, ['admin']),
     supabase.from('profiles').select('display_name').eq('id', userId).single(),
     supabase.from('businesses').select('id').eq('owner_id', userId).maybeSingle(),
   ]);
 
-  const communityIds = (memberRows ?? []).map((r: any) => r.communities?.id).filter(Boolean);
+  const communityIds = scope.communities.map((community) => community.id);
   const businessId = ownedBusiness?.id ?? null;
 
   const [
@@ -126,41 +127,36 @@ export default async function DashboardPage() {
           {greeting}, {displayName} 👋
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Here&apos;s what&apos;s happening with your studio today.
+          {scope.isCore
+            ? "Here's everything happening across Roxy today."
+            : "Here's what's happening with your studio today."}
         </p>
       </div>
 
       {/* Alert banners */}
       {(stripeNotStarted || stripeIncomplete) && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3.5">
-          <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-amber-300">
-              {stripeNotStarted
-                ? 'Connect Stripe to enable paid events'
-                : 'Stripe setup incomplete — paid events locked'}
-            </p>
-            <p className="text-xs text-amber-400/70 mt-0.5">
-              You&apos;ll need this to collect payments from attendees and customers.
-            </p>
-          </div>
-          <Button
-            asChild
-            size="sm"
-            variant="outline"
-            className="border-amber-500/30 text-amber-300 hover:bg-amber-500/10 shrink-0 text-xs h-8"
-          >
-            <Link href="/settings">{stripeNotStarted ? 'Connect now' : 'Resume setup'}</Link>
-          </Button>
-        </div>
+        <Notice
+          title={
+            stripeNotStarted
+              ? 'Connect Stripe to enable paid events'
+              : 'Stripe setup incomplete — paid events locked'
+          }
+          action={
+            <Button asChild size="sm" variant="outline" className="shrink-0 text-xs h-8">
+              <Link href="/settings">{stripeNotStarted ? 'Connect now' : 'Resume setup'}</Link>
+            </Button>
+          }
+        >
+          You&apos;ll need this to collect payments from attendees and customers.
+        </Notice>
       )}
 
       {/* Metric cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <MetricCard
           title="Communities"
-          value={memberRows?.length ?? 0}
-          description="Communities you manage"
+          value={scope.communities.length}
+          description={scope.isCore ? 'Every community on Roxy' : 'Communities you manage'}
           icon={Users}
           gradient="gradient-purple"
           iconColor="bg-secondary/20 text-secondary"
@@ -169,7 +165,7 @@ export default async function DashboardPage() {
         <MetricCard
           title="Upcoming Events"
           value={upcomingCount ?? 0}
-          description="Scheduled across your communities"
+          description={scope.isCore ? 'Scheduled across Roxy' : 'Scheduled across your communities'}
           icon={Calendar}
           gradient="gradient-pink"
           iconColor="bg-primary/20 text-primary"

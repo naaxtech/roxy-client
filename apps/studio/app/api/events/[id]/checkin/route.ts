@@ -20,32 +20,21 @@ export async function POST(
 
   const supabase = await createClient();
 
-  // Verify caller is the event host (or staff)
-  const { data: event } = await supabase
-    .from('events')
-    .select('host_id')
-    .eq('id', event_id)
+  // Host/staff check + the column-restricted update both happen inside the
+  // checkin_attendee() SECURITY DEFINER RPC (066_checkin_attendee_rpc.sql) --
+  // there's no longer a direct-update RLS policy for a client to bypass this
+  // route with.
+  const { data, error } = await supabase
+    .rpc('checkin_attendee', { p_event_id: event_id, p_ticket_code: ticket_code })
     .single();
 
-  if (!event) {
-    return NextResponse.json({ error: 'Event not found' }, { status: 404 });
-  }
-  if (event.host_id !== auth.ctx.userId && !auth.ctx.isStaff) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  const now = new Date().toISOString();
-  const { data: attendee, error } = await supabase
-    .from('event_attendees')
-    .update({ is_checked_in: true, checked_in_at: now })
-    .eq('event_id', event_id)
-    .eq('ticket_code', ticket_code)
-    .select('user_id, ticket_code')
-    .single();
-
-  if (error || !attendee) {
-    return NextResponse.json({ error: 'Ticket not found for this event' }, { status: 404 });
+  if (error) {
+    const status = error.message === 'Event not found' ? 404
+      : error.message === 'Forbidden' ? 403
+      : 404;
+    return NextResponse.json({ error: error.message || 'Ticket not found for this event' }, { status });
   }
 
-  return NextResponse.json({ success: true, checked_in_at: now, user_id: attendee.user_id });
+  const attendee = data as { user_id: string; ticket_code: string; checked_in_at: string };
+  return NextResponse.json({ success: true, checked_in_at: attendee.checked_in_at, user_id: attendee.user_id });
 }

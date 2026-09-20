@@ -1,29 +1,26 @@
 import { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { POP_FROM, SNAP_SPRING, popInStyle } from '../../lib/motion';
 
 /**
- * Snappy pop-in for modal content: fast spring scale that settles with at
- * most one barely-perceptible overshoot — pop, not bounce, not fade
- * (Nicole: no slide-up drawers, no springy wobble). Apply the returned style
- * to the modal's content container inside a transparent fade Modal.
+ * Snappy pop-in for modal content: fast spring scale with at most one
+ * barely-perceptible overshoot. Never fades. Apply the returned style to the
+ * modal's content inside `animationType="none"` so the backdrop is instant.
  */
 export function usePopIn(visible: boolean) {
-  const scale = useRef(new Animated.Value(0.94)).current;
+  const reducedMotion = useReducedMotion();
+  const scale = useRef(new Animated.Value(POP_FROM)).current;
 
   useEffect(() => {
-    if (visible) {
-      scale.setValue(0.94);
-      Animated.spring(scale, {
-        toValue: 1,
-        friction: 8,
-        tension: 220,
-        useNativeDriver: true,
-      }).start();
+    if (!visible) return;
+    if (reducedMotion) {
+      scale.setValue(1);
+      return;
     }
-  }, [visible, scale]);
+    scale.setValue(POP_FROM);
+    Animated.spring(scale, { toValue: 1, ...SNAP_SPRING }).start();
+  }, [visible, reducedMotion, scale]);
 
-  // Opacity rides the same spring: content appears popping, never a soft
-  // cross-fade. Use with animationType="none" so the backdrop is instant
-  // (the community-filter treatment — the house animation standard).
-  return { opacity: scale, transform: [{ scale }] };
+  return popInStyle(scale);
 }

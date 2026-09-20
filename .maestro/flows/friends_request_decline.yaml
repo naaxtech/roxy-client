@@ -1,24 +1,48 @@
-# Test: Decline a pending friend request from the Requests tab.
-# Prerequisites: Another account must have sent a friend request to this user.
+# Test: Decline a pending friend request from the request-first inbox.
+# Prerequisites: EXACTLY ONE pending friend request to this user. The count
+# matters — the assertion at the bottom is that the sheet reaches its empty
+# state, which is only true when the declined request was the last one.
+#
+# Roxy 3.0: this moved off the Grow tab entirely. A stranger never lands in the
+# thread list — the request waits behind `messages-requests-entry` on Messages,
+# and declining is quiet: she is never told.
 appId: com.roxy.app
 ---
+- runFlow: ../subflows/dismiss_first_run.yaml
+
 - tapOn:
-    text: "Grow"
-- tapOn:
-    text: "My People"
+    id: "nav-slot-messages"
+
+# The entry row only renders when something is actually waiting, so its absence
+# means the prerequisite was not met — not that the feature is broken.
 - assertVisible:
-    text: "My People"
-    timeout: 3000
+    id: "messages-requests-entry"
+    timeout: 5000
+
 - tapOn:
-    text: "Requests"
+    id: "messages-requests-entry"
+
+- assertVisible:
+    id: "requests-sheet"
+    timeout: 3000
+
 - assertVisible:
     text: "Decline"
     timeout: 3000
+
 - tapOn:
     text: "Decline"
     index: 0
+
 - waitForAnimationToEnd:
     timeout: 2000
-# Row should be gone
+
+# The row is gone and the sheet says so in its own words. Asserting the empty
+# state rather than the absence of a "Decline" label is deliberate: a sheet that
+# failed to render at all would also have no Decline button, and would pass.
+- assertVisible:
+    id: "requests-empty"
+    timeout: 5000
+
 - assertNotVisible:
     text: "Decline"

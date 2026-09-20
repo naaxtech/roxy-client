@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import type { DailyCall } from '@daily-co/daily-js';
 import { createClient } from '@/lib/supabase/client';
+import { invokeFunction } from '@/lib/supabase/invokeFunction';
+import { acquireCallObject, releaseCallObject } from '@/lib/daily/callObject';
 import { Button } from '@/components/ui/button';
 
 type RoomInfo = {
@@ -11,53 +14,61 @@ type RoomInfo = {
   is_host: boolean;
 };
 
-// supabase-js rejects any non-2xx response with a FunctionsHttpError whose
-// .message is the useless literal "Edge Function returned a non-2xx status
-// code" — the real { success:false, error } body our edge functions send
-// (see supabase/functions/_shared/errorHandler.ts) only lives on
-// error.context (the raw Response), same for the HTTP status. Unwrap it here
-// so callers can surface the real failure instead of silently swallowing it.
-async function invokeFn<T = unknown>(
-  supabase: ReturnType<typeof createClient>,
-  name: string,
-  body: Record<string, unknown>,
-): Promise<{ data: T | null; error: string | null; status?: number }> {
-  try {
-    const { data, error } = await supabase.functions.invoke(name, { body });
-    if (error) {
-      let parsedBody: { error?: string } | undefined;
-      try {
-        parsedBody = await (error as { context?: Response }).context?.json?.();
-      } catch {
-        parsedBody = undefined;
-      }
-      return {
-        data: null,
-        error: parsedBody?.error ?? error.message ?? 'Request failed',
-        status: (error as { context?: Response }).context?.status,
-      };
-    }
-    // Unwrap { success, data, error } envelope used by successResponse/errorResponse
-    if (data && typeof data === 'object' && 'success' in data) {
-      const envelope = data as { success: boolean; data: T; error: string | null };
-      if (!envelope.success) return { data: null, error: envelope.error ?? 'Request failed' };
-      return { data: envelope.data, error: null };
-    }
-    return { data: data as T, error: null };
-  } catch (err) {
-    return { data: null, error: err instanceof Error ? err.message : 'Unknown error' };
-  }
-}
-
 function friendlyJoinError(message: string | null, status?: number): string {
   if (status === 404) return 'This room no longer exists.';
   if (status === 409) return 'This room has not started yet. Go back and click "Go Live" first.';
   if (status === 410) return 'This room has ended.';
   if (status === 403) return "You don't have access to this room.";
+  // 503 is the one thing only an operator can fix: join-community-room returns
+  // it when DAILY_API_KEY is unset. Say so plainly rather than blaming the network.
+  if (status === 503) return 'Live rooms are not configured yet. Set DAILY_API_KEY on the Supabase project.';
+  if (status === 502) return 'The video service is unreachable right now. Try again in a moment.';
   if (message && /network|fetch|failed to fetch/i.test(message)) {
     return 'Network error — check your connection and try again.';
   }
   return message ?? 'Could not join room. Please try again.';
+}
+
+/** Pull a message out of whatever Daily / the runtime threw, without assuming a shape. */
+function dailyErrorMessage(e: unknown): string | null {
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'string') return e;
+  if (typeof e === 'object' && e !== null && 'errorMsg' in e) {
+    const msg = (e as { errorMsg: unknown }).errorMsg;
+    if (typeof msg === 'string') return msg;
+  }
+  return null;
+}
+
+/**
+ * Turn a Daily connection failure into copy that names which distinguishable
+ * thing went wrong. "Please try again" is only correct when retrying might
+ * actually help — a full room, an ended room and a duplicate call object are
+ * three different problems and used to render as one sentence.
+ */
+function connectErrorCopy(message: string | null): string {
+  const reason = (message ?? '').toLowerCase();
+
+  if (reason.includes('duplicate') && reason.includes('instance')) {
+    return 'A previous call is still shutting down. Reload the page and rejoin.';
+  }
+  if (reason.includes('full') || reason.includes('max-participants')) {
+    return 'This room is full — it has hit its participant limit.';
+  }
+  if (
+    reason.includes('expired') || reason.includes('ended') ||
+    reason.includes('not found') || reason.includes('does not exist') ||
+    reason.includes('no longer')
+  ) {
+    return 'This room has already ended.';
+  }
+  if (reason.includes('permission') || reason.includes('denied') || reason.includes('not-allowed')) {
+    return 'Camera and microphone access is blocked. Allow them in your browser settings and rejoin.';
+  }
+  if (reason.includes('network') || reason.includes('fetch') || reason.includes('connection')) {
+    return 'Could not reach the video service. Check your connection and try again.';
+  }
+  return message ?? 'Could not join the room.';
 }
 
 type ParticipantState = {
@@ -154,8 +165,7 @@ export default function RoomSessionPage() {
   const { id: roomId } = useParams<{ id: string }>();
   const router = useRouter();
 
-   
-  const callRef = useRef<any>(null);
+  const callRef = useRef<DailyCall | null>(null);
   const [roomInfo, setRoomInfo]       = useState<RoomInfo | null>(null);
   const [participants, setParticipants] = useState<Map<string, ParticipantState>>(new Map());
   const [micOn, setMicOn]             = useState(true);
@@ -170,18 +180,35 @@ export default function RoomSessionPage() {
 
 
   const isHostRef = useRef(false);
+  /** Last headcount successfully written, so repeat events don't re-write it. */
+  const lastSyncedCount = useRef<number | null>(null);
 
-  const syncCountToDb = useCallback(async (callObject: any) => {
+  const syncCountToDb = useCallback(async (callObject: DailyCall) => {
     if (!isHostRef.current || !roomId) return;
+
+    // `participant-updated` fires ~10x/second (every mic/camera track change),
+    // and it used to drive one manage-room invocation each — a sustained flood
+    // of edge-function calls per host for a number that had not moved. Only an
+    // actual change in headcount is worth a write.
     const count = Object.keys(callObject.participants()).length;
+    if (count === lastSyncedCount.current) return;
+    lastSyncedCount.current = count;
+
     const supabase = createClient();
-    await supabase.functions.invoke('manage-room', {
-      body: { action: 'sync-count', room_id: roomId, count },
+    const { error } = await invokeFunction(supabase, 'manage-room', {
+      action: 'sync-count', room_id: roomId, count,
     });
+    if (error) {
+      // Let the next change retry, and tell the host the list is stale rather
+      // than leaving them with a number they think is live. The call itself is
+      // unaffected, so this is the dismissible banner, not the fatal screen.
+      lastSyncedCount.current = null;
+      setActionError('The participant count on the Rooms list may be out of date.');
+    }
   }, [roomId]);
 
-  const refreshParticipants = useCallback((callObject: any) => {
-    const all = callObject.participants() as Record<string, any>;
+  const refreshParticipants = useCallback((callObject: DailyCall) => {
+    const all = callObject.participants();
     const map = new Map<string, ParticipantState>();
     for (const p of Object.values(all)) {
       map.set(p.session_id, {
@@ -195,7 +222,7 @@ export default function RoomSessionPage() {
       });
     }
     setParticipants(new Map(map));
-    syncCountToDb(callObject);
+    void syncCountToDb(callObject);
   }, [syncCountToDb]);
 
   useEffect(() => {
@@ -205,12 +232,13 @@ export default function RoomSessionPage() {
       return;
     }
 
-    let callObject: any = null;
+    let callObject: DailyCall | null = null;
+    let cancelled = false;
 
     (async () => {
       try {
         const supabase = createClient();
-        const { data: info, error: joinErr, status: joinStatus } = await invokeFn<{
+        const { data: info, error: joinErr, status: joinStatus } = await invokeFunction<{
           room_url: string;
           room_name: string;
           room_type: 'video' | 'audio';
@@ -231,40 +259,53 @@ export default function RoomSessionPage() {
         });
         isHostRef.current = info.is_host;
 
-        // Lazy import — daily-js is browser-only; handle both ESM default and CJS exports
-        const mod = await import('@daily-co/daily-js');
-        const Daily = mod.default ?? mod;
-        callObject = (Daily as any).createCallObject();
+        // One call object per page, serialised against any teardown still in
+        // flight. Constructing a second over a live one throws, and that throw
+        // was reaching the user as a bare "Failed to join room".
+        callObject = await acquireCallObject();
+        if (cancelled) {
+          releaseCallObject(callObject);
+          return;
+        }
         callRef.current = callObject;
 
-        callObject.on('joined-meeting',         () => { setStatus('connected'); refreshParticipants(callObject); });
-        callObject.on('participant-joined',      () => refreshParticipants(callObject));
-        callObject.on('participant-left',        () => refreshParticipants(callObject));
-        callObject.on('participant-updated',     () => refreshParticipants(callObject));
-        callObject.on('meeting-session-stopped', () => router.push('/rooms'));
-         
-        callObject.on('error', (e: any) => {
-          setError(e?.errorMsg ?? 'Connection error');
+        const call = callObject;
+        call.on('joined-meeting',          () => { setStatus('connected'); refreshParticipants(call); });
+        call.on('participant-joined',      () => refreshParticipants(call));
+        call.on('participant-left',        () => refreshParticipants(call));
+        call.on('participant-updated',     () => refreshParticipants(call));
+        // Was 'meeting-session-stopped', which is not a DailyEvent in any
+        // released daily-js — the listener silently never fired, so a host
+        // ending the room left everyone else sitting in a dead call. 'left-meeting'
+        // is the real signal (ejected, room deleted, or room expired).
+        // src: https://docs.daily.co/reference/daily-js/events/meeting-events · daily-js 0.89.1 · 2026-08-02
+        call.on('left-meeting', () => {
+          // Ignore the leave WE caused by unmounting; only a leave that happens
+          // while this screen is live means the room actually went away.
+          if (cancelled) return;
+          router.push('/rooms');
+        });
+
+        call.on('error', (e) => {
+          setError(connectErrorCopy(e?.errorMsg ?? null));
           setStatus('error');
         });
 
-        await callObject.join({
+        await call.join({
           url: info.room_url,
           ...(info.token ? { token: info.token } : {}),
         });
       } catch (e: unknown) {
-        let msg = 'Failed to join room';
-        if (e instanceof Error) msg = e.message;
-        else if (typeof e === 'object' && e !== null && 'errorMsg' in e) msg = (e as any).errorMsg;
-        else if (typeof e === 'string') msg = e;
-        setError(msg);
+        if (cancelled) return;
+        setError(connectErrorCopy(dailyErrorMessage(e)));
         setStatus('error');
       }
     })();
 
     return () => {
-      callObject?.leave().catch(() => {});
-      callObject?.destroy();
+      cancelled = true;
+      callRef.current = null;
+      releaseCallObject(callObject);
     };
   }, [roomId, refreshParticipants, router]);
 
@@ -306,7 +347,7 @@ export default function RoomSessionPage() {
     if (!confirm('Remove this participant from the room?')) return;
     setActionError(null);
     const supabase = createClient();
-    const { error } = await invokeFn(supabase, 'kick-participant', {
+    const { error } = await invokeFunction(supabase, 'kick-participant', {
       room_id: roomId,
       session_id: sessionId,
     });
@@ -318,7 +359,7 @@ export default function RoomSessionPage() {
     setEnding(true);
     setActionError(null);
     const supabase = createClient();
-    const { error } = await invokeFn(supabase, 'manage-room', { action: 'close', room_id: roomId });
+    const { error } = await invokeFunction(supabase, 'manage-room', { action: 'close', room_id: roomId });
     if (error) {
       setActionError(`Could not end the room: ${error}`);
       setEnding(false);

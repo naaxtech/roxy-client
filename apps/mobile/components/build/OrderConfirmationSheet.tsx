@@ -4,11 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { usePopIn } from '../ui/popIn';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { BRAND_GRADIENT } from '../../lib/theme';
 
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
 
 interface OrderConfirmationSheetProps {
   visible: boolean;
+  /**
+   * null when the payment went through but the order row (written by the Stripe
+   * webhook) has not appeared yet. The copy says so instead of implying failure.
+   */
   orderId: string | null;
   onClose: () => void;
   onViewOrders: () => void;
@@ -40,8 +44,12 @@ export function OrderConfirmationSheet({ visible, orderId, onClose, onViewOrders
           <LinearGradient colors={BRAND_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconPlate}>
             <Ionicons name="checkmark-circle" size={34} color="#fff" />
           </LinearGradient>
-          <Text style={styles.title}>Order Placed!</Text>
-          <Text style={styles.subtitle}>Your order has been confirmed. You'll receive an email confirmation shortly.</Text>
+          <Text style={styles.title}>{orderId ? 'Order Placed!' : 'Payment Received'}</Text>
+          <Text style={styles.subtitle}>
+            {orderId
+              ? "Your order has been confirmed. You'll receive an email confirmation shortly."
+              : "Your payment went through. We're still finalising the order — it'll appear in My Orders in a moment."}
+          </Text>
           {orderId && <Text style={styles.orderId}>Order #{orderId.slice(-8).toUpperCase()}</Text>}
           <TouchableOpacity style={styles.primaryBtn} onPress={onViewOrders}>
             <Text style={styles.primaryBtnText}>View My Orders</Text>

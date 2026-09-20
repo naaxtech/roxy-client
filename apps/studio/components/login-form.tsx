@@ -35,11 +35,17 @@ export function LoginForm({
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      await supabase.auth.signOut({ scope: "local" });
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) throw error;
+      const opened = data.session?.user.email?.trim().toLowerCase();
+      if (opened !== email.trim().toLowerCase()) {
+        await supabase.auth.signOut({ scope: "local" });
+        throw new Error("Sign-in opened a different account. Try again.");
+      }
       router.push("/dashboard");
       return; // keep isLoading true during navigation
     } catch (error: unknown) {

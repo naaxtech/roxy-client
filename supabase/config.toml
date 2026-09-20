@@ -354,41 +354,50 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
-# Disable gateway-level JWT verification for all functions.
-# Supabase's gateway verify_jwt=true is incompatible with ES256 asymmetric
-# signing keys. Functions handle JWT verification themselves via auth.getClaims().
-[functions.dev-control]
+# Gateway JWT verification. `verify_jwt` defaults to true and STAYS true for
+# every function that identifies a caller.
+#
+# It was previously disabled for ~22 functions on the stated grounds that the
+# gateway check "is incompatible with ES256 asymmetric signing keys". That is
+# false: the platform check validates legacy HS256 JWTs *and* JWTs signed with
+# the asymmetric signing keys. Disabling it bought nothing and let a caller
+# reach those handlers with a token they signed themselves.
+# src: https://supabase.com/docs/guides/functions/auth-headers · 2026-08-02
+#
+# Only the functions below are exempt, because none of them can carry a user
+# JWT. Each authenticates by its own means, and none may use verifyJWT for
+# identity. Do not add to this list to silence a 401 -- a 401 here means the
+# caller did not send a session, which is the check working.
+
+# Pre-account: the caller has no session yet, which is the entire point.
+# Rate limited on a salted hash of the caller IP.
+#
+# This is the ONLY pre-account function. There is deliberately no public
+# "request a code" endpoint: codes are minted by community admins in
+# roxy-studio and handed to a person directly. A public request queue would
+# turn "every member was invited" into "every member asked", which is the
+# claim the whole gate exists to make true.
+[functions.validate-invite-code]
 verify_jwt = false
-[functions.gdpr-export]
+
+# Called by the KYC vendor, which cannot hold a Supabase JWT.
+# Authenticates with an HMAC signature over the raw request body.
+[functions.kyc-webhook]
 verify_jwt = false
-[functions.gdpr-delete]
+
+# Called by Daily.co on participant join/leave, so it cannot hold a Supabase
+# JWT either. Authenticates with an HMAC-SHA256 signature over the raw body
+# (x-daily-signature) and returns 401 on any mismatch — see daily-webhook/index.ts.
+#
+# This exemption was missing while the function's own header comment said to
+# deploy it with --no-verify-jwt. The gateway therefore rejected every Daily
+# callback with a 401 before the handler ran, so participant counts were only
+# ever as fresh as the host's own sync-count push.
+[functions.daily-webhook]
 verify_jwt = false
-[functions.submit-report]
-verify_jwt = false
-[functions.roxy-chat]
-verify_jwt = false
-[functions.roxy-greeting]
-verify_jwt = false
-[functions.roxy-icebreaker]
-verify_jwt = false
-[functions.roxy-nudge]
-verify_jwt = false
-[functions.roxy-onboarding]
-verify_jwt = false
-[functions.roxy-sister]
-verify_jwt = false
-[functions.roxy-wingwoman]
-verify_jwt = false
-[functions.speed-date-prompts]
-verify_jwt = false
-[functions.join-speed-date-session]
-verify_jwt = false
-[functions.join-community-room]
-verify_jwt = false
-[functions.livekit-token]
-verify_jwt = false
-[functions.cancel-event]
-verify_jwt = false
+
+# Scheduled / service-to-service. No user is involved; each one compares the
+# Authorization header against SUPABASE_SERVICE_ROLE_KEY before doing any work.
 [functions.process-refunds]
 verify_jwt = false
 [functions.release-payout]

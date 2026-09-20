@@ -82,7 +82,10 @@ describe('useTyping', () => {
       expect.objectContaining({
         type: 'broadcast',
         event: 'typing',
-        payload: { user_id: 'user-1' },
+        // `typing: true` joined the payload when the indicator gained an
+        // explicit stop signal — a receiver reads its absence as "typing", so
+        // an older client still works, but ours says which it means.
+        payload: { user_id: 'user-1', typing: true },
       })
     );
   });

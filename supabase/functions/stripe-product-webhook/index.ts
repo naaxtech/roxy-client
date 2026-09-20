@@ -2,6 +2,7 @@
 import { handleCors } from '../_shared/cors.ts';
 import { getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
+import { markHold, releaseHold } from '../_shared/stockHold.ts';
 import Stripe from 'npm:stripe@14';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
@@ -40,6 +41,11 @@ Deno.serve(async (req) => {
     status: 'processed',
   });
 
+  // Set when the handler completed the money-moving part but left something a
+  // human has to repair. Reported in the body; see the return at the end for why
+  // it is not a status code.
+  let degraded: string | null = null;
+
   try {
     switch (event.type) {
 
@@ -49,6 +55,17 @@ Deno.serve(async (req) => {
 
         // Guard: only handle marketplace payments (have our metadata)
         if (!meta?.buyer_id || !meta?.items_json) break;
+
+        // The stock this intent was holding is now the sale. Flipped before anything
+        // else, and before the already-created short-circuit below, because it is true
+        // the moment payment lands regardless of what happens to the order row.
+        // Non-fatal: Stripe refuses to cancel a succeeded intent, so even a failed flip
+        // leaves the reaper unable to hand these units back.
+        try {
+          await markHold(stripe, pi.id, 'sold');
+        } catch (err) {
+          console.error(`[stripe-product-webhook] could not mark ${pi.id} sold:`, err instanceof Error ? err.message : String(err));
+        }
 
         // Idempotency: order may already exist if webhook retried
         const { data: existingOrder } = await supabase
@@ -85,6 +102,17 @@ Deno.serve(async (req) => {
           unit_price_cents: number; quantity: number;
         }> = JSON.parse(meta.items_json);
 
+        // Migration 032 calls these columns "populated from Stripe webhook, never
+        // client-computed". Read that as a guarantee about this metadata and it is
+        // wrong: the values are not Stripe's, they are whatever create-product-order
+        // wrote into `metadata` when it opened the intent, round-tripped back here.
+        // Stripe stores them verbatim and attests to none of them. They are safe only
+        // because that function derives every one of them server-side — the subtotal
+        // from the cart rows, the fee from marketplace_settings, the shipping from a
+        // constant. `shipping_cost_cents` was the exception until 2026-08-07: it came
+        // off the request body unchecked, so a negative one landed here and generated
+        // a `total_cents` below the subtotal. Anything added to this metadata inherits
+        // that same requirement.
         const subtotalCents = Number(meta.subtotal_cents);
         const shippingCents = Number(meta.shipping_cost_cents);
         const platformFeeCents = Number(meta.platform_fee_cents);
@@ -124,8 +152,23 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Create order items
-        await supabase.from('order_items').insert(
+        // Create order items.
+        //
+        // This result used to be discarded. supabase-js resolves with
+        // `{ data, error }` and never throws, so the try/catch wrapping this
+        // whole switch could not see a failure here -- the same shape as the
+        // report button that said "Report submitted" over a write that never
+        // happened, except on a money path.
+        //
+        // It became reachable with migration 090, which adds a composite FK
+        // making a mismatched (product_id, variant_id) pair unrepresentable. Any
+        // PaymentIntent opened by the OLD checkout carrying such a pair and paid
+        // after 090 lands arrives here with the money already gone: hold marked
+        // sold, charge captured, transfer made, orders row written. Swallowing
+        // the refusal leaves a PAID ORDER WITH NO LINE ITEMS -- nothing for the
+        // seller to ship, and an empty product_description in the dispute
+        // evidence we would later send Stripe.
+        const { error: itemsErr } = await supabase.from('order_items').insert(
           items.map(item => ({
             order_id: order.id,
             product_id: item.product_id,
@@ -136,6 +179,43 @@ Deno.serve(async (req) => {
             quantity: item.quantity,
           }))
         );
+
+        if (itemsErr) {
+          // Do NOT return non-2xx. Stripe would redeliver, and redelivery cannot
+          // help: the orders row is already written and the insert would be
+          // refused identically every time, so the only thing a retry adds is
+          // more noise on a record a human already has to repair. The money has
+          // moved; automatic recovery is not ours to attempt. Refunding or
+          // deleting here would be guessing at intent on somebody's payment.
+          //
+          // The alert carries the order id and nothing about the woman who
+          // placed it -- no name, no address, no raw buyer id (PII rules). The
+          // order id is what makes it actionable and is safe to log.
+          console.error(
+            `[stripe-product-webhook] order_items rejected for order ${order.id}: ` +
+              `${itemsErr.code ?? 'unknown'} ${itemsErr.message}`,
+          );
+
+          await supabase.from('reconciliation_alerts').insert({
+            alert_type: 'order_items_missing',
+            stripe_id: pi.id,
+            order_id: order.id,
+            detail:
+              `Payment captured and order created, but order_items was refused ` +
+              `(${itemsErr.code ?? 'unknown'}: ${itemsErr.message}). The buyer has ` +
+              `paid and the seller has nothing to ship. Repair the line items by ` +
+              `hand, or refund the order.`,
+          });
+
+          // The event is NOT clean, so it must not stay marked processed -- the
+          // dedupe at the top of this handler would otherwise skip it forever.
+          await supabase
+            .from('webhook_events')
+            .update({ status: 'failed' })
+            .eq('stripe_event_id', event.id);
+
+          degraded = `order_items_missing:${order.id}`;
+        }
 
         // Order event
         await supabase.from('order_events').insert({
@@ -156,23 +236,35 @@ Deno.serve(async (req) => {
         const meta = pi.metadata;
         if (!meta?.buyer_id || !meta?.items_json) break;
 
-        // Release stock
-        const items: Array<{ variant_id: string | null; quantity: number }> =
-          JSON.parse(meta.items_json);
-
-        for (const item of items) {
-          if (!item.variant_id) continue;
-          await supabase.rpc('increment_variant_stock', {
-            p_variant_id: item.variant_id,
-            p_qty: item.quantity,
-          });
-        }
-
-        // Log failure details (no order created)
+        // The stock hold deliberately survives a declined card. A failed attempt does
+        // not end the intent — it returns to requires_payment_method and the buyer pays
+        // again with another card on the same intent, which emits no second decrement.
+        // Releasing here (what this handler used to do) therefore oversold: decline → +1
+        // → retry succeeds → the unit ships having never left stock. The hold is given
+        // back on payment_intent.canceled, or by the sweep in create-product-order.
         const failureReason = pi.last_payment_error?.message ?? 'Unknown';
         await supabase
           .from('webhook_events')
           .update({ failure_reason: failureReason, amount_cents: pi.amount, stripe_payment_intent_id: pi.id })
+          .eq('stripe_event_id', event.id);
+
+        break;
+      }
+
+      case 'payment_intent.canceled': {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        if (!pi.metadata?.buyer_id || !pi.metadata?.items_json) break;
+
+        // Read the intent fresh rather than trusting the event payload: the payload is a
+        // snapshot from cancellation time, and create-product-order releases its own
+        // holds inline the moment it cancels one. A stale `stock_held: held` here would
+        // hand the same units back a second time and invent stock the seller never had.
+        const current = await stripe.paymentIntents.retrieve(pi.id);
+        await releaseHold(stripe, supabase, current);
+
+        await supabase
+          .from('webhook_events')
+          .update({ amount_cents: pi.amount, stripe_payment_intent_id: pi.id })
           .eq('stripe_event_id', event.id);
 
         break;
@@ -435,5 +527,10 @@ Deno.serve(async (req) => {
       .eq('stripe_event_id', event.id);
   }
 
-  return successResponse({ received: true });
+  // `degraded` is deliberately part of the body rather than the status code.
+  // Stripe reads the status and nothing else, so a 200 is what stops a useless
+  // redelivery -- but a body that says only `{ received: true }` over a paid
+  // order with no line items is the handler lying about its own outcome, which
+  // is the defect class this function was audited for.
+  return successResponse(degraded ? { received: true, degraded } : { received: true });
 });

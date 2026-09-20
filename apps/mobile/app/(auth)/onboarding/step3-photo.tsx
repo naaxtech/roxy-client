@@ -6,12 +6,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { logError, logBreadcrumb } from '../../../lib/errorLogger';
+import { uploadImageAsset } from '../../../lib/uploads';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { RoxyWordmark } from '../../../components/ui/RoxyWordmark';
 
 export default function Step3Photo() {
   const colors = useThemeColors();
-  const [uri, setUri] = useState<string | null>(null);
+  // The whole asset, not just its uri: the upload needs mimeType to store the
+  // object with a real content type (storage-js otherwise defaults to
+  // text/plain, which makes the avatar unreadable by <Image>).
+  const [asset, setAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const uri = asset?.uri ?? null;
   const [uploading, setUploading] = useState(false);
   const { user } = useAuthStore();
   const router = useRouter();
@@ -23,32 +28,34 @@ export default function Step3Photo() {
       aspect: [1, 1],
       quality: 0.8,
     });
-    if (!result.canceled) setUri(result.assets[0].uri);
+    if (!result.canceled && result.assets[0]) setAsset(result.assets[0]);
   };
 
   const handleNext = async () => {
     if (!user) return;
-    if (uri) {
+    if (asset) {
       logBreadcrumb('onboarding_step3_upload_start');
       setUploading(true);
       try {
-        const path = `${user.id}/avatar.jpg`;
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const { error: uploadError } = await supabase.storage.from('avatars').upload(path, blob, { upsert: true });
-        if (uploadError) {
-          logError(uploadError, 'onboarding_step3_avatar_upload');
-        } else {
-          const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-          const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
-          if (updateError) logError(updateError, 'onboarding_step3_avatar_url_update');
-        }
+        // Fixed object name, upserted: one avatar per user, always overwritten.
+        // The extension is an opaque part of the key — what actually decides
+        // how the object serves is the stored content type, which
+        // uploadImageAsset sets from the asset's real mime type.
+        const publicUrl = await uploadImageAsset({
+          bucket: 'avatars',
+          pathPrefix: user.id,
+          fileName: 'avatar.jpg',
+          asset,
+          upsert: true,
+        });
+        const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+        if (updateError) logError(updateError, 'onboarding_step3_avatar_url_update');
       } catch (e) {
         logError(e, 'onboarding_step3_upload_exception');
       }
       setUploading(false);
     }
-    logBreadcrumb('onboarding_step3_complete', { has_photo: String(!!uri) });
+    logBreadcrumb('onboarding_step3_complete', { has_photo: String(!!asset) });
     router.replace('/(auth)/onboarding/step4-status');
   };
 

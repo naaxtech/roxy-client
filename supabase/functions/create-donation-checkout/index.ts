@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
   if (corsRes) return corsRes;
 
   console.log('[create-donation-checkout] stage: auth');
-  const auth = verifyJWT(req);
+  const auth = await verifyJWT(req);
   if (!auth) {
     console.error('[create-donation-checkout] auth failed — no valid JWT');
     return errorResponse('Unauthorized', 401);

@@ -1,66 +1,107 @@
 import { test, expect } from '@playwright/test';
-import { signInWithSeedUser } from './helpers/auth';
+import { signInWithSeedUser, gotoTab, TAB_SLOTS } from './helpers/auth';
 
 /**
- * Navigation smoke for the 5-tab IA (2026-07-19 full click audit).
- * Locks in the regressions fixed that day:
- *  - community view is a ROOT route: opening it never switches tabs and
- *    back returns to the origin tab (was: hijacked into Play)
- *  - room session is a ROOT route: leaving it never leaves a stale call
- *    screen on the Connect tab stack
- *  - room join on web degrades to the friendly native-only screen
- *    (was: "Connection error" alert from the empty web stub)
+ * Navigation smoke for the Roxy 3.0 IA (four destinations plus a ＋ action).
+ *
+ * What it locks in, and why each one is here rather than assumed:
+ *  - the bar has FOUR routes, not five. `grow`, `connect` and `build` are gone,
+ *    and a `Tabs.Screen` naming a route that no longer exists is not inert —
+ *    Expo Router logs on every render of the navigator.
+ *  - ＋ is an ACTION. It opens a sheet and must never change the URL; it sits at
+ *    the centre index precisely because it is not a destination.
+ *  - community view is a ROOT route: opening it never switches tabs and back
+ *    returns to the tab it was opened from (it used to be hijacked into Play).
+ *  - the notifications bell has exactly one home now. It used to live on Grow;
+ *    Feed is a full-bleed pager with no chrome to spare, so it moved to the
+ *    Discover header. If that button goes, notifications become unreachable.
  */
 test.describe('Navigation smoke', () => {
-  test('all five tabs route to their URLs', async ({ page }) => {
+  test('the four tabs route to their URLs', async ({ page }) => {
     await signInWithSeedUser(page);
 
-    await page.getByRole('link', { name: /Connect/i }).click();
-    await expect(page).toHaveURL(/\/connect$/);
-
-    await page.getByRole('link', { name: /Play/i }).click();
-    await expect(page).toHaveURL(/\/discover$/);
-
-    await page.getByRole('link', { name: /Messages/i }).click();
-    await expect(page).toHaveURL(/\/messages$/);
-
-    await page.getByRole('link', { name: /Build/i }).click();
-    await expect(page).toHaveURL(/\/build$/);
-
-    await page.getByRole('link', { name: /Grow/i }).click();
-    await expect(page).toHaveURL(/\/grow$/);
+    for (const slot of TAB_SLOTS) {
+      await gotoTab(page, slot);
+    }
   });
 
-  test('community view opens at root route and back returns to Connect', async ({ page }) => {
+  test('the bar tells assistive tech which tab is current', async ({ page }) => {
     await signInWithSeedUser(page);
 
-    await page.getByRole('link', { name: /Connect/i }).click();
-    await page.getByTestId('connect-tab-communities').click();
+    // `accessibilityState={{ selected }}` is inert on react-native-web: it
+    // rendered a `role="tab"` with no selected state at all, which is a WCAG
+    // 2.2 SC 4.1.2 failure. `lib/a11yState.ts` emits `aria-selected` beside it.
+    // This assertion is the one that fails if anyone puts the RN-only spelling
+    // back — the unit test cannot see the DOM, and the DOM is where it broke.
+    await gotoTab(page, 'discover');
+    await expect(page.getByTestId('nav-slot-discover')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('nav-slot-feed')).toHaveAttribute('aria-selected', 'false');
 
-    // Open the first community row (each carries a Join/Leave button label).
-    const firstCommunity = page
-      .getByLabel(/^(Join|Leave) /)
-      .first();
-    await expect(firstCommunity).toBeVisible({ timeout: 30_000 });
-    // Click the row's parent card (the row navigates; the button toggles join).
-    await firstCommunity.locator('..').click();
+    await gotoTab(page, 'you');
+    await expect(page.getByTestId('nav-slot-you')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('nav-slot-discover')).toHaveAttribute('aria-selected', 'false');
+  });
 
-    // Root route, not the Play-stack route.
+  test('the retired tabs are gone from the bar', async ({ page }) => {
+    await signInWithSeedUser(page);
+
+    for (const dead of ['grow', 'connect', 'build']) {
+      await expect(page.getByTestId(`nav-slot-${dead}`)).toHaveCount(0);
+    }
+  });
+
+  test('the ＋ slot opens the create sheet and does not navigate', async ({ page }) => {
+    await signInWithSeedUser(page);
+    await gotoTab(page, 'discover');
+
+    const before = page.url();
+    await page.getByTestId('nav-slot-create').click();
+
+    await expect(page.getByTestId('create-sheet')).toBeVisible({ timeout: 15_000 });
+    expect(page.url()).toBe(before);
+  });
+
+  test('community view opens at the root route and back returns to Discover', async ({ page }) => {
+    await signInWithSeedUser(page);
+    await gotoTab(page, 'discover');
+
+    const firstCommunity = page.locator('[data-testid^="community-"]').first();
+    const hasCommunity = await firstCommunity
+      .waitFor({ state: 'visible', timeout: 30_000 })
+      .then(() => true)
+      .catch(() => false);
+    test.skip(!hasCommunity, 'no communities seeded');
+
+    await firstCommunity.click();
+
+    // Root route, not the Discover-stack route it is implemented under.
     await expect(page).toHaveURL(/\/community\/[0-9a-f-]+$/, { timeout: 15_000 });
 
-    // Back returns to Connect — not Play.
     await page.goBack();
-    await expect(page).toHaveURL(/\/connect$/);
+    await expect(page).toHaveURL(/\/discover$/);
   });
 
-  test('web room join shows the native-only screen, and Connect tab is not polluted', async ({ page }) => {
+  test('the notifications bell reaches the notifications screen', async ({ page }) => {
     await signInWithSeedUser(page);
+    await gotoTab(page, 'discover');
 
-    // Join a live room from Connect › Rooms (if any is live).
-    await page.getByRole('link', { name: /Connect/i }).click();
-    await page.getByTestId('connect-tab-rooms').click();
+    await page.getByTestId('discover-notifications').click();
+    await expect(page).toHaveURL(/\/notifications$/, { timeout: 15_000 });
 
-    const room = page.getByLabel(/^Join room /).first();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/discover$/);
+  });
+
+  test('a live room degrades to the native-only screen without polluting the tab', async ({ page }) => {
+    await signInWithSeedUser(page);
+    await gotoTab(page, 'feed');
+
+    // Live rooms live in the collapsed "Now" rail over the feed. It is closed by
+    // default on purpose — a feed is a place you fall into, not a strip of
+    // things demanding attention — so the toggle is part of the path.
+    await page.getByTestId('feed-now-toggle').click();
+
+    const room = page.locator('[data-testid^="now-rail-room-"]').first();
     const hasRoom = await room
       .waitFor({ state: 'visible', timeout: 15_000 })
       .then(() => true)
@@ -75,8 +116,8 @@ test.describe('Navigation smoke', () => {
       .toBeVisible({ timeout: 15_000 });
     await page.getByLabel('Go back').click();
 
-    // The Connect tab must land on Connect home, not a stale call screen.
-    await page.getByRole('link', { name: /Connect/i }).click();
-    await expect(page).toHaveURL(/\/connect$/);
+    // Feed must land on the feed, not on a stale call screen.
+    await gotoTab(page, 'feed');
+    await expect(page.getByTestId('feed-screen')).toBeVisible();
   });
 });

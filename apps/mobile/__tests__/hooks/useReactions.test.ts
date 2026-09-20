@@ -53,16 +53,23 @@ describe('useReactions', () => {
     channelInstance.on.mockReturnValue(channelInstance);
     channel.mockReturnValue(channelInstance);
 
-    supabase.from.mockReturnValue({
+    supabase.from.mockImplementation(() => ({
       select: jest.fn().mockReturnValue({
         in: jest.fn().mockResolvedValue({ data: [], error: null }),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
       }),
-      insert: jest.fn().mockReturnValue({
+      // Echo back the inserted row, like a real `.insert(x).select().single()`
+      // does on success — a mock that resolved { data: null, error: null }
+      // isn't a realistic "success" response and used to mask the missing
+      // error handling this test file exists to cover.
+      insert: jest.fn().mockImplementation((row: Record<string, unknown>) => ({
         select: jest.fn().mockReturnValue({
-          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+          single: jest.fn().mockResolvedValue({
+            data: { id: 'mock-reaction-id', created_at: '2026-01-01T00:00:00Z', ...row },
+            error: null,
+          }),
         }),
-      }),
+      })),
       delete: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
@@ -70,7 +77,7 @@ describe('useReactions', () => {
           }),
         }),
       }),
-    });
+    }));
   });
 
   it('returns empty reactionsMap on mount with no message IDs', () => {
@@ -160,5 +167,67 @@ describe('useReactions', () => {
     // from() should be called to load reactions
     await act(async () => {});
     expect(supabase.from).toHaveBeenCalledWith('message_reactions');
+  });
+
+  it('fetches reactions once messageIds transitions from empty to non-empty (regression: used to only fire on conversationId change)', async () => {
+    const { rerender } = renderHook(
+      ({ messageIds }) => useReactions({ conversationId: 'conv-1', messageIds }),
+      { initialProps: { messageIds: [] as string[] } },
+    );
+    await act(async () => {});
+    supabase.from.mockClear();
+
+    rerender({ messageIds: ['msg-1', 'msg-2'] });
+    await act(async () => {});
+
+    expect(supabase.from).toHaveBeenCalledWith('message_reactions');
+  });
+
+  it('rolls back the optimistic add if the insert fails', async () => {
+    supabase.from.mockImplementation(() => ({
+      select: jest.fn().mockReturnValue({ in: jest.fn().mockResolvedValue({ data: [], error: null }) }),
+      insert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({ data: null, error: { message: 'insert failed' } }),
+        }),
+      }),
+    }));
+
+    const { result } = renderHook(() =>
+      useReactions({ conversationId: 'conv-1', messageIds: [] })
+    );
+
+    await act(async () => {
+      await result.current.addReaction('msg-1', '❤️', 'user-1');
+    });
+
+    expect(result.current.reactionsMap['msg-1'] ?? []).toHaveLength(0);
+  });
+
+  it('rolls back the optimistic remove if the delete fails', async () => {
+    const { result } = renderHook(() =>
+      useReactions({ conversationId: 'conv-1', messageIds: [] })
+    );
+
+    await act(async () => {
+      await result.current.addReaction('msg-1', '❤️', 'user-1');
+    });
+    expect(result.current.reactionsMap['msg-1']).toHaveLength(1);
+
+    supabase.from.mockImplementation(() => ({
+      delete: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockResolvedValue({ error: { message: 'delete failed' } }),
+          }),
+        }),
+      }),
+    }));
+
+    await act(async () => {
+      await result.current.removeReaction('msg-1', '❤️', 'user-1');
+    });
+
+    expect(result.current.reactionsMap['msg-1']).toHaveLength(1);
   });
 });

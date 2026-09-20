@@ -1,6 +1,8 @@
 import { ReactNode } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { TYPE, FONTS } from '../../lib/typography';
+import { AccountStatusTag } from '../account/AccountStatusTag';
 
 type Props = {
   title: string;
@@ -16,20 +18,28 @@ export function ScreenHeader({ title, eyebrow, actions }: Props) {
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 18,
-      paddingTop: 6,
-      paddingBottom: 12,
+      paddingHorizontal: 14,
+      paddingTop: 12,
+      paddingBottom: 10,
       gap: 8,
+      backgroundColor: colors.backgroundAlt,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.line,
     },
     left: { flex: 1 },
     eyebrow: {
+      ...TYPE.micro,
       color: colors.textMuted,
-      fontSize: 11,
-      fontWeight: '700',
-      letterSpacing: 1,
+      fontWeight: '800',
+      letterSpacing: 1.4,
       textTransform: 'uppercase',
     },
-    title: { color: colors.textPrimary, fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
+    title: {
+      ...TYPE.headline,
+      color: colors.textPrimary,
+      fontFamily: FONTS.display.extrabold,
+      letterSpacing: -0.2,
+    },
     actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   });
   return (
@@ -38,7 +48,10 @@ export function ScreenHeader({ title, eyebrow, actions }: Props) {
         {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
         <Text style={styles.title}>{title}</Text>
       </View>
-      {actions ? <View style={styles.actions}>{actions}</View> : null}
+      <View style={styles.actions}>
+        <AccountStatusTag />
+        {actions}
+      </View>
     </View>
   );
 }

@@ -7,9 +7,7 @@ import { usePopIn } from '../ui/popIn';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useAppWidth, FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
-
-const GIPHY_KEY = process.env.EXPO_PUBLIC_GIPHY_API_KEY ?? '';
-const GIPHY_BASE = 'https://api.giphy.com/v1/gifs';
+import { isGiphyConfigured, giphyEndpoint } from '../../lib/giphy';
 
 interface GiphyResult {
   id: string;
@@ -33,32 +31,40 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GiphyResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+  // No key was bundled, so every request would 403. Say so instead of showing an
+  // empty grid that looks like "no GIFs matched".
+  const configured = isGiphyConfigured();
 
   const search = useCallback(async (q: string) => {
     setLoading(true);
+    setFailed(false);
     try {
-      const endpoint = q.trim()
-        ? `${GIPHY_BASE}/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(q)}&limit=20&rating=g`
-        : `${GIPHY_BASE}/trending?api_key=${GIPHY_KEY}&limit=20&rating=g`;
-      const res = await fetch(endpoint);
-      const json = await res.json() as { data: GiphyResult[] };
-      setResults(json.data ?? []);
+      const res = await fetch(giphyEndpoint(q));
+      const json = await res.json() as { data?: GiphyResult[] };
+      if (!Array.isArray(json.data)) {
+        setResults([]);
+        setFailed(true);
+        return;
+      }
+      setResults(json.data);
     } catch {
       setResults([]);
+      setFailed(true);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (visible) void search('');
-  }, [visible, search]);
+    if (visible && configured) void search('');
+  }, [visible, configured, search]);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || !configured) return;
     const t = setTimeout(() => void search(query), 400);
     return () => clearTimeout(t);
-  }, [query, visible, search]);
+  }, [query, visible, configured, search]);
 
   const handleSelect = (url: string) => {
     onGifSelected(url);
@@ -97,6 +103,9 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
     row: { gap: 8, marginBottom: 8 },
     gif: { borderRadius: 8 },
     empty: { color: colors.textMuted, textAlign: 'center', marginTop: 32 },
+    unavailable: { alignItems: 'center', paddingHorizontal: 32, paddingVertical: 40, gap: 8 },
+    unavailableTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 15, textAlign: 'center' },
+    unavailableBody: { color: colors.textMuted, fontSize: 13, lineHeight: 19, textAlign: 'center' },
     poweredBy: {
       color: colors.textMuted,
       fontSize: 10,
@@ -116,46 +125,59 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
           </TouchableOpacity>
         </View>
 
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search GIFs..."
-          placeholderTextColor={colors.textMuted}
-          value={query}
-          onChangeText={setQuery}
-          autoCorrect={false}
-        />
-
-        {loading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
+        {!configured ? (
+          <View style={styles.unavailable}>
+            <Ionicons name="image-outline" size={32} color={colors.textMuted} />
+            <Text style={styles.unavailableTitle}>GIFs aren&apos;t set up yet</Text>
+            <Text style={styles.unavailableBody}>
+              Roxy needs a GIPHY key before GIF search works. Everything else in chat is fine —
+              photos and emoji still send.
+            </Text>
+          </View>
         ) : (
-          <FlatList
-            data={results}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            columnWrapperStyle={styles.row}
-            contentContainerStyle={styles.grid}
-            renderItem={({ item }) => {
-              const w = parseFloat(item.images.fixed_width.width);
-              const h = parseFloat(item.images.fixed_width.height);
-              const displayH = w > 0 ? (COL_WIDTH / w) * h : 150;
-              return (
-                <TouchableOpacity onPress={() => handleSelect(item.images.fixed_width.url)}>
-                  <Image
-                    source={{ uri: item.images.fixed_width.url }}
-                    style={[styles.gif, { width: COL_WIDTH, height: Math.min(displayH, 200) }]}
-                    resizeMode="cover"
-                  />
-                </TouchableOpacity>
-              );
-            }}
-            ListEmptyComponent={
-              <Text style={styles.empty}>
-                {GIPHY_KEY ? 'No GIFs found' : 'GIF search is warming up — check back soon 🌸'}
-              </Text>
-            }
-          />
+          <>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search GIFs..."
+              placeholderTextColor={colors.textMuted}
+              value={query}
+              onChangeText={setQuery}
+              autoCorrect={false}
+            />
+
+            {loading ? (
+              <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
+            ) : (
+              <FlatList
+                data={results}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                columnWrapperStyle={styles.row}
+                contentContainerStyle={styles.grid}
+                renderItem={({ item }) => {
+                  const w = parseFloat(item.images.fixed_width.width);
+                  const h = parseFloat(item.images.fixed_width.height);
+                  const displayH = w > 0 ? (COL_WIDTH / w) * h : 150;
+                  return (
+                    <TouchableOpacity onPress={() => handleSelect(item.images.fixed_width.url)}>
+                      <Image
+                        source={{ uri: item.images.fixed_width.url }}
+                        style={[styles.gif, { width: COL_WIDTH, height: Math.min(displayH, 200) }]}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  );
+                }}
+                ListEmptyComponent={
+                  <Text style={styles.empty}>
+                    {failed ? "GIF search isn't responding right now — try again in a moment" : 'No GIFs found'}
+                  </Text>
+                }
+              />
+            )}
+            <Text style={styles.poweredBy}>Powered by GIPHY</Text>
+          </>
         )}
-        <Text style={styles.poweredBy}>Powered by GIPHY</Text>
       </Animated.View>
     </Modal>
   );

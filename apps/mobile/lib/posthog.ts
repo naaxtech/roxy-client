@@ -1,4 +1,7 @@
 import PostHog from 'posthog-react-native';
+import { ERROR_TRACKING_AUTOCAPTURE } from './posthogErrorTracking';
+
+export { ERROR_TRACKING_AUTOCAPTURE } from './posthogErrorTracking';
 
 const API_KEY = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? '';
 const HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://eu.i.posthog.com';
@@ -22,10 +25,7 @@ export const posthog: PostHog | null = API_KEY
       // Error tracking — automatically captures uncaught JS exceptions and
       // unhandled promise rejections. Caught errors go through logError() below.
       errorTracking: {
-        autocapture: {
-          uncaughtExceptions: true,
-          unhandledRejections: true,
-        },
+        autocapture: ERROR_TRACKING_AUTOCAPTURE,
       },
 
       // Lifecycle events (app open, background, etc.) captured automatically.

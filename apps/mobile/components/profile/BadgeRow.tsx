@@ -54,6 +54,10 @@ export function BadgeRow({ badges, expanded = false }: BadgeRowProps) {
     },
     tooltipName: { color: colors.textPrimary, fontWeight: '700', fontSize: 12 },
     tooltipDesc: { color: colors.textMuted, fontSize: 11, marginTop: 2, textAlign: 'center' },
+    emptyWrap: { alignItems: 'center', gap: 8, paddingVertical: 24, paddingHorizontal: 8 },
+    emptyIcon: { fontSize: 40 },
+    emptyTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700', textAlign: 'center' },
+    emptyBody: { color: colors.textMuted, fontSize: 13, lineHeight: 19, textAlign: 'center' },
   });
 
   const earned = badges.filter((b) => b.earned_at !== null);
@@ -61,7 +65,22 @@ export function BadgeRow({ badges, expanded = false }: BadgeRowProps) {
   const overflow = earned.length - MAX_VISIBLE;
   const tooltipBadge = badges.find((b) => b.badge_id === tooltipId) ?? null;
 
-  if (badges.length === 0) return null;
+  // The Badges tab is a whole surface — a member with no progress rows yet must
+  // get an answer, not a blank panel. The compact row lives inside a profile
+  // header and stays silent instead (below).
+  if (badges.length === 0) {
+    if (!expanded) return null;
+    return (
+      <View style={styles.emptyWrap} testID="badge-row-empty">
+        <Text style={styles.emptyIcon}>🏅</Text>
+        <Text style={styles.emptyTitle}>Your first badge is waiting</Text>
+        <Text style={styles.emptyBody} testID="badge-row-empty-body">
+          Roxy is keeping score. Join a community, send a first message, make a friend or try a
+          speed date — your badge lands here the moment you do.
+        </Text>
+      </View>
+    );
+  }
 
   // Expanded mode: full grid with earned/locked states for Badges tab
   if (expanded) {

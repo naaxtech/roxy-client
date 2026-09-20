@@ -14,7 +14,9 @@ jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 const { supabase } = jest.requireMock('../../lib/supabase');
 
 import { useFeedStore } from '../../store/feedStore';
+import { useAuthStore } from '../../store/authStore';
 import type { Post } from '../../types';
+import type { User } from '@supabase/supabase-js';
 
 const makePost = (id: string, overrides: Partial<Post> = {}): Post => ({
   id,
@@ -31,6 +33,8 @@ const makePost = (id: string, overrides: Partial<Post> = {}): Post => ({
   save_count: 0,
   feed_score: 0,
   blurhash: null,
+  posted_as_community: false,
+  post_tags: [],
   deleted_at: null,
   video_url: null,
   video_thumbnail_url: null,
@@ -71,8 +75,10 @@ beforeEach(() => {
     likedPostIds: new Set(),
     savedPostIds: new Set(),
     seenPostIds: new Set(),
+    likeCountDeltas: {},
     videoQueue: [],
   });
+  useAuthStore.setState({ user: null, session: null, loading: false });
 });
 
 describe('feedStore.fetchFeed', () => {
@@ -195,6 +201,86 @@ describe('feedStore.toggleSave', () => {
 
     expect(result.current.savedPostIds.has('p1')).toBe(false);
     expect(result.current.posts[0].save_count).toBe(2);
+  });
+});
+
+describe('feedStore like deltas', () => {
+  // Reels and the Connect feed each fetch and hold their own rows, so mutating
+  // feedStore.posts never reaches them. The delta is the shared signal.
+  it('publishes a like delta for a post the store does not hold', async () => {
+    const upsertChain = makeQueryChain(null);
+    supabase.from.mockReturnValue({ upsert: jest.fn(() => upsertChain) });
+
+    useFeedStore.setState({ posts: [], likedPostIds: new Set(), likeCountDeltas: {} } as any);
+
+    const { result } = renderHook(() => useFeedStore());
+    await act(async () => { await result.current.toggleLike('reel-1'); });
+
+    expect(result.current.likeCountDeltas['reel-1']).toBe(1);
+  });
+
+  it('returns the delta to zero when the same post is unliked again', async () => {
+    const upsertChain = makeQueryChain(null);
+    supabase.from.mockReturnValue({
+      upsert: jest.fn(() => upsertChain),
+      delete: jest.fn(() => upsertChain),
+    });
+
+    useFeedStore.setState({ posts: [], likedPostIds: new Set(), likeCountDeltas: {} } as any);
+
+    const { result } = renderHook(() => useFeedStore());
+    await act(async () => { await result.current.toggleLike('reel-1'); });
+    await act(async () => { await result.current.toggleLike('reel-1'); });
+
+    expect(result.current.likeCountDeltas['reel-1']).toBe(0);
+  });
+
+  it('rolls the delta back when the write fails', async () => {
+    const failChain = makeQueryChain(null, { message: 'db error' });
+    supabase.from.mockReturnValue({
+      upsert: jest.fn(() => failChain),
+      delete: jest.fn(() => failChain),
+    });
+
+    useFeedStore.setState({ posts: [], likedPostIds: new Set(), likeCountDeltas: {} } as any);
+
+    const { result } = renderHook(() => useFeedStore());
+    await act(async () => { await result.current.toggleLike('reel-1'); });
+
+    expect(result.current.likeCountDeltas['reel-1']).toBe(0);
+    expect(result.current.likedPostIds.has('reel-1')).toBe(false);
+  });
+});
+
+describe('feedStore.markSeen', () => {
+  it('uses the id already in authStore rather than a GoTrue round trip', () => {
+    const upsert = jest.fn(() => makeQueryChain(null));
+    supabase.from.mockReturnValue({ upsert });
+    useAuthStore.setState({ user: { id: 'user1' } as User });
+
+    const { result } = renderHook(() => useFeedStore());
+    act(() => { result.current.markSeen('p1'); });
+
+    expect(supabase.auth.getUser).not.toHaveBeenCalled();
+    expect(upsert).toHaveBeenCalledWith(
+      { post_id: 'p1', user_id: 'user1' },
+      { onConflict: 'user_id,post_id' },
+    );
+    expect(result.current.seenPostIds.has('p1')).toBe(true);
+  });
+
+  it('still records the post locally when signed out, without writing', async () => {
+    const upsert = jest.fn(() => makeQueryChain(null));
+    supabase.from.mockReturnValue({ upsert });
+    useAuthStore.setState({ user: null });
+
+    const { result } = renderHook(() => useFeedStore());
+    act(() => { result.current.markSeen('p1'); });
+    // Flush any async auth path so a deferred write cannot slip past the assert.
+    await act(async () => {});
+
+    expect(upsert).not.toHaveBeenCalled();
+    expect(result.current.seenPostIds.has('p1')).toBe(true);
   });
 });
 

@@ -6,6 +6,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { PostActionRow } from './PostActionRow';
 import { PostMediaCarousel } from './PostMediaCarousel';
 import { avatarGradient } from '../../lib/avatars';
+import { TextCardFace } from './TextCardFace';
 import type { Post } from '../../types';
 
 interface StaticPostCardProps {
@@ -55,6 +56,9 @@ export function StaticPostCard({
     nameBlock: { flex: 1 },
     authorName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
     timestamp: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
+    textCardBleed: {
+      marginHorizontal: 14, marginVertical: 4, borderRadius: 12, overflow: 'hidden',
+    },
     textCard: {
       minHeight: 160, marginHorizontal: 14, marginVertical: 4,
       backgroundColor: colors.surfaceLight, borderRadius: 12,
@@ -124,14 +128,18 @@ export function StaticPostCard({
         />
       )}
 
-      {isTextOnly && (
+      {isTextOnly && post.post_type === 'standard' ? (
+        <TouchableOpacity onPress={onPress} activeOpacity={0.95} style={styles.textCardBleed}>
+          <TextCardFace content={post.content} size="preview" testIDPrefix="static-text-card" />
+        </TouchableOpacity>
+      ) : isTextOnly ? (
         <TouchableOpacity onPress={onPress} activeOpacity={0.95}>
           <View style={styles.textCard}>
             {typeBadge ? <Text style={styles.typeBadge}>{typeBadge}</Text> : null}
             <Text style={styles.textCardContent}>{post.content}</Text>
           </View>
         </TouchableOpacity>
-      )}
+      ) : null}
 
       {!isTextOnly && post.content ? (
         <TouchableOpacity onPress={onPress} activeOpacity={0.95} style={styles.captionArea}>

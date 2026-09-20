@@ -19,8 +19,8 @@ export function TypingIndicator({ partnerName, visible }: TypingIndicatorProps) 
       Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
-          Animated.timing(dot, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
+          Animated.spring(dot, { toValue: 1, tension: 380, friction: 8, useNativeDriver: true }),
+          Animated.spring(dot, { toValue: 0, tension: 380, friction: 10, useNativeDriver: true }),
           Animated.delay(600 - delay),
         ])
       );
@@ -34,8 +34,10 @@ export function TypingIndicator({ partnerName, visible }: TypingIndicatorProps) 
   if (!visible) return null;
 
   const dotStyle = (anim: Animated.Value) => ({
-    opacity: anim,
-    transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
+    transform: [
+      { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.45] }) },
+      { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) },
+    ],
   });
 
   const styles = StyleSheet.create({

@@ -19,13 +19,8 @@ import { CheckoutSheet } from '../../components/build/CheckoutSheet';
 import { OrderConfirmationSheet } from '../../components/build/OrderConfirmationSheet';
 import type { Business } from '../../types';
 import type { ProductWithVariants, ProductVariant } from '../../types/marketplace';
+import { BRAND_GRADIENT } from '../../lib/theme';
 
-const BRAND_GRADIENT = ['#FF6A2E', '#FF2F71', '#E81C8E'] as const;
-
-// Products (like businesses — see app/business/[id].tsx) have no currency
-// column yet. Every price on this route defaults to USD until the schema
-// grows a real per-product (or per-order) currency source.
-const DEFAULT_CURRENCY = 'usd';
 
 export default function ProductDetailScreen() {
   const colors = useThemeColors();
@@ -33,7 +28,7 @@ export default function ProductDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { businesses } = useBuildStore();
-  const { productsByBusiness, addToCart } = useMarketplaceStore();
+  const { productsByBusiness, addToCart, businessCurrency, fetchBusinessCurrency } = useMarketplaceStore();
 
   const productId = id ?? '';
 
@@ -46,11 +41,13 @@ export default function ProductDetailScreen() {
   const [qty, setQty] = useState(1);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
+  // Set once payment succeeds. orderId inside is null while the Stripe webhook is
+  // still writing the row, so visibility can't hang off the id itself.
+  const [checkoutResult, setCheckoutResult] = useState<{ orderId: string | null } | null>(null);
 
   // Cold deep links (shared URL, new tab) have no history — back must still
   // land somewhere sensible instead of doing nothing on web.
-  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)/build'));
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)/discover'));
 
   // Reused verbatim from ProductDetailSheet: variant/qty/price/stock computations.
   const photos = [...(product?.product_photos ?? [])].sort((a, b) => a.position - b.position);
@@ -138,6 +135,15 @@ export default function ProductDetailScreen() {
     return () => { cancelled = true; };
   }, [product?.business_id, businesses]);
 
+  // Warm the seller's currency. This route never calls fetchProducts (it loads
+  // one product directly), so on a cold deep link nothing else populates the
+  // cache and every price would silently fall back to the placeholder — which
+  // is the bug this route already had, just relocated. Cheap and idempotent.
+  useEffect(() => {
+    if (!product?.business_id) return;
+    void fetchBusinessCurrency(product.business_id);
+  }, [product?.business_id, fetchBusinessCurrency]);
+
   const handleShare = () => {
     if (!product) return;
     Share.share({ message: `Check out ${product.name} on Roxy!` }).catch(() => {});
@@ -170,13 +176,13 @@ export default function ProductDetailScreen() {
     setShowCheckout(true);
   };
 
-  const handleCheckoutSuccess = (orderId: string) => {
+  const handleCheckoutSuccess = (orderId: string | null) => {
     setShowCheckout(false);
-    setConfirmedOrderId(orderId);
+    setCheckoutResult({ orderId });
   };
 
   const handleViewOrders = () => {
-    setConfirmedOrderId(null);
+    setCheckoutResult(null);
     router.push({ pathname: '/(tabs)/profile', params: { orders: '1' } } as any);
   };
 
@@ -377,7 +383,7 @@ export default function ProductDetailScreen() {
         <View style={styles.body}>
           <Text style={styles.category}>{product.category}</Text>
           <Text style={styles.name}>{product.name}</Text>
-          <Text style={styles.price}>{formatMoney(displayPrice, DEFAULT_CURRENCY)}</Text>
+          <Text style={styles.price}>{formatMoney(displayPrice, businessCurrency(product.business_id))}</Text>
 
           {isOutOfStock && (
             <View style={styles.stockPill}>
@@ -414,7 +420,7 @@ export default function ProductDetailScreen() {
                       accessibilityLabel={`Select variant ${label}`}
                     >
                       <Text style={styles.variantLabel}>{label}</Text>
-                      <Text style={styles.variantPrice}>{formatMoney(v.price_cents, DEFAULT_CURRENCY)}</Text>
+                      <Text style={styles.variantPrice}>{formatMoney(v.price_cents, businessCurrency(product.business_id))}</Text>
                     </TouchableOpacity>
                   );
                 })
@@ -516,9 +522,9 @@ export default function ProductDetailScreen() {
       />
 
       <OrderConfirmationSheet
-        visible={confirmedOrderId !== null}
-        orderId={confirmedOrderId}
-        onClose={() => setConfirmedOrderId(null)}
+        visible={checkoutResult !== null}
+        orderId={checkoutResult?.orderId ?? null}
+        onClose={() => setCheckoutResult(null)}
         onViewOrders={handleViewOrders}
       />
     </SafeAreaView>
