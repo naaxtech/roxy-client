@@ -19,7 +19,7 @@ import { ChannelMessageActions, type ChannelAction } from '../../../../../compon
 import {
   fetchChannels, fetchChannelMessages, sendChannelMessage, deleteChannelMessage,
   initialChannel, fetchMyChannelRole, writeFailureMessage, authorName, fetchLiveStage,
-  markChannelRead,
+  markChannelRead, setChannelNotifications, fetchChannelNotifications,
   type LiveStage,
   type Channel, type ChannelMessage as Message,
 } from '../../../../../lib/channels';
@@ -58,6 +58,7 @@ export default function CommunityChannelsScreen() {
   const [isModerator, setIsModerator] = useState(false);
   const [menuFor, setMenuFor] = useState<Message | null>(null);
   const [stage, setStage] = useState<LiveStage | null>(null);
+  const [notifyEnabled, setNotifyEnabled] = useState(false);
 
   const listRef = useRef<FlatList<Message>>(null);
   // Which channel the screen is actually showing. A fetch that resolves after
@@ -103,6 +104,23 @@ export default function CommunityChannelsScreen() {
   }, [communityId, user?.id]);
 
   useEffect(() => { void loadChannels(); }, [loadChannels]);
+
+  // Opt-in channel notifications, off by default (migration 128).
+  useEffect(() => {
+    if (!communityId || !user?.id) return;
+    let cancelled = false;
+    void fetchChannelNotifications(communityId, user.id).then((on) => {
+      if (!cancelled) setNotifyEnabled(on);
+    });
+    return () => { cancelled = true; };
+  }, [communityId, user?.id]);
+
+  const toggleNotifications = async () => {
+    if (!communityId) return;
+    const next = !notifyEnabled;
+    setNotifyEnabled(next);
+    await setChannelNotifications(communityId, next);
+  };
 
   const loadMessages = useCallback(async (channelId: string) => {
     setLoadingMessages(true);
@@ -247,6 +265,12 @@ export default function CommunityChannelsScreen() {
       borderBottomColor: colors.line,
     },
     back: {
+      width: MIN_TOUCH_TARGET,
+      height: MIN_TOUCH_TARGET,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    notifyBtn: {
       width: MIN_TOUCH_TARGET,
       height: MIN_TOUCH_TARGET,
       alignItems: 'center',
@@ -401,6 +425,20 @@ export default function CommunityChannelsScreen() {
             <Text style={s.subtitle} numberOfLines={1}>{active.topic}</Text>
           ) : null}
         </View>
+        <Pressable
+          onPress={() => { void toggleNotifications(); }}
+          style={s.notifyBtn}
+          accessibilityRole="button"
+          accessibilityLabel={notifyEnabled ? 'Mute channel notifications' : 'Notify me about new channel messages'}
+          accessibilityState={{ selected: notifyEnabled }}
+          testID="channels-notify"
+        >
+          <Ionicons
+            name={notifyEnabled ? 'notifications' : 'notifications-off-outline'}
+            size={20}
+            color={notifyEnabled ? colors.roxy : colors.textSecondary}
+          />
+        </Pressable>
       </View>
 
       {channels.length > 0 ? (

@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { supabase } from './supabase';
 import { logError } from './errorLogger';
@@ -14,6 +15,17 @@ if (Platform.OS !== 'web') {
       shouldPlaySound: true,
       shouldSetBadge: true,
     }),
+  });
+
+  // A tapped notification routes to the screen it points at. `send-message-push`
+  // sets `data.url` to a `roxy://…` deep link; expo-router owns the scheme and
+  // opens the conversation. A cold-start tap is handled by expo-router from the
+  // launch URL instead of this listener.
+  Notifications.addNotificationResponseReceivedListener((response) => {
+    const url = response.notification.request.content.data?.url;
+    if (typeof url === 'string' && url.length > 0) {
+      void Linking.openURL(url);
+    }
   });
 }
 

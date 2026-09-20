@@ -94,9 +94,13 @@ export function RoxyLinkCard({
         <Text style={styles.linkIcon}>{config.icon}</Text>
         <View style={styles.linkInfo}>
           <Text style={styles.linkName}>{entityName}</Text>
-          <Text style={styles.linkMeta}>
-            {participantCount} {config.countLabel}
-          </Text>
+          {/* A product has no "playing"/"going"/"saved" tally — the name and the
+              View Item CTA are the whole story. */}
+          {type !== 'product' && (
+            <Text style={styles.linkMeta}>
+              {participantCount} {config.countLabel}
+            </Text>
+          )}
         </View>
         <TouchableOpacity
           testID="roxy-link-cta"

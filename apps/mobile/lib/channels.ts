@@ -257,3 +257,30 @@ export async function markChannelRead(channelId: string): Promise<void> {
   const { error } = await supabase.rpc('mark_channel_read', { p_channel_id: channelId });
   if (error) logError(error, 'channels.markChannelRead');
 }
+
+/**
+ * Opt in to (or out of) per-message notifications for this community's
+ * channels. Off by default — a busy group is noise unless a member asks for it.
+ */
+export async function setChannelNotifications(communityId: string, enabled: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_channel_notifications', {
+    p_community_id: communityId,
+    p_enabled: enabled,
+  });
+  if (error) logError(error, 'channels.setChannelNotifications');
+}
+
+/** Whether she is opted in to channel notifications for this community. */
+export async function fetchChannelNotifications(
+  communityId: string,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('community_members')
+    .select('notify_messages')
+    .eq('community_id', communityId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error || !data) return false;
+  return (data as { notify_messages: boolean }).notify_messages === true;
+}

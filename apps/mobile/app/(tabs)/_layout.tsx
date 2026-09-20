@@ -64,10 +64,12 @@ export default function TabLayout() {
   // checks this list before issuing a block, and it used to start empty on
   // every launch with nothing ever refilling it.
   const loadBlockedUsers = useSafetyStore((s) => s.loadBlockedUsers);
+  const loadMutedUsers = useSafetyStore((s) => s.loadMutedUsers);
   useEffect(() => {
     if (!user?.id) return;
     void loadBlockedUsers();
-  }, [user?.id, loadBlockedUsers]);
+    void loadMutedUsers();
+  }, [user?.id, loadBlockedUsers, loadMutedUsers]);
 
   // One device push token per signed-in user, so the server can reach her for
   // messages and friend requests with the app closed.

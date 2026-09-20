@@ -36,6 +36,12 @@ interface SafetyState {
    */
   unblockUser: (targetUserId: string) => Promise<boolean>;
 
+  // Muting — silence without severing
+  mutedUserIds: string[];
+  loadMutedUsers: () => Promise<void>;
+  muteUser: (targetUserId: string) => Promise<void>;
+  unmuteUser: (targetUserId: string) => Promise<boolean>;
+
   // Reporting
   isReportModalOpen: boolean;
   reportTarget: {
@@ -68,6 +74,7 @@ export const useSafetyStore = create<SafetyState>((set, get) => ({
   blockedProfiles: [],
   loadingBlocks: false,
   blockLoadError: false,
+  mutedUserIds: [],
   isReportModalOpen: false,
   reportTarget: null,
 
@@ -147,6 +154,34 @@ export const useSafetyStore = create<SafetyState>((set, get) => ({
       blockedUserIds: s.blockedUserIds.filter((id) => id !== targetUserId),
       blockedProfiles: s.blockedProfiles.filter((p) => p.id !== targetUserId),
     }));
+    return true;
+  },
+
+  loadMutedUsers: async () => {
+    const { data, error } = await supabase.rpc('muted_user_ids');
+    if (error) {
+      logError(error, 'safetyStore.loadMutedUsers');
+      return;
+    }
+    set({ mutedUserIds: (data as string[] | null) ?? [] });
+  },
+
+  muteUser: async (targetUserId) => {
+    if (get().mutedUserIds.includes(targetUserId)) return;
+    const { error } = await supabase.rpc('mute_user', { p_target_id: targetUserId });
+    if (error) throw error;
+    set((s) => ({ mutedUserIds: [...s.mutedUserIds, targetUserId] }));
+  },
+
+  unmuteUser: async (targetUserId) => {
+    const { data, error } = await supabase.rpc('unmute_user', { p_target_id: targetUserId });
+    if (error) {
+      logError(error, 'safetyStore.unmuteUser');
+      return false;
+    }
+    const removed = typeof data === 'number' ? data : 0;
+    if (removed === 0) return false;
+    set((s) => ({ mutedUserIds: s.mutedUserIds.filter((id) => id !== targetUserId) }));
     return true;
   },
 

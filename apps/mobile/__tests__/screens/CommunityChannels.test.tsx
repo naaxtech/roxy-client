@@ -83,6 +83,8 @@ jest.mock('../../lib/channels', () => {
     ),
     sendChannelMessage: (...a: unknown[]) => mockSend(...a),
     deleteChannelMessage: (...a: unknown[]) => mockDelete(...a),
+    setChannelNotifications: jest.fn(() => Promise.resolve()),
+    fetchChannelNotifications: jest.fn(() => Promise.resolve(false)),
   };
 });
 

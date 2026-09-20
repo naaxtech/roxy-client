@@ -79,7 +79,7 @@ export default function ChatScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { clearUnread, conversations, setActiveConversation } = useConnectStore();
-  const { blockUser, openReportModal, submitReport } = useSafetyStore();
+  const { blockUser, openReportModal, submitReport, muteUser, unmuteUser, mutedUserIds } = useSafetyStore();
   const colors = useThemeColors();
 
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
@@ -606,6 +606,18 @@ export default function ChatScreen() {
     }
   };
 
+  const handleMuteToggle = async () => {
+    setMenuVisible(false);
+    if (!partnerProfile?.id) return;
+    const isMuted = mutedUserIds.includes(partnerProfile.id);
+    try {
+      if (isMuted) await unmuteUser(partnerProfile.id);
+      else await muteUser(partnerProfile.id);
+    } catch {
+      showAlert('Error', 'Could not update mute. Please try again.');
+    }
+  };
+
   const handleReportPress = () => {
     setMenuVisible(false);
     setReportReason(null);
@@ -1075,6 +1087,22 @@ export default function ChatScreen() {
             >
               <Ionicons name="search-outline" size={18} color={colors.textPrimary} />
               <Text style={styles.actionRowText}>Search messages</Text>
+            </TouchableOpacity>
+            <View style={styles.actionSeparator} />
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => { void handleMuteToggle(); }}
+              accessibilityRole="button"
+              accessibilityLabel={mutedUserIds.includes(partnerProfile?.id ?? '') ? `Unmute ${partnerName}` : `Mute ${partnerName}`}
+            >
+              <Ionicons
+                name={mutedUserIds.includes(partnerProfile?.id ?? '') ? 'notifications-outline' : 'notifications-off-outline'}
+                size={18}
+                color={colors.textPrimary}
+              />
+              <Text style={styles.actionRowText}>
+                {mutedUserIds.includes(partnerProfile?.id ?? '') ? `Unmute ${partnerName}` : `Mute ${partnerName}`}
+              </Text>
             </TouchableOpacity>
             <View style={styles.actionSeparator} />
             <TouchableOpacity style={styles.actionRow} onPress={handleBlockPress}>

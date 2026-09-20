@@ -132,12 +132,13 @@ export async function globalSearch(q: string): Promise<GlobalSearchResult> {
   // Sanitize per term, not per phrase: a comma has to be stripped inside its
   // own clause, or it reads as the separator BETWEEN clauses and corrupts the
   // filter grammar. A term that sanitizes away to nothing is not a term.
-  const patterns = searchTerms(q)
+  const terms = searchTerms(q)
     .map((term) => sanitizeForPattern(term))
-    .filter((term) => term.length > 0)
-    .map((term) => `%${term}%`);
+    .filter((term) => term.length > 0);
 
-  if (patterns.length === 0) return EMPTY_RESULT;
+  if (terms.length === 0) return EMPTY_RESULT;
+
+  const patterns = terms.map((term) => `%${term}%`);
 
   const [communities, people, events, businesses, archive, posts] = await Promise.all([
     safeQuery<SearchCommunity>(
@@ -177,19 +178,21 @@ export async function globalSearch(q: string): Promise<GlobalSearchResult> {
       ).limit(LIMIT)
     ),
     safeQuery<SearchPost>(
-      // Caption search, like TikTok: the words someone actually wrote. Deleted
-      // posts are gone from the feed and must be gone from search too.
-      andIlike(
-        supabase
-          .from('posts')
-          .select(
-            'id, content, post_type, video_thumbnail_url, media_urls, '
-            + 'profiles!posts_author_id_fkey(display_name, username)',
-          )
-          .is('deleted_at', null),
-        'content',
-        patterns,
-      ).limit(LIMIT)
+      // Caption OR an exact hashtag, like TikTok: the words someone wrote, or a
+      // tag on the post (`post_tags`). `cs` is PostgREST's array-contains, so
+      // "sapphic" finds a post tagged "sapphic". Deleted posts stay out.
+      terms
+        .reduce(
+          (query, term) => query.or(`content.ilike.%${term}%,post_tags.cs.{${term}}`),
+          supabase
+            .from('posts')
+            .select(
+              'id, content, post_type, video_thumbnail_url, media_urls, '
+              + 'profiles!posts_author_id_fkey(display_name, username)',
+            )
+            .is('deleted_at', null),
+        )
+        .limit(LIMIT)
     ),
   ]);
 
