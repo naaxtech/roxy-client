@@ -166,6 +166,51 @@ describe('launchGateFeature', () => {
     expect(launchGateFeature('/chat/abc')).toBe('dms');
     expect(launchGateFeature('/archive')).toBeNull();
   });
+
+  /**
+   * `featureForPath` ends in `return 'discover'`, so every path nobody listed
+   * is gated by default. That default is right for a product surface and wrong
+   * for an auth screen: LaunchGate renders ComingSoon in an `absoluteFill` with
+   * `pointerEvents="auto"`, so the screen still paints but every tap lands on
+   * the overlay.
+   *
+   * Caught in a browser, not by a test: the reset form rendered perfectly and
+   * `elementFromPoint` over the Save button returned "Discover is coming soon".
+   * A password reset a woman cannot submit is the same bug as no reset at all.
+   */
+  it('never gates an auth screen — a locked-out member is not a launch decision', () => {
+    expect(launchGateFeature('/reset-password')).toBeNull();
+    expect(launchGateFeature('/welcome')).toBeNull();
+    expect(launchGateFeature('/code')).toBeNull();
+    expect(launchGateFeature('/application')).toBeNull();
+    expect(launchGateFeature('/pending')).toBeNull();
+  });
+
+  it('leaves the reset screen open to a public-tier account', () => {
+    // She cannot have a tier worth checking — she cannot get in to have one.
+    expect(featureForPath('/reset-password')).toBeNull();
+    expect(canOpenPath('/reset-password', 'public')).toBe(true);
+  });
+
+  /**
+   * `normalizePath` stripped `?query` but not `#fragment`, so a path arriving
+   * with a hash never matched the exact-match sets and fell through to the
+   * `return 'discover'` default.
+   *
+   * It bit the recovery screen hardest, because a recovery link is ALWAYS a
+   * fragment: `/reset-password#access_token=…` read as an unknown route, the
+   * gate drew ComingSoon over the form, and the same URL with the hash removed
+   * behaved perfectly — which is exactly why it survived a bare-URL check.
+   */
+  it('ignores a URL fragment when deciding the route, as it already does a query', () => {
+    expect(launchGateFeature('/reset-password#access_token=abc&type=recovery')).toBeNull();
+    expect(launchGateFeature('/welcome#anything')).toBeNull();
+    expect(featureForPath('/archive#top')).toBeNull();
+  });
+
+  it('still gates a real product route that happens to carry a fragment', () => {
+    expect(launchGateFeature('/roxy-chat#x')).toBe('roxyCompanion');
+  });
 });
 
 describe('canOpenPath', () => {

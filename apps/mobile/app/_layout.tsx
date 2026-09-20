@@ -21,7 +21,11 @@ import { useThemeStore } from '../store/themeStore';
 import { THEMES } from '../lib/theme';
 import { useAppFonts } from '../hooks/useAppFonts';
 import { WebAppFrame } from '../components/ui/WebAppFrame';
-import { shouldRedirectToPending, shouldRedirectToApplication } from '../lib/authRouting';
+import {
+  shouldRedirectToPending,
+  shouldRedirectToApplication,
+  isResetPasswordRoute,
+} from '../lib/authRouting';
 import { storedProfileIsForUser } from '../lib/signupSession';
 import { effectiveVettingStatus, resolveAccountKind } from '../lib/features';
 import { useViewAsStore } from '../store/viewAsStore';
@@ -107,6 +111,11 @@ function AppNavigator() {
     // a transient segments state cannot incorrectly set inOnboarding=false.
     const inOnboarding =
       segments.some((s) => s === 'onboarding') || pathname.includes('/onboarding');
+    // Password recovery owns the route until she has typed a new password.
+    // Consuming the emailed token creates a real session, which would otherwise
+    // fall straight into the cascade below and replace the reset form with the
+    // feed — spending a single-use token on a screen she never got to use.
+    const inRecovery = isResetPasswordRoute(segments, pathname);
 
     if (!user && !inAuth) {
       // The code gate, not welcome. Roxy is invite-only: an account cannot be
@@ -116,7 +125,7 @@ function AppNavigator() {
       return;
     }
 
-    if (user && inAuth && !inOnboarding) {
+    if (user && inAuth && !inOnboarding && !inRecovery) {
       // Prevent concurrent fetches for the same user from issuing conflicting
       // router.replace() calls (the other root cause of the flicker).
       if (fetchingForUserRef.current === user.id) return;
@@ -175,7 +184,7 @@ function AppNavigator() {
 
     // Also fire when profile is in store but onboarding was never completed —
     // prevents a partially-onboarded user from accessing the dashboard.
-    if (user && !inAuth && (!liveProfile || !liveProfile.onboarding_completed)) {
+    if (user && !inAuth && !inRecovery && (!liveProfile || !liveProfile.onboarding_completed)) {
       if (fetchingForUserRef.current === user.id) return;
       fetchingForUserRef.current = user.id;
       void Promise.resolve(supabase.from('profiles').select('*').eq('id', user.id).maybeSingle())
@@ -194,6 +203,22 @@ function AppNavigator() {
             pathname,
           )) {
             router.replace('/(auth)/pending');
+            return;
+          }
+          // A held code outranks onboarding here too. This block used to omit
+          // the check, which was survivable only while every code-holder
+          // reached the app through the block above. Password recovery is the
+          // first path that lands a signed-in user straight on a tab route, so
+          // the omission became the vetting bypass authRouting.ts:93 describes:
+          // no profile row + an unredeemed code -> onboarding -> a profile
+          // created at the default status, with no reviewer ever involved.
+          if (shouldRedirectToApplication(
+            !!data,
+            useGateStore.getState().validatedCode !== null,
+            segments,
+            pathname,
+          )) {
+            router.replace('/(auth)/application');
             return;
           }
           if (data?.onboarding_completed) {

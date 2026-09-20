@@ -13,6 +13,11 @@ const mockSignInWithPassword = jest.fn().mockResolvedValue({ data: { session: nu
 const mockResetPasswordForEmail = jest.fn().mockResolvedValue({ error: null });
 const mockSignOut = jest.fn().mockResolvedValue({ error: null });
 const mockSignInWithOAuth = jest.fn().mockResolvedValue({ error: null });
+const mockUpdateUser = jest.fn().mockResolvedValue({ data: { user: null }, error: null });
+
+jest.mock('expo-linking', () => ({
+  createURL: (path: string) => `roxy://${path}`,
+}));
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
@@ -24,6 +29,7 @@ jest.mock('@supabase/supabase-js', () => ({
       resetPasswordForEmail: mockResetPasswordForEmail,
       signOut: mockSignOut,
       signInWithOAuth: mockSignInWithOAuth,
+      updateUser: mockUpdateUser,
     },
     functions: { invoke: jest.fn() },
   })),
@@ -114,12 +120,51 @@ describe('useAuth', () => {
     });
   });
 
-  it('resetPassword calls supabase.auth.resetPasswordForEmail', async () => {
+  /**
+   * The whole bug in one assertion. Called without the second argument, GoTrue
+   * falls back to the project Site URL — `http://localhost:3000` on a default
+   * Supabase project — and every reset email points at the recipient's own
+   * machine. The redirect must be stated, every time.
+   */
+  it('resetPassword sends an explicit redirectTo, never GoTrue\'s Site URL fallback', async () => {
     const { result } = renderHook(() => useAuth());
     await act(async () => {
       await result.current.resetPassword('test@example.com');
     });
-    expect(mockResetPasswordForEmail).toHaveBeenCalledWith('test@example.com');
+    expect(mockResetPasswordForEmail).toHaveBeenCalledWith('test@example.com', {
+      redirectTo: 'roxy:///reset-password',
+    });
+  });
+
+  it('resetPassword never points a member at localhost', async () => {
+    const { result } = renderHook(() => useAuth());
+    await act(async () => {
+      await result.current.resetPassword('test@example.com');
+    });
+    const [, options] = mockResetPasswordForEmail.mock.calls[0];
+    expect(options.redirectTo).not.toContain('localhost');
+  });
+
+  it('updatePassword writes the new password through updateUser', async () => {
+    const { result } = renderHook(() => useAuth());
+    await act(async () => {
+      await result.current.updatePassword('a-brand-new-password');
+    });
+    expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'a-brand-new-password' });
+  });
+
+  it('updatePassword surfaces the failure instead of reporting success', async () => {
+    // A reset screen that says "Password changed" over a write that failed is
+    // the safetyStore.submitReport defect again — she would walk away locked out
+    // believing she had a new password.
+    const authError = { message: 'New password should be different from the old password.' };
+    mockUpdateUser.mockResolvedValueOnce({ data: { user: null }, error: authError });
+    const { result } = renderHook(() => useAuth());
+    let response: { error: typeof authError | null };
+    await act(async () => {
+      response = await result.current.updatePassword('same-as-before');
+    });
+    expect(response!.error).toEqual(authError);
   });
 
   it('signUp returns error on failure', async () => {

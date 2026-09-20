@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { isGhostSignupUser, sessionEmailMatches } from '../lib/signupSession';
+import { resetRedirectUrl } from '../lib/passwordReset';
 import { useAuthStore } from '../store/authStore';
 import { useGateStore } from '../store/gateStore';
 import { useProfileStore } from '../store/profileStore';
@@ -77,8 +78,60 @@ export function useAuth() {
     return { error: null };
   };
 
+  /**
+   * Send the recovery email.
+   *
+   * `redirectTo` is not optional in practice. Without it GoTrue falls back to
+   * the project's Site URL, and a Supabase project ships with that set to
+   * `http://localhost:3000` — so every reset email Roxy sent pointed at the
+   * recipient's own machine. See lib/passwordReset.ts.
+   * src: https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail · supabase-js 2.105.4 · 2026-09-20
+   */
   const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: resetRedirectUrl(),
+    });
+    return { error };
+  };
+
+  /**
+   * Open the session a recovery link carries.
+   *
+   * The local sign-out first is not ceremony — it is the same opening move as
+   * `signUp` and `signInWithPassword`, for the same reason: a leftover session
+   * is how this device ends up rendering one woman's state under another
+   * woman's login. A recovery link is the one auth entry point most likely to
+   * be opened on a device already signed in as somebody else (a shared laptop,
+   * a partner's phone), and `setSession` on its own swaps the credential while
+   * leaving gateStore, viewAsStore and the rest holding the previous identity.
+   */
+  const beginRecoverySession = async (accessToken: string, refreshToken: string) => {
+    // Deliberately NOT the `signOut({ scope: 'local' })` that signUp and
+    // signInWithPassword open with. That call still goes to the network, and on
+    // a device with no session it answers 403 while holding supabase-js's auth
+    // lock — which deadlocks the setSession below and leaves the screen on its
+    // spinner forever (seen in a browser, 2026-09-20). It is also redundant
+    // here: setSession replaces the stored credential by itself. What actually
+    // needed clearing was never the session, it was the in-memory identity.
+    forgetLocalIdentity(false);
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    return { error };
+  };
+
+  /**
+   * Set a new password on the session the recovery link opened.
+   *
+   * The caller must surface `error` rather than assume success: supabase-js
+   * resolves rather than throws, and GoTrue rejects a password identical to the
+   * old one. A screen that celebrates over this without checking is the
+   * `safetyStore.submitReport` defect again — a confirmation over a write that
+   * never happened.
+   */
+  const updatePassword = async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
     return { error };
   };
 
@@ -111,6 +164,8 @@ export function useAuth() {
     signUp,
     signInWithPassword,
     resetPassword,
+    beginRecoverySession,
+    updatePassword,
     signInWithApple,
     signInWithGoogle,
     signOut,
