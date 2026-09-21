@@ -1,0 +1,50 @@
+apps/mobile/lib/feedScope.ts
+  s_6d9a8979b9c2f6::t_e9e1d14284a1b6 1-21
+apps/mobile/components/feed/ReelsFeed.tsx
+  s_6d9a8979b9c2f6::t_400d9d70fdff04 222-228,311
+  s_6d9a8979b9c2f6::t_e73c941b713020 363-371,376-385
+  s_6d9a8979b9c2f6::t_fb7cfa8184f0b1 386-390,610-612
+apps/mobile/lib/textCard.ts
+  s_6d9a8979b9c2f6::t_603c4be9a32272 13-24,26-28
+  s_6d9a8979b9c2f6::t_b62b6ff16aa863 37-42,44-45
+apps/mobile/app/(tabs)/feed/index.tsx
+  s_6d9a8979b9c2f6::t_76fac659bc300d 8,83-89
+apps/mobile/app/(tabs)/you/index.tsx
+  s_6d9a8979b9c2f6::t_69cd9581456a19 41
+  s_6d9a8979b9c2f6::t_b3350045bb170b 59-62,66-74
+apps/mobile/lib/postComposer.ts
+  s_6d9a8979b9c2f6::t_9ef400bb129b4f 49-63
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  s_6d9a8979b9c2f6::t_b3350045bb170b 268,300
+apps/mobile/app/(auth)/welcome.tsx
+  s_6d9a8979b9c2f6::t_3f46f9a6580c62 43,258-268,403-440
+apps/mobile/components/feed/CommentSheet.tsx
+  s_6d9a8979b9c2f6::t_e18ae5e25ac538 25-38,46,133-141,148-158
+apps/mobile/__tests__/lib/feedScope.test.ts
+  s_6d9a8979b9c2f6::t_8d14e7ce828848 1-47
+apps/mobile/components/profile/profileVariant.ts
+  s_6d9a8979b9c2f6::t_69cd9581456a19 32-36,186-195
+  s_6d9a8979b9c2f6::t_f2a87ceb4963f9 196
+apps/mobile/app/(tabs)/discover/video/[postId].tsx
+  s_6d9a8979b9c2f6::t_f6ecd5dab49058 167-172,175-189,253-255
+  s_6d9a8979b9c2f6::t_7e4c417f7ec1fd 110-111
+  s_6d9a8979b9c2f6::t_436d9aa37765a6 16
+apps/mobile/__tests__/lib/postComposer.test.ts
+  s_6d9a8979b9c2f6::t_a6ec6e02b9811c 17-24,26-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "49e188ffad749c1463a8c8009388e7a36600c149",
+  "prompts": {},
+  "sessions": {
+    "s_6d9a8979b9c2f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15fd7607-65fc-4c1d-80e9-ecf94f6d2f55",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
