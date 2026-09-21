@@ -38,6 +38,7 @@ import { AccountStatusTag } from '../../../components/account/AccountStatusTag';
 import { TYPE } from '../../../lib/typography';
 import {
   badgePreviewFromEarned,
+  isProfileTab,
   profileXpBar,
 } from '../../../components/profile/profileVariant';
 
@@ -55,11 +56,22 @@ export default function ProfileScreen() {
   const colors = useThemeColors();
   // A post-checkout "View My Orders" link arrives with ?orders=1 so the orders
   // list starts expanded instead of collapsed behind its accordion.
-  const { orders: ordersParam } = useLocalSearchParams<{ orders?: string }>();
+  const { orders: ordersParam, tab: tabParam } = useLocalSearchParams<{
+    orders?: string;
+    tab?: string;
+  }>();
 
   const [badges, setBadges] = useState<EarnedBadge[]>([]);
   const [savedBusinesses, setSavedBusinesses] = useState<Business[]>([]);
-  const [shellTab, setShellTab] = useState<ProfileTab | null>(null);
+  /**
+   * Seeded from `?tab=` so the composer can land her on the tab holding the
+   * post she just made — see lib/postComposer.afterPublishPath. Without this
+   * the profile always opens on Posts, and a published text card greeted her
+   * with "No photos or videos yet".
+   */
+  const [shellTab, setShellTab] = useState<ProfileTab | null>(
+    isProfileTab(tabParam) ? tabParam : null,
+  );
   const [miniWinsOpen, setMiniWinsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [reelsOpen, setReelsOpen] = useState(false);

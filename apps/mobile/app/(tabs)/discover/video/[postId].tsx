@@ -13,6 +13,7 @@ import { FeedVideoPlayer } from '../../../../components/feed/FeedVideoPlayer';
 import type { Comment, Post } from '../../../../types';
 import { fetchPostById } from '../../../../lib/posts';
 import { routeParam } from '../../../../lib/routeParams';
+import { logError } from '../../../../lib/errorLogger';
 import { loadPostComments, toggleCommentLike } from '../../../../lib/comments';
 import { useAppWidth } from '../../../../hooks/useAppWidth';
 
@@ -106,6 +107,8 @@ export default function VideoPlayerScreen() {
   const activeIndexRef = useRef(0);
   const [commentSheetPostId, setCommentSheetPostId] = useState<string | null>(null);
   const [sheetComments, setSheetComments] = useState<Comment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
   const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -161,11 +164,29 @@ export default function VideoPlayerScreen() {
     []
   );
 
+  /**
+   * Opening comments on video B used to show video A's comments until the
+   * fetch landed — nothing reset the array — and on the first open it showed
+   * the empty state instead. The `error` field was destructured away entirely,
+   * so a failed load was indistinguishable from an empty thread.
+   */
   const openComments = async (pid: string) => {
     setCommentSheetPostId(pid);
-    const { comments, likedIds } = await loadPostComments(pid, user?.id);
-    setSheetComments(comments);
-    setLikedCommentIds(likedIds);
+    setSheetComments([]);
+    setCommentsError(null);
+    setCommentsLoading(true);
+    try {
+      const { comments, likedIds, error } = await loadPostComments(pid, user?.id);
+      if (error) {
+        logError(error, 'videoScreen.comments');
+        setCommentsError('load_failed');
+        return;
+      }
+      setSheetComments(comments);
+      setLikedCommentIds(likedIds);
+    } finally {
+      setCommentsLoading(false);
+    }
   };
 
   if (!videoPosts.length) {
@@ -229,6 +250,9 @@ export default function VideoPlayerScreen() {
         comments={sheetComments}
         likedCommentIds={likedCommentIds}
         currentUserId={user?.id ?? ''}
+        loading={commentsLoading}
+        error={commentsError}
+        knownCount={videoPosts.find((p) => p.id === commentSheetPostId)?.comment_count ?? undefined}
         onClose={() => setCommentSheetPostId(null)}
         onCommentsChange={setSheetComments}
         onLikeComment={async (commentId) => {

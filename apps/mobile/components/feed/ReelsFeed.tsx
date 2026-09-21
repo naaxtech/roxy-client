@@ -219,7 +219,13 @@ export function ReelsFeed({
         .from('posts')
         .select(POST_WITH_AUTHOR_AND_COMMUNITY)
         .in('author_id', authorIdsForQuery)
-        .eq('post_type', 'video')
+        // NOT filtered to video. `FeedCell` routes on `post_type` to ReelCell,
+        // PhotoCell, TextCell, PollCell and ResourceCell, and `getItemType`
+        // below keeps a recycling pool per type — the list was built for a
+        // mixed feed. This one clause starved it: a woman could publish a text
+        // card or a photo and it could not appear in any segment, for anyone,
+        // ever. Two of the three things the composer offers were unpostable in
+        // the only sense that matters.
         .is('deleted_at', null)
         .order('feed_score', { ascending: false })
         .limit(PAGE_SIZE);
@@ -302,7 +308,7 @@ export function ReelsFeed({
         .from('posts')
         .select(POST_WITH_AUTHOR_AND_COMMUNITY)
         .in('author_id', authorIdsForQuery)
-        .eq('post_type', 'video')
+        // Same as the first page — see the note in `load`.
         .is('deleted_at', null)
         .lt('feed_score', cursor)
         .order('feed_score', { ascending: false })
@@ -354,17 +360,35 @@ export function ReelsFeed({
   const [commentPostId, setCommentPostId] = useState<string | null>(null);
   const [sheetComments, setSheetComments] = useState<Comment[]>([]);
   const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
+  /**
+   * The sheet opens on the tap and the rows arrive a round trip later, so the
+   * gap has to be rendered as a gap. Without these two the sheet had only
+   * `comments.length === 0` to go on and showed "Be the first to comment" over
+   * every single open, then snapped the thread in on top of it — and a failed
+   * load stayed on that same line, telling her a busy thread was empty.
+   */
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
 
   const openComments = useCallback(async (postId: string) => {
     setCommentPostId(postId);
     setSheetComments([]);
-    const { comments, likedIds, error: loadError } = await loadPostComments(postId, userId);
-    if (loadError) {
-      logError(loadError, 'ReelsFeed.comments');
-      return;
+    setCommentsError(null);
+    setCommentsLoading(true);
+    try {
+      const { comments, likedIds, error: loadError } = await loadPostComments(postId, userId);
+      if (loadError) {
+        logError(loadError, 'ReelsFeed.comments');
+        setCommentsError('load_failed');
+        return;
+      }
+      setSheetComments(comments);
+      setLikedCommentIds(likedIds);
+    } finally {
+      // `finally`, not the happy path: the early return above on a load error
+      // would otherwise leave the spinner up forever.
+      setCommentsLoading(false);
     }
-    setSheetComments(comments);
-    setLikedCommentIds(likedIds);
   }, [userId]);
 
   const handleLikeComment = useCallback(async (commentId: string) => {
@@ -583,6 +607,9 @@ export function ReelsFeed({
         comments={sheetComments}
         likedCommentIds={likedCommentIds}
         currentUserId={userId}
+        loading={commentsLoading}
+        error={commentsError}
+        knownCount={reels.find((r) => r.id === commentPostId)?.comment_count ?? undefined}
         onClose={() => setCommentPostId(null)}
         onCommentsChange={setSheetComments}
         onLikeComment={(id) => { void handleLikeComment(id); }}

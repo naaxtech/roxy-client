@@ -46,9 +46,21 @@ export function destinationLabel(
   return 'your profile';
 }
 
-/** After publish she should land on You, where the new post actually lives. */
-export function afterPublishPath(): '/you' {
-  return '/you';
+/**
+ * After publish she should land where the new post actually IS.
+ *
+ * `/you` on its own was not that. The profile opens on Posts, which is the
+ * photo-and-video wall; a text card lives in Thoughts. So publishing a text
+ * card sent her to a screen headed "No photos or videos yet" — a successful
+ * write presented as an empty state, which is indistinguishable from failure
+ * and is most of the reason posting felt broken.
+ *
+ * The tab is named explicitly rather than left to the profile's default,
+ * because the default is right for only one of the three things the composer
+ * can make.
+ */
+export function afterPublishPath(postType: string): string {
+  return postType === 'standard' ? '/you?tab=thoughts' : '/you?tab=posts';
 }
 
 export function buildPostPayload(input: PostPayloadInput): Record<string, unknown> {

@@ -40,6 +40,7 @@ export default function WelcomeScreen() {
   const [loading, setLoading] = useState(false);
   const [oauthPending, setOauthPending] = useState<'apple' | 'google' | null>(null);
   const [resetSent, setResetSent] = useState(false);
+  const [revealPassword, setRevealPassword] = useState(false);
   const { signUp, signInWithPassword, resetPassword, signInWithApple, signInWithGoogle } = useAuth();
 
   const heroAnim = useRef(new Animated.Value(POP_FROM)).current;
@@ -254,6 +255,17 @@ export default function WelcomeScreen() {
       borderColor: 'transparent',
     },
     inputFocused: { borderColor: colors.roxy },
+    // Leaves room for the reveal button so a long password never runs under it.
+    inputWithAffordance: { paddingRight: 52 },
+    inputRow: { position: 'relative', justifyContent: 'center' },
+    revealBtn: {
+      position: 'absolute',
+      right: 6,
+      height: 44,
+      width: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
     sentTitle: {
       fontSize: 24,
@@ -388,21 +400,44 @@ export default function WelcomeScreen() {
                     </View>
                     <View>
                       <Text style={styles.inputLabel} nativeID="password-label">Password</Text>
-                      <TextInput
-                        testID="password-input"
-                        style={[styles.input, focusedField === 'password' && styles.inputFocused]}
-                        placeholder="Password"
-                        placeholderTextColor={colors.textMuted}
-                        secureTextEntry
-                        autoCapitalize="none"
-                        autoComplete={isSignIn ? 'password' : 'new-password'}
-                        accessibilityLabel="Password"
-                        accessibilityLabelledBy="password-label"
-                        value={password}
-                        onChangeText={setPassword}
-                        onFocus={() => setFocusedField('password')}
-                        onBlur={() => setFocusedField(null)}
-                      />
+                      <View style={styles.inputRow}>
+                        <TextInput
+                          testID="password-input"
+                          style={[
+                            styles.input,
+                            styles.inputWithAffordance,
+                            focusedField === 'password' && styles.inputFocused,
+                          ]}
+                          placeholder="Password"
+                          placeholderTextColor={colors.textMuted}
+                          secureTextEntry={!revealPassword}
+                          autoCapitalize="none"
+                          autoComplete={isSignIn ? 'password' : 'new-password'}
+                          accessibilityLabel="Password"
+                          accessibilityLabelledBy="password-label"
+                          value={password}
+                          onChangeText={setPassword}
+                          onFocus={() => setFocusedField('password')}
+                          onBlur={() => setFocusedField(null)}
+                        />
+                        <TouchableOpacity
+                          testID="password-reveal-btn"
+                          style={styles.revealBtn}
+                          onPress={() => setRevealPassword((v) => !v)}
+                          accessibilityRole="button"
+                          accessibilityLabel={revealPassword ? 'Hide password' : 'Show password'}
+                          accessibilityState={{ selected: revealPassword }}
+                          // RNW renders no aria attribute for accessibilityState,
+                          // so the pressed state is emitted explicitly too.
+                          aria-pressed={revealPassword}
+                        >
+                          <Ionicons
+                            name={revealPassword ? 'eye-off-outline' : 'eye-outline'}
+                            size={20}
+                            color={colors.textMuted}
+                          />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                     {isSignIn && (
                       <TouchableOpacity onPress={handleForgotPassword}>

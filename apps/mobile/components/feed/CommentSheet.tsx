@@ -22,6 +22,20 @@ interface CommentSheetProps {
   comments: Comment[];
   likedCommentIds: Set<string>;
   currentUserId: string;
+  /**
+   * The fetch is still in flight.
+   *
+   * Without this the sheet had exactly one branch — `comments.length === 0` —
+   * so in-flight, failed and genuinely-empty all rendered "Be the first to
+   * comment". The sheet springs open on the same tick as the tap, one line
+   * before its caller awaits, so every single open flashed that line and then
+   * snapped the list in on top of it.
+   */
+  loading?: boolean;
+  /** A failed load must not read as an empty thread. */
+  error?: string | null;
+  /** Known count from the post row, so the title does not jump 'Comments' -> 'Comments (12)'. */
+  knownCount?: number;
   onClose: () => void;
   onLikeComment: (id: string) => void;
   onCommentsChange: (comments: Comment[]) => void;
@@ -29,6 +43,7 @@ interface CommentSheetProps {
 
 export function CommentSheet({
   visible, postId, comments, likedCommentIds, currentUserId,
+  loading = false, error = null, knownCount,
   onClose, onLikeComment, onCommentsChange,
 }: CommentSheetProps) {
   const colors = useThemeColors();
@@ -115,14 +130,32 @@ export function CommentSheet({
           <View style={styles.handle} />
           <View style={styles.header}>
             <Text style={styles.title}>
-              {comments.length === 0 ? 'Comments' : `Comments (${comments.reduce((n, c) => n + 1 + (c.replies?.length ?? 0), 0)})`}
+              {/* While loading, prefer the count the post row already carries —
+                  the title otherwise reads 'Comments' and then re-renders to
+                  'Comments (12)' a beat later, which is the same flicker as the
+                  body. */}
+              {loading
+                ? (knownCount ? `Comments (${knownCount})` : 'Comments')
+                : comments.length === 0
+                  ? 'Comments'
+                  : `Comments (${comments.reduce((n, c) => n + 1 + (c.replies?.length ?? 0), 0)})`}
             </Text>
             <TouchableOpacity onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close comments">
               <Ionicons name="close" size={22} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll} keyboardShouldPersistTaps="handled">
-            {comments.length === 0 ? (
+            {loading ? (
+              <View style={styles.empty} testID="comment-sheet-loading">
+                <ActivityIndicator color={colors.roxy} />
+              </View>
+            ) : error ? (
+              <View style={styles.empty} testID="comment-sheet-error">
+                <Text style={styles.emptyText}>
+                  Comments did not load. Close this and open it again.
+                </Text>
+              </View>
+            ) : comments.length === 0 ? (
               <View style={styles.empty}>
                 <Text style={styles.emptyText}>Be the first to comment</Text>
               </View>

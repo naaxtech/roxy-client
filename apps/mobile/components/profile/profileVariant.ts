@@ -29,6 +29,11 @@
  */
 export type ProfileVariant = 'user' | 'seller' | 'community' | 'self';
 
+export const PROFILE_TABS = [
+  'posts', 'thoughts', 'shop', 'events', 'rooms', 'games', 'about', 'saved',
+  'photos', 'policies',
+] as const;
+
 export type ProfileTab =
   | 'posts' | 'thoughts' | 'shop' | 'events' | 'rooms' | 'games' | 'about' | 'saved'
   // Storefront-only. The design names six tabs, but a real shop also carries a
@@ -177,4 +182,15 @@ export function badgePreviewFromEarned(
   const extra = Math.max(0, earned.length - shown.length);
   const emojis = shown.map((b) => b.badges?.emoji ?? '🏅').join('');
   return { emojis, extra };
+}
+
+/**
+ * Is this string one of the profile's real tabs?
+ *
+ * Guards `?tab=` — a route param is user-supplied, and seeding the profile's
+ * selected tab from an unchecked string renders a tab that does not exist,
+ * which on this shell is a blank body with a live tab bar above it.
+ */
+export function isProfileTab(value: string | undefined | null): value is ProfileTab {
+  return value != null && (PROFILE_TABS as readonly string[]).includes(value);
 }

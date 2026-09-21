@@ -265,7 +265,7 @@ export default function CreatePostScreen() {
         showAlert('Upload failed', error);
         return;
       }
-      router.replace(afterPublishPath());
+      router.replace(afterPublishPath(postType));
       return;
     }
 
@@ -297,7 +297,7 @@ export default function CreatePostScreen() {
       showAlert('Post failed', 'Could not publish. Please try again.');
       return;
     }
-    router.replace(afterPublishPath());
+    router.replace(afterPublishPath(postType));
   };
 
   const styles = StyleSheet.create({

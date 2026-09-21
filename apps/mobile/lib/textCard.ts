@@ -10,10 +10,22 @@ import { FONTS } from './typography';
 export const TEXT_CARD_GRADIENT = ['#2A1B6E', '#6D28A8', '#B02478'] as const;
 export const TEXT_CARD_INK = '#FFF8FB';
 
+/**
+ * The ghost card shown before she has typed anything.
+ *
+ * It used to be the design mockup's own filler — "PROMPT OF THE DAY / What's
+ * your favourite queer-owned spot in London? / Best answer gets pinned to the
+ * community board". Three things wrong with shipping that as the composer's
+ * empty state: it reads as a prompt she has been set rather than a preview of
+ * her own card, it names a city she may have no connection to, and it promises
+ * a community board the 3.0 model retired — posts live on her profile now (see
+ * lib/postComposer.ts). A preview demonstrates the shape; it must not make a
+ * promise the app cannot keep.
+ */
 export const TEXT_CARD_EXAMPLE = {
-  kick: 'PROMPT OF THE DAY',
-  prompt: "What's your favourite queer-owned spot in London?",
-  sub: 'Best answer gets pinned to the community board ✿',
+  kick: 'TEXT CARD',
+  prompt: 'Say the thing.',
+  sub: 'A second, quieter line — optional ✿',
 } as const;
 
 export const TEXT_CARD_EXAMPLE_BODY = [
@@ -22,9 +34,15 @@ export const TEXT_CARD_EXAMPLE_BODY = [
   TEXT_CARD_EXAMPLE.sub,
 ].join('\n');
 
+/**
+ * The input's own placeholder. Deliberately an instruction, not example
+ * content: the ghost card above the field already shows the shape, and
+ * repeating the example inside the field is what made it read as a question
+ * she had been asked rather than a card she was writing.
+ */
 export const TEXT_CARD_PLACEHOLDER = [
-  TEXT_CARD_EXAMPLE.prompt,
-  'Best answer gets pinned to the community board',
+  'Your first line — the one that carries it',
+  'A quieter second line, if you want one',
 ].join('\n');
 
 export type TextCardParts = {

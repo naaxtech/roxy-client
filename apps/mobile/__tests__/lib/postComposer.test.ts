@@ -14,9 +14,32 @@ describe('postDestination', () => {
   });
 });
 
+/**
+ * This test used to assert `/you` and call it "so the new post is actually
+ * visible". It was not visible. `/you` opens on the Posts tab, which holds
+ * photos and videos only — a text card lands in Thoughts. So publishing a text
+ * card dropped her on a screen reading "No photos or videos yet", which is
+ * indistinguishable from the post having failed. It is most of why posting felt
+ * broken: the write succeeded every time and the destination denied it.
+ */
 describe('afterPublishPath', () => {
-  it('sends her to You so the new post is actually visible', () => {
-    expect(afterPublishPath()).toBe('/you');
+  it('opens the profile tab that actually holds a text card', () => {
+    expect(afterPublishPath('standard')).toBe('/you?tab=thoughts');
+  });
+
+  it('opens the media tab for a photo or a video', () => {
+    expect(afterPublishPath('photo')).toBe('/you?tab=posts');
+    expect(afterPublishPath('video')).toBe('/you?tab=posts');
+  });
+
+  it('falls back to the media tab for an unknown type rather than nowhere', () => {
+    expect(afterPublishPath('something-new')).toBe('/you?tab=posts');
+  });
+
+  it('never returns a bare /you, which is the tab-less default that hid the post', () => {
+    for (const t of ['standard', 'photo', 'video']) {
+      expect(afterPublishPath(t)).not.toBe('/you');
+    }
   });
 });
 

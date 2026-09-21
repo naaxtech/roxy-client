@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ReelsFeed } from '../../../components/feed/ReelsFeed';
+import { followingAuthorIds } from '../../../lib/feedScope';
 import { FeedSegments, type FeedSegment } from '../../../components/feed/FeedSegments';
 import { StreakChip } from '../../../components/feed/StreakChip';
 import { NowRail } from '../../../components/feed/NowRail';
@@ -79,7 +80,13 @@ function FeedScreen() {
   }, [user?.id]);
 
   const communityIds = useMemo(() => Array.from(joinedIds), [joinedIds]);
-  const authorIds = useMemo(() => Array.from(followingIds), [followingIds]);
+  // Her own id goes in deliberately: the Following segment filtered on the
+  // follow graph alone, so the only author whose posts she had just created
+  // was the only one it could never return. See lib/feedScope.ts.
+  const authorIds = useMemo(
+    () => followingAuthorIds(followingIds, user?.id ?? null),
+    [followingIds, user?.id],
+  );
   const switcherCommunities = useMemo(
     () => joinedCommunities.map((c) => ({ id: c.id, name: c.name })),
     [joinedCommunities]
