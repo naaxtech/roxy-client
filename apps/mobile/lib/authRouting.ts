@@ -23,6 +23,28 @@ export const isApplicationRoute = (
 ): boolean => segments.some((s) => s === 'application') || pathname.includes('/application');
 
 /**
+ * Is the user on the password-recovery screen?
+ *
+ * This exists for the same reason `isApplicationRoute` does, and it is load
+ * bearing in a way that is easy to miss: consuming a recovery token creates a
+ * real, authenticated session. The instant it lands, the root layout's cascade
+ * fetches her profile and replaces the route — with the feed, with onboarding,
+ * or with the pending screen — and the reset form is gone before she has typed
+ * anything. The recovery token is single-use, so that is not a retryable
+ * annoyance: the link in her inbox is now spent and she has to start over.
+ *
+ * Checks segments AND pathname for the dual-read reason documented above, plus
+ * one specific to this route: expo-router groups are invisible in a browser
+ * URL, so on the deployed web app — where most resets are opened — the path
+ * reads `/reset-password`, with no `(auth)` in it at all.
+ */
+export const isResetPasswordRoute = (
+  segments: readonly string[],
+  pathname: string,
+): boolean =>
+  segments.some((s) => s === 'reset-password') || pathname.includes('/reset-password');
+
+/**
  * Should this profile be sent to the pending screen?
  *
  * A rejected applicant belongs on the pending screen so she can appeal.
@@ -47,6 +69,9 @@ export const shouldRedirectToPending = (
   // Pending applicants stay in the app (Archive + a status chip). Only a
   // rejection still needs this full-screen wait so she can appeal.
   if (vettingStatus !== 'rejected') return false;
+  // A rejected account can still legitimately change its password, and the
+  // recovery token is single-use — see isResetPasswordRoute.
+  if (isResetPasswordRoute(segments, pathname)) return false;
   return !isApplicationRoute(segments, pathname);
 };
 
@@ -87,5 +112,8 @@ export const shouldRedirectToApplication = (
 ): boolean => {
   if (!hasValidatedCode) return false;
   if (profileExists) return false;
+  // Same exemption, same reason: redeeming a held code can wait until she has
+  // a password again, and the token she is spending right now cannot.
+  if (isResetPasswordRoute(segments, pathname)) return false;
   return !isApplicationRoute(segments, pathname);
 };
