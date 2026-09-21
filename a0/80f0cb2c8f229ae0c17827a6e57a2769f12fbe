@@ -1,0 +1,69 @@
+docs/plans/password-reset-fix.md
+  s_6d9a8979b9c2f6::t_356c8701fd97ac 1-82
+apps/mobile/app/_layout.tsx
+  s_6d9a8979b9c2f6::t_9b137c92191265 208-223
+  s_6d9a8979b9c2f6::t_aa9815d31bcc20 24-28
+  s_6d9a8979b9c2f6::t_7f372ccb3e2fb7 114-118
+  s_6d9a8979b9c2f6::t_9f35d53179d37d 128
+  s_6d9a8979b9c2f6::t_650643dcf9ce21 187
+apps/mobile/__tests__/lib/authRouting.test.ts
+  s_6d9a8979b9c2f6::t_c238af53d771ae 5,138-190
+apps/mobile/__tests__/lib/features.test.ts
+  s_6d9a8979b9c2f6::t_06d3bbf9027975 194-213
+  s_6d9a8979b9c2f6::t_283ebf7ec087ad 169-193
+apps/mobile/__tests__/lib/passwordReset.test.ts
+  s_6d9a8979b9c2f6::t_31e6df3fb53ee9 1-5,7-133,164-165
+  s_6d9a8979b9c2f6::t_2bdc7b77218426 6,134-163
+apps/mobile/lib/authRouting.ts
+  s_6d9a8979b9c2f6::t_beca992481cbfb 72-74
+  s_6d9a8979b9c2f6::t_4bf6663fa50909 26-46
+  s_6d9a8979b9c2f6::t_02090df94d7abd 115-117
+  s_6d9a8979b9c2f6::t_79babaeb031787 25
+apps/mobile/app/(auth)/reset-password.tsx
+  s_6d9a8979b9c2f6::t_85e61b2642b2b2 2-21,27-30,38-74,83-91,134,136,140,142,146-147,150-152,154,160-169,171-173,178-182,184,186-199,202-205,237-250,260-372,376-563,565-580
+  s_6d9a8979b9c2f6::t_2e21633613eb6a 137-139,141
+  s_6d9a8979b9c2f6::t_adf538ac01e653 92-97,112-133,135,143-145,148-149,153,155-158,170,174-177,183,206-236
+  s_6d9a8979b9c2f6::t_51705f47085f34 564
+  s_6d9a8979b9c2f6::t_b97d15cb596469 98-111,185,200
+  s_6d9a8979b9c2f6::t_5ad81d4a60c662 373-375
+  s_6d9a8979b9c2f6::t_54ed1bb8f6cfea 1,22-26,31-37,75-82,251-259
+  s_6d9a8979b9c2f6::t_e03f5446e28c1b 159
+  s_6d9a8979b9c2f6::t_dbb5d789521624 201
+CHANGELOG.md
+  s_6d9a8979b9c2f6::t_69eedcaebef36d 39-75
+apps/mobile/lib/features.ts
+  s_6d9a8979b9c2f6::t_b7243cba6004c1 186-196,199
+  s_6d9a8979b9c2f6::t_e3ef7d21ad0a69 132-144,150
+supabase/config.toml
+  s_6d9a8979b9c2f6::t_8cea8c8aba79c8 154-161,163
+apps/mobile/__tests__/hooks/useAuth.test.ts
+  s_6d9a8979b9c2f6::t_737f88f5666959 123-129,134-167
+  s_6d9a8979b9c2f6::t_58b77bb87e93ea 32
+  s_6d9a8979b9c2f6::t_d16a5ce5357461 16-20
+apps/mobile/hooks/useAuth.ts
+  s_6d9a8979b9c2f6::t_3894a79dece50a 98-108,116-124
+  s_6d9a8979b9c2f6::t_2cfbe4b6b89a3b 109-115
+  s_6d9a8979b9c2f6::t_ef10684f5e4801 4,81-89,91-97,125-134,168
+  s_6d9a8979b9c2f6::t_e042f4aa4c5312 167
+apps/mobile/lib/passwordReset.ts
+  s_6d9a8979b9c2f6::t_11a6bf8106e5f1 157,159-178
+  s_6d9a8979b9c2f6::t_1d5aa5fdf4b823 1-38,61-105,152,154,156,158,179
+  s_6d9a8979b9c2f6::t_13e3dfe784a9af 39-60
+  s_6d9a8979b9c2f6::t_f13f9be1dd963d 106-151,153,155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a080f0cb2c8f229ae0c17827a6e57a2769f12fbe",
+  "prompts": {},
+  "sessions": {
+    "s_6d9a8979b9c2f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15fd7607-65fc-4c1d-80e9-ecf94f6d2f55",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
