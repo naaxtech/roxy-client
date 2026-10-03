@@ -8,7 +8,7 @@ import { QuickSearch } from '@/components/QuickSearch';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { formatUtcDateTime } from '@/lib/dates';
-import { feedbackReplyMailto, feedbackReporterName } from '@/lib/feedbackReply';
+import { feedbackReplyMailto } from '@/lib/feedbackReply';
 import { updateFeedbackStatus, updateFeedbackNotes } from './actions';
 
 type FeedbackCategory = 'bug' | 'broken' | 'other';
@@ -53,6 +53,7 @@ const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
 function FeedbackRow({ feedback }: { feedback: Feedback }) {
   const [status, setStatus] = useState<FeedbackStatus>(feedback.status);
   const [notes, setNotes] = useState(feedback.internal_notes ?? '');
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const reportedAt = formatUtcDateTime(feedback.created_at);
   const mailto = feedback.reporterEmail
@@ -66,14 +67,30 @@ function FeedbackRow({ feedback }: { feedback: Feedback }) {
     : null;
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const previous = status;
     const s = e.target.value as FeedbackStatus;
     setStatus(s);
-    startTransition(() => updateFeedbackStatus(feedback.id, s));
+    setSaveError(null);
+    startTransition(async () => {
+      try {
+        await updateFeedbackStatus(feedback.id, s);
+      } catch {
+        setStatus(previous);
+        setSaveError('Could not save that status.');
+      }
+    });
   };
 
   const handleNotesBlur = () => {
     if (notes !== (feedback.internal_notes ?? '')) {
-      startTransition(() => updateFeedbackNotes(feedback.id, notes));
+      setSaveError(null);
+      startTransition(async () => {
+        try {
+          await updateFeedbackNotes(feedback.id, notes);
+        } catch {
+          setSaveError('Could not save those notes. They are still in the box — try again.');
+        }
+      });
     }
   };
 
@@ -126,6 +143,11 @@ function FeedbackRow({ feedback }: { feedback: Feedback }) {
         onChange={(e) => setNotes(e.target.value)}
         onBlur={handleNotesBlur}
       />
+      {saveError && (
+        <p className="text-xs text-destructive" role="alert">
+          {saveError}
+        </p>
+      )}
     </div>
   );
 }

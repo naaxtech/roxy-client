@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { assertStaffAction, assertUuid } from '@/lib/staff-guard';
 
 const MAX_TAG = 24;
 
@@ -20,6 +21,9 @@ const MAX_TAG = 24;
  * credit the tag to somebody else.
  */
 export async function setMemberTag(memberId: string, rawTag: string): Promise<void> {
+  await assertStaffAction();
+  const id = assertUuid(memberId, 'member id');
+  if (typeof rawTag !== 'string') throw new Error('Invalid tag.');
   const tag = rawTag.trim();
   if (tag.length > MAX_TAG) {
     // Checked here so she gets a sentence rather than a constraint violation.
@@ -35,7 +39,7 @@ export async function setMemberTag(memberId: string, rawTag: string): Promise<vo
     // Empty clears it. A tag is editorial, so removing one has to be as easy
     // as adding one.
     .update({ staff_tag: tag.length === 0 ? null : tag })
-    .eq('id', memberId)
+    .eq('id', id)
     .select('id');
 
   if (error) throw new Error(error.message);

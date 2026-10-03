@@ -1,9 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
+import { requireStaffPage } from '@/lib/staff-guard';
 import { FeatureRequestsClient } from './FeatureRequestsClient';
 
 export const metadata = { title: 'Feature Requests — Roxy Studio' };
 
 export default async function FeatureRequestsPage() {
+  await requireStaffPage();
   const supabase = await createClient();
   const { data: features } = await supabase
     .from('feature_requests')

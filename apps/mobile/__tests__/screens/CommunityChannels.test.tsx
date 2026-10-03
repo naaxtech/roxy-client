@@ -62,7 +62,26 @@ const msg = (id: string, channelId: string, body: string): ChannelMessage => ({
 });
 
 /** Message fetches, held open until the test releases them. */
-const pending: { channelId: string; resolve: (rows: ChannelMessage[]) => void }[] = [];
+type Pending = { channelId: string; resolve: (rows: ChannelMessage[]) => void };
+/**
+ * A FRESH queue per test, never one shared array. A test that times out keeps
+ * running in the background, and with one module-level array its orphaned
+ * `release()` spliced the next test's queue — so one slow test failed the next
+ * one too, for a reason that had nothing to do with it.
+ */
+const queue = (): Pending[] => (globalThis as unknown as { __pending: Pending[] }).__pending;
+
+/**
+ * How long a fetch may take to be ISSUED after render. The first render in a
+ * file pays the cold cost of the whole screen tree (~350ms idle) and under a
+ * parallel `jest --ci` on a busy machine that was measured at up to 2s —
+ * double RNTL's default 1s `waitFor`. The wait is event-driven (it returns the
+ * moment the request exists), so this is a ceiling, not a sleep.
+ */
+const ISSUE_TIMEOUT_MS = 8_000;
+// Must exceed ISSUE_TIMEOUT_MS, or the test is killed before waitFor can
+// report WHICH request never came.
+jest.setTimeout(20_000);
 const mockSend = jest.fn();
 const mockDelete = jest.fn();
 
@@ -78,7 +97,7 @@ jest.mock('../../lib/channels', () => {
     fetchLiveStage: jest.fn(() => Promise.resolve(null)),
     fetchChannelMessages: jest.fn(
       (channelId: string) => new Promise((resolve) => {
-        (globalThis as unknown as { __pending: typeof pending }).__pending.push({ channelId, resolve });
+        (globalThis as unknown as { __pending: { channelId: string; resolve: unknown }[] }).__pending.push({ channelId, resolve });
       }),
     ),
     sendChannelMessage: (...a: unknown[]) => mockSend(...a),
@@ -96,11 +115,17 @@ jest.mock('../../lib/channels', () => {
  * message rather than on the thing it is about.
  */
 const release = async (channelId: string, rows: ChannelMessage[]) => {
-  await waitFor(() => expect(pending.some((p) => p.channelId === channelId)).toBe(true));
+  // Bound to THIS test's queue at call time, so a release() left running by a
+  // timed-out test can only ever touch its own, already-abandoned queue.
+  const pending = queue();
+  await waitFor(
+    () => expect(pending.some((p) => p.channelId === channelId)).toBe(true),
+    { timeout: ISSUE_TIMEOUT_MS },
+  );
   const hit = pending.filter((p) => p.channelId === channelId);
   const keep = pending.filter((p) => p.channelId !== channelId);
   // Spliced in place, and only THIS channel's requests are taken. The mock
-  // closed over this array via globalThis, so reassigning it would leave the
+  // pushes into this array via globalThis, so reassigning it would leave the
   // mock pushing into the old one — and clearing it wholesale would throw away
   // the still-in-flight request the out-of-order test is about.
   pending.length = 0;
@@ -108,9 +133,20 @@ const release = async (channelId: string, rows: ChannelMessage[]) => {
   await act(async () => { hit.forEach((p) => p.resolve(rows)); });
 };
 
+/**
+ * Pay the one-off cold cost of the screen tree before any test's clock starts.
+ * The first render in the file measured ~350ms idle and up to 2s under a
+ * loaded parallel run, and it was always charged to whichever test ran first.
+ */
+beforeAll(async () => {
+  (globalThis as unknown as { __pending: Pending[] }).__pending = [];
+  const warm = render(<CommunityChannelsScreen />);
+  await release(general.id, []);
+  warm.unmount();
+});
+
 beforeEach(() => {
-  pending.length = 0;
-  (globalThis as unknown as { __pending: typeof pending }).__pending = pending;
+  (globalThis as unknown as { __pending: Pending[] }).__pending = [];
   mockPush.mockClear();
   mockSend.mockReset();
   mockDelete.mockReset();

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { requireStaffPage } from '@/lib/staff-guard';
 import { isMissingFunction } from '@/lib/schema-availability';
 import { feedbackReporterName } from '@/lib/feedbackReply';
 import { FeedbackClient, type Feedback } from './FeedbackClient';
@@ -21,6 +22,7 @@ interface FeedbackRow {
 }
 
 export default async function FeedbackPage() {
+  await requireStaffPage();
   const supabase = await createClient();
   const { data: feedback } = await supabase
     .from('app_feedback')

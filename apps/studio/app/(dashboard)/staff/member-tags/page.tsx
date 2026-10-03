@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { requireStaffPage } from '@/lib/staff-guard';
 import { MemberTagClient, type TaggableMember } from './MemberTagClient';
 
 export const dynamic = 'force-dynamic';
@@ -16,12 +17,14 @@ export const dynamic = 'force-dynamic';
  * The list is the leaderboard itself, in its own order, so a tag can be judged
  * against the nine it will sit beside rather than in isolation.
  *
- * No staff check is re-implemented here. A non-staff visitor gets the same page
- * with writes that fail in the database, which is the honest outcome — a
- * client-side gate would be a second, weaker copy of the rule, and the kind
- * that drifts.
+ * The database (migration 121) remains the authority on who may WRITE a tag.
+ * The page itself is still staff-gated server-side, like every other /staff
+ * route: the leaderboard query below runs on the viewer's session, and a member
+ * who types the URL should get a 404, not a staff tool rendered against her
+ * own grants.
  */
 export default async function MemberTagsPage() {
+  await requireStaffPage();
   const supabase = await createClient();
 
   const { data, error } = await supabase

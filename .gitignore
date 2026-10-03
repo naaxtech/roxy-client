@@ -51,3 +51,10 @@ AGENTS.md
 
 # Impeccable critique snapshots (tool output, not source)
 .impeccable/
+
+# Local test/QA artifacts
+test-results/
+apps/studio/shots/
+apps/mobile/shots/dogfood-*/
+# Editor MCP config (may hold project refs/tokens)
+.cursor/mcp.json

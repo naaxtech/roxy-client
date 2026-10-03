@@ -36,12 +36,24 @@ const STATUS_LABELS: Record<FeatureStatus, string> = {
 
 function FeatureRow({ feature }: { feature: FeatureRequest }) {
   const [status, setStatus] = useState<FeatureStatus>(feature.status);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const previous = status;
     const s = e.target.value as FeatureStatus;
     setStatus(s);
-    startTransition(() => updateFeatureStatus(feature.id, s));
+    setSaveError(null);
+    startTransition(async () => {
+      try {
+        await updateFeatureStatus(feature.id, s);
+      } catch {
+        // Roll back the optimistic change — the badge must never show a status
+        // that was not saved.
+        setStatus(previous);
+        setSaveError('Could not save that status.');
+      }
+    });
   };
 
   return (
@@ -88,6 +100,11 @@ function FeatureRow({ feature }: { feature: FeatureRequest }) {
           <option value="done">Done</option>
           <option value="rejected">Rejected</option>
         </Select>
+        {saveError && (
+          <p className="text-xs text-destructive" role="alert">
+            {saveError}
+          </p>
+        )}
       </div>
     </div>
   );
