@@ -1,0 +1,18 @@
+apps/mobile/__tests__/components/ReelsFeedForYou.test.tsx
+  h_0549c11fec2ab0 1-172
+apps/mobile/components/feed/ReelsFeed.tsx
+  h_0549c11fec2ab0 16,78-81,192-197,200,240,284,576-577
+apps/mobile/lib/announcements.ts
+  h_0549c11fec2ab0 170-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4b1f061d836fc0094b112667872c1c807b99f55e",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
