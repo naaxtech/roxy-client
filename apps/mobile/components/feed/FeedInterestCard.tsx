@@ -2,7 +2,7 @@ import type { ReactElement } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
-import { CHROME_SHADOW } from './feedChromeTokens';
+import { CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
 
 export interface FeedInterestCardProps {
   /** Hide this post and keep it out of future pages. */
@@ -101,7 +101,10 @@ const s = StyleSheet.create({
   // Sits on the scrim's band rather than on the media, so it needs separation
   // from the band rather than contrast against an unknown photo.
   card: {
-    marginHorizontal: 18, marginBottom: 12,
+    // Right margin = the rail's gutter: the scrim band is full width, and the
+    // rail column (⋯, share) sits over its right edge. 18dp put the close
+    // button and "More of this" under ⋯.
+    marginLeft: 18, marginRight: RAIL_GUTTER, marginBottom: 12,
     padding: 12, gap: 10, borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)',

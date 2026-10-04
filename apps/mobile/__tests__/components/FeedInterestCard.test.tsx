@@ -8,8 +8,10 @@
  * sentences and must not share a control.
  */
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { FeedInterestCard } from '../../components/feed/FeedInterestCard';
+import { RAIL_GUTTER } from '../../components/feed/feedChromeTokens';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 
@@ -91,5 +93,15 @@ describe('FeedInterestCard', () => {
     // woman who was frightened must not have to answer "interested?" first.
     expect(view.queryByText(/report/i)).toBeNull();
     expect(view.queryByText(/block/i)).toBeNull();
+  });
+
+  it('stops short of the right rail, so its close and "more of this" stay tappable', () => {
+    // The card sits in the scrim band, which runs the full page width; the rail
+    // column owns the right RAIL_GUTTER of every page. With an 18dp right
+    // margin the card ran under the rail's ⋯ button (roxy.expo.app 2026-10-04).
+    const flat = StyleSheet.flatten(card().getByTestId('interest-card').props.style) as
+      { marginRight?: number; marginHorizontal?: number };
+
+    expect(flat.marginRight ?? flat.marginHorizontal ?? 0).toBeGreaterThanOrEqual(RAIL_GUTTER);
   });
 });
