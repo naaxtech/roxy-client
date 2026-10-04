@@ -13,7 +13,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useFollowStore } from '../../store/followStore';
 import { excludeSeenReels, displayedLikeCount, initialReelIndex } from '../../lib/reels';
 import type { ReelRow } from '../../lib/reels';
-import { fetchAnnouncementVideos } from '../../lib/announcements';
+import { fetchAnnouncementPage } from '../../lib/announcements';
 import { ownerIdsFromProfiles } from '../../lib/officialGrant';
 import { useFeedStore } from '../../store/feedStore';
 import { useSafetyStore } from '../../store/safetyStore';
@@ -75,10 +75,10 @@ export type ReelsScope =
   | 'following';
 
 const EMPTY_BODY: Record<ReelsScope, string> = {
-  announcements: 'When someone posts a video, it plays here.',
-  community: 'When this community posts a video, it plays here.',
-  'community-announcements': 'This community has not posted a video yet.',
-  following: 'Video from people you follow lands here. Follow someone and this fills up.',
+  announcements: 'When someone shares a post, a photo or a video, it shows up here.',
+  community: 'When this community posts, it shows up here.',
+  'community-announcements': 'This community has not posted yet.',
+  following: 'Posts from people you follow land here. Follow someone and this fills up.',
 };
 
 interface ReelsFeedProps {
@@ -189,10 +189,15 @@ export function ReelsFeed({
     let raw: ReelRow[];
 
     if (scope === 'announcements') {
-      const { page, error: rpcError } = await fetchAnnouncementVideos(null);
+      // Every post type, not just video: For You is the front door and most
+      // walls are text and photos. FeedCell already routes each type to its
+      // own cell. This used to call `fetchAnnouncementVideos` (video only),
+      // which is kept in lib/announcements.ts for a future video-only surface
+      // — do not switch the Feed tab back to it.
+      const { page, error: rpcError } = await fetchAnnouncementPage({ before: null });
       if (rpcError || !page) {
         logError(rpcError ?? new Error('announcement_feed returned no page'), 'ReelsFeed.load');
-        setError('Could not load videos.');
+        setError('Could not load the feed.');
         setLoading(false);
         return;
       }
@@ -232,7 +237,7 @@ export function ReelsFeed({
 
       if (err) {
         logError(err, 'ReelsFeed.load');
-        setError('Could not load videos.');
+        setError('Could not load the feed.');
         setLoading(false);
         return;
       }
@@ -276,7 +281,7 @@ export function ReelsFeed({
     if (scope === 'announcements') {
       if (beforeRef.current === null) return;
       setLoadingMore(true);
-      const { page, error: rpcError } = await fetchAnnouncementVideos(beforeRef.current);
+      const { page, error: rpcError } = await fetchAnnouncementPage({ before: beforeRef.current });
       if (rpcError || !page) {
         logError(rpcError ?? new Error('announcement_feed returned no page'), 'ReelsFeed.loadMore');
         setLoadingMore(false);
@@ -568,8 +573,8 @@ export function ReelsFeed({
     // which paints light-theme ink on this permanently dark stage.
     placeholder = (
       <View style={[s.centred, s.emptyWrap]} testID="reels-feed-empty">
-        <Text style={s.emptyEmoji}>🎬</Text>
-        <Text style={s.emptyTitle}>No videos yet</Text>
+        <Text style={s.emptyEmoji}>✿</Text>
+        <Text style={s.emptyTitle}>Nothing here yet</Text>
         <Text style={s.emptyBody}>{EMPTY_BODY[scope]}</Text>
       </View>
     );

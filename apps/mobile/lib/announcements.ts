@@ -167,6 +167,21 @@ const MAX_VIDEO_PAGES = 3;
 /**
  * A page of *video* from the For You ranking.
  *
+ * KEPT ON PURPOSE — currently has no callers. Do not delete without asking.
+ *
+ * History: added in 9f98005 (2026-08-05) when the old Connect tab had a
+ * separate Reels sub-tab that played only video announcements; `ReelsFeed`
+ * called it for `scope="announcements"`. In the Roxy 3.0 revamp the Feed tab
+ * became a TikTok-style pager that carries EVERY post type (video, photo,
+ * text card, poll, resource — see docs/handoff/roxy-3.0/README.md "Feed (3
+ * renderers)"), so on 2026-10-04 `ReelsFeed` switched For You to
+ * `fetchAnnouncementPage` (all types). Calling this from the Feed tab again
+ * would hide every text and photo post from For You — on production that was
+ * 33 of 41 posts.
+ *
+ * Use it only for a deliberately video-only surface (e.g. a future "Videos"
+ * filter or a reels-only view), never for the main feed.
+ *
  * A ranked page of 50 posts can easily contain no video at all — most walls
  * start as text and photos — and a reels tab that renders "no videos yet"
  * while the RPC still has pages left is lying about an empty library. So keep
