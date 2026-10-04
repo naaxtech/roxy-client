@@ -1,0 +1,35 @@
+docs/qa/playwright-full-audit-2026-09-20.md
+  s_aad034b763a056::t_14d90f7705a211 1-72
+apps/mobile/tests/e2e/full-audit.spec.ts
+  s_aad034b763a056::t_51450250d125ca 1,3,5-7,10-12,14,32-40,42-49,51-53,55-58,60-63,65-70,72,74-78,80,82-86,88,106-107,109-113,116
+  s_aad034b763a056::t_ade3616a96de2d 2,4,8-9,13,15-31,41,50,54,59,64,71,73,79,81,87,89-105,108,114-115
+  s_aad034b763a056::t_675970ccecb4e6 117-126
+apps/studio/app/(dashboard)/staff/member-tags/actions.ts
+  s_488a1686f9c1af::t_f1f6f6eef24441 5,24-26,42
+scripts/apply-migration.mjs
+  s_488a1686f9c1af::t_33641ab7fa0de4 3,5-18,23,31-36,38,40-45,47-52,54-70,72-86,89-102,105-111,115-124,126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7a957ee1993e3c07e51a97cbde2b9e3993a79744",
+  "prompts": {},
+  "sessions": {
+    "s_488a1686f9c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4756a98c-3dbe-4f62-aa59-5766643eeb50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_aad034b763a056": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f432b9799ffeDcfBi82rkzzSd1",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
