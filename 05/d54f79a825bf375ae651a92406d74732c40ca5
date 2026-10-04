@@ -1,0 +1,19 @@
+.gitignore
+  s_66ed3924db1052::t_5e5b34b51cbb17 61-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "05d54f79a825bf375ae651a92406d74732c40ca5",
+  "prompts": {},
+  "sessions": {
+    "s_66ed3924db1052": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac1f2710b79f5c4b8",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
