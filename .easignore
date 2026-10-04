@@ -1,0 +1,107 @@
+# EAS Build upload filter. When this file exists EAS uses it INSTEAD of .gitignore,
+# and EAS only ever read the ROOT .gitignore - so nested ignores (apps/studio/.next,
+# apps/mobile/shots, ...) were being uploaded. This file = every repo .gitignore,
+# re-rooted, plus build/QA outputs that must never leave this machine.
+# Keep in sync when a .gitignore changes.
+
+# ── from .gitignore ────────────────────
+.env
+.env.*
+!.env.example
+supabase/.env
+.expo/
+dist/
+web-build/
+.vercel/
+ios/
+android/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+node_modules/
+supabase/.branches
+supabase/.temp
+.claude/settings.local.json
+.mcp.json
+.superpowers/
+.worktrees/
+.agents/
+.codex/
+.playwright-mcp/
+.superpowers/
+docs/Roxy-handoff/
+/*.png
+AGENTS.md
+.impeccable/
+test-results/
+apps/studio/shots/
+apps/mobile/shots/dogfood-*/
+.cursor/mcp.json
+apps/mobile/dist-*/
+
+# ── from apps/mobile/.gitignore ────────────────────
+apps/mobile/**/expo-env.d.ts
+apps/mobile/**/.env
+apps/mobile/test-results/
+apps/mobile/playwright-report/
+apps/mobile/**/shots/
+apps/mobile/shots/demo/
+
+# ── from apps/studio/.gitignore ────────────────────
+apps/studio/node_modules
+apps/studio/.pnp
+apps/studio/**/.pnp.*
+apps/studio/.yarn/*
+!apps/studio/.yarn/patches
+!apps/studio/.yarn/plugins
+!apps/studio/.yarn/releases
+!apps/studio/.yarn/versions
+apps/studio/coverage
+apps/studio/test-results
+apps/studio/playwright-report
+apps/studio/tests/e2e/.auth/session.json
+apps/studio/**/.env.test
+apps/studio/.next/
+apps/studio/out/
+apps/studio/build
+apps/studio/**/.DS_Store
+apps/studio/**/*.pem
+apps/studio/**/npm-debug.log*
+apps/studio/**/yarn-debug.log*
+apps/studio/**/yarn-error.log*
+apps/studio/**/.pnpm-debug.log*
+apps/studio/**/.env*.local
+apps/studio/**/.env
+apps/studio/**/.vercel
+apps/studio/**/*.tsbuildinfo
+apps/studio/**/next-env.d.ts
+apps/studio/**/.vercel
+apps/studio/**/.netlify
+
+# ── from supabase/.gitignore ────────────────────
+supabase/**/.branches
+supabase/**/.temp
+supabase/**/.env.keys
+supabase/**/.env.local
+supabase/**/.env.*.local
+
+# ── from .claude/skills/ui-ux-pro-max/.gitignore ────────────────────
+.claude/skills/ui-ux-pro-max/**/__pycache__/
+
+# ── never upload ─────────────────────────────
+**/node_modules/
+**/.next/
+apps/mobile/dist/
+apps/mobile/dist-*/
+**/shots/
+**/test-results/
+**/playwright-report/
+docs/nerp-claude-design/
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*

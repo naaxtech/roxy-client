@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { TextCell } from '../../components/feed/TextCell';
 import { TEXT_CARD_EXAMPLE, TEXT_CARD_GRADIENT } from '../../lib/textCard';
+import { RAIL_GUTTER } from '../../components/feed/feedChromeTokens';
 import type { ReelRow } from '../../lib/reels';
 
 jest.mock('expo-linear-gradient', () => {
@@ -119,9 +120,34 @@ describe('TextCell typography', () => {
 
     expect(flat.maxWidth).toBeLessThanOrEqual(WIDTH - 48);
   });
+
+  it('keeps the words clear of the right rail, so the avatar never covers a word', () => {
+    // Text starts at the card's 30dp left padding; the rail owns the right
+    // RAIL_GUTTER. Seen on roxy.expo.app 2026-10-04: "talk." ran under the
+    // author avatar because the measure was width - 60.
+    const view = text();
+    const flat = StyleSheet.flatten(view.getByTestId('text-cell-prompt').props.style) as unknown as
+      { maxWidth: number };
+
+    expect(30 + flat.maxWidth).toBeLessThanOrEqual(WIDTH - RAIL_GUTTER);
+  });
 });
 
 describe('TextCell canvas', () => {
+  it('paints the ramp edge to edge, with the chrome room inside it, not as a black band', () => {
+    // Claude Design p3: the gradient is `inset:0` and the bottom room for the
+    // author block is padding INSIDE it (34px 30px 150px). Padding the wrapper
+    // instead left the bottom quarter of every text post on the black stage.
+    const view = text();
+    const wrap = StyleSheet.flatten(view.getByTestId('text-cell-face').props.style) as
+      { paddingBottom?: number };
+    const ramp = StyleSheet.flatten(view.getByTestId('text-cell-gradient').props.style) as
+      { paddingBottom?: number };
+
+    expect(wrap.paddingBottom ?? 0).toBe(0);
+    expect(ramp.paddingBottom ?? 0).toBeGreaterThanOrEqual(Math.round(800 * 0.26));
+  });
+
   it('marks the card with the prototype flower, left-aligned like Claude Design', () => {
     const view = text();
     expect(view.getByTestId('text-cell-flower').props.children).toBe('✿');

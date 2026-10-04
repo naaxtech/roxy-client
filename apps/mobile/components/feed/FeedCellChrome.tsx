@@ -363,7 +363,7 @@ export function FeedCellChrome({
       {/* One column, so the video transport sits directly above the rail on
           every page size rather than at a hardcoded offset that collides with
           the rail on a short viewport. */}
-      <View style={s.railColumn} pointerEvents="box-none">
+      <View testID="feed-rail-column" style={s.railColumn} pointerEvents="box-none">
         {playbackControl}
 
         <View testID="feed-rail" style={s.rail}>
@@ -502,17 +502,25 @@ export function FeedCellChrome({
             <Ionicons name="ellipsis-horizontal" size={24} color="#fff" style={CHROME_SHADOW} />
           </TouchableOpacity>
         </View>
-      </View>
 
-      <View style={s.crest}>
-        <CommunityCrest
-          name={communityName || 'Roxy'}
-          imageUrl={null}
-          recyclingKey={post.id}
-          active={active}
-          reducedMotion={reducedMotion}
-          onPress={onOpenCommunity}
-        />
+        {/* The crest is the community's mark, and it heads off the column's
+            foot rather than the page's corner: the Roxy FAB (right 20 / bottom
+            90) owns that corner on every feed page, and a crest at bottom 34
+            sat entirely under it where nobody could tap it. A post with no
+            community draws none — the old "Roxy" fallback opened the author,
+            which the avatar already does. */}
+        {communityName ? (
+          <View testID="community-crest-slot" style={s.crest}>
+            <CommunityCrest
+              name={communityName}
+              imageUrl={null}
+              recyclingKey={post.id}
+              active={active}
+              reducedMotion={reducedMotion}
+              onPress={onOpenCommunity}
+            />
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -593,7 +601,7 @@ const s = StyleSheet.create({
     backgroundColor: RAIL_BACKING,
   },
   railCount: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  crest: { position: 'absolute', right: 14, bottom: CHROME_BOTTOM, width: CREST_SIZE },
+  crest: { width: CREST_SIZE, alignItems: 'center' },
   /**
    * `gap` drops from 5 to 2 because the rhythm now lives inside the targets: the
    * three text links each carry `inlineHit`'s padding, which both separates them

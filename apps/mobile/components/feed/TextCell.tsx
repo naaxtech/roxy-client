@@ -4,6 +4,7 @@ import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { TEXT_CARD_READ_MORE } from '../../lib/textCard';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
+import { RAIL_GUTTER } from './feedChromeTokens';
 import { TextCardFace } from './TextCardFace';
 
 /** A text post: Claude Design's p3 card, full-bleed on the plum ramp. */
@@ -16,12 +17,16 @@ export function TextCell({
   return (
     <View testID="text-cell" style={[s.page, { width, height }]}>
       {body ? (
-        <View style={[s.face, { paddingBottom: Math.round(height * 0.26) }]}>
+        <View testID="text-cell-face" style={s.face}>
           <TextCardFace
             content={body}
             size="page"
             testIDPrefix="text-cell"
-            maxWidth={width - 60}
+            // Clear of the rail on the right (RAIL_GUTTER) as well as the
+            // card's own 30dp on the left, or the last word of a line runs
+            // under the author avatar.
+            maxWidth={width - 30 - RAIL_GUTTER}
+            bottomInset={Math.round(height * 0.26)}
           />
         </View>
       ) : (

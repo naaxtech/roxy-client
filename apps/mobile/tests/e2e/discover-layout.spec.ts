@@ -30,13 +30,28 @@ async function cardsBox(page: import('@playwright/test').Page, testid: string) {
   }, testid);
 }
 
+/**
+ * Wait for a rail to finish loading, by its own state, not by the clock.
+ *
+ * These used to sleep 2.5s and then look. On the production project each rail
+ * is several round trips, and on 2026-10-04 Discover took ~5.6s to settle
+ * (Supabase free tier, Seoul region) — so the sleep read a spinner and failed
+ * against roxy.expo.app and a local build alike. Rail.tsx gives every state its
+ * own testID (`-loading`, `-cards`, `-empty`, `-error`); waiting for the one
+ * that means "loaded" is the contract, and an error state still fails loudly.
+ */
+async function waitForRailCards(page: import('@playwright/test').Page, rail: string) {
+  await expect(page.getByTestId(`${rail}-loading`)).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.getByTestId(`${rail}-error`), `${rail} errored`).toHaveCount(0);
+  await expect(page.getByTestId(`${rail}-cards`), `${rail} has no cards`).toBeVisible();
+}
+
 test('one category fills the screen instead of scrolling sideways', async ({ page }) => {
   await signInWithSeedUser(page);
   await gotoTab(page, 'discover');
-  await page.waitForTimeout(2500);
 
   await page.getByTestId('discover-chips-comms').click();
-  await page.waitForTimeout(2000);
+  await waitForRailCards(page, 'rail-communities');
 
   const grid = await cardsBox(page, 'rail-communities-cards');
   expect(grid, 'the communities rail did not render').not.toBeNull();
@@ -53,7 +68,7 @@ test('one category fills the screen instead of scrolling sideways', async ({ pag
 test('All still samples sideways', async ({ page }) => {
   await signInWithSeedUser(page);
   await gotoTab(page, 'discover');
-  await page.waitForTimeout(2500);
+  await waitForRailCards(page, 'rail-top10');
 
   // The mixed view keeps its rails — nine categories cannot each own a screen.
   const rail = await cardsBox(page, 'rail-top10-cards');

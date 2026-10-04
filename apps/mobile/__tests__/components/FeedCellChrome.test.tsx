@@ -1,6 +1,6 @@
 import React from 'react';
 import { AccessibilityInfo, Share, StyleSheet, Text } from 'react-native';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, within } from '@testing-library/react-native';
 import { FeedCellChrome } from '../../components/feed/FeedCellChrome';
 import {
   CAPTION_COLLAPSED_LINES, CAPTION_EXPANDED_CAP, CAPTION_EXPANDED_LINES,
@@ -243,6 +243,34 @@ describe('FeedCellChrome community crest', () => {
     const view = chrome({ active: true });
     expect(view.queryByTestId('community-crest-spinning')).not.toBeNull();
     view.unmount();
+  });
+
+  it('draws no crest on a post that belongs to no community', () => {
+    // Since migration 118 every post lives on its author's wall, so the crest
+    // fell back to a "Roxy" disc that opened the AUTHOR (the avatar's job) and
+    // sat under the Roxy FAB on every page — the one thing the bottom-right
+    // corner must not hold twice. Claude Design's rail has no disc at all.
+    const view = chrome({ post: makePost({ communities: null }) });
+
+    expect(view.queryByTestId('community-crest')).toBeNull();
+    expect(view.queryByLabelText('Open Roxy')).toBeNull();
+  });
+
+  it('keeps a community crest out of the Roxy FAB corner', () => {
+    // The FAB floats at right 20 / bottom 90 (56dp) over every feed page — see
+    // components/ui/RoxyCompanionButton. A crest at bottom 34 sat fully under
+    // it and could never be tapped (fab-occlusion e2e). It now heads the rail
+    // column, directly under the author it belongs with, well above the FAB.
+    const view = chrome();
+    const column = view.getByTestId('feed-rail-column');
+
+    // Inside the rail column (a flex child under the rail), not an absolutely
+    // positioned corner disc.
+    expect(within(column).queryByTestId('community-crest')).not.toBeNull();
+    const crestBox = StyleSheet.flatten(
+      view.getByTestId('community-crest-slot').props.style,
+    ) as { position?: string; bottom?: number };
+    expect(crestBox.position).not.toBe('absolute');
   });
 });
 

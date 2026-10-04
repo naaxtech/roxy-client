@@ -20,6 +20,13 @@ type Props = {
   ghost?: boolean;
   testIDPrefix?: string;
   maxWidth?: number;
+  /**
+   * Room kept clear at the bottom of a full-page card for the feed's author
+   * block. It is padding INSIDE the ramp, as in the prototype (`padding:34px
+   * 30px 150px` on an `inset:0` gradient) — padding the wrapper instead leaves
+   * the bottom of the page on the black stage.
+   */
+  bottomInset?: number;
 };
 
 /**
@@ -32,6 +39,7 @@ export function TextCardFace({
   ghost = false,
   testIDPrefix = 'text-card',
   maxWidth,
+  bottomInset,
 }: Props): ReactElement {
   const body = content.trim();
   const parsed = parseTextCard(ghost && !body ? TEXT_CARD_EXAMPLE_BODY : body);
@@ -57,6 +65,7 @@ export function TextCardFace({
         size === 'preview' && s.preview,
         compact && s.tile,
         ghost && s.ghost,
+        bottomInset != null && { paddingBottom: bottomInset },
       ]}
     >
       {parsed.kick && !compact ? (
