@@ -1,0 +1,20 @@
+apps/mobile/__tests__/screens/UserProfileShell.test.tsx
+  h_0549c11fec2ab0 23,57-64,317-325
+apps/mobile/__tests__/store/friendStore.test.ts
+  h_0549c11fec2ab0 5,126-164
+apps/mobile/app/(tabs)/you/[userId].tsx
+  h_0549c11fec2ab0 80,220-224,237-242
+apps/mobile/store/friendStore.ts
+  h_0549c11fec2ab0 101-116,119,122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0803b1a79fed462da291bf6b7f959a4506ce4e7d",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
