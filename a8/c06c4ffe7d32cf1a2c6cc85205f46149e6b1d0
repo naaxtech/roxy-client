@@ -1,0 +1,26 @@
+.easignore
+  h_0549c11fec2ab0 1-107
+apps/mobile/__tests__/components/FeedCellChrome.test.tsx
+  h_0549c11fec2ab0 3,247-274
+apps/mobile/__tests__/components/TextCell.test.tsx
+  h_0549c11fec2ab0 6,123-133,137-150
+apps/mobile/components/feed/FeedCellChrome.tsx
+  h_0549c11fec2ab0 366,506-523,604
+apps/mobile/components/feed/TextCardFace.tsx
+  h_0549c11fec2ab0 23-29,42,68
+apps/mobile/components/feed/TextCell.tsx
+  h_0549c11fec2ab0 7,20,25-29
+apps/mobile/tests/e2e/discover-layout.spec.ts
+  h_0549c11fec2ab0 33-48,54,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a8c06c4ffe7d32cf1a2c6cc85205f46149e6b1d0",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
