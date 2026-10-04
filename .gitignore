@@ -58,3 +58,6 @@ apps/studio/shots/
 apps/mobile/shots/dogfood-*/
 # Editor MCP config (may hold project refs/tokens)
 .cursor/mcp.json
+
+# Dated local web exports (npx expo export --output-dir dist-YYYY-MM-DD)
+apps/mobile/dist-*/
