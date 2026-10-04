@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react-native';
 import { useFriendStore, isOnline, sortByPresence, FriendshipRow } from '../../store/friendStore';
 
 jest.mock('../../lib/supabase', () => ({
-  supabase: { from: jest.fn() },
+  supabase: { from: jest.fn(), auth: { getUser: jest.fn() } },
 }));
 
 const { supabase } = jest.requireMock('../../lib/supabase');
@@ -121,6 +121,45 @@ describe('friendStore', () => {
     await expect(
       act(async () => { await result.current.sendRequest('user-other'); })
     ).resolves.not.toThrow();
+  });
+
+  it('sendRequest works on a cold store, using the signed-in user from the session', async () => {
+    // Reproduced on roxy.expo.app 2026-10-04: open a member from the feed,
+    // search or a link, tap "Add friend" — no request was sent and nothing
+    // was said. `_userId` was only ever set by fetchAll(), which the profile
+    // screen never calls, so sendRequest returned early in silence.
+    const ME = 'user-me';
+    const carol = mkProfile('user-carol', 'Carol');
+    useFriendStore.setState({ _userId: null });
+    supabase.auth.getUser.mockResolvedValue({ data: { user: { id: ME } }, error: null });
+
+    const insertMock = jest.fn().mockResolvedValue({ error: null });
+    supabase.from
+      .mockReturnValueOnce({ insert: insertMock })
+      .mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        update: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockResolvedValue({ error: null }),
+        or: jest.fn().mockResolvedValue({
+          data: [mkRow('f-new', ME, carol.id, 'pending', mkProfile(ME, 'Me'), carol)],
+          error: null,
+        }),
+      });
+
+    const { result } = renderHook(() => useFriendStore());
+    await act(async () => { await result.current.sendRequest(carol.id); });
+
+    expect(insertMock).toHaveBeenCalledWith({ requester_id: ME, addressee_id: carol.id });
+    expect(result.current.pendingSent.map((r) => r.profile.id)).toEqual([carol.id]);
+  });
+
+  it('sendRequest says so when nobody is signed in, instead of doing nothing', async () => {
+    useFriendStore.setState({ _userId: null });
+    supabase.auth.getUser.mockResolvedValue({ data: { user: null }, error: null });
+
+    const { result } = renderHook(() => useFriendStore());
+    await expect(result.current.sendRequest('user-other')).rejects.toThrow(/signed in/i);
+    expect(supabase.from).not.toHaveBeenCalled();
   });
 
   it('acceptRequest updates status to accepted and refreshes', async () => {

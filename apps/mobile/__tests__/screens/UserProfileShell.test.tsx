@@ -20,6 +20,7 @@ import UserProfileScreen from '../../app/(tabs)/you/[userId]';
 const mockPush = jest.fn();
 const mockOpenReport = jest.fn();
 const mockBlock = jest.fn(async () => undefined);
+const mockFetchFriends = jest.fn(async () => undefined);
 let mockProfile: Record<string, unknown> | null = null;
 let mockBadges: unknown[] = [];
 let mockPostCount = 0;
@@ -53,10 +54,14 @@ jest.mock('../../store/authStore', () => ({
 }));
 
 jest.mock('../../store/friendStore', () => ({
-  useFriendStore: () => ({
-    friends: [], pendingReceived: [], pendingSent: [],
-    sendRequest: jest.fn(), acceptRequest: jest.fn(),
-  }),
+  useFriendStore: (sel?: (s: unknown) => unknown) => {
+    const state = {
+      friends: [], pendingReceived: [], pendingSent: [],
+      sendRequest: jest.fn(), acceptRequest: jest.fn(),
+      fetchAll: mockFetchFriends,
+    };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
 }));
 
 jest.mock('../../store/followStore', () => ({
@@ -308,5 +313,14 @@ describe('user profile on the unified shell', () => {
     fireEvent.press(getByTestId('profile-more'));
     fireEvent.press(getByTestId('profile-more-report'));
     expect(mockOpenReport).toHaveBeenCalledWith({ userId: 'u2', contentType: 'profile' });
+  });
+
+  it('loads her friendships, so the friend button reflects reality on a cold open', async () => {
+    // Opened from the feed or a link, nothing had loaded friendStore, so an
+    // existing friend still read "Add friend" and a waiting request never
+    // offered "Accept".
+    mockFetchFriends.mockClear();
+    render(<UserProfileScreen />);
+    await waitFor(() => expect(mockFetchFriends).toHaveBeenCalledWith('u1'));
   });
 });

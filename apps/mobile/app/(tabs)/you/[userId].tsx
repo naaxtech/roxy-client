@@ -77,6 +77,7 @@ function UserProfileScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { friends, pendingReceived, pendingSent, sendRequest, acceptRequest } = useFriendStore();
+  const fetchFriends = useFriendStore((s) => s.fetchAll);
   const followingIds = useFollowStore((s) => s.followingIds);
   const hydrateFollows = useFollowStore((s) => s.hydrate);
   const follow = useFollowStore((s) => s.follow);
@@ -216,7 +217,11 @@ function UserProfileScreen() {
     if (!user?.id) return;
     void hydrateFollows(user.id);
     void hydrateCommunities(user.id);
-  }, [user?.id, hydrateFollows, hydrateCommunities]);
+    // The Add friend / Requested / Accept / Message button is derived from this
+    // store. Without loading it here the screen showed "Add friend" to existing
+    // friends and never showed "Accept" for a request waiting on her.
+    void fetchFriends(user.id).catch((e: unknown) => logError(e, 'userProfile_fetchFriends'));
+  }, [user?.id, hydrateFollows, hydrateCommunities, fetchFriends]);
 
   const friendshipState: FriendshipState = (() => {
     if (!userId) return 'none';
@@ -229,7 +234,12 @@ function UserProfileScreen() {
   const handleAddFriend = async () => {
     if (!userId) return;
     try { await sendRequest(userId); }
-    catch (e) { logError(e, 'userProfile_addFriend'); showAlert('Error', 'Could not send that request.'); }
+    catch (e) {
+      logError(e, 'userProfile_addFriend');
+      showAlert('Could not send that request', e instanceof Error && /signed in/i.test(e.message)
+        ? e.message
+        : 'Check your connection and try again.');
+    }
   };
 
   const handleAcceptFriend = async () => {

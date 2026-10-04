@@ -98,14 +98,28 @@ export const useFriendStore = create<FriendStore>((set, get) => ({
   },
 
   sendRequest: async (targetId) => {
-    const { _userId } = get();
-    if (!_userId) return;
+    // The id comes from the session when this store has not been loaded yet.
+    // `_userId` used to be the only source, and only fetchAll() set it — so on
+    // any screen that never called fetchAll (a profile opened from the feed,
+    // search or a link) "Add friend" returned here and did nothing, silently.
+    const userId = get()._userId ?? (await supabase.auth.getUser()).data.user?.id ?? null;
+    if (!userId) throw new Error('You need to be signed in to add a friend.');
+    if (userId !== get()._userId) set({ _userId: userId });
+
+    // She already asked first: accept hers rather than file a second request in
+    // the other direction (friendships is UNIQUE per direction, not per pair).
+    const theirs = get().pendingReceived.find((r) => r.requester_id === targetId);
+    if (theirs) {
+      await get().acceptRequest(theirs.id);
+      return;
+    }
+
     const { error } = await supabase
       .from('friendships')
-      .insert({ requester_id: _userId, addressee_id: targetId });
+      .insert({ requester_id: userId, addressee_id: targetId });
     if (error && error.code !== '23505') throw error;
     Analytics.friendRequestSent(targetId);
-    await get().fetchAll(_userId);
+    await get().fetchAll(userId);
   },
 
   acceptRequest: async (friendshipId) => {
