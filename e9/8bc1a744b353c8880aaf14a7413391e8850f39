@@ -1,0 +1,16 @@
+apps/mobile/package-lock.json
+  h_0549c11fec2ab0 29,35,11873-11881,12048-12056
+apps/mobile/package.json
+  h_0549c11fec2ab0 46,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e98bc1a744b353c8880aaf14a7413391e8850f39",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
