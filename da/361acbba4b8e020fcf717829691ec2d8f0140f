@@ -1,0 +1,20 @@
+apps/mobile/__tests__/screens/ApplicationScreen.test.tsx
+  h_0549c11fec2ab0 1-190
+apps/mobile/__tests__/store/gateStore.test.ts
+  h_0549c11fec2ab0 313-330
+apps/mobile/app/(auth)/application.tsx
+  h_0549c11fec2ab0 11-16,18,24-54,59-60,62,69-77,88,104,106-107,109,111,118-122,125-134,164-167,182-183,189,193,197,199-200,210,212-222,246-250,260,265-274,279-281,286,295-299,301,303-305,309,316-317,328-330,379-380,384,411-460
+apps/mobile/store/gateStore.ts
+  h_0549c11fec2ab0 305-314
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da361acbba4b8e020fcf717829691ec2d8f0140f",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
