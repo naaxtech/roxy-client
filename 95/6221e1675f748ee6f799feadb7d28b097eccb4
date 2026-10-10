@@ -1,0 +1,20 @@
+apps/mobile/__tests__/lib/notificationSettings.test.ts
+  h_0549c11fec2ab0 35,63-75
+apps/mobile/lib/notificationSettings.ts
+  h_0549c11fec2ab0 17-18,31,48,60
+supabase/functions/_shared/pushCore.test.ts
+  h_0549c11fec2ab0 36,63-65,69-104
+supabase/functions/_shared/pushCore.ts
+  h_0549c11fec2ab0 20-25,27,38-43,58,98-103,121-128,174-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "956221e1675f748ee6f799feadb7d28b097eccb4",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
