@@ -1,0 +1,48 @@
+apps/mobile/__tests__/directMessages.test.ts
+  h_0549c11fec2ab0 3-14,16,28-29,31,35-38,41-47,50-55,58-60
+apps/mobile/__tests__/hooks/chatBroadcast.private.test.ts
+  h_0549c11fec2ab0 1-95
+apps/mobile/__tests__/hooks/useReactions.test.ts
+  h_0549c11fec2ab0 102-103
+apps/mobile/__tests__/hooks/useRealtime.chat132.test.ts
+  h_0549c11fec2ab0 1-146
+apps/mobile/__tests__/hooks/useRealtime.reliability.test.ts
+  h_0549c11fec2ab0 162-166
+apps/mobile/__tests__/hooks/useRealtime.test.ts
+  h_0549c11fec2ab0 65
+apps/mobile/__tests__/hooks/useTyping.test.ts
+  h_0549c11fec2ab0 49,53-54
+apps/mobile/__tests__/lib/chat.test.ts
+  h_0549c11fec2ab0 1-218
+apps/mobile/__tests__/lib/realtimeChannel.test.ts
+  h_0549c11fec2ab0 1-101
+apps/mobile/app/(tabs)/you/[userId].tsx
+  h_0549c11fec2ab0 29,255-263
+apps/mobile/hooks/useReactions.ts
+  h_0549c11fec2ab0 2,4,20-28,31,38-41,43-45,50,60,62,64-90,92-95,122,127,130,158,165
+apps/mobile/hooks/useRealtime.ts
+  h_0549c11fec2ab0 55-56,224-230,242-248,348-351,367-381,394-395,398-407,456
+apps/mobile/hooks/useTyping.ts
+  h_0549c11fec2ab0 3-4,9,11-12,16,18-19,29,40-45,47-49,51-54,60,62,67,69-71,78-90,95-97,101-128,132-134,138,148,151,154,174-179
+apps/mobile/lib/chat.ts
+  h_0549c11fec2ab0 1-369
+apps/mobile/lib/directMessages.ts
+  h_0549c11fec2ab0 2,4-19
+apps/mobile/lib/haptics.ts
+  h_0549c11fec2ab0 1-25
+apps/mobile/lib/realtimeChannel.ts
+  h_0549c11fec2ab0 1,5-20,22-67,69-74,76-79
+apps/mobile/types/index.ts
+  h_0549c11fec2ab0 104-105,111-113,122-123,127-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6e98a19f7d84130724aec0894465f88dbfaa5bc",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
