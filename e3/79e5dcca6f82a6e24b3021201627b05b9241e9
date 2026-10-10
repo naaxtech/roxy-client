@@ -1,0 +1,26 @@
+apps/mobile/__tests__/components/chat/MessageStatus.test.tsx
+  h_0549c11fec2ab0 6,26-39
+apps/mobile/__tests__/screens/SettingsChat.test.tsx
+  h_0549c11fec2ab0 1-93
+apps/mobile/__tests__/store/chatSettingsStore.test.ts
+  h_0549c11fec2ab0 1-64
+apps/mobile/app/(tabs)/_layout.tsx
+  h_0549c11fec2ab0 9,104-106
+apps/mobile/app/(tabs)/you/settings.tsx
+  h_0549c11fec2ab0 1,29,47-50,53-55,219-264
+apps/mobile/components/chat/MessageStatus.tsx
+  h_0549c11fec2ab0 7,30-32,34,36-37
+apps/mobile/store/chatSettingsStore.ts
+  h_0549c11fec2ab0 1-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e379e5dcca6f82a6e24b3021201627b05b9241e9",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
