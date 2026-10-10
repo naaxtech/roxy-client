@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore';
 import { useGateStore } from '../store/gateStore';
 import { useProfileStore } from '../store/profileStore';
 import { useViewAsStore } from '../store/viewAsStore';
+import { unregisterDevice } from '../lib/pushRegistration';
 
 const EXISTING_EMAIL = 'That email already has an account. Sign in instead.';
 const WRONG_SESSION = 'Sign-up did not open the new account. Sign out and try again.';
@@ -152,6 +153,9 @@ export function useAuth() {
   };
 
   const signOut = async () => {
+    // Before the session ends: unregister_push_device needs her JWT. After
+    // signOut() this phone would keep receiving her pushes for the next person.
+    await unregisterDevice();
     await supabase.auth.signOut();
     storeSignOut();
     forgetLocalIdentity(true);

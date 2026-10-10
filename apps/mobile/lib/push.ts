@@ -1,59 +1,54 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import * as Linking from 'expo-linking';
-import Constants from 'expo-constants';
-import { supabase } from './supabase';
-import { logError } from './errorLogger';
+import { isForegroundDuplicate, pathFromPushUrl, registerDevice } from './pushRegistration';
 
-// Show the banner, play a sound and set the badge even when the app is already
-// in the foreground — otherwise a push would be silently swallowed while she is
-// reading, which is the one moment the notification matters most.
+/**
+ * App-wide push wiring. The rules live in lib/pushRegistration.ts (tested);
+ * this file only connects them to expo-notifications and the router.
+ *
+ * Tap routing moved to app/(tabs)/_layout.tsx (useLastNotificationResponse +
+ * router.push). It used to be a module-level listener calling Linking.openURL,
+ * which missed the cold-start tap and re-entered the app from the top.
+ */
+
 if (Platform.OS !== 'web') {
+  // Foreground: show the banner, play the sound, set the badge — except for the
+  // chat she is already reading, which would buzz her about the message on
+  // screen.
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-    }),
-  });
-
-  // A tapped notification routes to the screen it points at. `send-message-push`
-  // sets `data.url` to a `roxy://…` deep link; expo-router owns the scheme and
-  // opens the conversation. A cold-start tap is handled by expo-router from the
-  // launch URL instead of this listener.
-  Notifications.addNotificationResponseReceivedListener((response) => {
-    const url = response.notification.request.content.data?.url;
-    if (typeof url === 'string' && url.length > 0) {
-      void Linking.openURL(url);
-    }
+    handleNotification: async (n) => {
+      const duplicate = isForegroundDuplicate(n.request.content.data as { url?: unknown });
+      return {
+        shouldShowAlert: !duplicate,
+        shouldPlaySound: !duplicate,
+        shouldSetBadge: true,
+      };
+    },
   });
 }
 
 /**
- * Ask once for permission, then persist this device's Expo push token so the
- * server can reach her for messages and friend requests with the app closed.
- *
- * No-op on web (Expo push is native-only) and on denial. A failed upsert is
- * logged and ignored — the token can be retried on the next launch. `push_tokens`
- * (migration 065) is RLS-scoped to the caller's own row, so this writes as her,
- * not through a service-role RPC.
+ * Where a tapped push should take her, as an app path — or null.
+ * push-dispatch puts `data.url = roxy://<path>` on every message.
  */
-export async function registerPushToken(userId: string): Promise<void> {
-  if (Platform.OS === 'web') return;
-  try {
-    const current = await Notifications.getPermissionsAsync();
-    if (current.status !== 'granted') {
-      const asked = await Notifications.requestPermissionsAsync();
-      if (asked.status !== 'granted') return;
-    }
-    const extra = Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined;
-    const projectId = extra?.eas?.projectId;
-    const token = await Notifications.getExpoPushTokenAsync({ projectId });
-    const { error } = await supabase
-      .from('push_tokens')
-      .upsert({ user_id: userId, token: token.data, updated_at: new Date().toISOString() });
-    if (error) logError(error, 'push.registerToken');
-  } catch (e) {
-    logError(e, 'push.registerToken');
-  }
+export function pushResponsePath(
+  response: Notifications.NotificationResponse | null | undefined,
+): string | null {
+  if (!response) return null;
+  if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return null;
+  return pathFromPushUrl(
+    (response.notification.request.content.data as { url?: unknown } | undefined)?.url,
+  );
+}
+
+/**
+ * Register this phone for the signed-in user.
+ *
+ * Kept under its old name so callers do not change. It used to upsert a single
+ * row into push_tokens (065), which a second phone overwrote and nothing ever
+ * read; it now registers through `register_push_device` (129), one row per
+ * device.
+ */
+export async function registerPushToken(_userId: string): Promise<void> {
+  await registerDevice();
 }

@@ -25,6 +25,7 @@ import { useViewAsStore } from '../../../store/viewAsStore';
 import { TYPE } from '../../../lib/typography';
 import { RADII, type ThemeColors } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
+import { unregisterDevice } from '../../../lib/pushRegistration';
 
 /**
  * Settings & safety — same sections and copy as the 3.0 prototype.
@@ -57,6 +58,7 @@ export default function SettingsScreen() {
   const handleSignOut = async () => {
     const confirmed = await confirmAction('Sign out', 'Are you sure you want to sign out?', 'Sign out');
     if (!confirmed) return;
+    await unregisterDevice();
     await supabase.auth.signOut();
     useAuthStore.getState().signOut();
     useProfileStore.getState().setProfile(null);
@@ -202,6 +204,25 @@ export default function SettingsScreen() {
             >
               <Text style={s.rowLabel}>Blocked</Text>
               <Text style={s.rowValue}>{blockedCount} ›</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={s.block}>
+          <Text style={s.sectionLabel}>Notifications</Text>
+          <View style={s.card}>
+            <TouchableOpacity
+              style={s.row}
+              onPress={() => router.push('/(tabs)/you/notification-settings' as never)}
+              accessibilityRole="button"
+              accessibilityLabel="Notification settings"
+              testID="settings-notifications"
+            >
+              <View style={s.rowLabelGroup}>
+                <Text style={s.rowLabel}>Notification settings</Text>
+                <Text style={s.rowHint}>Messages, friends, events, previews, quiet hours</Text>
+              </View>
+              <Text style={s.chevron}>›</Text>
             </TouchableOpacity>
           </View>
         </View>

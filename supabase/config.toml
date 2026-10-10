@@ -405,6 +405,8 @@ verify_jwt = false
 
 # Scheduled / service-to-service. No user is involved; each one compares the
 # Authorization header against SUPABASE_SERVICE_ROLE_KEY before doing any work.
+[functions.push-dispatch]
+verify_jwt = false
 [functions.process-refunds]
 verify_jwt = false
 [functions.release-payout]

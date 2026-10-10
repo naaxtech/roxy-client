@@ -31,6 +31,7 @@ import { TypingIndicator } from '../../components/chat/TypingIndicator';
 import { isOnline } from '../../store/friendStore';
 import { avatarGradient } from '../../lib/avatars';
 import { BRAND_GRADIENT } from '../../lib/theme';
+import { setActivePath as setActivePushPath } from '../../lib/pushRegistration';
 
 function formatTimeSep(iso: string): string {
   const d = new Date(iso);
@@ -360,7 +361,19 @@ export default function ChatScreen() {
 
   useEffect(() => {
     setActiveConversation(conversationId ?? null);
-    return () => setActiveConversation(null);
+    // No banner for this chat while it is on screen, and opening it clears its
+    // notifications so the bell and the app badge stop counting messages she is
+    // reading (migration 129).
+    setActivePushPath(conversationId ? `/chat/${conversationId}` : null);
+    if (conversationId) {
+      supabase
+        .rpc('mark_notifications_read_for_link', { p_link_path: `/chat/${conversationId}` })
+        .then(null, () => {});
+    }
+    return () => {
+      setActiveConversation(null);
+      setActivePushPath(null);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
 
@@ -510,13 +523,11 @@ export default function ChatScreen() {
       }
 
       Analytics.messageSent(conversationId);
-      // Fire-and-forget push to the recipient. The in-app notification is
-      // created server-side by trg_notify_direct_message; this is the alert
-      // that reaches her when the app is closed.
-      void callEdgeFunction('send-message-push', {
-        conversation_id: conversationId,
-        message_preview: content.trim() || (type === 'image' ? '📷 sent you a photo' : null),
-      });
+      // No push call here any more. The recipient's notification row is created
+      // server-side by trg_notify_direct_message, and migration 129 queues its
+      // push from that row (push-dispatch). The old fire-and-forget call to
+      // send-message-push depended on THIS phone staying online and is now a
+      // no-op kept only for older builds.
       supabase
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })

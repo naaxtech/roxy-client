@@ -3,22 +3,35 @@ import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 
 /**
- * Send an Expo push to the recipient of a direct message.
+ * DEPRECATED — KEPT ON PURPOSE, now a no-op. Do not delete without asking.
  *
- * Called by the sender's client right after a message lands, so a reply reaches
- * a woman who has the app closed. The sender's JWT is verified, the recipient
- * is resolved server-side from the conversation (never from the request body),
- * and tokens are read through the service-role client — the same path 065's
- * RLS comment names.
+ * History: the first push path (session 2026-09-20). The SENDER's client called
+ * this right after posting a DM, so delivery depended on her phone staying
+ * online and on an EXPO_ACCESS_TOKEN secret that was never set on production —
+ * which is why no push ever arrived. Only DMs were covered.
  *
- * Requires the `EXPO_ACCESS_TOKEN` secret (the project's Expo Push access
- * token, from expo.dev/settings/push-notifications). Without it this returns
- * 500 rather than half-sending.
+ * Since migration 129 every notification row (DM, channel, friend, event) is
+ * queued in push_outbox and delivered by push-dispatch, server-side, with
+ * preferences, quiet hours, mute/block checks and lock-screen privacy. If this
+ * function still sent, every DM would arrive twice. It stays deployed and
+ * answers { sent: 0 } so app builds that still call it (every APK before the
+ * 129 release) keep working without an error.
+ *
+ * Original description: send an Expo push to the recipient of a direct message.
  */
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
+  const auth = await verifyJWT(req);
+  if (!auth) return errorResponse('Unauthorized', 401);
+
+  return successResponse({ sent: 0, deprecated: 'push-dispatch delivers this notification' });
+});
+
+// The original body, kept for reference (unreachable):
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function legacySendMessagePush(req: Request) {
   const auth = await verifyJWT(req);
   if (!auth) return errorResponse('Unauthorized', 401);
 
@@ -69,4 +82,4 @@ Deno.serve(async (req) => {
   });
   if (!res.ok) return errorResponse(`Expo push failed: ${res.status}`, 502);
   return successResponse({ sent: payload.length });
-});
+}

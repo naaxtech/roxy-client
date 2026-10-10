@@ -15,7 +15,8 @@ import { PendingStatusHost } from '../../components/account/PendingStatusHost';
 import { navSlotsFor } from '../../components/nav/navSlots3';
 import { supabase } from '../../lib/supabase';
 import { freshChannel } from '../../lib/realtimeChannel';
-import { registerPushToken } from '../../lib/push';
+import { registerPushToken, pushResponsePath } from '../../lib/push';
+import * as Notifications from 'expo-notifications';
 
 /**
  * The companion FAB pins itself 90pt above its parent's bottom edge, a number
@@ -77,6 +78,17 @@ export default function TabLayout() {
     if (!user?.id) return;
     void registerPushToken(user.id);
   }, [user?.id]);
+
+  // A tapped push opens the screen it points at — including the cold start,
+  // where the response is already waiting when this layout mounts. Routed
+  // through expo-router (not Linking.openURL) so it lands inside the signed-in
+  // stack instead of re-entering the app from the top.
+  const lastPush = Notifications.useLastNotificationResponse();
+  useEffect(() => {
+    const path = pushResponsePath(lastPush);
+    if (path) router.push(path as never);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastPush]);
 
   const unreadCounts = useConnectStore((s) => s.unreadCounts);
   const totalUnread = Object.values(unreadCounts).reduce((sum, n) => sum + n, 0);
