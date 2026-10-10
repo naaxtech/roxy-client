@@ -1,0 +1,34 @@
+apps/mobile/__tests__/components/chat/ComposerBanners.test.tsx
+  h_0549c11fec2ab0 1-75
+apps/mobile/__tests__/components/chat/MessageActionSheet.test.tsx
+  h_0549c11fec2ab0 1-97
+apps/mobile/__tests__/components/chat/MessageRow.test.tsx
+  h_0549c11fec2ab0 1-139
+apps/mobile/__tests__/hooks/useThreadMeta.test.ts
+  h_0549c11fec2ab0 1-79
+apps/mobile/__tests__/lib/chatThread.test.ts
+  h_0549c11fec2ab0 1-148
+apps/mobile/components/chat/ComposerBanners.tsx
+  h_0549c11fec2ab0 1-161
+apps/mobile/components/chat/MessageActionSheet.tsx
+  h_0549c11fec2ab0 1-176
+apps/mobile/components/chat/MessageRow.tsx
+  h_0549c11fec2ab0 1-314
+apps/mobile/components/chat/TypingIndicator.tsx
+  h_0549c11fec2ab0 8-9,12,65-73
+apps/mobile/hooks/useThreadMeta.ts
+  h_0549c11fec2ab0 1-132
+apps/mobile/lib/chatThread.ts
+  h_0549c11fec2ab0 1-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c94b6fcb34f07dc0ff72575e2485c08ab6a0d6c1",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
