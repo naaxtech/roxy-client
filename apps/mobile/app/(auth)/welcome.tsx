@@ -23,6 +23,12 @@ import { useGateStore } from '../../store/gateStore';
 import { showAlert } from '../../lib/confirm';
 import { BRAND_GRADIENT } from '../../lib/theme';
 import { POP_FROM, SNAP_SPRING } from '../../lib/motion';
+import { enabledOAuthProviders } from '../../lib/authProviders';
+
+/** G-19: a safety app asks for more than six characters. Matches the Supabase Auth setting. */
+export const MIN_PASSWORD = 10;
+
+const OAUTH = enabledOAuthProviders();
 
 // Roxy brand gradient — same 3 stops as the Grow hero card.
 
@@ -31,7 +37,9 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const { height } = useWindowDimensions();
   const { validatedCode, validatedCommunityName, submitApplicationForCode } = useGateStore();
-  const [showEmail, setShowEmail] = useState(false);
+  // With no provider configured (G-03) the email form is the only way in, so
+  // it is open from the start instead of hiding behind "Use email instead".
+  const [showEmail, setShowEmail] = useState(OAUTH.length === 0);
   // Arriving without a code means she tapped "I already have an account" on the
   // gate, so open in sign-in mode rather than making her switch.
   const [isSignIn, setIsSignIn] = useState(!validatedCode);
@@ -50,8 +58,10 @@ export default function WelcomeScreen() {
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) return;
-    if (password.length < 6) {
-      showAlert('Error', 'Password must be at least 6 characters.');
+    // Sign-in keeps accepting older, shorter passwords; only new ones are held
+    // to the minimum.
+    if (!isSignIn && password.length < MIN_PASSWORD) {
+      showAlert('A little longer', `Use at least ${MIN_PASSWORD} characters — it keeps your account yours.`);
       return;
     }
 
@@ -81,10 +91,11 @@ export default function WelcomeScreen() {
       const applicationId = await submitApplicationForCode();
       setLoading(false);
       if (!applicationId) {
-        showAlert(
-          'Almost there',
-          "Your account exists, but we couldn't attach your invite code. Sign in and try again.",
-        );
+        // G-15: her account exists but the code could not open an application
+        // (exhausted a moment ago, expired, the network dropped). She is never
+        // let in on that basis — she lands on the code screen, still signed
+        // in, with the reason shown and a way to try another code.
+        router.replace('/(auth)/code');
         return;
       }
       router.replace('/(auth)/application');
@@ -334,6 +345,7 @@ export default function WelcomeScreen() {
               </>
             ) : (
               <>
+                {OAUTH.includes('apple') && (
                 <TouchableOpacity
                   testID="oauth-apple-btn"
                   style={[styles.btn, styles.btnApple, busy && styles.btnDisabled]}
@@ -350,7 +362,9 @@ export default function WelcomeScreen() {
                     </>
                   )}
                 </TouchableOpacity>
+                )}
 
+                {OAUTH.includes('google') && (
                 <TouchableOpacity
                   testID="oauth-google-btn"
                   style={[styles.btn, styles.btnGoogle, busy && styles.btnDisabled]}
@@ -367,6 +381,7 @@ export default function WelcomeScreen() {
                     </>
                   )}
                 </TouchableOpacity>
+                )}
 
                 {!showEmail ? (
                   <TouchableOpacity onPress={() => setShowEmail(true)} testID="use-email-link">
@@ -374,11 +389,13 @@ export default function WelcomeScreen() {
                   </TouchableOpacity>
                 ) : (
                   <>
-                    <View style={styles.dividerRow}>
-                      <View style={styles.dividerLine} />
-                      <Text style={styles.dividerText}>OR</Text>
-                      <View style={styles.dividerLine} />
-                    </View>
+                    {OAUTH.length > 0 && (
+                      <View style={styles.dividerRow}>
+                        <View style={styles.dividerLine} />
+                        <Text style={styles.dividerText}>OR</Text>
+                        <View style={styles.dividerLine} />
+                      </View>
+                    )}
 
                     <View>
                       <Text style={styles.inputLabel} nativeID="email-label">Email</Text>
@@ -439,8 +456,17 @@ export default function WelcomeScreen() {
                         </TouchableOpacity>
                       </View>
                     </View>
+                    {!isSignIn && (
+                      <Text style={styles.privacy} testID="password-hint">
+                        At least {MIN_PASSWORD} characters.
+                      </Text>
+                    )}
                     {isSignIn && (
-                      <TouchableOpacity onPress={handleForgotPassword}>
+                      <TouchableOpacity
+                        onPress={handleForgotPassword}
+                        accessibilityRole="button"
+                        accessibilityLabel="Forgot password"
+                      >
                         <Text style={styles.forgotLink}>Forgot password?</Text>
                       </TouchableOpacity>
                     )}
@@ -448,6 +474,8 @@ export default function WelcomeScreen() {
                       testID="auth-submit-btn"
                       onPress={handleSubmit}
                       disabled={busy}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: busy, busy: loading }}
                       accessibilityLabel={isSignIn ? 'Sign In' : 'Sign Up'}
                     >
                       <LinearGradient
@@ -463,7 +491,10 @@ export default function WelcomeScreen() {
                         )}
                       </LinearGradient>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setIsSignIn(!isSignIn)}>
+                    <TouchableOpacity
+                      onPress={() => setIsSignIn(!isSignIn)}
+                      accessibilityRole="button"
+                    >
                       <Text style={styles.emailLink}>
                         {isSignIn ? 'New here? Sign Up' : 'Already have an account? Sign In'}
                       </Text>

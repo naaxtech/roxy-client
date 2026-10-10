@@ -117,3 +117,52 @@ export const shouldRedirectToApplication = (
   if (isResetPasswordRoute(segments, pathname)) return false;
   return !isApplicationRoute(segments, pathname);
 };
+
+/**
+ * Is the user on the code screen?
+ *
+ * Same dual read as the other route predicates. The signed-in variant of
+ * /(auth)/code is where a woman whose code failed after signup lands (G-15).
+ */
+export const isCodeRoute = (
+  segments: readonly string[],
+  pathname: string,
+): boolean => segments.some((s) => s === 'code') || pathname.endsWith('/code');
+
+/**
+ * Should a signed-in account with no profile be sent to enter a code?
+ *
+ * G-15. An account can exist with no profile and no held code: the code was
+ * exhausted between validation and signup, the network dropped mid-redeem, or
+ * the app was killed (the held code lives in memory). The layout used to send
+ * that account to onboarding, and onboarding creates a profile — at the old
+ * default of full access. Migration 130 makes that profile 'pending' by force,
+ * but onboarding is still the wrong place: she has nothing to be reviewed on.
+ * She goes back to the code screen, signed in, with her account intact.
+ *
+ * Recovery and the application screen keep their exemptions.
+ */
+export const shouldRedirectToCode = (
+  profileExists: boolean,
+  hasValidatedCode: boolean,
+  segments: readonly string[],
+  pathname: string,
+): boolean => {
+  if (profileExists || hasValidatedCode) return false;
+  if (isResetPasswordRoute(segments, pathname)) return false;
+  if (isApplicationRoute(segments, pathname)) return false;
+  return !isCodeRoute(segments, pathname);
+};
+
+/**
+ * Is this account being deleted? (G-16)
+ *
+ * gdpr-delete soft-deletes the profile (deleted_at) and the server refuses a
+ * deleted account everything (130: is_approved_member is false, profiles RLS
+ * shows nobody). The client must agree, or a deleted woman who signs back in
+ * lands on an onboarded-member shell that RLS has emptied. She is signed out
+ * and told why.
+ */
+export const isDeletedProfile = (
+  profile: { deleted_at?: string | null } | null | undefined,
+): boolean => !!profile?.deleted_at;

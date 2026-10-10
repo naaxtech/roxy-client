@@ -39,13 +39,12 @@ export default function Step4Status() {
       showAlert('Setup error', 'Could not save your settings. Please try again.');
       return;
     }
+    // G-25: onboarding_completed is already written, so she IS set up. The
+    // welcome suggestions are a nicety; if they fail she still goes in, and
+    // is never told "could not finish setup" about a setup that finished.
     const { error } = await callEdgeFunction('roxy-onboarding', { user_id: user.id });
     setLoading(false);
-    if (error) {
-      logError(new Error(String(error)), 'onboarding_step4_edge_function');
-      showAlert('Setup error', 'Could not finish setup. Please try again.');
-      return;
-    }
+    if (error) logError(new Error(String(error)), 'onboarding_step4_edge_function');
     logBreadcrumb('onboarding_complete', { user_id: hashUserId(user.id) });
     router.replace('/(tabs)/feed');
   };

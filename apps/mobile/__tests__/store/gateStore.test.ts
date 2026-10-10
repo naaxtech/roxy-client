@@ -10,7 +10,7 @@ jest.mock('../../lib/supabase', () => ({
 
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 
-import { useGateStore, type Criterion, type ApplicationState } from '../../store/gateStore';
+import { useGateStore, JOIN_REASON_MIN, type Criterion, type ApplicationState } from '../../store/gateStore';
 
 type MockedSupabase = { from: jest.Mock; rpc: jest.Mock; auth: { getUser: jest.Mock } };
 const { supabase } = jest.requireMock('../../lib/supabase') as { supabase: MockedSupabase };
@@ -133,17 +133,68 @@ describe('gateStore.loadApplication — criteria are scoped to her own community
   });
 });
 
-describe('gateStore.saveLegalName — the name is never written then disowned', () => {
-  /**
-   * The regression this whole change exists for. application_criteria_met has
-   * only SELECT policies (migration 071), so the old direct upsert was refused
-   * every time — and it was attempted AFTER the name had already been inserted,
-   * so the applicant was told "could not save" about data that was on file for
-   * good. Any write to that table from the client is the bug coming back.
-   */
-  it('never writes to application_criteria_met from the client', async () => {
-    mockInsert({ error: null });
+/** Missing-function error, as PostgREST reports an RPC not deployed yet. */
+const MISSING = { code: 'PGRST202', message: 'Could not find the function' };
+
+/**
+ * 130 / G-19: the legal name is stored AND its criterion marked by one
+ * SECURITY DEFINER call, and a second call while she is pending corrects the
+ * name instead of hitting a primary key. The client never writes
+ * applicant_identity or application_criteria_met directly any more.
+ */
+describe('gateStore.saveLegalName — one RPC, correctable', () => {
+  it('calls save_applicant_legal_name with the trimmed name and ticks the criterion', async () => {
     supabase.rpc.mockResolvedValue({ error: null });
+
+    const outcome = await useGateStore.getState().saveLegalName('  Ada Lovelace  ');
+
+    expect(outcome).toBe('saved');
+    expect(supabase.rpc).toHaveBeenCalledWith('save_applicant_legal_name', { p_name: 'Ada Lovelace' });
+    expect(supabase.from).not.toHaveBeenCalled();
+    expect(useGateStore.getState().metCriterionIds.has('crit-legal-name')).toBe(true);
+    expect(useGateStore.getState().score).toBe(3);
+  });
+
+  it('lets her correct the name: a second save is a second successful call, not a conflict', async () => {
+    supabase.rpc.mockResolvedValue({ error: null });
+
+    expect(await useGateStore.getState().saveLegalName('Ada Lovelace')).toBe('saved');
+    expect(await useGateStore.getState().saveLegalName('Ada King')).toBe('saved');
+    expect(supabase.rpc).toHaveBeenLastCalledWith('save_applicant_legal_name', { p_name: 'Ada King' });
+  });
+
+  it('returns failed and logs when the server refuses, with nothing ticked', async () => {
+    supabase.rpc.mockResolvedValue({ error: { code: '42501', message: 'no open application' } });
+
+    const outcome = await useGateStore.getState().saveLegalName('Ada Lovelace');
+
+    expect(outcome).toBe('failed');
+    expect(logError).toHaveBeenCalled();
+    expect(useGateStore.getState().metCriterionIds.size).toBe(0);
+  });
+
+  it('returns failed without a call when there is no application', async () => {
+    useGateStore.setState({ application: null });
+    expect(await useGateStore.getState().saveLegalName('Ada Lovelace')).toBe('failed');
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+
+  it('returns saved when the deployment has no legal_name criterion configured', async () => {
+    useGateStore.setState({ criteria: [OTHER] });
+    supabase.rpc.mockResolvedValue({ error: null });
+    expect(await useGateStore.getState().saveLegalName('Ada Lovelace')).toBe('saved');
+  });
+});
+
+/**
+ * Rollout window only: a database without save_applicant_legal_name. The old
+ * path's hard-won rules still hold — the name is never written then disowned,
+ * and application_criteria_met is never written from the client.
+ */
+describe('gateStore.saveLegalName — pre-130 fallback', () => {
+  it('never writes to application_criteria_met from the client', async () => {
+    supabase.rpc.mockResolvedValueOnce({ error: MISSING }).mockResolvedValue({ error: null });
+    mockInsert({ error: null });
 
     await useGateStore.getState().saveLegalName('Ada Lovelace');
 
@@ -152,126 +203,132 @@ describe('gateStore.saveLegalName — the name is never written then disowned', 
     expect(tablesWritten).toContain('applicant_identity');
   });
 
-  // Fails before the fix: the old implementation returned boolean false here,
-  // after the name had already been stored.
   it('reports saved_unscored — not failure — when the criterion cannot be marked', async () => {
+    supabase.rpc.mockResolvedValue({ error: MISSING });
     mockInsert({ error: null });
-    supabase.rpc.mockResolvedValue({
-      error: { code: 'PGRST202', message: 'Could not find the function' },
-    });
 
-    const outcome = await useGateStore.getState().saveLegalName('Ada Lovelace');
-
-    expect(outcome).toBe('saved_unscored');
-  });
-
-  it('trims the name before storing it', async () => {
-    const insert = mockInsert({ error: null });
-    supabase.rpc.mockResolvedValue({ error: null });
-
-    await useGateStore.getState().saveLegalName('  Ada Lovelace  ');
-
-    expect(insert).toHaveBeenCalledWith({
-      application_id: 'app-1',
-      legal_name: 'Ada Lovelace',
-    });
-  });
-});
-
-describe('gateStore.saveLegalName — outcomes', () => {
-  it('returns saved and marks the criterion when the RPC succeeds', async () => {
-    mockInsert({ error: null });
-    supabase.rpc.mockResolvedValue({ error: null });
-
-    const outcome = await useGateStore.getState().saveLegalName('Ada Lovelace');
-
-    expect(outcome).toBe('saved');
-    expect(supabase.rpc).toHaveBeenCalledWith('mark_criterion_met', {
-      p_application_id: 'app-1',
-      p_criterion_id: 'crit-legal-name',
-    });
-    expect(useGateStore.getState().metCriterionIds.has('crit-legal-name')).toBe(true);
-    expect(useGateStore.getState().score).toBe(3);
-  });
-
-  it('does not inflate the score when the criterion was not marked', async () => {
-    mockInsert({ error: null });
-    supabase.rpc.mockResolvedValue({ error: { code: 'PGRST202', message: 'missing' } });
-
-    await useGateStore.getState().saveLegalName('Ada Lovelace');
-
-    expect(useGateStore.getState().metCriterionIds.has('crit-legal-name')).toBe(false);
+    expect(await useGateStore.getState().saveLegalName('Ada Lovelace')).toBe('saved_unscored');
     expect(useGateStore.getState().score).toBe(0);
+    expect(logError).not.toHaveBeenCalled();
   });
 
-  it('returns already_saved on a primary key conflict', async () => {
+  it('returns already_saved on a primary key conflict, quietly', async () => {
+    supabase.rpc.mockResolvedValue({ error: MISSING });
     mockInsert({ error: { code: '23505', message: 'duplicate key value' } });
 
-    const outcome = await useGateStore.getState().saveLegalName('Ada Lovelace');
-
-    expect(outcome).toBe('already_saved');
-    // A name she already gave us is not an error worth paging anyone about.
+    expect(await useGateStore.getState().saveLegalName('Ada Lovelace')).toBe('already_saved');
     expect(logError).not.toHaveBeenCalled();
   });
 
-  it('returns failed and logs when nothing could be written', async () => {
-    mockInsert({ error: { code: '42501', message: 'new row violates row-level security' } });
-
-    const outcome = await useGateStore.getState().saveLegalName('Ada Lovelace');
-
-    expect(outcome).toBe('failed');
-    expect(logError).toHaveBeenCalled();
-    // Nothing was stored, so the criterion RPC must not have been attempted.
-    expect(supabase.rpc).not.toHaveBeenCalled();
-  });
-
-  it('returns failed when there is no application to attach the name to', async () => {
-    useGateStore.setState({ application: null });
-
-    const outcome = await useGateStore.getState().saveLegalName('Ada Lovelace');
-
-    expect(outcome).toBe('failed');
-    expect(supabase.from).not.toHaveBeenCalled();
-  });
-
-  it('returns saved when the deployment has no legal_name criterion configured', async () => {
-    useGateStore.setState({ criteria: [OTHER] });
+  it('returns saved and ticks when mark_criterion_met exists', async () => {
+    supabase.rpc.mockResolvedValueOnce({ error: MISSING }).mockResolvedValue({ error: null });
     mockInsert({ error: null });
 
-    const outcome = await useGateStore.getState().saveLegalName('Ada Lovelace');
-
-    expect(outcome).toBe('saved');
-    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(await useGateStore.getState().saveLegalName('Ada Lovelace')).toBe('saved');
+    expect(useGateStore.getState().metCriterionIds.has('crit-legal-name')).toBe(true);
   });
 });
 
-describe('gateStore.saveLegalName — a missing RPC is expected, other failures are not', () => {
-  it('stays quiet when mark_criterion_met is simply not deployed yet', async () => {
-    mockInsert({ error: null });
-    supabase.rpc.mockResolvedValue({ error: { code: 'PGRST202', message: 'not in schema cache' } });
+/**
+ * G-15: a held code that cannot open her application leaves her signed in on
+ * a recoverable screen with a sentence she can act on — never with access,
+ * never with a silent null.
+ */
+describe('gateStore.submitApplicationForCode — redeem_invite_code', () => {
+  beforeEach(() => useGateStore.setState({ validatedCode: 'ABCDEFGHJK', redeemError: null }));
 
-    await useGateStore.getState().saveLegalName('Ada Lovelace');
+  it('redeems through redeem_invite_code and forgets the code on success', async () => {
+    supabase.rpc.mockResolvedValue({ data: { ok: true, application_id: 'app-9' }, error: null });
 
-    expect(logError).not.toHaveBeenCalled();
+    const id = await useGateStore.getState().submitApplicationForCode();
+
+    expect(supabase.rpc).toHaveBeenCalledWith('redeem_invite_code', { p_code: 'ABCDEFGHJK' });
+    expect(id).toBe('app-9');
+    expect(useGateStore.getState().validatedCode).toBeNull();
+    expect(useGateStore.getState().redeemError).toBeNull();
   });
 
-  it('treats the Postgres undefined-function code the same way', async () => {
-    mockInsert({ error: null });
-    supabase.rpc.mockResolvedValue({ error: { code: '42883', message: 'function does not exist' } });
+  it.each(['exhausted', 'expired', 'revoked', 'cooldown', 'already_member'])(
+    'a %s verdict is reported and the spent code dropped',
+    async (reason) => {
+      supabase.rpc.mockResolvedValue({ data: { ok: false, reason }, error: null });
 
-    const outcome = await useGateStore.getState().saveLegalName('Ada Lovelace');
+      expect(await useGateStore.getState().submitApplicationForCode()).toBeNull();
+      expect(useGateStore.getState().redeemError).toBe(reason);
+      expect(useGateStore.getState().validatedCode).toBeNull();
+    },
+  );
 
-    expect(outcome).toBe('saved_unscored');
-    expect(logError).not.toHaveBeenCalled();
-  });
+  it('keeps the code when we never reached the server, so she can retry', async () => {
+    supabase.rpc.mockResolvedValue({ data: null, error: { message: 'Network request failed' } });
 
-  it('logs a real RPC failure while still reporting the name as saved', async () => {
-    mockInsert({ error: null });
-    supabase.rpc.mockResolvedValue({ error: { code: '42501', message: 'permission denied' } });
-
-    const outcome = await useGateStore.getState().saveLegalName('Ada Lovelace');
-
-    expect(outcome).toBe('saved_unscored');
+    expect(await useGateStore.getState().submitApplicationForCode()).toBeNull();
+    expect(useGateStore.getState().redeemError).toBe('unavailable');
+    expect(useGateStore.getState().validatedCode).toBe('ABCDEFGHJK');
     expect(logError).toHaveBeenCalled();
+  });
+
+  it('keeps the code when rate limited, so she can retry later', async () => {
+    supabase.rpc.mockResolvedValue({ data: { ok: false, reason: 'rate_limited' }, error: null });
+
+    await useGateStore.getState().submitApplicationForCode();
+    expect(useGateStore.getState().validatedCode).toBe('ABCDEFGHJK');
+  });
+
+  it('maps an unknown server reason to invalid rather than inventing one', async () => {
+    supabase.rpc.mockResolvedValue({ data: { ok: false, reason: 'something_new' }, error: null });
+
+    await useGateStore.getState().submitApplicationForCode();
+    expect(useGateStore.getState().redeemError).toBe('invalid');
+  });
+});
+
+/** G-14: the application enters the queue only when she sends it. */
+describe('gateStore.submitForReview — submit_application', () => {
+  it('calls submit_application and records ready_at', async () => {
+    supabase.rpc.mockResolvedValue({ data: { ok: true, ready_at: '2026-10-10T10:00:00Z' }, error: null });
+
+    const outcome = await useGateStore.getState().submitForReview();
+
+    expect(supabase.rpc).toHaveBeenCalledWith('submit_application');
+    expect(outcome).toEqual({ ok: true });
+    expect(useGateStore.getState().application?.ready_at).toBe('2026-10-10T10:00:00Z');
+  });
+
+  it('passes the server reason through when the join reason is too short', async () => {
+    supabase.rpc.mockResolvedValue({ data: { ok: false, reason: 'join_reason_too_short' }, error: null });
+
+    expect(await useGateStore.getState().submitForReview()).toEqual({
+      ok: false, reason: 'join_reason_too_short', missing: undefined,
+    });
+    expect(useGateStore.getState().application?.ready_at ?? null).toBeNull();
+  });
+
+  it('reports unavailable and logs on a transport failure', async () => {
+    supabase.rpc.mockResolvedValue({ data: null, error: { message: 'offline' } });
+
+    expect(await useGateStore.getState().submitForReview()).toEqual({ ok: false, reason: 'unavailable' });
+    expect(logError).toHaveBeenCalled();
+  });
+});
+
+/** G-24: the join reason earns its point at 40 characters, not for "asdf". */
+describe('gateStore.saveAnswer — join reason threshold', () => {
+  const upsertOk = () => {
+    const upsert = jest.fn().mockResolvedValue({ error: null });
+    supabase.from.mockReturnValue({ upsert });
+    return upsert;
+  };
+
+  it('saves a short join reason but does not tick it', async () => {
+    upsertOk();
+    expect(await useGateStore.getState().saveAnswer(OTHER.id, 'asdf')).toBe(true);
+    expect(useGateStore.getState().metCriterionIds.has(OTHER.id)).toBe(false);
+  });
+
+  it('ticks a join reason of 40+ characters', async () => {
+    upsertOk();
+    await useGateStore.getState().saveAnswer(OTHER.id, 'x'.repeat(JOIN_REASON_MIN));
+    expect(useGateStore.getState().metCriterionIds.has(OTHER.id)).toBe(true);
   });
 });

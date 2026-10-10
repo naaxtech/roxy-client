@@ -2,6 +2,9 @@ import {
   isApplicationRoute,
   shouldRedirectToPending,
   shouldRedirectToApplication,
+  shouldRedirectToCode,
+  isCodeRoute,
+  isDeletedProfile,
   isResetPasswordRoute,
 } from '../../lib/authRouting';
 
@@ -186,5 +189,46 @@ describe('shouldRedirectToApplication — holding a code does not interrupt a re
     expect(
       shouldRedirectToApplication(false, true, ['(auth)', 'reset-password'], '/reset-password'),
     ).toBe(false);
+  });
+});
+
+/**
+ * G-15: a signed-in account with no profile and no held code (the code was
+ * exhausted between validation and signup, the redeem call dropped, or the
+ * app was killed) goes back to the code screen — never to onboarding, which
+ * would create a profile with nothing for a reviewer to review.
+ */
+describe('shouldRedirectToCode — no profile, no code, never onboarding', () => {
+  it('sends her to the code screen from anywhere else', () => {
+    expect(shouldRedirectToCode(false, false, ['(tabs)', 'feed'], '/(tabs)/feed')).toBe(true);
+    expect(shouldRedirectToCode(false, false, ['(auth)', 'welcome'], '/(auth)/welcome')).toBe(true);
+    expect(
+      shouldRedirectToCode(false, false, ['(auth)', 'onboarding', 'step1-identity'], '/(auth)/onboarding/step1-identity'),
+    ).toBe(true);
+  });
+
+  it('does not loop once she is on the code screen', () => {
+    expect(shouldRedirectToCode(false, false, ['(auth)', 'code'], '/(auth)/code')).toBe(false);
+    expect(isCodeRoute(['(auth)', 'code'], '/code')).toBe(true);
+  });
+
+  it('leaves her alone when a profile exists or a code is held', () => {
+    expect(shouldRedirectToCode(true, false, ['(tabs)', 'feed'], '/(tabs)/feed')).toBe(false);
+    expect(shouldRedirectToCode(false, true, ['(tabs)', 'feed'], '/(tabs)/feed')).toBe(false);
+  });
+
+  it('never interrupts a password reset or the application screen', () => {
+    expect(shouldRedirectToCode(false, false, ['(auth)', 'reset-password'], '/reset-password')).toBe(false);
+    expect(shouldRedirectToCode(false, false, ['(auth)', 'application'], '/(auth)/application')).toBe(false);
+  });
+});
+
+/** G-16: a deleted account cannot use the app. */
+describe('isDeletedProfile', () => {
+  it('is true only when deleted_at is set', () => {
+    expect(isDeletedProfile({ deleted_at: '2026-10-01T00:00:00Z' })).toBe(true);
+    expect(isDeletedProfile({ deleted_at: null })).toBe(false);
+    expect(isDeletedProfile({})).toBe(false);
+    expect(isDeletedProfile(null)).toBe(false);
   });
 });

@@ -7,12 +7,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../hooks/useAuth';
 import { RoxyWordmark } from '../../components/ui/RoxyWordmark';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { useGateStore, CODE_MESSAGES } from '../../store/gateStore';
+import { useGateStore, CODE_MESSAGES, REDEEM_MESSAGES } from '../../store/gateStore';
 import { normaliseInviteCode, INVITE_CODE_LENGTH } from '../../lib/inviteCode';
 import { BRAND_GRADIENT } from '../../lib/theme';
 import { POP_FROM, SNAP_SPRING } from '../../lib/motion';
+
+/** G-17. The landing site's /request page takes introductions. */
+export const NO_CODE_COPY = 'No code? Ask a member, or request an introduction at roxyhq.com/request';
 
 export default function CodeGateScreen() {
   const colors = useThemeColors();
@@ -20,7 +24,15 @@ export default function CodeGateScreen() {
   const { height } = useWindowDimensions();
   const [code, setCode] = useState('');
   const [focused, setFocused] = useState(false);
-  const { validateCode, checking, codeError, validatedCommunityName, clearCode } = useGateStore();
+  const {
+    validateCode, checking, codeError, validatedCommunityName, clearCode,
+    redeemError, submitApplicationForCode,
+  } = useGateStore();
+  // Signed in here means her code failed after signup (G-15): she keeps her
+  // account, and a new code goes straight to her application.
+  const { user, signOut } = useAuth();
+  const signedIn = !!user;
+  const [redeeming, setRedeeming] = useState(false);
 
   const heroAnim = useRef(new Animated.Value(POP_FROM)).current;
   useEffect(() => {
@@ -35,10 +47,22 @@ export default function CodeGateScreen() {
   const codeWasRejected = codeError !== null && codeError !== 'unavailable';
 
   const handleSubmit = async () => {
-    if (code.length < 4 || checking) return;
+    if (code.length < 4 || checking || redeeming) return;
     const ok = await validateCode(code);
-    if (ok) router.push('/(auth)/welcome');
+    if (!ok) return;
+    if (!signedIn) {
+      router.push('/(auth)/welcome');
+      return;
+    }
+    setRedeeming(true);
+    const applicationId = await submitApplicationForCode();
+    setRedeeming(false);
+    if (applicationId) router.replace('/(auth)/application');
   };
+  const busy = checking || redeeming;
+  // A redemption failure from signup (or from the line above) is shown here,
+  // in words she can act on. A validation error outranks it once she types.
+  const shownError = codeError ? CODE_MESSAGES[codeError] : redeemError ? REDEEM_MESSAGES[redeemError] : null;
 
   const styles = StyleSheet.create({
     container: { flex: 1 },
@@ -81,9 +105,9 @@ export default function CodeGateScreen() {
       borderWidth: 1.5, borderColor: 'transparent',
     },
     inputFocused: { borderColor: colors.roxy },
-    inputError: { borderColor: '#E5484D' },
+    inputError: { borderColor: colors.error },
     errorRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 4 },
-    errorText: { color: '#E5484D', fontSize: 13, lineHeight: 18, flex: 1 },
+    errorText: { color: colors.errorInk, fontSize: 13, lineHeight: 18, flex: 1 },
     okRow: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
       paddingHorizontal: 4, justifyContent: 'center',
@@ -128,10 +152,13 @@ export default function CodeGateScreen() {
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheet}>
             <View style={styles.grabber} />
 
-            <Text style={styles.title}>Enter your Roxy code</Text>
+            <Text style={styles.title} accessibilityRole="header">
+              {signedIn ? 'One more step: your code' : 'Enter your Roxy code'}
+            </Text>
             <Text style={styles.body}>
-              Every member is invited by a community that vouches for her. That&apos;s how we
-              keep this place safe.
+              {signedIn
+                ? 'Your account is safe. Enter an invite code to start your application.'
+                : 'Every member is invited by a community that vouches for her. That\u2019s how we keep this place safe.'}
             </Text>
 
             <TextInput
@@ -157,10 +184,10 @@ export default function CodeGateScreen() {
               returnKeyType="go"
             />
 
-            {codeError && (
-              <View style={styles.errorRow} accessibilityLiveRegion="polite">
-                <Ionicons name="alert-circle" size={16} color="#E5484D" />
-                <Text style={styles.errorText}>{CODE_MESSAGES[codeError]}</Text>
+            {shownError && (
+              <View style={styles.errorRow} accessibilityLiveRegion="polite" testID="code-error">
+                <Ionicons name="alert-circle" size={16} color={colors.errorInk} />
+                <Text style={styles.errorText}>{shownError}</Text>
               </View>
             )}
 
@@ -174,33 +201,46 @@ export default function CodeGateScreen() {
             <TouchableOpacity
               testID="code-submit"
               onPress={handleSubmit}
-              disabled={code.length < 4 || checking}
+              disabled={code.length < 4 || busy}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: code.length < 4 || busy, busy }}
               accessibilityLabel="Continue with this code"
             >
               <LinearGradient
                 colors={BRAND_GRADIENT}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={[styles.btn, (code.length < 4 || checking) && styles.btnDisabled]}
+                style={[styles.btn, (code.length < 4 || busy) && styles.btnDisabled]}
               >
-                {checking
+                {busy
                   ? <ActivityIndicator color="#FFFFFF" />
                   : <Text style={styles.btnText}>Continue</Text>}
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => router.push('/(auth)/welcome')}
-              testID="already-have-account"
-            >
-              <Text style={styles.link}>I already have an account</Text>
-            </TouchableOpacity>
+            {signedIn ? (
+              <TouchableOpacity
+                onPress={() => void signOut()}
+                testID="code-sign-out"
+                accessibilityRole="button"
+              >
+                <Text style={styles.link}>Sign out</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={() => router.push('/(auth)/welcome')}
+                testID="already-have-account"
+                accessibilityRole="button"
+              >
+                <Text style={styles.link}>I already have an account</Text>
+              </TouchableOpacity>
+            )}
 
             <View style={styles.explainer}>
               <Text style={styles.explainerTitle}>Don&apos;t have a code?</Text>
-              <Text style={styles.explainerBody}>
-                Codes come from communities already on Roxy. If you know someone here, ask
-                her. If you don&apos;t, roxyhq.com has a form to request one.
+              {/* G-17: one honest path, matching the landing page. */}
+              <Text style={styles.explainerBody} testID="no-code-copy">
+                {NO_CODE_COPY}
               </Text>
             </View>
           </ScrollView>

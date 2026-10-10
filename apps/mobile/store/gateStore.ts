@@ -70,10 +70,52 @@ export interface ApplicationState {
   id: string;
   status: 'pending' | 'approved' | 'rejected' | 'withdrawn';
   submitted_at: string;
+  /**
+   * When she pressed "Send for review" (130 / G-14). Null is a draft: no
+   * reviewer can see it, and it is not in anyone's queue.
+   */
+  ready_at?: string | null;
   decided_at: string | null;
   rejected_until: string | null;
+  /** The reviewer's reason CATEGORY (never the private note) — G-12. */
+  decision_reason?: DecisionReason | null;
   community_id: string;
 }
+
+/** Reviewer-chosen rejection category, shown to her. The free-text note is never shown. */
+export type DecisionReason = 'not_verified' | 'not_known' | 'incomplete' | 'safety' | 'other';
+
+export const DECISION_REASON_COPY: Record<DecisionReason, string> = {
+  not_verified: "We couldn't confirm enough about you to be sure Roxy is the right fit right now.",
+  not_known: "The community that invited you didn't feel they knew you well enough yet.",
+  incomplete: "Your application didn't give the reviewer enough to go on.",
+  safety: 'The reviewer had a safety concern they could not resolve.',
+  other: 'The reviewer decided not to approve it this time.',
+};
+
+/**
+ * Why a held code could not open an application, in words she can act on.
+ * Every one leaves her somewhere recoverable (G-15): she keeps her account,
+ * nothing is unlocked, and she can try another code.
+ */
+export type RedeemFailure =
+  | CodeRejection
+  | 'cooldown'
+  | 'already_member'
+  | 'deleted';
+
+/** Why "Send for review" was refused, from submit_application(). */
+export type SubmitFailure =
+  | 'join_reason_too_short'
+  | 'missing_required'
+  | 'no_application'
+  | 'already_decided'
+  | 'unavailable';
+
+/** The server's minimum for the join reason (130: join_reason earns its point at 40 chars). */
+export const JOIN_REASON_MIN = 40;
+
+export type SubmitOutcome = { ok: true } | { ok: false; reason: SubmitFailure; missing?: string[] };
 
 /**
  * Each rejection gets its own sentence. "Invalid code" for an expired one sends
@@ -103,10 +145,18 @@ interface GateState {
   score: number;
   loadingApplication: boolean;
   loadError: string | null;
+  /**
+   * Set when a held code could not open her application after signup (G-15).
+   * She keeps her account and lands on a recoverable screen — never the app.
+   */
+  redeemError: RedeemFailure | null;
+  submitting: boolean;
 
   validateCode: (code: string) => Promise<boolean>;
   clearCode: () => void;
   submitApplicationForCode: () => Promise<string | null>;
+  /** "Send for review" (G-14). The application enters the queue only here. */
+  submitForReview: () => Promise<SubmitOutcome>;
   loadApplication: () => Promise<void>;
   saveAnswer: (criterionId: string, answer: string) => Promise<boolean>;
   saveLegalName: (name: string) => Promise<LegalNameOutcome>;
@@ -126,8 +176,18 @@ interface GateState {
  */
 export const CONSENT_POLICY_VERSION = '2026-08-02';
 
+export const REDEEM_MESSAGES: Record<RedeemFailure, string> = {
+  ...CODE_MESSAGES,
+  cooldown: "You can apply again once your waiting period ends. We'll keep your account safe until then.",
+  already_member: "You're already a member — no code needed.",
+  deleted: 'This account is being deleted, so it can no longer apply.',
+};
+
 const isRejection = (value: unknown): value is CodeRejection =>
   typeof value === 'string' && value in CODE_MESSAGES;
+
+const isRedeemFailure = (value: unknown): value is RedeemFailure =>
+  typeof value === 'string' && value in REDEEM_MESSAGES;
 
 /** Postgres unique/primary-key violation. */
 const PK_CONFLICT = '23505';
@@ -143,6 +203,9 @@ const PK_CONFLICT = '23505';
 const isMissingFunction = (error: { code?: string } | null): boolean =>
   error?.code === 'PGRST202' || error?.code === '42883';
 
+const APPLICATION_FIELDS =
+  'id, status, submitted_at, ready_at, decided_at, rejected_until, decision_reason, community_id';
+
 export const useGateStore = create<GateState>((set, get) => ({
   validatedCode: null,
   validatedCommunityName: null,
@@ -155,6 +218,8 @@ export const useGateStore = create<GateState>((set, get) => ({
   score: 0,
   loadingApplication: false,
   loadError: null,
+  redeemError: null,
+  submitting: false,
 
   validateCode: async (code) => {
     set({ checking: true, codeError: null });
@@ -198,23 +263,62 @@ export const useGateStore = create<GateState>((set, get) => ({
 
   clearCode: () => set({ validatedCode: null, validatedCommunityName: null, codeError: null }),
 
+  /**
+   * Redeem the held code into an application (130: redeem_invite_code).
+   *
+   * The server locks the code row, rate-limits the caller, is idempotent on
+   * retry (a dropped response cannot burn a second use) and refuses to touch
+   * an approved member. Any failure leaves her signed in on a recoverable
+   * screen with a sentence she can act on — never with access (G-15).
+   */
   submitApplicationForCode: async () => {
     const code = get().validatedCode;
     if (!code) return null;
 
-    const { data, error } = await supabase.rpc('create_membership_application', {
-      p_code: code,
-    });
+    const { data, error } = await supabase.rpc('redeem_invite_code', { p_code: code });
 
-    if (error) {
-      logError(error, 'gateStore.submitApplicationForCode');
+    if (error || !data) {
+      logError(error ?? 'redeem_invite_code returned no data', 'gateStore.submitApplicationForCode');
+      set({ redeemError: 'unavailable' });
+      return null;
+    }
+
+    const result = data as { ok: boolean; reason?: string; application_id?: string };
+    if (!result.ok) {
+      set({ redeemError: isRedeemFailure(result.reason) ? result.reason : 'invalid' });
+      // A code the server judged is spent for her; keeping it would only
+      // replay the same refusal on the next screen.
+      if (result.reason !== 'unavailable' && result.reason !== 'rate_limited') {
+        set({ validatedCode: null, validatedCommunityName: null });
+      }
       return null;
     }
 
     // The code has done its job. Holding it after this point serves nothing
     // and gives a device-level attacker something to steal.
-    set({ validatedCode: null, validatedCommunityName: null });
-    return (data as string) ?? null;
+    set({ validatedCode: null, validatedCommunityName: null, redeemError: null });
+    return result.application_id ?? null;
+  },
+
+  submitForReview: async () => {
+    set({ submitting: true });
+    const { data, error } = await supabase.rpc('submit_application');
+    set({ submitting: false });
+
+    if (error || !data) {
+      logError(error ?? 'submit_application returned no data', 'gateStore.submitForReview');
+      return { ok: false, reason: 'unavailable' };
+    }
+    const result = data as { ok: boolean; reason?: SubmitFailure; missing?: string[]; ready_at?: string };
+    if (!result.ok) {
+      return { ok: false, reason: result.reason ?? 'unavailable', missing: result.missing };
+    }
+    set((s) => ({
+      application: s.application
+        ? { ...s.application, ready_at: result.ready_at ?? new Date().toISOString() }
+        : s.application,
+    }));
+    return { ok: true };
   },
 
   loadApplication: async () => {
@@ -229,7 +333,7 @@ export const useGateStore = create<GateState>((set, get) => ({
     const [appRes, criteriaRes] = await Promise.all([
       supabase
         .from('membership_applications')
-        .select('id, status, submitted_at, decided_at, rejected_until, community_id')
+        .select(APPLICATION_FIELDS)
         .eq('auth_user_id', auth.user.id)
         .maybeSingle(),
       supabase
@@ -260,7 +364,7 @@ export const useGateStore = create<GateState>((set, get) => ({
       if (created) {
         const { data: retry } = await supabase
           .from('membership_applications')
-          .select('id, status, submitted_at, decided_at, rejected_until, community_id')
+          .select(APPLICATION_FIELDS)
           .eq('auth_user_id', auth.user.id)
           .maybeSingle();
         application = (retry as ApplicationState | null) ?? null;
@@ -311,7 +415,11 @@ export const useGateStore = create<GateState>((set, get) => ({
     }
 
     // A trigger marks the criterion met server-side; mirror it rather than
-    // refetching so the checklist ticks immediately.
+    // refetching so the checklist ticks immediately. The join reason earns
+    // its point only at JOIN_REASON_MIN characters (130 / G-24), so a short
+    // one is saved but not ticked — matching what the reviewer will see.
+    const criterion = get().criteria.find((c) => c.id === criterionId);
+    if (criterion?.key === 'join_reason' && answer.trim().length < JOIN_REASON_MIN) return true;
     set((s) => {
       const metCriterionIds = new Set(s.metCriterionIds).add(criterionId);
       const score = s.criteria
@@ -355,30 +463,21 @@ export const useGateStore = create<GateState>((set, get) => ({
     const application = get().application;
     if (!application) return 'failed';
 
-    const { error } = await supabase
-      .from('applicant_identity')
-      .insert({ application_id: application.id, legal_name: name.trim() });
+    // 130 / G-19: one SECURITY DEFINER call stores the name AND marks its
+    // criterion, and a second call while she is pending corrects it instead
+    // of hitting a primary key. Nothing is ever half-written.
+    const { error } = await supabase.rpc('save_applicant_legal_name', { p_name: name.trim() });
 
+    if (error && isMissingFunction(error)) {
+      return saveLegalNameLegacy(application.id, name, get().criteria);
+    }
     if (error) {
-      // Not a failure to retry — it means she has already given us her name.
-      if (error.code === PK_CONFLICT) return 'already_saved';
       logError(error, 'gateStore.saveLegalName');
       return 'failed';
     }
 
-    // Past this line the name is stored. Nothing below may report 'failed'.
     const criterion = get().criteria.find((c) => c.key === 'legal_name');
     if (!criterion) return 'saved';
-
-    const { error: metError } = await supabase.rpc('mark_criterion_met', {
-      p_application_id: application.id,
-      p_criterion_id: criterion.id,
-    });
-
-    if (metError) {
-      if (!isMissingFunction(metError)) logError(metError, 'gateStore.saveLegalName.met');
-      return 'saved_unscored';
-    }
 
     set((s) => {
       const metCriterionIds = new Set(s.metCriterionIds).add(criterion.id);
@@ -422,6 +521,7 @@ export const useGateStore = create<GateState>((set, get) => ({
     return true;
   },
 
+  // Appeals are append-only (130 / G-24): one per application, never edited.
   requestAppeal: async (reason) => {
     const application = get().application;
     if (!application) return false;
@@ -449,5 +549,51 @@ export const useGateStore = create<GateState>((set, get) => ({
       score: 0,
       loadingApplication: false,
       loadError: null,
+      redeemError: null,
+      submitting: false,
     }),
 }));
+
+/**
+ * The pre-130 path, kept for a client that reaches a database without
+ * save_applicant_legal_name (a rollout window only): insert once, then try to
+ * mark the criterion. See the history in the comment on saveLegalName.
+ */
+async function saveLegalNameLegacy(
+  applicationId: string,
+  name: string,
+  criteria: Criterion[],
+): Promise<LegalNameOutcome> {
+  const { error } = await supabase
+    .from('applicant_identity')
+    .insert({ application_id: applicationId, legal_name: name.trim() });
+
+  if (error) {
+    // Not a failure to retry — it means she has already given us her name.
+    if (error.code === PK_CONFLICT) return 'already_saved';
+    logError(error, 'gateStore.saveLegalName');
+    return 'failed';
+  }
+
+  // Past this line the name is stored. Nothing below may report 'failed'.
+  const criterion = criteria.find((c) => c.key === 'legal_name');
+  if (!criterion) return 'saved';
+
+  const { error: metError } = await supabase.rpc('mark_criterion_met', {
+    p_application_id: applicationId,
+    p_criterion_id: criterion.id,
+  });
+
+  if (metError) {
+    if (!isMissingFunction(metError)) logError(metError, 'gateStore.saveLegalName.met');
+    return 'saved_unscored';
+  }
+  useGateStore.setState((s) => {
+    const metCriterionIds = new Set(s.metCriterionIds).add(criterion.id);
+    const score = s.criteria
+      .filter((c) => metCriterionIds.has(c.id))
+      .reduce((sum, c) => sum + c.points, 0);
+    return { metCriterionIds, score };
+  });
+  return 'saved';
+}

@@ -25,7 +25,10 @@ test.describe('Entry', () => {
     await page.getByTestId('already-have-account').click();
     await expect(page.getByTestId('welcome-screen')).toBeVisible({ timeout: 30_000 });
 
-    await page.getByTestId('use-email-link').click();
+    // With no OAuth provider configured (G-03, EXPO_PUBLIC_OAUTH_PROVIDERS unset)
+    // the email form is already open and there is no "Use email instead" link.
+    const useEmail = page.getByTestId('use-email-link');
+    if (await useEmail.isVisible()) await useEmail.click();
     await expect(page.getByTestId('email-input')).toBeVisible();
     await expect(page.getByTestId('password-input')).toBeVisible();
   });
