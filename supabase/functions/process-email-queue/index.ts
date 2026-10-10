@@ -2,6 +2,7 @@
 import { handleCors } from '../_shared/cors.ts';
 import { getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
+import { DEFAULT_STUDIO_URL, renderTemplate } from '../_shared/emailTemplates.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const FROM_EMAIL = 'Roxy <noreply@getroxy.app>';
@@ -28,67 +29,10 @@ async function sendEmail(to: string, subject: string, html: string): Promise<str
   return data.id as string;
 }
 
-function renderTemplate(emailType: string, payload: Record<string, unknown>): { subject: string; html: string } {
-  switch (emailType) {
-    case 'order_shipped_buyer':
-      return {
-        subject: `Your order #${payload.order_short_id} has shipped!`,
-        html: `<h2>Your order has shipped</h2>
-               <p>Tracking: <a href="${payload.carrier_url}">${payload.tracking_number}</a></p>
-               <p>${payload.items_summary}</p>`,
-      };
-    case 'product_approved':
-      return {
-        subject: `Your product "${payload.product_name}" has been approved`,
-        html: `<h2>Product Approved!</h2>
-               <p>"${payload.product_name}" is now live on Roxy.</p>`,
-      };
-    case 'product_rejected':
-      return {
-        subject: `Update on your product "${payload.product_name}"`,
-        html: `<h2>Product Not Approved</h2>
-               <p>Reason: ${payload.rejection_reason}</p>
-               <p>You can edit and resubmit from Roxy Studio.</p>`,
-      };
-    case 'refund_notification_buyer':
-      return {
-        subject: `Refund processed for order #${payload.order_short_id}`,
-        html: `<h2>Refund Processed</h2>
-               <p>$${((payload.amount_cents as number) / 100).toFixed(2)} has been refunded for order #${payload.order_short_id}.</p>`,
-      };
-    case 'dispute_alert_business':
-      return {
-        subject: `Action required: Dispute on order #${payload.order_short_id}`,
-        html: `<h2>Dispute Alert</h2>
-               <p>A dispute has been opened for order #${payload.order_short_id}.</p>
-               <p>Response due: ${payload.response_due_by}</p>
-               <p><a href="https://roxycommunity.netlify.app/orders">View in Studio</a></p>`,
-      };
-    case 'business_approved':
-      return {
-        subject: `Congratulations! Your Roxy business profile is active`,
-        html: `<h2>Welcome to Roxy Marketplace, ${payload.display_name}! 🎉</h2>
-               <p>Your business <strong>${payload.business_name}</strong> has been approved and your Roxy business profile is now active.</p>
-               <p>You can now log into <a href="https://roxycommunity.netlify.app">Roxy Studio</a> to:</p>
-               <ul>
-                 <li>Add and manage your products</li>
-                 <li>Connect Stripe to receive payments</li>
-                 <li>Track orders and payouts</li>
-               </ul>
-               <p>Welcome to the community! 💜</p>`,
-      };
-    case 'business_rejected':
-      return {
-        subject: `Update on your Roxy business application`,
-        html: `<h2>Hi ${payload.display_name},</h2>
-               <p>Thank you for applying to sell on Roxy. Unfortunately, we're unable to approve <strong>${payload.business_name}</strong> at this time.</p>
-               <p><strong>Reason:</strong> ${payload.rejection_reason}</p>
-               <p>If you believe this is an error or would like to reapply, please reach out to our team.</p>`,
-      };
-    default:
-      throw new Error(`Unknown email type: ${emailType}`);
-  }
-}
+// Templates live in _shared/emailTemplates.ts (pure, unit-tested). G-01: the
+// inline switch that was here had no application_* cases, so every decision
+// email threw "Unknown email type" and was dead-lettered.
+const STUDIO_URL = Deno.env.get('STUDIO_URL') ?? DEFAULT_STUDIO_URL;
 
 Deno.serve(async (req) => {
   const corsRes = handleCors(req);
@@ -129,7 +73,7 @@ Deno.serve(async (req) => {
         await supabase.auth.admin.getUserById(row.recipient_user_id);
       if (userErr || !user?.email) throw new Error('Recipient email not found');
 
-      const { subject, html } = renderTemplate(row.email_type, row.payload);
+      const { subject, html } = renderTemplate(row.email_type, row.payload, { studioUrl: STUDIO_URL });
       const messageId = await sendEmail(user.email, subject, html);
 
       await supabase
