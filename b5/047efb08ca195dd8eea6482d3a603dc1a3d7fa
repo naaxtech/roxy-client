@@ -1,0 +1,18 @@
+supabase/downs/132_private_groups_and_requests_down.sql
+  h_0549c11fec2ab0 1-281
+supabase/migrations/132_private_groups_and_requests.sql
+  h_0549c11fec2ab0 1-1492
+supabase/tests/132_private_groups_and_requests_check.sql
+  h_0549c11fec2ab0 1-423
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b5047efb08ca195dd8eea6482d3a603dc1a3d7fa",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
