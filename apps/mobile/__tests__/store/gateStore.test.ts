@@ -310,6 +310,24 @@ describe('gateStore.submitForReview — submit_application', () => {
     expect(await useGateStore.getState().submitForReview()).toEqual({ ok: false, reason: 'unavailable' });
     expect(logError).toHaveBeenCalled();
   });
+
+  it('passes the missing criteria keys through', async () => {
+    supabase.rpc.mockResolvedValue({
+      data: { ok: false, reason: 'missing_required', missing: ['legal_name'] },
+      error: null,
+    });
+    expect(await useGateStore.getState().submitForReview()).toEqual({
+      ok: false, reason: 'missing_required', missing: ['legal_name'],
+    });
+  });
+
+  it('a thrown request never leaves the button stuck busy', async () => {
+    supabase.rpc.mockRejectedValue(new Error('socket hang up'));
+
+    expect(await useGateStore.getState().submitForReview()).toEqual({ ok: false, reason: 'unavailable' });
+    expect(useGateStore.getState().submitting).toBe(false);
+    expect(logError).toHaveBeenCalled();
+  });
 });
 
 /** G-24: the join reason earns its point at 40 characters, not for "asdf". */

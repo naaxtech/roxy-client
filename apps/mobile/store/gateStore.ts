@@ -302,8 +302,16 @@ export const useGateStore = create<GateState>((set, get) => ({
 
   submitForReview: async () => {
     set({ submitting: true });
-    const { data, error } = await supabase.rpc('submit_application');
-    set({ submitting: false });
+    let data: unknown;
+    let error: unknown;
+    try {
+      ({ data, error } = await supabase.rpc('submit_application'));
+    } catch (e) {
+      // A thrown request (socket dropped) must not leave the button busy forever.
+      error = e;
+    } finally {
+      set({ submitting: false });
+    }
 
     if (error || !data) {
       logError(error ?? 'submit_application returned no data', 'gateStore.submitForReview');
