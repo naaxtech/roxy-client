@@ -1,15 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { supabase } from '../lib/supabase';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { openBroadcastChannel, typingTopic } from '../lib/realtimeChannel';
 
 interface UseTypingOptions {
   conversationId: string;
   currentUserId: string;
+  /** Kept for call-site compatibility (DM header name). */
   partnerName: string;
+  /** Her own display name, sent so a group can say WHO is typing. */
+  selfName?: string;
 }
 
 interface UseTypingReturn {
+  /** Anyone else typing right now. */
   partnerIsTyping: boolean;
+  /** Names of everyone else typing (groups), in the order they started. */
+  typingNames: string[];
   sendTyping: () => void;
   stopTyping: () => void;
 }
@@ -19,7 +26,7 @@ const STALE_AFTER_MS = 2500;
 /** How often a keystroke stream is allowed to put a broadcast on the wire. */
 const THROTTLE_MS = 1500;
 
-type TypingPayload = { user_id: string; typing?: boolean };
+type TypingPayload = { user_id: string; typing?: boolean; name?: string };
 
 /**
  * The typing indicator, and the four ways it used to get stuck.
@@ -30,92 +37,105 @@ type TypingPayload = { user_id: string; typing?: boolean };
  * it, so every case below left the indicator lit for as long as the screen
  * stayed open:
  *
- *  - **No stop signal.** The sender broadcast only "I am typing". Putting the
- *    phone down, or sending the message, said nothing — the indicator simply
- *    aged out. `typing: false` is now an explicit event, and `stopTyping()`
- *    is the caller's way to send it on submit or on blur.
- *  - **Switching threads carried it across.** `partnerIsTyping` is React state
- *    keyed to nothing; changing `conversationId` tore down the old channel — so
- *    no clear event could ever arrive for it — while the flag stayed true. It
- *    is reset when the conversation changes.
- *  - **Backgrounding.** Her app going to sleep left the other side watching a
- *    frozen indicator. Background now clears her own view AND tells the other
+ *  - **No stop signal.** The sender broadcast only "I am typing". `typing:
+ *    false` is now an explicit event, and `stopTyping()` sends it on submit or
+ *    on blur.
+ *  - **Switching threads carried it across.** The typers are reset when the
+ *    conversation changes.
+ *  - **Backgrounding.** Background clears her own view AND tells the other
  *    side she stopped, because she has.
- *  - **Returning to the foreground reused a dead socket.** A phone that slept
- *    long enough has a closed connection; the old channel object stays in the
- *    ref looking healthy and every later broadcast goes nowhere. Coming back
- *    tears the channel down and subscribes a fresh one.
+ *  - **Returning to the foreground reused a dead socket.** Coming back tears
+ *    the channel down and joins a fresh one — after the old one has finished
+ *    leaving (CHAT-08), or the client hands back the dying cached channel.
  *
- * Broadcast, not Postgres Changes — typing is ephemeral and must never be a
- * row (CLAUDE.md §18).
+ * Private topic `conv:<id>:typing` (CHAT-15): migration 132 admits members of
+ * the thread only. Broadcast, not Postgres Changes — typing is ephemeral and
+ * must never be a row (CLAUDE.md §18). Each typer has her own expiry, so in a
+ * group one woman stopping does not hide another who is still writing.
  */
 export function useTyping({
   conversationId,
   currentUserId,
   partnerName: _partnerName,
+  selfName,
 }: UseTypingOptions): UseTypingReturn {
-  const [partnerIsTyping, setPartnerIsTyping] = useState(false);
+  const [typers, setTypers] = useState<{ id: string; name: string }[]>([]);
   // Bumped when the app returns to the foreground, which re-runs the effect and
   // therefore replaces the channel. A socket that slept is not a socket.
   const [subscribeKey, setSubscribeKey] = useState(0);
 
-  const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const throttleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const selfNameRef = useRef(selfName);
+  selfNameRef.current = selfName;
 
   const releaseThrottle = useCallback(() => {
     if (throttleRef.current) clearTimeout(throttleRef.current);
     throttleRef.current = null;
   }, []);
 
+  const clearAllTypers = useCallback(() => {
+    for (const t of timersRef.current.values()) clearTimeout(t);
+    timersRef.current.clear();
+    setTypers([]);
+  }, []);
+
+  const dropTyper = useCallback((id: string) => {
+    const t = timersRef.current.get(id);
+    if (t) clearTimeout(t);
+    timersRef.current.delete(id);
+    setTypers((prev) => (prev.some((x) => x.id === id) ? prev.filter((x) => x.id !== id) : prev));
+  }, []);
+
   const broadcast = useCallback((typing: boolean) => {
     // The already-subscribed channel from the ref, never a fresh
     // supabase.channel() — a new instance is unsubscribed and drops the send.
     if (!channelRef.current) return;
-    void channelRef.current.send({
-      type: 'broadcast',
-      event: 'typing',
-      payload: { user_id: currentUserId, typing },
-    });
+    const payload: TypingPayload = { user_id: currentUserId, typing };
+    if (typing && selfNameRef.current) payload.name = selfNameRef.current;
+    void channelRef.current.send({ type: 'broadcast', event: 'typing', payload });
   }, [currentUserId]);
 
   useEffect(() => {
-    // Leaving a thread must not carry its indicator into the next one. The old
-    // channel is gone with the old conversation, so no clear event can ever
-    // arrive to turn this off by itself.
-    setPartnerIsTyping(false);
+    // Leaving a thread must not carry its indicator into the next one.
+    clearAllTypers();
+    if (!conversationId) return undefined;
 
-    const channel = supabase.channel(`typing:${conversationId}`);
-    channelRef.current = channel;
+    const close = openBroadcastChannel(typingTopic(conversationId), (channel) => {
+      channelRef.current = channel;
+      channel
+        .on('broadcast', { event: 'typing' }, ({ payload }: { payload: TypingPayload }) => {
+          if (!payload?.user_id || payload.user_id === currentUserId) return;
 
-    channel
-      .on('broadcast', { event: 'typing' }, ({ payload }: { payload: TypingPayload }) => {
-        if (payload.user_id === currentUserId) return;
+          // An explicit stop clears immediately. Absent flag means "typing",
+          // which keeps an older client that never sends the field working.
+          if (payload.typing === false) {
+            dropTyper(payload.user_id);
+            return;
+          }
 
-        // An explicit stop clears immediately. Absent flag means "typing",
-        // which keeps an older client that never sends the field working.
-        if (payload.typing === false) {
-          if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
-          clearTimerRef.current = null;
-          setPartnerIsTyping(false);
-          return;
-        }
-
-        setPartnerIsTyping(true);
-        if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
-        clearTimerRef.current = setTimeout(() => setPartnerIsTyping(false), STALE_AFTER_MS);
-      })
-      .subscribe();
+          const id = payload.user_id;
+          const name = payload.name || 'Someone';
+          setTypers((prev) => (prev.some((x) => x.id === id)
+            ? prev.map((x) => (x.id === id ? { id, name } : x))
+            : [...prev, { id, name }]));
+          const old = timersRef.current.get(id);
+          if (old) clearTimeout(old);
+          timersRef.current.set(id, setTimeout(() => dropTyper(id), STALE_AFTER_MS));
+        })
+        .subscribe();
+    });
 
     return () => {
       channelRef.current = null;
-      supabase.removeChannel(channel);
-      if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+      close();
+      for (const t of timersRef.current.values()) clearTimeout(t);
+      timersRef.current.clear();
       if (throttleRef.current) clearTimeout(throttleRef.current);
-      clearTimerRef.current = null;
       throttleRef.current = null;
     };
-  }, [conversationId, currentUserId, subscribeKey]);
+  }, [conversationId, currentUserId, subscribeKey, clearAllTypers, dropTyper]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
@@ -125,15 +145,13 @@ export function useTyping({
         return;
       }
       // background or inactive: she has stopped, so say so and stop showing
-      // the other side as mid-sentence.
+      // anyone as mid-sentence.
       broadcast(false);
       releaseThrottle();
-      if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
-      clearTimerRef.current = null;
-      setPartnerIsTyping(false);
+      clearAllTypers();
     });
     return () => sub.remove();
-  }, [broadcast, releaseThrottle]);
+  }, [broadcast, releaseThrottle, clearAllTypers]);
 
   const sendTyping = useCallback(() => {
     if (throttleRef.current) return;
@@ -153,5 +171,10 @@ export function useTyping({
     broadcast(false);
   }, [broadcast, releaseThrottle]);
 
-  return { partnerIsTyping, sendTyping, stopTyping };
+  return {
+    partnerIsTyping: typers.length > 0,
+    typingNames: typers.map((t) => t.name),
+    sendTyping,
+    stopTyping,
+  };
 }

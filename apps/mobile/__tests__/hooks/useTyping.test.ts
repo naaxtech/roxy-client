@@ -46,11 +46,12 @@ describe('useTyping', () => {
     expect(typeof result.current.sendTyping).toBe('function');
   });
 
-  it('subscribes to typing:conversationId channel on mount', () => {
+  it('subscribes to the private conv:<id>:typing channel on mount', () => {
     renderHook(() =>
       useTyping({ conversationId: 'conv-1', currentUserId: 'user-1', partnerName: 'Alex' })
     );
-    expect(supabase.channel).toHaveBeenCalledWith('typing:conv-1');
+    // Private, membership-checked topic (CHAT-15, migration 132).
+    expect(supabase.channel).toHaveBeenCalledWith('conv:conv-1:typing', expect.anything());
   });
 
   it('calls removeChannel on unmount', () => {

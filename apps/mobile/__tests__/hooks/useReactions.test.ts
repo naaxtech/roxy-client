@@ -99,7 +99,8 @@ describe('useReactions', () => {
     renderHook(() =>
       useReactions({ conversationId: 'conv-1', messageIds: [] })
     );
-    expect(supabase.channel).toHaveBeenCalledWith('reactions:conv-1');
+    // Private, membership-checked topic (CHAT-15, migration 132).
+    expect(supabase.channel).toHaveBeenCalledWith('conv:conv-1:reactions', expect.anything());
   });
 
   it('unsubscribes (removeChannel) on unmount', () => {
