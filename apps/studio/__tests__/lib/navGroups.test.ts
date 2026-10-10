@@ -14,6 +14,7 @@ describe('navGroupsFor', () => {
       'Live',
       'Shop',
       'Roxy',
+      'Safety',
       'Archive',
       'Approvals',
       'Inbox',
@@ -22,6 +23,7 @@ describe('navGroupsFor', () => {
     expect(staff.find((g) => g.title === 'Roxy')?.items.map((i) => i.label)).toEqual([
       'Overview',
       'Launch access',
+      'Member tags',
     ]);
 
     const core = navGroupsFor({ isStaff: true, isCore: true });
@@ -29,7 +31,17 @@ describe('navGroupsFor', () => {
       'Overview',
       'Launch access',
       'Roxy team',
+      'Member tags',
     ]);
+  });
+
+  it('puts the unified reports queue and member lookup under Safety for every staff role', () => {
+    for (const isCore of [false, true]) {
+      const safety = navGroupsFor({ isStaff: true, isCore }).find((g) => g.title === 'Safety');
+      expect(safety?.items.map((i) => i.href)).toEqual(['/staff/reports']);
+    }
+    expect(navGroupsFor({ isStaff: false, isCore: false }).find((g) => g.title === 'Safety')).toBeUndefined();
+    expect(headerMetaFor('/staff/reports')).toEqual({ title: 'Reports', section: 'Safety' });
   });
 });
 

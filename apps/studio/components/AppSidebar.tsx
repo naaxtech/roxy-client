@@ -83,6 +83,16 @@ export const NAV_GROUPS: NavGroupDef[] = [
     ],
   },
   {
+    // Launch safety: one queue for every member report, and the member lookup
+    // that suspends. Both pages re-check staff server-side; the RPCs re-check
+    // again (migration 131).
+    title: 'Safety',
+    staff: true,
+    items: [
+      { href: '/staff/reports', label: 'Reports', icon: Flag },
+    ],
+  },
+  {
     title: 'Archive',
     staff: true,
     items: [
