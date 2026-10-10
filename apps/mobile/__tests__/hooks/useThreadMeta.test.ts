@@ -7,7 +7,11 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 
 const mockHandlers: Record<string, () => void> = {};
-const mockChannel = {
+type MockChannel = {
+  on: jest.Mock<MockChannel, [string, { table: string }, () => void]>;
+  subscribe: jest.Mock<MockChannel, []>;
+};
+const mockChannel: MockChannel = {
   on: jest.fn((_e: string, f: { table: string }, cb: () => void) => { mockHandlers[f.table] = cb; return mockChannel; }),
   subscribe: jest.fn(() => mockChannel),
 };

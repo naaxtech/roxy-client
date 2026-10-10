@@ -21,11 +21,11 @@ import { RADII, inkOn } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { FeatureGate } from '../../../components/features/FeatureGate';
+import { GROUP_EMOJIS, GROUP_TITLE_MAX } from '../../../lib/groupInfo';
 
-/** Group avatars: one tap, no upload, nothing to moderate. */
-export const GROUP_EMOJIS = ['🌈', '💜', '✨', '🔥', '🌸', '🎉', '☕', '🍕', '🎮', '📚', '🏳️‍⚧️', '🏳️‍🌈'];
-
-const GROUP_TITLE_MAX = 60;
+// Shared with Group info (app/chat/info/[id].tsx); kept exported from here for
+// anything that imported it before it moved to lib/groupInfo.
+export { GROUP_EMOJIS };
 
 /**
  * New message — one friend for a 1:1, two or more for a private group.
