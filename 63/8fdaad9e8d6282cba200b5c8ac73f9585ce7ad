@@ -1,0 +1,60 @@
+apps/mobile/__tests__/hooks/useMembership.test.ts
+  h_0549c11fec2ab0 55-59,61,64,66-77
+apps/mobile/__tests__/lib/features.test.ts
+  h_0549c11fec2ab0 308-313
+apps/mobile/__tests__/lib/memberPresence.test.ts
+  h_0549c11fec2ab0 1-56
+apps/mobile/__tests__/lib/membershipState.test.ts
+  h_0549c11fec2ab0 1-42
+apps/mobile/__tests__/screens/UserProfileShell.test.tsx
+  h_0549c11fec2ab0 32-33,115-124,239,315,317
+apps/mobile/__tests__/store/friendStore.test.ts
+  h_0549c11fec2ab0 5-9
+apps/mobile/app/(auth)/onboarding/step1-identity.tsx
+  h_0549c11fec2ab0 31-43
+apps/mobile/app/(tabs)/you/[userId].tsx
+  h_0549c11fec2ab0 20-21,118-121,135-138,150,186,212-220,222-228
+apps/mobile/app/(tabs)/you/index.tsx
+  h_0549c11fec2ab0 129
+apps/mobile/app/_layout.tsx
+  h_0549c11fec2ab0 133,190
+apps/mobile/app/chat/[id].tsx
+  h_0549c11fec2ab0 32,391-400
+apps/mobile/components/account/AccountStatusTag.tsx
+  h_0549c11fec2ab0 13-15
+apps/mobile/components/account/PendingStatusHost.tsx
+  h_0549c11fec2ab0 23,30,41,52
+apps/mobile/hooks/useAccess.ts
+  h_0549c11fec2ab0 23-27,60
+apps/mobile/hooks/useMembership.ts
+  h_0549c11fec2ab0 3,16,38-41,54-57,61-63
+apps/mobile/hooks/useProfile.ts
+  h_0549c11fec2ab0 13-16
+apps/mobile/lib/features.ts
+  h_0549c11fec2ab0 86-95
+apps/mobile/lib/memberPresence.ts
+  h_0549c11fec2ab0 1-42
+apps/mobile/lib/membershipState.ts
+  h_0549c11fec2ab0 1-38
+apps/mobile/lib/publicProfile.ts
+  h_0549c11fec2ab0 1-43
+apps/mobile/lib/topMembers.ts
+  h_0549c11fec2ab0 37-40
+apps/mobile/store/friendStore.ts
+  h_0549c11fec2ab0 4,76-77,81-90
+apps/mobile/store/gateStore.ts
+  h_0549c11fec2ab0 34
+apps/mobile/types/index.ts
+  h_0549c11fec2ab0 7-9,11-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "638fdaad9e8d6282cba200b5c8ac73f9585ce7ad",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
