@@ -1,0 +1,20 @@
+apps/mobile/app/notifications.tsx
+  h_0549c11fec2ab0 24-27
+apps/mobile/lib/notifications.ts
+  h_0549c11fec2ab0 5-8
+supabase/migrations/133_feed_archive_profile_launch.sql
+  h_0549c11fec2ab0 660-661,664-668,678
+supabase/tests/133_feed_archive_profile_launch_check.sql
+  h_0549c11fec2ab0 365-368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a7a2e318068dc659ba9a5a677072df7aeaf77c1",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
