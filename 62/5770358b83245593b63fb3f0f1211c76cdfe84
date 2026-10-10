@@ -1,0 +1,18 @@
+supabase/functions/_shared/emailTemplates.test.ts
+  h_0549c11fec2ab0 1-240
+supabase/functions/_shared/emailTemplates.ts
+  h_0549c11fec2ab0 1-346
+supabase/functions/process-email-queue/index.ts
+  h_0549c11fec2ab0 5,32-35,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "625770358b83245593b63fb3f0f1211c76cdfe84",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
