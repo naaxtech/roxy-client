@@ -1,0 +1,61 @@
+apps/mobile/__tests__/lib/notificationSettings.test.ts
+  s_fa867a5f8c9061::t_dd513014acd9ce 1-103
+apps/mobile/__tests__/lib/pushRegistration.test.ts
+  s_0cc7eb3d8eb999::t_494b3e7a111718 1-132
+apps/mobile/__tests__/screens/NotificationSettings.test.tsx
+  s_a9e34acb796733::t_2f2ce109e9e0ef 1-96
+apps/mobile/app/chat/[id].tsx
+  s_a9e34acb796733::t_07cd12768387d3 34,364-376,526-530
+apps/mobile/lib/notificationSettings.ts
+  s_a9e34acb796733::t_9689e81db6083a 1-91
+apps/mobile/lib/push.ts
+  s_fa867a5f8c9061::t_bd5659fdef0190 3-12,15-17,19-26,28,30-41,45,47-50,52-53
+apps/mobile/lib/pushRegistration.ts
+  s_a9e34acb796733::t_fd5b48a06ca9f9 1-114
+scripts/setup-push.sql
+  s_0cc7eb3d8eb999::t_3dadd6f03a6562 1-44
+supabase/config.toml
+  s_0cc7eb3d8eb999::t_0ec8eb225f856a 408-409
+supabase/downs/129_push_notifications_down.sql
+  s_0cc7eb3d8eb999::t_27c82deac2bcd1 1-31
+supabase/functions/_shared/pushCore.ts
+  s_a9e34acb796733::t_a414142af36e19 1-253
+supabase/functions/push-dispatch/index.ts
+  s_0cc7eb3d8eb999::t_ddf3210c1d3b87 1-174
+supabase/migrations/129_push_notifications.sql
+  s_0cc7eb3d8eb999::t_c828b14a421d0d 1-329
+supabase/tests/129_push_notifications_check.sql
+  s_0cc7eb3d8eb999::t_7c7a65072b0c6f 1-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f63f7216fb90cd623f619e5e8a6b7a6a80ce6a7",
+  "prompts": {},
+  "sessions": {
+    "s_0cc7eb3d8eb999": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9204abd3-77fd-4017-aca1-2322f5e9db32",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_a9e34acb796733": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4c1acfa-216a-4df0-9f98-0d887690e025",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_fa867a5f8c9061": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "565123e3-6fd4-4c96-9b85-b6805691fd30",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
