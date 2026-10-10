@@ -3,9 +3,7 @@ import { supabase } from '../lib/supabase';
 import { isGhostSignupUser, sessionEmailMatches } from '../lib/signupSession';
 import { resetRedirectUrl } from '../lib/passwordReset';
 import { useAuthStore } from '../store/authStore';
-import { useGateStore } from '../store/gateStore';
-import { useProfileStore } from '../store/profileStore';
-import { useViewAsStore } from '../store/viewAsStore';
+import { resetAllStores } from '../store/resetAllStores';
 import { unregisterDevice } from '../lib/pushRegistration';
 
 const EXISTING_EMAIL = 'That email already has an account. Sign in instead.';
@@ -13,11 +11,14 @@ const WRONG_SESSION = 'Sign-up did not open the new account. Sign out and try ag
 const CONFIRM_EMAIL = 'Check your email to confirm this account, then sign in.';
 const WRONG_SIGNIN = 'Sign-in opened a different account. Try again.';
 
+/**
+ * Forget everything this phone holds about whoever was signed in: auth,
+ * profile, view-as, and every other per-user store (Archive votes, likes,
+ * follows, blocks, cart, conversations — ARC-08). `resetGate` false keeps an
+ * invite code / application in progress through the sign-up error paths.
+ */
 function forgetLocalIdentity(resetGate: boolean) {
-  useAuthStore.getState().signOut();
-  useProfileStore.getState().setProfile(null);
-  useViewAsStore.getState().setPreview(null);
-  if (resetGate) useGateStore.getState().reset();
+  resetAllStores({ keepGate: !resetGate });
 }
 
 export function useAuth() {
@@ -34,7 +35,15 @@ export function useAuth() {
         setLoading(false);
       });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      // A session can end or change without our signOut(): a refresh token
+      // revoked elsewhere, an account deleted, another account opened by a
+      // deep link. Her data must not outlive it (ARC-08).
+      const prev = useAuthStore.getState().user?.id ?? null;
+      const next = session?.user?.id ?? null;
+      if (event === 'SIGNED_OUT' || (prev !== null && next !== null && prev !== next)) {
+        resetAllStores({ keepGate: true });
+      }
       setSession(session);
     });
 
