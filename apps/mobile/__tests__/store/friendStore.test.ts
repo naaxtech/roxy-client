@@ -2,7 +2,11 @@ import { act, renderHook } from '@testing-library/react-native';
 import { useFriendStore, isOnline, sortByPresence, FriendshipRow } from '../../store/friendStore';
 
 jest.mock('../../lib/supabase', () => ({
-  supabase: { from: jest.fn(), auth: { getUser: jest.fn() } },
+  supabase: {
+    from: jest.fn(),
+    rpc: jest.fn().mockResolvedValue({ data: [], error: null }),
+    auth: { getUser: jest.fn() },
+  },
 }));
 
 const { supabase } = jest.requireMock('../../lib/supabase');

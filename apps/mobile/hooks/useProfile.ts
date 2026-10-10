@@ -10,7 +10,10 @@ export function useProfile() {
   useEffect(() => {
     if (!user || profile) return;
     supabase
-      .from('profiles')
+      // Her own row, every column. profiles.* is no longer readable (130 /
+      // PRO-01): other members' private columns are column-revoked, and that
+      // grant cannot tell her row from theirs.
+      .from('my_profile')
       .select('*')
       .eq('id', user.id)
       .single()

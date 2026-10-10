@@ -83,12 +83,16 @@ export function resolveAccountKind(profile: {
   is_community_owner?: boolean | null;
   vetting_status?: string | null;
 } | null | undefined): AccountKind {
-  if (profile?.staff_role === 'core') return 'core';
-  if (profile?.staff_role === 'staff' || profile?.is_staff) return 'staff';
-  if (profile?.vetting_status === 'pending' || profile?.vetting_status === 'rejected') {
-    return 'pending';
-  }
-  if (profile?.is_community_owner) return 'communityOwner';
+  // No profile yet means we do not know who she is. That used to resolve to
+  // 'member' while useMembership said 'pending', so the nav flashed member
+  // tabs at an applicant during the fetch (G-21). Unknown fails closed.
+  if (!profile) return 'pending';
+  if (profile.staff_role === 'core') return 'core';
+  if (profile.staff_role === 'staff' || profile.is_staff) return 'staff';
+  // Only 'approved' is a member (migration 130). Anything else — pending,
+  // rejected, a stale 'unvetted' row — gets the waiting-room surface.
+  if (profile.vetting_status !== 'approved') return 'pending';
+  if (profile.is_community_owner) return 'communityOwner';
   return 'member';
 }
 

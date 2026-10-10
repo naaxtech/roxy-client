@@ -20,14 +20,14 @@ const storageKey = (userId: string) => `roxy_pending_status_seen:${userId}`;
 export function PendingStatusHost() {
   const colors = useThemeColors();
   const router = useRouter();
-  const { kind } = useAccess();
+  const { kind, loading } = useAccess();
   const userId = useAuthStore((s) => s.user?.id ?? null);
   const [open, setOpen] = useState(false);
   const pop = usePopIn(open);
   const s = styles(colors);
 
   useEffect(() => {
-    if (kind !== 'pending' || !userId) {
+    if (loading || kind !== 'pending' || !userId) {
       setOpen(false);
       return;
     }
@@ -38,7 +38,7 @@ export function PendingStatusHost() {
       })
       .catch((e: unknown) => logError(e, 'PendingStatusHost.load'));
     return () => { cancelled = true; };
-  }, [kind, userId]);
+  }, [kind, loading, userId]);
 
   const dismiss = () => {
     setOpen(false);
@@ -49,7 +49,7 @@ export function PendingStatusHost() {
     }
   };
 
-  if (kind !== 'pending' || !open) return null;
+  if (loading || kind !== 'pending' || !open) return null;
 
   return (
     <Modal

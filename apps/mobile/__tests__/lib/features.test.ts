@@ -305,7 +305,12 @@ describe('resolveAccountKind', () => {
       vetting_status: 'approved',
     })).toBe('communityOwner');
     expect(resolveAccountKind({ vetting_status: 'approved' })).toBe('member');
-    expect(resolveAccountKind(null)).toBe('member');
+    // G-21: unknown fails closed. It used to read as 'member' while
+    // useMembership read 'pending', so the two disagreed during every fetch.
+    expect(resolveAccountKind(null)).toBe('pending');
+    // 130: only 'approved' is a member; a stale grandfather row is not.
+    expect(resolveAccountKind({ vetting_status: 'unvetted' })).toBe('pending');
+    expect(resolveAccountKind({})).toBe('pending');
   });
 });
 

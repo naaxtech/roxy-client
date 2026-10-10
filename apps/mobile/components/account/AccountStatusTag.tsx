@@ -10,8 +10,9 @@ import { useThemeColors } from '../../hooks/useThemeColors';
  */
 export function AccountStatusTag() {
   const colors = useThemeColors();
-  const { kind } = useAccess();
-  if (kind !== 'pending') return null;
+  const { kind, loading } = useAccess();
+  // Unknown is not pending: a member's cold start must not flash "Pending".
+  if (loading || kind !== 'pending') return null;
   return (
     <View
       testID="account-status-tag"

@@ -29,6 +29,8 @@ let mockRooms: unknown[] = [];
 let mockGames: unknown[] = [];
 let mockCover: string | null = null;
 let mockMembers: unknown[] = [];
+/** Ids member_presence() reports online (130: last_seen_at is not readable). */
+let mockOnline: string[] = [];
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn() }),
@@ -110,6 +112,16 @@ jest.mock('../../components/profile/ProfilePostsGrid', () => ({
 
 jest.mock('../../lib/supabase', () => ({
   supabase: {
+    rpc: jest.fn((fn: string, args: { p_user_ids?: string[] }) =>
+      Promise.resolve(
+        fn === 'member_presence'
+          ? {
+            data: (args.p_user_ids ?? []).map((id) => ({ user_id: id, online: mockOnline.includes(id) })),
+            error: null,
+          }
+          : { data: null, error: null },
+      ),
+    ),
     from: jest.fn((table: string) => {
       const chain: Record<string, unknown> = {};
       chain.select = () => chain;
@@ -224,6 +236,7 @@ beforeEach(() => {
   mockGames = [];
   mockCover = null;
   mockMembers = [];
+  mockOnline = [];
   mockOpenReport.mockClear();
   mockBlock.mockClear();
 });
@@ -299,8 +312,9 @@ describe('user profile on the unified shell', () => {
     mockCover = 'https://cdn.example/wlw-cover.jpg';
     mockMembers = [{
       user_id: 'u3',
-      profiles: { display_name: 'Maya', avatar_url: null, last_seen_at: new Date().toISOString() },
+      profiles: { display_name: 'Maya', avatar_url: null },
     }];
+    mockOnline = ['u3'];
     const { getByTestId, getByText } = render(<UserProfileScreen />);
     await waitFor(() => expect(getByTestId('profile-cover-photo')).toBeTruthy());
     expect(getByTestId('profile-online-row')).toBeTruthy();

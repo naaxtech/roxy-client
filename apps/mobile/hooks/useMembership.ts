@@ -1,5 +1,6 @@
 import { useAuthStore } from '../store/authStore';
 import { useProfileStore } from '../store/profileStore';
+import { isMemberState, membershipState } from '../lib/membershipState';
 
 /**
  * What the WLW Archive gates on.
@@ -12,7 +13,7 @@ import { useProfileStore } from '../store/profileStore';
  * so the app told a woman she was protected when she was not. The Archive
  * reads the gate that exists.
  */
-export type MembershipStatus = 'unvetted' | 'pending' | 'approved' | 'rejected';
+export type MembershipStatus = 'pending' | 'approved' | 'rejected';
 
 export type Membership = {
   status: MembershipStatus;
@@ -34,19 +35,11 @@ export type Membership = {
 };
 
 /**
- * Mirrors `is_approved_member()` (072_invite_gate_enforcement.sql):
- * `vetting_status IN ('approved', 'unvetted')`.
- *
- * 'unvetted' is the grandfathered pre-gate population and MUST be included.
- * This codebase has twice shipped a bug where a third enum value fell through
- * a `!==`/elimination branch and was handled as its opposite — composing this
- * as "not pending" would be exactly that bug, and it would lock out every
- * account that existed before the gate shipped, which is precisely what
- * 072's own comment warns the naive predicate does.
+ * Mirrors `is_approved_member()` (migration 130): approved and not deleted.
+ * Composed from the state it PERMITS, never as "not pending" — this codebase
+ * has twice shipped a bug where an unexpected enum value fell through an
+ * elimination branch and was handled as its opposite. See lib/membershipState.
  */
-function isApprovedMember(status: MembershipStatus): boolean {
-  return status === 'approved' || status === 'unvetted';
-}
 
 export function useMembership(): Membership {
   const user = useAuthStore((s) => s.user);
@@ -58,12 +51,15 @@ export function useMembership(): Membership {
   // hook actually knows her real status. (profileStore is warmed by the root
   // layout's own effect, so in practice this only covers the brief window
   // before that fetch resolves.)
-  const status: MembershipStatus = profile?.vetting_status ?? 'pending';
+  const state = membershipState(profile);
+  const status: MembershipStatus =
+    state === 'member' ? 'approved' : state === 'rejected' ? 'rejected' : 'pending';
+  const member = isMemberState(state);
 
   return {
     status,
-    canBrowseArchive: !!user,
-    canReview: isApprovedMember(status),
-    canEdit: isApprovedMember(status),
+    canBrowseArchive: !!user && state !== 'deleted',
+    canReview: member,
+    canEdit: member,
   };
 }

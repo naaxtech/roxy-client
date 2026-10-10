@@ -20,6 +20,11 @@ import {
  * member, owner, staffer or applicant sees — the signed-in row does not change.
  */
 export function useAccess(): {
+  /**
+   * No profile yet. Gates fail closed (kind is 'pending') while this is true,
+   * but nothing should TELL her she is pending until we actually know (G-21).
+   */
+  loading: boolean;
   kind: AccountKind;
   realKind: AccountKind;
   isCore: boolean;
@@ -52,6 +57,7 @@ export function useAccess(): {
   };
 
   return {
+    loading: !profile,
     kind,
     realKind,
     isCore,

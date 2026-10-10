@@ -28,12 +28,19 @@ export default function Step1Identity() {
       setUsernameAvailable(null);
       return;
     }
-    const { data } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('username', val.toLowerCase())
-      .maybeSingle();
-    setUsernameAvailable(!data);
+    // She is pending while she onboards, and a pending account can no longer
+    // read anyone else's row (130 / G-06) — so "is this name taken" is asked
+    // of a narrow RPC that answers yes/no and reveals nothing else. A failed
+    // check reads as "unknown", never as "available".
+    const { data, error } = await supabase.rpc('is_username_available', {
+      p_username: val.toLowerCase(),
+    });
+    if (error) {
+      logError(error, 'onboarding_step1_username_check');
+      setUsernameAvailable(null);
+      return;
+    }
+    setUsernameAvailable(data === true);
   };
 
   const handleNext = async () => {

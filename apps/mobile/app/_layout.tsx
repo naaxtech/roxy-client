@@ -130,7 +130,7 @@ function AppNavigator() {
       // router.replace() calls (the other root cause of the flicker).
       if (fetchingForUserRef.current === user.id) return;
       fetchingForUserRef.current = user.id;
-      void Promise.resolve(supabase.from('profiles').select('*').eq('id', user.id).maybeSingle())
+      void Promise.resolve(supabase.from('my_profile').select('*').eq('id', user.id).maybeSingle())
         .then(({ data, error }) => {
           fetchingForUserRef.current = null;
           if (error) { logError(error, 'layout_profile_fetch'); return; }
@@ -187,7 +187,7 @@ function AppNavigator() {
     if (user && !inAuth && !inRecovery && (!liveProfile || !liveProfile.onboarding_completed)) {
       if (fetchingForUserRef.current === user.id) return;
       fetchingForUserRef.current = user.id;
-      void Promise.resolve(supabase.from('profiles').select('*').eq('id', user.id).maybeSingle())
+      void Promise.resolve(supabase.from('my_profile').select('*').eq('id', user.id).maybeSingle())
         .then(({ data, error }) => {
           fetchingForUserRef.current = null;
           if (error) { logError(error, 'layout_profile_reload'); return; }

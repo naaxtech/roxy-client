@@ -31,7 +31,7 @@ export type CodeRejection =
   | 'rate_limited'
   | 'unavailable';
 
-export type VettingStatus = 'unvetted' | 'pending' | 'approved' | 'rejected';
+export type VettingStatus = 'pending' | 'approved' | 'rejected';
 
 /**
  * What actually became of a submitted legal name.
