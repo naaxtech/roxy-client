@@ -1,0 +1,32 @@
+apps/mobile/__tests__/hooks/useAuthResetsStores.test.ts
+  h_0549c11fec2ab0 1-100
+apps/mobile/__tests__/screens/DeleteAccount.test.tsx
+  h_0549c11fec2ab0 9-12,14-15,34,36-82,91,94
+apps/mobile/__tests__/store/resetAllStores.test.ts
+  h_0549c11fec2ab0 1-88
+apps/mobile/app/(tabs)/you/delete-account.tsx
+  h_0549c11fec2ab0 9,14,16,20-31,38-42,44-51,69-71,75-76,78,100,102,104-105,108,112-113,115,121-142,167,171-172,175,178,186,190-195,198,203-217,219-231,245,263-265,268,274-277
+apps/mobile/app/(tabs)/you/settings.tsx
+  h_0549c11fec2ab0 11,25-26,65-67
+apps/mobile/hooks/useAuth.ts
+  h_0549c11fec2ab0 6,14-19,21,38-46
+apps/mobile/store/resetAllStores.ts
+  h_0549c11fec2ab0 1-113
+supabase/functions/_shared/gdprExport.test.ts
+  h_0549c11fec2ab0 1-162
+supabase/functions/_shared/gdprExport.ts
+  h_0549c11fec2ab0 1-157
+supabase/functions/gdpr-export/index.ts
+  h_0549c11fec2ab0 5,32-47,49,51-58,60-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "31f9b6aaf087e370bd5bd027769a2a7101250ae8",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
