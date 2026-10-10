@@ -1,0 +1,36 @@
+apps/mobile/__tests__/components/FeedSafetySheet.test.tsx
+  h_0549c11fec2ab0 60,71,88-89,91-92,114-142
+apps/mobile/__tests__/lib/announcementsPaging.test.ts
+  h_0549c11fec2ab0 1-132
+apps/mobile/__tests__/lib/wallFeed.test.ts
+  h_0549c11fec2ab0 1-130
+apps/mobile/__tests__/store/feedStoreHidden.test.ts
+  h_0549c11fec2ab0 1-80
+apps/mobile/components/feed/FeedSafetySheet.tsx
+  h_0549c11fec2ab0 30-33,35-36,40,64-70,77,139-156,231-238,242-244
+apps/mobile/components/feed/LikeBurst.tsx
+  h_0549c11fec2ab0 1-105
+apps/mobile/hooks/usePlaybackAllowed.ts
+  h_0549c11fec2ab0 1-41
+apps/mobile/lib/announcements.ts
+  h_0549c11fec2ab0 11-20,24-25,30,36,39-52,57-59,61,67-68,73-81,99,125-141,143-144,165-176,178,182-185,191,193-220,222,224,241,274,276,280,282,285,289
+apps/mobile/lib/haptics.ts
+  h_0549c11fec2ab0 1-31
+apps/mobile/lib/reels.ts
+  h_0549c11fec2ab0 27-56
+apps/mobile/lib/wallFeed.ts
+  h_0549c11fec2ab0 1-114
+apps/mobile/store/feedStore.ts
+  h_0549c11fec2ab0 22-26,47-52,82,257-287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "31081e3153606022bd0050218bb10b8c6b8c8f7f",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
