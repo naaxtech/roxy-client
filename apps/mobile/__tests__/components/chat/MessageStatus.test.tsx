@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { MessageStatus } from '../../../components/chat/MessageStatus';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
+import { useChatSettingsStore } from '../../../store/chatSettingsStore';
 
 /**
  * Item 2 of the community-chat brief: a message that failed must LOOK failed
@@ -20,6 +21,20 @@ describe('MessageStatus', () => {
   it('shows a double tick once the other person has read it', () => {
     const { getByText } = render(<MessageStatus status="sent" isRead onRetry={jest.fn()} />);
     expect(getByText('✓✓')).toBeTruthy();
+  });
+
+  it('with her own read receipts off she does not see others\' either (reciprocal)', () => {
+    useChatSettingsStore.setState({ settings: { read_receipts: false, group_add_permission: 'friends' } });
+    try {
+      const { getByText, queryByText, getByLabelText } = render(
+        <MessageStatus status="sent" isRead onRetry={jest.fn()} />,
+      );
+      expect(getByText('✓')).toBeTruthy();
+      expect(queryByText('✓✓')).toBeNull();
+      expect(getByLabelText('Sent')).toBeTruthy();
+    } finally {
+      useChatSettingsStore.getState().reset();
+    }
   });
 
   it('announces an in-flight message as busy, not as delivered', () => {

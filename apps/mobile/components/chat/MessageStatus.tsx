@@ -4,6 +4,7 @@ import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
 import type { DeliveryStatus } from '../../hooks/useRealtime';
+import { useChatSettingsStore, showsReadReceipts } from '../../store/chatSettingsStore';
 
 interface Props {
   status: DeliveryStatus;
@@ -26,9 +27,14 @@ interface Props {
  *
  * The retry is a real 44pt target, measured rather than hit-slopped — it is the
  * control someone reaches for when the network is already fighting her.
+ *
+ * Read receipts are reciprocal (CHAT-17): with her own turned off in Settings,
+ * the server stops sending hers and this stops showing "Read" on hers.
  */
-export function MessageStatus({ status, isRead, onRetry }: Props) {
+export function MessageStatus({ status, isRead: serverRead, onRetry }: Props) {
   const colors = useThemeColors();
+  const sharesReceipts = useChatSettingsStore(showsReadReceipts);
+  const isRead = serverRead && sharesReceipts;
 
   const s = StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'center', gap: 6 },

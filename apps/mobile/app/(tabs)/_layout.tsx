@@ -6,6 +6,7 @@ import { FloatingTabBar } from '../../components/nav/FloatingTabBar';
 import { CreateSheet } from '../../components/nav/CreateSheet';
 import { useFriendStore } from '../../store/friendStore';
 import { useConnectStore } from '../../store/connectStore';
+import { useChatSettingsStore } from '../../store/chatSettingsStore';
 import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
 import { useSafetyStore } from '../../store/safetyStore';
@@ -100,7 +101,9 @@ export default function TabLayout() {
   useEffect(() => {
     if (!user?.id) return;
     void refreshInbox();
-
+    // Read receipts are reciprocal: every tick on screen draws by her setting,
+    // so it is loaded with the inbox, not only when Settings opens.
+    void useChatSettingsStore.getState().load();
     // Debounced: a burst of inserts becomes one round trip.
     let timer: ReturnType<typeof setTimeout> | null = null;
     const nudge = () => {

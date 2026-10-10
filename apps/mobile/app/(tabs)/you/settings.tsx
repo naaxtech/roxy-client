@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Switch,
   ScrollView, StyleSheet, ActivityIndicator,
@@ -26,6 +26,7 @@ import { TYPE } from '../../../lib/typography';
 import { RADII, type ThemeColors } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { unregisterDevice } from '../../../lib/pushRegistration';
+import { useChatSettingsStore } from '../../../store/chatSettingsStore';
 
 /**
  * Settings & safety — same sections and copy as the 3.0 prototype.
@@ -43,7 +44,14 @@ export default function SettingsScreen() {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const blockedCount = useSafetyStore((s) => s.blockedUserIds.length);
+  const chatSettings = useChatSettingsStore((s) => s.settings);
+  const loadChatSettings = useChatSettingsStore((s) => s.load);
+  const setReadReceipts = useChatSettingsStore((s) => s.setReadReceipts);
+  const setGroupAddPermission = useChatSettingsStore((s) => s.setGroupAddPermission);
   const s = styles(colors);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (user?.id) void loadChatSettings(); }, [user?.id]);
 
   if (!user || !profile) {
     return (
@@ -204,6 +212,52 @@ export default function SettingsScreen() {
             >
               <Text style={s.rowLabel}>Blocked</Text>
               <Text style={s.rowValue}>{blockedCount} ›</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={s.block}>
+          <Text style={s.sectionLabel}>Chats</Text>
+          <View style={s.card}>
+            <View style={s.row}>
+              <View style={s.rowLabelGroup}>
+                <Text style={s.rowLabel}>Read receipts</Text>
+                <Text style={s.rowHint}>If you turn these off, you won't see others' either.</Text>
+              </View>
+              <Switch
+                value={chatSettings.read_receipts}
+                onValueChange={async (value) => {
+                  const ok = await setReadReceipts(value);
+                  if (!ok) {
+                    showAlert('Not saved', 'Could not save your read receipts setting. It is unchanged.');
+                  }
+                }}
+                trackColor={{ false: colors.surfaceLight, true: colors.primary }}
+                thumbColor={colors.backgroundAlt}
+                accessibilityLabel="Read receipts"
+                accessibilityHint="If you turn these off, you won't see others' either."
+                testID="settings-read-receipts"
+              />
+            </View>
+            <View style={s.divider} />
+            <TouchableOpacity
+              style={s.row}
+              onPress={async () => {
+                const next = chatSettings.group_add_permission === 'friends' ? 'nobody' : 'friends';
+                const ok = await setGroupAddPermission(next);
+                if (!ok) {
+                  showAlert('Not saved', 'Could not save who can add you to groups. Your setting is unchanged.');
+                }
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Who can add me to groups: ${chatSettings.group_add_permission === 'friends' ? 'Friends' : 'Nobody'}. Change.`}
+              testID="settings-group-adds"
+            >
+              <View style={s.rowLabelGroup}>
+                <Text style={s.rowLabel}>Who can add me to groups</Text>
+                <Text style={s.rowHint}>Only ever people you're friends with</Text>
+              </View>
+              <Text style={s.rowAccent}>{chatSettings.group_add_permission === 'friends' ? 'Friends' : 'Nobody'} ›</Text>
             </TouchableOpacity>
           </View>
         </View>
