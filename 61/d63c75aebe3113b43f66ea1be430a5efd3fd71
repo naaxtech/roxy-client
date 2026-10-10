@@ -1,0 +1,18 @@
+supabase/downs/130_gate_airtight_down.sql
+  h_0549c11fec2ab0 1-411
+supabase/tests/130_gate_airtight_check.sql
+  h_0549c11fec2ab0 1-669
+supabase/migrations/130_gate_airtight.sql
+  h_0549c11fec2ab0 1-1704
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "61d63c75aebe3113b43f66ea1be430a5efd3fd71",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
