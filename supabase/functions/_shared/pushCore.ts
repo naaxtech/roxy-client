@@ -17,9 +17,14 @@ export type NotificationType =
   | 'channel_message'
   | 'friend_request'
   | 'friend_accept'
-  | 'community_event';
+  | 'community_event'
+  // Migration 133 — the creator loop: someone sent her post a ✿, commented on
+  // it or replied to her comment, or followed her.
+  | 'post_reaction'
+  | 'comment'
+  | 'follow';
 
-export type PrefKey = 'messages' | 'community_chats' | 'friends' | 'events';
+export type PrefKey = 'messages' | 'community_chats' | 'friends' | 'events' | 'activity';
 
 /** Android notification channel ids; created by the app (lib/push.ts). */
 export type ChannelId = 'messages' | 'community' | 'friends' | 'events' | 'quiet';
@@ -30,6 +35,12 @@ export type PushPrefs = {
   friends: boolean;
   events: boolean;
   community_chats: boolean;
+  /**
+   * Likes, comments and follows (migration 133). Optional because a settings
+   * row read before the column existed has no value; absent means ON, the
+   * column default.
+   */
+  activity?: boolean;
   show_previews: boolean;
   /** 'HH:MM' in her timezone, or null for no quiet hours. */
   quiet_start: string | null;
@@ -44,6 +55,7 @@ export const DEFAULT_PREFS: PushPrefs = {
   friends: true,
   events: true,
   community_chats: true,
+  activity: true,
   show_previews: false,
   quiet_start: null,
   quiet_end: null,
@@ -83,6 +95,12 @@ const CATEGORY: Record<NotificationType, { pref: PrefKey; channel: Exclude<Chann
   friend_request: { pref: 'friends', channel: 'friends' },
   friend_accept: { pref: 'friends', channel: 'friends' },
   community_event: { pref: 'events', channel: 'events' },
+  // Social activity rings on the existing 'friends' channel: the app creates
+  // the Android channels (lib/push.ts) and a new channel id would need an app
+  // release before it could ring at all.
+  post_reaction: { pref: 'activity', channel: 'friends' },
+  comment: { pref: 'activity', channel: 'friends' },
+  follow: { pref: 'activity', channel: 'friends' },
 };
 
 /** Which preference gates a type, and which channel it rings on. Unknown types are never pushed. */
@@ -100,6 +118,14 @@ function privateCopy(n: QueuedNotification): { title: string; body: string } {
       return { title: who, body: 'Sent you a friend request' };
     case 'friend_accept':
       return { title: who, body: 'Accepted your friend request' };
+    case 'post_reaction':
+      return { title: who, body: 'Sent your post a ✿' };
+    case 'comment':
+      // Never the comment's words, and never the post: her post may be about
+      // something she is not out about.
+      return { title: who, body: 'Commented on your post' };
+    case 'follow':
+      return { title: who, body: 'Started following you' };
     case 'channel_message':
       return { title: 'Roxy', body: 'New message in a community chat' };
     case 'community_event':
@@ -145,7 +171,8 @@ export function buildMessage(
 ): ExpoMessage | null {
   const cat = categoryOf(n.type);
   if (!cat) return null;
-  if (!prefs.push_enabled || !prefs[cat.pref]) return null;
+  // `=== false`, not falsy: a pref missing from an older settings row is ON.
+  if (!prefs.push_enabled || prefs[cat.pref] === false) return null;
 
   const copy = prefs.show_previews ? fullCopy(n) : privateCopy(n);
   // One stack per sender per destination: five messages from Maya in the same

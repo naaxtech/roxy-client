@@ -33,6 +33,7 @@ const DEFAULTS: PushPrefs = {
   friends: true,
   events: true,
   community_chats: true,
+  activity: true,
   show_previews: false,
   quiet_start: null,
   quiet_end: null,
@@ -59,7 +60,46 @@ Deno.test('categoryOf maps every notification type to a preference and a channel
   eq(categoryOf('friend_request'), { pref: 'friends', channel: 'friends' });
   eq(categoryOf('friend_accept'), { pref: 'friends', channel: 'friends' });
   eq(categoryOf('community_event'), { pref: 'events', channel: 'events' });
+  eq(categoryOf('post_reaction'), { pref: 'activity', channel: 'friends' });
+  eq(categoryOf('comment'), { pref: 'activity', channel: 'friends' });
+  eq(categoryOf('follow'), { pref: 'activity', channel: 'friends' });
   eq(categoryOf('something_new'), null, 'unknown types are never pushed');
+});
+
+Deno.test('previews OFF: activity pushes name who, never the comment or the post', () => {
+  const c = buildMessage(
+    note({ type: 'comment', title: 'Maya commented on your post', body: 'you look amazing at pride', link_path: '/community/post/p1?comment=c1' }),
+    DEFAULTS, 'ExponentPushToken[abc]', false,
+  )!;
+  eq(c.title, 'Maya');
+  eq(c.body, 'Commented on your post');
+  ok(!JSON.stringify(c).includes('pride'), 'comment text leaked');
+  const r = buildMessage(
+    note({ type: 'post_reaction', title: 'Maya sent your post a ✿', body: null, link_path: '/community/post/p1' }),
+    DEFAULTS, 'ExponentPushToken[abc]', false,
+  )!;
+  eq([r.title, r.body], ['Maya', 'Sent your post a ✿']);
+  const f = buildMessage(
+    note({ type: 'follow', title: 'Maya started following you', body: null, link_path: '/user/u-sender' }),
+    DEFAULTS, 'ExponentPushToken[abc]', false,
+  )!;
+  eq([f.title, f.body], ['Maya', 'Started following you']);
+  eq(f.data.url, 'roxy://user/u-sender');
+});
+
+Deno.test('activity switched off: likes, comments and follows are not pushed', () => {
+  for (const type of ['post_reaction', 'comment', 'follow']) {
+    eq(buildMessage(note({ type }), { ...DEFAULTS, activity: false }, 'ExponentPushToken[abc]', false), null, type);
+  }
+});
+
+Deno.test('a settings row read without the activity column still pushes activity (default ON)', () => {
+  const { activity: _omit, ...older } = DEFAULTS;
+  ok(buildMessage(note({ type: 'follow' }), older as PushPrefs, 'ExponentPushToken[abc]', false), 'expected a push');
+});
+
+Deno.test('an Archive decision is in-app only, never pushed', () => {
+  eq(categoryOf('archive_revision'), null);
 });
 
 Deno.test('previews OFF (the default): a message push names the sender, never the words', () => {

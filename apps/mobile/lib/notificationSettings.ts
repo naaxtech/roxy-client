@@ -14,6 +14,8 @@ export type NotificationSettings = {
   friends: boolean;
   events: boolean;
   community_chats: boolean;
+  /** Someone sent her post a ✿, commented, replied or followed her (migration 133). */
+  activity: boolean;
   show_previews: boolean;
   /** 'HH:MM' local time, or null. */
   quiet_start: string | null;
@@ -26,6 +28,7 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   friends: true,
   events: true,
   community_chats: true,
+  activity: true,
   show_previews: false,
   quiet_start: null,
   quiet_end: null,
@@ -42,7 +45,7 @@ const hhmm = (t: unknown): string | null =>
 export async function loadNotificationSettings(userId: string): Promise<NotificationSettings> {
   const { data, error } = await supabase
     .from('notification_settings')
-    .select('push_enabled, messages, friends, events, community_chats, show_previews, quiet_start, quiet_end')
+    .select('push_enabled, messages, friends, events, community_chats, activity, show_previews, quiet_start, quiet_end')
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;
@@ -54,6 +57,7 @@ export async function loadNotificationSettings(userId: string): Promise<Notifica
     friends: row.friends !== false,
     events: row.events !== false,
     community_chats: row.community_chats !== false,
+    activity: row.activity !== false,
     show_previews: row.show_previews === true,
     quiet_start: hhmm(row.quiet_start),
     quiet_end: hhmm(row.quiet_end),
