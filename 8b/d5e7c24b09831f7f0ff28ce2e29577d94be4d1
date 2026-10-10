@@ -1,0 +1,24 @@
+apps/mobile/__tests__/hooks/useThreadMeta.test.ts
+  h_0549c11fec2ab0 10-14
+apps/mobile/__tests__/lib/groupInfo.test.ts
+  h_0549c11fec2ab0 1-108
+apps/mobile/__tests__/screens/GroupInfo.test.tsx
+  h_0549c11fec2ab0 1-232
+apps/mobile/app/(tabs)/messages/new.tsx
+  h_0549c11fec2ab0 24,26-28
+apps/mobile/app/chat/info/[id].tsx
+  h_0549c11fec2ab0 1-603
+apps/mobile/lib/groupInfo.ts
+  h_0549c11fec2ab0 1-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8bd5e7c24b09831f7f0ff28ce2e29577d94be4d1",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
