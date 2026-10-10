@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, AppState } from 'react-native';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import { RoxyCompanionButton } from '../../components/ui/RoxyCompanionButton';
 import { FloatingTabBar } from '../../components/nav/FloatingTabBar';
@@ -90,38 +90,53 @@ export default function TabLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastPush]);
 
-  const unreadCounts = useConnectStore((s) => s.unreadCounts);
-  const totalUnread = Object.values(unreadCounts).reduce((sum, n) => sum + n, 0);
+  // The Messages badge comes from the server (CHAT-13): unread chats, message
+  // requests, friend requests and community-chat unread, all from
+  // messages_badge(). Realtime events only NUDGE a refresh — nothing here
+  // increments, so a message can never be counted twice.
+  const badgeTotal = useConnectStore((s) => s.badgeTotal);
+  const refreshInbox = useConnectStore((s) => s.refresh);
 
-  // Global message listener — fires for every INSERT on messages that RLS
-  // allows this user to see (i.e. only messages in their own conversations).
-  // When a message arrives for a conversation that isn't currently open,
-  // increment its unread count to drive the Connect tab badge.
-  // We call getState() inside the callback so we always read the live value
-  // of activeConversationId with no stale-closure risk.
   useEffect(() => {
     if (!user?.id) return;
+    void refreshInbox();
 
-    const channel = freshChannel(`global-messages:${user.id}`)
+    // Debounced: a burst of inserts becomes one round trip.
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const nudge = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { timer = null; void refreshInbox(); }, 400);
+    };
+
+    // RLS limits both feeds to rows she may read: messages in her threads and
+    // her own membership rows (added to a group, request answered, muted).
+    const channel = freshChannel(`inbox:${user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, nudge)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          const msg = payload.new as { conversation_id: string; sender_id: string | null };
-          // Own messages are already shown via optimistic update — skip.
-          if (msg.sender_id === user.id) return;
-          const { activeConversationId, incrementUnread } = useConnectStore.getState();
-          // If the user is currently inside this conversation, skip —
-          // the per-conversation subscription handles display and the screen
-          // calls clearUnread on mount.
-          if (msg.conversation_id === activeConversationId) return;
-          incrementUnread(msg.conversation_id);
-        }
+        { event: '*', schema: 'public', table: 'conversation_members', filter: `user_id=eq.${user.id}` },
+        nudge,
       )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_channel_messages' }, nudge)
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [user?.id]);
+    // Coming back to the app: the socket may have slept through everything.
+    const appSub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void refreshInbox();
+    });
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      appSub.remove();
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id, refreshInbox]);
+
+  // The friend-request count lives in friendStore too; refresh the server
+  // badge whenever it moves so the two never disagree on screen.
+  useEffect(() => {
+    if (user?.id) void refreshInbox();
+  }, [pendingCount, user?.id, refreshInbox]);
 
   // Four bar slots plus the ＋ action, per `components/nav/navSlots3.ts`.
   //
@@ -161,9 +176,9 @@ export default function TabLayout() {
           name="messages"
           options={{
             title: 'Messages',
-            // Friend requests are messages now: the request-first inbox is where
-            // they land, so the count that used to badge Home badges Messages.
-            tabBarBadge: totalUnread + pendingCount > 0 ? totalUnread + pendingCount : undefined,
+            // Unread chats + message requests + friend requests + community
+            // unread — one server number (messages_badge, migration 132).
+            tabBarBadge: badgeTotal > 0 ? (badgeTotal > 99 ? '99+' : badgeTotal) : undefined,
           }}
         />
         <Tabs.Screen name="you" options={{ title: 'You' }} />

@@ -1,17 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput,
+  View, Text, StyleSheet, TouchableOpacity, TextInput, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { format, isToday, isYesterday } from 'date-fns';
-import { supabase } from '../../../lib/supabase';
-import { freshChannel } from '../../../lib/realtimeChannel';
+import { useRouter, usePathname } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../../store/authStore';
 import { useConnectStore } from '../../../store/connectStore';
 import { useFriendStore, isOnline } from '../../../store/friendStore';
-import { Conversation } from '../../../types';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { ScreenHeader } from '../../../components/ui/ScreenHeader';
 import { PinnedPersonaRow } from '../../../components/messages/PinnedPersonaRow';
@@ -22,6 +19,7 @@ import { useAccess } from '../../../hooks/useAccess';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { readDmPermission, dmPermissionLabel } from '../../../lib/dmPermission';
+import { inboxRowFromThread, formatInboxTime } from '../../../lib/inboxRows';
 import {
   fetchInboxCommunityMeta,
   fetchCommunityUnread,
@@ -33,133 +31,66 @@ import { TYPE } from '../../../lib/typography';
 import { RADII, inkOn } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 
-type PartnerProfile = { id: string; display_name: string; username: string };
-type ChatItem = InboxDm;
-
-function formatTime(ts: string | null): string {
-  if (!ts) return '';
-  const d = new Date(ts);
-  if (isToday(d)) return format(d, 'HH:mm');
-  if (isYesterday(d)) return 'Yesterday';
-  return format(d, 'dd MMM');
-}
-
+/**
+ * The Messages inbox.
+ *
+ * Direct + private-group threads come from ONE server call, `inbox_summary()`
+ * (migration 132), through connectStore — the same call that feeds the tab
+ * badge (CHAT-13). The old four-query fetch (conversations → profiles → every
+ * message → unread rows) is gone: it pulled every message she had ever been
+ * sent to draw one preview line, and it computed unread its own way, so the
+ * badge and the row could disagree.
+ *
+ * Message requests never appear in this list (CHAT-02): they wait in the
+ * Requests sheet, which is also where friend requests are answered.
+ */
 function MessagesScreen() {
   const colors = useThemeColors();
   const router = useRouter();
+  const pathname = usePathname();
   const { user } = useAuthStore();
-  const { setConversations, unreadCounts, clearUnread } = useConnectStore();
-  const { friends } = useFriendStore();
+  const threads = useConnectStore((st) => st.threads);
+  const requests = useConnectStore((st) => st.requests);
+  const loaded = useConnectStore((st) => st.loaded);
+  const loading = useConnectStore((st) => st.loading);
+  const refresh = useConnectStore((st) => st.refresh);
   const pendingCount = useFriendStore((st) => st.pendingCount);
   const fetchAll = useFriendStore((st) => st.fetchAll);
   const joinedCommunities = useCommunityStore((st) => st.joinedCommunities);
   const hydrateCommunities = useCommunityStore((st) => st.hydrate);
   const profile = useProfileStore((st) => st.profile);
   const dmPermission = readDmPermission(profile as { dm_permission?: unknown } | null);
-  const [chats, setChats] = useState<ChatItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [requestsOpen, setRequestsOpen] = useState(false);
   const [communityMeta, setCommunityMeta] = useState<Record<string, InboxCommunityMeta>>({});
   const [communityUnread, setCommunityUnread] = useState<Record<string, number>>({});
 
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
+  const requestCount = requests.length + pendingCount;
 
-    const { data: convs } = await supabase
-      .from('conversations')
-      .select('id, participant_ids, last_message_at, conversation_type, roxy_nudge_count, roxy_wingwoman_count_today, last_roxy_call_date, created_at')
-      .contains('participant_ids', [user.id])
-      .eq('conversation_type', 'direct')
-      .order('last_message_at', { ascending: false, nullsFirst: false });
+  const load = useCallback(() => { void refresh(); }, [refresh]);
 
-    if (!convs || convs.length === 0) {
-      setChats([]);
-      setLoading(false);
-      return;
-    }
-
-    setConversations(convs as Conversation[]);
-    const convIds = (convs as { id: string }[]).map((c) => c.id);
-
-    const partnerIds = [...new Set(
-      (convs as { participant_ids: string[] }[]).flatMap((c) =>
-        c.participant_ids.filter((id) => id !== user.id)
-      )
-    )];
-
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, display_name, username')
-      .in('id', partnerIds);
-
-    const profileMap = new Map((profiles ?? []).map((p: PartnerProfile) => [p.id, p]));
-
-    const { data: recentMsgs } = await supabase
-      .from('messages')
-      .select('conversation_id, content, message_type, sender_id')
-      .in('conversation_id', convIds)
-      .order('created_at', { ascending: false });
-
-    const lastMsgMap = new Map<string, string>();
-    for (const msg of recentMsgs ?? []) {
-      if (lastMsgMap.has(msg.conversation_id)) continue;
-      if (msg.message_type === 'roxy_suggestion') {
-        lastMsgMap.set(msg.conversation_id, '✨ Roxy suggestion');
-      } else {
-        const isOwn = msg.sender_id === user.id;
-        lastMsgMap.set(
-          msg.conversation_id,
-          isOwn ? `You: ${msg.content ?? ''}` : (msg.content ?? '')
-        );
-      }
-    }
-
-    const { data: unreadRows } = await supabase
-      .from('messages')
-      .select('conversation_id')
-      .in('conversation_id', convIds)
-      .eq('is_read', false)
-      .neq('sender_id', user.id);
-
-    const dbUnreadMap: Record<string, number> = {};
-    for (const { conversation_id } of unreadRows ?? []) {
-      dbUnreadMap[conversation_id] = (dbUnreadMap[conversation_id] ?? 0) + 1;
-    }
-
-    const { incrementUnread } = useConnectStore.getState();
-    for (const [convId, count] of Object.entries(dbUnreadMap)) {
-      const storeCount = useConnectStore.getState().unreadCounts[convId] ?? 0;
-      const delta = count - storeCount;
-      for (let i = 0; i < delta; i++) incrementUnread(convId);
-    }
-
-    const items: ChatItem[] = (convs as { id: string; participant_ids: string[]; last_message_at: string | null }[]).map((c) => {
-      const partnerId = c.participant_ids.find((id) => id !== user.id) ?? null;
-      return {
-        id: c.id,
-        participant_ids: c.participant_ids,
-        last_message_at: c.last_message_at,
-        partner: partnerId ? (profileMap.get(partnerId) ?? null) : null,
-        lastMessagePreview: lastMsgMap.get(c.id) ?? 'No messages yet',
-        unreadCount: dbUnreadMap[c.id] ?? 0,
-      };
-    });
-
-    setChats(items);
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => { load(); }, [load]);
-
-  // The requests entry and its badge both read `pendingCount`, so the inbox has
-  // to be the thing that keeps it fresh now that Grow's People screen is gone.
   useEffect(() => {
     if (!user?.id) return;
+    void refresh();
     void fetchAll(user.id);
     void hydrateCommunities(user.id);
-  }, [user?.id, fetchAll, hydrateCommunities]);
+  }, [user?.id, refresh, fetchAll, hydrateCommunities]);
+
+  // Back from a chat: the read cursor moved, so pull fresh counts. Native keeps
+  // this screen mounted (focus fires); web navigation does not fire focus, so
+  // a pathname change covers it there.
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'web') return;
+      void refresh();
+    }, [refresh]),
+  );
+  const prevPath = useRef(pathname);
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (prevPath.current !== pathname && pathname.endsWith('/messages')) void refresh();
+    prevPath.current = pathname;
+  }, [pathname, refresh]);
 
   useEffect(() => {
     const ids = joinedCommunities.map((c) => c.id);
@@ -181,33 +112,22 @@ function MessagesScreen() {
         setCommunityUnread({});
       });
     return () => { cancelled = true; };
-  }, [joinedCommunities]);
+  }, [joinedCommunities, threads]);
 
-  useEffect(() => {
-    if (!user || chats.length === 0) return;
-    const convIds = chats.map((c) => c.id);
-    const channel = freshChannel('messages-tab-unread')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-        const msg = payload.new as { conversation_id: string; sender_id: string; content?: string };
-        if (!convIds.includes(msg.conversation_id)) return;
-        if (msg.sender_id === user.id) return;
-        if (useConnectStore.getState().activeConversationId === msg.conversation_id) return;
-        // The unread badge is owned by the tab layout's global listener — this
-        // one must NOT increment it too, or every message counts twice while the
-        // inbox is open. It only keeps the preview line live.
-        setChats((prev) =>
-          prev.map((c) =>
-            c.id === msg.conversation_id ? { ...c, lastMessagePreview: msg.content ?? '' } : c
-          )
-        );
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user, chats.length]);
+  const chats: InboxDm[] = useMemo(
+    () => (user ? threads.map((t) => inboxRowFromThread(t, user.id)) : []),
+    [threads, user],
+  );
+  const lastSeen = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const t of threads) {
+      if (t.conversation_type === 'direct' && t.members[0]) m.set(t.conversation_id, t.members[0].last_seen_at);
+    }
+    return m;
+  }, [threads]);
 
-  const handleOpen = (item: ChatItem) => {
-    clearUnread(item.id);
-    router.push(`/chat/${item.id}` as any);
+  const handleOpen = (item: InboxDm) => {
+    router.push(`/chat/${item.id}` as never);
   };
 
   const inboxCommunities = useMemo(
@@ -223,7 +143,7 @@ function MessagesScreen() {
   const filteredChats = filterInboxByQuery(
     chats,
     search,
-    (c) => `${c.partner?.display_name ?? ''} ${c.lastMessagePreview}`,
+    (c) => `${c.kind === 'group' ? c.title ?? '' : c.partner?.display_name ?? ''} ${c.lastMessagePreview}`,
   );
   const filteredCommunities = filterInboxByQuery(
     inboxCommunities,
@@ -231,11 +151,7 @@ function MessagesScreen() {
     (c) => `${c.name} ${c.preview}`,
   );
 
-  const isPartnerOnline = (item: ChatItem) => {
-    const partnerId = item.participant_ids.find((id) => id !== user?.id);
-    const friend = friends.find((f) => f.profile.id === partnerId);
-    return friend ? isOnline(friend.profile.last_seen_at ?? null) : false;
-  };
+  const isPartnerOnline = (item: InboxDm) => isOnline(lastSeen.get(item.id) ?? null);
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -284,24 +200,25 @@ function MessagesScreen() {
               onPress={() => setRequestsOpen(true)}
               accessibilityRole="button"
               accessibilityLabel={
-                pendingCount > 0
-                  ? `${pendingCount} ${pendingCount === 1 ? 'request' : 'requests'} waiting`
+                requestCount > 0
+                  ? `${requestCount} ${requestCount === 1 ? 'request' : 'requests'} waiting`
                   : 'Requests'
               }
               activeOpacity={0.85}
               testID="messages-requests-entry"
             >
               <Text style={s.requestsChipText}>Requests</Text>
-              {pendingCount > 0 ? (
+              {requestCount > 0 ? (
                 <View style={s.requestsBadge}>
-                  <Text style={s.requestsBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
+                  <Text style={s.requestsBadgeText}>{requestCount > 99 ? '99+' : requestCount}</Text>
                 </View>
               ) : null}
             </TouchableOpacity>
             <TouchableOpacity
               style={s.iconBtn}
-              onPress={() => router.push('/(tabs)/messages/new' as any)}
+              onPress={() => router.push('/(tabs)/messages/new' as never)}
               accessibilityLabel="New message"
+              testID="messages-new"
             >
               <Ionicons name="create-outline" size={17} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -328,13 +245,13 @@ function MessagesScreen() {
       <MessagesInbox
         chats={filteredChats}
         communities={filteredCommunities}
-        unreadCounts={unreadCounts}
+        unreadCounts={{}}
         onOpenDm={handleOpen}
         onOpenCommunity={(c) => router.push(`/community/channels/${c.id}` as never)}
-        onStartChat={() => router.push('/(tabs)/messages/new' as any)}
-        formatTime={formatTime}
+        onStartChat={() => router.push('/(tabs)/messages/new' as never)}
+        formatTime={formatInboxTime}
         isPartnerOnline={isPartnerOnline}
-        loading={loading}
+        loading={loading && !loaded}
         onRefresh={load}
         footer={
           <TouchableOpacity
@@ -352,7 +269,11 @@ function MessagesScreen() {
         }
       />
 
-      <RequestsSheet visible={requestsOpen} onClose={() => setRequestsOpen(false)} />
+      <RequestsSheet
+        visible={requestsOpen}
+        onClose={() => setRequestsOpen(false)}
+        onOpenChat={(id) => router.push(`/chat/${id}` as never)}
+      />
     </SafeAreaView>
   );
 }

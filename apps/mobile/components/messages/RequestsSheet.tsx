@@ -5,6 +5,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useFriendStore, type FriendshipRow } from '../../store/friendStore';
+import { useConnectStore } from '../../store/connectStore';
+import { useSafetyStore } from '../../store/safetyStore';
+import { respondMessageRequest, memberName, type InboxThread } from '../../lib/chat';
+import { previewLine } from '../../lib/inboxRows';
+import { haptic } from '../../lib/haptics';
+import { confirmAction } from '../../lib/confirm';
 import { logError } from '../../lib/errorLogger';
 import { avatarGradient } from '../../lib/avatars';
 import { TYPE } from '../../lib/typography';
@@ -14,33 +20,44 @@ import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 interface Props {
   visible: boolean;
   onClose: () => void;
+  /** Open a conversation once its request is accepted. */
+  onOpenChat?: (conversationId: string) => void;
 }
 
+type Segment = 'messages' | 'friends';
+
 /**
- * Requests, answered one at a time.
+ * Requests, answered one at a time: message requests and friend requests.
  *
- * Roxy is request-first: a stranger cannot land in the main thread list. This
- * sheet is where those requests wait, and it is deliberately a separate surface
- * rather than a section she has to scroll past — the whole point of a request
- * inbox is that reading it is a decision, not an ambush.
+ * Roxy is request-first (CHAT-02): a woman she is not friends with can send up
+ * to three text-only messages, and they wait HERE — not in the main list, no
+ * push with words in it. This is a separate surface on purpose: reading a
+ * request is a decision, not an ambush.
  *
- * Declining deletes the friendship row rather than marking it declined, so the
- * sender is never told. That is a safety property, not an implementation
- * detail, and the copy says so out loud: a woman deciding whether to decline
- * needs to know it will not start a conversation.
+ * Declining is quiet in both segments. A declined message request is hidden
+ * from her and the sender is never told; a declined friend request deletes the
+ * row. The copy says so, because a woman deciding whether to decline needs to
+ * know it will not start a conversation.
  */
-export function RequestsSheet({ visible, onClose }: Props) {
+export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
   const colors = useThemeColors();
   const s = styles(colors);
 
   const pendingReceived = useFriendStore((st) => st.pendingReceived);
   const acceptRequest = useFriendStore((st) => st.acceptRequest);
   const rejectRequest = useFriendStore((st) => st.rejectRequest);
+  const requests = useConnectStore((st) => st.requests);
+  const refresh = useConnectStore((st) => st.refresh);
+  const blockUser = useSafetyStore((st) => st.blockUser);
+  const openReportModal = useSafetyStore((st) => st.openReportModal);
 
+  const [segment, setSegment] = useState<Segment>(
+    requests.length === 0 && pendingReceived.length > 0 ? 'friends' : 'messages',
+  );
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const act = async (row: FriendshipRow, accept: boolean) => {
+  const actFriend = async (row: FriendshipRow, accept: boolean) => {
     setBusyId(row.id);
     setError(null);
     try {
@@ -48,13 +65,215 @@ export function RequestsSheet({ visible, onClose }: Props) {
       // the list is never stale and a failure is never announced as a success.
       if (accept) await acceptRequest(row.id);
       else await rejectRequest(row.id);
+      haptic(accept ? 'success' : 'tap');
+      void refresh();
     } catch (e) {
       setError(accept ? 'Could not accept that just now.' : 'Could not decline that just now.');
-      logError(e, 'RequestsSheet.act');
+      logError(e, 'RequestsSheet.actFriend');
     } finally {
       setBusyId(null);
     }
   };
+
+  const answerMessage = async (t: InboxThread, accept: boolean, alsoBlock = false) => {
+    setBusyId(t.conversation_id);
+    setError(null);
+    try {
+      await respondMessageRequest(t.conversation_id, accept);
+      const sender = t.members[0]?.id;
+      if (alsoBlock && sender) await blockUser(sender);
+      haptic(accept ? 'success' : 'tap');
+      await refresh();
+      if (accept) {
+        onClose();
+        onOpenChat?.(t.conversation_id);
+      }
+    } catch (e) {
+      // The RPC's message is already written for her (chatErrorMessage).
+      setError(e instanceof Error && e.message ? e.message : 'Could not answer that just now.');
+      logError(e, 'RequestsSheet.answerMessage');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const confirmBlock = async (t: InboxThread) => {
+    const name = t.members[0] ? memberName(t.members[0]) : 'her';
+    const ok = await confirmAction(
+      `Block ${name}?`,
+      "She won't be able to message you or see you in Roxy. She isn't told.",
+      'Block',
+    );
+    if (ok) await answerMessage(t, false, true);
+  };
+
+  const report = (t: InboxThread) => {
+    const sender = t.members[0]?.id;
+    if (!sender) return;
+    // One report sheet. Reports take a message id; the latest message pins
+    // the conversation for the moderator.
+    openReportModal({
+      userId: sender,
+      contentType: 'message',
+      contentId: t.last_message?.id,
+    });
+  };
+
+  const tab = (key: Segment, label: string, count: number) => (
+    <TouchableOpacity
+      key={key}
+      onPress={() => { setSegment(key); haptic('select'); }}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: segment === key }}
+      accessibilityLabel={`${label}${count ? `, ${count} waiting` : ''}`}
+      activeOpacity={0.85}
+      style={[s.tab, segment === key && s.tabOn]}
+      testID={`requests-tab-${key}`}
+    >
+      <Text style={[s.tabText, segment === key && s.tabTextOn]}>{label}</Text>
+      {count > 0 ? (
+        <View style={[s.tabCount, segment === key && s.tabCountOn]}>
+          <Text style={[s.tabCountText, segment === key && s.tabCountTextOn]}>{count > 99 ? '99+' : count}</Text>
+        </View>
+      ) : null}
+    </TouchableOpacity>
+  );
+
+  const avatar = (name: string) => {
+    const grad = avatarGradient(name);
+    return (
+      <View style={[s.avatar, { backgroundColor: grad[0] }]}>
+        <Text style={[s.initial, { color: inkOn(grad[0]) }]}>{name[0]?.toUpperCase() ?? '?'}</Text>
+      </View>
+    );
+  };
+
+  const messageList = requests.length === 0 ? (
+    <View style={s.empty} testID="requests-empty">
+      <Text style={s.emptyTitle}>No message requests</Text>
+      <Text style={s.emptyBody}>
+        When someone who isn&apos;t your friend messages you, it waits here until you decide.
+      </Text>
+    </View>
+  ) : (
+    <ScrollView style={s.list} contentContainerStyle={s.listContent}>
+      {requests.map((t) => {
+        const who = t.members[0];
+        const name = who ? memberName(who) : 'Someone';
+        const busy = busyId === t.conversation_id;
+        return (
+          <View key={t.conversation_id} style={s.card} testID={`message-request-${t.conversation_id}`}>
+            <View style={s.cardHead}>
+              {avatar(name)}
+              <View style={s.rowText}>
+                <Text style={s.name} numberOfLines={1}>{name}</Text>
+                {who?.username ? <Text style={s.handle} numberOfLines={1}>@{who.username}</Text> : null}
+              </View>
+              <TouchableOpacity
+                onPress={() => report(t)}
+                accessibilityRole="button"
+                accessibilityLabel={`Report ${name}`}
+                style={s.iconBtn}
+                testID={`message-request-report-${t.conversation_id}`}
+              >
+                <Ionicons name="flag-outline" size={17} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <View style={s.previewBubble}>
+              <Text style={s.previewText} numberOfLines={4}>{previewLine(t, '')}</Text>
+            </View>
+            <Text style={s.note}>
+              Not on your friends list. She can&apos;t see if you&apos;ve read this, and she won&apos;t know if you delete it.
+            </Text>
+            {busy ? (
+              <ActivityIndicator color={colors.roxy} style={s.busy} />
+            ) : (
+              <View style={s.actions}>
+                <TouchableOpacity
+                  onPress={() => void confirmBlock(t)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Block ${name}`}
+                  activeOpacity={0.8}
+                  style={s.ghost}
+                  testID={`message-request-block-${t.conversation_id}`}
+                >
+                  <Text style={s.blockText}>Block</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => void answerMessage(t, false)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete the request from ${name}. She will not be told.`}
+                  activeOpacity={0.8}
+                  style={s.ghost}
+                  testID={`message-request-delete-${t.conversation_id}`}
+                >
+                  <Text style={s.ghostText}>Delete</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => void answerMessage(t, true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Accept the request from ${name}`}
+                  activeOpacity={0.8}
+                  style={s.accept}
+                  testID={`message-request-accept-${t.conversation_id}`}
+                >
+                  <Text style={s.acceptText}>Accept</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        );
+      })}
+    </ScrollView>
+  );
+
+  const friendList = pendingReceived.length === 0 ? (
+    <View style={s.empty} testID="requests-friends-empty">
+      <Text style={s.emptyTitle}>No friend requests</Text>
+      <Text style={s.emptyBody}>When someone asks to be friends, she waits here until you decide.</Text>
+    </View>
+  ) : (
+    <ScrollView style={s.list} contentContainerStyle={s.listContent}>
+      {pendingReceived.map((row) => {
+        const busy = busyId === row.id;
+        return (
+          <View key={row.id} style={s.row} testID={`request-${row.id}`}>
+            {avatar(row.profile.display_name ?? '?')}
+            <View style={s.rowText}>
+              <Text style={s.name} numberOfLines={1}>{row.profile.display_name}</Text>
+              <Text style={s.handle} numberOfLines={1}>@{row.profile.username}</Text>
+            </View>
+            {busy ? (
+              <ActivityIndicator color={colors.roxy} />
+            ) : (
+              <View style={s.actions}>
+                <TouchableOpacity
+                  onPress={() => void actFriend(row, false)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Decline ${row.profile.display_name}. She will not be told.`}
+                  activeOpacity={0.8}
+                  style={s.ghost}
+                  testID={`request-decline-${row.id}`}
+                >
+                  <Text style={s.ghostText}>Decline</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => void actFriend(row, true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Accept ${row.profile.display_name}`}
+                  activeOpacity={0.8}
+                  style={s.accept}
+                  testID={`request-accept-${row.id}`}
+                >
+                  <Text style={s.acceptText}>Accept</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        );
+      })}
+    </ScrollView>
+  );
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -77,65 +296,16 @@ export function RequestsSheet({ visible, onClose }: Props) {
           </TouchableOpacity>
         </View>
 
+        <View style={s.tabs} accessibilityRole="tablist">
+          {tab('messages', 'Messages', requests.length)}
+          {tab('friends', 'Friends', pendingReceived.length)}
+        </View>
+
         {error ? (
           <Text style={s.error} accessibilityLiveRegion="polite" testID="requests-error">{error}</Text>
         ) : null}
 
-        {pendingReceived.length === 0 ? (
-          <View style={s.empty} testID="requests-empty">
-            <Text style={s.emptyTitle}>No requests right now</Text>
-            <Text style={s.emptyBody}>
-              When someone asks to talk, she waits here until you decide.
-            </Text>
-          </View>
-        ) : (
-          <ScrollView style={s.list} contentContainerStyle={s.listContent}>
-            {pendingReceived.map((row) => {
-              const grad = avatarGradient(row.profile.display_name);
-              const busy = busyId === row.id;
-              return (
-                <View key={row.id} style={s.row} testID={`request-${row.id}`}>
-                  <View style={[s.avatar, { backgroundColor: grad[0] }]}>
-                    <Text style={[s.initial, { color: inkOn(grad[0]) }]}>
-                      {row.profile.display_name?.[0]?.toUpperCase() ?? '?'}
-                    </Text>
-                  </View>
-                  <View style={s.rowText}>
-                    <Text style={s.name} numberOfLines={1}>{row.profile.display_name}</Text>
-                    <Text style={s.handle} numberOfLines={1}>@{row.profile.username}</Text>
-                  </View>
-
-                  {busy ? (
-                    <ActivityIndicator color={colors.roxy} />
-                  ) : (
-                    <View style={s.actions}>
-                      <TouchableOpacity
-                        onPress={() => void act(row, false)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Decline ${row.profile.display_name}. She will not be told.`}
-                        activeOpacity={0.8}
-                        style={s.decline}
-                        testID={`request-decline-${row.id}`}
-                      >
-                        <Text style={s.declineText}>Decline</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => void act(row, true)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Accept ${row.profile.display_name}`}
-                        activeOpacity={0.8}
-                        style={s.accept}
-                        testID={`request-accept-${row.id}`}
-                      >
-                        <Text style={s.acceptText}>Accept</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </ScrollView>
-        )}
+        {segment === 'messages' ? messageList : friendList}
       </View>
     </Modal>
   );
@@ -146,7 +316,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet,
-    paddingHorizontal: 18, paddingTop: 10, paddingBottom: 28, gap: 8,
+    paddingHorizontal: 18, paddingTop: 10, paddingBottom: 28, gap: 10,
   },
   grabber: {
     alignSelf: 'center', width: 40, height: 4, borderRadius: 2,
@@ -161,30 +331,67 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: RADII.pill, backgroundColor: colors.surfaceLight,
     alignItems: 'center', justifyContent: 'center',
   },
+  tabs: {
+    flexDirection: 'row', gap: 4, padding: 4,
+    borderRadius: RADII.pill, backgroundColor: colors.surfaceLight,
+  },
+  tab: {
+    flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center',
+    minHeight: MIN_TOUCH_TARGET - 8, borderRadius: RADII.pill,
+  },
+  tabOn: { backgroundColor: colors.primary },
+  tabText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '700' },
+  tabTextOn: { color: inkOn(colors.primary) },
+  tabCount: {
+    minWidth: 18, height: 18, paddingHorizontal: 5, borderRadius: RADII.pill,
+    backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
+  },
+  tabCountOn: { backgroundColor: inkOn(colors.primary) },
+  tabCountText: { ...TYPE.micro, color: inkOn(colors.primary), fontWeight: '800' },
+  tabCountTextOn: { color: colors.primary },
   error: { ...TYPE.caption, color: colors.errorInk },
   empty: { paddingVertical: 26, gap: 6 },
   emptyTitle: { ...TYPE.bodyLg, color: colors.textPrimary, fontWeight: '700' },
   emptyBody: { ...TYPE.caption, color: colors.textSecondary, lineHeight: 18 },
-  list: { maxHeight: 380 },
-  listContent: { gap: 8, paddingBottom: 4 },
+  list: { maxHeight: 440 },
+  listContent: { gap: 10, paddingBottom: 4 },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     minHeight: MIN_TOUCH_TARGET + 12, paddingHorizontal: 10, paddingVertical: 8,
     borderRadius: RADII.md, backgroundColor: colors.surfaceLight,
   },
+  card: {
+    gap: 10, padding: 12, borderRadius: RADII.lg,
+    backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.line,
+  },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  previewBubble: {
+    alignSelf: 'flex-start', maxWidth: '92%',
+    paddingHorizontal: 13, paddingVertical: 9,
+    borderRadius: 18, borderBottomLeftRadius: 6,
+    backgroundColor: colors.surface,
+  },
+  previewText: { ...TYPE.body, color: colors.textPrimary },
+  note: { ...TYPE.micro, color: colors.textMuted, lineHeight: 16 },
+  busy: { alignSelf: 'flex-end', marginVertical: 8 },
   avatar: { width: 40, height: 40, borderRadius: RADII.pill, alignItems: 'center', justifyContent: 'center' },
   initial: { ...TYPE.bodyLg, fontWeight: '800' },
   rowText: { flex: 1, gap: 1 },
   name: { ...TYPE.bodyLg, color: colors.textPrimary, fontWeight: '700' },
   handle: { ...TYPE.micro, color: colors.textSecondary },
-  actions: { flexDirection: 'row', gap: 6 },
-  decline: {
+  iconBtn: {
+    minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  actions: { flexDirection: 'row', gap: 6, justifyContent: 'flex-end' },
+  ghost: {
     minHeight: MIN_TOUCH_TARGET, justifyContent: 'center', paddingHorizontal: 12,
     borderRadius: RADII.pill, borderWidth: 1, borderColor: colors.line,
   },
-  declineText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '700' },
+  ghostText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '700' },
+  blockText: { ...TYPE.caption, color: colors.errorInk, fontWeight: '700' },
   accept: {
-    minHeight: MIN_TOUCH_TARGET, justifyContent: 'center', paddingHorizontal: 14,
+    minHeight: MIN_TOUCH_TARGET, justifyContent: 'center', paddingHorizontal: 16,
     borderRadius: RADII.pill, backgroundColor: colors.primary,
   },
   acceptText: { ...TYPE.caption, color: inkOn(colors.primary), fontWeight: '800' },
