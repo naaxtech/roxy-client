@@ -1,0 +1,32 @@
+apps/studio/__tests__/lib/navGroups.test.ts
+  h_0549c11fec2ab0 17,26,34,37-45
+apps/studio/__tests__/lib/reports.test.ts
+  h_0549c11fec2ab0 1-120
+apps/studio/__tests__/staff/ReportsClient.test.tsx
+  h_0549c11fec2ab0 1-115
+apps/studio/__tests__/staff/reportsActions.test.ts
+  h_0549c11fec2ab0 1-85
+apps/studio/app/(dashboard)/staff/reports/ReportsClient.tsx
+  h_0549c11fec2ab0 1-255
+apps/studio/app/(dashboard)/staff/reports/actions.ts
+  h_0549c11fec2ab0 1-62
+apps/studio/app/(dashboard)/staff/reports/loading.tsx
+  h_0549c11fec2ab0 1-25
+apps/studio/app/(dashboard)/staff/reports/page.tsx
+  h_0549c11fec2ab0 1-284
+apps/studio/components/AppSidebar.tsx
+  h_0549c11fec2ab0 85-94
+apps/studio/lib/reports.ts
+  h_0549c11fec2ab0 1-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2369b7f8ab0002847dfa670e5c417caa0aa56fba",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
