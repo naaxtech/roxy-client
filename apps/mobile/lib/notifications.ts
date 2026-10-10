@@ -2,7 +2,10 @@ import { supabase } from './supabase';
 
 export type RoxyNotification = {
   id: string;
-  type: 'friend_request' | 'friend_accept' | 'community_event' | 'message' | 'channel_message';
+  type:
+    | 'friend_request' | 'friend_accept' | 'community_event' | 'message' | 'channel_message'
+    // Migration 133: the creator loop and Archive decisions.
+    | 'post_reaction' | 'comment' | 'follow' | 'archive_revision';
   title: string;
   body: string | null;
   link_path: string | null;

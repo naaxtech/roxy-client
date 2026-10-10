@@ -657,8 +657,15 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_slug text;
 BEGIN
   IF OLD.status = 'pending' AND NEW.status IN ('approved', 'rejected') THEN
+    -- Opens the entry she suggested an edit to; a brand-new entry that was
+    -- not accepted has no page, so it opens the Archive.
+    SELECT e.slug INTO v_slug
+    FROM public.archive_entries e
+    WHERE e.id = NEW.entry_id AND e.status = 'published';
     INSERT INTO public.notifications (user_id, actor_id, type, title, body, link_path)
     VALUES (
       NEW.submitted_by,
@@ -668,7 +675,7 @@ BEGIN
            THEN 'Your Archive suggestion is live ✿'
            ELSE 'Your Archive suggestion was not accepted' END,
       left(NULLIF(btrim(NEW.review_note), ''), 300),
-      '/archive/submissions'
+      CASE WHEN v_slug IS NULL THEN '/archive' ELSE '/archive/' || v_slug END
     );
   END IF;
   RETURN NULL;

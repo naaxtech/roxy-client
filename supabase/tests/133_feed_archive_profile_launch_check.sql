@@ -362,8 +362,10 @@ BEGIN
   INSERT INTO public.archive_revisions (entry_id, submitted_by, patch, kind)
   VALUES (e1, a, '{"summary":"x"}'::jsonb, 'edit') RETURNING id INTO rev;
   UPDATE public.archive_revisions SET status = 'approved', reviewed_at = now(), reviewed_by = d WHERE id = rev;
-  SELECT count(*) INTO cnt FROM public.notifications WHERE user_id = a AND type = 'archive_revision';
-  IF cnt <> 1 THEN RAISE EXCEPTION 'T9 decided suggestion did not notify (%)', cnt; END IF;
+  SELECT count(*) INTO cnt FROM public.notifications
+   WHERE user_id = a AND type = 'archive_revision'
+     AND link_path = '/archive/' || (SELECT slug FROM public.archive_entries WHERE id = e1);
+  IF cnt <> 1 THEN RAISE EXCEPTION 'T9 decided suggestion did not notify with the entry link (%)', cnt; END IF;
 
   -- ── T10 delight #6: prompts, shelf, follow counts ───────────────────────
   PERFORM set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
