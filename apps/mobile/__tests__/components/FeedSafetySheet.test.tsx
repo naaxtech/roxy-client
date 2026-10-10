@@ -57,6 +57,7 @@ interface Options {
   onReport?: (reason: string, detail: string) => Promise<void>;
   onBlock?: () => Promise<void>;
   onHide?: () => void;
+  onMute?: () => Promise<void>;
 }
 
 function sheet(o: Options = {}) {
@@ -67,6 +68,7 @@ function sheet(o: Options = {}) {
       onReport={o.onReport ?? ((): Promise<void> => Promise.resolve())}
       onBlock={o.onBlock ?? ((): Promise<void> => Promise.resolve())}
       onHide={o.onHide ?? noop}
+      onMute={o.onMute ?? ((): Promise<void> => Promise.resolve())}
     />,
   );
 }
@@ -83,9 +85,11 @@ describe('FeedSafetySheet menu', () => {
       .toBe('Report this post');
     expect(view.getByTestId('safety-block').props.accessibilityLabel)
       .toBe('Block Mara');
+    // A hide is kept server-side and applies to every feed, not one
+    // community: For You posts live on profile walls.
     expect(view.getByTestId('safety-hide').props.accessibilityLabel)
-      .toBe('Hide this post from The Sapphic Club');
-    for (const id of ['safety-report', 'safety-block', 'safety-hide']) {
+      .toBe('Hide this post');
+    for (const id of ['safety-report', 'safety-block', 'safety-hide', 'safety-mute']) {
       expect(view.getByTestId(id).props.accessibilityRole).toBe('button');
     }
   });
@@ -107,7 +111,35 @@ describe('FeedSafetySheet menu', () => {
     expect(view.getByTestId('safety-block').props.accessibilityLabel)
       .toBe('Block this author');
     expect(view.getByTestId('safety-hide').props.accessibilityLabel)
-      .toBe('Hide this post from this community');
+      .toBe('Hide this post');
+    expect(view.getByTestId('safety-mute').props.accessibilityLabel)
+      .toBe('Mute this author');
+  });
+});
+
+describe('FeedSafetySheet mute (FEED-05)', () => {
+  it('offers Mute beside Block, named for the author', () => {
+    const view = sheet();
+    expect(view.getByTestId('safety-mute').props.accessibilityLabel).toBe('Mute Mara');
+    expect(view.getByTestId('safety-mute').props.accessibilityRole).toBe('button');
+  });
+
+  it('mutes without a confirm step and says what it did', async () => {
+    const onMute = jest.fn((): Promise<void> => Promise.resolve());
+    const view = sheet({ onMute });
+    fireEvent.press(view.getByTestId('safety-mute'));
+    await waitFor(() => expect(view.getByTestId('safety-done')).toBeTruthy());
+    expect(onMute).toHaveBeenCalledTimes(1);
+    expect(view.getByText(/Muted Mara/)).toBeTruthy();
+    // It says how to undo it, because a mute is silent by design.
+    expect(view.getByText(/Blocked & muted/)).toBeTruthy();
+  });
+
+  it('says so when the mute did not land', async () => {
+    const view = sheet({ onMute: () => Promise.reject(new Error('offline')) });
+    fireEvent.press(view.getByTestId('safety-mute'));
+    await waitFor(() => expect(view.getByTestId('safety-error')).toBeTruthy());
+    expect(view.queryByTestId('safety-done')).toBeNull();
   });
 });
 

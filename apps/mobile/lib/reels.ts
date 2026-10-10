@@ -25,6 +25,36 @@ export function excludeSeenReels<T extends Pick<Post, 'id'>>(
 }
 
 /**
+ * Drop the posts she hid ("Hide" or "Not for me").
+ *
+ * Separate from `excludeSeenReels` on purpose: that one serves a page of
+ * already-watched posts rather than an empty feed. A hidden post never comes
+ * back, even when that leaves the page empty. The server drops them too
+ * (`hidden_posts`, migration 133); this covers the page already held and the
+ * window before the write lands.
+ */
+export function excludeHidden<T extends Pick<Post, 'id'>>(
+  rows: T[],
+  hiddenIds: ReadonlySet<string>,
+): T[] {
+  if (!rows.length || !hiddenIds.size) return rows;
+  return rows.filter((r) => !hiddenIds.has(r.id));
+}
+
+/**
+ * Drop posts by authors she muted. The server does this for For You and the
+ * walls; this covers rows already on screen when she mutes someone.
+ */
+export function excludeMutedAuthors<T extends Pick<Post, 'author_id'>>(
+  rows: T[],
+  mutedIds: readonly string[],
+): T[] {
+  if (!rows.length || !mutedIds.length) return rows;
+  const muted = new Set(mutedIds);
+  return rows.filter((r) => !muted.has(r.author_id));
+}
+
+/**
  * The like count to render for a post held in a list of its own.
  *
  * `feedStore.toggleLike` adjusts the copies inside `feedStore.posts`, but the

@@ -27,12 +27,17 @@ export interface FeedSafetySheetProps {
   onReport: (reason: ReportReason, detail: string) => Promise<void>;
   /** Blocks the author. Must REJECT when the block did not land. */
   onBlock: () => Promise<void>;
-  /** Drops the post from this viewer's feed. Synchronous and local. */
+  /**
+   * Drops the post from every feed of hers, for good (`hidden_posts`). The
+   * caller removes it from the page at once; the write follows.
+   */
   onHide: () => void;
+  /** Mutes the author. Must REJECT when the mute did not land. */
+  onMute: () => Promise<void>;
 }
 
 /**
- * Report, block, hide — the three negative actions the feed never had.
+ * Report, block, mute, hide — the negative actions the feed never had.
  *
  * ## Why these three and why they are separate
  *
@@ -56,14 +61,20 @@ export interface FeedSafetySheetProps {
  *             recorded friendships as the mechanism and 085 built the entry
  *             point, and a second store of who is blocked is a second store to
  *             get wrong.
- *  - Hide   → `seen_posts`, which both feed queries already exclude.
+ *  - Mute   → `mutes`, via the `mute_user` RPC (127). Silent and one-way:
+ *             she stops seeing the author in feeds and comments, the author
+ *             is not told and can still message her. Undo lives in
+ *             Settings → Blocked & muted.
+ *  - Hide   → `hidden_posts` (133). Every feed query excludes it, so a hide
+ *             survives a relaunch. (It used to write `seen_posts`, which no
+ *             query read.)
  *
  * Every outcome is announced, because a woman using a screen reader who has
  * just reported something needs to hear that it went, and a visual tick is not
  * an answer to that.
  */
 export function FeedSafetySheet({
-  post, onClose, onReport, onBlock, onHide,
+  post, onClose, onReport, onBlock, onHide, onMute,
 }: FeedSafetySheetProps): ReactElement | null {
   const [step, setStep] = useState<Step>('menu');
   const [reason, setReason] = useState<ReportReason | null>(null);
@@ -94,7 +105,6 @@ export function FeedSafetySheet({
   }, []);
 
   const authorName = post?.profiles?.display_name ?? '';
-  const communityName = post?.communities?.name ?? '';
 
   const submitReport = useCallback(async () => {
     if (busy || reason === null) return;
@@ -125,6 +135,24 @@ export function FeedSafetySheet({
       setBusy(false);
     }
   }, [busy, onBlock, announce, authorName]);
+
+  // No confirm step: a mute is quiet and one tap undoes it in Settings.
+  const mute = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    setFailed(null);
+    try {
+      await onMute();
+      announce(
+        `Muted ${authorName || 'this author'}. You won't see her posts or comments. `
+        + 'She is not told. Undo any time in Settings → Blocked & muted.',
+      );
+    } catch {
+      setFailed('She was not muted. Check your connection and try again.');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, onMute, announce, authorName]);
 
   const hide = useCallback(() => {
     onHide();
@@ -201,15 +229,19 @@ export function FeedSafetySheet({
                 onPress={() => { setFailed(null); setStep('block'); }}
               />
               <Row
+                testID="safety-mute"
+                icon="volume-mute-outline"
+                label={authorName ? `Mute ${authorName}` : 'Mute author'}
+                hint="Stop seeing her posts and comments. She is not told."
+                accessibilityLabel={authorName ? `Mute ${authorName}` : 'Mute this author'}
+                onPress={() => { void mute(); }}
+              />
+              <Row
                 testID="safety-hide"
                 icon="eye-off-outline"
-                label="Hide from this community"
-                hint="This post stops appearing in your feed"
-                accessibilityLabel={
-                  communityName
-                    ? `Hide this post from ${communityName}`
-                    : 'Hide this post from this community'
-                }
+                label="Hide this post"
+                hint="It won't come back in any of your feeds"
+                accessibilityLabel="Hide this post"
                 onPress={hide}
               />
             </View>

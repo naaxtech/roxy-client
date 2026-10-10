@@ -19,6 +19,11 @@ interface FeedState {
   likedPostIds: Set<string>;
   savedPostIds: Set<string>;
   seenPostIds: Set<string>;
+  /**
+   * Posts she hid or marked "Not for me" (`hidden_posts`, migration 133).
+   * Loaded at startup, so a hide survives a relaunch.
+   */
+  hiddenPostIds: Set<string>;
 
   /**
    * Net like change per post since the app loaded, for lists that fetch and
@@ -39,6 +44,12 @@ interface FeedState {
   toggleLike: (postId: string) => Promise<void>;
   toggleSave: (postId: string) => Promise<void>;
   markSeen: (postId: string) => void;
+  /**
+   * Hide a post for good. Hidden on this device at once; resolves false when
+   * the server write failed (it stays hidden here until the next launch).
+   */
+  hidePost: (postId: string, reason: 'hide' | 'not_for_me') => Promise<boolean>;
+  loadHiddenPosts: () => Promise<void>;
   acceptNewPosts: () => void;
   pushNewPost: (post: Post) => void;
   upsertPost: (post: Post) => void;
@@ -68,6 +79,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   likedPostIds: new Set(),
   savedPostIds: new Set(),
   seenPostIds: new Set(),
+  hiddenPostIds: new Set(),
   likeCountDeltas: {},
   videoQueue: [],
   discoverScrollOffset: 0,
@@ -240,6 +252,37 @@ export const useFeedStore = create<FeedState>((set, get) => ({
       .from('seen_posts')
       .upsert({ post_id: postId, user_id: userId }, { onConflict: 'user_id,post_id' })
       .then(() => {});
+  },
+
+  hidePost: async (postId, reason) => {
+    set(s => ({ hiddenPostIds: new Set([...s.hiddenPostIds, postId]) }));
+    const { error } = await supabase
+      .from('hidden_posts')
+      .upsert({ post_id: postId, reason }, { onConflict: 'user_id,post_id' });
+    if (error) {
+      logError(error, 'feedStore.hidePost');
+      return false;
+    }
+    return true;
+  },
+
+  loadHiddenPosts: async () => {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return;
+    const { data, error } = await supabase
+      .from('hidden_posts')
+      .select('post_id')
+      .eq('user_id', userId);
+    if (error) {
+      logError(error, 'feedStore.loadHiddenPosts');
+      return;
+    }
+    set(s => ({
+      hiddenPostIds: new Set([
+        ...s.hiddenPostIds,
+        ...((data as { post_id: string }[] | null) ?? []).map(r => r.post_id),
+      ]),
+    }));
   },
 
   acceptNewPosts: () => {
