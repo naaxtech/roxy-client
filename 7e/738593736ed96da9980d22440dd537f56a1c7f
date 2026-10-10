@@ -1,0 +1,20 @@
+supabase/migrations/131_ops_launch_hardening.sql
+  h_0549c11fec2ab0 1-1082
+supabase/tests/131_ops_launch_hardening_check.sql
+  h_0549c11fec2ab0 1-31,38-326,329-475
+  h_0549c11fec2ab0 32-37,327-328
+supabase/downs/131_ops_launch_hardening_down.sql
+  h_0549c11fec2ab0 1-205,211-243
+  h_0549c11fec2ab0 206-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e738593736ed96da9980d22440dd537f56a1c7f",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
