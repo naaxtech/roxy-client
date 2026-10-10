@@ -1,7 +1,7 @@
 // supabase/functions/process-refunds/index.ts
 import { getSupabaseClient } from '../_shared/auth.ts';
 import { successResponse, errorResponse } from '../_shared/errorHandler.ts';
-import Stripe from 'npm:stripe@14';
+import Stripe from 'npm:stripe@16.12.0';
 
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
