@@ -58,15 +58,17 @@ interface Props {
  * so the list still scrolls and the web build behaves like the app.
  */
 function MessageRowImpl({
-  // isGroup: kept on the props contract; whether a name shows is decided
-  // upstream by groupMessages().showName, so the row itself doesn't branch on it.
-  message: m, replyTo, currentUserId, isGroup: _isGroup, nameOf, reactions, showReadState, highlighted,
+  message: m, replyTo, currentUserId, isGroup, nameOf, reactions, showReadState, highlighted,
   onLongPress, onReply, onQuotePress, onToggleReaction, onRetry, onUseSuggestion,
 }: Props) {
   const colors = useThemeColors();
   const s = useMemo(() => styles(colors), [colors]);
   const isOwn = m.sender_id === currentUserId;
   const senderName = nameOf(m.sender_id);
+  // A group names the sender above the first bubble of her run, so three
+  // people talking stay tellable apart. A 1:1 never does (there is only her),
+  // and her own bubbles never carry "You".
+  const showSenderName = isGroup && !isOwn && m.showName;
 
   const dx = useRef(new Animated.Value(0)).current;
   const armed = useRef(false);
@@ -154,7 +156,7 @@ function MessageRowImpl({
   return (
     <View>
       {timeSep}
-      {m.showName ? <Text style={s.name}>{senderName}</Text> : null}
+      {showSenderName ? <Text style={s.name} testID={`message-sender-${m.id}`}>{senderName}</Text> : null}
       <View style={s.swipeWrap}>
         <Animated.View style={[s.replyHint, { opacity: replyIconOpacity }]} pointerEvents="none">
           <Ionicons name="arrow-undo" size={18} color={colors.textSecondary} />

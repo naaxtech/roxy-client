@@ -89,6 +89,22 @@ describe('MessageRow', () => {
     expect(getByText('Ana')).toBeTruthy();
   });
 
+  it('a one-to-one chat never puts a name above her bubble', () => {
+    const { queryByText, getByText } = render(
+      <MessageRow {...base} isGroup={false} message={msg({ showName: true })} />,
+    );
+    expect(getByText('hey you')).toBeTruthy();
+    expect(queryByText('Ana')).toBeNull();
+  });
+
+  it('a group names each sender on her own run, not on mine', () => {
+    const { queryByText, getByTestId } = render(
+      <MessageRow {...base} isGroup message={msg({ sender_id: 'me', showName: true })} />,
+    );
+    expect(queryByText('You')).toBeNull();
+    expect(getByTestId('message-m1')).toBeTruthy();
+  });
+
   it('system lines are centred text with no actions', () => {
     const { getByText, queryByTestId } = render(
       <MessageRow {...base} message={msg({ message_type: 'system', sender_id: null, content: 'Ana added Bea', isSystem: true })} />,

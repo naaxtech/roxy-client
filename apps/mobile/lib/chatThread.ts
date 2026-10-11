@@ -200,9 +200,12 @@ export function isMutedUntil(mutedUntil: string | null | undefined, now: number 
   return !!mutedUntil && Date.parse(mutedUntil) > now;
 }
 
-/** The group info screen (built in its own lane) lives under the thread. */
+/**
+ * Group info: app/chat/info/[id].tsx. chat/[id].tsx is a file route, so the
+ * screen can't nest as chat/[id]/info; `/chat/<id>/info` would match nothing.
+ */
 export function groupInfoPath(conversationId: string): string {
-  return `/chat/${conversationId}/info`;
+  return `/chat/info/${conversationId}`;
 }
 
 /**

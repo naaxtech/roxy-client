@@ -210,8 +210,16 @@ describe('isMutedUntil', () => {
 });
 
 describe('small routing/platform rules', () => {
-  it('group info lives under the thread', () => {
-    expect(groupInfoPath('g1')).toBe('/chat/g1/info');
+  it('group info is the chat/info/[id] route (chat/[id] is a file, so it cannot nest)', () => {
+    expect(groupInfoPath('g1')).toBe('/chat/info/g1');
+    // The path must land on a real screen file, not on chat/[id] with id='info'.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fs = require('fs');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const path = require('path');
+    const segs = groupInfoPath('g1').split('/').filter(Boolean);
+    const file = path.join(__dirname, '..', '..', 'app', ...segs.slice(0, -1), '[id].tsx');
+    expect(fs.existsSync(file)).toBe(true);
   });
   it('keyboard: iOS pads, Android resizes natively (app.json), web does nothing', () => {
     expect(keyboardBehavior('ios')).toBe('padding');

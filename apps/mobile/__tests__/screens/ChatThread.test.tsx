@@ -354,7 +354,7 @@ describe('ChatScreen — reply, header, mute', () => {
     expect(view.getByText('🌈')).toBeTruthy();
     expect(view.getByText('3 members')).toBeTruthy();
     fireEvent.press(view.getByTestId('chat-header-title'));
-    expect(mockPush).toHaveBeenCalledWith('/chat/c1/info');
+    expect(mockPush).toHaveBeenCalledWith('/chat/info/c1');
   });
 
   it('mute is the conversation\'s: mute_conversation with no end, then unmute with null', async () => {
