@@ -393,8 +393,9 @@ verify_jwt = false
 verify_jwt = false
 
 # Called by Daily.co on participant join/leave, so it cannot hold a Supabase
-# JWT either. Authenticates with an HMAC-SHA256 signature over the raw body
-# (x-daily-signature) and returns 401 on any mismatch — see daily-webhook/index.ts.
+# JWT either. Authenticates with Daily's HMAC: X-Webhook-Signature =
+# base64(HMAC-SHA256(base64-decoded secret, X-Webhook-Timestamp + '.' + body)),
+# 401 on any mismatch -- see _shared/webhookSignatures.ts (tested).
 #
 # This exemption was missing while the function's own header comment said to
 # deploy it with --no-verify-jwt. The gateway therefore rejected every Daily
@@ -403,8 +404,40 @@ verify_jwt = false
 [functions.daily-webhook]
 verify_jwt = false
 
+# Stripe (platform events + Connect/marketplace events). Stripe cannot hold a
+# Supabase JWT; each handler verifies Stripe-Signature with
+# stripe.webhooks.constructEventAsync(rawBody, sig, <endpoint secret>) before
+# any work. Without these exemptions the gateway 401'd every delivery, so
+# paid orders, disputes and refunds never reconciled.
+[functions.stripe-webhooks]
+verify_jwt = false
+[functions.stripe-product-webhook]
+verify_jwt = false
+
+# Resend delivery events (via Svix). Verifies svix-signature (HMAC-SHA256 of
+# svix-id.svix-timestamp.body with the whsec_ secret) before any work.
+[functions.resend-webhook]
+verify_jwt = false
+
+# Cloudflare Stream "video ready". Verifies Webhook-Signature
+# (time=..,sig1=hex HMAC-SHA256(secret, time + '.' + body), 5 min replay
+# window) -- see _shared/webhookSignatures.ts (tested).
+[functions.cloudflare-video-webhook]
+verify_jwt = false
+
+# Retired endpoints kept as 410 no-ops so older installed builds get a clean
+# answer instead of a gateway 401 (house rule: never delete an endpoint an
+# old build may call). They do no work and read nothing.
+[functions.request-invite-code]
+verify_jwt = false
+[functions.livekit-token]
+verify_jwt = false
+
 # Scheduled / service-to-service. No user is involved; each one compares the
-# Authorization header against SUPABASE_SERVICE_ROLE_KEY before doing any work.
+# Authorization header against SUPABASE_SERVICE_ROLE_KEY (exact Bearer match,
+# constant time, empty key rejects everyone: _shared/serviceAuth.ts) before
+# doing any work. Called by pg_cron via public.ops_invoke_edge
+# (scripts/setup-cron.sql) or by the push_outbox trigger.
 [functions.push-dispatch]
 verify_jwt = false
 [functions.process-refunds]
@@ -412,6 +445,10 @@ verify_jwt = false
 [functions.release-payout]
 verify_jwt = false
 [functions.auto-complete-events]
+verify_jwt = false
+[functions.process-email-queue]
+verify_jwt = false
+[functions.reconcile-orders]
 verify_jwt = false
 
 [edge_runtime]

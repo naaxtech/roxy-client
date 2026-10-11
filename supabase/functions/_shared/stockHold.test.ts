@@ -25,7 +25,7 @@
 // Asserted locally rather than with std/assert: every other module here is
 // pinned to a URL specifier, and a test has no business adding another one.
 
-import type Stripe from 'npm:stripe@14';
+import type Stripe from 'npm:stripe@16.12.0';
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   HOLD_KEY,

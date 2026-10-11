@@ -3,7 +3,7 @@ import { handleCors } from '../_shared/cors.ts';
 import { getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 import { markHold, releaseHold } from '../_shared/stockHold.ts';
-import Stripe from 'npm:stripe@14';
+import Stripe from 'npm:stripe@16.12.0';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
 const webhookSecret = Deno.env.get('STRIPE_PRODUCT_WEBHOOK_SECRET')!;
@@ -508,12 +508,24 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case 'transfer.failed': {
+      // Was `case 'transfer.failed'`: Stripe retired that event (it is not in
+      // the 2024-06-20 event union, so the branch could never run). A seller
+      // transfer that does not stand is now a reversal; record it for the
+      // staff reconciliation queue. Ids and amounts only, no customer data.
+      case 'transfer.reversed': {
         const transfer = event.data.object as Stripe.Transfer;
         await supabase.from('reconciliation_alerts').insert({
           alert_type: 'transfer_missing',
           stripe_id: transfer.id,
-          detail: `Transfer failed: ${JSON.stringify(transfer)}`,
+          detail: `Transfer reversed: ${JSON.stringify({
+            amount: transfer.amount,
+            amount_reversed: transfer.amount_reversed,
+            currency: transfer.currency,
+            destination: typeof transfer.destination === 'string' ? transfer.destination : transfer.destination?.id ?? null,
+            source_transaction: typeof transfer.source_transaction === 'string'
+              ? transfer.source_transaction
+              : transfer.source_transaction?.id ?? null,
+          })}`,
         });
         break;
       }

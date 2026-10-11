@@ -2,6 +2,7 @@
 import { handleCors } from '../_shared/cors.ts';
 import { getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
+import { isServiceRequest } from '../_shared/serviceAuth.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const FROM_EMAIL = 'Roxy <noreply@getroxy.app>';
@@ -94,10 +95,9 @@ Deno.serve(async (req) => {
   const corsRes = handleCors(req);
   if (corsRes) return corsRes;
 
-  // Require Authorization header with service role key
-  const authHeader = req.headers.get('Authorization');
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!authHeader || authHeader !== `Bearer ${serviceRoleKey}`) {
+  // Exact `Bearer <service key>`, constant time, empty env => reject.
+  // (Was `!== \`Bearer ${key}\``: an unset key made `Bearer undefined` pass.)
+  if (!isServiceRequest(req)) {
     return errorResponse('Unauthorized', 401);
   }
 

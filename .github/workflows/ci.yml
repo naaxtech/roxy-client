@@ -120,6 +120,13 @@ jobs:
       - name: Run edge function tests
         run: deno test --no-check --allow-net --allow-env --allow-read --node-modules-dir=auto .
 
+      # Every function now pins npm:stripe@16.12.0, whose LatestApiVersion is
+      # the '2024-06-20' every call site passes, so the type checker is clean
+      # (0 errors across */index.ts). Keep it that way: a type error in an
+      # edge function otherwise only shows up on a member's request.
+      - name: Type-check edge functions
+        run: deno check --node-modules-dir=auto */index.ts
+
   studio-e2e:
     name: Studio E2E (Playwright)
     runs-on: ubuntu-latest

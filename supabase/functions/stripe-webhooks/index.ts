@@ -2,7 +2,7 @@
 import { handleCors } from '../_shared/cors.ts';
 import { getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
-import Stripe from 'npm:stripe@14';
+import Stripe from 'npm:stripe@16.12.0';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
 const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
