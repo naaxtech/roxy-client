@@ -1,0 +1,22 @@
+apps/mobile/__tests__/screens/EditProfile.test.tsx
+  h_0549c11fec2ab0 1-101
+apps/mobile/__tests__/store/profileStoreSerial.test.ts
+  h_0549c11fec2ab0 1-91
+apps/mobile/app/(tabs)/you/edit.tsx
+  h_0549c11fec2ab0 20-22,33,38-40,50-53,150-153,169-171,189-190,192-193,198-218,221-222,246-248,281-283,285,287,292-298,304-306,309-336,353-357,430-433
+apps/mobile/lib/profileRules.ts
+  h_0549c11fec2ab0 1-65
+apps/mobile/store/profileStore.ts
+  h_0549c11fec2ab0 10-14,16-19,22-34,40-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a03a848a04f73da9113556bf178284f2da90a729",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
