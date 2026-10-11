@@ -24,9 +24,16 @@ import { showAlert } from '../../lib/confirm';
 import { BRAND_GRADIENT } from '../../lib/theme';
 import { POP_FROM, SNAP_SPRING } from '../../lib/motion';
 import { enabledOAuthProviders } from '../../lib/authProviders';
+import { MIN_PASSWORD_LENGTH } from '../../lib/passwordPolicy';
+import { captchaRequired, captchaSiteKey } from '../../lib/captcha';
+import { TurnstileWidget } from '../../components/auth/TurnstileWidget';
+
+// Bot protection (lib/captcha.ts): web only, and only once a site key is set.
+const NEEDS_CAPTCHA = captchaRequired(Platform.OS);
+const CAPTCHA_HINT = 'One moment: finish the check below first.';
 
 /** G-19: a safety app asks for more than six characters. Matches the Supabase Auth setting. */
-export const MIN_PASSWORD = 10;
+export const MIN_PASSWORD = MIN_PASSWORD_LENGTH;
 
 const OAUTH = enabledOAuthProviders();
 
@@ -49,6 +56,9 @@ export default function WelcomeScreen() {
   const [oauthPending, setOauthPending] = useState<'apple' | 'google' | null>(null);
   const [resetSent, setResetSent] = useState(false);
   const [revealPassword, setRevealPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // A Turnstile token is single-use: every attempt asks for a fresh one.
+  const [captchaRound, setCaptchaRound] = useState(0);
   const { signUp, signInWithPassword, resetPassword, signInWithApple, signInWithGoogle } = useAuth();
 
   const heroAnim = useRef(new Animated.Value(POP_FROM)).current;
@@ -74,10 +84,16 @@ export default function WelcomeScreen() {
       return;
     }
 
+    if (NEEDS_CAPTCHA && !captchaToken) {
+      showAlert('Almost', CAPTCHA_HINT);
+      return;
+    }
+
     setLoading(true);
     const { error } = isSignIn
-      ? await signInWithPassword(email.trim(), password)
-      : await signUp(email.trim(), password);
+      ? await signInWithPassword(email.trim(), password, captchaToken)
+      : await signUp(email.trim(), password, captchaToken);
+    if (NEEDS_CAPTCHA) setCaptchaRound((n) => n + 1);
 
     if (error) {
       setLoading(false);
@@ -140,8 +156,13 @@ export default function WelcomeScreen() {
       showAlert('Enter your email', 'Please enter your email address first.');
       return;
     }
+    if (NEEDS_CAPTCHA && !captchaToken) {
+      showAlert('Almost', CAPTCHA_HINT);
+      return;
+    }
     setLoading(true);
-    const { error } = await resetPassword(email.trim());
+    const { error } = await resetPassword(email.trim(), captchaToken);
+    if (NEEDS_CAPTCHA) setCaptchaRound((n) => n + 1);
     setLoading(false);
     if (error) {
       showAlert('Error', error.message);
@@ -470,6 +491,11 @@ export default function WelcomeScreen() {
                         <Text style={styles.forgotLink}>Forgot password?</Text>
                       </TouchableOpacity>
                     )}
+                    <TurnstileWidget
+                      siteKey={NEEDS_CAPTCHA ? captchaSiteKey() : null}
+                      onToken={setCaptchaToken}
+                      resetKey={captchaRound}
+                    />
                     <TouchableOpacity
                       testID="auth-submit-btn"
                       onPress={handleSubmit}
