@@ -1,0 +1,30 @@
+apps/mobile/__tests__/hooks/useAuth.test.ts
+  h_0549c11fec2ab0 112-136
+apps/mobile/__tests__/lib/captcha.test.ts
+  h_0549c11fec2ab0 1-27
+apps/mobile/__tests__/lib/passwordPolicy.test.ts
+  h_0549c11fec2ab0 1-22
+apps/mobile/app/(auth)/reset-password.tsx
+  h_0549c11fec2ab0 29-30,239-241
+apps/mobile/app/(auth)/welcome.tsx
+  h_0549c11fec2ab0 27-33,36,59-61,87-91,94-96,159-162,164-165,494-498
+apps/mobile/components/auth/TurnstileWidget.tsx
+  h_0549c11fec2ab0 1-89
+apps/mobile/hooks/useAuth.ts
+  h_0549c11fec2ab0 44-48,53-55,75,78-80,99,102
+apps/mobile/lib/captcha.ts
+  h_0549c11fec2ab0 1-27
+apps/mobile/lib/passwordPolicy.ts
+  h_0549c11fec2ab0 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c4ef240aea1bdbb5f5e3c9826dc8bc845616059",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
