@@ -52,15 +52,29 @@ describe('useMembership — vetting_status drives review/edit access', () => {
     expect(result.current.canEdit).toBe(false);
   });
 
-  it("unvetted (grandfathered pre-gate population) can review and edit — excluding it would lock out every pre-gate account, exactly what 072's comment warns about", () => {
+  // Migration 130 grandfathered every 'unvetted' account to 'approved' and
+  // removed the value. A stale row that still says it is not a member: the
+  // server's is_approved_member() is approved-only, so granting write access
+  // here would only offer buttons RLS refuses.
+  it('a stale unvetted row fails closed: can browse, cannot review or edit', () => {
     setAuth({ id: 'u1' } as User);
-    setProfile({ id: 'u1', vetting_status: 'unvetted' });
+    setProfile({ id: 'u1', vetting_status: 'unvetted' } as never);
 
     const { result } = renderHook(() => useMembership());
-    expect(result.current.status).toBe('unvetted');
+    expect(result.current.status).toBe('pending');
     expect(result.current.canBrowseArchive).toBe(true);
-    expect(result.current.canReview).toBe(true);
-    expect(result.current.canEdit).toBe(true);
+    expect(result.current.canReview).toBe(false);
+    expect(result.current.canEdit).toBe(false);
+  });
+
+  it('a deleted account cannot browse, review or edit (G-16)', () => {
+    setAuth({ id: 'u1' } as User);
+    setProfile({ id: 'u1', vetting_status: 'approved', deleted_at: '2026-10-01T00:00:00Z' } as never);
+
+    const { result } = renderHook(() => useMembership());
+    expect(result.current.canBrowseArchive).toBe(false);
+    expect(result.current.canReview).toBe(false);
+    expect(result.current.canEdit).toBe(false);
   });
 
   it('approved can review and edit', () => {

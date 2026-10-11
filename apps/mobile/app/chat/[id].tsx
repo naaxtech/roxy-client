@@ -29,6 +29,7 @@ import { GifPicker } from '../../components/chat/GifPicker';
 import { QuickReactBar, ReactionChips } from '../../components/chat/ReactionBar';
 import { TypingIndicator } from '../../components/chat/TypingIndicator';
 import { isOnline } from '../../store/friendStore';
+import { fetchOnlineIds, presenceStamp } from '../../lib/memberPresence';
 import { avatarGradient } from '../../lib/avatars';
 import { BRAND_GRADIENT } from '../../lib/theme';
 import { setActivePath as setActivePushPath } from '../../lib/pushRegistration';
@@ -387,12 +388,16 @@ export default function ChatScreen() {
     const resolve = async (participantIds: string[]) => {
       const pid = participantIds.find((id) => id !== user.id) ?? null;
       if (!pid) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, display_name, username, avatar_url, last_seen_at')
-        .eq('id', pid)
-        .single();
-      if (data) setPartnerProfile(data as PartnerProfile);
+      const [{ data }, online] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, display_name, username, avatar_url')
+          .eq('id', pid)
+          .single(),
+        // Online yes/no only; her last-seen time is not readable (130 / PRO-01).
+        fetchOnlineIds([pid]),
+      ]);
+      if (data) setPartnerProfile({ ...data, last_seen_at: presenceStamp(online.has(pid)) } as PartnerProfile);
     };
     const conv = conversations.find((c) => c.id === conversationId);
     if (conv) {

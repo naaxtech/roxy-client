@@ -126,7 +126,7 @@ export default function ProfileScreen() {
     setRetryingProfile(true);
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('my_profile')
         .select('*')
         .eq('id', user.id)
         .single();

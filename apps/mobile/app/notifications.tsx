@@ -21,6 +21,7 @@ const TYPE_EMOJI: Record<RoxyNotification['type'], string> = {
   community_event: '🗓️',
   message: '💬',
   channel_message: '#️⃣',
+  application_decided: '💌',
 };
 
 export default function NotificationsScreen() {

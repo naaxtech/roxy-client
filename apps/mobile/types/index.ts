@@ -4,11 +4,15 @@ export interface Profile {
   display_name: string;
   onboarding_completed: boolean;
   /**
-   * Invite gate (migration 070). 'unvetted' is the grandfathered population
-   * from before the gate — they keep full access, which is why the enforcement
-   * predicate accepts it alongside 'approved'.
+   * Invite gate. Only 'approved' is a member (migration 130). The pre-gate
+   * 'unvetted' accounts were grandfathered to 'approved' and the value no
+   * longer exists; new accounts are forced to 'pending' by a trigger.
    */
-  vetting_status: 'unvetted' | 'pending' | 'approved' | 'rejected';
+  vetting_status: 'pending' | 'approved' | 'rejected';
+  /** Set when she asks to delete her account. A deleted account has no access (130 / G-16). */
+  deleted_at?: string | null;
+  /** When a reviewer (or the grandfather migration) admitted her. */
+  admitted_at?: string | null;
   /**
    * Limited launch (migration 108). 'public' sees Archive + Roxy Official
    * chat. 'beta' sees the rest of the app. Missing on a stale client row

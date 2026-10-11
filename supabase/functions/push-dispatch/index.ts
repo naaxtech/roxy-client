@@ -55,7 +55,10 @@ Deno.serve(async (req) => {
     },
     async settings(userIds) {
       const { data, error } = await db.from('notification_settings')
-        .select('user_id, push_enabled, messages, friends, events, community_chats, show_previews, quiet_start, quiet_end, timezone')
+        // Every column: preference columns arrive with later migrations
+        // (membership in 134), and naming one before it exists fails the whole
+        // batch. A column she has never set is absent, which means ON.
+        .select('*')
         .in('user_id', userIds);
       if (error) throw error;
       return data ?? [];

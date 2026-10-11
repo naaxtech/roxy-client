@@ -1,18 +1,79 @@
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
 /**
- * supabase.channel(topic) returns the CACHED channel when one with the same
- * topic already exists — and calling .on() on an already-subscribed channel
- * throws ("cannot add postgres_changes callbacks after subscribe()"), which
- * crashes the whole component tree on remount. Always create screen-level
- * channels through this helper: it tears down any stale channel with the
- * same topic first, so effects are remount-safe.
+ * Realtime channels that survive a quick leave-and-return (CHAT-08).
+ *
+ * `supabase.channel(topic)` hands back the CACHED channel while one with that
+ * topic is still registered — and `removeChannel()` is asynchronous: the
+ * channel stays registered until the server acknowledges the leave. Re-entering
+ * a chat (or resuming the app) inside that window got the dying channel back;
+ * `.on()` either threw or bound to a channel that was about to close, and the
+ * screen went quietly deaf.
+ *
+ *  - postgres_changes: the topic name is only a label (the filter does the
+ *    routing), so every subscription gets a UNIQUE topic. No cache hit is
+ *    possible, so nothing can be reused mid-teardown.
+ *  - broadcast (typing, reactions): the topic IS the room — every member has
+ *    to join the same name. Those wait for any stale channel on the topic to
+ *    finish leaving before joining again, and join PRIVATE: migration 132's
+ *    realtime.messages policies admit members of the thread only (CHAT-15).
  */
-export function freshChannel(topic: string) {
-  for (const ch of supabase.getChannels()) {
-    if (ch.topic === `realtime:${topic}`) {
-      void supabase.removeChannel(ch);
-    }
-  }
-  return supabase.channel(topic);
+
+let sequence = 0;
+
+/** `base` plus a per-process unique suffix. */
+export function uniqueTopic(base: string): string {
+  sequence += 1;
+  return `${base}:${Date.now().toString(36)}-${sequence}`;
 }
+
+/** A brand-new channel for postgres_changes. Never a cached one. */
+export function freshChannel(topic: string): RealtimeChannel {
+  return supabase.channel(uniqueTopic(topic));
+}
+
+function registeredOn(topic: string): RealtimeChannel[] {
+  const all = (supabase.getChannels?.() ?? []) as RealtimeChannel[];
+  return all.filter((ch) => ch.topic === `realtime:${topic}`);
+}
+
+/**
+ * Join a shared, private broadcast room once any stale channel on it is gone.
+ *
+ * `setup` receives the new channel to bind handlers on and subscribe. Returns a
+ * close function; calling it before the join happened cancels the join.
+ * When nothing stale is registered the join is synchronous.
+ */
+export function openBroadcastChannel(
+  topic: string,
+  setup: (channel: RealtimeChannel) => void,
+): () => void {
+  let closed = false;
+  let channel: RealtimeChannel | null = null;
+
+  const join = () => {
+    if (closed) return;
+    channel = supabase.channel(topic, { config: { private: true, broadcast: { self: false } } });
+    setup(channel);
+  };
+
+  const stale = registeredOn(topic);
+  if (stale.length === 0) {
+    join();
+  } else {
+    void Promise.all(
+      stale.map((ch) => Promise.resolve(supabase.removeChannel(ch)).catch(() => 'error')),
+    ).then(join);
+  }
+
+  return () => {
+    closed = true;
+    if (channel) void Promise.resolve(supabase.removeChannel(channel)).catch(() => {});
+    channel = null;
+  };
+}
+
+/** Private topic names, as authorised by realtime_conversation_topic_ok(). */
+export const typingTopic = (conversationId: string) => `conv:${conversationId}:typing`;
+export const reactionsTopic = (conversationId: string) => `conv:${conversationId}:reactions`;

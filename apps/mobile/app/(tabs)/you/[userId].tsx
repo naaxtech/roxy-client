@@ -17,6 +17,8 @@ import { EventModeBadge, type EventMode } from '../../../components/events/Event
 import { EventsCalendar } from '../../../components/events/EventsCalendar';
 import { deriveSellerStatus, canSell, type SellerBusinessRow } from '../../../lib/sellerStatus';
 import { logError } from '../../../lib/errorLogger';
+import { fetchOnlineIds, presenceStamp } from '../../../lib/memberPresence';
+import { PUBLIC_PROFILE_FIELDS } from '../../../lib/publicProfile';
 import { useAuthStore } from '../../../store/authStore';
 import { useFriendStore } from '../../../store/friendStore';
 import { useFollowStore } from '../../../store/followStore';
@@ -113,7 +115,10 @@ function UserProfileScreen() {
     // The post count went with the stat card. Its HEAD query went too — a round
     // trip on every profile open, for a number nothing renders.
     const [profileRes, badgesRes, sellerRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', userId).single(),
+      // Public columns only (130 / PRO-01). Her location, last-seen time,
+      // Stripe id, shipping address and vetting status are not another
+      // member's to read; RLS also hides anyone who is not an approved member.
+      supabase.from('profiles').select(PUBLIC_PROFILE_FIELDS).eq('id', userId).single(),
       supabase.from('user_badge_progress').select('*, badges(*)').eq('user_id', userId),
       supabase
         .from('businesses')
@@ -127,7 +132,10 @@ function UserProfileScreen() {
       setStatus('ready');
       return;
     }
-    setProfile(profileRes.data as Profile);
+    // The select list is built from PUBLIC_PROFILE_COLUMNS, so supabase-js
+    // cannot infer the row shape from a string literal. The private fields
+    // Profile declares are simply absent here, and this screen reads none.
+    setProfile(profileRes.data as unknown as Profile);
 
     // Every one of these returns `{ data, error }` without throwing, so each
     // needs its own voice. An empty badge strip used to be indistinguishable
@@ -139,7 +147,7 @@ function UserProfileScreen() {
     if (sellerRes.error) logError(sellerRes.error, 'userProfile_fetchSeller');
     else setSeller((sellerRes.data ?? []) as SellerRow[]);
 
-    const loaded = profileRes.data as Profile;
+    const loaded = profileRes.data as unknown as Profile;
     const officialId = loaded.official_community_id ?? null;
     const now = new Date().toISOString();
     const [eventsRes, roomsRes, gamesRes, communityRes, membersRes] = await Promise.all([
@@ -175,7 +183,7 @@ function UserProfileScreen() {
       officialId
         ? supabase
           .from('community_members')
-          .select('user_id, profiles(display_name, avatar_url, last_seen_at)')
+          .select('user_id, profiles(display_name, avatar_url)')
           .eq('community_id', officialId)
           .limit(40)
         : Promise.resolve({ data: [] as { profiles: PresenceMember | PresenceMember[] | null }[], error: null }),
@@ -201,9 +209,23 @@ function UserProfileScreen() {
 
     if (membersRes.error) logError(membersRes.error, 'userProfile_fetchMembers');
     else {
+      type MemberRow = {
+        user_id: string;
+        profiles: { display_name: string | null; avatar_url: string | null }
+          | { display_name: string | null; avatar_url: string | null }[] | null;
+      };
+      const rows = (membersRes.data ?? []) as MemberRow[];
+      // "Online now" comes from member_presence(): a yes/no, never her
+      // last-seen time (130 / PRO-01).
+      const online = await fetchOnlineIds(rows.map((r) => r.user_id));
       setPresence(
-        ((membersRes.data ?? []) as { profiles: PresenceMember | PresenceMember[] | null }[])
-          .map((row) => (Array.isArray(row.profiles) ? row.profiles[0] : row.profiles))
+        rows
+          .map((row) => {
+            const p = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+            return p
+              ? { display_name: p.display_name, last_seen_at: presenceStamp(online.has(row.user_id)) }
+              : null;
+          })
           .filter((p): p is PresenceMember => !!p),
       );
     }

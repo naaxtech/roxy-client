@@ -12,6 +12,7 @@ import {
   buildMessage,
   categoryOf,
   classifyTicket,
+  DEFAULT_PREFS,
   inQuietHours,
   isExpoPushToken,
   type PushPrefs,
@@ -60,6 +61,35 @@ Deno.test('categoryOf maps every notification type to a preference and a channel
   eq(categoryOf('friend_accept'), { pref: 'friends', channel: 'friends' });
   eq(categoryOf('community_event'), { pref: 'events', channel: 'events' });
   eq(categoryOf('something_new'), null, 'unknown types are never pushed');
+});
+
+// Migration 134 (G-11): a decision on her application reaches her phone.
+Deno.test('membership: application_decided rings on its own channel behind its own switch', () => {
+  eq(categoryOf('application_decided'), { pref: 'membership', channel: 'membership' });
+  eq(DEFAULT_PREFS.membership, true, 'ON by default like every other type');
+  // DEFAULTS (this file) predates the column: a row without it still pushes.
+  ok(buildMessage(note({ type: 'application_decided' }), DEFAULTS, 'ExponentPushToken[abc]', false), 'absent pref must mean ON');
+});
+
+Deno.test('previews OFF: a membership push says only that there is news', () => {
+  for (const [title, body] of [
+    ['You\'re in 💜', 'Your membership was approved. Welcome to Roxy.'],
+    ['About your membership', 'There\'s an update on your application. Open Roxy to read it.'],
+  ]) {
+    const m = buildMessage(
+      note({ type: 'application_decided', actor_id: null, actor_name: null, title, body, link_path: '/pending' }),
+      DEFAULTS, 'ExponentPushToken[abc]', false,
+    );
+    ok(m, 'expected a membership push');
+    eq(m!.title, 'Roxy');
+    eq(m!.body, 'There\'s news about your membership');
+    eq(m!.channelId, 'membership');
+    ok(!/approved|reject|application|welcome/i.test(JSON.stringify([m!.title, m!.body])), 'the decision leaked onto the lock screen');
+  }
+});
+
+Deno.test('membership switch off: no membership push', () => {
+  eq(buildMessage(note({ type: 'application_decided' }), { ...DEFAULTS, membership: false }, 'ExponentPushToken[abc]', false), null);
 });
 
 Deno.test('previews OFF (the default): a message push names the sender, never the words', () => {

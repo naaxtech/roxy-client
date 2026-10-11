@@ -24,8 +24,14 @@ describe('navGroupsFor', () => {
       'Overview',
       'Launch access',
       'Launch waves',
+      // Added with Discover's Top 10 (873e8e4); this list had not caught up.
       'Member tags',
     ]);
+    // Appeals sit with the other things staff approve, one click from the
+    // queue that produced them (G-12).
+    expect(staff.find((g) => g.title === 'Approvals')?.items.map((i) => i.href)).toContain(
+      '/staff/appeals',
+    );
 
     const core = navGroupsFor({ isStaff: true, isCore: true });
     expect(core.find((g) => g.title === 'Roxy')?.items.map((i) => i.label)).toEqual([

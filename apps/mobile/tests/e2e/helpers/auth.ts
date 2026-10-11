@@ -35,7 +35,10 @@ export async function signInWithSeedUser(page: Page) {
   await page.getByTestId('already-have-account').click();
 
   await expect(page.getByTestId('welcome-screen')).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('use-email-link').click();
+  // With no OAuth provider configured (G-03, EXPO_PUBLIC_OAUTH_PROVIDERS unset)
+  // the email form is already open and there is no "Use email instead" link.
+  const useEmail = page.getByTestId('use-email-link');
+  if (await useEmail.isVisible()) await useEmail.click();
 
   // The form opens in sign-in mode when there is no validated invite code, which
   // is exactly how we got here. Asserting the mode rather than clicking a toggle

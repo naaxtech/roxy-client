@@ -17,12 +17,18 @@ export type NotificationType =
   | 'channel_message'
   | 'friend_request'
   | 'friend_accept'
-  | 'community_event';
+  | 'community_event'
+  // Migration 134 (G-11): a decision on her application (approved, not
+  // approved, appeal upheld).
+  | 'application_decided';
 
-export type PrefKey = 'messages' | 'community_chats' | 'friends' | 'events';
+export type PrefKey = 'messages' | 'community_chats' | 'friends' | 'events' | 'membership';
 
-/** Android notification channel ids; created by the app (lib/push.ts). */
-export type ChannelId = 'messages' | 'community' | 'friends' | 'events' | 'quiet';
+/**
+ * Android notification channel ids; created by the app (lib/pushRegistration.ts)
+ * before it registers a token, so every device that can receive a push has them.
+ */
+export type ChannelId = 'messages' | 'community' | 'friends' | 'events' | 'membership' | 'quiet';
 
 export type PushPrefs = {
   push_enabled: boolean;
@@ -30,6 +36,12 @@ export type PushPrefs = {
   friends: boolean;
   events: boolean;
   community_chats: boolean;
+  /**
+   * News about her membership (migration 134). Optional because a settings
+   * row read before the column existed has no value; absent means ON, the
+   * column default.
+   */
+  membership?: boolean;
   show_previews: boolean;
   /** 'HH:MM' in her timezone, or null for no quiet hours. */
   quiet_start: string | null;
@@ -44,6 +56,7 @@ export const DEFAULT_PREFS: PushPrefs = {
   friends: true,
   events: true,
   community_chats: true,
+  membership: true,
   show_previews: false,
   quiet_start: null,
   quiet_end: null,
@@ -83,6 +96,7 @@ const CATEGORY: Record<NotificationType, { pref: PrefKey; channel: Exclude<Chann
   friend_request: { pref: 'friends', channel: 'friends' },
   friend_accept: { pref: 'friends', channel: 'friends' },
   community_event: { pref: 'events', channel: 'events' },
+  application_decided: { pref: 'membership', channel: 'membership' },
 };
 
 /** Which preference gates a type, and which channel it rings on. Unknown types are never pushed. */
@@ -104,6 +118,9 @@ function privateCopy(n: QueuedNotification): { title: string; body: string } {
       return { title: 'Roxy', body: 'New message in a community chat' };
     case 'community_event':
       return { title: 'Roxy', body: 'A community you joined posted a new event' };
+    case 'application_decided':
+      // Never the decision ("rejected" on a lock screen), never a community.
+      return { title: 'Roxy', body: 'There\'s news about your membership' };
     default:
       return { title: 'Roxy', body: 'You have a new notification' };
   }
@@ -145,7 +162,8 @@ export function buildMessage(
 ): ExpoMessage | null {
   const cat = categoryOf(n.type);
   if (!cat) return null;
-  if (!prefs.push_enabled || !prefs[cat.pref]) return null;
+  // `=== false`, not falsy: a pref missing from an older settings row is ON.
+  if (!prefs.push_enabled || prefs[cat.pref] === false) return null;
 
   const copy = prefs.show_previews ? fullCopy(n) : privateCopy(n);
   // One stack per sender per destination: five messages from Maya in the same

@@ -29,6 +29,7 @@ export const ANDROID_CHANNELS = [
   { id: 'friends', name: 'Friend requests', importance: Notifications.AndroidImportance.HIGH },
   { id: 'events', name: 'Community events', importance: Notifications.AndroidImportance.DEFAULT },
   { id: 'community', name: 'Community chats', importance: Notifications.AndroidImportance.DEFAULT },
+  { id: 'membership', name: 'Your membership', importance: Notifications.AndroidImportance.HIGH },
   { id: 'quiet', name: 'Quiet hours', importance: Notifications.AndroidImportance.LOW },
 ] as const;
 

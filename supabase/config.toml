@@ -440,6 +440,8 @@ verify_jwt = false
 # (scripts/setup-cron.sql) or by the push_outbox trigger.
 [functions.push-dispatch]
 verify_jwt = false
+[functions.account-purge]
+verify_jwt = false
 [functions.process-refunds]
 verify_jwt = false
 [functions.release-payout]

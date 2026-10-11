@@ -18,7 +18,10 @@ import { comingSoonCopy } from '../../../lib/features';
 
 beforeEach(() => {
   mockReplace.mockClear();
-  useProfileStore.setState({ profile: { access_tier: 'public' } as never });
+  // A public-tier MEMBER. Since 130/G-21 a profile without
+  // vetting_status='approved' fails closed to 'pending', so the fixture has
+  // to say she was approved, as every real member row does.
+  useProfileStore.setState({ profile: { access_tier: 'public', vetting_status: 'approved' } as never });
 });
 
 describe('ComingSoon', () => {
@@ -55,7 +58,7 @@ describe('FeatureGate', () => {
   });
 
   it('renders children for a beta member', () => {
-    useProfileStore.setState({ profile: { access_tier: 'beta' } as never });
+    useProfileStore.setState({ profile: { access_tier: 'beta', vetting_status: 'approved' } as never });
     const { getByText, queryByTestId } = render(
       <FeatureGate feature="discover">
         <Text>secret</Text>

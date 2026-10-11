@@ -7,6 +7,7 @@ import { QueryError } from '@/components/QueryError';
 import { BlockPayoutButton } from './BlockPayoutButton';
 import { ReleasePayoutButton } from './ReleasePayoutButton';
 import { LaunchFunnelCard } from './LaunchFunnelCard';
+import { PendingApplicationsCard } from './PendingApplicationsCard';
 
 export default async function StaffPage() {
   // Payout buttons act only for core staff (staff_set_payout_block and the
@@ -68,6 +69,7 @@ export default async function StaffPage() {
       </div>
 
       <LaunchFunnelCard />
+      <PendingApplicationsCard />
 
       {/* Blocked Payouts */}
       <section className="space-y-3">

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Animated, Modal, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { usePopIn } from '../ui/popIn';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useAccess } from '../../hooks/useAccess';
+import { useVettingStatusSync } from '../../hooks/useVettingStatusSync';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
@@ -20,14 +21,24 @@ const storageKey = (userId: string) => `roxy_pending_status_seen:${userId}`;
 export function PendingStatusHost() {
   const colors = useThemeColors();
   const router = useRouter();
-  const { kind } = useAccess();
+  const { kind, loading, isPreviewing } = useAccess();
   const userId = useAuthStore((s) => s.user?.id ?? null);
   const [open, setOpen] = useState(false);
   const pop = usePopIn(open);
   const s = styles(colors);
 
+  // G-11: most applicants wait here, inside the tabs, not on /pending. Listen
+  // for the decision while she is actually pending (never for a core preview).
+  // Approval needs no routing: the sync puts the approved profile in the
+  // store, the gates open, and the welcome takes over. A rejection does: the
+  // reason and the appeal live on the pending screen.
+  const onDecision = useCallback((_prev: string | null, next: string) => {
+    if (next === 'rejected') router.replace('/(auth)/pending');
+  }, [router]);
+  useVettingStatusSync(onDecision, { enabled: !loading && kind === 'pending' && !isPreviewing });
+
   useEffect(() => {
-    if (kind !== 'pending' || !userId) {
+    if (loading || kind !== 'pending' || !userId) {
       setOpen(false);
       return;
     }
@@ -38,7 +49,7 @@ export function PendingStatusHost() {
       })
       .catch((e: unknown) => logError(e, 'PendingStatusHost.load'));
     return () => { cancelled = true; };
-  }, [kind, userId]);
+  }, [kind, loading, userId]);
 
   const dismiss = () => {
     setOpen(false);
@@ -49,7 +60,7 @@ export function PendingStatusHost() {
     }
   };
 
-  if (kind !== 'pending' || !open) return null;
+  if (loading || kind !== 'pending' || !open) return null;
 
   return (
     <Modal

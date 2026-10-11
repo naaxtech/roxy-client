@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
+import { requireStaffPage } from '@/lib/staff-guard';
 import { ReviewerAgreement } from '@/app/(dashboard)/applications/ReviewQueueClient';
 import { MemberQueueClient } from './MemberQueueClient';
 
@@ -39,16 +40,16 @@ interface ApplicationRow {
  * failure 079's postmortem is about.
  */
 export default async function StaffArchiveMembersPage() {
+  const { userId } = await requireStaffPage();
   const supabase = await createClient();
-  const { data: claimsData } = await supabase.auth.getClaims();
-  const userId = claimsData?.claims?.sub;
-  if (!userId) notFound();
 
+  // vetting_status left the profiles column grant in 130; her own private
+  // columns come from my_profile. Selecting it from profiles is a permission
+  // error, which rendered as a 404 for every staff member.
   const { data: profile } = await supabase
-    .from('profiles')
+    .from('my_profile')
     .select('is_staff, vetting_status')
-    .eq('id', userId)
-    .single();
+    .maybeSingle();
   if (!profile?.is_staff) notFound();
 
   if (profile.vetting_status !== 'approved') {
@@ -74,13 +75,15 @@ export default async function StaffArchiveMembersPage() {
     .maybeSingle();
 
   if (!settings?.reviewer_agreement_at) {
-    return <ReviewerAgreement userId={userId} />;
+    return <ReviewerAgreement />;
   }
 
   const { data: applications, error } = await supabase
     .from('membership_applications')
     .select('id, community_id, status, submitted_at, communities(name)')
     .eq('status', 'pending')
+    // Drafts stay hers until she presses "Send for review" (130, G-14).
+    .not('ready_at', 'is', null)
     .order('submitted_at', { ascending: true });
 
   if (error) {

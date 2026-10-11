@@ -24,20 +24,26 @@ import { WebAppFrame } from '../components/ui/WebAppFrame';
 import {
   shouldRedirectToPending,
   shouldRedirectToApplication,
+  shouldRedirectToCode,
+  isDeletedProfile,
+  isCodeRoute,
   isResetPasswordRoute,
+  isWelcomeInRoute,
 } from '../lib/authRouting';
+import { showAlert } from '../lib/confirm';
 import { storedProfileIsForUser } from '../lib/signupSession';
 import { effectiveVettingStatus, resolveAccountKind } from '../lib/features';
 import { useViewAsStore } from '../store/viewAsStore';
 import { useGateStore } from '../store/gateStore';
 import { LaunchGate } from '../components/features/FeatureGate';
 import { applyBrandType } from '../lib/applyBrandType';
+import { useWelcomeInRedirect } from '../hooks/useWelcomeInRedirect';
 
 applyBrandType();
 
 
 function AppNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const { profile, setProfile } = useProfileStore();
   const router = useRouter();
   const segments = useSegments();
@@ -50,6 +56,17 @@ function AppNavigator() {
   const { ready: fontsReady } = useAppFonts();
   const themeName = useThemeStore((s) => s.theme);
   const viewAsPreview = useViewAsStore((s) => s.preview);
+  // G-11: a just-approved member is greeted once with "You're in" — on a cold
+  // start after approval, or the moment the live sync flips her profile.
+  useWelcomeInRedirect();
+
+  const signOutDeleted = async () => {
+    await signOut();
+    showAlert(
+      'This account is being deleted',
+      'You asked us to delete it, so it can no longer sign in. If that was a mistake, write to support@roxyhq.com within 30 days.',
+    );
+  };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -125,15 +142,30 @@ function AppNavigator() {
       return;
     }
 
-    if (user && inAuth && !inOnboarding && !inRecovery) {
+    // The signed-in code screen (G-15) is a destination, not a stop to route
+    // through: once she is on it, the cascade below would only bounce her back.
+    const onSignedInCode = isCodeRoute(segments, pathname);
+    // "You're in" (G-11) sits in the auth group but belongs to an approved
+    // member; the cascade below would send her straight to the feed.
+    const onWelcomeIn = isWelcomeInRoute(segments, pathname);
+
+    if (user && inAuth && !inOnboarding && !inRecovery && !onSignedInCode && !onWelcomeIn) {
       // Prevent concurrent fetches for the same user from issuing conflicting
       // router.replace() calls (the other root cause of the flicker).
       if (fetchingForUserRef.current === user.id) return;
       fetchingForUserRef.current = user.id;
-      void Promise.resolve(supabase.from('profiles').select('*').eq('id', user.id).maybeSingle())
+      void Promise.resolve(supabase.from('my_profile').select('*').eq('id', user.id).maybeSingle())
         .then(({ data, error }) => {
           fetchingForUserRef.current = null;
           if (error) { logError(error, 'layout_profile_fetch'); return; }
+          // G-16: a deleted account has no access anywhere (the server agrees:
+          // is_approved_member() is false and profiles RLS shows nobody). She is
+          // signed out and told why, never dropped into an emptied shell.
+          if (isDeletedProfile(data)) {
+            logBreadcrumb('layout_profile_fetch_deleted_account');
+            void signOutDeleted();
+            return;
+          }
           // The gate outranks onboarding. An applicant awaiting a decision can
           // read nothing (RLS denies it), so walking her through identity and
           // interests would collect data against an account that may never
@@ -164,6 +196,19 @@ function AppNavigator() {
             router.replace('/(auth)/application');
             return;
           }
+          // G-15: no profile and no held code — her code failed after signup or
+          // the app was killed before it was redeemed. Onboarding would create
+          // a profile with nothing for a reviewer to read, so she goes back to
+          // the code screen, signed in, account intact.
+          if (shouldRedirectToCode(
+            !!data,
+            useGateStore.getState().validatedCode !== null,
+            segments,
+            pathname,
+          )) {
+            router.replace('/(auth)/code');
+            return;
+          }
           // Route to tabs only when onboarding is fully complete.
           if (!data || !data.onboarding_completed) {
             router.replace('/(auth)/onboarding/step1-identity');
@@ -187,10 +232,18 @@ function AppNavigator() {
     if (user && !inAuth && !inRecovery && (!liveProfile || !liveProfile.onboarding_completed)) {
       if (fetchingForUserRef.current === user.id) return;
       fetchingForUserRef.current = user.id;
-      void Promise.resolve(supabase.from('profiles').select('*').eq('id', user.id).maybeSingle())
+      void Promise.resolve(supabase.from('my_profile').select('*').eq('id', user.id).maybeSingle())
         .then(({ data, error }) => {
           fetchingForUserRef.current = null;
           if (error) { logError(error, 'layout_profile_reload'); return; }
+          // G-16: a deleted account has no access anywhere (the server agrees:
+          // is_approved_member() is false and profiles RLS shows nobody). She is
+          // signed out and told why, never dropped into an emptied shell.
+          if (isDeletedProfile(data)) {
+            logBreadcrumb('layout_profile_reload_deleted_account');
+            void signOutDeleted();
+            return;
+          }
           // Same precedence as above: a decision that lands while the app is
           // open (or an account rejected after admission) pulls the user out of
           // the tabs rather than leaving her on a screen RLS has emptied.
@@ -219,6 +272,19 @@ function AppNavigator() {
             pathname,
           )) {
             router.replace('/(auth)/application');
+            return;
+          }
+          // G-15: no profile and no held code — her code failed after signup or
+          // the app was killed before it was redeemed. Onboarding would create
+          // a profile with nothing for a reviewer to read, so she goes back to
+          // the code screen, signed in, account intact.
+          if (shouldRedirectToCode(
+            !!data,
+            useGateStore.getState().validatedCode !== null,
+            segments,
+            pathname,
+          )) {
+            router.replace('/(auth)/code');
             return;
           }
           if (data?.onboarding_completed) {

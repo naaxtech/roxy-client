@@ -34,10 +34,10 @@ export async function fetchTopMembers(limit = TOP_MEMBER_LIMIT): Promise<TopMemb
     // without being discoverable, and a chart is the most discoverable surface
     // there is — putting her on it would be the setting failing silently.
     .eq('is_ghost', false)
-    // The same predicate `is_approved_member()` uses. 'unvetted' is the
-    // grandfathered population and must be included, or every pre-gate member
-    // vanishes from the chart at once.
-    .in('vetting_status', ['approved', 'unvetted'])
+    // No vetting filter here: vetting_status is not readable on another
+    // member's row (130 / PRO-01), and profiles RLS already returns approved,
+    // active, non-deleted members only. 'unvetted' no longer exists — the
+    // pre-gate accounts were grandfathered to 'approved'.
     .order('gamification_points', { ascending: false })
     .order('display_name', { ascending: true })
     .limit(limit);
