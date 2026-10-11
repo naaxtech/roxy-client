@@ -1,0 +1,46 @@
+supabase/config.toml
+  h_0549c11fec2ab0 396-398,407-435,437-440,449-452
+supabase/functions/_shared/retired.test.ts
+  h_0549c11fec2ab0 1-24
+supabase/functions/_shared/retired.ts
+  h_0549c11fec2ab0 1-15
+supabase/functions/_shared/serviceAuth.test.ts
+  h_0549c11fec2ab0 1-72
+supabase/functions/_shared/serviceAuth.ts
+  h_0549c11fec2ab0 1-39
+supabase/functions/_shared/webhookSignatures.test.ts
+  h_0549c11fec2ab0 1-113
+supabase/functions/_shared/webhookSignatures.ts
+  h_0549c11fec2ab0 1-91
+supabase/functions/auto-complete-events/index.ts
+  h_0549c11fec2ab0 4,7-8
+supabase/functions/cloudflare-video-webhook/index.ts
+  h_0549c11fec2ab0 1-12,16,18-19,24,26-42,50-51
+supabase/functions/daily-webhook/index.ts
+  h_0549c11fec2ab0 3-17,20,22-27,34-40,42-43,45-48,50-52,56-61
+supabase/functions/livekit-token/index.ts
+  h_0549c11fec2ab0 1-18
+supabase/functions/process-email-queue/index.ts
+  h_0549c11fec2ab0 5,98-100
+supabase/functions/process-refunds/index.ts
+  h_0549c11fec2ab0 4,9-10
+supabase/functions/push-dispatch/index.ts
+  h_0549c11fec2ab0 5,33-34
+supabase/functions/reconcile-orders/index.ts
+  h_0549c11fec2ab0 5,12-14
+supabase/functions/release-payout/index.ts
+  h_0549c11fec2ab0 4,8-11
+supabase/functions/request-invite-code/index.ts
+  h_0549c11fec2ab0 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77b5d9bf3f1cb98a8116f435564d00934bb6209b",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
