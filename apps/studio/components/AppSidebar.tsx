@@ -8,7 +8,7 @@ import {
   ShoppingBag, Package, ShoppingCart, DollarSign, Settings,
   Shield, CheckSquare, Mail, RefreshCw, AlertTriangle, Building2,
   ChevronRight, LogOut, Lightbulb, Bug, UserCheck, Ticket, UserCog,
-  Archive, UserPlus, GitPullRequest, Flag, Unlock, Crown, BookOpen, Tag,
+  Archive, UserPlus, GitPullRequest, Flag, Unlock, Crown, BookOpen, Tag, Scale,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOutAction } from '@/app/auth/signout-action';
@@ -100,6 +100,8 @@ export const NAV_GROUPS: NavGroupDef[] = [
       { href: '/staff/businesses', label: 'Businesses', icon: Building2 },
       { href: '/staff/products', label: 'Products', icon: CheckSquare },
       { href: '/staff/games', label: 'Games', icon: Gamepad2 },
+      // Rejected applicants' appeals and grandfathered members (G-12, G-23).
+      { href: '/staff/appeals', label: 'Appeals', icon: Scale },
     ],
   },
   {
