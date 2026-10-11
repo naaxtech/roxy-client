@@ -1,0 +1,31 @@
+apps/mobile/__tests__/components/ReelsFeedForYou.test.tsx
+  s_f8d6ceb53516cd::t_4fc03e1e533239 5,248-311
+apps/mobile/__tests__/components/feed/DailyPromptCell.test.tsx
+  s_f8d6ceb53516cd::t_d17d2479dc2c77 1-55
+apps/mobile/__tests__/screens/FeedTab.test.tsx
+  s_f8d6ceb53516cd::t_60fb6efab441ae 2,14-16,18-20,94,204-242
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  s_f8d6ceb53516cd::t_5cedaf26adc6cb 8,28-30,66-74,76,271-274,321-324
+apps/mobile/components/feed/DailyPromptCell.tsx
+  s_f8d6ceb53516cd::t_427cc9c6ba890f 1-97
+apps/mobile/components/feed/ReelsFeed.tsx
+  s_f8d6ceb53516cd::t_afcc34ddf585bd 39-45,119-124,150,406-407,516-527,544-548,576-581,683,685
+apps/mobile/lib/dailyPrompt.ts
+  s_f8d6ceb53516cd::t_56733d93d3b989 1-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "229ae26c8a10b011c992631d0fb7b1104f117092",
+  "prompts": {},
+  "sessions": {
+    "s_f8d6ceb53516cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c84df994-0d2a-4bdf-b97f-83f23f252335",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
