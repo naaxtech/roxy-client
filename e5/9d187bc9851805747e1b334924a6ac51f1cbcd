@@ -1,0 +1,32 @@
+apps/mobile/__tests__/components/FirstPostCelebration.test.tsx
+  h_0549c11fec2ab0 1-77
+apps/mobile/__tests__/components/FirstPostCelebrationHost.test.tsx
+  h_0549c11fec2ab0 1-57
+apps/mobile/__tests__/lib/firstPost.test.ts
+  h_0549c11fec2ab0 1-83
+apps/mobile/__tests__/screens/CreatePostFirstPost.test.tsx
+  h_0549c11fec2ab0 1-102
+apps/mobile/__tests__/store/celebrationStoreFirstPost.test.ts
+  h_0549c11fec2ab0 1-41
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  h_0549c11fec2ab0 15,270,303-305
+apps/mobile/app/_layout.tsx
+  h_0549c11fec2ab0 15,272
+apps/mobile/components/feed/FirstPostCelebration.tsx
+  h_0549c11fec2ab0 1-184
+apps/mobile/lib/firstPost.ts
+  h_0549c11fec2ab0 1-55
+apps/mobile/store/celebrationStore.ts
+  h_0549c11fec2ab0 3-4,15-18,20-21,24-25,29-31,36,49-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e59d187bc9851805747e1b334924a6ac51f1cbcd",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
