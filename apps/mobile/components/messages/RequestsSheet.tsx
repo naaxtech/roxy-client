@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet, Pressable, ScrollView, ActivityIndicator,
 } from 'react-native';
@@ -7,7 +7,12 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useFriendStore, type FriendshipRow } from '../../store/friendStore';
 import { useConnectStore } from '../../store/connectStore';
 import { useSafetyStore } from '../../store/safetyStore';
+import { useAuthStore } from '../../store/authStore';
+import { useCommunityStore } from '../../store/communityStore';
 import { respondMessageRequest, memberName, type InboxThread } from '../../lib/chat';
+import {
+  fetchMyCommunityInvites, respondCommunityInvite, type CommunityInvite,
+} from '../../lib/communityMembership';
 import { previewLine } from '../../lib/inboxRows';
 import { haptic } from '../../lib/haptics';
 import { confirmAction } from '../../lib/confirm';
@@ -50,12 +55,46 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
   const refresh = useConnectStore((st) => st.refresh);
   const blockUser = useSafetyStore((st) => st.blockUser);
   const openReportModal = useSafetyStore((st) => st.openReportModal);
+  const { user } = useAuthStore();
+  const fetchJoined = useCommunityStore((st) => st.fetchJoined);
+
+  // CHAT-09: invites to private communities wait here with friend requests.
+  const [invites, setInvites] = useState<CommunityInvite[]>([]);
+  useEffect(() => {
+    if (!visible || !user?.id) return undefined;
+    let cancelled = false;
+    fetchMyCommunityInvites(user.id)
+      .then((rows) => { if (!cancelled) setInvites(rows); })
+      .catch((e) => logError(e, 'RequestsSheet.invites'));
+    return () => { cancelled = true; };
+  }, [visible, user?.id]);
+  const friendCount = pendingReceived.length + invites.length;
 
   const [segment, setSegment] = useState<Segment>(
     requests.length === 0 && pendingReceived.length > 0 ? 'friends' : 'messages',
   );
+  // An invite that arrives after open moves an empty Messages tab to Friends.
+  useEffect(() => {
+    if (requests.length === 0 && invites.length > 0) setSegment('friends');
+  }, [requests.length, invites.length]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const answerInvite = async (inv: CommunityInvite, accept: boolean) => {
+    setBusyId(`invite-${inv.community_id}`);
+    setError(null);
+    try {
+      await respondCommunityInvite(inv.community_id, accept);
+      setInvites((prev) => prev.filter((x) => x.community_id !== inv.community_id));
+      haptic(accept ? 'success' : 'tap');
+      if (accept && user?.id) await fetchJoined(user.id);
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : 'Could not answer that just now.');
+      logError(e, 'RequestsSheet.answerInvite');
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const actFriend = async (row: FriendshipRow, accept: boolean) => {
     setBusyId(row.id);
@@ -227,13 +266,52 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
     </ScrollView>
   );
 
-  const friendList = pendingReceived.length === 0 ? (
+  const inviteRows = invites.map((inv) => {
+    const name = inv.community?.name ?? 'A private community';
+    const busy = busyId === `invite-${inv.community_id}`;
+    return (
+      <View key={`inv-${inv.community_id}`} style={s.row} testID={`community-invite-${inv.community_id}`}>
+        {avatar(name)}
+        <View style={s.rowText}>
+          <Text style={s.name} numberOfLines={1}>{name}</Text>
+          <Text style={s.handle} numberOfLines={1}>Invited you to join</Text>
+        </View>
+        {busy ? (
+          <ActivityIndicator color={colors.roxy} />
+        ) : (
+          <View style={s.actions}>
+            <TouchableOpacity
+              onPress={() => void answerInvite(inv, false)}
+              accessibilityRole="button"
+              accessibilityLabel={`Not now for ${name}. Nobody is told.`}
+              activeOpacity={0.8}
+              style={s.ghost}
+            >
+              <Text style={s.ghostText}>Not now</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => void answerInvite(inv, true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Join ${name}`}
+              activeOpacity={0.8}
+              style={s.accept}
+            >
+              <Text style={s.acceptText}>Join</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  });
+
+  const friendList = friendCount === 0 ? (
     <View style={s.empty} testID="requests-friends-empty">
       <Text style={s.emptyTitle}>No friend requests</Text>
       <Text style={s.emptyBody}>When someone asks to be friends, she waits here until you decide.</Text>
     </View>
   ) : (
     <ScrollView style={s.list} contentContainerStyle={s.listContent}>
+      {inviteRows}
       {pendingReceived.map((row) => {
         const busy = busyId === row.id;
         return (
@@ -298,7 +376,7 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
 
         <View style={s.tabs} accessibilityRole="tablist">
           {tab('messages', 'Messages', requests.length)}
-          {tab('friends', 'Friends', pendingReceived.length)}
+          {tab('friends', 'Friends', friendCount)}
         </View>
 
         {error ? (

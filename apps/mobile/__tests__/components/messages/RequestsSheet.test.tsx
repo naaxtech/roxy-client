@@ -37,6 +37,15 @@ jest.mock('../../../store/safetyStore', () => ({
   useSafetyStore: (sel: (s: any) => unknown) => sel({ blockUser: mockBlock, openReportModal: mockOpenReport }),
 }));
 jest.mock('../../../lib/confirm', () => ({ confirmAction: jest.fn().mockResolvedValue(true), showAlert: jest.fn() }));
+// Community invites (CHAT-09) share the Friends tab; none here.
+jest.mock('../../../store/authStore', () => ({ useAuthStore: () => ({ user: { id: 'me' } }) }));
+jest.mock('../../../store/communityStore', () => ({
+  useCommunityStore: (sel: (s: any) => unknown) => sel({ fetchJoined: jest.fn() }),
+}));
+jest.mock('../../../lib/communityMembership', () => ({
+  fetchMyCommunityInvites: jest.fn().mockResolvedValue([]),
+  respondCommunityInvite: jest.fn(),
+}));
 
 import { RequestsSheet } from '../../../components/messages/RequestsSheet';
 

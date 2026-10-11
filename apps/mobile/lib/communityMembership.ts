@@ -112,3 +112,26 @@ export async function fetchElevatedRoles(communityId: string): Promise<Map<strin
   if (error) throw error;
   return new Map(((data ?? []) as { user_id: string; role: string }[]).map((r) => [r.user_id, r.role]));
 }
+
+export interface CommunityInvite {
+  community_id: string;
+  created_at: string;
+  community: { id: string; name: string } | null;
+}
+
+/**
+ * Her open invites to private communities. communities_read_invited (132)
+ * lets her see the name of a community she was invited to — and nothing else
+ * about any private community she is not in.
+ */
+export async function fetchMyCommunityInvites(userId: string): Promise<CommunityInvite[]> {
+  const { data, error } = await supabase
+    .from('community_join_requests')
+    .select('community_id, created_at, community:communities(id, name)')
+    .eq('user_id', userId)
+    .eq('kind', 'invite')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as CommunityInvite[];
+}
