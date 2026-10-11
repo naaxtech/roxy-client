@@ -1,0 +1,32 @@
+apps/mobile/__tests__/components/community/CommunitiesBrowserPrivate.test.tsx
+  h_0549c11fec2ab0 1-67
+apps/mobile/__tests__/lib/communityMembership.test.ts
+  h_0549c11fec2ab0 1-77
+apps/mobile/__tests__/store/communityStore.test.ts
+  h_0549c11fec2ab0 71-73,78
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  h_0549c11fec2ab0 276-281
+apps/mobile/components/community/CommunitiesBrowser.tsx
+  h_0549c11fec2ab0 29,34-35,40-43,49,117-123,152-153,156
+apps/mobile/lib/communityMembership.ts
+  h_0549c11fec2ab0 1-65
+apps/mobile/store/communityStore.ts
+  h_0549c11fec2ab0 4,16-17,24-29,34,65-68,71-76,78-91,93-95,99,103-106,108
+supabase/downs/132_private_groups_and_requests_down.sql
+  h_0549c11fec2ab0 102-109,229-232,257-258,269
+supabase/migrations/132_private_groups_and_requests.sql
+  h_0549c11fec2ab0 131-151,346-357,807-829,899-900,902-903,923-924,926-932,1447-1450,1469-1596,1640-1645,1694-1699
+supabase/tests/132_private_groups_and_requests_check.sql
+  h_0549c11fec2ab0 52,386-462
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "10d365a67ed52555de9dc0ad6559cc14873afbc3",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
