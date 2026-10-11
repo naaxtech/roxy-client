@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import {
   REPORT_CONTENT_TYPES,
   canHide,
@@ -9,11 +11,23 @@ import {
   reasonLabel,
 } from '@/lib/reports';
 
+/** submit-report's literal allowlist (the array is kept comment-free for this). */
+function submitReportTypes(): string[] {
+  const src = readFileSync(join(__dirname, '../../../../supabase/functions/submit-report/index.ts'), 'utf8');
+  const m = src.match(/const REPORT_CONTENT_TYPES = \[([^\]]*)\]/);
+  if (!m) throw new Error('submit-report REPORT_CONTENT_TYPES not found');
+  return m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean);
+}
+
 describe('report content types', () => {
   it('covers every type submit-report accepts', () => {
-    expect([...REPORT_CONTENT_TYPES].sort()).toEqual(
-      ['archive_entry', 'archive_review', 'message', 'post', 'profile', 'room', 'speed_date'].sort(),
-    );
+    expect([...REPORT_CONTENT_TYPES].sort()).toEqual(submitReportTypes().sort());
+  });
+
+  it('labels the chat and comment reports (132 conversation, 133 comment) for humans', () => {
+    expect(contentTypeLabel('conversation')).toBe('Conversation');
+    expect(contentTypeLabel('comment')).toBe('Comment');
+    for (const t of REPORT_CONTENT_TYPES) expect(contentTypeLabel(t)).not.toBe(t);
   });
 
   it('only offers Hide for content staff_resolve_report can hide', () => {

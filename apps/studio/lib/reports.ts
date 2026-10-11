@@ -17,6 +17,10 @@ export const REPORT_CONTENT_TYPES = [
   'speed_date',
   'archive_entry',
   'archive_review',
+  // 132 (chat): a whole DM or group; content_id is the conversation id.
+  'conversation',
+  // 133 (feed): a comment; content_id is the comment id.
+  'comment',
 ] as const;
 export type ReportContentType = (typeof REPORT_CONTENT_TYPES)[number];
 
@@ -46,6 +50,8 @@ const TYPE_LABELS: Record<ReportContentType, string> = {
   speed_date: 'Speed date',
   archive_entry: 'Archive entry',
   archive_review: 'Archive review',
+  conversation: 'Conversation',
+  comment: 'Comment',
 };
 
 export function contentTypeLabel(type: string): string {

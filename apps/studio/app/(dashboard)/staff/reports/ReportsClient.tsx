@@ -169,7 +169,7 @@ export function ReportsClient({
                 <blockquote className="text-sm border-l-2 pl-3 whitespace-pre-wrap">{selected.preview}</blockquote>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  {selected.contentType === 'message' || selected.contentType === 'speed_date'
+                  {selected.contentType === 'message' || selected.contentType === 'speed_date' || selected.contentType === 'conversation'
                     ? 'Private conversations are not shown in Studio. Judge from the report and the member’s history.'
                     : selected.contentType === 'profile'
                       ? 'The report is about her profile.'
