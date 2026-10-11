@@ -10,6 +10,7 @@ import type { CommentRemoval } from '../../lib/comments';
 import { tapLight } from '../../lib/haptics';
 import { useSafetyStore } from '../../store/safetyStore';
 import { CommentActionsSheet } from './CommentActionsSheet';
+import { Avatar } from '../ui/Avatar';
 import type { Comment } from '../../types';
 
 const REPLY_PREVIEW_COUNT = 2;
@@ -54,13 +55,6 @@ function CommentRow({
       paddingVertical: 10, gap: 10,
     },
     replyRow: { paddingLeft: 48 },
-    avatar: {
-      width: 32, height: 32, borderRadius: 16,
-      backgroundColor: colors.surfaceLight,
-      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      overflow: 'hidden',
-    },
-    avatarLetter: { color: colors.textPrimary, fontWeight: '800', fontSize: 12 },
     commentBody: { flex: 1 },
     commentAuthor: { color: colors.textPrimary, fontWeight: '600', fontSize: 13 },
     commentContent: { color: colors.textSecondary, fontSize: 13, marginTop: 2, lineHeight: 18 },
@@ -110,13 +104,7 @@ function CommentRow({
       testID={`comment-${comment.id}`}
       style={[styles.commentRow, indent && styles.replyRow]}
     >
-      <View style={styles.avatar}>
-        {avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} style={{ width: 32, height: 32 }} />
-        ) : (
-          <Text style={styles.avatarLetter}>{authorName[0]?.toUpperCase() ?? '?'}</Text>
-        )}
-      </View>
+      <Avatar uri={avatarUrl} name={authorName} seed={comment.author_id} size={32} testID={`comment-${comment.id}-avatar`} />
       <View style={styles.commentBody}>
         <Text style={styles.commentAuthor}>{authorName}</Text>
         {isDeleted ? (

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, ActivityIndicator, Image,
+  ScrollView, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,12 +15,12 @@ import { PRONOUNS, IDENTITY_LABELS } from '../../../lib/constants';
 import { clampCustomTags, MAX_CUSTOM_TAGS } from '../../../lib/profileTags';
 import { logError } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
-import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
 import { uploadImageAsset } from '../../../lib/uploads';
 import {
   BIO_MAX, avatarFileError, validateDisplayName, withCacheBust,
 } from '../../../lib/profileRules';
 import { AvatarPickerSheet } from '../../../components/profile/AvatarPickerSheet';
+import { Avatar } from '../../../components/ui/Avatar';
 import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
 import { useThemeColors } from '../../../hooks/useThemeColors';
@@ -80,9 +80,6 @@ export default function EditProfileScreen() {
       width: 90, height: 90, borderRadius: 45,
       backgroundColor: colors.roxy, alignItems: 'center', justifyContent: 'center',
     },
-    avatarImage: { width: 90, height: 90, borderRadius: 45 },
-    avatarInitial: { color: '#fff', fontSize: 36, fontWeight: '700' },
-    avatarEmoji: { fontSize: 44 },
     editPhotoText: { color: colors.roxy, fontSize: 13, fontWeight: '600' },
 
     section: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, width: '100%' },
@@ -220,8 +217,6 @@ export default function EditProfileScreen() {
 
   const bioCount = localBio.length;
 
-  const initials = (profile.display_name ?? '?').charAt(0).toUpperCase();
-  const hasPreset = isPresetAvatar(profile.avatar_url);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -251,16 +246,8 @@ export default function EditProfileScreen() {
             <View style={styles.avatarCircle}>
               <ActivityIndicator color={colors.textPrimary} />
             </View>
-          ) : hasPreset ? (
-            <View style={[styles.avatarCircle, { backgroundColor: presetColor(profile.avatar_url!) }]}>
-              <Text style={styles.avatarEmoji}>{presetEmoji(profile.avatar_url!)}</Text>
-            </View>
-          ) : profile.avatar_url ? (
-            <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
           ) : (
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarInitial}>{initials}</Text>
-            </View>
+            <Avatar uri={profile.avatar_url} name={profile.display_name} size={90} testID="edit-avatar-face" />
           )}
           <Text style={styles.editPhotoText}>Change Photo</Text>
         </TouchableOpacity>

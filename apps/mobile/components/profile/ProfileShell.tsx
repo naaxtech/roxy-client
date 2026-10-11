@@ -9,8 +9,9 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { isPresetAvatar, presetEmoji, presetColor, avatarGradient } from '../../lib/avatars';
 import { TYPE } from '../../lib/typography';
 import {
-  RADII, LIVE_GRADIENT, BRAND_GRADIENT, type ThemeColors,
+  RADII, LIVE_GRADIENT, BRAND_GRADIENT, inkOnGradient, type ThemeColors,
 } from '../../lib/theme';
+import { initialsOf } from '../ui/Avatar';
 import {
   collapseProfileTags, profileDisplayTags, RETIRED_PROFILE_CHIPS,
 } from '../../lib/profileTags';
@@ -296,9 +297,16 @@ export function ProfileShell({
         />
       );
     }
+    // No photo: her initials on her gradient — the same face she has in
+    // comments, the feed and every list (components/ui/Avatar).
     return (
-      <View style={[s.avatarInner, shape, s.avatarFallback]}>
-        <Text style={s.avatarInitial}>{initial}</Text>
+      <View style={[s.avatarInner, shape, s.avatarFallback]} testID="profile-avatar-initials">
+        <LinearGradient
+          colors={avatarGradient(name)}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <Text style={[s.avatarInitial, { color: inkOnGradient(avatarGradient(name)) }]}>{initialsOf(name) || initial}</Text>
       </View>
     );
   };

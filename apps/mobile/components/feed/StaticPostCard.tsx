@@ -1,11 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { PostActionRow } from './PostActionRow';
 import { PostMediaCarousel } from './PostMediaCarousel';
-import { avatarGradient } from '../../lib/avatars';
+import { Avatar } from '../ui/Avatar';
 import { TextCardFace } from './TextCardFace';
 import type { Post } from '../../types';
 
@@ -29,7 +28,6 @@ export function StaticPostCard({
   const colors = useThemeColors();
   const [expanded, setExpanded] = useState(false);
   const authorName = post.profiles?.display_name ?? '?';
-  const grad = useMemo(() => avatarGradient(authorName), [authorName]);
 
   const styles = StyleSheet.create({
     card: {
@@ -48,11 +46,6 @@ export function StaticPostCard({
       flexDirection: 'row', alignItems: 'center',
       paddingHorizontal: 14, paddingVertical: 12, gap: 10,
     },
-    avatarCircle: {
-      width: 38, height: 38, borderRadius: 19,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    avatarLetter: { color: '#fff', fontWeight: '800', fontSize: 15 },
     nameBlock: { flex: 1 },
     authorName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
     timestamp: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
@@ -108,11 +101,9 @@ export function StaticPostCard({
         style={styles.authorRow}
         accessibilityLabel={`View ${post.profiles?.display_name ?? 'author'}'s profile`}
       >
-        <LinearGradient colors={grad} style={styles.avatarCircle}>
-          <Text style={styles.avatarLetter}>
-            {(authorName[0] ?? '?').toUpperCase()}
-          </Text>
-        </LinearGradient>
+        {/* Her photo when she has one — this card drew only a letter even
+            for members with a photo. */}
+        <Avatar uri={post.profiles?.avatar_url} name={authorName} seed={post.author_id} size={38} />
         <View style={styles.nameBlock}>
           <Text style={styles.authorName}>{post.profiles?.display_name ?? ''}</Text>
           {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}

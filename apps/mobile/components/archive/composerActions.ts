@@ -194,7 +194,7 @@ export function archiveSubmitError(raw: string | null | undefined, fallback: str
   const m = (raw ?? '').toLowerCase();
   if (!m) return fallback;
   if (m.includes('rate limit')) return 'You have sent a lot in a short time. Give it a few minutes and try again.';
-  if (m.includes('approved membership')) return 'This unlocks once a mod has approved your membership.';
+  if (m.includes('approved member')) return 'This unlocks once a mod has approved your membership.';
   if (m.includes('release_year') || m.includes('year')) return 'That year does not look right. Use a four-digit year.';
   if (m.includes('unauthorized') || m.includes('profile not found')) return 'Please sign in again to continue.';
   if (m.includes('no changes')) return EMPTY_EDIT_ERROR_TEXT;

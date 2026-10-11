@@ -183,7 +183,8 @@ describe('submitEntry / submitEdit — the edge-function half', () => {
     (callEdgeFunction as jest.Mock).mockResolvedValue({ data: null, error: 'Approved members only' });
     const res = await submitEntry({ title: 'Bound', media_type: 'film' });
     expect(res.data).toBeNull();
-    expect(res.error).toBe('Approved members only');
+    // Surfaced as an error — in her words, not the function's (ARC-15).
+    expect(res.error).toBe('This unlocks once a mod has approved your membership.');
   });
 
   it('treats a 200 with no payload as a failure, not a quiet success', async () => {

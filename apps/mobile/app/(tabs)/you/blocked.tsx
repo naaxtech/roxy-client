@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { fetchMutedProfiles } from '../../../lib/mutedProfiles';
 import { logError } from '../../../lib/errorLogger';
+import { Avatar } from '../../../components/ui/Avatar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -167,9 +168,7 @@ export default function BlockedScreen() {
             <View key={item.id}>
             {i > 0 ? <View style={s.separator} /> : null}
             <View style={s.row} testID={`blocked-row-${item.id}`}>
-              <View style={s.avatar}>
-                <Text style={s.avatarText}>{name.charAt(0).toUpperCase()}</Text>
-              </View>
+              <Avatar uri={item.avatar_url} name={name} seed={item.id} size={40} />
               <View style={s.who}>
                 <Text style={s.name} numberOfLines={1}>{name}</Text>
                 {item.username ? (
@@ -218,9 +217,7 @@ export default function BlockedScreen() {
             <View key={item.id}>
               {i > 0 ? <View style={s.separator} /> : null}
               <View style={s.row} testID={`muted-row-${item.id}`}>
-                <View style={s.avatar}>
-                  <Text style={s.avatarText}>{name.charAt(0).toUpperCase()}</Text>
-                </View>
+                <Avatar uri={item.avatar_url} name={name} seed={item.id} size={40} />
                 <View style={s.who}>
                   <Text style={s.name} numberOfLines={1}>{name}</Text>
                   {item.username ? <Text style={s.handle} numberOfLines={1}>@{item.username}</Text> : null}
