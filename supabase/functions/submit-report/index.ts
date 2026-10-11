@@ -20,7 +20,8 @@ import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 // them an Archive report dies on the CHECK, the same bug 094 fixed for the live
 // surfaces. Keep this array free of comments: the drift test parses it
 // literally, and a comment inside the brackets reads as another value.
-const REPORT_CONTENT_TYPES = ['message', 'post', 'profile', 'room', 'speed_date', 'archive_entry', 'archive_review'];
+// 'comment' joined in migration 133 (FEED-04).
+const REPORT_CONTENT_TYPES = ['message', 'post', 'profile', 'room', 'speed_date', 'archive_entry', 'archive_review', 'comment'];
 
 /**
  * Why a report was filed.

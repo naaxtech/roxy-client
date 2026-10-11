@@ -418,3 +418,66 @@ BEGIN
 
   RAISE NOTICE '133 feed/archive/profile check PASS';
 END $$;
+
+-- ── T11 FEED-04: comments can be reported; deleting hers keeps others' replies
+DO $$
+DECLARE
+  a uuid; b uuid; d uuid; p uuid; cm uuid; rep uuid; lone uuid; res text; cnt int;
+BEGIN
+  SELECT id INTO a FROM public.profiles ORDER BY created_at, id LIMIT 1;
+  SELECT id INTO b FROM public.profiles WHERE id <> a ORDER BY created_at, id LIMIT 1;
+  SELECT id INTO d FROM public.profiles WHERE id NOT IN (a, b) ORDER BY created_at, id OFFSET 1 LIMIT 1;
+  INSERT INTO public.posts (author_id, content, post_type) VALUES (a, 't11 post', 'standard') RETURNING id INTO p;
+  INSERT INTO public.comments (post_id, author_id, content) VALUES (p, b, 'parent') RETURNING id INTO cm;
+  INSERT INTO public.comments (post_id, author_id, content, parent_id) VALUES (p, d, 'reply', cm) RETURNING id INTO rep;
+  INSERT INTO public.comments (post_id, author_id, content) VALUES (p, b, 'lone') RETURNING id INTO lone;
+
+  BEGIN
+    INSERT INTO public.reports (reporter_id, reported_user_id, content_type, content_id, reason)
+    VALUES (a, b, 'comment', cm, 'harassment');
+  EXCEPTION WHEN check_violation THEN
+    RAISE EXCEPTION 'T11 a comment report is refused by the CHECK';
+  END;
+
+  -- Someone else's comment: nothing happens.
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  SET LOCAL ROLE authenticated;
+  res := public.delete_my_comment(cm);
+  RESET ROLE;
+  IF res IS NOT NULL OR NOT EXISTS (SELECT 1 FROM public.comments WHERE id = cm AND deleted_at IS NULL) THEN
+    RAISE EXCEPTION 'T11 someone else''s comment was deleted (%)', res;
+  END IF;
+
+  -- Hers, with a reply: blanked, the reply stays.
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  SET LOCAL ROLE authenticated;
+  res := public.delete_my_comment(cm);
+  RESET ROLE;
+  IF NOT EXISTS (SELECT 1 FROM public.comments WHERE id = rep) THEN
+    RAISE EXCEPTION 'T11 deleting her comment took a reply with it';
+  END IF;
+  IF res IS DISTINCT FROM 'removed'
+     OR NOT EXISTS (SELECT 1 FROM public.comments WHERE id = cm AND deleted_at IS NOT NULL AND content = '') THEN
+    RAISE EXCEPTION 'T11 a comment with replies was not blanked (%)', res;
+  END IF;
+
+  -- Hers, alone: gone.
+  SET LOCAL ROLE authenticated;
+  res := public.delete_my_comment(lone);
+  RESET ROLE;
+  SELECT count(*) INTO cnt FROM public.comments WHERE id = lone;
+  IF res IS DISTINCT FROM 'deleted' OR cnt <> 0 THEN
+    RAISE EXCEPTION 'T11 a comment with no replies was not deleted (%)', res;
+  END IF;
+
+  -- Anon cannot call it.
+  SET LOCAL ROLE anon;
+  BEGIN
+    PERFORM public.delete_my_comment(rep);
+    RAISE EXCEPTION 'T11 anon called delete_my_comment';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+
+  RAISE NOTICE '133 T11 comments check PASS';
+END $$;
