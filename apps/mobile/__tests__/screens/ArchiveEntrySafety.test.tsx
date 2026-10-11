@@ -48,6 +48,12 @@ jest.mock('../../lib/archiveSafety', () => ({
   reportArchiveContent: (...a: unknown[]) => mockReport(...a),
 }));
 jest.mock('../../lib/supabase', () => ({ supabase: { rpc: jest.fn(), from: jest.fn() }, callEdgeFunction: jest.fn() }));
+const mockShelfIds = jest.fn();
+const mockSetShelf = jest.fn();
+jest.mock('../../lib/profileExtras', () => ({
+  fetchArchiveShelf: (...a: unknown[]) => mockShelfIds(...a),
+  setArchiveShelf: (...a: unknown[]) => mockSetShelf(...a),
+}));
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 
 import ArchiveEntryScreen from '../../app/archive/[slug]';
@@ -90,6 +96,8 @@ beforeEach(() => {
   mockAgree.mockReset().mockResolvedValue(undefined);
   mockUnagree.mockReset().mockResolvedValue(undefined);
   mockBlock.mockReset().mockResolvedValue(undefined);
+  mockShelfIds.mockReset().mockResolvedValue([{ id: 'x1' }]);
+  mockSetShelf.mockReset().mockResolvedValue(undefined);
   useArchiveStore.setState({
     myVotes: {}, watchlist: [], noteAgreements: [],
     agreeNote: mockAgree, unagreeNote: mockUnagree,
@@ -199,6 +207,26 @@ describe('reviews: block, report, helpful, own (ARC-03, ARC-06, ARC-12)', () => 
     await ready(r);
     fireEvent.press(r.getByTestId('archive-review-r1-author'));
     expect(mockPush).toHaveBeenCalledWith('/user/ari');
+  });
+});
+
+describe('Archive top four (delight)', () => {
+  it('adds this entry to her shelf after the ones already there', async () => {
+    const r = render(<ArchiveEntryScreen />);
+    await ready(r);
+    await waitFor(() => expect(r.getByTestId('archive-shelf-toggle')).toBeTruthy());
+    await act(async () => { fireEvent.press(r.getByTestId('archive-shelf-toggle')); });
+    expect(mockSetShelf).toHaveBeenCalledWith(['x1', 'e1']);
+  });
+
+  it('a full shelf says so instead of dropping one', async () => {
+    mockShelfIds.mockResolvedValue([{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }]);
+    const r = render(<ArchiveEntryScreen />);
+    await ready(r);
+    await waitFor(() => expect(r.getByTestId('archive-shelf-toggle')).toBeTruthy());
+    await act(async () => { fireEvent.press(r.getByTestId('archive-shelf-toggle')); });
+    expect(mockSetShelf).not.toHaveBeenCalled();
+    expect(r.getByTestId('archive-action-error')).toBeTruthy();
   });
 });
 

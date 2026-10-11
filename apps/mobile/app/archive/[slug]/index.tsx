@@ -27,6 +27,7 @@ import { VoteCard } from '../../../components/archive/VoteCard';
 import { ContentNoteChip, NOTE_AGREEMENT_GATE } from '../../../components/archive/ContentNoteChip';
 import { ArchiveActionsSheet, type ArchiveActionTarget } from '../../../components/archive/ArchiveActionsSheet';
 import { fetchMyHelpful, setReviewHelpful } from '../../../lib/archiveSafety';
+import { fetchArchiveShelf, setArchiveShelf } from '../../../lib/profileExtras';
 import { useSafetyStore } from '../../../store/safetyStore';
 import { tapLight } from '../../../lib/haptics';
 import { PendingBanner } from '../../../components/archive/PendingBanner';
@@ -84,6 +85,14 @@ export default function ArchiveEntryScreen() {
   const [helpfulDelta, setHelpfulDelta] = useState<Record<string, number>>({});
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [flaggedNotes, setFlaggedNotes] = useState<Set<string>>(() => new Set());
+  // Her Archive top four (133 §9b), so this entry can be added or taken off.
+  const [shelfIds, setShelfIds] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!userId) return undefined;
+    let cancelled = false;
+    void fetchArchiveShelf(userId).then((rows) => { if (!cancelled) setShelfIds(rows.map((r) => r.id)); });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   // Blocked authors' reviews are withheld by RLS too (133 §4); this makes a
   // block from this screen take effect at once, and applies her mutes.
@@ -366,6 +375,26 @@ export default function ArchiveEntryScreen() {
 
   const shownReviews = showAllReviews ? reviews : reviews.slice(0, 5);
 
+  const onShelf = !!shelfIds && shelfIds.includes(entry.id);
+  const toggleShelf = async () => {
+    if (!shelfIds) return;
+    const previous = shelfIds;
+    if (!onShelf && previous.length >= 4) {
+      setActionError('Your top four is full. Take one off from its own page first.');
+      return;
+    }
+    const next = onShelf ? previous.filter((id) => id !== entry.id) : [...previous, entry.id];
+    setShelfIds(next);
+    tapLight();
+    try {
+      await setArchiveShelf(next);
+    } catch (e) {
+      logError(e, 'archiveEntry.shelf');
+      setShelfIds(previous);
+      setActionError('Your top four did not save. Please try again.');
+    }
+  };
+
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       {back}
@@ -491,6 +520,18 @@ export default function ArchiveEntryScreen() {
               >
                 <Text style={s.actionText}>{watched ? '✓ On your list' : '+ Watchlist'}</Text>
               </Pressable>
+
+              {shelfIds ? (
+                <Pressable
+                  onPress={() => void toggleShelf()}
+                  style={s.action}
+                  testID="archive-shelf-toggle"
+                  accessibilityRole="button"
+                  accessibilityLabel={onShelf ? 'Take off your top four' : 'Add to your top four on your profile'}
+                >
+                  <Text style={s.actionText}>{onShelf ? '★ In your top four' : '☆ Top four'}</Text>
+                </Pressable>
+              ) : null}
 
               <Pressable
                 onPress={() => requireApproved(() => router.push(`/archive/${entry.slug}/review` as never))}

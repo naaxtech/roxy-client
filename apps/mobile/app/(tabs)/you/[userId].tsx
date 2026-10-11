@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Animated, Modal, Pressable, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { compactCount, fetchFollowCounts, type FollowCounts } from '../../../lib/followCounts';
+import { ProfileExtras } from '../../../components/profile/ProfileExtras';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -599,13 +600,14 @@ function UserProfileScreen() {
         stats={stats}
         refreshing={refreshing}
         onRefresh={() => { void onRefresh(); }}
-        beforeTabs={(online || counts?.followsYou) ? (
+        beforeTabs={userId ? (
           <View>
             {counts?.followsYou ? (
               <View style={rowStyles.followsYou} testID="profile-follows-you" accessibilityRole="text">
                 <Text style={rowStyles.followsYouText}>Follows you</Text>
               </View>
             ) : null}
+            <ProfileExtras userId={userId} onOpenEntry={(slug) => router.push(`/archive/${slug}` as never)} />
             {online ? (
               <View style={rowStyles.online} testID="profile-online-row">
                 <Text style={rowStyles.onlineText}>{online.label}</Text>

@@ -50,6 +50,10 @@ jest.mock('../../lib/archive', () => {
 jest.mock('../../components/archive/composerActions', () => ({
   submitReview: (...a: unknown[]) => mockSubmitReview(...a),
 }));
+jest.mock('../../lib/profileExtras', () => ({
+  fetchArchiveShelf: () => Promise.resolve([]),
+  setArchiveShelf: jest.fn(),
+}));
 jest.mock('../../lib/archiveSafety', () => ({
   fetchMyHelpful: () => Promise.resolve(new Set()),
   setReviewHelpful: jest.fn(),
