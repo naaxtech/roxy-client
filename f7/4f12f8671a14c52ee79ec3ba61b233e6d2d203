@@ -1,0 +1,208 @@
+.maestro/README.md
+  h_0549c11fec2ab0 88-90,116-118
+.maestro/flows/chat_swipe_reply.yaml
+  h_0549c11fec2ab0 1-73
+.maestro/flows/dm_request_accept.yaml
+  h_0549c11fec2ab0 1-75
+.maestro/flows/group_create_send.yaml
+  h_0549c11fec2ab0 1-75
+apps/mobile/__tests__/MessagesNew.test.tsx
+  h_0549c11fec2ab0 4-12,14,17,22-26,28,32-34,53-59,67-72,74-125
+apps/mobile/__tests__/components/chat/ComposerBanners.test.tsx
+  h_0549c11fec2ab0 1-75
+apps/mobile/__tests__/components/chat/MessageActionSheet.test.tsx
+  h_0549c11fec2ab0 1-97
+apps/mobile/__tests__/components/chat/MessageRow.test.tsx
+  h_0549c11fec2ab0 1-155
+apps/mobile/__tests__/components/chat/MessageStatus.test.tsx
+  h_0549c11fec2ab0 6,26-39
+apps/mobile/__tests__/components/community/CommunitiesBrowserPrivate.test.tsx
+  h_0549c11fec2ab0 1-67
+apps/mobile/__tests__/components/messages/MessagesInbox.groups.test.tsx
+  h_0549c11fec2ab0 1-88
+apps/mobile/__tests__/components/messages/RequestsSheet.test.tsx
+  h_0549c11fec2ab0 1-131
+apps/mobile/__tests__/components/messages/RequestsSheetInvites.test.tsx
+  h_0549c11fec2ab0 1-70
+apps/mobile/__tests__/directMessages.test.ts
+  h_0549c11fec2ab0 3-14,16,28-29,31,35-38,41-47,50-55,58-60
+apps/mobile/__tests__/hooks/chatBroadcast.private.test.ts
+  h_0549c11fec2ab0 1-95
+apps/mobile/__tests__/hooks/useReactions.test.ts
+  h_0549c11fec2ab0 102-103,234-266
+apps/mobile/__tests__/hooks/useRealtime.chat132.test.ts
+  h_0549c11fec2ab0 1-146
+apps/mobile/__tests__/hooks/useThreadMeta.test.ts
+  h_0549c11fec2ab0 1-83
+apps/mobile/__tests__/hooks/useTyping.test.ts
+  h_0549c11fec2ab0 49,53-54,132-140
+apps/mobile/__tests__/lib/channelSafety.test.ts
+  h_0549c11fec2ab0 1-80
+apps/mobile/__tests__/lib/channels.test.ts
+  h_0549c11fec2ab0 12,31-32,96-134
+apps/mobile/__tests__/lib/chat.test.ts
+  h_0549c11fec2ab0 1-218
+apps/mobile/__tests__/lib/chatThread.test.ts
+  h_0549c11fec2ab0 1-264
+apps/mobile/__tests__/lib/communityMembership.test.ts
+  h_0549c11fec2ab0 1-102
+apps/mobile/__tests__/lib/communityModeration.test.ts
+  h_0549c11fec2ab0 1-69
+apps/mobile/__tests__/lib/groupInfo.test.ts
+  h_0549c11fec2ab0 1-108
+apps/mobile/__tests__/lib/haptics.test.ts
+  h_0549c11fec2ab0 1-92
+apps/mobile/__tests__/lib/inboxRows.test.ts
+  h_0549c11fec2ab0 1-100
+apps/mobile/__tests__/lib/realtimeChannel.test.ts
+  h_0549c11fec2ab0 101-105
+apps/mobile/__tests__/lib/reportContentTypes.test.ts
+  h_0549c11fec2ab0 26-33,47-50,75-89
+apps/mobile/__tests__/screens/ChatThread.test.tsx
+  h_0549c11fec2ab0 1-407
+apps/mobile/__tests__/screens/CommunityChannels.test.tsx
+  h_0549c11fec2ab0 27-34,52-57
+apps/mobile/__tests__/screens/CommunityChannelsModeration.test.tsx
+  h_0549c11fec2ab0 1-116
+apps/mobile/__tests__/screens/CommunityChannelsPaging.test.tsx
+  h_0549c11fec2ab0 1-137
+apps/mobile/__tests__/screens/CommunityChannelsReactions.test.tsx
+  h_0549c11fec2ab0 1-172
+apps/mobile/__tests__/screens/CommunityChannelsSafety.test.tsx
+  h_0549c11fec2ab0 1-182
+apps/mobile/__tests__/screens/CommunityMembersModeration.test.tsx
+  h_0549c11fec2ab0 1-133
+apps/mobile/__tests__/screens/GroupInfo.test.tsx
+  h_0549c11fec2ab0 1-244
+apps/mobile/__tests__/screens/MessagesRequestsLink.test.tsx
+  h_0549c11fec2ab0 1-77
+apps/mobile/__tests__/screens/NotificationSettings.test.tsx
+  h_0549c11fec2ab0 53-58
+apps/mobile/__tests__/screens/NotificationsCommunity.test.tsx
+  h_0549c11fec2ab0 1-49
+apps/mobile/__tests__/screens/SettingsChat.test.tsx
+  h_0549c11fec2ab0 1-93
+apps/mobile/__tests__/store/chatSettingsStore.test.ts
+  h_0549c11fec2ab0 1-64
+apps/mobile/__tests__/store/communityStore.test.ts
+  h_0549c11fec2ab0 71-73,78
+apps/mobile/__tests__/store/connectStore.server.test.ts
+  h_0549c11fec2ab0 1-107
+apps/mobile/app.json
+  h_0549c11fec2ab0 31
+apps/mobile/app/(tabs)/_layout.tsx
+  h_0549c11fec2ab0 2,9,94-99,103-112,114-117,120-121,123,126-142,182-184
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  h_0549c11fec2ab0 276-281
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  h_0549c11fec2ab0 1,20-21,24,29-37,41-45,78-87,97-127,164-172,199-200,219-220,227-254,257-263,266-280,283-285,289,292-296,362-374,378-405,407,443-449,526,540,549-555,563-567,570-595,660,668-669,681-703,705-716
+apps/mobile/app/(tabs)/discover/community/members/[communityId].tsx
+  h_0549c11fec2ab0 13-20,41-129,149,228-237,261-340,349-351,353,385-406
+apps/mobile/app/(tabs)/messages/index.tsx
+  h_0549c11fec2ab0 1,3,7-8,22,34-46,50,52-56,65-73,77,79,83,86-102,124,126-136,138-139,155,163,212-213,220,222,228,230,257,260-261,263,281-285
+apps/mobile/app/(tabs)/messages/new.tsx
+  h_0549c11fec2ab0 1,3-4,11,14-15,19-21,24,26-37,43,45-49,58-83,85-99,101,105,112-159,161-162,166,181-188,191,199-201,203-236,238-240,242-246,248-249,251-270,272-315,317-354
+apps/mobile/app/(tabs)/you/[userId].tsx
+  h_0549c11fec2ab0 31,277-285
+apps/mobile/app/(tabs)/you/notification-settings.tsx
+  h_0549c11fec2ab0 29
+apps/mobile/app/(tabs)/you/settings.tsx
+  h_0549c11fec2ab0 1,29,47-50,53-55,219-264
+apps/mobile/app/chat/[id].tsx
+  h_0549c11fec2ab0 3-5,11-12,16-17,21,26-42,46-70,72-73,75-81,83-85,91-101,104-108,110,112-113,116-133,136-141,143,146-147,156-161,164,168,174,176-181,186,191-278,280,282-284,286-288,290-291,296,298-315,317-383,385,387-393,395-409,411-470,472,474,476,483,485,491,493,506,516,523,529-551,553,555,557,559-582,584-593,595-600,603,605,607,613,615-621,625-626,628-630,632-633,635-661,664-667,669,672-676,678,683,685,687-688,690-691,693,695,697-715,717-725,727-751,753-767,769-770,772-773,775,778-818,820-854,856-868,870-885,887,890,892-895,898,901-903,906-933,939-1049
+apps/mobile/app/chat/info/[id].tsx
+  h_0549c11fec2ab0 1-604
+apps/mobile/app/notifications.tsx
+  h_0549c11fec2ab0 25-27
+apps/mobile/components/channels/ChannelComposer.tsx
+  h_0549c11fec2ab0 16-19,31,46,115-119
+apps/mobile/components/channels/ChannelMessage.tsx
+  h_0549c11fec2ab0 25-26,39,176
+apps/mobile/components/channels/ChannelMessageActions.tsx
+  h_0549c11fec2ab0 1,22-23,39,87
+apps/mobile/components/chat/ComposerBanners.tsx
+  h_0549c11fec2ab0 1-161
+apps/mobile/components/chat/MessageActionSheet.tsx
+  h_0549c11fec2ab0 1-176
+apps/mobile/components/chat/MessageRow.tsx
+  h_0549c11fec2ab0 1-318
+apps/mobile/components/chat/MessageStatus.tsx
+  h_0549c11fec2ab0 7,30-32,34,36-37
+apps/mobile/components/chat/ReactionBar.tsx
+  h_0549c11fec2ab0 136-138
+apps/mobile/components/chat/TypingIndicator.tsx
+  h_0549c11fec2ab0 8-9,12,65-73
+apps/mobile/components/community/CommunitiesBrowser.tsx
+  h_0549c11fec2ab0 29,34-35,40-43,49,117-123,152-153,156
+apps/mobile/components/messages/MessagesInbox.tsx
+  h_0549c11fec2ab0 31-38,142-144,146-152,155,159-160,163-181,186-197,204-205,280-290,318-319
+apps/mobile/components/messages/RequestsSheet.tsx
+  h_0549c11fec2ab0 1,8-18,28-29,32-33,35,37-40,42-45,47,54-59,61-79,83-99,107-108,111-133,139-355,377-381,386,397,412-429,434-435,441-454,460-465,469-470,472
+apps/mobile/hooks/useReactions.ts
+  h_0549c11fec2ab0 2,4,10,12-13,23-33,35,42-45,47-49,51-61,71,73,75-101,103-107,124,133,138,141,146,162,169,176,181
+apps/mobile/hooks/useRealtime.ts
+  h_0549c11fec2ab0 55-56,224-230,242-248,348-351,367-381,394-395,398-407,456
+apps/mobile/hooks/useThreadMeta.ts
+  h_0549c11fec2ab0 1-132
+apps/mobile/hooks/useTyping.ts
+  h_0549c11fec2ab0 3-4,7,9-10,12,14-15,19,21-22,32,43-48,50-52,54-57,61,64,66,71,73-75,82-94,99-101,105-132,136-138,142,152,155,158,178-183
+apps/mobile/lib/channels.ts
+  h_0549c11fec2ab0 83-170
+apps/mobile/lib/chat.ts
+  h_0549c11fec2ab0 1-369
+apps/mobile/lib/chatThread.ts
+  h_0549c11fec2ab0 1-247
+apps/mobile/lib/communityMembership.ts
+  h_0549c11fec2ab0 1-161
+apps/mobile/lib/directMessages.ts
+  h_0549c11fec2ab0 2,4-19
+apps/mobile/lib/groupInfo.ts
+  h_0549c11fec2ab0 1-119
+apps/mobile/lib/haptics.ts
+  h_0549c11fec2ab0 5-10,13-16,19-21,24,26,30-44,47
+apps/mobile/lib/inboxRows.ts
+  h_0549c11fec2ab0 1-77
+apps/mobile/lib/notifications.ts
+  h_0549c11fec2ab0 8-10
+apps/mobile/lib/realtimeChannel.ts
+  h_0549c11fec2ab0 77-85
+apps/mobile/lib/reportTargets.ts
+  h_0549c11fec2ab0 25-27
+apps/mobile/store/chatSettingsStore.ts
+  h_0549c11fec2ab0 1-68
+apps/mobile/store/communityStore.ts
+  h_0549c11fec2ab0 4,16-17,24-29,34,65-68,71-76,78-91,93-95,99,103-106,108
+apps/mobile/store/connectStore.ts
+  h_0549c11fec2ab0 3-12,14-23,25,28,30-39,43,45,47-50,53-70,98,100-154
+apps/mobile/types/index.ts
+  h_0549c11fec2ab0 108-109,115-117,126-127,131-134
+supabase/downs/132_private_groups_and_requests_down.sql
+  h_0549c11fec2ab0 1-319
+supabase/downs/135_chat_notifications_down.sql
+  h_0549c11fec2ab0 1-35
+supabase/functions/_shared/pushCore.test.ts
+  h_0549c11fec2ab0 63-64,97-123
+supabase/functions/_shared/pushCore.ts
+  h_0549c11fec2ab0 23-27,104-108,126-131
+supabase/functions/submit-report/index.ts
+  h_0549c11fec2ab0 23-25
+supabase/migrations/132_private_groups_and_requests.sql
+  h_0549c11fec2ab0 1-1795
+supabase/migrations/135_chat_notifications.sql
+  h_0549c11fec2ab0 1-172
+supabase/tests/132_private_groups_and_requests_check.sql
+  h_0549c11fec2ab0 1-588
+supabase/tests/135_chat_notifications_check.sql
+  h_0549c11fec2ab0 1-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f74f12f8671a14c52ee79ec3ba61b233e6d2d203",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
