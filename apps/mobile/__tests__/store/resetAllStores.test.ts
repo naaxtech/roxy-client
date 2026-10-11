@@ -70,6 +70,15 @@ describe('resetAllStores', () => {
     expect(typeof useFeedStore.getState().toggleLike).toBe('function');
   });
 
+  it("forgets her chat settings, so the next woman on this phone loads her own (chat2 x ARC-08)", () => {
+    const { useChatSettingsStore } = jest.requireActual('../../store/chatSettingsStore');
+    const initial = useChatSettingsStore.getInitialState().settings;
+    useChatSettingsStore.setState({ settings: { ...initial, read_receipts: !initial.read_receipts }, loaded: true });
+    resetAllStores();
+    expect(useChatSettingsStore.getState().loaded).toBe(false);
+    expect(useChatSettingsStore.getState().settings).toEqual(initial);
+  });
+
   it('a failing store does not stop the others from resetting', () => {
     const spy = jest.spyOn(useGateStore, 'setState').mockImplementationOnce(() => {
       throw new Error('boom');

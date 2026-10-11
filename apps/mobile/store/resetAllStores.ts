@@ -3,6 +3,7 @@ import { useArchiveStore } from './archiveStore';
 import { useAuthStore } from './authStore';
 import { useBuildStore } from './buildStore';
 import { useCelebrationStore } from './celebrationStore';
+import { useChatSettingsStore } from './chatSettingsStore';
 import { useCommunityFilterStore } from './communityFilterStore';
 import { useCommunityStore } from './communityStore';
 import { useConnectStore } from './connectStore';
@@ -43,6 +44,8 @@ export const PER_USER_STORES: Record<string, AnyStore> = {
   useAuthStore,
   useBuildStore,
   useCelebrationStore,
+  // Chat lane (chat2): her read-receipts and who-can-add-me choices.
+  useChatSettingsStore,
   useCommunityFilterStore,
   useCommunityStore,
   useConnectStore,
