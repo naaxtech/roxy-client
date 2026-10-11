@@ -127,6 +127,93 @@ export function replyQuote(
   return { name, text: words.length > QUOTE_MAX ? `${words.slice(0, QUOTE_MAX)}…` : words };
 }
 
+/**
+ * CHAT-05: only Roxy may wear Roxy's card. Her suggestions are local rows with
+ * no sender; a `roxy_suggestion` row that came from a person (an old row, or a
+ * forged one from before migration 132 closed the door) is drawn as an
+ * ordinary bubble from that person. Returns the same array when nothing changes.
+ */
+export function trustRoxy<T extends ChatMessage>(messages: T[]): T[] {
+  if (!messages.some((m) => m.message_type === 'roxy_suggestion' && m.sender_id !== null)) return messages;
+  return messages.map((m) => (m.message_type === 'roxy_suggestion' && m.sender_id !== null
+    ? { ...m, message_type: 'text' as const }
+    : m));
+}
+
+function displayName(m: Pick<ThreadMember, 'display_name' | 'username'> | undefined): string {
+  return m?.display_name || m?.username || 'Someone';
+}
+
+export interface ThreadHeader {
+  title: string;
+  emoji: string | null;
+  subtitle: string | null;
+  isGroup: boolean;
+}
+
+/** What the top of the thread says. */
+export function threadHeader(meta: ThreadMeta | null, _me: string): ThreadHeader {
+  if (!meta) return { title: 'Chat', emoji: null, subtitle: null, isGroup: false };
+  const active = meta.others.filter((o) => o.status === 'active');
+  if (meta.type === 'group') {
+    const names = active.slice(0, 3).map(displayName);
+    const title = meta.title || (names.length ? names.join(', ') : 'Group chat');
+    const count = active.length + (meta.me && meta.me.status === 'active' ? 1 : 0);
+    return { title, emoji: meta.emoji, subtitle: `${count} member${count === 1 ? '' : 's'}`, isGroup: true };
+  }
+  return { title: displayName(meta.others[0]), emoji: null, subtitle: null, isGroup: false };
+}
+
+/** sender_id → the name a bubble, a quote or a reply bar shows. */
+export function senderNamer(meta: ThreadMeta | null, me: string): (senderId: string | null) => string {
+  const byId = new Map((meta?.others ?? []).map((o) => [o.id, displayName(o)]));
+  return (senderId) => {
+    if (senderId === null) return 'Roxy';
+    if (senderId === me) return 'You';
+    return byId.get(senderId) ?? 'Someone';
+  };
+}
+
+/**
+ * The header's "Report" (CHAT-11). The report table accepts content_type
+ * 'message' only for chat (no 'conversation' type yet — ops owns that CHECK),
+ * so the report points at her most recent message: moderators open the thread
+ * from a real message id instead of a report with no evidence pointer.
+ */
+export function headerReportTarget(
+  messages: ChatMessage[],
+  userId: string,
+): { userId: string; contentType: 'message'; contentId?: string } {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const m = messages[i];
+    if (m.sender_id === userId && m.message_type !== 'system') {
+      return { userId, contentType: 'message', contentId: m.id };
+    }
+  }
+  return { userId, contentType: 'message' };
+}
+
+/** "Until I turn it back on" for mute_conversation. */
+export const MUTE_FOREVER = '9999-12-31T00:00:00Z';
+
+export function isMutedUntil(mutedUntil: string | null | undefined, now: number = Date.now()): boolean {
+  return !!mutedUntil && Date.parse(mutedUntil) > now;
+}
+
+/** The group info screen (built in its own lane) lives under the thread. */
+export function groupInfoPath(conversationId: string): string {
+  return `/chat/${conversationId}/info`;
+}
+
+/**
+ * KeyboardAvoidingView behaviour. iOS pads; Android resizes the window itself
+ * (app.json softwareKeyboardLayoutMode 'resize'), so padding there would lift
+ * the composer twice; web has no soft keyboard to avoid.
+ */
+export function keyboardBehavior(os: string): 'padding' | undefined {
+  return os === 'ios' ? 'padding' : undefined;
+}
+
 export function typingLabel(names: string[]): string {
   if (names.length === 0) return '';
   if (names.length === 1) return `${names[0]} is typing`;
