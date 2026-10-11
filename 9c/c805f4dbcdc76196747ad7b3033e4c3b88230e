@@ -1,0 +1,16 @@
+apps/mobile/__tests__/hooks/useThreadMeta.test.ts
+  h_0549c11fec2ab0 8,20-21,24,35-39,50-51,59-61,76-93
+apps/mobile/hooks/useThreadMeta.ts
+  h_0549c11fec2ab0 5,24,68-76,85-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9cc805f4dbcdc76196747ad7b3033e4c3b88230e",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
