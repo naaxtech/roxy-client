@@ -184,6 +184,8 @@ describe('launchGateFeature', () => {
     expect(launchGateFeature('/code')).toBeNull();
     expect(launchGateFeature('/application')).toBeNull();
     expect(launchGateFeature('/pending')).toBeNull();
+    // "You're in" (G-11): a public-tier member must be able to see her welcome.
+    expect(launchGateFeature('/welcome-in')).toBeNull();
   });
 
   it('leaves the reset screen open to a public-tier account', () => {

@@ -6,7 +6,44 @@ import {
   isCodeRoute,
   isDeletedProfile,
   isResetPasswordRoute,
+  isWelcomeInRoute,
+  canGreetNewMemberHere,
 } from '../../lib/authRouting';
+
+/** "You're in" (G-11): where a just-approved member may be interrupted by it. */
+describe('canGreetNewMemberHere', () => {
+  const tabs = ['(tabs)', 'feed'];
+  it('an approved, onboarded member in the tabs may be greeted', () => {
+    expect(canGreetNewMemberHere('approved', true, tabs, '/feed')).toBe(true);
+  });
+  it('never a pending or rejected account', () => {
+    expect(canGreetNewMemberHere('pending', true, tabs, '/feed')).toBe(false);
+    expect(canGreetNewMemberHere('rejected', true, tabs, '/feed')).toBe(false);
+  });
+  it('not before onboarding is finished (onboarding owns that route)', () => {
+    expect(canGreetNewMemberHere('approved', false, tabs, '/feed')).toBe(false);
+  });
+  it('never from an auth screen: welcome-in itself, onboarding, pending, recovery', () => {
+    expect(canGreetNewMemberHere('approved', true, ['(auth)', 'welcome-in'], '/welcome-in')).toBe(false);
+    expect(canGreetNewMemberHere('approved', true, ['(auth)', 'onboarding', 'step2'], '/onboarding/step2')).toBe(false);
+    expect(canGreetNewMemberHere('approved', true, ['(auth)', 'pending'], '/pending')).toBe(false);
+    expect(canGreetNewMemberHere('approved', true, ['(auth)', 'reset-password'], '/reset-password')).toBe(false);
+  });
+  it('not on a recovery link that landed outside the auth group (web paths drop groups)', () => {
+    expect(canGreetNewMemberHere('approved', true, [], '/reset-password')).toBe(false);
+  });
+  it('not before the router has segments', () => {
+    expect(canGreetNewMemberHere('approved', true, [], '/')).toBe(false);
+  });
+});
+
+describe('isWelcomeInRoute', () => {
+  it('reads segments or pathname', () => {
+    expect(isWelcomeInRoute(['(auth)', 'welcome-in'], '/')).toBe(true);
+    expect(isWelcomeInRoute(['(auth)'], '/welcome-in')).toBe(true);
+    expect(isWelcomeInRoute(['(tabs)', 'feed'], '/feed')).toBe(false);
+  });
+});
 
 /**
  * The applicant flow hangs on this rule. An applicant's profile is 'pending' by

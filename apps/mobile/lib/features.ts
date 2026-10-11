@@ -151,6 +151,7 @@ const AUTH_ALLOWED = new Set([
   '/welcome',
   '/application',
   '/pending',
+  '/welcome-in',
   '/reset-password',
 ]);
 
