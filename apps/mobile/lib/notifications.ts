@@ -7,7 +7,9 @@ export type RoxyNotification = {
     // Migration 134: a decision on her application.
     | 'application_decided'
     // Migration 135: CHAT-09 invites and join requests.
-    | 'community_invite' | 'community_join_request';
+    | 'community_invite' | 'community_join_request'
+    // Migration 133: the creator loop and Archive decisions.
+    | 'post_reaction' | 'comment' | 'follow' | 'archive_revision';
   title: string;
   body: string | null;
   link_path: string | null;

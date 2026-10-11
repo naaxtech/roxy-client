@@ -32,7 +32,7 @@ describe('defaults', () => {
   it('every type is on, previews are off', () => {
     expect(DEFAULT_NOTIFICATION_SETTINGS).toMatchObject({
       push_enabled: true, messages: true, friends: true, events: true, community_chats: true,
-      membership: true, show_previews: false, quiet_start: null, quiet_end: null,
+      membership: true, activity: true, show_previews: false, quiet_start: null, quiet_end: null,
     });
   });
 });
@@ -67,6 +67,19 @@ describe('loadNotificationSettings', () => {
     expect(s.show_previews).toBe(true);
     expect(s.quiet_start).toBe('22:00');
     expect(s.quiet_end).toBe('07:00');
+  });
+
+  it('reads her activity switch (likes, comments, follows) and asks for the column', async () => {
+    const chain = selectReturning({ data: { user_id: 'u1', activity: false }, error: null });
+    from.mockReturnValue(chain);
+    const s = await loadNotificationSettings('u1');
+    expect(s.activity).toBe(false);
+    expect(String(chain.select.mock.calls[0][0])).toContain('activity');
+  });
+
+  it('a row saved before the activity switch existed reads it as ON', async () => {
+    from.mockReturnValue(selectReturning({ data: { user_id: 'u1', messages: true }, error: null }));
+    await expect(loadNotificationSettings('u1')).resolves.toMatchObject({ activity: true });
   });
 
   it('throws when the read fails, so the screen can say so instead of showing wrong switches', async () => {

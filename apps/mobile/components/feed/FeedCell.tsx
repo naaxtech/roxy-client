@@ -22,6 +22,17 @@ export interface FeedCellProps
   height: number;
   muted: boolean;
   onToggleMute: () => void;
+  /**
+   * False while the screen is blurred or the app is in the background
+   * (`usePlaybackAllowed`). A video cell never plays without it (FEED-03).
+   * Defaults to true for single-cell surfaces with no pager around them.
+   */
+  playbackAllowed?: boolean;
+  /**
+   * Idempotent "make it liked" for the double tap, which every cell type
+   * offers. Without it a cell falls back to `onLike` when not liked.
+   */
+  onDoubleTapLike?: () => void;
   /** Records a poll vote. Defaults to the shared tally write. */
   onVote?: (postId: string, optionKey: string) => Promise<boolean>;
 }
@@ -132,7 +143,7 @@ export function FeedCell(props: FeedCellProps): ReactElement {
  */
 function FeedCellBody({
   post, index, activeIndex, activeItemId, width, height, active,
-  muted, onToggleMute, onOpenPost, onVote,
+  muted, onToggleMute, onOpenPost, onVote, playbackAllowed = true,
   ...chrome
 }: FeedCellProps & { active: boolean }): ReactElement {
   const body = { post, width, height, onOpenPost, active, ...chrome };
@@ -154,6 +165,7 @@ function FeedCellBody({
           height={height}
           muted={muted}
           onToggleMute={onToggleMute}
+          playbackAllowed={playbackAllowed}
           onOpenPost={onOpenPost}
           {...chrome}
         />

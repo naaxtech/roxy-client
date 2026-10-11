@@ -158,4 +158,35 @@ describe('ReelCell playback lifecycle', () => {
 
     expect(videoCalls()[videoCalls().length - 1].postId).toBe('p-video');
   });
+
+  it('never plays while the screen is blurred or backgrounded (FEED-03)', () => {
+    const post = makeRow('p-video', 'video');
+    render(
+      <ReelCell
+        post={post}
+        index={0}
+        activeIndex={0}
+        activeItemId="p-video"
+        width={400}
+        height={800}
+        muted
+        playbackAllowed={false}
+        liked={false}
+        saved={false}
+        likeCount={7}
+        reducedMotion={false}
+        onToggleMute={noop}
+        onLike={noop}
+        onSave={noop}
+        onOpenComments={noop}
+        onOpenAuthor={noop}
+        onOpenCommunity={noop}
+        onOpenSafety={noop}
+        onOpenPost={noop}
+      />,
+    );
+
+    expect(videoCalls().length).toBeGreaterThan(0);
+    expect(videoCalls().every((call) => call.isActive === false)).toBe(true);
+  });
 });

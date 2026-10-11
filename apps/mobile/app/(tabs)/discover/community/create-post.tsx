@@ -5,13 +5,14 @@ import {
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase, callEdgeFunction } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useProfileStore } from '../../../../store/profileStore';
+import { useCelebrationStore } from '../../../../store/celebrationStore';
 import {
   postDestination, buildPostPayload, destinationLabel, afterPublishPath,
 } from '../../../../lib/postComposer';
@@ -24,6 +25,9 @@ import { canTagShop } from '../../../../lib/createAccess';
 import { isOfficialAccount } from '../../../../lib/officialGrant';
 import { deriveSellerStatus, canSell } from '../../../../lib/sellerStatus';
 import { TEXT_CARD_PLACEHOLDER } from '../../../../lib/textCard';
+import {
+  dailyPromptDraft, dailyPromptFor, dailyPromptFromParam, isUnansweredDraft, markDailyPromptAnswered,
+} from '../../../../lib/dailyPrompt';
 import { TextCardFace } from '../../../../components/feed/TextCardFace';
 import type { PostType } from '../../../../types';
 import { TYPE } from '../../../../lib/typography';
@@ -59,9 +63,17 @@ export default function CreatePostScreen() {
   const { user } = useAuthStore();
   const profile = useProfileStore((s) => s.profile);
 
-  const [step, setStep] = useState<Step>('type-picker');
+  // Opened from For You's question of the day: the question arrives as a list
+  // index (never as text) and the composer opens on a text card that already
+  // carries it. The day is fixed now, so an answer finished after midnight
+  // still settles the question she was answering.
+  const { prompt: promptParam } = useLocalSearchParams<{ prompt?: string }>();
+  const [promptQuestion] = useState(() => dailyPromptFromParam(promptParam));
+  const [promptDay] = useState(() => dailyPromptFor().dateKey);
+
+  const [step, setStep] = useState<Step>(promptQuestion ? 'composer' : 'type-picker');
   const [postType, setPostType] = useState<PostType>('standard');
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState(promptQuestion ? dailyPromptDraft(promptQuestion) : '');
   const [submitting, setSubmitting] = useState(false);
   const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [video, setVideo] = useState<ImagePicker.ImagePickerAsset | null>(null);
@@ -256,6 +268,10 @@ export default function CreatePostScreen() {
       showAlert('Add some text', 'A text card needs words.');
       return;
     }
+    if (postType === 'standard' && isUnansweredDraft(content, promptQuestion)) {
+      showAlert('Add your answer', 'Write your answer under the question, then publish.');
+      return;
+    }
     setSubmitting(true);
 
     if (postType === 'video') {
@@ -266,6 +282,7 @@ export default function CreatePostScreen() {
         return;
       }
       router.replace(afterPublishPath(postType));
+      void useCelebrationStore.getState().celebrateFirstPost(authorId, postType);
       return;
     }
 
@@ -298,6 +315,13 @@ export default function CreatePostScreen() {
       return;
     }
     router.replace(afterPublishPath(postType));
+    // Her first post ever gets a moment; the store decides "first" and the
+    // root host renders it, so it outlives this screen's `replace`.
+    void useCelebrationStore.getState().celebrateFirstPost(authorId, postType);
+    // Answered today's question: For You stops asking until tomorrow.
+    if (promptQuestion && postType === 'standard') {
+      void markDailyPromptAnswered(authorId, promptDay);
+    }
   };
 
   const styles = StyleSheet.create({

@@ -12,6 +12,7 @@ import { useProfileStore } from '../store/profileStore';
 import { supabase } from '../lib/supabase';
 import { DevPanel } from '../components/dev/DevPanel';
 import { BadgeCelebration } from '../components/gamification/BadgeCelebration';
+import { FirstPostCelebrationHost } from '../components/feed/FirstPostCelebration';
 import { useCelebrationStore } from '../store/celebrationStore';
 import { Analytics } from '../lib/analytics';
 import { logError, logBreadcrumb, setCrashlyticsUser, hashUserId } from '../lib/errorLogger';
@@ -334,6 +335,7 @@ function AppNavigator() {
         </WebAppFrame>
         {__DEV__ && <DevPanel />}
         <BadgeCelebrationHost />
+        <FirstPostCelebrationHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

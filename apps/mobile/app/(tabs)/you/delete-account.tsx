@@ -6,23 +6,49 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { callEdgeFunction, supabase } from '../../../lib/supabase';
-import { useAuthStore } from '../../../store/authStore';
+import { resetAllStores } from '../../../store/resetAllStores';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { inkOn } from '../../../lib/theme';
 import { logError } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
 import { a11yState } from '../../../lib/a11yState';
+import { exportUserData, describeExportResult } from '../../../lib/dataExport';
+
+/**
+ * What deleting does, in the order it happens. Only what the server actually
+ * does (gdpr-delete + the scheduled purge): the old copy said "All data
+ * deleted after 30 days" over a function that never deleted anything.
+ */
+export const DELETE_STEPS: readonly { icon: string; text: string }[] = [
+  { icon: '🙈', text: 'Right away, your name, photo, bio and pronouns are removed, and you\'re signed out on this phone.' },
+  { icon: '🔒', text: 'Your invite application, legal name and verification answers are erased right away.' },
+  { icon: '🗓️', text: 'Within 30 days, everything else is permanently deleted: your account, posts, comments, photos and Archive reviews.' },
+];
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
-  const confirmed = input === 'DELETE';
+  // Case- and space-insensitive: "delete " typed on a phone keyboard that
+  // capitalises nothing is the same decision as "DELETE".
+  const confirmed = input.trim().toUpperCase() === 'DELETE';
+
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    const outcome = await exportUserData();
+    setExporting(false);
+    const { title, body } = describeExportResult(outcome);
+    showAlert(title, body);
+  };
 
   const handleDelete = async () => {
     if (!confirmed || loading) return;
@@ -40,13 +66,16 @@ export default function DeleteAccountScreen() {
       setLoading(false);
       showAlert(
         'Account not deleted',
-        `${error} Your account is still here — nothing has been removed. Please try again.`,
+        /rate limit/i.test(String(error))
+          ? 'You have tried a few times today. Your account is still here — nothing has been removed. Please try again tomorrow.'
+          : 'Roxy could not reach the server. Your account is still here — nothing has been removed. Please try again.',
       );
       return;
     }
-    // Deletion confirmed by the server — best-effort sign out, always redirect.
+    // Deletion confirmed by the server — best-effort sign out, always redirect,
+    // and leave nothing of hers on this phone (ARC-08).
     try { await supabase.auth.signOut(); } catch {}
-    useAuthStore.getState().signOut();
+    resetAllStores();
     router.replace('/(auth)/welcome');
   };
 
@@ -68,27 +97,48 @@ export default function DeleteAccountScreen() {
 
     // Warning card
     warningCard: {
-      backgroundColor: '#3B0000',
+      backgroundColor: colors.error + '14',
       borderRadius: 16,
-      padding: 20,
-      alignItems: 'center',
+      padding: 18,
       borderWidth: 1,
-      borderColor: '#EF4444' + '40',
-      gap: 8,
+      borderColor: colors.error + '40',
+      gap: 12,
     },
-    warningIcon: { fontSize: 32 },
     warningTitle: {
-      color: '#EF4444',
+      color: colors.errorInk,
       fontSize: 16,
       fontWeight: '700',
-      textAlign: 'center',
     },
+    stepRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+    stepIcon: { fontSize: 16, lineHeight: 20 },
     warningText: {
+      flex: 1,
       color: colors.textPrimary,
       fontSize: 14,
-      textAlign: 'center',
       lineHeight: 20,
     },
+
+    // Export first
+    exportCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      gap: 10,
+    },
+    exportTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+    exportText: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
+    exportButton: {
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: colors.roxy,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    exportButtonText: { color: colors.roxy, fontSize: 14, fontWeight: '700' },
+    gentle: { color: colors.textMuted, fontSize: 13, lineHeight: 19, textAlign: 'center' },
 
     // Input section
     inputSection: {
@@ -114,17 +164,18 @@ export default function DeleteAccountScreen() {
 
     // Delete button
     deleteButton: {
-      backgroundColor: '#EF4444',
+      backgroundColor: colors.error,
       borderRadius: 16,
       padding: 16,
       alignItems: 'center',
+      minHeight: 52,
+      justifyContent: 'center',
     },
     deleteButtonDisabled: {
-      backgroundColor: '#EF4444' + '40',
-      opacity: 0.6,
+      opacity: 0.4,
     },
     deleteButtonText: {
-      color: '#FFFFFF',
+      color: inkOn(colors.error),
       fontSize: 16,
       fontWeight: '700',
     },
@@ -132,24 +183,52 @@ export default function DeleteAccountScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
             <Text style={styles.backText}>{'← Back'}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Delete Account</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header">Delete account</Text>
           <View style={styles.headerSpacer} />
         </View>
 
         {/* Warning card */}
-        <View style={styles.warningCard}>
-          <Text style={styles.warningIcon}>⚠️</Text>
-          <Text style={styles.warningTitle}>This action cannot be undone</Text>
-          <Text style={styles.warningText}>
-            Your account will be deactivated immediately. All data deleted after 30 days.
+        <View style={styles.warningCard} testID="delete-steps">
+          <Text style={styles.warningTitle}>This can't be undone</Text>
+          {DELETE_STEPS.map((step) => (
+            <View key={step.text} style={styles.stepRow}>
+              <Text style={styles.stepIcon} importantForAccessibility="no">{step.icon}</Text>
+              <Text style={styles.warningText}>{step.text}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Export first — she should never have to choose between leaving and keeping her memories */}
+        <View style={styles.exportCard}>
+          <Text style={styles.exportTitle}>Keep a copy first?</Text>
+          <Text style={styles.exportText}>
+            Download your posts, comments, messages you sent, Archive ratings and profile before you go.
           </Text>
+          <TouchableOpacity
+            testID="delete-export-button"
+            style={styles.exportButton}
+            onPress={() => void handleExport()}
+            disabled={exporting || loading}
+            accessibilityRole="button"
+            accessibilityLabel="Download my data"
+            {...a11yState({ disabled: exporting || loading, busy: exporting })}
+          >
+            {exporting
+              ? <ActivityIndicator color={colors.roxy} />
+              : <Text style={styles.exportButtonText}>Download my data</Text>}
+          </TouchableOpacity>
         </View>
 
         {/* Confirmation input */}
@@ -163,6 +242,7 @@ export default function DeleteAccountScreen() {
             style={styles.input}
             value={input}
             onChangeText={setInput}
+            maxLength={12}
             placeholder="DELETE"
             placeholderTextColor={colors.textMuted}
             autoCapitalize="characters"
@@ -180,16 +260,21 @@ export default function DeleteAccountScreen() {
           ]}
           onPress={handleDelete}
           disabled={!confirmed || loading}
-          {...a11yState({ disabled: !confirmed || loading })}
+          accessibilityRole="button"
+          accessibilityLabel="Delete my account"
+          {...a11yState({ disabled: !confirmed || loading, busy: loading })}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={inkOn(colors.error)} />
           ) : (
             <Text style={styles.deleteButtonText}>Delete my account</Text>
           )}
         </TouchableOpacity>
 
-      </View>
+        <Text style={styles.gentle}>
+          Need a break instead? You can hide from discovery in Settings and come back whenever you like.
+        </Text>
+      </ScrollView>
     </SafeAreaView>
   );
 }

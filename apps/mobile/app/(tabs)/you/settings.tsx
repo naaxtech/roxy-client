@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { MiniWinsSheet } from '../../../components/feed/MiniWinsSheet';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';
+import { resetAllStores } from '../../../store/resetAllStores';
 import { useProfileStore } from '../../../store/profileStore';
 import { supabase } from '../../../lib/supabase';
 import { exportUserData, describeExportResult } from '../../../lib/dataExport';
@@ -21,7 +22,8 @@ import {
   readDmPermission, nextDmPermission, dmPermissionLabel,
 } from '../../../lib/dmPermission';
 import { useAccess } from '../../../hooks/useAccess';
-import { useViewAsStore } from '../../../store/viewAsStore';
+// useViewAsStore: sign-out now resets it through resetAllStores (ARC-08).
+// import { useViewAsStore } from '../../../store/viewAsStore';
 import { TYPE } from '../../../lib/typography';
 import { RADII, type ThemeColors } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
@@ -68,9 +70,9 @@ export default function SettingsScreen() {
     if (!confirmed) return;
     await unregisterDevice();
     await supabase.auth.signOut();
-    useAuthStore.getState().signOut();
-    useProfileStore.getState().setProfile(null);
-    useViewAsStore.getState().setPreview(null);
+    // Every per-user store, not just auth/profile/view-as: the next account on
+    // this phone must not inherit her Archive, likes, follows or blocks (ARC-08).
+    resetAllStores();
     router.replace('/(auth)/code');
   };
 

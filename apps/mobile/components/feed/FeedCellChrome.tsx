@@ -15,6 +15,7 @@ import type { PostType } from '../../types';
 import { CommunityCrest } from './CommunityCrest';
 import { ShoppableProductCard } from './ShoppableProductCard';
 import { a11yState } from '../../lib/a11yState';
+import { tapLight } from '../../lib/haptics';
 import {
   CAPTION_CAP, CAPTION_COLLAPSED_LINES, CAPTION_EXPANDED_CAP, CAPTION_EXPANDED_LINES,
   CAPTION_LINE_HEIGHT,
@@ -124,6 +125,11 @@ export interface FeedBodyCellProps
   /** Measured page size from the pager. Never the window: a page is not a screen. */
   width: number;
   height: number;
+  /**
+   * Idempotent "make it liked", for the double tap. A body cell takes it out
+   * of the bag before the rest reaches the chrome. See `useDoubleTapLike`.
+   */
+  onDoubleTapLike?: () => void;
 }
 
 /**
@@ -435,7 +441,11 @@ export function FeedCellChrome({
           <TouchableOpacity
             testID="rail-like"
             style={s.railBtn}
-            onPress={onLike}
+            onPress={() => {
+              // A soft tick on the yes, not on the take-back (FEED-09).
+              if (!liked) tapLight(reducedMotion);
+              onLike();
+            }}
             accessibilityRole="button"
             accessibilityLabel={
               liked ? `Unlike ${noun}, ${likeCount} likes` : `Like ${noun}, ${likeCount} likes`

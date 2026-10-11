@@ -16,6 +16,8 @@ export type NotificationSettings = {
   community_chats: boolean;
   /** A decision on her application, or an upheld appeal (migration 134). */
   membership: boolean;
+  /** Someone sent her post a ✿, commented, replied or followed her (migration 133). */
+  activity: boolean;
   show_previews: boolean;
   /** 'HH:MM' local time, or null. */
   quiet_start: string | null;
@@ -29,6 +31,7 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   events: true,
   community_chats: true,
   membership: true,
+  activity: true,
   show_previews: false,
   quiet_start: null,
   quiet_end: null,
@@ -60,6 +63,7 @@ export async function loadNotificationSettings(userId: string): Promise<Notifica
     events: row.events !== false,
     community_chats: row.community_chats !== false,
     membership: row.membership !== false,
+    activity: row.activity !== false,
     show_previews: row.show_previews === true,
     quiet_start: hhmm(row.quiet_start),
     quiet_end: hhmm(row.quiet_end),

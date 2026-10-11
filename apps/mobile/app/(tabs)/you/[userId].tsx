@@ -519,7 +519,14 @@ function UserProfileScreen() {
           </TouchableOpacity>
           <Text style={styles.reelsTitle}>Reels</Text>
         </View>
-        <ReelsFeed scope="following" authorIds={[userId]} initialPostId={reelInitialId} />
+        {/* She opened this profile on purpose: a mute keeps someone out of her
+            feeds, not out of the profile she went looking for. */}
+        <ReelsFeed
+          scope="following"
+          authorIds={[userId]}
+          initialPostId={reelInitialId}
+          showMutedAuthors
+        />
       </SafeAreaView>
     );
   }

@@ -24,9 +24,14 @@ export type NotificationType =
   // Migration 135 (CHAT-09): a moderator invited her to a private community,
   // or someone asked to join a community she moderates.
   | 'community_invite'
-  | 'community_join_request';
+  | 'community_join_request'
+  // Migration 133: the creator loop: someone sent her post a ✿, commented on
+  // it or replied to her comment, or followed her.
+  | 'post_reaction'
+  | 'comment'
+  | 'follow';
 
-export type PrefKey = 'messages' | 'community_chats' | 'friends' | 'events' | 'membership';
+export type PrefKey = 'messages' | 'community_chats' | 'friends' | 'events' | 'membership' | 'activity';
 
 /**
  * Android notification channel ids; created by the app (lib/pushRegistration.ts)
@@ -46,6 +51,12 @@ export type PushPrefs = {
    * column default.
    */
   membership?: boolean;
+  /**
+   * Likes, comments and follows (migration 133). Optional because a settings
+   * row read before the column existed has no value; absent means ON, the
+   * column default.
+   */
+  activity?: boolean;
   show_previews: boolean;
   /** 'HH:MM' in her timezone, or null for no quiet hours. */
   quiet_start: string | null;
@@ -61,6 +72,7 @@ export const DEFAULT_PREFS: PushPrefs = {
   events: true,
   community_chats: true,
   membership: true,
+  activity: true,
   show_previews: false,
   quiet_start: null,
   quiet_end: null,
@@ -106,6 +118,12 @@ const CATEGORY: Record<NotificationType, { pref: PrefKey; channel: Exclude<Chann
   // before it could ring).
   community_invite: { pref: 'community_chats', channel: 'community' },
   community_join_request: { pref: 'community_chats', channel: 'community' },
+  // Social activity rings on the existing 'friends' channel: the app creates
+  // the Android channels (lib/push.ts) and a new channel id would need an app
+  // release before it could ring at all.
+  post_reaction: { pref: 'activity', channel: 'friends' },
+  comment: { pref: 'activity', channel: 'friends' },
+  follow: { pref: 'activity', channel: 'friends' },
 };
 
 /** Which preference gates a type, and which channel it rings on. Unknown types are never pushed. */
@@ -129,6 +147,14 @@ function privateCopy(n: QueuedNotification): { title: string; body: string } {
     case 'community_join_request':
       // Neither the community nor her note.
       return { title: who, body: 'Asked to join a community you moderate' };
+    case 'post_reaction':
+      return { title: who, body: 'Sent your post a ✿' };
+    case 'comment':
+      // Never the comment's words, and never the post: her post may be about
+      // something she is not out about.
+      return { title: who, body: 'Commented on your post' };
+    case 'follow':
+      return { title: who, body: 'Started following you' };
     case 'channel_message':
       return { title: 'Roxy', body: 'New message in a community chat' };
     case 'community_event':

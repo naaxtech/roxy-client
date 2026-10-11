@@ -22,6 +22,9 @@ import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { useFollowStore } from '../../../store/followStore';
 import { a11yState } from '../../../lib/a11yState';
 import { useAccess } from '../../../hooks/useAccess';
+import {
+  dailyPromptFor, hasAnsweredDailyPrompt, onDailyPromptAnswered, type DailyPrompt,
+} from '../../../lib/dailyPrompt';
 import ArchiveBrowseScreen from '../../archive/index';
 
 /** One Mini Wins prompt per calendar day, per device. */
@@ -57,6 +60,29 @@ function FeedScreen() {
   const [nowOpen, setNowOpen] = useState(false);
   const [liveCount, setLiveCount] = useState(0);
   const [miniWinsOpen, setMiniWinsOpen] = useState(false);
+  const { can } = useAccess();
+
+  /**
+   * Question of the day (audit #4). Null until we know she has not answered
+   * today, so an answered question never flashes into the pager; null again
+   * the moment she answers it in the composer (this screen stays mounted).
+   * Only for women who can post — the card's one action is "answer it".
+   */
+  const canCreate = can('create');
+  const [dailyPrompt, setDailyPrompt] = useState<DailyPrompt | null>(null);
+  useEffect(() => {
+    const uid = user?.id;
+    if (!uid || !canCreate) { setDailyPrompt(null); return; }
+    const today = dailyPromptFor();
+    let cancelled = false;
+    void hasAnsweredDailyPrompt(uid, today.dateKey).then((answered) => {
+      if (!cancelled && !answered) setDailyPrompt(today);
+    });
+    const off = onDailyPromptAnswered((answeredBy, dateKey) => {
+      if (answeredBy === uid && dateKey === today.dateKey) setDailyPrompt(null);
+    });
+    return () => { cancelled = true; off(); };
+  }, [user?.id, canCreate]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -143,6 +169,7 @@ function FeedScreen() {
         scope={scope}
         communityIds={filteredCommunityIds}
         authorIds={authorIds}
+        dailyPrompt={segment === 'foryou' ? dailyPrompt : null}
       />
 
       {/* Absolute overlay so the pager keeps the full box it measures against. */}
