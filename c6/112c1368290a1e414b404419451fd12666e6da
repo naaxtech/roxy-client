@@ -1,0 +1,18 @@
+apps/studio/__tests__/lib/inviteWaveSummary.test.ts
+  h_0549c11fec2ab0 1-76
+apps/studio/app/(dashboard)/staff/launch/waves/page.tsx
+  h_0549c11fec2ab0 5-6,12-14,33-42,64-65,68,71-73
+apps/studio/lib/inviteWaves.ts
+  h_0549c11fec2ab0 11-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6112c1368290a1e414b404419451fd12666e6da",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
