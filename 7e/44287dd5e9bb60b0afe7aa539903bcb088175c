@@ -1,0 +1,16 @@
+apps/mobile/__tests__/store/resetAllStores.test.ts
+  h_0549c11fec2ab0 73-81
+apps/mobile/store/resetAllStores.ts
+  h_0549c11fec2ab0 6,47-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e44287dd5e9bb60b0afe7aa539903bcb088175c",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
