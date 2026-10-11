@@ -64,7 +64,8 @@ function setState(over: Record<string, unknown> = {}) {
     loadError: null,
     appeal: null,
     loadApplication: jest.fn().mockResolvedValue(undefined),
-    requestAppeal: jest.fn().mockResolvedValue(true),
+    loadAppeal: jest.fn().mockResolvedValue(undefined),
+    requestAppeal: jest.fn().mockResolvedValue('sent'),
     ...over,
   });
 }
@@ -100,5 +101,103 @@ describe('PendingScreen — live status (G-11)', () => {
     await act(async () => { fireEvent.press(getByRole('button', { name: 'Refresh status' })); });
     expect(mockRefresh).toHaveBeenCalled();
     expect(mockState.loadApplication).toHaveBeenCalledTimes(2);
+  });
+});
+
+/** G-12: rejected — the reason, the date, one appeal, and a way back in. */
+describe('PendingScreen — rejected (130: decision_reason, rejected_until, appeals)', () => {
+  const FUTURE = '2099-01-15T00:00:00Z';
+  const PAST = '2020-01-15T00:00:00Z';
+  const rejected = (over: Partial<ApplicationState> = {}): ApplicationState => ({
+    ...PENDING,
+    status: 'rejected',
+    decided_at: '2026-10-05T10:00:00Z',
+    rejected_until: FUTURE,
+    decision_reason: 'not_known',
+    ...over,
+  });
+
+  it("shows the reviewer's reason category in words, never a raw key", () => {
+    setState({ application: rejected() });
+    const { getByTestId } = render(<PendingScreen />);
+    expect(getByTestId('rejection-reason').props.children).toBe(
+      "The community that invited you didn't feel they knew you well enough yet.",
+    );
+  });
+
+  it('with no category it still says a person decided, without inventing a reason', () => {
+    setState({ application: rejected({ decision_reason: null }) });
+    const { queryByTestId } = render(<PendingScreen />);
+    expect(queryByTestId('rejection-reason')).toBeNull();
+  });
+
+  it('shows the cooldown date and no new-code button before it', () => {
+    setState({ application: rejected() });
+    const { getByText, queryByRole } = render(<PendingScreen />);
+    expect(getByText(/15 January 2099/)).toBeTruthy();
+    expect(queryByRole('button', { name: 'Enter a new code' })).toBeNull();
+  });
+
+  it('after the cooldown she can enter a new code, signed in', () => {
+    setState({ application: rejected({ rejected_until: PAST }) });
+    const { getByRole } = render(<PendingScreen />);
+    fireEvent.press(getByRole('button', { name: 'Enter a new code' }));
+    expect(mockPush).toHaveBeenCalledWith('/(auth)/code');
+  });
+
+  it('loads her appeal so a sent appeal is not offered again', () => {
+    const loadAppeal = jest.fn().mockResolvedValue(undefined);
+    setState({ application: rejected(), loadAppeal });
+    render(<PendingScreen />);
+    expect(loadAppeal).toHaveBeenCalled();
+  });
+
+  it('sends an appeal and shows that it went to Roxy staff', async () => {
+    const requestAppeal = jest.fn().mockResolvedValue('sent');
+    setState({ application: rejected(), requestAppeal, loadAppeal: jest.fn() });
+    const { getByLabelText, getByRole, findByTestId } = render(<PendingScreen />);
+    fireEvent.changeText(getByLabelText('Your appeal'), 'My friend in the community can vouch for me');
+    await act(async () => { fireEvent.press(getByRole('button', { name: 'Send appeal' })); });
+    expect(requestAppeal).toHaveBeenCalledWith('My friend in the community can vouch for me');
+    expect(await findByTestId('appeal-sent')).toBeTruthy();
+  });
+
+  it('a failed send is a retry, not a claim it was already sent', async () => {
+    const { showAlert } = jest.requireMock('../../lib/confirm') as { showAlert: jest.Mock };
+    const requestAppeal = jest.fn().mockResolvedValue('failed');
+    setState({ application: rejected(), requestAppeal, loadAppeal: jest.fn() });
+    const { getByLabelText, getByRole, queryByTestId } = render(<PendingScreen />);
+    fireEvent.changeText(getByLabelText('Your appeal'), 'My friend in the community can vouch for me');
+    await act(async () => { fireEvent.press(getByRole('button', { name: 'Send appeal' })); });
+    expect(showAlert).toHaveBeenCalledWith('Could not send', expect.stringMatching(/try again/i));
+    expect(queryByTestId('appeal-sent')).toBeNull();
+  });
+
+  it('an appeal under review is shown as such, with no form', () => {
+    setState({
+      application: rejected(),
+      appeal: { requested_at: '2026-10-06T10:00:00Z', resolved_at: null, outcome: null },
+      loadAppeal: jest.fn(),
+    });
+    const { getByTestId, queryByLabelText } = render(<PendingScreen />);
+    expect(getByTestId('appeal-sent')).toBeTruthy();
+    expect(queryByLabelText('Your appeal')).toBeNull();
+  });
+
+  it('an upheld appeal says the decision stands, with no form', () => {
+    setState({
+      application: rejected(),
+      appeal: { requested_at: '2026-10-06T10:00:00Z', resolved_at: '2026-10-08T10:00:00Z', outcome: 'upheld' },
+      loadAppeal: jest.fn(),
+    });
+    const { getByTestId, queryByLabelText } = render(<PendingScreen />);
+    expect(getByTestId('appeal-upheld')).toBeTruthy();
+    expect(queryByLabelText('Your appeal')).toBeNull();
+  });
+
+  it('the send button is a disabled button for screen readers until 10 characters', () => {
+    setState({ application: rejected(), loadAppeal: jest.fn() });
+    const { getByRole } = render(<PendingScreen />);
+    expect(getByRole('button', { name: 'Send appeal' }).props.accessibilityState?.disabled).toBe(true);
   });
 });

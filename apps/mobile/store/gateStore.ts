@@ -117,6 +117,19 @@ export const JOIN_REASON_MIN = 40;
 
 export type SubmitOutcome = { ok: true } | { ok: false; reason: SubmitFailure; missing?: string[] };
 
+/** Her own appeal, as aa_own lets her read it. Outcome is set by resolve_appeal (130). */
+export interface AppealState {
+  requested_at: string;
+  resolved_at: string | null;
+  outcome: 'upheld' | 'overturned' | null;
+}
+
+/** What became of "Ask us to look again". A duplicate is not a failure. */
+export type AppealOutcome = 'sent' | 'already_sent' | 'failed';
+
+/** application_appeals.reason CHECK: 10..2000 characters after trim (070). */
+export const APPEAL_MIN = 10;
+
 /**
  * Each rejection gets its own sentence. "Invalid code" for an expired one sends
  * someone back to the friend who invited them to ask for a code that was never
@@ -151,6 +164,8 @@ interface GateState {
    */
   redeemError: RedeemFailure | null;
   submitting: boolean;
+  /** Her appeal, once sent (G-12). Null: none sent, or not loaded yet. */
+  appeal: AppealState | null;
 
   validateCode: (code: string) => Promise<boolean>;
   clearCode: () => void;
@@ -161,7 +176,8 @@ interface GateState {
   saveAnswer: (criterionId: string, answer: string) => Promise<boolean>;
   saveLegalName: (name: string) => Promise<LegalNameOutcome>;
   startVerification: () => Promise<string | null>;
-  requestAppeal: (reason: string) => Promise<boolean>;
+  requestAppeal: (reason: string) => Promise<AppealOutcome>;
+  loadAppeal: () => Promise<void>;
   grantVerificationConsent: () => Promise<boolean>;
   reset: () => void;
 }
@@ -220,6 +236,7 @@ export const useGateStore = create<GateState>((set, get) => ({
   loadError: null,
   redeemError: null,
   submitting: false,
+  appeal: null,
 
   validateCode: async (code) => {
     set({ checking: true, codeError: null });
@@ -530,19 +547,41 @@ export const useGateStore = create<GateState>((set, get) => ({
   },
 
   // Appeals are append-only (130 / G-24): one per application, never edited.
+  // The 130 column grant allows INSERT (application_id, reason) only; aa_own
+  // lets her read it back, and resolve_appeal (staff) sets the outcome.
   requestAppeal: async (reason) => {
     const application = get().application;
-    if (!application) return false;
+    const text = reason.trim();
+    if (!application || text.length < APPEAL_MIN) return 'failed';
 
     const { error } = await supabase
       .from('application_appeals')
-      .insert({ application_id: application.id, reason: reason.trim() });
+      .insert({ application_id: application.id, reason: text });
 
     if (error) {
+      // UNIQUE (application_id): she has already asked. That is a fact to
+      // state, not an error to log or retry.
+      if (error.code === PK_CONFLICT) return 'already_sent';
       logError(error, 'gateStore.requestAppeal');
-      return false;
+      return 'failed';
     }
-    return true;
+    set({ appeal: { requested_at: new Date().toISOString(), resolved_at: null, outcome: null } });
+    return 'sent';
+  },
+
+  loadAppeal: async () => {
+    const application = get().application;
+    if (!application) return;
+    const { data, error } = await supabase
+      .from('application_appeals')
+      .select('requested_at, resolved_at, outcome')
+      .eq('application_id', application.id)
+      .maybeSingle();
+    if (error) {
+      logError(error, 'gateStore.loadAppeal');
+      return;
+    }
+    set({ appeal: (data as AppealState | null) ?? null });
   },
 
   reset: () =>
@@ -559,6 +598,7 @@ export const useGateStore = create<GateState>((set, get) => ({
       loadError: null,
       redeemError: null,
       submitting: false,
+      appeal: null,
     }),
 }));
 
