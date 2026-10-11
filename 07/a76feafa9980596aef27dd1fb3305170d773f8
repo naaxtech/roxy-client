@@ -1,0 +1,34 @@
+apps/studio/__tests__/lib/members.test.ts
+  h_0549c11fec2ab0 1-69
+apps/studio/__tests__/lib/navGroups.test.ts
+  h_0549c11fec2ab0 41,45-48
+apps/studio/__tests__/staff/MemberSuspensionPanel.test.tsx
+  h_0549c11fec2ab0 1-72
+apps/studio/__tests__/staff/membersActions.test.ts
+  h_0549c11fec2ab0 1-99
+apps/studio/app/(dashboard)/staff/members/MemberSuspensionPanel.tsx
+  h_0549c11fec2ab0 1-159
+apps/studio/app/(dashboard)/staff/members/[id]/page.tsx
+  h_0549c11fec2ab0 1-176
+apps/studio/app/(dashboard)/staff/members/actions.ts
+  h_0549c11fec2ab0 1-78
+apps/studio/app/(dashboard)/staff/members/loading.tsx
+  h_0549c11fec2ab0 1-18
+apps/studio/app/(dashboard)/staff/members/page.tsx
+  h_0549c11fec2ab0 1-149
+apps/studio/components/AppSidebar.tsx
+  h_0549c11fec2ab0 11,93
+apps/studio/lib/members.ts
+  h_0549c11fec2ab0 1-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07a76feafa9980596aef27dd1fb3305170d773f8",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
