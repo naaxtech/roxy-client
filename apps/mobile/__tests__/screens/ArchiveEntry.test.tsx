@@ -50,6 +50,12 @@ jest.mock('../../lib/archive', () => {
 jest.mock('../../components/archive/composerActions', () => ({
   submitReview: (...a: unknown[]) => mockSubmitReview(...a),
 }));
+jest.mock('../../lib/archiveSafety', () => ({
+  fetchMyHelpful: () => Promise.resolve(new Set()),
+  setReviewHelpful: jest.fn(),
+  deleteMyReview: jest.fn(),
+  reportArchiveContent: jest.fn(),
+}));
 
 const entry: ArchiveEntry = {
   id: 'e1', slug: 'carol', title: 'Carol', media_type: 'film', release_year: 2015,
@@ -183,6 +189,8 @@ describe('the Archive entry screen', () => {
     const { getByTestId } = render(<ArchiveEntryScreen />);
     await waitFor(() => expect(getByTestId('archive-vote-comment')).toBeTruthy());
     fireEvent.changeText(getByTestId('archive-vote-comment'), 'The gloves scene.');
+    // The no-spoilers box is hers to tick (ARC-05); it used to be sent as true.
+    fireEvent.press(getByTestId('archive-vote-ack'));
     fireEvent.press(getByTestId('archive-vote-review-submit'));
     await waitFor(() =>
       expect(mockSubmitReview).toHaveBeenCalledWith('e1', 'The gloves scene.', true, true),

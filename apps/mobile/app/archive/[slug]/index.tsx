@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet, RefreshControl,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,7 +24,11 @@ import { submitReview } from '../../../components/archive/composerActions';
 import { ScoreRing } from '../../../components/archive/ScoreRing';
 import { VerdictLine } from '../../../components/archive/VerdictLine';
 import { VoteCard } from '../../../components/archive/VoteCard';
-import { ContentNoteChip, visibleNotes } from '../../../components/archive/ContentNoteChip';
+import { ContentNoteChip, NOTE_AGREEMENT_GATE } from '../../../components/archive/ContentNoteChip';
+import { ArchiveActionsSheet, type ArchiveActionTarget } from '../../../components/archive/ArchiveActionsSheet';
+import { fetchMyHelpful, setReviewHelpful } from '../../../lib/archiveSafety';
+import { useSafetyStore } from '../../../store/safetyStore';
+import { tapLight } from '../../../lib/haptics';
 import { PendingBanner } from '../../../components/archive/PendingBanner';
 import { EntryHero } from '../../../components/archive/EntryHero';
 
@@ -55,7 +61,10 @@ export default function ArchiveEntryScreen() {
   const withdrawVote = useArchiveStore((s) => s.withdrawVote);
   const toggleWatch = useArchiveStore((s) => s.toggleWatch);
   const agreeNote = useArchiveStore((s) => s.agreeNote);
+  const unagreeNote = useArchiveStore((s) => s.unagreeNote);
   const hydrateMine = useArchiveStore((s) => s.hydrateMine);
+  const blockedIds = useSafetyStore((s) => s.blockedUserIds);
+  const mutedIds = useSafetyStore((s) => s.mutedUserIds);
 
   const [entry, setEntry] = useState<ArchiveEntry | null>(null);
   const [detail, setDetail] = useState<ArchiveEntryDetail>({ notes: [], reviews: [], lastEdit: null });
@@ -67,7 +76,29 @@ export default function ArchiveEntryScreen() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [firstVoteOpen, setFirstVoteOpen] = useState(false);
   const [reviewComment, setReviewComment] = useState('');
+  const [reviewAck, setReviewAck] = useState(false);
   const [reviewBusy, setReviewBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [actionTarget, setActionTarget] = useState<ArchiveActionTarget | null>(null);
+  const [myHelpful, setMyHelpful] = useState<Set<string>>(() => new Set());
+  const [helpfulDelta, setHelpfulDelta] = useState<Record<string, number>>({});
+  const [showAllReviews, setShowAllReviews] = useState(false);
+  const [flaggedNotes, setFlaggedNotes] = useState<Set<string>>(() => new Set());
+
+  // Blocked authors' reviews are withheld by RLS too (133 §4); this makes a
+  // block from this screen take effect at once, and applies her mutes.
+  const reviews = useMemo(() => {
+    const hidden = new Set([...(blockedIds ?? []), ...(mutedIds ?? [])]);
+    return detail.reviews.filter((r) => !r.author?.id || !hidden.has(r.author.id));
+  }, [detail.reviews, blockedIds, mutedIds]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchMyHelpful(detail.reviews.map((r) => r.id)).then((ids) => {
+      if (!cancelled) { setMyHelpful(ids); setHelpfulDelta({}); }
+    });
+    return () => { cancelled = true; };
+  }, [detail.reviews]);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -86,6 +117,25 @@ export default function ArchiveEntryScreen() {
   }, [slug]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Pull-to-refresh re-reads the entry and its lists without the full-screen
+  // spinner (ARC-12).
+  const onRefresh = useCallback(async () => {
+    if (!entry) return;
+    setRefreshing(true);
+    try {
+      const [fresh, nextDetail] = await Promise.all([
+        fetchArchiveEntry(entry.slug),
+        fetchArchiveEntryDetail(entry.id),
+      ]);
+      if (fresh) setEntry(fresh);
+      setDetail(nextDetail);
+    } catch (e) {
+      logError(e, 'archiveEntry.refresh');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [entry]);
 
   useEffect(() => {
     if (userId) void hydrateMine(userId);
@@ -117,6 +167,16 @@ export default function ArchiveEntryScreen() {
     reviewAuthor: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '800' },
     reviewBody: { ...TYPE.body, color: colors.textSecondary },
     reviewMeta: { ...TYPE.micro, color: colors.textMuted },
+    reviewHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    reviewMore: { minWidth: 32, minHeight: 32, alignItems: 'center', justifyContent: 'center' },
+    reviewFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+    helpful: {
+      minHeight: 32, paddingHorizontal: 10, justifyContent: 'center', borderRadius: RADII.pill,
+      borderWidth: 1, borderColor: colors.line,
+    },
+    helpfulOn: { borderColor: colors.primary },
+    helpfulOnText: { color: colors.primaryInk, fontWeight: '800' },
+    entryMore: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, minHeight: 32 },
     actionRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
     action: {
       minHeight: MIN_TOUCH_TARGET, justifyContent: 'center', paddingHorizontal: 14,
@@ -200,9 +260,15 @@ export default function ArchiveEntryScreen() {
   const myStars = entry.id in myVotes ? myVotes[entry.id] : null;
   const watched = watchlist.includes(entry.id);
   const lastEdit = detail.lastEdit;
-  const notes = visibleNotes(
-    detail.notes.map((n) => ({ ...n, agreed: noteAgreements.includes(n.id) }))
-  );
+  // Every visible note shows (ARC-01). The 3-agree gate hid all 95 seeded
+  // notes forever: under the gate a note never rendered, so nobody could
+  // agree it over the gate. Notes now show until reported (133 §6 flags);
+  // agreements are a count, confirmed ones sort first.
+  const allNotes = detail.notes
+    .filter((n) => !flaggedNotes.has(n.id))
+    .map((n) => ({ ...n, agreed: noteAgreements.includes(n.id) }))
+    .sort((a, b) => b.agreeCount - a.agreeCount);
+  const unconfirmed = allNotes.filter((n) => n.agreeCount < NOTE_AGREEMENT_GATE).length;
   const meta = [entry.release_year, entry.creator, entry.length_label]
     .filter((p) => p !== null && p !== undefined && String(p).length > 0)
     .join(' · ');
@@ -247,17 +313,20 @@ export default function ArchiveEntryScreen() {
 
   const postReview = async () => {
     const body = reviewComment.trim();
-    if (!body || !membership.canReview) return;
+    if (!body || !membership.canReview || myStars == null || !reviewAck) return;
     setReviewBusy(true);
     await runAction('review', async () => {
       const res = await submitReview(
         entry.id,
         body,
-        myStars != null ? starsToRecommend(myStars) : true,
-        true,
+        // Her verdict comes from her own stars; VoteCard only offers the box
+        // once she has rated, and the ack is hers to tick (ARC-05).
+        starsToRecommend(myStars ?? 0),
+        reviewAck,
       );
       if (res.error) throw new Error(res.error);
       setReviewComment('');
+      setReviewAck(false);
       const [fresh, nextDetail] = await Promise.all([
         fetchArchiveEntry(entry.slug),
         fetchArchiveEntryDetail(entry.id),
@@ -274,10 +343,37 @@ export default function ArchiveEntryScreen() {
     then();
   };
 
+  const toggleHelpful = async (reviewId: string) => {
+    const on = !myHelpful.has(reviewId);
+    tapLight();
+    const flip = (next: boolean) => {
+      setMyHelpful((cur) => {
+        const n = new Set(cur);
+        if (next) n.add(reviewId); else n.delete(reviewId);
+        return n;
+      });
+      setHelpfulDelta((cur) => ({ ...cur, [reviewId]: (cur[reviewId] ?? 0) + (next === on ? (on ? 1 : -1) : (on ? -1 : 1)) }));
+    };
+    flip(on);
+    try {
+      await setReviewHelpful(reviewId, on);
+    } catch (e) {
+      logError(e, 'archiveEntry.helpful');
+      flip(!on);
+      setActionError('That did not save. Please try again.');
+    }
+  };
+
+  const shownReviews = showAllReviews ? reviews : reviews.slice(0, 5);
+
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       {back}
-      <ScrollView contentContainerStyle={s.content}>
+      <ScrollView
+        contentContainerStyle={s.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={colors.primary} colors={[colors.primary]} />}
+        testID="archive-entry-scroll"
+      >
         {/* The design leads with colour: a 196px banner and a poster across
             its lower edge. The page had neither, and a bare ring on a flat
             background read as a settings row rather than a catalogue entry. */}
@@ -289,6 +385,17 @@ export default function ArchiveEntryScreen() {
           coverGradient={entry.cover_gradient}
           testID="archive-entry-hero"
         />
+        <Pressable
+          onPress={() => setActionTarget({ kind: 'entry', id: entry.id, reporterId: userId ?? '' })}
+          style={s.entryMore}
+          testID="archive-entry-more"
+          accessibilityRole="button"
+          accessibilityLabel="Report this entry"
+          hitSlop={8}
+        >
+          <Ionicons name="flag-outline" size={16} color={colors.textMuted} />
+          <Text style={s.hint}>Something wrong or a spoiler here? Report it</Text>
+        </Pressable>
 
         {/* A ring exists to hold a percentage. With no rating it is an empty
             circle with the word "Unreviewed" spilling out of it — so an unrated
@@ -362,6 +469,8 @@ export default function ArchiveEntryScreen() {
           onCommentChange={setReviewComment}
           onSubmitComment={() => void postReview()}
           commentBusy={reviewBusy}
+          ack={reviewAck}
+          onAckChange={setReviewAck}
           note={
             membership.canReview
               ? 'Stars are the score. A review comment is optional and carries your name.'
@@ -401,27 +510,40 @@ export default function ArchiveEntryScreen() {
 
         <View style={s.section}>
           <Text style={s.sectionTitle}>Content notes</Text>
-          {notes.length > 0 ? (
-            <View style={s.notes}>
-              {notes.map((note, i) => (
-                <ContentNoteChip
-                  key={note.id}
-                  label={note.label}
-                  agreeCount={note.agreeCount}
-                  agreed={note.agreed}
-                  index={i}
-                  onPress={() => void runAction('agreeNote', async () => {
-                    await agreeNote(note.id);
-                    Analytics.archiveNoteAgreed(entry.slug);
-                  })}
-                  testID={`archive-note-${note.id}`}
-                />
-              ))}
-            </View>
+          {allNotes.length > 0 ? (
+            <>
+              <View style={s.notes}>
+                {allNotes.map((note, i) => (
+                  <ContentNoteChip
+                    key={note.id}
+                    label={note.label}
+                    agreeCount={note.agreeCount}
+                    agreed={note.agreed}
+                    index={i}
+                    // Agreeing is a write that needs approval: a pending member
+                    // gets the unlock explanation, not a refused insert (ARC-02).
+                    onPress={() => requireApproved(() => void runAction('agreeNote', async () => {
+                      if (note.agreed) {
+                        await unagreeNote(note.id);
+                      } else {
+                        await agreeNote(note.id);
+                        Analytics.archiveNoteAgreed(entry.slug);
+                      }
+                    }))}
+                    onLongPress={() => setActionTarget({ kind: 'note', id: note.id, label: note.label })}
+                    testID={`archive-note-${note.id}`}
+                  />
+                ))}
+              </View>
+              <Text style={s.hint} testID="archive-notes-hint">
+                {unconfirmed > 0
+                  ? `Tap a note you agree with${unconfirmed === 1 ? '' : ` — ${unconfirmed} are waiting for agreement`}. Hold one to flag it.`
+                  : 'Tap a note you agree with. Hold one to flag it.'}
+              </Text>
+            </>
           ) : (
             <Text style={s.hint}>
-              No content notes yet. They appear once three members agree, so nobody is
-              labelling this on their own.
+              No content notes yet. Add the first — what is in it, never how it ends.
             </Text>
           )}
           {/* Endings are never tagged. That is the one Archive rule and it is
@@ -440,18 +562,70 @@ export default function ArchiveEntryScreen() {
 
         <View style={s.section}>
           <Text style={s.sectionTitle}>Member reviews</Text>
-          {detail.reviews.length > 0 ? (
-            detail.reviews.map((review) => (
-              <View key={review.id} style={s.review}>
-                <Text style={s.reviewAuthor}>
-                  {review.author?.display_name ?? review.author?.username ?? 'A member'}
-                </Text>
-                <Text style={s.reviewBody}>{review.body}</Text>
-                <Text style={s.reviewMeta}>
-                  {review.is_recommend ? '👍 recommends' : '👎 does not'} · {review.helpful_count} found this helpful
-                </Text>
-              </View>
-            ))
+          {reviews.length > 0 ? (
+            <>
+            {shownReviews.map((review) => {
+              const authorId = review.author?.id ?? null;
+              const isMine = !!authorId && authorId === userId;
+              const name = review.author?.display_name ?? review.author?.username ?? 'A member';
+              const helpful = Math.max(0, review.helpful_count + (helpfulDelta[review.id] ?? 0));
+              const marked = myHelpful.has(review.id);
+              return (
+                <View key={review.id} style={s.review} testID={`archive-review-${review.id}`}>
+                  <View style={s.reviewHead}>
+                    <Pressable
+                      onPress={authorId ? () => router.push(`/user/${authorId}` as never) : undefined}
+                      testID={`archive-review-${review.id}-author`}
+                      accessibilityRole="link"
+                      accessibilityLabel={`Open ${name}'s profile`}
+                      style={{ flex: 1 }}
+                    >
+                      <Text style={s.reviewAuthor}>{isMine ? `${name} (you)` : name}</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setActionTarget({ kind: 'review', id: review.id, authorId: authorId ?? '', authorName: name, isMine })}
+                      testID={`archive-review-${review.id}-more`}
+                      accessibilityRole="button"
+                      accessibilityLabel={isMine ? 'Edit or delete your review' : `Report or block ${name}`}
+                      hitSlop={10}
+                      style={s.reviewMore}
+                    >
+                      <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
+                    </Pressable>
+                  </View>
+                  <Text style={s.reviewBody}>{review.body}</Text>
+                  <View style={s.reviewFoot}>
+                    <Text style={s.reviewMeta}>
+                      {review.is_recommend ? '👍 recommends' : '👎 does not'}
+                      {helpful > 0 ? ` · ${helpful} found this helpful` : ''}
+                    </Text>
+                    {isMine ? null : (
+                      <Pressable
+                        onPress={() => void toggleHelpful(review.id)}
+                        testID={`archive-review-${review.id}-helpful`}
+                        accessibilityRole="button"
+                        accessibilityLabel={marked ? 'Remove your helpful mark' : 'Mark this review helpful'}
+                        style={[s.helpful, marked && s.helpfulOn]}
+                      >
+                        <Text style={[s.reviewMeta, marked && s.helpfulOnText]}>{marked ? '✓ Helpful' : 'Helpful?'}</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+            {reviews.length > shownReviews.length ? (
+              <Pressable
+                onPress={() => setShowAllReviews(true)}
+                style={s.action}
+                testID="archive-reviews-see-all"
+                accessibilityRole="button"
+                accessibilityLabel={`See all ${reviews.length} reviews`}
+              >
+                <Text style={s.actionText}>See all {reviews.length} reviews</Text>
+              </Pressable>
+            ) : null}
+            </>
           ) : (
             <Text style={s.hint}>No reviews yet — spoiler-free ones welcome.</Text>
           )}
@@ -480,6 +654,14 @@ export default function ArchiveEntryScreen() {
           <Text style={s.lastEdit} testID="archive-last-edit">Last edit: {lastEdit}</Text>
         ) : null}
       </ScrollView>
+
+      <ArchiveActionsSheet
+        target={actionTarget}
+        onClose={() => setActionTarget(null)}
+        onReviewDeleted={(id) => setDetail((d) => ({ ...d, reviews: d.reviews.filter((r) => r.id !== id) }))}
+        onEditReview={() => router.push(`/archive/${entry.slug}/review` as never)}
+        onNoteFlagged={(id) => setFlaggedNotes((cur) => new Set(cur).add(id))}
+      />
 
       {lockedOpen ? (
         <View style={s.sheet} testID="archive-locked-sheet">

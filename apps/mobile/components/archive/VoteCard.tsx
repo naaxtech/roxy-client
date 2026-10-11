@@ -6,6 +6,7 @@ import { TYPE } from '../../lib/typography';
 import { RADII } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
+import { ComposerCheckbox } from './ComposerField';
 
 interface Props {
   myStars: number | null;
@@ -15,6 +16,13 @@ interface Props {
   onSubmitComment?: () => void;
   canComment?: boolean;
   commentBusy?: boolean;
+  /**
+   * The no-spoilers acknowledgement for the inline review. It used to be
+   * hard-coded true by the caller, agreeing to the one Archive rule on her
+   * behalf (ARC-05). Post stays off until she ticks it.
+   */
+  ack?: boolean;
+  onAckChange?: (next: boolean) => void;
   /** The pending-member line, or the "your score is public as a number" line. */
   note?: string;
   /** Watchlist / write-a-review, which the entry screen owns. */
@@ -34,7 +42,7 @@ const STARS = [1, 2, 3, 4, 5] as const;
  */
 export function VoteCard({
   myStars, onRate, comment, onCommentChange, onSubmitComment,
-  canComment, commentBusy, note, footer, testID,
+  canComment, commentBusy, ack = false, onAckChange, note, footer, testID,
 }: Props) {
   const colors = useThemeColors();
   const filled = myStars ?? 0;
@@ -128,7 +136,15 @@ export function VoteCard({
           : 'Tap to rate, 1 to 5'}
       </Text>
       </View>
-      {canComment ? (
+      {canComment && filled === 0 ? (
+        // No review without a rating: the review row prints her verdict, and
+        // inventing a 👍 for someone who never rated is putting words in her
+        // mouth (ARC-05).
+        <Text style={s.note} testID={testID ? `${testID}-rate-first` : undefined}>
+          Rate it first — then you can add a short review.
+        </Text>
+      ) : null}
+      {canComment && filled > 0 ? (
         <>
           <TextInput
             testID={testID ? `${testID}-comment` : undefined}
@@ -141,11 +157,17 @@ export function VoteCard({
             maxLength={4000}
             accessibilityLabel="Review comment"
           />
+          <ComposerCheckbox
+            label="I haven’t spoiled the ending. That’s the one Archive rule."
+            checked={ack}
+            onToggle={() => onAckChange?.(!ack)}
+            testID={testID ? `${testID}-ack` : undefined}
+          />
           <Pressable
             testID={testID ? `${testID}-review-submit` : undefined}
-            style={s.submit}
-            onPress={onSubmitComment}
-            disabled={commentBusy || !(comment ?? '').trim()}
+            style={[s.submit, (commentBusy || !ack || !(comment ?? '').trim()) && { opacity: 0.5 }]}
+            onPress={commentBusy || !ack || !(comment ?? '').trim() ? undefined : onSubmitComment}
+            disabled={commentBusy || !ack || !(comment ?? '').trim()}
             accessibilityRole="button"
             accessibilityLabel="Post review"
           >
