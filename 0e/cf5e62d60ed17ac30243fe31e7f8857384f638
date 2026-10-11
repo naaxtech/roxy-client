@@ -1,0 +1,34 @@
+apps/mobile/__tests__/components/archive/VoteCard.test.tsx
+  h_0549c11fec2ab0 75,83-104
+apps/mobile/__tests__/components/archive/composerActions.test.ts
+  h_0549c11fec2ab0 186-187
+apps/mobile/__tests__/components/ui/Avatar.test.tsx
+  h_0549c11fec2ab0 1-49
+apps/mobile/app/(tabs)/you/blocked.tsx
+  h_0549c11fec2ab0 5,171,220
+apps/mobile/app/(tabs)/you/edit.tsx
+  h_0549c11fec2ab0 5,23,250
+apps/mobile/components/archive/composerActions.ts
+  h_0549c11fec2ab0 197
+apps/mobile/components/feed/CommentThread.tsx
+  h_0549c11fec2ab0 13,107
+apps/mobile/components/feed/StaticPostCard.tsx
+  h_0549c11fec2ab0 1,7,104-106
+apps/mobile/components/profile/ProfileShell.tsx
+  h_0549c11fec2ab0 12,14,300-301,303-309
+apps/mobile/components/ui/Avatar.tsx
+  h_0549c11fec2ab0 1-89
+apps/mobile/lib/avatars.ts
+  h_0549c11fec2ab0 2,33-39,41-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ecf5e62d60ed17ac30243fe31e7f8857384f638",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
