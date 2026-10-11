@@ -1,0 +1,18 @@
+apps/studio/__tests__/gate-dashboard/PendingApplicationsCard.test.tsx
+  h_0549c11fec2ab0 1-52
+apps/studio/app/(dashboard)/staff/PendingApplicationsCard.tsx
+  h_0549c11fec2ab0 1-90
+apps/studio/app/(dashboard)/staff/page.tsx
+  h_0549c11fec2ab0 7,65-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "881c6fdd66a774042d2c3bd91c8a43b1466b121f",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
