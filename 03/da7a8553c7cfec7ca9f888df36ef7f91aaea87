@@ -1,0 +1,32 @@
+apps/mobile/__tests__/components/account/PendingStatusHost.test.tsx
+  h_0549c11fec2ab0 2,9,11-22,27-28,78-105
+apps/mobile/__tests__/hooks/useRealtime.reliability.test.ts
+  h_0549c11fec2ab0 162-166
+apps/mobile/__tests__/hooks/useRealtime.test.ts
+  h_0549c11fec2ab0 65
+apps/mobile/__tests__/hooks/useVettingStatusSync.test.ts
+  h_0549c11fec2ab0 1-219
+apps/mobile/__tests__/lib/realtimeChannel.test.ts
+  h_0549c11fec2ab0 1-101
+apps/mobile/__tests__/screens/PendingScreen.test.tsx
+  h_0549c11fec2ab0 1-104
+apps/mobile/app/(auth)/pending.tsx
+  h_0549c11fec2ab0 1,15,48-67,282-286
+apps/mobile/components/account/PendingStatusHost.tsx
+  h_0549c11fec2ab0 1,7,24,30-39
+apps/mobile/hooks/useVettingStatusSync.ts
+  h_0549c11fec2ab0 3,5,11-13,24-27,31-33,37,39,66-69,71-96,99-101,106-107,109-110,112
+apps/mobile/lib/realtimeChannel.ts
+  h_0549c11fec2ab0 1,5-20,22-67,69-74,76-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03da7a8553c7cfec7ca9f888df36ef7f91aaea87",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
