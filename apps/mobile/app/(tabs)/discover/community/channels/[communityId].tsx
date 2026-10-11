@@ -28,8 +28,9 @@ import { useSafetyStore } from '../../../../../store/safetyStore';
 import { useAccess } from '../../../../../hooks/useAccess';
 import { ComingSoon } from '../../../../../components/features/ComingSoon';
 import { OFFICIAL_COMMUNITY_SLUG } from '../../../../../lib/features';
-import { showAlert } from '../../../../../lib/confirm';
+import { showAlert, confirmAction } from '../../../../../lib/confirm';
 import { freshChannel } from '../../../../../lib/realtimeChannel';
+import { canModerateMember, fetchElevatedRoles, removeCommunityMember } from '../../../../../lib/communityMembership';
 
 const NONE: string[] = [];
 
@@ -64,6 +65,9 @@ export default function CommunityChannelsScreen() {
   const [menuFor, setMenuFor] = useState<Message | null>(null);
   const [stage, setStage] = useState<LiveStage | null>(null);
   const [notifyEnabled, setNotifyEnabled] = useState(false);
+  // CHAT-09: who outranks whom here, loaded only for moderators (a hint for
+  // what to draw; remove_community_member is the gate). Absent = member.
+  const [roles, setRoles] = useState<Map<string, string>>(new Map());
 
   const listRef = useRef<FlatList<Message>>(null);
   // Which channel the screen is actually showing. A fetch that resolves after
@@ -116,6 +120,15 @@ export default function CommunityChannelsScreen() {
   }, [communityId, user?.id]);
 
   useEffect(() => { void loadChannels(); }, [loadChannels]);
+
+  useEffect(() => {
+    if (!isModerator || !communityId) return undefined;
+    let cancelled = false;
+    fetchElevatedRoles(communityId)
+      .then((r) => { if (!cancelled) setRoles(r); })
+      .catch((e) => logError(e, 'community_channel_roles_failed'));
+    return () => { cancelled = true; };
+  }, [isModerator, communityId]);
 
   // Opt-in channel notifications, off by default (migration 128).
   useEffect(() => {
@@ -290,8 +303,36 @@ export default function CommunityChannelsScreen() {
       });
     }
 
+    // CHAT-09: moderators remove or ban — only someone below their own rank.
+    const myRole = user?.id ? roles.get(user.id) : undefined;
+    if (isModerator && communityId && message.sender_id && !mine
+        && canModerateMember(myRole ?? 'moderator', roles.get(message.sender_id) ?? 'member')) {
+      const target = message.sender_id;
+      const act = (ban: boolean) => () => {
+        void (async () => {
+          const yes = await confirmAction(
+            ban ? `Ban ${name}?` : `Remove ${name}?`,
+            ban
+              ? `${name} leaves this community and can't rejoin, ask to join or be invited back until a moderator lifts the ban.`
+              : `${name} leaves this community. She can join again later.`,
+            ban ? 'Ban' : 'Remove',
+          );
+          if (!yes) return;
+          try {
+            await removeCommunityMember(communityId, target, { ban });
+            showAlert('Done', ban ? `${name} is banned from this community.` : `${name} was removed from this community.`);
+          } catch (e) {
+            logError(e, 'community_channel_moderate_failed');
+            showAlert('Not done', e instanceof Error && e.message ? e.message : 'Something went wrong. Please try again.');
+          }
+        })();
+      };
+      actions.push({ key: 'remove-member', label: `Remove ${name} from the community`, destructive: true, onPress: act(false) });
+      actions.push({ key: 'ban-member', label: `Ban ${name}`, destructive: true, onPress: act(true) });
+    }
+
     return actions;
-  }, [user?.id, isModerator, removeMessage, openReportModal, blockUser]);
+  }, [user?.id, isModerator, removeMessage, openReportModal, blockUser, roles, communityId]);
 
   const s = StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },

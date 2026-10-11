@@ -63,3 +63,52 @@ export function removeCommunityMember(
 export function unbanCommunityMember(communityId: string, userId: string): Promise<void> {
   return rpc<void>('unban_community_member', { p_community: communityId, p_user: userId });
 }
+
+// ── Moderator tools ─────────────────────────────────────────────────────────
+
+const RANK: Record<string, number> = { owner: 4, admin: 3, moderator: 2, border_patrol: 1, member: 0 };
+
+/** The ranks remove_community_member compares (132). */
+export function communityRank(role: string | null | undefined): number {
+  return RANK[role ?? ''] ?? 0;
+}
+
+/**
+ * May she remove / ban this person? Moderators and up, and only someone below
+ * her own rank — the server refuses the rest, so the menu never offers it.
+ */
+export function canModerateMember(myRole: string | null | undefined, theirRole: string | null | undefined): boolean {
+  const mine = communityRank(myRole);
+  return mine >= RANK.moderator && mine > communityRank(theirRole);
+}
+
+export interface JoinRequest {
+  user_id: string;
+  note: string | null;
+  created_at: string;
+  profile: { id: string; display_name: string | null; username: string | null; avatar_url: string | null } | null;
+}
+
+/** Moderators: the pending asks, oldest first. RLS returns nothing to anyone else. */
+export async function fetchJoinRequests(communityId: string): Promise<JoinRequest[]> {
+  const { data, error } = await supabase
+    .from('community_join_requests')
+    .select('user_id, note, created_at, profile:profiles!community_join_requests_user_id_fkey(id, display_name, username, avatar_url)')
+    .eq('community_id', communityId)
+    .eq('status', 'pending')
+    .eq('kind', 'request')
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as JoinRequest[];
+}
+
+/** Everyone above 'member' in this community → her role. Members are absent. */
+export async function fetchElevatedRoles(communityId: string): Promise<Map<string, string>> {
+  const { data, error } = await supabase
+    .from('community_members')
+    .select('user_id, role')
+    .eq('community_id', communityId)
+    .neq('role', 'member');
+  if (error) throw error;
+  return new Map(((data ?? []) as { user_id: string; role: string }[]).map((r) => [r.user_id, r.role]));
+}
