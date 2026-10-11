@@ -72,7 +72,16 @@ export async function proxyToEdge(
   return NextResponse.json(json.data ?? json);
 }
 
-/** Forward with service-role key (staff-only operations). */
+/**
+ * Forward with service-role key (staff-only operations).
+ *
+ * Unused since the ops2 launch lane: its only caller, api/staff/release-payout
+ * (added in 9393152 with this helper), now goes through the releasePayout
+ * server action and callEdgeAsService below, which return the edge result to
+ * the caller instead of a NextResponse. Kept, not deleted (standing rule): a
+ * future staff API route that only proxies a service-role edge function can
+ * use it. Callers must enforce core/staff themselves first.
+ */
 export async function proxyToEdgeServiceRole(
   functionName: string,
   body: Record<string, unknown>,
@@ -92,4 +101,36 @@ export async function proxyToEdgeServiceRole(
     return NextResponse.json({ error: json.error ?? 'Edge function error' }, { status: res.status });
   }
   return NextResponse.json(json.data ?? json);
+}
+
+/**
+ * Call a service-only edge function from a SERVER action and hand back its
+ * parsed result, so the caller can report what the function actually did
+ * (proxyToEdgeServiceRole above only fits API routes). The service key is read
+ * here, on the server; nothing that imports this file may be a client module.
+ */
+export async function callEdgeAsService(
+  functionName: string,
+  body: Record<string, unknown>,
+): Promise<{ ok: true; data: unknown } | { ok: false; status: number; error: string }> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) return { ok: false, status: 500, error: 'Service not configured' };
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    const json = (await res.json().catch(() => null)) as { success?: boolean; data?: unknown; error?: string } | null;
+    if (!res.ok || !json?.success) {
+      return { ok: false, status: res.status, error: json?.error ?? 'Edge function error' };
+    }
+    return { ok: true, data: json.data ?? null };
+  } catch {
+    return { ok: false, status: 0, error: 'Network error' };
+  }
 }

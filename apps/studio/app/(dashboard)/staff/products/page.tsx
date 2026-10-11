@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { QueryError } from '@/components/QueryError';
 import { Badge } from '@/components/ui/badge';
 import { ProductApprovalClient } from './ProductApprovalClient';
 
@@ -16,7 +17,7 @@ export default async function StaffProductsPage() {
     .single();
   if (!profile?.is_staff) notFound();
 
-  const { data: pending } = await supabase
+  const { data: pending, error } = await supabase
     .from('products')
     .select(
       'id, name, category, base_price_cents, description, created_at, businesses(name, owner_id)'
@@ -41,7 +42,7 @@ export default async function StaffProductsPage() {
         Review and approve or reject seller product submissions.
       </p>
 
-      <ProductApprovalClient products={products} />
+      {error ? <QueryError what="products waiting for approval" /> : <ProductApprovalClient products={products} />}
     </div>
   );
 }

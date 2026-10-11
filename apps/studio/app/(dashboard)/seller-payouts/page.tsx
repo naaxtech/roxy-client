@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { QueryError } from '@/components/QueryError';
 import { getOwnedBusiness } from '@/lib/business';
 import { Badge } from '@/components/ui/badge';
 
@@ -41,7 +42,7 @@ export default async function SellerPayoutsPage() {
   }
 
   const supabase = await createClient();
-  const { data: payouts } = await supabase
+  const { data: payouts, error: payoutsError } = await supabase
     .from('seller_payouts')
     .select('id, order_id, amount_cents, currency, status, stripe_transfer_id, created_at')
     .eq('business_id', business.id)
@@ -119,7 +120,9 @@ export default async function SellerPayoutsPage() {
       </div>
 
       {/* Payout history */}
-      {payoutList.length === 0 ? (
+      {payoutsError ? (
+        <QueryError what="your payout history" />
+      ) : payoutList.length === 0 ? (
         <p className="text-sm text-muted-foreground">No payouts yet.</p>
       ) : (
         <div className="border rounded-lg overflow-hidden">

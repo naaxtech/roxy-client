@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { QueryError } from '@/components/QueryError';
 import { Badge } from '@/components/ui/badge';
 import { ApproveBusinessButton, RejectBusinessButton } from './BusinessApprovalClient';
 
@@ -17,7 +18,7 @@ export default async function StaffBusinessesPage() {
   if (!profile?.is_staff) notFound();
 
   // Pending businesses: not yet verified, not rejected (no rejection reason)
-  const { data: pending } = await supabase
+  const { data: pending, error: pendingError } = await supabase
     .from('businesses')
     .select('id, name, category, location_city, is_wlw_owned, created_at, owner_id, profiles(display_name), business_rejection_reason')
     .eq('is_verified', false)
@@ -25,7 +26,7 @@ export default async function StaffBusinessesPage() {
     .order('created_at', { ascending: true });
 
   // Already rejected (for reference)
-  const { data: rejected } = await supabase
+  const { data: rejected, error: rejectedError } = await supabase
     .from('businesses')
     .select('id, name, category, created_at, business_rejection_reason, profiles(display_name)')
     .eq('is_verified', false)
@@ -53,7 +54,9 @@ export default async function StaffBusinessesPage() {
       {/* Pending */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Pending Review</h2>
-        {pendingList.length === 0 ? (
+        {pendingError ? (
+          <QueryError what="pending business applications" />
+        ) : pendingList.length === 0 ? (
           <p className="text-sm text-muted-foreground">No pending applications.</p>
         ) : (
           <div className="space-y-3">
@@ -88,6 +91,7 @@ export default async function StaffBusinessesPage() {
       </section>
 
       {/* Rejected */}
+      {rejectedError && <QueryError what="recently rejected businesses" />}
       {rejectedList.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-muted-foreground">Recently Rejected</h2>
