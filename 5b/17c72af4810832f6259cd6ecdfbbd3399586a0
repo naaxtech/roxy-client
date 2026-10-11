@@ -1,0 +1,156 @@
+apps/mobile/__tests__/components/CommentActions.test.tsx
+  h_0549c11fec2ab0 1-130
+apps/mobile/__tests__/components/CommentSheet.test.tsx
+  h_0549c11fec2ab0 1-82
+apps/mobile/__tests__/components/ProfilePhotoGrid.test.tsx
+  h_0549c11fec2ab0 1-79
+apps/mobile/__tests__/components/archive/VoteCard.test.tsx
+  h_0549c11fec2ab0 75,83-104
+apps/mobile/__tests__/components/archive/composerActions.test.ts
+  h_0549c11fec2ab0 186-187
+apps/mobile/__tests__/components/profile/ProfileExtras.test.tsx
+  h_0549c11fec2ab0 1-73
+apps/mobile/__tests__/components/profile/ProfileNudge.test.tsx
+  h_0549c11fec2ab0 1-41
+apps/mobile/__tests__/components/profile/ProfilePostsGrid.test.tsx
+  h_0549c11fec2ab0 2,10,19-22,38-51
+apps/mobile/__tests__/components/ui/Avatar.test.tsx
+  h_0549c11fec2ab0 1-49
+apps/mobile/__tests__/hooks/useCommentLikes.test.ts
+  h_0549c11fec2ab0 1-58
+apps/mobile/__tests__/lib/archiveSafety.test.ts
+  h_0549c11fec2ab0 1-52
+apps/mobile/__tests__/lib/commentsPaging.test.ts
+  h_0549c11fec2ab0 1-176
+apps/mobile/__tests__/screens/ArchiveBrowse.test.tsx
+  h_0549c11fec2ab0 3,86-126
+apps/mobile/__tests__/screens/ArchiveComposers.test.tsx
+  h_0549c11fec2ab0 1-130
+apps/mobile/__tests__/screens/ArchiveEntry.test.tsx
+  h_0549c11fec2ab0 53-62,196-197
+apps/mobile/__tests__/screens/ArchiveEntrySafety.test.tsx
+  h_0549c11fec2ab0 1-252
+apps/mobile/__tests__/screens/BlockedList.test.tsx
+  h_0549c11fec2ab0 2,19-23,48,59-75
+apps/mobile/__tests__/screens/EditProfile.test.tsx
+  h_0549c11fec2ab0 1-102
+apps/mobile/__tests__/screens/UserProfileShell.test.tsx
+  h_0549c11fec2ab0 2,24-30,81-82,90,94-98,143-146,219,256-317
+apps/mobile/__tests__/store/archiveStore.test.ts
+  h_0549c11fec2ab0 97-98
+apps/mobile/__tests__/store/archiveStorePaging.test.ts
+  h_0549c11fec2ab0 1-71
+apps/mobile/__tests__/store/profileStoreSerial.test.ts
+  h_0549c11fec2ab0 1-91
+apps/mobile/app/(tabs)/discover/post/[postId].tsx
+  h_0549c11fec2ab0 16-21,50,52-53,105,109-110,114-126,129-131,283,286-289,335,338,340
+apps/mobile/app/(tabs)/discover/video/[postId].tsx
+  h_0549c11fec2ab0 17,258-259
+apps/mobile/app/(tabs)/you/[userId].tsx
+  h_0549c11fec2ab0 2-5,96-98,100-101,119,121,123,141-151,257-261,360-361,363-365,369-371,412-445,622-637,651,663,677-694,729-734
+apps/mobile/app/(tabs)/you/blocked.tsx
+  h_0549c11fec2ab0 2-5,24-27,43-44,47,51-70,123-124,163-164,168-169,171,191,193-239,254,256-263
+apps/mobile/app/(tabs)/you/edit.tsx
+  h_0549c11fec2ab0 5,19-21,23-24,34,39-41,51-54,148-151,167-169,187-188,190-191,196-197,200-220,242-244,251,269-271,273,275,280-286,289,293-295,298-325,342-346,419-422
+apps/mobile/app/(tabs)/you/index.tsx
+  h_0549c11fec2ab0 13-14,563-569
+apps/mobile/app/(tabs)/you/settings.tsx
+  h_0549c11fec2ab0 215
+apps/mobile/app/archive/[slug]/edit.tsx
+  h_0549c11fec2ab0 9,67,79-80
+apps/mobile/app/archive/[slug]/index.tsx
+  h_0549c11fec2ab0 1-4,27-32,65,67-68,80,82-110,130-148,179-188,272-280,325,331-334,338,355-397,401-405,417-427,501-502,524-535,554-584,587,606-669,699-706
+apps/mobile/app/archive/[slug]/review.tsx
+  h_0549c11fec2ab0 6,31-33,46,74,80-81,83,87,89
+apps/mobile/app/archive/index.tsx
+  h_0549c11fec2ab0 1,3,19-20,59-63,66-74,86-88,102-115,117-119,121,172-176,235-247,303-308
+apps/mobile/app/archive/new.tsx
+  h_0549c11fec2ab0 5-8,32,37-38,44,54-55,86,88,90-91
+apps/mobile/app/people.tsx
+  h_0549c11fec2ab0 13,116-119,172,218,266
+apps/mobile/app/search.tsx
+  h_0549c11fec2ab0 13,313
+apps/mobile/components/archive/ArchiveActionsSheet.tsx
+  h_0549c11fec2ab0 1-236
+apps/mobile/components/archive/ComposerField.tsx
+  h_0549c11fec2ab0 4,124-172
+apps/mobile/components/archive/ContentNoteChip.tsx
+  h_0549c11fec2ab0 48-49,69,91
+apps/mobile/components/archive/VoteCard.tsx
+  h_0549c11fec2ab0 9,19-25,45,139-147,160-165,168-170
+apps/mobile/components/archive/composerActions.ts
+  h_0549c11fec2ab0 170-207,210,236,263
+apps/mobile/components/feed/CommentActionsSheet.tsx
+  h_0549c11fec2ab0 1-368
+apps/mobile/components/feed/CommentCounter.tsx
+  h_0549c11fec2ab0 1-39
+apps/mobile/components/feed/CommentSheet.tsx
+  h_0549c11fec2ab0 1,10,13-17,19,29,46-51,53-58,64-65,72-73,75-107,158,165-166,194,220-221,223-226,246,254
+apps/mobile/components/feed/CommentThread.tsx
+  h_0549c11fec2ab0 1-4,8-13,17,26-34,38,44,69,73,79-85,87-107,150-159,163,168,174,195,204,221-230,232-233,235-255,258-272,279,282-288
+apps/mobile/components/feed/FeedCellChrome.tsx
+  h_0549c11fec2ab0 11-12,258-259,261
+apps/mobile/components/feed/StaticPostCard.tsx
+  h_0549c11fec2ab0 1,7,104-106
+apps/mobile/components/profile/ProfileExtras.tsx
+  h_0549c11fec2ab0 1-172
+apps/mobile/components/profile/ProfileNudge.tsx
+  h_0549c11fec2ab0 1-97
+apps/mobile/components/profile/ProfilePhotoGrid.tsx
+  h_0549c11fec2ab0 10,102-104,107-121,142-149
+apps/mobile/components/profile/ProfilePostsGrid.tsx
+  h_0549c11fec2ab0 42-48,69,76-77,79-80,90-111,162-175,180-182,184-185
+apps/mobile/components/profile/ProfileShell.tsx
+  h_0549c11fec2ab0 3,12,14,150-152,221-222,300-301,303-309,443-445
+apps/mobile/components/ui/Avatar.tsx
+  h_0549c11fec2ab0 1-89
+apps/mobile/hooks/useCommentLikes.ts
+  h_0549c11fec2ab0 1-64
+apps/mobile/lib/archive.ts
+  h_0549c11fec2ab0 243-244,256,281-288,297-321
+apps/mobile/lib/archiveSafety.ts
+  h_0549c11fec2ab0 1-102
+apps/mobile/lib/avatars.ts
+  h_0549c11fec2ab0 2,33-39,41-48
+apps/mobile/lib/comments.ts
+  h_0549c11fec2ab0 1,5-30,63-67,87,91-108,112-121,125-145,148,151,163,165,169-194,204-281
+apps/mobile/lib/followCounts.ts
+  h_0549c11fec2ab0 1-36
+apps/mobile/lib/globalSearch.ts
+  h_0549c11fec2ab0 5,149
+apps/mobile/lib/mutedProfiles.ts
+  h_0549c11fec2ab0 1-23
+apps/mobile/lib/profileExtras.ts
+  h_0549c11fec2ab0 1-106
+apps/mobile/lib/profileRules.ts
+  h_0549c11fec2ab0 1-65
+apps/mobile/lib/reportTargets.ts
+  h_0549c11fec2ab0 28-30
+apps/mobile/store/archiveStore.ts
+  h_0549c11fec2ab0 37-42,47-50,57,61-64,79-87,105-107,112-119,122-124,128-130,132,139-171,427-461
+apps/mobile/store/followStore.ts
+  h_0549c11fec2ab0 8-10,32,45
+apps/mobile/store/profileStore.ts
+  h_0549c11fec2ab0 10-14,16-19,22-34,40-86
+apps/mobile/types/index.ts
+  h_0549c11fec2ab0 231-235
+supabase/downs/133_feed_archive_profile_launch_down.sql
+  h_0549c11fec2ab0 6-16
+supabase/functions/submit-report/index.ts
+  h_0549c11fec2ab0 24-25
+supabase/migrations/133_feed_archive_profile_launch.sql
+  h_0549c11fec2ab0 23-24,816-869
+supabase/tests/133_feed_archive_profile_launch_check.sql
+  h_0549c11fec2ab0 421-483
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b17c72af4810832f6259cd6ecdfbbd3399586a0",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
