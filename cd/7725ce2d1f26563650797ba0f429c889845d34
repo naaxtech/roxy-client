@@ -1,0 +1,18 @@
+apps/mobile/app/people.tsx
+  h_0549c11fec2ab0 13,116-119,172,218,266
+apps/mobile/app/search.tsx
+  h_0549c11fec2ab0 13,313
+apps/mobile/lib/globalSearch.ts
+  h_0549c11fec2ab0 5,149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd7725ce2d1f26563650797ba0f429c889845d34",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
