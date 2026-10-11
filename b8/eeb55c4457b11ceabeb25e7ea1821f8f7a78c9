@@ -1,0 +1,14 @@
+scripts/setup-cron.sql
+  h_0549c11fec2ab0 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8eeb55c4457b11ceabeb25e7ea1821f8f7a78c9",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
