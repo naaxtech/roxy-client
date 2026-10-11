@@ -1,0 +1,58 @@
+apps/studio/__tests__/staff/queryErrorStates.test.tsx
+  h_0549c11fec2ab0 1-89
+apps/studio/app/(dashboard)/payouts/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/payouts/page.tsx
+  h_0549c11fec2ab0 3,55,68,73,128-130
+apps/studio/app/(dashboard)/products/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/products/page.tsx
+  h_0549c11fec2ab0 2,23,41
+apps/studio/app/(dashboard)/seller-payouts/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/seller-payouts/page.tsx
+  h_0549c11fec2ab0 2,45,123-125
+apps/studio/app/(dashboard)/staff/businesses/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/businesses/page.tsx
+  h_0549c11fec2ab0 3,21,29,57-59,94
+apps/studio/app/(dashboard)/staff/disputes/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/disputes/page.tsx
+  h_0549c11fec2ab0 3,26,44-46
+apps/studio/app/(dashboard)/staff/email-queue/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/feature-requests/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/feature-requests/page.tsx
+  h_0549c11fec2ab0 2,11,26-30
+apps/studio/app/(dashboard)/staff/feedback/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/games/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/page.tsx
+  h_0549c11fec2ab0 6,29,38,49,57,80-82,111-113,156-158,178-180
+apps/studio/app/(dashboard)/staff/products/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/products/page.tsx
+  h_0549c11fec2ab0 3,20,45
+apps/studio/app/(dashboard)/staff/reconciliation/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/reconciliation/page.tsx
+  h_0549c11fec2ab0 3,20,41-43
+apps/studio/components/QueryError.tsx
+  h_0549c11fec2ab0 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec40551a03a6e895a16b2a27757bac3ac50eebfc",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
