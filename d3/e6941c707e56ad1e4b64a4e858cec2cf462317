@@ -1,0 +1,30 @@
+apps/studio/__tests__/lib/inviteWaves.test.ts
+  h_0549c11fec2ab0 1-80
+apps/studio/__tests__/lib/navGroups.test.ts
+  h_0549c11fec2ab0 26,34,38-39
+apps/studio/__tests__/staff/InviteWaveClient.test.tsx
+  h_0549c11fec2ab0 1-100
+apps/studio/__tests__/staff/inviteWaveActions.test.ts
+  h_0549c11fec2ab0 1-155
+apps/studio/app/(dashboard)/staff/launch/waves/InviteWaveClient.tsx
+  h_0549c11fec2ab0 1-179
+apps/studio/app/(dashboard)/staff/launch/waves/actions.ts
+  h_0549c11fec2ab0 1-78
+apps/studio/app/(dashboard)/staff/launch/waves/page.tsx
+  h_0549c11fec2ab0 1-131
+apps/studio/components/AppSidebar.tsx
+  h_0549c11fec2ab0 78-79
+apps/studio/lib/inviteWaves.ts
+  h_0549c11fec2ab0 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d3e6941c707e56ad1e4b64a4e858cec2cf462317",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
