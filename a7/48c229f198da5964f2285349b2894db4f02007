@@ -1,0 +1,34 @@
+apps/studio/__tests__/lib/payouts.test.ts
+  h_0549c11fec2ab0 1-45
+apps/studio/__tests__/staff/PayoutButtons.test.tsx
+  h_0549c11fec2ab0 1-92
+apps/studio/__tests__/staff/payoutActions.test.ts
+  h_0549c11fec2ab0 1-99
+apps/studio/app/(dashboard)/staff/BlockPayoutButton.tsx
+  h_0549c11fec2ab0 3,7-8,10-26,28,33,35-42,44-47,50-65,69-99,101-109
+apps/studio/app/(dashboard)/staff/ReleasePayoutButton.tsx
+  h_0549c11fec2ab0 3,6,8-14,16,19-21,24,26,28-39,45-46,48-55
+apps/studio/app/(dashboard)/staff/page.tsx
+  h_0549c11fec2ab0 4,10-12,93,129,131
+apps/studio/app/(dashboard)/staff/payout-actions.ts
+  h_0549c11fec2ab0 1-72
+apps/studio/app/api/staff/block-payout/route.ts
+  h_0549c11fec2ab0 2,4-12,14-24
+apps/studio/app/api/staff/release-payout/route.ts
+  h_0549c11fec2ab0 2,4-10,12-18
+apps/studio/lib/payouts.ts
+  h_0549c11fec2ab0 1-71
+apps/studio/lib/staff-auth.ts
+  h_0549c11fec2ab0 75-84,105-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a748c229f198da5964f2285349b2894db4f02007",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
