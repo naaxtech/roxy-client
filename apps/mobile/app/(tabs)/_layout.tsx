@@ -18,7 +18,11 @@ import { navSlotsFor } from '../../components/nav/navSlots3';
 import { supabase } from '../../lib/supabase';
 import { freshChannel } from '../../lib/realtimeChannel';
 import { registerPushToken, pushResponsePath } from '../../lib/push';
-import * as Notifications from 'expo-notifications';
+import { useLastPushResponse } from '../../hooks/useLastPushResponse';
+// `import * as Notifications from 'expo-notifications'` moved to
+// hooks/useLastPushResponse.ts (its only use here was useLastNotificationResponse,
+// which throws on web). Re-add it here only if this layout needs another
+// expo-notifications API, and guard native-only calls with Platform.OS.
 
 /**
  * The companion FAB pins itself 90pt above its parent's bottom edge, a number
@@ -94,7 +98,7 @@ export default function TabLayout() {
   // where the response is already waiting when this layout mounts. Routed
   // through expo-router (not Linking.openURL) so it lands inside the signed-in
   // stack instead of re-entering the app from the top.
-  const lastPush = Notifications.useLastNotificationResponse();
+  const lastPush = useLastPushResponse();
   useEffect(() => {
     const path = pushResponsePath(lastPush);
     if (path) router.push(path as never);
