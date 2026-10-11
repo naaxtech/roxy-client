@@ -18,6 +18,7 @@ jest.mock('react-native-safe-area-context', () => ({
 const mockReplace = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace, back: jest.fn(), push: jest.fn() }),
+  useLocalSearchParams: () => ({}),
 }));
 
 const mockInsert: { error: { message: string } | null; payloads: unknown[] } = { error: null, payloads: [] };

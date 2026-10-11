@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 
 // Inline mock factories only — see CLAUDE.md §12.2 (jest.mock hoisting).
 
@@ -11,9 +11,13 @@ jest.mock('react-native-safe-area-context', () => ({
 
 // The Mini Wins gate reads AsyncStorage for "already shown today" — resolve
 // with today's key so the sheet-open effect is a no-op and this suite stays
-// about the header, not about that gate.
+// about the header, not about that gate. Every other key (the question of the
+// day's "answered") starts empty; a test may answer it via mockStorage.
+const mockStorage: Record<string, string> = {};
 jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn(() => Promise.resolve(new Date().toISOString().slice(0, 10))),
+  getItem: jest.fn((key: string) => Promise.resolve(
+    key === 'roxy_mini_wins_last_shown' ? new Date().toISOString().slice(0, 10) : (mockStorage[key] ?? null),
+  )),
   setItem: jest.fn(() => Promise.resolve()),
 }));
 
@@ -87,6 +91,7 @@ jest.mock('../../store/communityStore', () => {
 
 import FeedScreen from '../../app/(tabs)/feed/index';
 import { useCommunityFilterStore } from '../../store/communityFilterStore';
+import { dailyPromptFor, markDailyPromptAnswered } from '../../lib/dailyPrompt';
 
 const { __calls: reelsFeedCalls } = jest.requireMock('../../components/feed/ReelsFeed') as {
   __calls: Record<string, unknown>[];
@@ -194,5 +199,44 @@ describe('Feed publishes whether a community filter can do anything', () => {
 
     unmount();
     expect(useCommunityFilterStore.getState().selectedCommunityId).toBeNull();
+  });
+});
+
+describe('Question of the day reaching For You (audit #4)', () => {
+  const today = dailyPromptFor();
+  const answeredKey = `roxy.dailyPromptAnswered.feed-tab-tester.${today.dateKey}`;
+
+  beforeEach(() => {
+    for (const k of Object.keys(mockStorage)) delete mockStorage[k];
+  });
+
+  it("hands For You today's question once it knows she has not answered", async () => {
+    render(<FeedScreen />);
+    await waitFor(() => expect(lastReelsFeedProps().dailyPrompt).toEqual(today));
+  });
+
+  it('never hands it to Following or Communities', async () => {
+    const { getByTestId } = render(<FeedScreen />);
+    await waitFor(() => expect(lastReelsFeedProps().dailyPrompt).toEqual(today));
+
+    fireEvent.press(getByTestId('feed-segment-following'));
+    expect(lastReelsFeedProps().dailyPrompt).toBeNull();
+    fireEvent.press(getByTestId('feed-segment-communities'));
+    expect(lastReelsFeedProps().dailyPrompt).toBeNull();
+  });
+
+  it('stays out once she answered today', async () => {
+    mockStorage[answeredKey] = '1';
+    render(<FeedScreen />);
+    await act(async () => { await Promise.resolve(); });
+    expect(lastReelsFeedProps().dailyPrompt).toBeNull();
+  });
+
+  it('drops the page the moment she answers from the composer', async () => {
+    render(<FeedScreen />);
+    await waitFor(() => expect(lastReelsFeedProps().dailyPrompt).toEqual(today));
+
+    await act(async () => { await markDailyPromptAnswered('feed-tab-tester', today.dateKey); });
+    expect(lastReelsFeedProps().dailyPrompt).toBeNull();
   });
 });

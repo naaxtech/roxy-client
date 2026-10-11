@@ -36,6 +36,13 @@ import { FeedStageSkeleton } from './FeedStageSkeleton';
 import { CommentSheet } from './CommentSheet';
 import { reportPost } from './feedSafety';
 import type { ReportReason } from './feedSafety';
+import { DailyPromptCell } from './DailyPromptCell';
+import {
+  isDailyPromptId, isDailyPromptItem, withDailyPrompt, type DailyPrompt,
+} from '../../lib/dailyPrompt';
+
+/** A page in the pager: a post, or For You's question of the day. */
+type FeedItem = ReelRow | DailyPrompt;
 
 /** Wall pages (Following, a community, a profile). For You pages at its RPC's own size. */
 const PAGE_SIZE = 10;
@@ -109,6 +116,12 @@ interface ReelsFeedProps {
    * look empty when she goes looking.
    */
   showMutedAuthors?: boolean;
+  /**
+   * For You only: today's question, slotted in as the third page (audit #4).
+   * The Feed tab passes null once she has answered it today. Ignored by every
+   * other scope and when opening on a specific post.
+   */
+  dailyPrompt?: DailyPrompt | null;
 }
 
 type LoadMode = 'initial' | 'refresh';
@@ -134,6 +147,7 @@ type LoadMode = 'initial' | 'refresh';
  */
 export function ReelsFeed({
   scope = 'community', communityIds, authorIds, initialPostId, showMutedAuthors = false,
+  dailyPrompt = null,
 }: ReelsFeedProps) {
   const colors = useThemeColors();
   const router = useRouter();
@@ -389,6 +403,8 @@ export function ReelsFeed({
   const handleActiveItemChange = useCallback((itemId: string) => {
     if (lastSeenRef.current === itemId) return;
     lastSeenRef.current = itemId;
+    // The question of the day is not a post: there is no seen_posts row for it.
+    if (isDailyPromptId(itemId)) return;
     markSeen(itemId);
   }, [markSeen]);
 
@@ -497,6 +513,18 @@ export function ReelsFeed({
     return skipMuted ? excludeMutedAuthors(kept, mutedUserIds) : kept;
   }, [reels, hiddenPostIds, mutedUserIds, skipMuted]);
 
+  /**
+   * The pages: the posts, plus — on For You only — today's question as the
+   * third page. Not when opening on a chosen post: `initialIndex` is counted
+   * over the posts alone, and a page slotted in ahead of it would open one off.
+   */
+  const pagerItems = useMemo<FeedItem[]>(
+    () => (scope === 'announcements' && dailyPrompt && !initialPostId
+      ? withDailyPrompt<FeedItem>(visibleReels, dailyPrompt)
+      : visibleReels),
+    [scope, dailyPrompt, initialPostId, visibleReels],
+  );
+
   // FlashList recycles cells. Without this it has no reason to re-render one
   // when the mute state or a like changes, so a recycled cell keeps the previous
   // post's icons. The pager merges its own active-item state into this.
@@ -513,8 +541,11 @@ export function ReelsFeed({
    * One recycling pool per post type — the router's own function, so the pool
    * key and the component choice can never drift apart. See `feedItemType`.
    */
-  const getItemType = useCallback((item: ReelRow) => feedItemType(item), []);
-  const keyExtractor = useCallback((item: ReelRow) => item.id, []);
+  const getItemType = useCallback(
+    (item: FeedItem) => (isDailyPromptItem(item) ? 'daily_prompt' : feedItemType(item)),
+    [],
+  );
+  const keyExtractor = useCallback((item: FeedItem) => item.id, []);
   const handleEndReached = useCallback(() => { void loadMore(); }, [loadMore]);
 
   // Placeholders are stage surfaces, so they take STAGE ink, not `colors`.
@@ -542,7 +573,12 @@ export function ReelsFeed({
    */
   const renderCell = useCallback(({
     item, index, activeIndex, activeItemId, width, height,
-  }: FeedPagerCell<ReelRow>) => {
+  }: FeedPagerCell<FeedItem>) => {
+    if (isDailyPromptItem(item)) {
+      return (
+        <DailyPromptCell prompt={item} width={width} height={height} reducedMotion={reducedMotion} />
+      );
+    }
     // Offered on a cadence rather than on every cell, and only once per post.
     const asks = index % INTEREST_PROMPT_EVERY === INTEREST_PROMPT_EVERY - 1
       && !answeredPrompts.has(item.id);
@@ -644,9 +680,9 @@ export function ReelsFeed({
 
   return (
     <View style={s.frame}>
-      <FeedPager<ReelRow>
+      <FeedPager<FeedItem>
         testID="reels-feed"
-        items={visibleReels}
+        items={pagerItems}
         keyExtractor={keyExtractor}
         getItemType={getItemType}
         renderCell={renderCell}

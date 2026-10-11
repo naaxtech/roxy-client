@@ -2,6 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { ReelsFeed } from '../../components/feed/ReelsFeed';
 import type { ReelRow } from '../../lib/reels';
+import { dailyPromptFor } from '../../lib/dailyPrompt';
 
 /**
  * For You is the Feed tab's front door (`scope="announcements"`), and the
@@ -242,5 +243,69 @@ describe('For You (Feed tab, scope="announcements")', () => {
 
     await waitFor(() => expect(latestData().length).toBeGreaterThan(0));
     expect(latestData().map((r) => r.id)).toEqual(['fy-text', 'fy-photo']);
+  });
+});
+
+describe('Question of the day page (audit #4)', () => {
+  const PROMPT = dailyPromptFor(new Date(2026, 9, 11, 12));
+
+  type PagerList = {
+    data: { id: string }[];
+    getItemType: (item: unknown, index: number) => string | number;
+    renderItem: (info: { item: unknown; index: number }) => React.ReactElement;
+    onViewableItemsChanged: (info: { viewableItems: { index: number | null }[] }) => void;
+  };
+  function latestList(): PagerList {
+    const { __captured } = jest.requireMock('@shopify/flash-list') as { __captured: PagerList[] };
+    return __captured[__captured.length - 1];
+  }
+  async function mount(props: Record<string, unknown>) {
+    const view = render(<ReelsFeed {...props} />);
+    fireEvent(view.getByTestId('reels-feed'), 'layout', {
+      nativeEvent: { layout: { height: 800, width: 400 } },
+    });
+    await waitFor(() => expect(latestData().length).toBeGreaterThan(0));
+    return view;
+  }
+
+  it('is the third page of For You, in its own recycling pool', async () => {
+    await mount({ scope: 'announcements', dailyPrompt: PROMPT });
+
+    expect(latestData().map((r) => r.id)).toEqual(['fy-text', 'fy-video', PROMPT.id, 'fy-photo']);
+    const list = latestList();
+    expect(list.getItemType(list.data[2], 2)).toBe('daily_prompt');
+    expect(list.getItemType(list.data[0], 0)).toBe('standard');
+  });
+
+  it('renders the question card, not a post cell', async () => {
+    await mount({ scope: 'announcements', dailyPrompt: PROMPT });
+    const list = latestList();
+    const cell = list.renderItem({ item: list.data[2], index: 2 });
+    const page = render(cell);
+
+    expect(page.getByTestId('daily-prompt-cell')).toBeTruthy();
+    expect(page.getByText(PROMPT.question)).toBeTruthy();
+  });
+
+  it('is never recorded as a seen post', async () => {
+    await mount({ scope: 'announcements', dailyPrompt: PROMPT });
+    const markSeen = (jest.requireMock('../../store/feedStore') as {
+      useFeedStore: { getState: () => { markSeen: jest.Mock } };
+    }).useFeedStore.getState().markSeen;
+    markSeen.mockClear();
+
+    await act(async () => { latestList().onViewableItemsChanged({ viewableItems: [{ index: 2 }] }); });
+    await act(async () => { latestList().onViewableItemsChanged({ viewableItems: [{ index: 3 }] }); });
+
+    expect(markSeen).not.toHaveBeenCalledWith(PROMPT.id);
+    expect(markSeen).toHaveBeenCalledWith('fy-photo');
+  });
+
+  it('stays out of every other scope, and out of For You once answered (null)', async () => {
+    await mount({ scope: 'announcements', dailyPrompt: null });
+    expect(latestData().map((r) => r.id)).not.toContain(PROMPT.id);
+
+    await mount({ scope: 'following', authorIds: ['u1', 'u2', 'u3'], dailyPrompt: PROMPT });
+    expect(latestData().map((r) => r.id)).not.toContain(PROMPT.id);
   });
 });
