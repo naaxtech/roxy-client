@@ -6,6 +6,7 @@ import { ComposerField, ComposerSubmit } from '../../../components/archive/Compo
 import { submitEdit, type EntryDraft } from '../../../components/archive/composerActions';
 import { useComposerEntry } from '../../../components/archive/useComposerEntry';
 import { useMembership } from '../../../hooks/useMembership';
+import { useArchiveStore } from '../../../store/archiveStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { TYPE } from '../../../lib/typography';
 import { Analytics } from '../../../lib/analytics';
@@ -63,6 +64,7 @@ export default function SuggestEditScreen() {
     setBusy(false);
     if (res.error) { setError(res.error); return; }
     Analytics.archiveEditSubmitted(entry.slug);
+    useArchiveStore.getState().setFlash('Edit sent to the mods ✿ It is credited to you, and you’ll get a notification when it’s decided.');
     close();
   };
 
@@ -74,6 +76,8 @@ export default function SuggestEditScreen() {
     <ComposerShell
       title="Suggest an edit"
       intro={intro}
+      // True since 133: notify_archive_revision writes her a notification on
+      // approve and on reject (ARC-09).
       footNote="Queued for review · you’ll get a notification either way."
       locked={!membership.canEdit}
       onClose={close}

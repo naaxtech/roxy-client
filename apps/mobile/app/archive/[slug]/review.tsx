@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ComposerShell } from '../../../components/archive/ComposerShell';
 import {
-  ComposerField, ComposerCheckbox, ComposerSubmit,
+  ComposerChoice, ComposerField, ComposerCheckbox, ComposerSubmit,
 } from '../../../components/archive/ComposerField';
 import { submitReview } from '../../../components/archive/composerActions';
 import { useComposerEntry } from '../../../components/archive/useComposerEntry';
@@ -28,7 +28,9 @@ export default function WriteReviewScreen() {
   const { entry, status } = useComposerEntry(slug);
 
   const [body, setBody] = useState('');
-  const [recommend, setRecommend] = useState(true);
+  // No default verdict. A review that says "skip it" must never go out under
+  // her name as 👍 because she did not touch the toggle (ARC-04/05).
+  const [recommend, setRecommend] = useState<boolean | null>(null);
   const [ack, setAck] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,7 +43,7 @@ export default function WriteReviewScreen() {
   });
 
   const send = async () => {
-    if (!entry) return;
+    if (!entry || recommend === null) return;
     setBusy(true);
     setError(null);
     const res = await submitReview(entry.id, body.trim(), recommend, ack);
@@ -69,23 +71,23 @@ export default function WriteReviewScreen() {
           onPress={() => void send()}
           // Both gates, not one: an empty review is nothing to publish, and an
           // unacknowledged one is refused by the database anyway.
-          disabled={body.trim().length === 0 || !ack || status !== 'ready'}
+          disabled={body.trim().length === 0 || !ack || recommend === null || status !== 'ready'}
           busy={busy}
           testID="archive-review-submit"
         />
       }
     >
-      <View style={s.row}>
-        <ComposerSubmit
+      <View style={s.row} accessibilityRole="radiogroup" accessibilityLabel="Would you recommend it?">
+        <ComposerChoice
           label="👍 I'd recommend it"
+          selected={recommend === true}
           onPress={() => setRecommend(true)}
-          disabled={!recommend}
           testID="archive-review-up"
         />
-        <ComposerSubmit
+        <ComposerChoice
           label="👎 I wouldn't"
+          selected={recommend === false}
           onPress={() => setRecommend(false)}
-          disabled={recommend}
           testID="archive-review-down"
         />
       </View>

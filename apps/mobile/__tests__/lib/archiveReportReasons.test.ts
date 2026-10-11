@@ -34,7 +34,14 @@ const checkedReasons = (): string[] => {
     // Any CHECK naming reason — the original column definition in 008 or a
     // later ADD CONSTRAINT that replaces it. Last one wins, which is what
     // Postgres ends up with too.
-    const matches = sql.matchAll(/\breason\s+IN\s*\(([^)]*)\)/gi);
+    // Scoped to the REPORTS constraint: the 008 column definition inside
+    // `CREATE TABLE ... reports`, or a later `reports_reason_check`. Other
+    // tables have a `reason` column too (133's hidden_posts and
+    // archive_note_flags), and a bare `reason IN (` match read theirs as the
+    // reports list.
+    const matches = sql.matchAll(
+      /(?:reports_reason_check\s+CHECK\s*\(\s*|CREATE TABLE IF NOT EXISTS (?:public\.)?reports\s*\([^;]*?CHECK\s*\(\s*)reason\s+IN\s*\(([^)]*)\)/gi,
+    );
     for (const m of matches) {
       found = m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '').replace(/'$/, ''));
     }

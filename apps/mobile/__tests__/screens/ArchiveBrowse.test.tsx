@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import ArchiveBrowseScreen from '../../app/archive/index';
 import { useArchiveStore } from '../../store/archiveStore';
 import { useProfileStore } from '../../store/profileStore';
@@ -81,6 +81,47 @@ beforeEach(() => {
   mockStatus = 'approved';
   useProfileStore.setState({ profile: { vetting_status: 'approved' } as never });
   seed();
+});
+
+describe('ARC-07 / ARC-09: refresh, paging, debounce, confirmation', () => {
+  it('the list has pull-to-refresh and pages on reaching the end', () => {
+    const mockRefresh = jest.fn().mockResolvedValue(undefined);
+    const mockLoadMore = jest.fn().mockResolvedValue(undefined);
+    seed({ refresh: mockRefresh, loadMore: mockLoadMore, hasMore: true, refreshing: false });
+    const { getByTestId } = render(<ArchiveBrowseScreen />);
+    const list = getByTestId('archive-list');
+    expect(list.props.refreshControl).toBeTruthy();
+    list.props.refreshControl.props.onRefresh();
+    expect(mockRefresh).toHaveBeenCalled();
+    list.props.onEndReached();
+    expect(mockLoadMore).toHaveBeenCalled();
+  });
+
+  it('typing does not fire a load per keystroke', async () => {
+    jest.useFakeTimers();
+    try {
+      const r = render(<ArchiveBrowseScreen />);
+      mockLoad.mockClear();
+      // The store mock does not apply setFilters, so drive the effect by
+      // re-seeding the query the way the real store would.
+      act(() => { useArchiveStore.setState({ filters: { query: 'c', mediaType: null, sort: 'top' } } as never); });
+      act(() => { useArchiveStore.setState({ filters: { query: 'ca', mediaType: null, sort: 'top' } } as never); });
+      act(() => { useArchiveStore.setState({ filters: { query: 'car', mediaType: null, sort: 'top' } } as never); });
+      expect(mockLoad).not.toHaveBeenCalled();
+      act(() => { jest.advanceTimersByTime(300); });
+      expect(mockLoad).toHaveBeenCalledTimes(1);
+      r.unmount();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows the "sent to the mods" confirmation a composer left behind, once', () => {
+    seed({ flash: 'Sent to the mods ✿ credited to you' });
+    const { getByTestId } = render(<ArchiveBrowseScreen />);
+    expect(getByTestId('archive-submitted-toast')).toBeTruthy();
+    expect(useArchiveStore.getState().flash).toBeNull();
+  });
 });
 
 describe('the Archive browse screen', () => {
