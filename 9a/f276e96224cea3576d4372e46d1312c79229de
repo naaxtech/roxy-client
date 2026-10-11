@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/profile/ProfilePostsGrid.test.tsx
+  h_0549c11fec2ab0 2,10,19-22,38-51
+apps/mobile/components/profile/ProfilePostsGrid.tsx
+  h_0549c11fec2ab0 42-48,69,76-77,79-80,90-111,162-175,180-182,184-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9af276e96224cea3576d4372e46d1312c79229de",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
