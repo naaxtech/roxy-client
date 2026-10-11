@@ -361,7 +361,7 @@ export function FeedSafetySheet({
 
 interface RowProps {
   testID: string;
-  icon: 'flag-outline' | 'ban-outline' | 'eye-off-outline';
+  icon: 'flag-outline' | 'ban-outline' | 'eye-off-outline' | 'volume-mute-outline';
   label: string;
   hint: string;
   accessibilityLabel: string;

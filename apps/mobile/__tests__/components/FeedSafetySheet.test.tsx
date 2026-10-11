@@ -326,6 +326,7 @@ describe('FeedSafetySheet reuse', () => {
         onReport={(): Promise<void> => Promise.resolve()}
         onBlock={(): Promise<void> => Promise.resolve()}
         onHide={noop}
+        onMute={(): Promise<void> => Promise.resolve()}
       />,
     );
 

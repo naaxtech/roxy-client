@@ -39,6 +39,12 @@ export interface ReelCellProps
   height: number;
   muted: boolean;
   onToggleMute: () => void;
+  /**
+   * False while the screen is blurred or the app is backgrounded. Tabs keep
+   * their screens mounted, so without this a clip played on, with sound,
+   * behind Messages or a pushed profile (FEED-03). Defaults to true.
+   */
+  playbackAllowed?: boolean;
 }
 
 /**
@@ -53,7 +59,7 @@ export interface ReelCellProps
  */
 export function ReelCell({
   post, index, activeIndex, activeItemId, width, height,
-  muted, reducedMotion, liked, onToggleMute, onLike,
+  muted, reducedMotion, liked, onToggleMute, onLike, playbackAllowed = true,
   ...chrome
 }: ReelCellProps): ReactElement {
   const isActive = post.id === activeItemId;
@@ -67,7 +73,9 @@ export function ReelCell({
   const [playOverride, setPlayOverride] = useState<boolean | null>(null);
   // Two independent conditions, both required: this cell is the one being
   // looked at, AND this cell is something that plays.
-  const playing = isActive && isVideo && (playOverride ?? autoplay);
+  // The screen being on screen is a third: a tap-to-play override never
+  // outranks a blurred tab or a backgrounded app.
+  const playing = isActive && isVideo && playbackAllowed && (playOverride ?? autoplay);
 
   // A cell scrolled away from is a cell whose pause was about the old clip;
   // recycled or returned to, it should behave like a fresh one.

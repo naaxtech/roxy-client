@@ -9,6 +9,7 @@ import { useConnectStore } from '../../store/connectStore';
 import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
 import { useSafetyStore } from '../../store/safetyStore';
+import { useFeedStore } from '../../store/feedStore';
 import { useAccess } from '../../hooks/useAccess';
 import { ViewAsBanner } from '../../components/settings/ViewAsBanner';
 import { PendingStatusHost } from '../../components/account/PendingStatusHost';
@@ -66,11 +67,15 @@ export default function TabLayout() {
   // every launch with nothing ever refilling it.
   const loadBlockedUsers = useSafetyStore((s) => s.loadBlockedUsers);
   const loadMutedUsers = useSafetyStore((s) => s.loadMutedUsers);
+  // Hidden posts (`hidden_posts`, 133) load beside mutes for the same reason:
+  // a hide that only lived in memory came back on the next launch (FEED-01).
+  const loadHiddenPosts = useFeedStore((s) => s.loadHiddenPosts);
   useEffect(() => {
     if (!user?.id) return;
     void loadBlockedUsers();
     void loadMutedUsers();
-  }, [user?.id, loadBlockedUsers, loadMutedUsers]);
+    void loadHiddenPosts();
+  }, [user?.id, loadBlockedUsers, loadMutedUsers, loadHiddenPosts]);
 
   // One device push token per signed-in user, so the server can reach her for
   // messages and friend requests with the app closed.

@@ -211,6 +211,7 @@ describe('feed touch targets are measured, never padded by hitSlop', () => {
         onReport={() => Promise.resolve()}
         onBlock={() => Promise.resolve()}
         onHide={noop}
+        onMute={() => Promise.resolve()}
       />,
     );
 
@@ -255,6 +256,7 @@ describe('feed touch targets are measured, never padded by hitSlop', () => {
         onReport={() => Promise.resolve()}
         onBlock={() => Promise.resolve()}
         onHide={noop}
+        onMute={() => Promise.resolve()}
       />,
     );
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { ReelsFeed } from '../../components/feed/ReelsFeed';
 import type { ReelRow } from '../../lib/reels';
 
@@ -88,14 +88,19 @@ jest.mock('../../lib/supabase', () => {
   return {
     supabase: {
       from: jest.fn(() => makeQuery()),
-      rpc: jest.fn(() =>
-        Promise.resolve({
-          data: mockWall().map((r, i) => ({
-            post_id: r.id, community_id: null, rank: 100 - i, created_at: r.created_at,
-          })),
-          error: null,
-        }),
-      ),
+      // Answers like `feed_rank_page` (133): rows after the cursor, in rank
+      // order, each carrying the clock the first page was ranked at.
+      rpc: jest.fn((fn: string, args: Record<string, unknown>) => {
+        mockRpcCalls.push({ fn, args });
+        const ranked = mockWall().map((r, i) => ({
+          post_id: r.id, community_id: null, rank: 100 - i, created_at: r.created_at,
+          as_of: '2026-10-11T00:00:00Z',
+        }));
+        const after = args.p_cursor_id == null
+          ? ranked
+          : ranked.slice(ranked.findIndex((r) => r.post_id === args.p_cursor_id) + 1);
+        return Promise.resolve({ data: after.slice(0, Number(args.p_limit)), error: null });
+      }),
     },
     callEdgeFunction: jest.fn(() => Promise.resolve({ data: { ok: true }, error: null })),
   };
@@ -107,12 +112,21 @@ const mockWallState: { rows: Row[] | null } = { rows: null };
 function mockWall(): Row[] {
   return mockWallState.rows ?? WALL;
 }
+const mockRpcCalls: { fn: string; args: Record<string, unknown> }[] = [];
 beforeEach(() => {
   mockWallState.rows = null;
+  mockRpcCalls.length = 0;
+  (jest.requireMock('../../store/safetyStore') as {
+    useSafetyStore: { getState: () => { mutedUserIds: string[] } };
+  }).useSafetyStore.getState().mutedUserIds = [];
 });
 
 jest.mock('../../store/safetyStore', () => {
-  const state = { blockUser: jest.fn(() => Promise.resolve()) };
+  const state = {
+    blockUser: jest.fn(() => Promise.resolve()),
+    muteUser: jest.fn(() => Promise.resolve()),
+    mutedUserIds: [] as string[],
+  };
   const useSafetyStore = (selector: (s: typeof state) => unknown): unknown => selector(state);
   useSafetyStore.getState = (): typeof state => state;
   return { useSafetyStore };
@@ -124,9 +138,11 @@ jest.mock('../../store/feedStore', () => {
     savedPostIds: new Set<string>(),
     likeCountDeltas: {} as Record<string, number>,
     seenPostIds: new Set<string>(),
+    hiddenPostIds: new Set<string>(),
     toggleLike: jest.fn(),
     toggleSave: jest.fn(),
     markSeen: jest.fn(),
+    hidePost: jest.fn(() => Promise.resolve(true)),
   };
   const useFeedStore = (selector: (s: typeof state) => unknown): unknown => selector(state);
   useFeedStore.getState = (): typeof state => state;
@@ -137,6 +153,7 @@ jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn(), back: jes
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => false }));
 jest.mock('../../components/feed/CommentSheet', () => ({ CommentSheet: () => null }));
+jest.mock('../../hooks/usePlaybackAllowed', () => ({ usePlaybackAllowed: () => true }));
 
 function latestData(): ReelRow[] {
   const { __captured } = jest.requireMock('@shopify/flash-list') as {
@@ -168,5 +185,61 @@ describe('For You (Feed tab, scope="announcements")', () => {
 
     await waitFor(() => expect(latestData().length).toBeGreaterThan(0));
     expect(latestData().map((r) => r.id)).toEqual(['fy-text', 'fy-video', 'fy-photo']);
+  });
+
+  it('ranks through feed_rank_page from a fresh clock, not the legacy RPC', async () => {
+    const view = render(<ReelsFeed scope="announcements" />);
+    fireEvent(view.getByTestId('reels-feed'), 'layout', {
+      nativeEvent: { layout: { height: 800, width: 400 } },
+    });
+
+    await waitFor(() => expect(latestData().length).toBeGreaterThan(0));
+    expect(mockRpcCalls[0]).toMatchObject({
+      fn: 'feed_rank_page',
+      args: { p_as_of: null, p_cursor_rank: null, p_cursor_id: null },
+    });
+  });
+
+  it('pages on the keyset (rank, created_at, id) at the first page\'s clock (FEED-02)', async () => {
+    // 51 posts: one more than the RPC's page, so there is a second page.
+    mockWallState.rows = Array.from({ length: 51 }, (_, i) => ({
+      ...WALL[0],
+      id: `fy-${String(i).padStart(2, '0')}`,
+      created_at: '2026-09-20T10:00:00Z',
+    }));
+    const view = render(<ReelsFeed scope="announcements" />);
+    fireEvent(view.getByTestId('reels-feed'), 'layout', {
+      nativeEvent: { layout: { height: 800, width: 400 } },
+    });
+    await waitFor(() => expect(latestData()).toHaveLength(50));
+
+    const { __captured } = jest.requireMock('@shopify/flash-list') as {
+      __captured: { onEndReached: () => void }[];
+    };
+    await act(async () => { __captured[__captured.length - 1].onEndReached(); });
+    await waitFor(() => expect(latestData()).toHaveLength(51));
+
+    expect(mockRpcCalls[1]).toMatchObject({
+      fn: 'feed_rank_page',
+      args: {
+        p_as_of: '2026-10-11T00:00:00Z',
+        p_cursor_rank: 51,
+        p_cursor_created_at: '2026-09-20T10:00:00Z',
+        p_cursor_id: 'fy-49',
+      },
+    });
+  });
+
+  it('drops a muted author from For You', async () => {
+    (jest.requireMock('../../store/safetyStore') as {
+      useSafetyStore: { getState: () => { mutedUserIds: string[] } };
+    }).useSafetyStore.getState().mutedUserIds = ['u2'];
+    const view = render(<ReelsFeed scope="announcements" />);
+    fireEvent(view.getByTestId('reels-feed'), 'layout', {
+      nativeEvent: { layout: { height: 800, width: 400 } },
+    });
+
+    await waitFor(() => expect(latestData().length).toBeGreaterThan(0));
+    expect(latestData().map((r) => r.id)).toEqual(['fy-text', 'fy-photo']);
   });
 });
