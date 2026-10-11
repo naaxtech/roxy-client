@@ -1,0 +1,22 @@
+apps/mobile/__tests__/lib/channelSafety.test.ts
+  h_0549c11fec2ab0 1-80
+apps/mobile/__tests__/screens/CommunityChannels.test.tsx
+  h_0549c11fec2ab0 44-49
+apps/mobile/__tests__/screens/CommunityChannelsSafety.test.tsx
+  h_0549c11fec2ab0 1-182
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  h_0549c11fec2ab0 1,20,23,31-34,76-83,172-178,181-195,198-200,204,207-211,277-289,406,420
+apps/mobile/lib/channels.ts
+  h_0549c11fec2ab0 83-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be13ef1596d36b06cb97df387509b8381d189d73",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
