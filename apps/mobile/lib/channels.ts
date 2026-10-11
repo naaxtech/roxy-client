@@ -81,6 +81,55 @@ export async function fetchChannelMessages(channelId: string): Promise<ChannelMe
 }
 
 /**
+ * One message by id, with its author — for a realtime INSERT/UPDATE, whose
+ * payload carries no joined author. RLS hides a block-paired sender's row
+ * (migration 132), which comes back as null: not an error, just not hers to see.
+ */
+export async function fetchChannelMessage(messageId: string): Promise<ChannelMessage | null> {
+  const { data, error } = await supabase
+    .from('community_channel_messages')
+    .select(MESSAGE_FIELDS)
+    .eq('id', messageId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as unknown as ChannelMessage | null) ?? null;
+}
+
+/**
+ * Block and mute apply in channels too (CHAT-10). The server already hides
+ * block-paired rows both ways; this covers the moment right after she taps
+ * Block, before any refetch, and mutes, which are hers alone. Same array back
+ * when nobody is silenced, so a list does not re-render for nothing.
+ */
+export function hideSilenced(
+  messages: ChannelMessage[],
+  blockedIds: readonly string[],
+  mutedIds: readonly string[],
+): ChannelMessage[] {
+  if (blockedIds.length === 0 && mutedIds.length === 0) return messages;
+  const hidden = new Set([...blockedIds, ...mutedIds]);
+  return messages.filter((msg) => !msg.sender_id || !hidden.has(msg.sender_id));
+}
+
+/**
+ * Fold one incoming row into the list (CHAT-16): replace it if present (edit,
+ * removal, or the realtime echo of her own send), otherwise insert it in time
+ * order. A replacement keeps the author it already had when the new copy has
+ * none, so a removal never flashes "Someone who left".
+ */
+export function mergeChannelMessage(messages: ChannelMessage[], row: ChannelMessage): ChannelMessage[] {
+  const i = messages.findIndex((msg) => msg.id === row.id);
+  if (i !== -1) {
+    const next = messages.slice();
+    next[i] = { ...messages[i], ...row, author: row.author ?? messages[i].author };
+    return next;
+  }
+  let at = messages.length;
+  while (at > 0 && messages[at - 1].created_at > row.created_at) at -= 1;
+  return [...messages.slice(0, at), row, ...messages.slice(at)];
+}
+
+/**
  * Send a message.
  *
  * Returns the inserted row so the caller can reconcile its optimistic entry

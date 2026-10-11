@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator, Pressable,
   KeyboardAvoidingView, Platform,
@@ -17,9 +17,10 @@ import { ChannelMessage } from '../../../../../components/channels/ChannelMessag
 import { ChannelComposer } from '../../../../../components/channels/ChannelComposer';
 import { ChannelMessageActions, type ChannelAction } from '../../../../../components/channels/ChannelMessageActions';
 import {
-  fetchChannels, fetchChannelMessages, sendChannelMessage, deleteChannelMessage,
+  fetchChannels, fetchChannelMessages, fetchChannelMessage, sendChannelMessage, deleteChannelMessage,
   initialChannel, fetchMyChannelRole, writeFailureMessage, authorName, fetchLiveStage,
   markChannelRead, setChannelNotifications, fetchChannelNotifications,
+  hideSilenced, mergeChannelMessage,
   type LiveStage,
   type Channel, type ChannelMessage as Message,
 } from '../../../../../lib/channels';
@@ -27,6 +28,10 @@ import { useSafetyStore } from '../../../../../store/safetyStore';
 import { useAccess } from '../../../../../hooks/useAccess';
 import { ComingSoon } from '../../../../../components/features/ComingSoon';
 import { OFFICIAL_COMMUNITY_SLUG } from '../../../../../lib/features';
+import { showAlert } from '../../../../../lib/confirm';
+import { freshChannel } from '../../../../../lib/realtimeChannel';
+
+const NONE: string[] = [];
 
 /**
  * Community channels (design markup 655–697).
@@ -68,7 +73,14 @@ export default function CommunityChannelsScreen() {
   // yesterday down to the newest message every time anyone posts is hostile.
   const atBottom = useRef(true);
 
-  const { blockUser, openReportModal } = useSafetyStore();
+  const { blockUser, openReportModal, blockedUserIds, mutedUserIds } = useSafetyStore();
+  // CHAT-10: block and mute reach channels. RLS (migration 132) already hides
+  // block-paired senders both ways; this hides her at once after she taps
+  // Block, before any refetch, and keeps muted senders out of her view.
+  const visible = useMemo(
+    () => hideSilenced(messages, blockedUserIds ?? NONE, mutedUserIds ?? NONE),
+    [messages, blockedUserIds, mutedUserIds],
+  );
 
   const loadChannels = useCallback(async () => {
     if (!communityId) {
@@ -157,28 +169,45 @@ export default function CommunityChannelsScreen() {
 
   // Filtered by channel_id, never table-wide: a subscription to every message
   // in every community is the pattern CLAUDE.md §18 bans outright.
+  //
+  // CHAT-16: an incoming row is fetched BY ID (the payload carries no joined
+  // author) and folded in — the page used to be re-read for every message
+  // anybody posted. UPDATE covers edits and moderator removals the same way.
+  // A row RLS hides (a block-paired sender) comes back null and is dropped.
+  // freshChannel: a unique topic, so quick re-entry never reuses a dead one
+  // (CHAT-08).
   useEffect(() => {
     if (!active) return undefined;
-    const channel = supabase
-      .channel(`community-channel-${active.id}`)
+    const channelId = active.id;
+    const fold = async (id: string | undefined) => {
+      if (!id) return;
+      try {
+        const row = await fetchChannelMessage(id);
+        if (!row || shownChannelId.current !== channelId) return;
+        setMessages((prev) => mergeChannelMessage(prev, row));
+      } catch (e) {
+        logError(e, 'community_channel_message_fetch_failed');
+        // One row failed: fall back to the page rather than lose the message.
+        if (shownChannelId.current === channelId) void loadMessages(channelId);
+      }
+    };
+    const filter = `channel_id=eq.${channelId}`;
+    const channel = freshChannel(`community-channel-${channelId}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'community_channel_messages',
-          filter: `channel_id=eq.${active.id}`,
-        },
-        () => {
-          // Re-read rather than trusting the payload: the realtime row carries
-          // no joined author, and rendering it would flash "Someone who left"
-          // beside every incoming message.
-          void loadMessages(active.id);
+        { event: 'INSERT', schema: 'public', table: 'community_channel_messages', filter },
+        (payload: { new?: { id?: string } }) => {
+          void fold(payload.new?.id);
           // She is watching, so what lands is read. Clear the cursor as the
           // message arrives, or it comes back as an unread badge after she
           // leaves.
-          void markChannelRead(active.id);
+          void markChannelRead(channelId);
         },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'community_channel_messages', filter },
+        (payload: { new?: { id?: string } }) => { void fold(payload.new?.id); },
       )
       .subscribe();
 
@@ -245,7 +274,19 @@ export default function CommunityChannelsScreen() {
         key: 'block',
         label: `Block ${name}`,
         destructive: true,
-        onPress: () => { void blockUser(message.sender_id as string); },
+        onPress: () => {
+          void (async () => {
+            try {
+              await blockUser(message.sender_id as string);
+              // Her messages leave the list now (hideSilenced); say so, so the
+              // menu action never looks like it did nothing.
+              showAlert('Blocked', `You won't see ${name}'s messages here any more.`);
+            } catch (e) {
+              logError(e, 'community_channel_block_failed');
+              showAlert('Not blocked', `Something went wrong, so ${name} is not blocked. Try again in a moment.`);
+            }
+          })();
+        },
       });
     }
 
@@ -362,7 +403,7 @@ export default function CommunityChannelsScreen() {
       );
     }
 
-    if (messages.length === 0) {
+    if (visible.length === 0) {
       return (
         <View style={s.centre} testID="channel-messages-empty">
           <Text style={s.centreTitle}>Nothing in # {active.slug} yet</Text>
@@ -376,7 +417,7 @@ export default function CommunityChannelsScreen() {
     return (
       <FlatList
         ref={listRef}
-        data={messages}
+        data={visible}
         keyExtractor={(m) => m.id}
         contentContainerStyle={s.list}
         renderItem={({ item }) => (

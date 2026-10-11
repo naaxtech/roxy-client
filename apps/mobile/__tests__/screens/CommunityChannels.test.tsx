@@ -41,7 +41,12 @@ jest.mock('../../lib/supabase', () => ({
     from: () => ({
       select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { name: 'Queer Gamers' } }) }) }),
     }),
-    channel: () => ({ on: () => ({ subscribe: () => ({}) }) }),
+    channel: () => {
+      // Chainable like the real client: the screen subscribes to INSERT and
+      // UPDATE on one channel (CHAT-16).
+      const ch: { on: () => unknown; subscribe: () => unknown } = { on: () => ch, subscribe: () => ch };
+      return ch;
+    },
     removeChannel: jest.fn(),
     // markChannelRead (migration 124) posts a read cursor on channel open.
     rpc: jest.fn(() => Promise.resolve({ data: null, error: null })),
