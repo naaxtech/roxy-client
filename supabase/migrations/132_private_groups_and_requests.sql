@@ -128,6 +128,27 @@ CREATE TABLE IF NOT EXISTS public.community_bans (
 );
 ALTER TABLE public.community_bans ENABLE ROW LEVEL SECURITY;
 
+-- CHAT-09: the only doors into a private community. She asks and a moderator
+-- says yes ('request'), or a moderator invites her and she says yes
+-- ('invite'). One row per person per community; written only by the RPCs.
+CREATE TABLE IF NOT EXISTS public.community_join_requests (
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  user_id      uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  kind         text NOT NULL CHECK (kind IN ('request', 'invite')),
+  status       text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'declined')),
+  note         text CHECK (note IS NULL OR char_length(note) <= 300),
+  invited_by   uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  decided_by   uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  decided_at   timestamptz,
+  PRIMARY KEY (community_id, user_id)
+);
+ALTER TABLE public.community_join_requests ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_community_join_requests_pending
+  ON public.community_join_requests (community_id, created_at) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_community_join_requests_user
+  ON public.community_join_requests (user_id) WHERE status = 'pending';
+
 -- ── 3. Helpers (SECURITY DEFINER so policies never recurse) ──────────────
 
 CREATE OR REPLACE FUNCTION public.is_conversation_member(p_conv uuid)
@@ -319,6 +340,18 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
     SELECT 1 FROM public.community_bans b
     WHERE b.community_id = p_community AND b.user_id = p_user
       AND (b.expires_at IS NULL OR b.expires_at > now())
+  );
+$$;
+
+-- An invitee may see the community she was invited to (name, crest) before
+-- she says yes; nobody else learns a private community exists.
+CREATE OR REPLACE FUNCTION public.has_community_invite(p_community uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.community_join_requests r
+    WHERE r.community_id = p_community AND r.user_id = auth.uid()
+      AND r.kind = 'invite' AND r.status = 'pending'
   );
 $$;
 
@@ -771,6 +804,29 @@ CREATE POLICY community_bans_select ON public.community_bans
   FOR SELECT TO authenticated
   USING (user_id = auth.uid() OR public.is_community_moderator(community_id) OR public.is_roxy_staff());
 
+-- Join requests / invites: she sees her own; moderators see their community's.
+-- Writes go through request_to_join_community / respond_join_request /
+-- invite_to_community / respond_community_invite only.
+DROP POLICY IF EXISTS community_join_requests_select ON public.community_join_requests;
+CREATE POLICY community_join_requests_select ON public.community_join_requests
+  FOR SELECT TO authenticated
+  USING (user_id = auth.uid() OR public.is_community_moderator(community_id) OR public.is_roxy_staff());
+
+-- communities: the policies 003/015 left on PUBLIC (anon included) are
+-- re-scoped TO authenticated, same rules. An invitee may read the community
+-- she was invited to, so the invite can show its name before she says yes.
+DROP POLICY IF EXISTS communities_read_member ON public.communities;
+CREATE POLICY communities_read_member ON public.communities
+  FOR SELECT TO authenticated USING (public.is_community_member(id));
+DROP POLICY IF EXISTS communities_read_invited ON public.communities;
+CREATE POLICY communities_read_invited ON public.communities
+  FOR SELECT TO authenticated USING (public.has_community_invite(id));
+DROP POLICY IF EXISTS communities_update_own ON public.communities;
+CREATE POLICY communities_update_own ON public.communities
+  FOR UPDATE TO authenticated
+  USING (auth.uid() = created_by)
+  WITH CHECK (auth.uid() = created_by);
+
 -- channel messages (CHAT-10): block-paired senders vanish both ways.
 DROP POLICY IF EXISTS "members read channel messages" ON public.community_channel_messages;
 CREATE POLICY "members read channel messages" ON public.community_channel_messages
@@ -840,9 +896,11 @@ CREATE POLICY "chat members send conversation broadcasts" ON realtime.messages
 
 REVOKE ALL ON public.conversations, public.messages, public.conversation_members, public.friendships,
               public.message_reactions, public.community_members, public.community_channel_messages,
-              public.chat_settings, public.message_revisions, public.community_bans
+              public.chat_settings, public.message_revisions, public.community_bans,
+              public.community_join_requests
   FROM anon;
-REVOKE ALL ON public.conversation_members, public.chat_settings, public.message_revisions, public.community_bans
+REVOKE ALL ON public.conversation_members, public.chat_settings, public.message_revisions, public.community_bans,
+              public.community_join_requests
   FROM PUBLIC;
 REVOKE TRUNCATE, TRIGGER, REFERENCES ON public.conversations, public.messages, public.friendships,
               public.message_reactions, public.community_members
@@ -862,8 +920,16 @@ REVOKE UPDATE ON public.message_reactions FROM authenticated;
 GRANT SELECT, INSERT, DELETE ON public.message_reactions TO authenticated;
 REVOKE UPDATE ON public.community_members FROM authenticated;
 GRANT SELECT, INSERT, DELETE ON public.community_members TO authenticated;
-GRANT SELECT ON public.conversation_members, public.chat_settings, public.message_revisions, public.community_bans
+GRANT SELECT ON public.conversation_members, public.chat_settings, public.message_revisions, public.community_bans,
+              public.community_join_requests
   TO authenticated;
+-- RPC-written tables: Supabase's default privileges hand authenticated ALL on
+-- every new table. RLS already makes a write a 0-row no-op; take the grant
+-- away too, so a direct write is refused outright (42501), not "ok 0".
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, TRIGGER, REFERENCES
+  ON public.conversation_members, public.chat_settings, public.message_revisions, public.community_bans,
+     public.community_join_requests
+  FROM authenticated;
 
 DO $$
 BEGIN
@@ -1378,6 +1444,10 @@ BEGIN
     VALUES (p_community, p_user, v_me, left(p_reason, 500))
     ON CONFLICT (community_id, user_id) DO UPDATE
       SET banned_by = excluded.banned_by, reason = excluded.reason, created_at = now(), expires_at = NULL;
+    -- A ban also closes any open request or invite she has here.
+    UPDATE public.community_join_requests
+       SET status = 'declined', decided_by = v_me, decided_at = now()
+     WHERE community_id = p_community AND user_id = p_user AND status = 'pending';
   END IF;
   INSERT INTO public.community_role_changes (community_id, user_id, old_role, new_role, changed_by)
   VALUES (p_community, p_user, v_their, CASE WHEN p_ban THEN 'banned' ELSE 'removed' END, v_me);
@@ -1394,6 +1464,134 @@ BEGIN
   DELETE FROM public.community_bans WHERE community_id = p_community AND user_id = p_user;
   INSERT INTO public.community_role_changes (community_id, user_id, old_role, new_role, changed_by)
   VALUES (p_community, p_user, 'banned', 'unbanned', auth.uid());
+END $$;
+
+-- CHAT-09: joining. A public community opens at once; a private one takes a
+-- request a moderator approves, or a moderator's invite she accepts. A ban
+-- closes both doors. Returns 'joined' | 'requested' | 'member'.
+CREATE OR REPLACE FUNCTION public.request_to_join_community(p_community uuid, p_note text DEFAULT NULL)
+RETURNS text
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_me      uuid := public.chat_require_member();
+  v_private boolean;
+  v_row     public.community_join_requests%ROWTYPE;
+BEGIN
+  SELECT coalesce(is_private, false) INTO v_private FROM public.communities WHERE id = p_community;
+  IF NOT FOUND THEN RAISE EXCEPTION 'community not found' USING ERRCODE = 'P0002'; END IF;
+  IF public.is_banned_from_community(p_community, v_me) THEN
+    RAISE EXCEPTION 'you can''t join this community' USING ERRCODE = '42501';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.community_members WHERE community_id = p_community AND user_id = v_me) THEN
+    RETURN 'member';
+  END IF;
+
+  SELECT * INTO v_row FROM public.community_join_requests
+   WHERE community_id = p_community AND user_id = v_me FOR UPDATE;
+
+  -- Asked in already: saying yes to her invite is the same as joining.
+  IF NOT v_private OR (v_row.kind = 'invite' AND v_row.status = 'pending') THEN
+    INSERT INTO public.community_members (community_id, user_id, role)
+    VALUES (p_community, v_me, 'member') ON CONFLICT DO NOTHING;
+    UPDATE public.community_join_requests SET status = 'approved', decided_at = now()
+     WHERE community_id = p_community AND user_id = v_me AND status = 'pending';
+    RETURN 'joined';
+  END IF;
+
+  IF v_row.status = 'pending' THEN RETURN 'requested'; END IF;
+  -- A declined request can be asked again after a week, not hammered.
+  IF v_row.status = 'declined' AND v_row.decided_at > now() - interval '7 days' THEN
+    RAISE EXCEPTION 'you can ask to join again in a few days' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO public.community_join_requests (community_id, user_id, kind, status, note)
+  VALUES (p_community, v_me, 'request', 'pending', left(nullif(btrim(coalesce(p_note, '')), ''), 300))
+  ON CONFLICT (community_id, user_id) DO UPDATE
+    SET kind = 'request', status = 'pending', note = excluded.note, invited_by = NULL,
+        decided_by = NULL, decided_at = NULL, created_at = now();
+  RETURN 'requested';
+END $$;
+
+-- A moderator answers a request. Approving adds her as a member.
+CREATE OR REPLACE FUNCTION public.respond_join_request(p_community uuid, p_user uuid, p_approve boolean)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_me uuid := auth.uid();
+BEGIN
+  IF v_me IS NULL THEN RAISE EXCEPTION 'not authenticated' USING ERRCODE = '42501'; END IF;
+  IF NOT public.is_roxy_staff() AND NOT public.is_community_moderator(p_community) THEN
+    RAISE EXCEPTION 'only moderators can answer join requests' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.community_join_requests
+     SET status = CASE WHEN p_approve THEN 'approved' ELSE 'declined' END,
+         decided_by = v_me, decided_at = now()
+   WHERE community_id = p_community AND user_id = p_user AND kind = 'request' AND status = 'pending';
+  IF NOT FOUND THEN RAISE EXCEPTION 'that request is no longer open' USING ERRCODE = 'P0002'; END IF;
+  IF p_approve THEN
+    IF public.is_banned_from_community(p_community, p_user) THEN
+      RAISE EXCEPTION 'that person is banned from this community' USING ERRCODE = '42501';
+    END IF;
+    INSERT INTO public.community_members (community_id, user_id, role)
+    VALUES (p_community, p_user, 'member') ON CONFLICT DO NOTHING;
+    INSERT INTO public.community_role_changes (community_id, user_id, old_role, new_role, changed_by)
+    VALUES (p_community, p_user, 'requested', 'member', v_me);
+  END IF;
+END $$;
+
+-- A moderator invites an approved member who is not banned or block-paired
+-- with her. Returns 'invited', or 'joined' when that person had already asked.
+CREATE OR REPLACE FUNCTION public.invite_to_community(p_community uuid, p_user uuid)
+RETURNS text
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_me uuid := public.chat_require_member();
+BEGIN
+  IF NOT public.is_roxy_staff() AND NOT public.is_community_moderator(p_community) THEN
+    RAISE EXCEPTION 'only moderators can invite people' USING ERRCODE = '42501';
+  END IF;
+  IF p_user IS NULL OR p_user = v_me THEN RAISE EXCEPTION 'pick someone else' USING ERRCODE = '22023'; END IF;
+  IF public.blocked_pair(v_me, p_user)
+     OR public.is_banned_from_community(p_community, p_user)
+     OR NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = p_user AND coalesce(p.is_active, true)
+                     AND p.vetting_status = 'approved') THEN
+    RAISE EXCEPTION 'that person can''t be invited' USING ERRCODE = '42501';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.community_members WHERE community_id = p_community AND user_id = p_user) THEN
+    RETURN 'member';
+  END IF;
+  -- She already asked: an invite from a moderator is a yes.
+  IF EXISTS (SELECT 1 FROM public.community_join_requests
+              WHERE community_id = p_community AND user_id = p_user AND kind = 'request' AND status = 'pending') THEN
+    PERFORM public.respond_join_request(p_community, p_user, true);
+    RETURN 'joined';
+  END IF;
+  INSERT INTO public.community_join_requests (community_id, user_id, kind, status, invited_by)
+  VALUES (p_community, p_user, 'invite', 'pending', v_me)
+  ON CONFLICT (community_id, user_id) DO UPDATE
+    SET kind = 'invite', status = 'pending', invited_by = v_me, note = NULL,
+        decided_by = NULL, decided_at = NULL, created_at = now();
+  RETURN 'invited';
+END $$;
+
+-- The invitee says yes or no. No is private: the inviter is not told.
+CREATE OR REPLACE FUNCTION public.respond_community_invite(p_community uuid, p_accept boolean)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_me uuid := public.chat_require_member();
+BEGIN
+  UPDATE public.community_join_requests
+     SET status = CASE WHEN p_accept THEN 'approved' ELSE 'declined' END, decided_by = v_me, decided_at = now()
+   WHERE community_id = p_community AND user_id = v_me AND kind = 'invite' AND status = 'pending';
+  IF NOT FOUND THEN RAISE EXCEPTION 'that invite is no longer open' USING ERRCODE = 'P0002'; END IF;
+  IF p_accept THEN
+    IF public.is_banned_from_community(p_community, v_me) THEN
+      RAISE EXCEPTION 'you can''t join this community' USING ERRCODE = '42501';
+    END IF;
+    INSERT INTO public.community_members (community_id, user_id, role)
+    VALUES (p_community, v_me, 'member') ON CONFLICT DO NOTHING;
+  END IF;
 END $$;
 
 -- ── 9. Function privileges ───────────────────────────────────────────────
@@ -1439,7 +1637,12 @@ REVOKE ALL ON FUNCTION
   public.messages_badge(),
   public.remove_community_member(uuid, uuid, boolean, text),
   public.unban_community_member(uuid, uuid),
-  public.create_community(text, text, text, text, boolean)
+  public.create_community(text, text, text, text, boolean),
+  public.has_community_invite(uuid),
+  public.request_to_join_community(uuid, text),
+  public.respond_join_request(uuid, uuid, boolean),
+  public.invite_to_community(uuid, uuid),
+  public.respond_community_invite(uuid, boolean)
 FROM PUBLIC, anon;
 
 -- Trigger functions and internals are nobody's to call directly.
@@ -1488,5 +1691,10 @@ GRANT EXECUTE ON FUNCTION
   public.messages_badge(),
   public.remove_community_member(uuid, uuid, boolean, text),
   public.unban_community_member(uuid, uuid),
-  public.create_community(text, text, text, text, boolean)
+  public.create_community(text, text, text, text, boolean),
+  public.has_community_invite(uuid),
+  public.request_to_join_community(uuid, text),
+  public.respond_join_request(uuid, uuid, boolean),
+  public.invite_to_community(uuid, uuid),
+  public.respond_community_invite(uuid, boolean)
 TO authenticated;

@@ -99,6 +99,14 @@ CREATE POLICY "members post as themselves" ON public.community_channel_messages
 DROP POLICY IF EXISTS communities_insert_auth ON public.communities;
 CREATE POLICY communities_insert_auth ON public.communities
   FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL AND created_by = auth.uid());
+-- 003/015 shapes, scoped TO authenticated (see header).
+DROP POLICY IF EXISTS communities_read_invited ON public.communities;
+DROP POLICY IF EXISTS communities_read_member ON public.communities;
+CREATE POLICY communities_read_member ON public.communities
+  FOR SELECT TO authenticated USING (public.is_community_member(id));
+DROP POLICY IF EXISTS communities_update_own ON public.communities;
+CREATE POLICY communities_update_own ON public.communities
+  FOR UPDATE TO authenticated USING (auth.uid() = created_by);
 
 -- functions back to their previous bodies
 CREATE OR REPLACE FUNCTION public.create_community(p_name text, p_slug text, p_description text, p_category text, p_is_private boolean DEFAULT false)
@@ -218,6 +226,10 @@ DROP FUNCTION IF EXISTS public.hide_conversation(uuid);
 DROP FUNCTION IF EXISTS public.set_chat_settings(boolean, text);
 DROP FUNCTION IF EXISTS public.remove_community_member(uuid, uuid, boolean, text);
 DROP FUNCTION IF EXISTS public.unban_community_member(uuid, uuid);
+DROP FUNCTION IF EXISTS public.request_to_join_community(uuid, text);
+DROP FUNCTION IF EXISTS public.respond_join_request(uuid, uuid, boolean);
+DROP FUNCTION IF EXISTS public.invite_to_community(uuid, uuid);
+DROP FUNCTION IF EXISTS public.respond_community_invite(uuid, boolean);
 DROP FUNCTION IF EXISTS public.chat_system_message(uuid, uuid, text);
 DROP FUNCTION IF EXISTS public.chat_my_group_role(uuid);
 DROP FUNCTION IF EXISTS public.chat_require_member();
@@ -242,6 +254,8 @@ DROP FUNCTION IF EXISTS public.has_conversation_member_row(uuid);
 -- community_bans policy uses is_community_moderator only; the table goes below.
 DROP POLICY IF EXISTS community_bans_select ON public.community_bans;
 DROP FUNCTION IF EXISTS public.is_banned_from_community(uuid, uuid);
+DROP POLICY IF EXISTS community_join_requests_select ON public.community_join_requests;
+DROP FUNCTION IF EXISTS public.has_community_invite(uuid);
 
 -- data that the old model cannot hold
 DELETE FROM public.conversations WHERE conversation_type = 'group';
@@ -252,6 +266,7 @@ DROP TABLE IF EXISTS public.conversation_members;
 DROP TABLE IF EXISTS public.chat_settings;
 DROP TABLE IF EXISTS public.message_revisions;
 DROP TABLE IF EXISTS public.community_bans;
+DROP TABLE IF EXISTS public.community_join_requests;
 
 ALTER TABLE public.messages DROP CONSTRAINT IF EXISTS messages_content_len;
 ALTER TABLE public.messages DROP CONSTRAINT IF EXISTS message_has_content;

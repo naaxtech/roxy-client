@@ -49,7 +49,7 @@ DECLARE
   g uuid; g2 uuid; g3 uuid;
   m1 uuid; m2 uuid; m_other uuid;
   r text; n int; i int;
-  comm_pub uuid; comm_priv uuid; chan uuid;
+  comm_pub uuid; comm_priv uuid; chan uuid; chan_priv uuid;
   giphy text := 'https://media2.giphy.com/media/abc123XYZ/200w.gif';
 BEGIN
   SELECT array_agg(id ORDER BY created_at, id) INTO ids FROM (
@@ -382,6 +382,83 @@ BEGIN
   IF n <> 0 THEN RAISE EXCEPTION 'CHAT-10: a blocked sender rang the channel bell'; END IF;
   PERFORM pg_temp.as_exec(c, format('select public.unblock_user(%L)', e));
   RAISE NOTICE 'PASS CHAT-09/10: private communities closed, moderators remove/ban, blocks hide both ways and silence the bell';
+
+  -- ── CHAT-09 private communities: request → approve, invite → accept ──────
+  INSERT INTO public.community_members (community_id, user_id, role) VALUES (comm_priv, a, 'admin') ON CONFLICT DO NOTHING;
+  INSERT INTO public.community_channels (community_id, slug, name) VALUES (comm_priv, 'test-132-priv', 'priv') RETURNING id INTO chan_priv;
+  INSERT INTO public.community_channel_messages (channel_id, sender_id, body) VALUES (chan_priv, a, 'members only');
+  PERFORM pg_temp.expect('CHAT-09 outsider cannot see a private community',
+    pg_temp.as_val(f, format('select count(*)::text from public.communities where id = %L', comm_priv)), '0');
+  PERFORM pg_temp.expect('CHAT-09 public join via RPC',
+    pg_temp.as_val(d, format('select public.request_to_join_community(%L)', comm_pub)), 'joined');
+  PERFORM pg_temp.expect('CHAT-09 private join is a request',
+    pg_temp.as_val(d, format('select public.request_to_join_community(%L, %L)', comm_priv, 'hi, Ana sent me')), 'requested');
+  PERFORM pg_temp.expect('CHAT-09 asking twice stays one request',
+    pg_temp.as_val(d, format('select public.request_to_join_community(%L)', comm_priv)), 'requested');
+  PERFORM pg_temp.expect('CHAT-09 requester is not a member yet',
+    pg_temp.as_val(d, format('select count(*)::text from public.community_channel_messages where channel_id = %L', chan_priv)), '0');
+  PERFORM pg_temp.expect('CHAT-09 requester sees her own request',
+    pg_temp.as_val(d, format('select status from public.community_join_requests where community_id = %L and user_id = %L', comm_priv, d)), 'pending');
+  PERFORM pg_temp.expect('CHAT-09 a stranger cannot see the request',
+    pg_temp.as_val(e, format('select count(*)::text from public.community_join_requests where community_id = %L', comm_priv)), '0');
+  PERFORM pg_temp.expect('CHAT-09 member cannot approve',
+    pg_temp.as_exec(d, format('select public.respond_join_request(%L, %L, true)', comm_priv, d)), 'ERR 42501');
+  PERFORM pg_temp.expect('CHAT-09 no direct write to requests',
+    pg_temp.as_exec(d, format('update public.community_join_requests set status = %L where user_id = %L', 'approved', d)), 'ERR 42501');
+  PERFORM pg_temp.expect('CHAT-09 moderator sees the queue',
+    pg_temp.as_val(a, format('select count(*)::text from public.community_join_requests where community_id = %L and status = %L', comm_priv, 'pending')), '1');
+  PERFORM pg_temp.expect('CHAT-09 moderator approves',
+    pg_temp.as_exec(a, format('select public.respond_join_request(%L, %L, true)', comm_priv, d)), 'ok');
+  PERFORM pg_temp.expect('CHAT-09 approved member reads the channel',
+    pg_temp.as_val(d, format('select count(*)::text from public.community_channel_messages where channel_id = %L', chan_priv)), '1');
+  -- decline + cooldown
+  PERFORM pg_temp.expect('CHAT-09 e asks', pg_temp.as_val(e, format('select public.request_to_join_community(%L)', comm_priv)), 'requested');
+  PERFORM pg_temp.expect('CHAT-09 moderator declines',
+    pg_temp.as_exec(a, format('select public.respond_join_request(%L, %L, false)', comm_priv, e)), 'ok');
+  PERFORM pg_temp.expect('CHAT-09 declined cannot hammer',
+    pg_temp.as_val(e, format('select public.request_to_join_community(%L)', comm_priv)), 'ERR 22023');
+  PERFORM pg_temp.expect('CHAT-09 declined is not a member',
+    pg_temp.as_val(e, format('select count(*)::text from public.community_channel_messages where channel_id = %L', chan_priv)), '0');
+  -- invites
+  PERFORM pg_temp.expect('CHAT-09 member cannot invite',
+    pg_temp.as_val(d, format('select public.invite_to_community(%L, %L)', comm_priv, f)), 'ERR 42501');
+  PERFORM pg_temp.as_exec(a, format('select public.block_user(%L)', f));
+  PERFORM pg_temp.expect('CHAT-09 cannot invite someone block-paired',
+    pg_temp.as_val(a, format('select public.invite_to_community(%L, %L)', comm_priv, f)), 'ERR 42501');
+  PERFORM pg_temp.as_exec(a, format('select public.unblock_user(%L)', f));
+  PERFORM pg_temp.expect('CHAT-09 moderator invites',
+    pg_temp.as_val(a, format('select public.invite_to_community(%L, %L)', comm_priv, f)), 'invited');
+  PERFORM pg_temp.expect('CHAT-09 invitee sees the community she was invited to',
+    pg_temp.as_val(f, format('select count(*)::text from public.communities where id = %L', comm_priv)), '1');
+  PERFORM pg_temp.expect('CHAT-09 invitee is not a member until she says yes',
+    pg_temp.as_val(f, format('select count(*)::text from public.community_channel_messages where channel_id = %L', chan_priv)), '0');
+  PERFORM pg_temp.expect('CHAT-09 invitee accepts',
+    pg_temp.as_exec(f, format('select public.respond_community_invite(%L, true)', comm_priv)), 'ok');
+  PERFORM pg_temp.expect('CHAT-09 accepted invitee reads the channel',
+    pg_temp.as_val(f, format('select count(*)::text from public.community_channel_messages where channel_id = %L', chan_priv)), '1');
+  -- moderators (not just admins) remove/ban; a ban closes the request door too
+  UPDATE public.community_members SET role = 'moderator' WHERE community_id = comm_priv AND user_id = d;
+  PERFORM pg_temp.expect('CHAT-09 moderator cannot remove the admin',
+    pg_temp.as_exec(d, format('select public.remove_community_member(%L, %L)', comm_priv, a)), 'ERR 42501');
+  PERFORM pg_temp.expect('CHAT-09 moderator bans a member',
+    pg_temp.as_exec(d, format('select public.remove_community_member(%L, %L, true, %L)', comm_priv, f, 'spam')), 'ok');
+  PERFORM pg_temp.expect('CHAT-09 banned cannot ask to join',
+    pg_temp.as_val(f, format('select public.request_to_join_community(%L)', comm_priv)), 'ERR 42501');
+  PERFORM pg_temp.expect('CHAT-09 banned cannot be invited',
+    pg_temp.as_val(a, format('select public.invite_to_community(%L, %L)', comm_priv, f)), 'ERR 42501');
+  PERFORM pg_temp.expect('CHAT-09 banned cannot post',
+    pg_temp.as_exec(f, format('insert into public.community_channel_messages (channel_id, sender_id, body) values (%L, %L, %L)', chan_priv, f, 'back')), 'ERR 42501');
+  PERFORM pg_temp.expect('CHAT-09 anon cannot call the join RPC',
+    (SELECT CASE WHEN has_function_privilege('anon', 'public.request_to_join_community(uuid, text)', 'EXECUTE') THEN 'yes' ELSE 'no' END), 'no');
+  RAISE NOTICE 'PASS CHAT-09 private: request/approve, decline cooldown, invite/accept, moderators ban, bans close every door';
+
+  -- ── TO public → TO authenticated on the community + friendship tables ────
+  SELECT count(*) INTO n FROM pg_policies
+   WHERE schemaname = 'public'
+     AND tablename IN ('communities', 'community_members', 'friendships', 'community_bans', 'community_join_requests')
+     AND roles::text LIKE '%public%';
+  IF n <> 0 THEN RAISE EXCEPTION 'ROLES: % policies on community/friendship tables still apply TO public (anon)', n; END IF;
+  RAISE NOTICE 'PASS roles: every community/friendship policy is TO authenticated';
 
   -- ── Old builds keep working (expand/contract) ───────────────────────────
   conv_legacy := pg_temp.as_val(a, format('insert into public.conversations (participant_ids, conversation_type) values (array[%L, %L]::uuid[], %L) returning id::text', a, f, 'direct'))::uuid;

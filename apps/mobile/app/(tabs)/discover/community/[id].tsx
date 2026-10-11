@@ -273,7 +273,12 @@ export default function CommunityDetailScreen() {
       if (isJoined) {
         await leaveCommunity(id, user.id);
       } else {
-        await joinCommunity(id, user.id);
+        const outcome = await joinCommunity(id, user.id);
+        if (outcome === 'requested') {
+          // CHAT-09: a private community files a request; a moderator decides.
+          showAlert('Request sent', "A moderator will look at it. You'll be in as soon as they say yes.");
+          return;
+        }
         Analytics.communityJoined(id);
       }
       await fetchJoined(user.id);
