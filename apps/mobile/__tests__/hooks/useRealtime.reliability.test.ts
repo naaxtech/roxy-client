@@ -159,8 +159,11 @@ describe('useRealtime — reconnect after backgrounding', () => {
     expect(supabase.removeChannel).toHaveBeenCalled();
     expect(supabase.channel.mock.calls.length).toBeGreaterThan(subscribesBefore);
     // A stale, already-subscribed cached channel must never be reused: calling
-    // .on() on one throws and takes the whole screen down.
-    expect(supabase.channel).toHaveBeenLastCalledWith('messages:conv-1');
+    // .on() on one throws and takes the whole screen down. Each subscription
+    // has its own topic now (CHAT-08), so the cache can never hand one back.
+    const topics = supabase.channel.mock.calls.map((c: unknown[]) => c[0] as string);
+    expect(topics[topics.length - 1]).toMatch(/^messages:conv-1:/);
+    expect(new Set(topics).size).toBe(topics.length);
   });
 
   it('backfills the messages that arrived while she was away', async () => {

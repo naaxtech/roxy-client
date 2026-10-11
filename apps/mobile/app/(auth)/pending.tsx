@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform,
@@ -12,6 +12,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore } from '../../store/gateStore';
 import { useAuth } from '../../hooks/useAuth';
 import { useAccess } from '../../hooks/useAccess';
+import { useVettingStatusSync } from '../../hooks/useVettingStatusSync';
 import { useViewAsStore } from '../../store/viewAsStore';
 import { showAlert } from '../../lib/confirm';
 import { BRAND_GRADIENT } from '../../lib/theme';
@@ -43,6 +44,26 @@ export default function PendingScreen() {
     if (previewingPending) return;
     void loadApplication();
   }, [loadApplication, previewingPending]);
+
+  // G-11: the decision reaches her while this screen is open — realtime on
+  // her application row, plus a re-read whenever the app is foregrounded.
+  const onDecision = useCallback((_prev: string | null, next: string) => {
+    if (next === 'approved') {
+      router.replace('/(tabs)/feed');
+      return;
+    }
+    // Rejected (or anything else): the application row carries the reason
+    // category and cooldown, so read it again.
+    void loadApplication();
+  }, [router, loadApplication]);
+  const { refresh: refreshProfile } = useVettingStatusSync(onDecision, {
+    enabled: !previewingPending,
+  });
+
+  const refreshStatus = useCallback(() => {
+    void refreshProfile();
+    void loadApplication();
+  }, [refreshProfile, loadApplication]);
 
   const handleAppeal = async () => {
     if (appealText.trim().length < MIN_APPEAL) return;
@@ -258,7 +279,11 @@ export default function PendingScreen() {
             </View>
           )}
 
-          <TouchableOpacity onPress={() => void loadApplication()} accessibilityLabel="Refresh status">
+          <TouchableOpacity
+            onPress={refreshStatus}
+            accessibilityRole="button"
+            accessibilityLabel="Refresh status"
+          >
             <Text style={s.link}>Refresh status</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => void signOut()} accessibilityLabel="Sign out">
