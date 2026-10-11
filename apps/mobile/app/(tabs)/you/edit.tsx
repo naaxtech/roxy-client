@@ -17,6 +17,9 @@ import { logError } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../../lib/avatars';
 import { uploadImageAsset } from '../../../lib/uploads';
+import {
+  BIO_MAX, avatarFileError, validateDisplayName, withCacheBust,
+} from '../../../lib/profileRules';
 import { AvatarPickerSheet } from '../../../components/profile/AvatarPickerSheet';
 import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
@@ -27,11 +30,14 @@ type EarnedBadge = UserBadgeProgress & { badges: Badge | null };
 
 export default function EditProfileScreen() {
   const { user } = useAuthStore();
-  const { profile, updateProfile } = useProfileStore();
+  const { profile, updateProfile, togglePronoun: storeTogglePronoun, toggleIdentity: storeToggleIdentity } = useProfileStore();
   const router = useRouter();
   const colors = useThemeColors();
 
   const [localBio, setLocalBio] = useState(profile?.bio ?? '');
+  const [nameDraft, setNameDraft] = useState(profile?.display_name ?? '');
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [nameSaving, setNameSaving] = useState(false);
   const [tagDraft, setTagDraft] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -40,6 +46,10 @@ export default function EditProfileScreen() {
   useEffect(() => {
     setLocalBio(profile?.bio ?? '');
   }, [profile?.bio]);
+
+  useEffect(() => {
+    setNameDraft(profile?.display_name ?? '');
+  }, [profile?.display_name]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -137,6 +147,10 @@ export default function EditProfileScreen() {
       quality: 0.8,
     });
     if (result.canceled || !result.assets?.[0]) return;
+    // No size or type guard used to exist: a video or a 40 MB HEIC went
+    // straight to storage (PRO-04).
+    const refused = avatarFileError(result.assets[0]);
+    if (refused) { showAlert('Pick another photo', refused); return; }
     setAvatarUploading(true);
     try {
       // pathPrefix MUST be `${user.id}`: the avatars bucket RLS checks
@@ -152,7 +166,9 @@ export default function EditProfileScreen() {
         asset: result.assets[0],
         upsert: true,
       });
-      await updateProfile({ avatar_url: publicUrl });
+      // Same path every time, so the URL must change or every Image and the
+      // CDN keep showing the old photo.
+      await updateProfile({ avatar_url: withCacheBust(publicUrl) });
     } catch (e) {
       logError(e, 'editProfile_uploadPhoto');
       showAlert('Upload failed', 'Could not upload your photo. Check your connection and try again.');
@@ -170,22 +186,39 @@ export default function EditProfileScreen() {
     }
   };
 
+  // The store computes each change from the LATEST state and writes them in
+  // tap order, so two quick taps both land (PRO-05).
   const togglePronoun = async (pronoun: string) => {
-    const current = profile.pronouns ?? [];
-    const updated = current.includes(pronoun)
-      ? current.filter((p) => p !== pronoun)
-      : [...current, pronoun];
-    try { await updateProfile({ pronouns: updated }); }
-    catch (e) { logError(e, 'editProfile_togglePronoun'); showAlert('Error', 'Could not save pronouns'); }
+    try { await storeTogglePronoun(pronoun); }
+    catch (e) { logError(e, 'editProfile_togglePronoun'); showAlert('Not saved', 'Your pronouns did not save. Check your connection and try again.'); }
   };
 
   // Identity is single-choice: picking one replaces the previous.
   const toggleIdentity = async (label: string) => {
-    const current = profile.identity_labels ?? [];
-    const updated = current.includes(label) ? [] : [label];
-    try { await updateProfile({ identity_labels: updated }); }
-    catch (e) { logError(e, 'editProfile_toggleIdentity'); showAlert('Error', 'Could not save identity labels'); }
+    try { await storeToggleIdentity(label); }
+    catch (e) { logError(e, 'editProfile_toggleIdentity'); showAlert('Not saved', 'Your identity label did not save. Check your connection and try again.'); }
   };
+
+  const saveDisplayName = async () => {
+    const { value, error } = validateDisplayName(nameDraft);
+    if (error) { setNameError(error); return; }
+    if (value === profile.display_name) { setNameError(null); return; }
+    setNameSaving(true);
+    setNameError(null);
+    try {
+      await updateProfile({ display_name: value });
+    } catch (e) {
+      logError(e, 'editProfile_saveName');
+      // The 133 trigger refuses a reserved name the client list missed.
+      setNameError(/reserved/i.test(e instanceof Error ? e.message : '')
+        ? 'That name is reserved for the Roxy team. Pick another.'
+        : 'Your name did not save. Check your connection and try again.');
+    } finally {
+      setNameSaving(false);
+    }
+  };
+
+  const bioCount = localBio.length;
 
   const initials = (profile.display_name ?? '?').charAt(0).toUpperCase();
   const hasPreset = isPresetAvatar(profile.avatar_url);
@@ -210,6 +243,9 @@ export default function EditProfileScreen() {
           style={styles.avatarSection}
           onPress={() => setPickerVisible(true)}
           disabled={avatarUploading}
+          testID="edit-avatar"
+          accessibilityRole="button"
+          accessibilityLabel="Change your photo"
         >
           {avatarUploading ? (
             <View style={styles.avatarCircle}>
@@ -242,23 +278,62 @@ export default function EditProfileScreen() {
             placeholderTextColor={colors.textMuted}
             value={localBio}
             onChangeText={setLocalBio}
+            maxLength={BIO_MAX}
+            testID="edit-bio"
+            accessibilityLabel="Bio"
             onBlur={async () => {
+              if (localBio === (profile.bio ?? '')) return;
               try { await updateProfile({ bio: localBio }); }
-              catch (e) { logError(e, 'editProfile_saveBio'); showAlert('Error', 'Could not save bio'); }
+              catch (e) { logError(e, 'editProfile_saveBio'); showAlert('Not saved', 'Your bio did not save. Check your connection and try again.'); }
             }}
             numberOfLines={3}
             textAlignVertical="top"
           />
+          <Text
+            style={[styles.hint, { textAlign: 'right' }, bioCount >= BIO_MAX && { color: colors.error }]}
+            testID="edit-bio-counter"
+            accessibilityLabel={`${BIO_MAX - bioCount} characters left`}
+          >
+            {bioCount} / {BIO_MAX}
+          </Text>
         </View>
 
         <ProfilePhotoGrid userId={user.id} editable />
         <ProfileFavorites userId={user.id} editable />
 
-        {/* Display name (read-only) */}
+        {/* Display name. It was labelled "contact support to change" while the
+            column was UPDATE-granted all along (PRO-04). Now editable, with the
+            same rules the 133 CHECK + reserved-name trigger enforce. */}
         <View style={styles.section}>
           <Text style={styles.label}>Display Name</Text>
-          <Text style={styles.readOnlyText}>{profile.display_name}</Text>
-          <Text style={styles.hint}>Set during onboarding — contact support to change</Text>
+          <View style={styles.tagAddRow}>
+            <TextInput
+              style={[styles.tagInput, styles.readOnlyText]}
+              value={nameDraft}
+              onChangeText={(t) => { setNameDraft(t); setNameError(null); }}
+              maxLength={50}
+              testID="edit-display-name"
+              accessibilityLabel="Display name"
+              autoCapitalize="words"
+            />
+            {nameDraft.trim() !== (profile.display_name ?? '') ? (
+              <TouchableOpacity
+                style={styles.tagAdd}
+                onPress={() => void saveDisplayName()}
+                disabled={nameSaving}
+                testID="edit-display-name-save"
+                accessibilityRole="button"
+                accessibilityLabel="Save display name"
+              >
+                {nameSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.tagAddText}>Save</Text>}
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          {nameError ? (
+            <Text style={[styles.hint, { color: colors.error }]} testID="edit-display-name-error" accessibilityLiveRegion="polite">{nameError}</Text>
+          ) : (
+            <Text style={styles.hint}>How you appear everywhere in Roxy.</Text>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -275,7 +350,11 @@ export default function EditProfileScreen() {
                 <TouchableOpacity
                   key={pronoun}
                   style={[styles.chip, selected && styles.chipSelected]}
-                  onPress={() => togglePronoun(pronoun)}
+                  onPress={() => { void togglePronoun(pronoun); }}
+                  testID={`edit-pronoun-${pronoun}`}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: selected }}
+                  accessibilityLabel={pronoun}
                 >
                   <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{pronoun}</Text>
                 </TouchableOpacity>
@@ -348,7 +427,10 @@ export default function EditProfileScreen() {
                 <TouchableOpacity
                   key={lbl}
                   style={[styles.chip, selected && styles.chipSelected]}
-                  onPress={() => toggleIdentity(lbl)}
+                  onPress={() => { void toggleIdentity(lbl); }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected }}
+                  accessibilityLabel={lbl}
                 >
                   <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{lbl}</Text>
                 </TouchableOpacity>
