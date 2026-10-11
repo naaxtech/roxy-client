@@ -1,0 +1,32 @@
+apps/mobile/__tests__/components/profile/ProfileExtras.test.tsx
+  h_0549c11fec2ab0 1-73
+apps/mobile/__tests__/screens/ArchiveEntry.test.tsx
+  h_0549c11fec2ab0 53-56
+apps/mobile/__tests__/screens/ArchiveEntrySafety.test.tsx
+  h_0549c11fec2ab0 51-56,99-100,213-232
+apps/mobile/__tests__/screens/EditProfile.test.tsx
+  h_0549c11fec2ab0 24
+apps/mobile/app/(tabs)/you/[userId].tsx
+  h_0549c11fec2ab0 5,603,610
+apps/mobile/app/(tabs)/you/edit.tsx
+  h_0549c11fec2ab0 24,289
+apps/mobile/app/(tabs)/you/index.tsx
+  h_0549c11fec2ab0 14,569
+apps/mobile/app/archive/[slug]/index.tsx
+  h_0549c11fec2ab0 30,88-95,378-397,524-535
+apps/mobile/components/profile/ProfileExtras.tsx
+  h_0549c11fec2ab0 1-172
+apps/mobile/lib/profileExtras.ts
+  h_0549c11fec2ab0 1-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e9a5ca793544930122c6a8df1d26303542d8f6c",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
