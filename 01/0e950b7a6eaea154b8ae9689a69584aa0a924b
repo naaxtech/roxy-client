@@ -1,0 +1,38 @@
+apps/mobile/__tests__/hooks/useWelcomeInRedirect.test.ts
+  h_0549c11fec2ab0 1-120
+apps/mobile/__tests__/lib/authRouting.test.ts
+  h_0549c11fec2ab0 9-10,13-47
+apps/mobile/__tests__/lib/features.test.ts
+  h_0549c11fec2ab0 187-188
+apps/mobile/__tests__/lib/welcomeIn.test.ts
+  h_0549c11fec2ab0 1-191
+apps/mobile/__tests__/screens/WelcomeIn.test.tsx
+  h_0549c11fec2ab0 1-166
+apps/mobile/app/(auth)/welcome-in.tsx
+  h_0549c11fec2ab0 1-197
+apps/mobile/app/_layout.tsx
+  h_0549c11fec2ab0 31,40,59-61,148-150,152
+apps/mobile/components/account/FirstStepsCard.tsx
+  h_0549c11fec2ab0 1-165
+apps/mobile/hooks/useWelcomeInRedirect.ts
+  h_0549c11fec2ab0 1-42
+apps/mobile/lib/authRouting.ts
+  h_0549c11fec2ab0 169-196
+apps/mobile/lib/features.ts
+  h_0549c11fec2ab0 154
+apps/mobile/lib/haptics.ts
+  h_0549c11fec2ab0 1-31
+apps/mobile/lib/welcomeIn.ts
+  h_0549c11fec2ab0 1-233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "010e950b7a6eaea154b8ae9689a69584aa0a924b",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
