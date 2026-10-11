@@ -14,7 +14,7 @@ import type { Comment, Post } from '../../../../types';
 import { fetchPostById } from '../../../../lib/posts';
 import { routeParam } from '../../../../lib/routeParams';
 import { logError } from '../../../../lib/errorLogger';
-import { loadPostComments, toggleCommentLike } from '../../../../lib/comments';
+import { loadPostComments } from '../../../../lib/comments';
 import { useAppWidth } from '../../../../hooks/useAppWidth';
 
 function VideoItem({
@@ -255,15 +255,8 @@ export default function VideoPlayerScreen() {
         knownCount={videoPosts.find((p) => p.id === commentSheetPostId)?.comment_count ?? undefined}
         onClose={() => setCommentSheetPostId(null)}
         onCommentsChange={setSheetComments}
-        onLikeComment={async (commentId) => {
-          const wasLiked = likedCommentIds.has(commentId);
-          setLikedCommentIds((s) => {
-            const next = new Set(s);
-            if (wasLiked) next.delete(commentId); else next.add(commentId);
-            return next;
-          });
-          if (user?.id) await toggleCommentLike({ commentId, userId: user.id, liked: wasLiked });
-        }}
+        // Likes are written by the sheet itself (useCommentLikes), with
+        // rollback when the write is refused.
       />
     </View>
   );

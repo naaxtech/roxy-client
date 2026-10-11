@@ -167,9 +167,47 @@ export async function submitContentNote(
 // write directly into is not moderated, whatever the UI says. 096 gives
 // `archive_entries` no INSERT or UPDATE policy for `authenticated` at all.
 
+/**
+ * A release year she typed, or a sentence saying why not.
+ *
+ * `Number('20x9')` is NaN and used to become a silent null; '0999' passed the
+ * client and came back from the edge function as the developer string
+ * "release_year must be an integer between 1800 and 2200" (ARC-15). The range
+ * here is what a real release can be: 1800 to five years out.
+ */
+export function validateReleaseYear(raw: string): { year: number | null; error: string | null } {
+  const t = raw.trim();
+  if (!t) return { year: null, error: null };
+  const max = new Date().getFullYear() + 5;
+  if (!/^\d{4}$/.test(t)) return { year: null, error: `Enter a four-digit year between 1800 and ${max}.` };
+  const y = Number(t);
+  if (y < 1800 || y > max) return { year: null, error: `Enter a year between 1800 and ${max}.` };
+  return { year: y, error: null };
+}
+
+/**
+ * The edge functions answer in developer sentences ("Rate limit exceeded",
+ * "fields must be an object…", a Postgres message on a 500). She gets a human
+ * one; anything unrecognised becomes the caller's fallback rather than leaking.
+ */
+export function archiveSubmitError(raw: string | null | undefined, fallback: string): string {
+  const m = (raw ?? '').toLowerCase();
+  if (!m) return fallback;
+  if (m.includes('rate limit')) return 'You have sent a lot in a short time. Give it a few minutes and try again.';
+  if (m.includes('approved member')) return 'This unlocks once a mod has approved your membership.';
+  if (m.includes('release_year') || m.includes('year')) return 'That year does not look right. Use a four-digit year.';
+  if (m.includes('unauthorized') || m.includes('profile not found')) return 'Please sign in again to continue.';
+  if (m.includes('no changes')) return EMPTY_EDIT_ERROR_TEXT;
+  if (m.includes('only published entries')) return 'That entry is not live any more, so it cannot be edited.';
+  if (m.includes('entry not found')) return 'That entry is no longer in the Archive.';
+  return fallback;
+}
+
+const EMPTY_EDIT_ERROR_TEXT = 'Change something first — this edit is identical to the entry.';
+
 const GENERIC_ENTRY_ERROR = "We couldn't send that entry to the mods. Please try again.";
 const GENERIC_EDIT_ERROR = "We couldn't send that edit to the mods. Please try again.";
-const EMPTY_EDIT_ERROR = 'Change something first — this edit is identical to the entry.';
+const EMPTY_EDIT_ERROR = EMPTY_EDIT_ERROR_TEXT;
 
 /** The fields a member may propose. Mirrors the edge function's own whitelist. */
 export type EntryDraft = {
@@ -195,7 +233,7 @@ export async function submitEntry(draft: EntryDraft): Promise<ActionResult<{ ent
   // promise is not a success. A null payload with no error means the function
   // answered without creating anything — treated as failure rather than
   // reported to her as done.
-  if (error) return { data: null, error };
+  if (error) return { data: null, error: archiveSubmitError(error, GENERIC_ENTRY_ERROR) };
   if (!data) return { data: null, error: GENERIC_ENTRY_ERROR };
   return { data, error: null };
 }
@@ -222,7 +260,7 @@ export async function submitEdit(
     { entry_id: entryId, fields: patch }
   );
 
-  if (error) return { data: null, error };
+  if (error) return { data: null, error: archiveSubmitError(error, GENERIC_EDIT_ERROR) };
   if (!data) return { data: null, error: GENERIC_EDIT_ERROR };
   return { data, error: null };
 }

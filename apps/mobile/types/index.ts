@@ -228,6 +228,11 @@ export interface Comment {
   created_at: string;
   profiles?: { display_name: string; avatar_url: string | null };
   replies?: Comment[];
+  /**
+   * Client-only: a muted woman's comment kept as a quiet placeholder because
+   * other people replied to it (`hideMutedComments`). Never sent to the API.
+   */
+  mutedPlaceholder?: boolean;
 }
 
 export interface Event {

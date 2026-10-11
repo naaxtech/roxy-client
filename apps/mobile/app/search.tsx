@@ -4,14 +4,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { globalSearch, GlobalSearchResult } from '../lib/globalSearch';
 import { scoreFromEntry } from '../lib/archive';
 import { archiveDetailPath, contentDetailPath } from '../lib/contentNavigation';
-import { avatarGradient } from '../lib/avatars';
+import { Avatar } from '../components/ui/Avatar';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
@@ -145,11 +144,6 @@ export default function GlobalSearchScreen() {
       backgroundColor: colors.surfaceLight,
     },
     thumb: { width: 48, height: 48, borderRadius: 8 },
-    avatar: {
-      width: 40, height: 40, borderRadius: RADII.pill,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    avatarText: { color: inkOn(colors.secondary), fontWeight: '800', fontSize: 15 },
     rowInfo: { flex: 1 },
     rowTitle: { ...TYPE.body, color: colors.textPrimary, fontWeight: '700' },
     rowSub: { ...TYPE.caption, color: colors.textMuted, marginTop: 1 },
@@ -316,9 +310,7 @@ export default function GlobalSearchScreen() {
                     onPress={() => router.push(`/user/${p.id}` as any)}
                     accessibilityLabel={`Open profile ${name}`}
                   >
-                    <LinearGradient colors={avatarGradient(name)} style={styles.avatar}>
-                      <Text style={styles.avatarText}>{name[0]?.toUpperCase() ?? '?'}</Text>
-                    </LinearGradient>
+                    <Avatar uri={p.avatar_url} name={name} seed={p.id} size={40} />
                     <View style={styles.rowInfo}>
                       <Text style={styles.rowTitle} numberOfLines={1}>{name}</Text>
                       {p.username ? (

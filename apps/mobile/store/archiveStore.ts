@@ -34,20 +34,34 @@ export type ArchiveFilters = {
   sort: ArchiveSort;
 };
 
+/** Rows per page of the browse list. */
+export const ARCHIVE_PAGE = 50;
+
+/** Bumped by every `load`; a response that is not the latest is dropped. */
+let loadGeneration = 0;
+
 interface ArchiveState {
   entries: ArchiveEntry[];
   loading: boolean;
   error: string | null;
+  /** The last page came back full, so there may be more (ARC-07). */
+  hasMore: boolean;
+  loadingMore: boolean;
+  refreshing: boolean;
   filters: ArchiveFilters;
 
   /** Her own stars per entry (1–5). An absent key means "never voted". */
   myVotes: Record<string, number>;
   /** Entry ids on her watchlist. */
   watchlist: string[];
-  /** Content-note ids she has agreed with. One-way: 096 gives archive_note_agreements no DELETE policy. */
+  /** Content-note ids she has agreed with. A toggle: 096 has a delete-own policy. */
   noteAgreements: string[];
 
   load: () => Promise<void>;
+  /** Next page, appended. No-op while loading or when the list is complete. */
+  loadMore: () => Promise<void>;
+  /** Pull-to-refresh: reload from the top with its own spinner. */
+  refresh: () => Promise<void>;
   setFilters: (patch: Partial<ArchiveFilters>) => void;
   hydrateMine: (userId: string) => Promise<void>;
   vote: (entryId: string, stars: number) => Promise<void>;
@@ -62,6 +76,15 @@ interface ArchiveState {
   withdrawVote: (entryId: string) => Promise<void>;
   toggleWatch: (entryId: string) => Promise<void>;
   agreeNote: (noteId: string) => Promise<void>;
+  /** Take an agreement back (RLS archive_note_agree_delete_own, 096). */
+  unagreeNote: (noteId: string) => Promise<void>;
+  /**
+   * A one-line confirmation a composer leaves for the screen it returns to
+   * ("Sent to the mods ✿"). Read once and cleared by `takeFlash`.
+   */
+  flash: string | null;
+  setFlash: (message: string | null) => void;
+  takeFlash: () => string | null;
 }
 
 async function currentUserId(): Promise<string | null> {
@@ -79,21 +102,70 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
   entries: [],
   loading: false,
   error: null,
+  hasMore: false,
+  loadingMore: false,
+  refreshing: false,
   filters: { query: '', mediaType: null, sort: 'top' },
   myVotes: {},
   watchlist: [],
   noteAgreements: [],
+  flash: null,
+
+  setFlash: (message) => set({ flash: message }),
+  takeFlash: () => {
+    const message = get().flash;
+    if (message) set({ flash: null });
+    return message;
+  },
 
   load: async () => {
+    // Search fires as she types. Without a generation check a slower answer to
+    // "ca" could land after the answer to "carol" and put the wrong list up.
+    const generation = ++loadGeneration;
     set({ loading: true, error: null });
     const { query, mediaType, sort } = get().filters;
     try {
-      const entries = await fetchArchiveEntries({ query, mediaType, sort });
-      set({ entries, loading: false });
+      const entries = await fetchArchiveEntries({ query, mediaType, sort, limit: ARCHIVE_PAGE });
+      if (generation !== loadGeneration) return;
+      set({ entries, loading: false, hasMore: entries.length >= ARCHIVE_PAGE });
     } catch {
+      if (generation !== loadGeneration) return;
       // fetchArchiveEntries (lib/archive.ts) already calls logError before
       // throwing — logging the same failure again here would double-report it.
       set({ loading: false, error: "We couldn't load the Archive. Pull to try again." });
+    }
+  },
+
+  loadMore: async () => {
+    const { hasMore, loading, loadingMore, entries, filters } = get();
+    if (!hasMore || loading || loadingMore) return;
+    const generation = loadGeneration;
+    set({ loadingMore: true });
+    try {
+      const next = await fetchArchiveEntries({
+        query: filters.query, mediaType: filters.mediaType, sort: filters.sort,
+        limit: ARCHIVE_PAGE, offset: entries.length,
+      });
+      if (generation !== loadGeneration) return;
+      const seen = new Set(get().entries.map((e) => e.id));
+      set((s) => ({
+        entries: [...s.entries, ...next.filter((e) => !seen.has(e.id))],
+        hasMore: next.length >= ARCHIVE_PAGE,
+      }));
+    } catch {
+      // Logged by fetchArchiveEntries. The list she has stays; the next
+      // scroll to the end tries again.
+    } finally {
+      set({ loadingMore: false });
+    }
+  },
+
+  refresh: async () => {
+    set({ refreshing: true });
+    try {
+      await get().load();
+    } finally {
+      set({ refreshing: false });
     }
   },
 
@@ -350,6 +422,41 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
       // 200, zero rows written back — never keep an unconfirmed agreement.
       set({ noteAgreements: previous });
       throw new Error(GENERIC_NOTE_ERROR);
+    }
+  },
+
+  /**
+   * Take an agreement back. The comment above used to say there was no
+   * DELETE policy — 096 has `archive_note_agree_delete_own`, so a mis-tap
+   * could always have been undone; the app just never offered it (ARC-02).
+   * Counted, like every other write here: zero rows deleted is not an undo.
+   */
+  unagreeNote: async (noteId) => {
+    if (!get().noteAgreements.includes(noteId)) return;
+    const previous = get().noteAgreements;
+    set({ noteAgreements: previous.filter((id) => id !== noteId) });
+
+    const userId = await currentUserId();
+    if (!userId) {
+      set({ noteAgreements: previous });
+      throw new Error(SIGN_IN_AGAIN);
+    }
+
+    const { error, count } = await supabase
+      .from('archive_note_agreements')
+      .delete({ count: 'exact' })
+      .eq('note_id', noteId)
+      .eq('profile_id', userId);
+
+    if (error) {
+      logError(error, 'archiveStore.unagreeNote');
+      set({ noteAgreements: previous });
+      throw new Error(GENERIC_NOTE_ERROR);
+    }
+    if (count === 0) {
+      // Nothing to delete server-side: already gone. The local state now
+      // matches reality, which is the point.
+      return;
     }
   },
 }));

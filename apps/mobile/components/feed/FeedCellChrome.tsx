@@ -8,6 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import { avatarGradient, isPresetAvatar, presetColor, presetEmoji } from '../../lib/avatars';
+import { inkOnGradient } from '../../lib/theme';
+import { initialsOf } from '../ui/Avatar';
 import { contentDetailPath } from '../../lib/contentNavigation';
 import { MIN_INLINE_TOUCH_TARGET, MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { ReelRow } from '../../lib/reels';
@@ -253,8 +255,10 @@ export function FeedCellChrome({
     );
   } else {
     avatarFace = (
+      // Same initials and ink as components/ui/Avatar, so she has one face
+      // across the feed, comments and her profile.
       <LinearGradient colors={grad} style={s.avatarFace}>
-        <Text style={s.avatarLetter}>{(authorName[0] ?? '?').toUpperCase()}</Text>
+        <Text style={[s.avatarLetter, { color: inkOnGradient(grad) }]}>{initialsOf(authorName)}</Text>
       </LinearGradient>
     );
   }

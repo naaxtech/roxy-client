@@ -3,6 +3,17 @@
 -- hidden_posts, archive_note_flags, profile_prompts and archive_shelf.
 -- destructive-ok: down file
 
+-- 10
+DROP FUNCTION IF EXISTS public.delete_my_comment(uuid);
+DELETE FROM public.reports WHERE content_type = 'comment';
+ALTER TABLE public.reports DROP CONSTRAINT IF EXISTS reports_content_type_check;
+ALTER TABLE public.reports
+  ADD CONSTRAINT reports_content_type_check
+  CHECK (content_type IN (
+    'message', 'post', 'profile', 'room', 'speed_date',
+    'archive_entry', 'archive_review'
+  ));
+
 -- 9
 DROP FUNCTION IF EXISTS public.follow_counts(uuid);
 DROP FUNCTION IF EXISTS public.set_archive_shelf(uuid[]);

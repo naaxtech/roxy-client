@@ -1,7 +1,7 @@
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
-import { RADII } from '../../lib/theme';
+import { RADII, inkOn } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
 
@@ -116,6 +116,55 @@ export function ComposerCheckbox({ label, checked, onToggle, testID }: CheckProp
       >
         <View style={s.box}>{checked ? <Text style={s.tick}>✓</Text> : null}</View>
         <Text style={s.label}>{label}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+interface ChoiceProps {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  testID?: string;
+}
+
+/**
+ * One option of a single-choice row (media type, 👍/👎).
+ *
+ * These used to be `ComposerSubmit` buttons with `disabled={!selected}` —
+ * and a disabled submit has no onPress, so every option but the default was
+ * dead: every suggestion was filed as a film and every review as 👍 (ARC-04).
+ * A choice is a radio: always pressable, `checked` says which.
+ */
+export function ComposerChoice({ label, selected, onPress, testID }: ChoiceProps) {
+  const colors = useThemeColors();
+  const s = StyleSheet.create({
+    btn: {
+      minHeight: MIN_TOUCH_TARGET,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: RADII.pill,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: selected ? colors.primary : colors.line,
+      backgroundColor: selected ? colors.primary : colors.surfaceLight,
+    },
+    text: {
+      ...TYPE.body,
+      fontWeight: '800',
+      color: selected ? inkOn(colors.primary) : colors.textSecondary,
+    },
+  });
+  return (
+    <Pressable onPress={onPress} accessible={false}>
+      <View
+        style={s.btn}
+        testID={testID}
+        accessibilityRole="radio"
+        accessibilityLabel={label}
+        {...a11yState({ checked: selected })}
+      >
+        <Text style={s.text}>{label}</Text>
       </View>
     </Pressable>
   );

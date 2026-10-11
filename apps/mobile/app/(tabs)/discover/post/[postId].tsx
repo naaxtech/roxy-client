@@ -13,7 +13,12 @@ import { useFeedStore } from '../../../../store/feedStore';
 import { useThemeColors } from '../../../../hooks/useThemeColors';
 import { fetchPostById } from '../../../../lib/posts';
 import { routeParam } from '../../../../lib/routeParams';
-import { loadPostComments, submitComment, toggleCommentLike } from '../../../../lib/comments';
+import {
+  COMMENT_MAX, applyCommentRemoval, loadOlderComments, loadPostComments,
+  oldestTopLevel, prependEarlier, submitComment,
+} from '../../../../lib/comments';
+import { useCommentLikes } from '../../../../hooks/useCommentLikes';
+import { CommentCounter } from '../../../../components/feed/CommentCounter';
 import { showAlert } from '../../../../lib/confirm';
 import { PostMediaCarousel } from '../../../../components/feed/PostMediaCarousel';
 import { CommentThread } from '../../../../components/feed/CommentThread';
@@ -42,8 +47,10 @@ export default function PostDetailScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [comments, setComments] = useState<Comment[]>([]);
-  const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
+  const commentLikes = useCommentLikes(user?.id);
   const [loadingComments, setLoadingComments] = useState(true);
+  const [hasEarlier, setHasEarlier] = useState(false);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
@@ -95,23 +102,32 @@ export default function PostDetailScreen() {
   const loadComments = async (isCancelled?: () => boolean) => {
     if (!postId) return;
     setLoadingComments(true);
-    const { comments: next, likedIds, error } = await loadPostComments(postId, user?.id);
+    const { comments: next, likedIds, error, hasEarlier: more } = await loadPostComments(postId, user?.id);
     if (isCancelled?.()) return;
     if (error) { setLoadingComments(false); return; }
     setComments(next);
-    setLikedCommentIds(likedIds);
+    setHasEarlier(more);
+    commentLikes.setLikedIds(likedIds);
     setLoadingComments(false);
   };
 
-  const handleLikeComment = async (commentId: string) => {
-    const wasLiked = likedCommentIds.has(commentId);
-    setLikedCommentIds(s => {
-      const next = new Set(s);
-      if (wasLiked) { next.delete(commentId); } else { next.add(commentId); }
-      return next;
-    });
-    if (user?.id) await toggleCommentLike({ commentId, userId: user.id, liked: wasLiked });
+  const loadEarlier = async () => {
+    const cursor = oldestTopLevel(comments);
+    if (!postId || !cursor || loadingEarlier) return;
+    setLoadingEarlier(true);
+    const page = await loadOlderComments(postId, user?.id, cursor);
+    setLoadingEarlier(false);
+    if (page.error) {
+      showAlert('Earlier comments did not load', 'Check your connection and try again.');
+      return;
+    }
+    commentLikes.mergeLikedIds(page.likedIds);
+    setComments((cur) => prependEarlier(cur, page.comments));
+    setHasEarlier(page.hasEarlier);
   };
+
+  // Optimistic with rollback: a refused write puts the heart back.
+  const handleLikeComment = (commentId: string) => { void commentLikes.toggle(commentId); };
 
   const handleSubmitComment = async () => {
     if (!commentText.trim() || !user?.id || !postId || submitting) return;
@@ -264,9 +280,13 @@ export default function PostDetailScreen() {
               postId={post.id}
               comments={comments}
               currentUserId={user?.id ?? ''}
-              likedCommentIds={likedCommentIds}
+              likedCommentIds={commentLikes.likedIds}
               onLikeComment={handleLikeComment}
               onReply={c => setReplyingTo(c)}
+              onRemoved={(id, outcome) => setComments((cur) => applyCommentRemoval(cur, id, outcome))}
+              hasEarlier={hasEarlier}
+              loadingEarlier={loadingEarlier}
+              onLoadEarlier={() => { void loadEarlier(); }}
             />
           )}
 
@@ -312,9 +332,12 @@ export default function PostDetailScreen() {
             placeholderTextColor={colors.textMuted}
             value={commentText}
             onChangeText={setCommentText}
+            maxLength={COMMENT_MAX}
             returnKeyType="send"
             onSubmitEditing={handleSubmitComment}
+            testID="post-comment-input"
           />
+          <CommentCounter length={commentText.length} testID="post-comment-counter" />
 
           <TouchableOpacity
             onPress={handleSubmitComment}

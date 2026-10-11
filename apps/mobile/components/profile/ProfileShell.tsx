@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,8 +9,9 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { isPresetAvatar, presetEmoji, presetColor, avatarGradient } from '../../lib/avatars';
 import { TYPE } from '../../lib/typography';
 import {
-  RADII, LIVE_GRADIENT, BRAND_GRADIENT, type ThemeColors,
+  RADII, LIVE_GRADIENT, BRAND_GRADIENT, inkOnGradient, type ThemeColors,
 } from '../../lib/theme';
+import { initialsOf } from '../ui/Avatar';
 import {
   collapseProfileTags, profileDisplayTags, RETIRED_PROFILE_CHIPS,
 } from '../../lib/profileTags';
@@ -146,6 +147,9 @@ export interface ProfileShellProps {
   errorMessage?: string;
   onRetry?: () => void;
   emptyMessage?: string;
+  /** Pull-to-refresh (PRO-08). Omit onRefresh and the gesture is not offered. */
+  refreshing?: boolean;
+  onRefresh?: () => void;
   testID?: string;
 }
 
@@ -214,6 +218,8 @@ export function ProfileShell({
   status = 'ready',
   errorMessage = 'We could not load this yet.',
   onRetry,
+  refreshing = false,
+  onRefresh,
   emptyMessage,
   testID = 'profile-shell',
 }: ProfileShellProps) {
@@ -291,9 +297,16 @@ export function ProfileShell({
         />
       );
     }
+    // No photo: her initials on her gradient — the same face she has in
+    // comments, the feed and every list (components/ui/Avatar).
     return (
-      <View style={[s.avatarInner, shape, s.avatarFallback]}>
-        <Text style={s.avatarInitial}>{initial}</Text>
+      <View style={[s.avatarInner, shape, s.avatarFallback]} testID="profile-avatar-initials">
+        <LinearGradient
+          colors={avatarGradient(name)}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <Text style={[s.avatarInitial, { color: inkOnGradient(avatarGradient(name)) }]}>{initialsOf(name) || initial}</Text>
       </View>
     );
   };
@@ -427,6 +440,9 @@ export function ProfileShell({
       contentContainerStyle={s.scrollContent}
       showsVerticalScrollIndicator={false}
       testID={testID}
+      refreshControl={onRefresh ? (
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.roxy} colors={[colors.roxy]} />
+      ) : undefined}
     >
       <View style={s.headerBlock} testID="profile-header">
         <View style={s.coverWrap} testID="profile-cover">

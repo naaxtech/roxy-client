@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import BlockedScreen from '../../app/(tabs)/you/blocked';
 import { useSafetyStore } from '../../store/safetyStore';
 
@@ -14,6 +14,11 @@ const mockAlert = jest.fn();
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn(), canGoBack: () => true, replace: jest.fn() }),
+}));
+
+const mockLoadMuted = jest.fn();
+jest.mock('../../lib/mutedProfiles', () => ({
+  fetchMutedProfiles: (...a: unknown[]) => mockLoadMuted(...a),
 }));
 
 jest.mock('../../lib/confirm', () => ({
@@ -40,6 +45,7 @@ beforeEach(() => {
   mockLoad.mockReset().mockResolvedValue(undefined);
   mockConfirm.mockReset().mockResolvedValue(true);
   mockAlert.mockReset();
+  mockLoadMuted.mockReset().mockResolvedValue([]);
   seed();
 });
 
@@ -50,9 +56,23 @@ describe('the blocked list', () => {
     expect(getByText('Sam')).toBeTruthy();
   });
 
-  it('never names a mute this app does not have', () => {
-    const { queryByText } = render(<BlockedScreen />);
-    expect(queryByText(/mute/i)).toBeNull();
+  // Mute exists since 127 and is offered on profiles, posts and comments, so
+  // this screen is "Blocked & muted" with both lists and both ways back (PRO-06).
+  it('is titled Blocked & muted and lists who she muted, with Unmute', async () => {
+    const mockUnmute = jest.fn().mockResolvedValue(true);
+    seed({ mutedUserIds: ['u7'], unmuteUser: mockUnmute } as never);
+    mockLoadMuted.mockResolvedValue([{ id: 'u7', display_name: 'Jo', username: 'jo', avatar_url: null }]);
+    const r = render(<BlockedScreen />);
+    expect(r.getByText('Blocked & muted')).toBeTruthy();
+    await waitFor(() => expect(r.getByTestId('muted-row-u7')).toBeTruthy());
+    await act(async () => { fireEvent.press(r.getByTestId('muted-unmute-u7')); });
+    expect(mockUnmute).toHaveBeenCalledWith('u7');
+  });
+
+  it('says plainly when she has muted nobody', async () => {
+    seed({ mutedUserIds: [] } as never);
+    const r = render(<BlockedScreen />);
+    await waitFor(() => expect(r.getByTestId('muted-empty')).toBeTruthy());
   });
 
   it('asks before undoing a block, and unblocks when she says yes', async () => {

@@ -94,7 +94,8 @@ describe('archiveStore.load', () => {
     expect(result.current.entries).toHaveLength(2);
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBeNull();
-    expect(fetchArchiveEntries).toHaveBeenCalledWith({ query: 'star', mediaType: 'film', sort: 'newest' });
+    // limit: the first page of the paged list (ARC-07, archiveStorePaging.test).
+    expect(fetchArchiveEntries).toHaveBeenCalledWith({ query: 'star', mediaType: 'film', sort: 'newest', limit: 50 });
   });
 
   it('sets a friendly error and clears loading on failure, without double-logging', async () => {

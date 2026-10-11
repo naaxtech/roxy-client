@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import UserProfileScreen from '../../app/(tabs)/you/[userId]';
 
 /**
@@ -21,6 +21,13 @@ const mockPush = jest.fn();
 const mockOpenReport = jest.fn();
 const mockBlock = jest.fn(async () => undefined);
 const mockFetchFriends = jest.fn(async () => undefined);
+const mockFollow = jest.fn(async () => true);
+const mockMute = jest.fn(async () => undefined);
+const mockUnmute = jest.fn(async () => true);
+const mockRpc = jest.fn();
+const mockAlert = jest.fn();
+let mockMuted: string[] = [];
+let mockProfileError: { message: string; code?: string } | null = null;
 let mockProfile: Record<string, unknown> | null = null;
 let mockBadges: unknown[] = [];
 let mockPostCount = 0;
@@ -71,8 +78,8 @@ jest.mock('../../store/followStore', () => ({
     const state = {
       followingIds: new Set<string>(),
       hydrate: jest.fn(),
-      follow: jest.fn(),
-      unfollow: jest.fn(),
+      follow: mockFollow,
+      unfollow: jest.fn(async () => true),
     };
     return typeof sel === 'function' ? sel(state) : state;
   },
@@ -80,12 +87,15 @@ jest.mock('../../store/followStore', () => ({
 
 jest.mock('../../lib/confirm', () => ({
   confirmAction: jest.fn(async () => true),
-  showAlert: jest.fn(),
+  showAlert: (...a: unknown[]) => mockAlert(...a),
 }));
 
 jest.mock('../../store/safetyStore', () => ({
-  useSafetyStore: (sel?: (s: { openReportModal: () => void; blockUser: () => Promise<void> }) => unknown) => {
-    const state = { openReportModal: mockOpenReport, blockUser: mockBlock };
+  useSafetyStore: (sel?: (s: never) => unknown) => {
+    const state = {
+      openReportModal: mockOpenReport, blockUser: mockBlock,
+      mutedUserIds: mockMuted, muteUser: mockMute, unmuteUser: mockUnmute,
+    } as never;
     return typeof sel === 'function' ? sel(state) : state;
   },
 }));
@@ -130,7 +140,10 @@ jest.mock('../../lib/supabase', () => ({
       chain.contains = () => chain;
       chain.single = () =>
         Promise.resolve(
-          mockProfile ? { data: mockProfile, error: null } : { data: null, error: { message: 'no row' } }
+          mockProfileError
+            ? { data: null, error: mockProfileError }
+            // PGRST116 is what PostgREST's .single() answers for zero rows.
+            : mockProfile ? { data: mockProfile, error: null } : { data: null, error: { message: 'no row', code: 'PGRST116' } }
         );
       chain.maybeSingle = () => Promise.resolve({ data: null, error: null });
       chain.then = undefined;
@@ -203,6 +216,7 @@ jest.mock('../../lib/supabase', () => ({
       }
       return chain;
     }),
+    rpc: (...a: unknown[]) => mockRpc(...a),
   },
 }));
 
@@ -239,6 +253,68 @@ beforeEach(() => {
   mockOnline = [];
   mockOpenReport.mockClear();
   mockBlock.mockClear();
+  mockFollow.mockReset().mockResolvedValue(true);
+  mockMute.mockReset().mockResolvedValue(undefined);
+  mockUnmute.mockReset().mockResolvedValue(true);
+  mockAlert.mockReset();
+  mockMuted = [];
+  mockProfileError = null;
+  mockRpc.mockReset().mockImplementation((fn: string) => Promise.resolve(
+    fn === 'follow_counts'
+      ? { data: [{ followers: 12, following: 3, follows_you: true }], error: null }
+      : { data: [], error: null },
+  ));
+});
+
+describe('PRO-06 / 07 / 08 on another member\'s profile', () => {
+  it('a network error is an error with a retry, not "Profile not found"', async () => {
+    mockProfileError = { message: 'Failed to fetch' };
+    const { getByTestId, queryByTestId } = render(<UserProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-error')).toBeTruthy());
+    expect(queryByTestId('profile-not-found')).toBeNull();
+    expect(getByTestId('profile-retry')).toBeTruthy();
+  });
+
+  it('the ⋯ sheet offers Mute, which mutes her', async () => {
+    const { getByTestId } = render(<UserProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
+    fireEvent.press(getByTestId('profile-more'));
+    await act(async () => { fireEvent.press(getByTestId('profile-more-mute')); });
+    expect(mockMute).toHaveBeenCalledWith('u2');
+  });
+
+  it('when she is muted, the sheet offers Unmute instead', async () => {
+    mockMuted = ['u2'];
+    const { getByTestId } = render(<UserProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
+    fireEvent.press(getByTestId('profile-more'));
+    await act(async () => { fireEvent.press(getByTestId('profile-more-mute')); });
+    expect(mockUnmute).toHaveBeenCalledWith('u2');
+  });
+
+  it('a follow that fails says so', async () => {
+    mockFollow.mockResolvedValue(false);
+    const { getByTestId, getByText } = render(<UserProfileScreen />);
+    await waitFor(() => expect(getByText('Follow')).toBeTruthy());
+    await act(async () => { fireEvent.press(getByText('Follow')); });
+    expect(mockFollow).toHaveBeenCalledWith('u1', 'u2');
+    expect(mockAlert).toHaveBeenCalledWith(expect.stringMatching(/follow/i), expect.any(String));
+    expect(getByTestId('profile-shell')).toBeTruthy();
+  });
+
+  it('shows follower counts and a "Follows you" chip', async () => {
+    const { getByTestId, getByText } = render(<UserProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-follows-you')).toBeTruthy());
+    expect(getByText('12')).toBeTruthy();
+    expect(mockRpc).toHaveBeenCalledWith('follow_counts', { p_user_id: 'u2' });
+  });
+
+  it('offers Share in the ⋯ sheet', async () => {
+    const { getByTestId } = render(<UserProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
+    fireEvent.press(getByTestId('profile-more'));
+    expect(getByTestId('profile-more-share')).toBeTruthy();
+  });
 });
 
 describe('user profile on the unified shell', () => {

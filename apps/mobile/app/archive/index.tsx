@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, FlatList, Pressable, ActivityIndicator, StyleSheet,
+  View, Text, TextInput, FlatList, Pressable, ActivityIndicator, StyleSheet, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,8 +16,8 @@ import { Analytics } from '../../lib/analytics';
 import { archiveDetailPath } from '../../lib/contentNavigation';
 import { ArchiveRow } from '../../components/archive/ArchiveRow';
 import { MediaTypeChips } from '../../components/archive/MediaTypeChips';
-import { countByType, type TypeCounts } from '../../lib/archiveTypes';
-import { fetchArchiveEntries } from '../../lib/archive';
+import { type TypeCounts } from '../../lib/archiveTypes';
+import { fetchArchiveTypeCounts } from '../../lib/archive';
 import { SortChips } from '../../components/archive/SortChips';
 import { PendingBanner } from '../../components/archive/PendingBanner';
 import { AccountStatusTag } from '../../components/account/AccountStatusTag';
@@ -56,8 +56,22 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
   const load = useArchiveStore((s) => s.load);
   const setFilters = useArchiveStore((s) => s.setFilters);
   const hydrateMine = useArchiveStore((s) => s.hydrateMine);
+  const refresh = useArchiveStore((s) => s.refresh);
+  const loadMore = useArchiveStore((s) => s.loadMore);
+  const refreshing = useArchiveStore((s) => s.refreshing) ?? false;
+  const loadingMore = useArchiveStore((s) => s.loadingMore) ?? false;
+  const takeFlash = useArchiveStore((s) => s.takeFlash);
 
   const [lockedOpen, setLockedOpen] = useState(false);
+  // "Sent to the mods ✿" — left by a composer on its way back (ARC-09).
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    const message = takeFlash?.() ?? null;
+    if (!message) return undefined;
+    setToast(message);
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [takeFlash]);
 
   // Counts come from their OWN query, not from `entries`. The list is already
   // narrowed by her search and her type — counting it would make every chip
@@ -69,8 +83,9 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
     let cancelled = false;
     void (async () => {
       try {
-        const all = await fetchArchiveEntries({ sort: 'newest', limit: 500 });
-        if (!cancelled) setTypeCounts(countByType(all));
+        // One head-count per type, not 500 rows to count client-side (ARC-13).
+        const counts = await fetchArchiveTypeCounts();
+        if (!cancelled) setTypeCounts(counts);
       } catch {
         // fetchArchiveEntries logs before throwing. A failed count is not a
         // failed screen — the chips simply render without numbers.
@@ -84,9 +99,26 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
     Analytics.archiveViewed();
   }, []);
 
+  // Type and sort reload at once; the search waits for a 250 ms pause so a
+  // word is one request, not one per letter (ARC-07). The store drops any
+  // answer that is not the latest, so a slow "ca" cannot replace "carol".
+  const firstLoad = useRef(true);
   useEffect(() => {
+    if (firstLoad.current) {
+      firstLoad.current = false;
+      void load();
+      return undefined;
+    }
+    const t = setTimeout(() => { void load(); }, 250);
+    return () => clearTimeout(t);
+  }, [load, filters.query]);
+  const typeAndSort = useRef(`${filters.mediaType}|${filters.sort}`);
+  useEffect(() => {
+    const key = `${filters.mediaType}|${filters.sort}`;
+    if (typeAndSort.current === key) return;
+    typeAndSort.current = key;
     void load();
-  }, [load, filters.query, filters.mediaType, filters.sort]);
+  }, [load, filters.mediaType, filters.sort]);
 
   useEffect(() => {
     if (userId) void hydrateMine(userId);
@@ -137,6 +169,11 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
       backgroundColor: colors.surface,
       borderWidth: 1, borderColor: colors.line,
     },
+    toast: {
+      marginHorizontal: 16, marginTop: 8, padding: 12, borderRadius: RADII.md,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary,
+    },
+    toastText: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '700' },
   });
 
   const body = () => {
@@ -195,6 +232,19 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
         keyExtractor={(e) => e.id}
         contentContainerStyle={s.list}
         testID="archive-list"
+        refreshControl={(
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { void refresh(); }}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        )}
+        onEndReachedThreshold={0.5}
+        onEndReached={() => { void loadMore(); }}
+        ListFooterComponent={loadingMore ? (
+          <ActivityIndicator color={colors.primary} testID="archive-loading-more" style={{ padding: 16 }} />
+        ) : null}
         renderItem={({ item }) => (
           <ArchiveRow entry={item} onPress={() => openEntry(item)} testID={`archive-row-${item.slug}`} />
         )}
@@ -249,6 +299,12 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
         counts={typeCounts}
       />
       <SortChips value={filters.sort} onChange={(sort) => setFilters({ sort })} />
+
+      {toast ? (
+        <View style={s.toast} testID="archive-submitted-toast" accessibilityLiveRegion="polite" accessibilityRole="alert">
+          <Text style={s.toastText}>{toast}</Text>
+        </View>
+      ) : null}
 
       {body()}
 

@@ -4,14 +4,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { useFriendStore, FriendshipRow, isOnline, sortByPresence } from '../store/friendStore';
 import { openDirectChat } from '../lib/directMessages';
 import { logError } from '../lib/errorLogger';
 import { showAlert, confirmAction } from '../lib/confirm';
-import { avatarGradient } from '../lib/avatars';
+import { Avatar } from '../components/ui/Avatar';
 import { useThemeColors } from '../hooks/useThemeColors';
 
 type SubTab = 'friends' | 'requests' | 'sent';
@@ -83,11 +82,6 @@ export default function PeopleScreen() {
       paddingHorizontal: 16, paddingVertical: 10,
       borderBottomWidth: 1, borderBottomColor: colors.surface,
     },
-    avatar: {
-      width: 38, height: 38, borderRadius: 19,
-      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    },
-    avatarText: { color: '#fff', fontWeight: '800', fontSize: 14 },
     avatarWrap: { position: 'relative' },
     onlineDot: {
       position: 'absolute', bottom: 0, right: 0,
@@ -119,12 +113,10 @@ export default function PeopleScreen() {
     emptyText: { color: colors.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
   });
 
-  function AvatarCircle({ name }: { name: string }) {
-    return (
-      <LinearGradient colors={avatarGradient(name)} style={styles.avatar}>
-        <Text style={styles.avatarText}>{name?.[0]?.toUpperCase() ?? '?'}</Text>
-      </LinearGradient>
-    );
+  // One Avatar for the whole app: her photo when she has one (this list drew
+  // a letter even for friends with a photo), otherwise initials on her gradient.
+  function AvatarCircle({ profile }: { profile: { id: string; display_name: string; avatar_url: string | null } }) {
+    return <Avatar uri={profile.avatar_url} name={profile.display_name} seed={profile.id} size={38} />;
   }
 
   return (
@@ -177,7 +169,7 @@ export default function PeopleScreen() {
                     style={styles.avatarWrap}
                     onPress={() => router.push(`/user/${item.profile.id}` as any)}
                   >
-                    <AvatarCircle name={item.profile.display_name} />
+                    <AvatarCircle profile={item.profile} />
                     {isOnline(item.profile.last_seen_at) && <View style={styles.onlineDot} />}
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -223,7 +215,7 @@ export default function PeopleScreen() {
                     onPress={() => router.push(`/user/${item.profile.id}` as any)}
                     activeOpacity={0.7}
                   >
-                    <AvatarCircle name={item.profile.display_name} />
+                    <AvatarCircle profile={item.profile} />
                     <View style={styles.rowInfo}>
                       <Text style={styles.rowName}>{item.profile.display_name}</Text>
                       <Text style={styles.rowSub}>@{item.profile.username}</Text>
@@ -271,7 +263,7 @@ export default function PeopleScreen() {
                     onPress={() => router.push(`/user/${item.profile.id}` as any)}
                     activeOpacity={0.7}
                   >
-                    <AvatarCircle name={item.profile.display_name} />
+                    <AvatarCircle profile={item.profile} />
                     <View style={styles.rowInfo}>
                       <Text style={styles.rowName}>{item.profile.display_name}</Text>
                       <Text style={styles.rowSub}>@{item.profile.username}</Text>

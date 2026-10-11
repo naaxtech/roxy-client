@@ -20,6 +20,8 @@
 --                              triggers that never fail the member's write
 --   9. profile glow-up         delight #6  profile_prompts, archive_shelf
 --                              (top four), follow_counts()
+--  10. comments                FEED-04  'comment' is a report type;
+--                              delete_my_comment() keeps other women's replies
 --
 -- Every new function: REVOKE ALL FROM PUBLIC, anon; explicit GRANT.
 -- Every new policy: TO authenticated.
@@ -811,3 +813,57 @@ $$;
 
 REVOKE ALL ON FUNCTION public.follow_counts(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.follow_counts(uuid) TO authenticated;
+
+-- ── 10. Comments: reportable, and hers to take back ─────────────────────────
+--
+-- FEED-04. Comments are where harassment lands and no comment could be
+-- reported: `reports.content_type` had no 'comment'. Widened here (the CHECK
+-- keeps every earlier value) together with the submit-report allowlist and
+-- lib/reportTargets.ts, which __tests__/lib/reportContentTypes.test.ts keeps
+-- in step. The 1000-character cap is already the 045 CHECK
+-- (comments_content_check), so the client limit mirrors it; no change here.
+
+ALTER TABLE public.reports DROP CONSTRAINT IF EXISTS reports_content_type_check;
+ALTER TABLE public.reports
+  ADD CONSTRAINT reports_content_type_check
+  CHECK (content_type IN (
+    'message', 'post', 'profile', 'room', 'speed_date',
+    'archive_entry', 'archive_review', 'comment'
+  ));
+
+-- Delete her own comment. A plain DELETE would cascade (parent_id ON DELETE
+-- CASCADE) and take other women's replies with it, so a comment that has
+-- replies is blanked and marked deleted instead ("This comment was removed.")
+-- and one without replies is deleted outright. Either way her words are gone
+-- and notify_comment (8b) withdraws the notification. Returns 'deleted',
+-- 'removed', or NULL when the comment is not hers / does not exist.
+CREATE OR REPLACE FUNCTION public.delete_my_comment(p_comment_id uuid)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_me uuid := auth.uid();
+BEGIN
+  IF v_me IS NULL THEN
+    RAISE EXCEPTION 'Sign in first' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.comments
+    WHERE id = p_comment_id AND author_id = v_me AND deleted_at IS NULL
+  ) THEN
+    RETURN NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.comments WHERE parent_id = p_comment_id) THEN
+    UPDATE public.comments
+       SET deleted_at = now(), content = '', media_url = NULL, gif_url = NULL
+     WHERE id = p_comment_id AND author_id = v_me;
+    RETURN 'removed';
+  END IF;
+  DELETE FROM public.comments WHERE id = p_comment_id AND author_id = v_me;
+  RETURN 'deleted';
+END $$;
+
+REVOKE ALL ON FUNCTION public.delete_my_comment(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.delete_my_comment(uuid) TO authenticated;

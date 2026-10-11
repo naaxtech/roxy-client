@@ -1,4 +1,5 @@
 // apps/mobile/lib/avatars.ts
+import { BRAND_GRADIENT, LIVE_GRADIENT, THEMES } from './theme';
 
 export const PRESET_AVATARS = [
   '🐱', '🦊', '🐸', '🌸', '🦋', '🌙',
@@ -29,13 +30,22 @@ export function presetColor(url: string): string {
 // Single source of truth for the name-hashed gradient avatars used across
 // Grow, Messages, People, feed cards, and community screens. One palette,
 // one hash — the same name renders the same gradient on every screen.
+//
+// Built from lib/theme.ts tokens only (the brand and live ramps, and the
+// dark theme's pink / lilac / rose / periwinkle / gold fills), never loose
+// hexes: "colours only from theme tokens". The earlier palette was six
+// hand-picked pairs that matched no token; `components/ui/Avatar.tsx` is the
+// one component that draws them, and its test holds every stop to a token.
+const T = THEMES.dark;
 export const AVATAR_GRADS: [string, string][] = [
-  ['#FF6A2E', '#E81C8E'],
-  ['#8B5CF6', '#E879A6'],
-  ['#FF2F71', '#8B5CF6'],
-  ['#F472B6', '#FF6A2E'],
-  ['#C4476A', '#8B5CF6'],
-  ['#FF8A3D', '#FF2F71'],
+  [BRAND_GRADIENT[0], BRAND_GRADIENT[2]],
+  [T.secondary, T.roxy],
+  [T.primary, T.secondary],
+  [T.sister, T.secondary],
+  [BRAND_GRADIENT[1], T.secondary],
+  [LIVE_GRADIENT[0], LIVE_GRADIENT[1]],
+  // No gold: several screens outside components/ui/Avatar still print a
+  // hard-coded white initial on these, and white on gold is ~1.9:1.
 ];
 
 export function avatarGradient(name: string | null | undefined): [string, string] {
