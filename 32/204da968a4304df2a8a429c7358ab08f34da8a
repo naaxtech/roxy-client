@@ -1,0 +1,142 @@
+apps/studio/__tests__/components/DashboardError.test.tsx
+  h_0549c11fec2ab0 1-21
+apps/studio/__tests__/lib/inviteWaves.test.ts
+  h_0549c11fec2ab0 1-80
+apps/studio/__tests__/lib/members.test.ts
+  h_0549c11fec2ab0 1-69
+apps/studio/__tests__/lib/navGroups.test.ts
+  h_0549c11fec2ab0 17,26-27,34,36,38-52
+apps/studio/__tests__/lib/payouts.test.ts
+  h_0549c11fec2ab0 1-45
+apps/studio/__tests__/lib/reports.test.ts
+  h_0549c11fec2ab0 1-120
+apps/studio/__tests__/staff/InviteWaveClient.test.tsx
+  h_0549c11fec2ab0 1-100
+apps/studio/__tests__/staff/LaunchFunnel.test.tsx
+  h_0549c11fec2ab0 1-78
+apps/studio/__tests__/staff/MemberSuspensionPanel.test.tsx
+  h_0549c11fec2ab0 1-72
+apps/studio/__tests__/staff/PayoutButtons.test.tsx
+  h_0549c11fec2ab0 1-92
+apps/studio/__tests__/staff/ReportsClient.test.tsx
+  h_0549c11fec2ab0 1-115
+apps/studio/__tests__/staff/inviteWaveActions.test.ts
+  h_0549c11fec2ab0 1-155
+apps/studio/__tests__/staff/membersActions.test.ts
+  h_0549c11fec2ab0 1-99
+apps/studio/__tests__/staff/payoutActions.test.ts
+  h_0549c11fec2ab0 1-99
+apps/studio/__tests__/staff/queryErrorStates.test.tsx
+  h_0549c11fec2ab0 1-89
+apps/studio/__tests__/staff/reportsActions.test.ts
+  h_0549c11fec2ab0 1-85
+apps/studio/app/(dashboard)/error.tsx
+  h_0549c11fec2ab0 1-45
+apps/studio/app/(dashboard)/payouts/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/payouts/page.tsx
+  h_0549c11fec2ab0 3,55,68,73,128-130
+apps/studio/app/(dashboard)/products/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/products/page.tsx
+  h_0549c11fec2ab0 2,23,41
+apps/studio/app/(dashboard)/seller-payouts/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/seller-payouts/page.tsx
+  h_0549c11fec2ab0 2,45,123-125
+apps/studio/app/(dashboard)/staff/BlockPayoutButton.tsx
+  h_0549c11fec2ab0 3,7-8,10-26,28,33,35-42,44-47,50-65,69-99,101-109
+apps/studio/app/(dashboard)/staff/LaunchFunnelCard.tsx
+  h_0549c11fec2ab0 1-40
+apps/studio/app/(dashboard)/staff/LaunchFunnelView.tsx
+  h_0549c11fec2ab0 1-69
+apps/studio/app/(dashboard)/staff/ReleasePayoutButton.tsx
+  h_0549c11fec2ab0 3,6,8-14,16,19-21,24,26,28-39,45-46,48-55
+apps/studio/app/(dashboard)/staff/businesses/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/businesses/page.tsx
+  h_0549c11fec2ab0 3,21,29,57-59,94
+apps/studio/app/(dashboard)/staff/disputes/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/disputes/page.tsx
+  h_0549c11fec2ab0 3,26,44-46
+apps/studio/app/(dashboard)/staff/email-queue/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/feature-requests/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/feature-requests/page.tsx
+  h_0549c11fec2ab0 2,11,26-30
+apps/studio/app/(dashboard)/staff/feedback/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/games/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/launch/waves/InviteWaveClient.tsx
+  h_0549c11fec2ab0 1-179
+apps/studio/app/(dashboard)/staff/launch/waves/actions.ts
+  h_0549c11fec2ab0 1-78
+apps/studio/app/(dashboard)/staff/launch/waves/page.tsx
+  h_0549c11fec2ab0 1-131
+apps/studio/app/(dashboard)/staff/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/members/MemberSuspensionPanel.tsx
+  h_0549c11fec2ab0 1-159
+apps/studio/app/(dashboard)/staff/members/[id]/page.tsx
+  h_0549c11fec2ab0 1-176
+apps/studio/app/(dashboard)/staff/members/actions.ts
+  h_0549c11fec2ab0 1-78
+apps/studio/app/(dashboard)/staff/members/loading.tsx
+  h_0549c11fec2ab0 1-18
+apps/studio/app/(dashboard)/staff/members/page.tsx
+  h_0549c11fec2ab0 1-149
+apps/studio/app/(dashboard)/staff/page.tsx
+  h_0549c11fec2ab0 4,6,9,12-14,29,38,49,57,70-71,80-82,99,111-113,137,139,156-158,178-180
+apps/studio/app/(dashboard)/staff/payout-actions.ts
+  h_0549c11fec2ab0 1-72
+apps/studio/app/(dashboard)/staff/products/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/products/page.tsx
+  h_0549c11fec2ab0 3,20,45
+apps/studio/app/(dashboard)/staff/reconciliation/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/reconciliation/page.tsx
+  h_0549c11fec2ab0 3,20,41-43
+apps/studio/app/(dashboard)/staff/reports/ReportsClient.tsx
+  h_0549c11fec2ab0 1-255
+apps/studio/app/(dashboard)/staff/reports/actions.ts
+  h_0549c11fec2ab0 1-62
+apps/studio/app/(dashboard)/staff/reports/loading.tsx
+  h_0549c11fec2ab0 1-25
+apps/studio/app/(dashboard)/staff/reports/page.tsx
+  h_0549c11fec2ab0 1-284
+apps/studio/app/api/staff/block-payout/route.ts
+  h_0549c11fec2ab0 2,4-12,14-24
+apps/studio/app/api/staff/release-payout/route.ts
+  h_0549c11fec2ab0 2,4-10,12-18
+apps/studio/components/AppSidebar.tsx
+  h_0549c11fec2ab0 11,78-79,86-96
+apps/studio/components/QueryError.tsx
+  h_0549c11fec2ab0 1-20
+apps/studio/lib/inviteWaves.ts
+  h_0549c11fec2ab0 1-81
+apps/studio/lib/launchFunnel.ts
+  h_0549c11fec2ab0 1-65
+apps/studio/lib/members.ts
+  h_0549c11fec2ab0 1-95
+apps/studio/lib/payouts.ts
+  h_0549c11fec2ab0 1-71
+apps/studio/lib/reports.ts
+  h_0549c11fec2ab0 1-163
+apps/studio/lib/staff-auth.ts
+  h_0549c11fec2ab0 75-84,105-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32204da968a4304df2a8a429c7358ab08f34da8a",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
