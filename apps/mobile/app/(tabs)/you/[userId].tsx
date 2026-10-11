@@ -28,6 +28,7 @@ import { TYPE } from '../../../lib/typography';
 import { RADII, inkOn } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { confirmAction, showAlert } from '../../../lib/confirm';
+import { openDirectChat } from '../../../lib/directMessages';
 import { useSafetyStore } from '../../../store/safetyStore';
 import { usePopIn } from '../../../components/ui/popIn';
 import type { CommunityRoom, Event, Profile } from '../../../types';
@@ -273,23 +274,15 @@ function UserProfileScreen() {
 
   const handleMessage = async () => {
     if (!user || !userId) return;
-    const { data: existing } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('conversation_type', 'direct')
-      .contains('participant_ids', [user.id, userId])
-      .maybeSingle();
-
-    if (existing?.id) { router.push(`/chat/${existing.id}` as never); return; }
-
-    const { data: created, error } = await supabase
-      .from('conversations')
-      .insert({ participant_ids: [user.id, userId], conversation_type: 'direct' })
-      .select('id')
-      .single();
-
-    if (error || !created) { showAlert('Error', 'Could not open chat.'); return; }
-    router.push(`/chat/${created.id}` as never);
+    // start_direct (migration 132) finds or opens the thread server-side. The
+    // direct SELECT + INSERT it replaces opened a stranger's thread straight
+    // into her inbox instead of her Requests (CHAT-02).
+    try {
+      const convId = await openDirectChat(user.id, userId);
+      router.push(`/chat/${convId}` as never);
+    } catch (e) {
+      showAlert('Could not open chat', e instanceof Error ? e.message : 'Please try again.');
+    }
   };
 
   const styles = StyleSheet.create({

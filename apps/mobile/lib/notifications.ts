@@ -5,7 +5,9 @@ export type RoxyNotification = {
   type:
     | 'friend_request' | 'friend_accept' | 'community_event' | 'message' | 'channel_message'
     // Migration 134: a decision on her application.
-    | 'application_decided';
+    | 'application_decided'
+    // Migration 135: CHAT-09 invites and join requests.
+    | 'community_invite' | 'community_join_request';
   title: string;
   body: string | null;
   link_path: string | null;

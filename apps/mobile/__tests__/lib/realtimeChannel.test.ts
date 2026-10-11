@@ -98,4 +98,9 @@ describe('openBroadcastChannel (typing / reactions)', () => {
     expect(typingTopic('abc')).toBe('conv:abc:typing');
     expect(reactionsTopic('abc')).toBe('conv:abc:reactions');
   });
+
+  it('community channels use the chan: topics realtime_channel_topic_ok() authorises (CHAT-17)', () => {
+    expect(typingTopic('abc', 'channel')).toBe('chan:abc:typing');
+    expect(reactionsTopic('abc', 'channel')).toBe('chan:abc:reactions');
+  });
 });

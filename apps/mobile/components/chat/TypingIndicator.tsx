@@ -5,9 +5,11 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 interface TypingIndicatorProps {
   partnerName: string;
   visible: boolean;
+  /** Groups: a full line ("Ana and Bea are typing") replaces "<name> is typing". */
+  label?: string;
 }
 
-export function TypingIndicator({ partnerName, visible }: TypingIndicatorProps) {
+export function TypingIndicator({ partnerName, visible, label }: TypingIndicatorProps) {
   const colors = useThemeColors();
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
@@ -60,9 +62,15 @@ export function TypingIndicator({ partnerName, visible }: TypingIndicatorProps) 
   });
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.name}>{partnerName}</Text>
-      <Text style={styles.isTyping}> is typing</Text>
+    <View style={styles.container} accessibilityLiveRegion="polite" accessibilityLabel={label ?? `${partnerName} is typing`}>
+      {label ? (
+        <Text style={styles.isTyping}>{label}</Text>
+      ) : (
+        <>
+          <Text style={styles.name}>{partnerName}</Text>
+          <Text style={styles.isTyping}> is typing</Text>
+        </>
+      )}
       <Animated.Text style={[styles.dot, dotStyle(dot1)]}>.</Animated.Text>
       <Animated.Text style={[styles.dot, dotStyle(dot2)]}>.</Animated.Text>
       <Animated.Text style={[styles.dot, dotStyle(dot3)]}>.</Animated.Text>

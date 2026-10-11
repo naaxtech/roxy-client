@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator, Pressable,
   KeyboardAvoidingView, Platform,
@@ -17,16 +17,32 @@ import { ChannelMessage } from '../../../../../components/channels/ChannelMessag
 import { ChannelComposer } from '../../../../../components/channels/ChannelComposer';
 import { ChannelMessageActions, type ChannelAction } from '../../../../../components/channels/ChannelMessageActions';
 import {
-  fetchChannels, fetchChannelMessages, sendChannelMessage, deleteChannelMessage,
+  fetchChannels, fetchChannelMessages, fetchChannelMessage, sendChannelMessage, deleteChannelMessage,
+  fetchOlderChannelMessages, prependOlder, MESSAGE_PAGE,
   initialChannel, fetchMyChannelRole, writeFailureMessage, authorName, fetchLiveStage,
   markChannelRead, setChannelNotifications, fetchChannelNotifications,
+  hideSilenced, mergeChannelMessage,
   type LiveStage,
   type Channel, type ChannelMessage as Message,
 } from '../../../../../lib/channels';
 import { useSafetyStore } from '../../../../../store/safetyStore';
+import { useProfileStore } from '../../../../../store/profileStore';
+import { useReactions } from '../../../../../hooks/useReactions';
+import { useTyping } from '../../../../../hooks/useTyping';
+import { ReactionChips } from '../../../../../components/chat/ReactionBar';
+import { TypingIndicator } from '../../../../../components/chat/TypingIndicator';
+import { SHEET_EMOJIS } from '../../../../../components/chat/MessageActionSheet';
+import { typingLabel } from '../../../../../lib/chatThread';
+import { haptic } from '../../../../../lib/haptics';
+import EmojiKeyboard from 'rn-emoji-keyboard';
 import { useAccess } from '../../../../../hooks/useAccess';
 import { ComingSoon } from '../../../../../components/features/ComingSoon';
 import { OFFICIAL_COMMUNITY_SLUG } from '../../../../../lib/features';
+import { showAlert, confirmAction } from '../../../../../lib/confirm';
+import { freshChannel } from '../../../../../lib/realtimeChannel';
+import { canModerateMember, fetchElevatedRoles, removeCommunityMember } from '../../../../../lib/communityMembership';
+
+const NONE: string[] = [];
 
 /**
  * Community channels (design markup 655–697).
@@ -59,6 +75,16 @@ export default function CommunityChannelsScreen() {
   const [menuFor, setMenuFor] = useState<Message | null>(null);
   const [stage, setStage] = useState<LiveStage | null>(null);
   const [notifyEnabled, setNotifyEnabled] = useState(false);
+  // CHAT-09: who outranks whom here, loaded only for moderators (a hint for
+  // what to draw; remove_community_member is the gate). Absent = member.
+  const [roles, setRoles] = useState<Map<string, string>>(new Map());
+
+  // CHAT-16: history older than the first page. hasOlder is true while the
+  // last page came back full; the header row loads the next one up.
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [olderError, setOlderError] = useState(false);
+  const loadingOlderRef = useRef(false);
 
   const listRef = useRef<FlatList<Message>>(null);
   // Which channel the screen is actually showing. A fetch that resolves after
@@ -68,7 +94,37 @@ export default function CommunityChannelsScreen() {
   // yesterday down to the newest message every time anyone posts is hostile.
   const atBottom = useRef(true);
 
-  const { blockUser, openReportModal } = useSafetyStore();
+  const { blockUser, openReportModal, blockedUserIds, mutedUserIds } = useSafetyStore();
+  // CHAT-10: block and mute reach channels. RLS (migration 132) already hides
+  // block-paired senders both ways; this hides her at once after she taps
+  // Block, before any refetch, and keeps muted senders out of her view.
+  const visible = useMemo(
+    () => hideSilenced(messages, blockedUserIds ?? NONE, mutedUserIds ?? NONE),
+    [messages, blockedUserIds, mutedUserIds],
+  );
+
+  // CHAT-17: reactions and typing, on the open channel's private topics
+  // (chan:<id>:reactions / :typing; migration 132 admits members only).
+  const me = user?.id ?? '';
+  const selfName = useProfileStore((st) => st.profile?.display_name ?? st.profile?.username ?? undefined);
+  const messageIds = useMemo(() => visible.map((m) => m.id), [visible]);
+  const { reactionsMap, addReaction, removeReaction } = useReactions({
+    conversationId: active?.id ?? '', scope: 'channel', messageIds,
+  });
+  const { typingNames, sendTyping, stopTyping } = useTyping({
+    conversationId: active?.id ?? '', scope: 'channel', currentUserId: me, partnerName: '', selfName,
+  });
+  const [reactAnyFor, setReactAnyFor] = useState<string | null>(null);
+  const toggleReaction = useCallback((messageId: string, emoji: string, own: boolean) => {
+    if (!me) return;
+    haptic('select');
+    if (own) void removeReaction(messageId, emoji, me);
+    else void addReaction(messageId, emoji, me);
+  }, [me, addReaction, removeReaction]);
+  const reactFromMenu = useCallback((messageId: string, emoji: string) => {
+    const own = (reactionsMap[messageId] ?? []).some((r) => r.user_id === me && r.emoji === emoji);
+    toggleReaction(messageId, emoji, own);
+  }, [reactionsMap, me, toggleReaction]);
 
   const loadChannels = useCallback(async () => {
     if (!communityId) {
@@ -105,6 +161,15 @@ export default function CommunityChannelsScreen() {
 
   useEffect(() => { void loadChannels(); }, [loadChannels]);
 
+  useEffect(() => {
+    if (!isModerator || !communityId) return undefined;
+    let cancelled = false;
+    fetchElevatedRoles(communityId)
+      .then((r) => { if (!cancelled) setRoles(r); })
+      .catch((e) => logError(e, 'community_channel_roles_failed'));
+    return () => { cancelled = true; };
+  }, [isModerator, communityId]);
+
   // Opt-in channel notifications, off by default (migration 128).
   useEffect(() => {
     if (!communityId || !user?.id) return;
@@ -131,6 +196,8 @@ export default function CommunityChannelsScreen() {
       // reply typed against them posts to the room she is not looking at.
       if (shownChannelId.current !== channelId) return;
       setMessages(rows);
+      setHasOlder(rows.length >= MESSAGE_PAGE);
+      setOlderError(false);
       setMessageError(null);
     } catch (e) {
       logError(e, 'community_channel_messages_failed');
@@ -149,36 +216,83 @@ export default function CommunityChannelsScreen() {
     atBottom.current = true;
     setMessages([]);
     setMessageError(null);
+    setHasOlder(false);
+    setOlderError(false);
     void loadMessages(active.id);
     // Opening the channel is reading it. Clear its unread cursor so the inbox
     // badge does not count messages she has already seen.
     void markChannelRead(active.id);
   }, [active, loadMessages]);
 
+  // The page before the oldest loaded row, put ABOVE what she is reading.
+  // The cursor is the oldest row she has loaded, including any she has hidden
+  // (block/mute), so a silenced sender never makes the same page load twice.
+  const messagesRef = useRef<Message[]>([]);
+  messagesRef.current = messages;
+  const loadOlder = useCallback(async () => {
+    const channelId = shownChannelId.current;
+    const oldest = messagesRef.current[0]?.created_at;
+    if (!channelId || !oldest || loadingOlderRef.current) return;
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    setOlderError(false);
+    try {
+      const older = await fetchOlderChannelMessages(channelId, oldest);
+      if (shownChannelId.current !== channelId) return;
+      // hasMore from the rows she has now; the updater re-merges against
+      // whatever landed meanwhile (a live message), never a stale copy.
+      setHasOlder(prependOlder(messagesRef.current, older, MESSAGE_PAGE).hasMore);
+      setMessages((prev) => prependOlder(prev, older, MESSAGE_PAGE).messages);
+    } catch (e) {
+      logError(e, 'community_channel_older_failed');
+      if (shownChannelId.current === channelId) setOlderError(true);
+    } finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  }, []);
+
   // Filtered by channel_id, never table-wide: a subscription to every message
   // in every community is the pattern CLAUDE.md §18 bans outright.
+  //
+  // CHAT-16: an incoming row is fetched BY ID (the payload carries no joined
+  // author) and folded in — the page used to be re-read for every message
+  // anybody posted. UPDATE covers edits and moderator removals the same way.
+  // A row RLS hides (a block-paired sender) comes back null and is dropped.
+  // freshChannel: a unique topic, so quick re-entry never reuses a dead one
+  // (CHAT-08).
   useEffect(() => {
     if (!active) return undefined;
-    const channel = supabase
-      .channel(`community-channel-${active.id}`)
+    const channelId = active.id;
+    const fold = async (id: string | undefined) => {
+      if (!id) return;
+      try {
+        const row = await fetchChannelMessage(id);
+        if (!row || shownChannelId.current !== channelId) return;
+        setMessages((prev) => mergeChannelMessage(prev, row));
+      } catch (e) {
+        logError(e, 'community_channel_message_fetch_failed');
+        // One row failed: fall back to the page rather than lose the message.
+        if (shownChannelId.current === channelId) void loadMessages(channelId);
+      }
+    };
+    const filter = `channel_id=eq.${channelId}`;
+    const channel = freshChannel(`community-channel-${channelId}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'community_channel_messages',
-          filter: `channel_id=eq.${active.id}`,
-        },
-        () => {
-          // Re-read rather than trusting the payload: the realtime row carries
-          // no joined author, and rendering it would flash "Someone who left"
-          // beside every incoming message.
-          void loadMessages(active.id);
+        { event: 'INSERT', schema: 'public', table: 'community_channel_messages', filter },
+        (payload: { new?: { id?: string } }) => {
+          void fold(payload.new?.id);
           // She is watching, so what lands is read. Clear the cursor as the
           // message arrives, or it comes back as an unread badge after she
           // leaves.
-          void markChannelRead(active.id);
+          void markChannelRead(channelId);
         },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'community_channel_messages', filter },
+        (payload: { new?: { id?: string } }) => { void fold(payload.new?.id); },
       )
       .subscribe();
 
@@ -245,12 +359,52 @@ export default function CommunityChannelsScreen() {
         key: 'block',
         label: `Block ${name}`,
         destructive: true,
-        onPress: () => { void blockUser(message.sender_id as string); },
+        onPress: () => {
+          void (async () => {
+            try {
+              await blockUser(message.sender_id as string);
+              // Her messages leave the list now (hideSilenced); say so, so the
+              // menu action never looks like it did nothing.
+              showAlert('Blocked', `You won't see ${name}'s messages here any more.`);
+            } catch (e) {
+              logError(e, 'community_channel_block_failed');
+              showAlert('Not blocked', `Something went wrong, so ${name} is not blocked. Try again in a moment.`);
+            }
+          })();
+        },
       });
     }
 
+    // CHAT-09: moderators remove or ban — only someone below their own rank.
+    const myRole = user?.id ? roles.get(user.id) : undefined;
+    if (isModerator && communityId && message.sender_id && !mine
+        && canModerateMember(myRole ?? 'moderator', roles.get(message.sender_id) ?? 'member')) {
+      const target = message.sender_id;
+      const act = (ban: boolean) => () => {
+        void (async () => {
+          const yes = await confirmAction(
+            ban ? `Ban ${name}?` : `Remove ${name}?`,
+            ban
+              ? `${name} leaves this community and can't rejoin, ask to join or be invited back until a moderator lifts the ban.`
+              : `${name} leaves this community. She can join again later.`,
+            ban ? 'Ban' : 'Remove',
+          );
+          if (!yes) return;
+          try {
+            await removeCommunityMember(communityId, target, { ban });
+            showAlert('Done', ban ? `${name} is banned from this community.` : `${name} was removed from this community.`);
+          } catch (e) {
+            logError(e, 'community_channel_moderate_failed');
+            showAlert('Not done', e instanceof Error && e.message ? e.message : 'Something went wrong. Please try again.');
+          }
+        })();
+      };
+      actions.push({ key: 'remove-member', label: `Remove ${name} from the community`, destructive: true, onPress: act(false) });
+      actions.push({ key: 'ban-member', label: `Ban ${name}`, destructive: true, onPress: act(true) });
+    }
+
     return actions;
-  }, [user?.id, isModerator, removeMessage, openReportModal, blockUser]);
+  }, [user?.id, isModerator, removeMessage, openReportModal, blockUser, roles, communityId]);
 
   const s = StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
@@ -286,6 +440,13 @@ export default function CommunityChannelsScreen() {
     centreBody: { ...TYPE.caption, color: colors.textSecondary, textAlign: 'center' },
     retry: { ...TYPE.caption, color: colors.primaryInk, fontWeight: '700' },
     retryHit: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
+    olderHit: { minHeight: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center' },
+    older: { ...TYPE.caption, color: colors.primaryInk, fontWeight: '700' },
+    olderError: { ...TYPE.caption, color: colors.errorInk, textAlign: 'center' },
+    reactRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingBottom: 8 },
+    reactHit: { minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center' },
+    reactEmoji: { fontSize: 24 },
+    startOf: { ...TYPE.micro, color: colors.textMuted, textAlign: 'center', paddingVertical: 8 },
   });
 
   if (!loading && communitySlug && !canCommunity(communitySlug)) {
@@ -362,7 +523,7 @@ export default function CommunityChannelsScreen() {
       );
     }
 
-    if (messages.length === 0) {
+    if (visible.length === 0) {
       return (
         <View style={s.centre} testID="channel-messages-empty">
           <Text style={s.centreTitle}>Nothing in # {active.slug} yet</Text>
@@ -376,7 +537,7 @@ export default function CommunityChannelsScreen() {
     return (
       <FlatList
         ref={listRef}
-        data={messages}
+        data={visible}
         keyExtractor={(m) => m.id}
         contentContainerStyle={s.list}
         renderItem={({ item }) => (
@@ -385,6 +546,13 @@ export default function CommunityChannelsScreen() {
             onPressAuthor={(id) => router.push(`/user/${id}` as never)}
             onLongPress={(m) => setMenuFor(m)}
             onOpenCard={(path) => router.push(path as never)}
+            footer={(reactionsMap[item.id]?.length ?? 0) > 0 ? (
+              <ReactionChips
+                reactions={reactionsMap[item.id] ?? []}
+                currentUserId={me}
+                onToggle={(emoji, own) => toggleReaction(item.id, emoji, own)}
+              />
+            ) : null}
             testID={`channel-message-${item.id}`}
           />
         )}
@@ -392,8 +560,39 @@ export default function CommunityChannelsScreen() {
           const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
           atBottom.current =
             contentOffset.y + layoutMeasurement.height >= contentSize.height - 60;
+          // CHAT-16: near the top, fetch the page before. A failed page waits
+          // for her tap instead of retrying on every scroll event.
+          if (contentOffset.y < 80 && hasOlder && !loadingOlderRef.current && !olderError) {
+            void loadOlder();
+          }
         }}
         scrollEventThrottle={16}
+        // Keeps her place when an older page lands above her (native; the web
+        // build keeps the offset as is, which also holds the visible row).
+        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+        ListHeaderComponent={
+          hasOlder || olderError ? (
+            <Pressable
+              onPress={() => { void loadOlder(); }}
+              disabled={loadingOlder}
+              style={s.olderHit}
+              accessibilityRole="button"
+              accessibilityLabel={olderError ? 'Try loading earlier messages again' : 'Load earlier messages'}
+              accessibilityState={{ busy: loadingOlder }}
+              testID="channel-load-older"
+            >
+              {loadingOlder ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Text style={olderError ? s.olderError : s.older}>
+                  {olderError ? "Couldn't load earlier messages. Tap to try again." : 'Earlier messages'}
+                </Text>
+              )}
+            </Pressable>
+          ) : (
+            <Text style={s.startOf} testID="channel-start">{`Start of # ${active.slug}`}</Text>
+          )
+        }
         // Only when she was already at the bottom, or a woman reading yesterday
         // is yanked to the newest message every time anybody posts.
         onContentSizeChange={() => {
@@ -458,6 +657,7 @@ export default function CommunityChannelsScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {body()}
+        <TypingIndicator partnerName="" visible={typingNames.length > 0} label={typingLabel(typingNames)} />
         {active ? (
           <ChannelComposer
             // Keyed per channel. Without it an unsent draft — and a failed-send
@@ -465,6 +665,8 @@ export default function CommunityChannelsScreen() {
             key={active.id}
             placeholder={`Message # ${active.slug}`}
             onSend={handleSend}
+            onTyping={sendTyping}
+            onStopTyping={stopTyping}
             disabled={!user?.id}
             disabledReason="Sign in to post here."
           />
@@ -476,7 +678,42 @@ export default function CommunityChannelsScreen() {
         actions={menuFor ? menuActions(menuFor) : []}
         visible={menuFor !== null}
         onClose={() => setMenuFor(null)}
+        header={menuFor && !menuFor.deleted_at && me ? (
+          <View style={s.reactRow}>
+            {SHEET_EMOJIS.map((emoji) => (
+              <Pressable
+                key={emoji}
+                style={s.reactHit}
+                onPress={() => { const id = menuFor.id; setMenuFor(null); reactFromMenu(id, emoji); }}
+                accessibilityRole="button"
+                accessibilityLabel={`React with ${emoji}`}
+              >
+                <Text style={s.reactEmoji}>{emoji}</Text>
+              </Pressable>
+            ))}
+            <Pressable
+              style={s.reactHit}
+              onPress={() => { const id = menuFor.id; setMenuFor(null); setReactAnyFor(id); }}
+              accessibilityRole="button"
+              accessibilityLabel="Choose any emoji"
+            >
+              <Ionicons name="add" size={22} color={colors.textPrimary} />
+            </Pressable>
+          </View>
+        ) : null}
       />
+
+      {reactAnyFor ? (
+        <EmojiKeyboard
+          open
+          onClose={() => setReactAnyFor(null)}
+          onEmojiSelected={({ emoji }: { emoji: string }) => {
+            const target = reactAnyFor;
+            setReactAnyFor(null);
+            if (target) reactFromMenu(target, emoji);
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

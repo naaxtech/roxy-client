@@ -105,12 +105,16 @@ export interface Friendship {
 export interface Conversation {
   id: string;
   participant_ids: string[];
-  conversation_type: 'direct' | 'speed_date' | 'sister';
+  /** 'group' (migration 132) keeps participant_ids empty; members live in conversation_members. */
+  conversation_type: 'direct' | 'group' | 'speed_date' | 'sister';
   last_message_at: string | null;
   roxy_nudge_count: number;
   roxy_wingwoman_count_today: number;
   last_roxy_call_date: string | null;
   created_at: string;
+  title?: string | null;
+  avatar_emoji?: string | null;
+  created_by?: string | null;
 }
 
 export interface Message {
@@ -119,10 +123,15 @@ export interface Message {
   sender_id: string | null;
   content: string | null;
   media_url: string | null;
-  message_type: 'text' | 'image' | 'voice' | 'roxy_suggestion';
+  /** 'system' rows ("Ana added Bea") are written only by the group RPCs. */
+  message_type: 'text' | 'image' | 'voice' | 'roxy_suggestion' | 'system';
   is_read: boolean;
   created_at: string;
   reactions?: MessageReaction[];
+  reply_to_id?: string | null;
+  edited_at?: string | null;
+  /** Unsent: the row stays (replies, receipts), the words are gone. */
+  deleted_at?: string | null;
 }
 
 export interface MessageReaction {

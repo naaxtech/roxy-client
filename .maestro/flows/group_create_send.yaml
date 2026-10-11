@@ -1,0 +1,75 @@
+# Test: Create a private group from New message, send into it, see its header.
+# Prerequisites: the signed-in account has at least TWO friends whose
+# `group_add_permission` is 'friends' (the default). Set MAESTRO_FRIEND_A and
+# MAESTRO_FRIEND_B to their display names (seed accounts only).
+#
+# Migration 132: one pick = a 1:1, two or more = a group via `create_group`
+# (friends only, block pairs refused, cap 32). The thread header shows the
+# group's emoji + name + member count and opens Group info.
+appId: com.roxy.app
+---
+- runFlow: ../subflows/dismiss_first_run.yaml
+
+- tapOn:
+    id: "nav-slot-messages"
+
+- tapOn:
+    id: "messages-new"
+
+- assertVisible:
+    id: "new-message-search"
+    timeout: 3000
+
+- tapOn:
+    text: ${MAESTRO_FRIEND_A}
+- tapOn:
+    text: ${MAESTRO_FRIEND_B}
+
+# A second pick turns the screen into the group builder.
+- assertVisible:
+    id: "group-builder"
+    timeout: 3000
+
+- tapOn:
+    id: "group-name"
+- inputText: "Maestro crew"
+- tapOn:
+    id: "group-emoji-🌈"
+
+- tapOn:
+    id: "new-message-go"
+
+# The thread opens with the group header, not a person's.
+- assertVisible:
+    id: "chat-header-title"
+    timeout: 5000
+- assertVisible:
+    text: "Maestro crew"
+- assertVisible:
+    text: "3 members"
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Hello crew!"
+- tapOn:
+    id: "chat-send"
+- assertVisible:
+    text: "Hello crew!"
+    timeout: 5000
+- assertNotVisible:
+    id: "message-retry"
+
+# The header is the door to Group info (members, mute, leave). That screen is
+# built in its own lane; once it lands, assert its own testID here instead.
+- tapOn:
+    id: "chat-header-title"
+- assertNotVisible:
+    id: "chat-input"
+    timeout: 3000
+- back
+
+# And it is a chat row on Messages, named for the group.
+- back
+- assertVisible:
+    text: "Maestro crew"
+    timeout: 5000

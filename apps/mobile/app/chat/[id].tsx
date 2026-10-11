@@ -1,573 +1,496 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
-  Modal, FlatList, Image, Pressable, Keyboard, ListRenderItem,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Modal, FlatList, Keyboard, Pressable,
+  type ListRenderItem, type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { format, isToday, isYesterday } from 'date-fns';
+import * as Clipboard from 'expo-clipboard';
+import EmojiKeyboard from 'rn-emoji-keyboard';
 import { supabase, callEdgeFunction } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { useConnectStore } from '../../store/connectStore';
+import { useSafetyStore } from '../../store/safetyStore';
+import { isOnline } from '../../store/friendStore';
 import { useRealtime, type ChatMessage } from '../../hooks/useRealtime';
 import { useReactions } from '../../hooks/useReactions';
 import { useTyping } from '../../hooks/useTyping';
-import { useSafetyStore } from '../../store/safetyStore';
+import { useThreadMeta } from '../../hooks/useThreadMeta';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { showAlert, confirmAction } from '../../lib/confirm';
 import { logError } from '../../lib/errorLogger';
-import { MessageStatus } from '../../components/chat/MessageStatus';
 import { Analytics } from '../../lib/analytics';
-import { Message } from '../../types';
-import EmojiKeyboard from 'rn-emoji-keyboard';
+import { haptic } from '../../lib/haptics';
+import { avatarGradient } from '../../lib/avatars';
+import { BRAND_GRADIENT, inkOn, inkOnGradient, RADII, type ThemeColors } from '../../lib/theme';
+import { TYPE } from '../../lib/typography';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
+import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
+import { setActivePath as setActivePushPath } from '../../lib/pushRegistration';
+import {
+  insertMessage, editMessage, unsendMessage, newMessageId, chatErrorMessage,
+  respondMessageRequest, muteConversation, fetchChatSettings, MESSAGE_MAX_LENGTH,
+} from '../../lib/chat';
+import {
+  groupMessages, composerState, replyQuote, typingLabel, trustRoxy, threadHeader,
+  senderNamer, conversationReportTarget, isMutedUntil, MUTE_FOREVER, groupInfoPath,
+  keyboardBehavior, type GroupedMessage,
+} from '../../lib/chatThread';
+import type { Message } from '../../types';
 import { ActionTray } from '../../components/chat/ActionTray';
 import { GifPicker } from '../../components/chat/GifPicker';
-import { QuickReactBar, ReactionChips } from '../../components/chat/ReactionBar';
 import { TypingIndicator } from '../../components/chat/TypingIndicator';
-import { isOnline } from '../../store/friendStore';
-import { fetchOnlineIds, presenceStamp } from '../../lib/memberPresence';
-import { avatarGradient } from '../../lib/avatars';
-import { BRAND_GRADIENT } from '../../lib/theme';
-import { setActivePath as setActivePushPath } from '../../lib/pushRegistration';
+import { MessageRow } from '../../components/chat/MessageRow';
+import { MessageActionSheet } from '../../components/chat/MessageActionSheet';
+import { ReplyBar, RequestGate, ThreadNotice } from '../../components/chat/ComposerBanners';
 
-function formatTimeSep(iso: string): string {
-  const d = new Date(iso);
-  if (isToday(d)) return format(d, 'HH:mm');
-  if (isYesterday(d)) return `Yesterday ${format(d, 'HH:mm')}`;
-  return format(d, 'EEE, MMM d · HH:mm');
-}
+/** Rows per page, on open and on every scroll back. */
+const PAGE_SIZE = 50;
+/** Within this many px of the newest message counts as "at the bottom". */
+const AT_BOTTOM_PX = 120;
 
-const REPORT_REASONS: {
-  key: 'harassment' | 'spam' | 'inappropriate' | 'hate_speech' | 'other';
-  label: string;
-}[] = [
-  { key: 'harassment', label: 'Harassment' },
-  { key: 'spam', label: 'Spam' },
-  { key: 'inappropriate', label: 'Inappropriate content' },
-  { key: 'hate_speech', label: 'Hate speech' },
-  { key: 'other', label: 'Other' },
-];
-
-type PartnerProfile = {
-  id: string;
-  display_name: string;
-  username: string;
-  avatar_url: string | null;
-  last_seen_at: string | null;
-};
-
-// ChatMessage, not Message: the grouped list has to carry `deliveryStatus`
-// through to the bubble, or the tick has nothing to read and every message
-// renders as delivered again.
-type MessageWithGroup = ChatMessage & {
-  isFirstInGroup: boolean;
-  isLastInGroup: boolean;
-  showTimestamp: boolean;
-};
-
-const AVA_SIZE = 32;
-const AVA_GAP = 8;
-
-// Roxy's brand identity gradient — reserved for her wingwoman suggestion
-// card and the composer's send button, so it reads as a consistent "modern
-// chat" accent without being confused with either participant's own color.
-
+/**
+ * One DM or private group thread (migration 132).
+ *
+ * The screen draws; the rules live in lib/chatThread.ts and the writes in
+ * lib/chat.ts. What changed from the old screen, and why:
+ *  - Each message gets its id on the phone before the first attempt, and a
+ *    retry re-sends that same id (CHAT-06): a lost response can no longer
+ *    become a second bubble with the first one spinning forever.
+ *  - No write to `conversations` (CHAT-03): last_message_at is the trigger's
+ *    job and the table grant is gone.
+ *  - Message requests (CHAT-02): a request she received is answered before she
+ *    can type; one she sent is text-only and capped.
+ *  - One report path (CHAT-11): the global ReportSheet, with a message id.
+ *  - History pages in as she scrolls up, and a new message while she reads
+ *    back shows a pill instead of pulling her down (CHAT-16).
+ */
 export default function ChatScreen() {
-  const { id: conversationId } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const conversationId = id ?? '';
   const router = useRouter();
-  const { user } = useAuthStore();
-  const { clearUnread, conversations, setActiveConversation } = useConnectStore();
-  const { blockUser, openReportModal, submitReport, muteUser, unmuteUser, mutedUserIds } = useSafetyStore();
+  const user = useAuthStore((s) => s.user);
+  const me = user?.id ?? '';
+  const markRead = useConnectStore((s) => s.markRead);
+  const refreshInbox = useConnectStore((s) => s.refresh);
+  const setActiveConversation = useConnectStore((s) => s.setActiveConversation);
+  const openReportModal = useSafetyStore((s) => s.openReportModal);
+  const blockUser = useSafetyStore((s) => s.blockUser);
   const colors = useThemeColors();
+  const s = useMemo(() => makeStyles(colors), [colors]);
+
+  const { meta, loading: metaLoading, unavailable, reload: reloadMeta } = useThreadMeta(conversationId, me);
 
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [inputText, setInputText] = useState('');
-  const [sending, setSending] = useState(false);
-  const [wingwomanLoading, setWingwomanLoading] = useState(false);
-  const [nudgeLoading, setNudgeLoading] = useState(false);
-  const [icebreaker, setIcebreaker] = useState<string | null>(null);
-  const listRef = useRef<FlatList<MessageWithGroup>>(null);
-
-  const [partnerProfile, setPartnerProfile] = useState<PartnerProfile | null>(null);
-  const partnerName = partnerProfile?.display_name || partnerProfile?.username || 'Chat';
-  const partnerGrad = useMemo(() => avatarGradient(partnerName), [partnerName]);
-  const partnerIsOnline = isOnline(partnerProfile?.last_seen_at ?? null);
-
-  const [showTray, setShowTray] = useState(false);
-  const [showEmojiKeyboard, setShowEmojiKeyboard] = useState(false);
-  const [showGifPicker, setShowGifPicker] = useState(false);
-  const inputRef = useRef<TextInput>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [editing, setEditing] = useState<ChatMessage | null>(null);
+  const [sheetFor, setSheetFor] = useState<ChatMessage | null>(null);
+  const [reactAnyFor, setReactAnyFor] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [reactingToMessage, setReactingToMessage] = useState<string | null>(null);
-  // Message id awaiting a reaction from the full emoji keyboard. Held
-  // separately from reactingToMessage because opening the picker closes the
-  // quick bar, and the id has to survive that.
-  const [reactWithAnyEmojiFor, setReactWithAnyEmojiFor] = useState<string | null>(null);
+  const [showTray, setShowTray] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [showGifs, setShowGifs] = useState(false);
+  const [wingwomanLoading, setWingwomanLoading] = useState(false);
+  const [nudgeLoading, setNudgeLoading] = useState(false);
+  const [requestBusy, setRequestBusy] = useState(false);
+  const [unseen, setUnseen] = useState(0);
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [readReceipts, setReadReceipts] = useState(true);
 
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [reportVisible, setReportVisible] = useState(false);
-  const [reportReason, setReportReason] = useState<
-    'harassment' | 'spam' | 'inappropriate' | 'hate_speech' | 'other' | null
-  >(null);
-  const [reportDetail, setReportDetail] = useState('');
-  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const listRef = useRef<FlatList<GroupedMessage>>(null);
+  const inputRef = useRef<TextInput>(null);
+  const atBottomRef = useRef(true);
+  const newestIdRef = useRef<string | null>(null);
 
   const {
-    // replaceMessageId and removeMessage went with the old send path: settleSend
-    // now owns the temp-id swap, and a failed message stays on screen in a
-    // failed state instead of being removed out from under her.
-    messages, isSubscribed: _isSubscribed, appendMessage,
-    appendOptimistic, settleSend, retryMessage, failMessage,
-  } = useRealtime({
-    conversationId: conversationId ?? '',
-    initialMessages,
-    currentUserId: user?.id ?? '',
+    messages, appendMessage, appendOptimistic, settleSend, retryMessage, failMessage,
+    loadOlder, hasMoreOlder, loadingOlder, patchMessage,
+  } = useRealtime({ conversationId, initialMessages, currentUserId: me, pageSize: PAGE_SIZE });
+
+  const messageIds = useMemo(() => messages.map((m) => m.id), [messages]);
+  const { reactionsMap, addReaction, removeReaction } = useReactions({ conversationId, messageIds });
+
+  const header = useMemo(() => threadHeader(meta, me), [meta, me]);
+  const nameOf = useMemo(() => senderNamer(meta, me), [meta, me]);
+  const other = meta?.type === 'direct' ? meta.others[0] ?? null : null;
+  const isGroup = header.isGroup;
+  const muted = isMutedUntil(meta?.me?.muted_until);
+
+  const { partnerIsTyping, typingNames, sendTyping, stopTyping } = useTyping({
+    conversationId,
+    currentUserId: me,
+    partnerName: header.title,
+    selfName: meta?.me?.display_name ?? meta?.me?.username ?? undefined,
   });
 
-  const messageIds = messages.map((m) => m.id);
-  const { reactionsMap, addReaction, removeReaction } = useReactions({
-    conversationId: conversationId ?? '',
-    messageIds,
-  });
+  const composer = useMemo(
+    () => (meta ? composerState(meta, messages, me) : null),
+    [meta, messages, me],
+  );
+  const capped = composer?.kind === 'outgoing_request' && composer.remaining <= 0;
+  const inRequest = composer?.kind === 'outgoing_request';
 
-  const { partnerIsTyping, sendTyping, stopTyping } = useTyping({
-    conversationId: conversationId ?? '',
-    currentUserId: user?.id ?? '',
-    partnerName,
-  });
-
-  // Build grouped messages with per-item display metadata
-  const groupedMessages = useMemo((): MessageWithGroup[] => {
-    const base = searchActive && searchQuery.trim()
-      ? messages.filter((m) => m.content?.toLowerCase().includes(searchQuery.toLowerCase()))
-      : messages;
-
-    return base.map((msg, i) => {
-      const prev = base[i - 1];
-      const next = base[i + 1];
-      const isRoxy = msg.message_type === 'roxy_suggestion';
-      const prevBreaks = !prev || prev.message_type === 'roxy_suggestion' || prev.sender_id !== msg.sender_id;
-      const nextBreaks = !next || next.message_type === 'roxy_suggestion' || next.sender_id !== msg.sender_id;
-
-      const isFirstInGroup = isRoxy || prevBreaks;
-      const isLastInGroup = isRoxy || nextBreaks;
-      const showTimestamp =
-        !prev ||
-        new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() > 5 * 60 * 1000;
-
-      return { ...msg, isFirstInGroup, isLastInGroup, showTimestamp };
-    });
-  }, [messages, searchActive, searchQuery]);
-
-  // Reversed for inverted FlatList — newest first renders at visual bottom
-  const reversedMessages = useMemo(() => [...groupedMessages].reverse(), [groupedMessages]);
-
-  const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-
-    // Header
-    header: {
-      flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 12, paddingVertical: 10,
-      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.surfaceLight,
-      gap: 10,
-    },
-    backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-    headerAvaWrap: { position: 'relative' },
-    headerAva: {
-      width: 38, height: 38, borderRadius: 19,
-      alignItems: 'center', justifyContent: 'center',
-      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2,
-    },
-    headerAvaText: { color: '#fff', fontWeight: '800', fontSize: 15 },
-    headerOnlineDot: {
-      position: 'absolute', bottom: 0, right: 0,
-      width: 11, height: 11, borderRadius: 6,
-      backgroundColor: '#22C55E', borderWidth: 2, borderColor: colors.background,
-    },
-    headerCenter: { flex: 1 },
-    headerName: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
-    headerSub: { color: colors.textMuted, fontSize: 11, marginTop: 1 },
-    headerActions: { flexDirection: 'row', gap: 2 },
-    headerBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-
-    // Search header
-    searchInput: {
-      flex: 1, backgroundColor: colors.surface, borderRadius: 20,
-      paddingHorizontal: 14, paddingVertical: 8, color: colors.textPrimary, fontSize: 14,
-    },
-    searchCancelText: { color: colors.primary, fontWeight: '600', marginLeft: 6 },
-
-    // Icebreaker
-    iceBanner: {
-      backgroundColor: colors.roxy + '18', borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.roxy + '40', paddingHorizontal: 16, paddingVertical: 10,
-    },
-    iceLabel: { color: colors.roxy, fontSize: 11, fontWeight: '700', marginBottom: 2 },
-    iceText: { color: colors.textPrimary, fontSize: 13, fontStyle: 'italic' },
-
-    // Error
-    errorState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-    errorText: { color: colors.textMuted, fontSize: 15 },
-    retryBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 10 },
-    retryBtnText: { color: '#fff', fontWeight: '700' },
-
-    // List
-    listContent: { paddingVertical: 12, paddingHorizontal: 12 },
-
-    timeSep: {
-      alignSelf: 'center', color: colors.textMuted, fontSize: 11,
-      marginVertical: 8, fontWeight: '500',
-    },
-
-    // Message rows
-    msgRow: { flexDirection: 'row', alignItems: 'flex-end', marginVertical: 1, gap: 4 },
-    msgRowOwn: { justifyContent: 'flex-end' },
-    msgRowOther: { justifyContent: 'flex-start' },
-    // Regular, always-visible react affordance — no hidden long-press.
-    // Sits on the outer edge of the bubble, opposite the avatar.
-    reactBtn: {
-      width: 26, height: 26, borderRadius: 13,
-      alignItems: 'center', justifyContent: 'center',
-      marginBottom: 2,
-    },
-
-    avaSlot: { width: AVA_SIZE + AVA_GAP, alignItems: 'flex-start' },
-    msgAva: {
-      width: AVA_SIZE, height: AVA_SIZE, borderRadius: AVA_SIZE / 2,
-      alignItems: 'center', justifyContent: 'center',
-      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1,
-    },
-    msgAvaText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-
-    // Bubbles
-    bubble: { maxWidth: '76%', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10 },
-    bubbleOwn: {
-      backgroundColor: colors.primary,
-      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 1,
-    },
-    bubbleOther: {
-      backgroundColor: colors.surface,
-      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1,
-    },
-    bubbleOwnLast: { borderBottomRightRadius: 6 },
-    bubbleOtherLast: { borderBottomLeftRadius: 6 },
-    bubbleHighlighted: { borderWidth: 2, borderColor: colors.primary + '80' },
-
-    bubbleText: { fontSize: 15, lineHeight: 21 },
-    bubbleTextOwn: { color: '#fff' },
-    bubbleTextOther: { color: colors.textPrimary },
-
-    gifImage: { width: 200, height: 150, borderRadius: 10 },
-
-    bubbleMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3, marginTop: 4 },
-    bubbleTime: { fontSize: 10, color: 'rgba(255,255,255,0.7)' },
-    bubbleTimeOther: { color: colors.textMuted },
-    readTick: { fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '700' },
-    readTickRead: { color: 'rgba(255,255,255,0.95)' },
-
-    // Roxy suggestion — distinct wingwoman identity via a brand-gradient
-    // accent bar + gradient CTA, so it never reads as a plain human bubble.
-    roxyBubble: {
-      alignSelf: 'center', backgroundColor: colors.roxy + '12',
-      borderRadius: 20, overflow: 'hidden',
-      padding: 14, paddingTop: 17, marginVertical: 6, width: '88%',
-      shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 1,
-    },
-    roxyAccentBar: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
-    roxyLabel: { color: colors.roxy, fontSize: 11, fontWeight: '700', marginBottom: 6, letterSpacing: 0.2 },
-    roxyText: { color: colors.textPrimary, fontSize: 14, lineHeight: 20, fontStyle: 'italic' },
-    roxyUseBtnRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
-    roxyUseBtn: { alignSelf: 'flex-start', borderRadius: 12, overflow: 'hidden' },
-    roxyUseBtnGradient: { paddingHorizontal: 16, paddingVertical: 8 },
-    roxyUseBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-
-    emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: 40, fontSize: 14 },
-
-    // Input bar
-    inputWrap: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.surfaceLight,
-      backgroundColor: colors.background,
-    },
-    inputBar: {
-      flexDirection: 'row', alignItems: 'flex-end', gap: 8,
-      paddingHorizontal: 12, paddingVertical: 10,
-    },
-    roxyBtn: {
-      width: 36, height: 36, borderRadius: 18,
-      backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.roxy + '50',
-      alignItems: 'center', justifyContent: 'center', marginBottom: 2,
-    },
-    roxyBtnActive: { backgroundColor: colors.roxy + '18', borderColor: colors.roxy },
-    inlineEmojiContainer: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.surfaceLight },
-    input: {
-      flex: 1, backgroundColor: colors.surface, borderRadius: 22,
-      paddingHorizontal: 16, paddingVertical: 10, minHeight: 40,
-      color: colors.textPrimary, fontSize: 15, maxHeight: 120,
-    },
-    sendBtn: {
-      width: 38, height: 38, borderRadius: 19,
-      alignItems: 'center', justifyContent: 'center', marginBottom: 2,
-      overflow: 'hidden',
-    },
-    sendBtnGradient: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' },
-    sendBtnDisabled: { opacity: 0.4 },
-
-    // Reaction overlay
-    reactOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
-    reactBarContainer: { position: 'absolute', bottom: 120, alignSelf: 'center' },
-
-    // Modals
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-    actionSheet: {
-      backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-      paddingBottom: 34, paddingTop: 8,
-    },
-    actionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, gap: 14 },
-    actionRowText: { color: colors.textPrimary, fontSize: 16 },
-    actionRowTextDanger: { color: colors.error, fontSize: 16, fontWeight: '600' },
-    actionSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.surfaceLight, marginHorizontal: 16 },
-    reportCard: {
-      backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-      padding: 24, paddingBottom: 40,
-      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
-    },
-    reportTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700', marginBottom: 4 },
-    reportSubtitle: { color: colors.textSecondary, fontSize: 14, marginBottom: 16 },
-    reasonRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 4, borderRadius: 10 },
-    reasonRowSelected: { backgroundColor: colors.primary + '20' },
-    reasonRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.textMuted },
-    reasonRadioSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
-    reasonLabel: { color: colors.textPrimary, fontSize: 15 },
-    reasonSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.surfaceLight },
-    reportDetailInput: {
-      backgroundColor: colors.surfaceLight, borderRadius: 12, padding: 12,
-      color: colors.textPrimary, fontSize: 14, minHeight: 72, marginTop: 16, textAlignVertical: 'top',
-    },
-    reportActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
-    reportCancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surfaceLight, alignItems: 'center' },
-    reportCancelText: { color: colors.textSecondary, fontSize: 16, fontWeight: '600' },
-    reportSubmitBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center' },
-    reportSubmitBtnDisabled: { backgroundColor: colors.textMuted },
-    reportSubmitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  });
+  // ── lifecycle ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    setActiveConversation(conversationId ?? null);
-    // No banner for this chat while it is on screen, and opening it clears its
-    // notifications so the bell and the app badge stop counting messages she is
-    // reading (migration 129).
+    setActiveConversation(conversationId || null);
+    // No banner for this chat while it is on screen (push pipeline, 129).
     setActivePushPath(conversationId ? `/chat/${conversationId}` : null);
-    if (conversationId) {
-      supabase
-        .rpc('mark_notifications_read_for_link', { p_link_path: `/chat/${conversationId}` })
-        .then(null, () => {});
-    }
     return () => {
       setActiveConversation(null);
       setActivePushPath(null);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
 
   useEffect(() => {
-    setInitialMessages([]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId]);
-
-  useEffect(() => {
-    if (!conversationId || !user) return;
-    const resolve = async (participantIds: string[]) => {
-      const pid = participantIds.find((id) => id !== user.id) ?? null;
-      if (!pid) return;
-      const [{ data }, online] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('id, display_name, username, avatar_url')
-          .eq('id', pid)
-          .single(),
-        // Online yes/no only; her last-seen time is not readable (130 / PRO-01).
-        fetchOnlineIds([pid]),
-      ]);
-      if (data) setPartnerProfile({ ...data, last_seen_at: presenceStamp(online.has(pid)) } as PartnerProfile);
-    };
-    const conv = conversations.find((c) => c.id === conversationId);
-    if (conv) {
-      void resolve(conv.participant_ids);
-    } else {
-      void (async () => {
-        try {
-          const { data } = await supabase
-            .from('conversations')
-            .select('participant_ids')
-            .eq('id', conversationId)
-            .single();
-          if (data) void resolve(data.participant_ids);
-        } catch {}
-      })();
-    }
-  }, [conversationId, user, conversations]);
+    let alive = true;
+    fetchChatSettings()
+      .then((cs) => { if (alive) setReadReceipts(cs.read_receipts); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   const loadMessages = useCallback(async () => {
-    if (!conversationId) return;
+    if (!conversationId || !me) return;
     setLoadingInitial(true);
     setLoadError(false);
     try {
-      // Bug fix: this used to order ascending + limit(100), which returns the
-      // OLDEST 100 messages ever sent -- any conversation past 100 messages
-      // showed frozen ancient history, never anything recent. Fetch the most
-      // recent 100 (descending) then reverse for chronological display.
+      // Newest page first, shown oldest → newest; older pages arrive on scroll.
       const { data, error } = await supabase
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(PAGE_SIZE);
       if (error) throw error;
-      if (data) {
-        const chronological = [...data].reverse() as Message[];
-        setInitialMessages(chronological);
-        const icebreakerMsg = chronological.find((m) => m.message_type === 'roxy_suggestion');
-        if (icebreakerMsg) setIcebreaker(icebreakerMsg.content);
-      }
-      if (user && data) {
-        // Via RPC, not a direct UPDATE. The only UPDATE policy on messages is
-        // messages_update_own, USING (auth.uid() = sender_id) -- so the
-        // recipient, the one person who can know a message has been read, was
-        // the one person excluded. RLS filters rows rather than erroring, so
-        // PostgREST answered 204 and this looked like it worked while is_read
-        // stayed false: read ticks never advanced and the unread badge, which
-        // the Messages tab recomputes from the database on every load, came
-        // back forever. mark_conversation_read (085) is SECURITY DEFINER and
-        // checks participation itself.
-        const { error: readError } = await supabase.rpc('mark_conversation_read', {
-          p_conversation_id: conversationId,
-        });
-        // A failed receipt is not worth interrupting her reading for -- the
-        // messages are already on screen. Log it and leave the badge alone
-        // rather than clearing an unread count the server still holds.
-        if (readError) logError(readError, 'chat_markConversationRead');
-        else clearUnread(conversationId);
-      }
-    } catch {
+      setInitialMessages([...((data ?? []) as Message[])].reverse());
+      // Server-owned unread (CHAT-13): moves her cursor, clears the bell rows
+      // for this link, refreshes the badge. Never a receipt on a request.
+      void markRead(conversationId);
+    } catch (e) {
+      logError(e, 'chat_loadMessages');
       setLoadError(true);
     } finally {
       setLoadingInitial(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, user]);
+  }, [conversationId, me]);
 
   useEffect(() => { void loadMessages(); }, [loadMessages]);
 
-  // With inverted FlatList, scroll to offset 0 = newest = visual bottom
   useEffect(() => {
-    if (messages.length > 0 && !searchActive) {
-      setTimeout(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }), 80);
-    }
-  }, [messages.length, searchActive]);
+    // A different thread: nothing seen, nothing pending, nothing half-typed.
+    newestIdRef.current = null;
+    atBottomRef.current = true;
+    setUnseen(0);
+    setReplyTo(null);
+    setEditing(null);
+    setSendError(null);
+  }, [conversationId]);
 
-  const sendMessage = async (content: string, type: Message['message_type'] = 'text', mediaUrl?: string) => {
-    if ((!content.trim() && !mediaUrl) || !user || !conversationId) return;
-    // She has stopped — the message is on its way. Without this the other side
-    // keeps seeing "typing…" until the 2500ms expiry, next to the message that
-    // was supposedly still being written.
+  const scrollToBottom = useCallback((animated = true) => {
+    atBottomRef.current = true;
+    setUnseen(0);
+    try {
+      listRef.current?.scrollToOffset({ offset: 0, animated });
+    } catch {
+      // list not mounted yet
+    }
+  }, []);
+
+  // A new newest message: hers → go to it; someone else's → follow only if she
+  // is already at the bottom, otherwise count it on the pill (CHAT-16).
+  const markReadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const newest = messages[messages.length - 1];
+    if (!newest) return;
+    const prev = newestIdRef.current;
+    newestIdRef.current = newest.id;
+    if (prev === null || prev === newest.id) return;
+    if (newest.sender_id === me) {
+      scrollToBottom();
+      return;
+    }
+    if (atBottomRef.current) scrollToBottom();
+    else setUnseen((n) => n + 1);
+    if (markReadTimer.current) clearTimeout(markReadTimer.current);
+    markReadTimer.current = setTimeout(() => { void markRead(conversationId); }, 800);
+  }, [messages]);
+
+  useEffect(() => () => { if (markReadTimer.current) clearTimeout(markReadTimer.current); }, []);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = setTimeout(() => setToast(null), 1600);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!flashId) return undefined;
+    const t = setTimeout(() => setFlashId(null), 1500);
+    return () => clearTimeout(t);
+  }, [flashId]);
+
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    // Inverted list: offset 0 is the newest message.
+    const atBottom = (e.nativeEvent?.contentOffset?.y ?? 0) < AT_BOTTOM_PX;
+    atBottomRef.current = atBottom;
+    if (atBottom) setUnseen(0);
+  }, []);
+
+  const onEndReached = useCallback(() => {
+    if (loadingInitial || !hasMoreOlder) return;
+    void loadOlder();
+  }, [loadingInitial, hasMoreOlder, loadOlder]);
+
+  // ── send / retry / edit ──────────────────────────────────────────────────
+
+  const deliver = useCallback(async (msg: ChatMessage) => {
+    try {
+      const result = await insertMessage({
+        id: msg.id,
+        conversationId: msg.conversation_id,
+        senderId: me,
+        content: msg.content,
+        type: msg.message_type === 'image' ? 'image' : 'text',
+        mediaUrl: msg.media_url,
+        replyToId: msg.reply_to_id ?? null,
+      });
+      if (settleSend(msg.id, result)) {
+        Analytics.messageSent(conversationId);
+        setSendError(null);
+      } else {
+        // The bubble stays with Retry on it; the reason is said once, in words.
+        setSendError(chatErrorMessage(result.error));
+      }
+    } catch (e) {
+      logError(e, 'chat_sendMessage');
+      failMessage(msg.id);
+      setSendError(chatErrorMessage(e));
+    }
+  }, [me, conversationId, settleSend, failMessage]);
+
+  const send = useCallback(async (content: string, type: 'text' | 'image' = 'text', mediaUrl?: string) => {
+    const text = content.trim();
+    if ((!text && !mediaUrl) || !me || !conversationId || capped) return;
     stopTyping();
-    setSending(true);
-    const optimisticMsg: Message = {
-      id: `tmp-${Date.now()}`,
+    const msg: ChatMessage = {
+      // Minted once, here. Retry re-sends this exact id (CHAT-06).
+      id: newMessageId(),
       conversation_id: conversationId,
-      sender_id: user.id,
-      content: content.trim() || null,
+      sender_id: me,
+      content: text || null,
       media_url: mediaUrl ?? null,
       message_type: type,
       is_read: false,
       created_at: new Date().toISOString(),
+      reply_to_id: replyTo?.id ?? null,
     };
-    // Optimistic, and explicitly IN FLIGHT. appendMessage would render it in
-    // the same state as a delivered message, which is the whole bug: there
-    // would be no visual difference between "on its way" and "arrived".
-    appendOptimistic(optimisticMsg);
+    appendOptimistic(msg);
     setInputText('');
+    setReplyTo(null);
+    haptic('tap');
+    scrollToBottom();
+    await deliver(msg);
+  }, [me, conversationId, capped, replyTo, appendOptimistic, deliver, scrollToBottom, stopTyping]);
 
-    // Bug fix: this previously had no try/catch, unlike handleWingwoman/
-    // handleNudge -- if .insert() threw instead of resolving with { error },
-    // setSending(false) below would never run and the send button would
-    // stay disabled/spinning until the screen remounted.
+  const retry = useCallback((m: ChatMessage) => {
+    const again = retryMessage(m.id);
+    if (again) void deliver(again);
+  }, [retryMessage, deliver]);
+
+  const saveEdit = useCallback(async () => {
+    const target = editing;
+    if (!target) return;
+    const text = inputText.trim();
+    setEditing(null);
+    setInputText('');
+    if (!text || text === target.content) return;
+    patchMessage(target.id, { content: text, edited_at: new Date().toISOString() });
     try {
-      const { data: inserted, error } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: conversationId,
-          sender_id: user.id,
-          content: content.trim() || null,
-          media_url: mediaUrl ?? null,
-          message_type: type,
-        })
-        .select('id')
-        .single();
-
-      // The ONLY route to 'sent'. `if (inserted?.id)` used to guard the happy
-      // path and do nothing otherwise — so a 200 that inserted zero rows threw
-      // nothing, matched nothing, and left her message on screen looking
-      // delivered forever. settleSend treats a missing id exactly like an
-      // error, because to her they are the same event.
-      if (!settleSend(optimisticMsg.id, { data: inserted, error })) {
-        // The message stays on screen in a failed state with a retry on it,
-        // rather than vanishing behind a modal. A message that disappears
-        // reads as "I never wrote that", which is worse than "this failed".
-        setSending(false);
-        return;
-      }
-
-      Analytics.messageSent(conversationId);
-      // No push call here any more. The recipient's notification row is created
-      // server-side by trg_notify_direct_message, and migration 129 queues its
-      // push from that row (push-dispatch). The old fire-and-forget call to
-      // send-message-push depended on THIS phone staying online and is now a
-      // no-op kept only for older builds.
-      supabase
-        .from('conversations')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('id', conversationId)
-        .then(null, () => {});
+      await editMessage(target.id, text);
+      haptic('select');
     } catch (e) {
-      logError(e, 'chat_sendMessage');
-      failMessage(optimisticMsg.id);
-    } finally {
-      setSending(false);
+      patchMessage(target.id, { content: target.content, edited_at: target.edited_at ?? null });
+      setSendError(e instanceof Error ? e.message : chatErrorMessage(e));
     }
-  };
+  }, [editing, inputText, patchMessage]);
 
-  const handleGifSelected = async (url: string) => {
-    await sendMessage('', 'image', url);
-  };
+  const submit = useCallback(() => {
+    if (editing) void saveEdit();
+    else void send(inputText);
+  }, [editing, saveEdit, send, inputText]);
+
+  // ── message actions ──────────────────────────────────────────────────────
+
+  const toggleReaction = useCallback(async (messageId: string, emoji: string) => {
+    if (!me) return;
+    // The sheet and the chips tick on tap themselves; this only writes.
+    const mine = (reactionsMap[messageId] ?? []).some((r) => r.user_id === me && r.emoji === emoji);
+    if (mine) await removeReaction(messageId, emoji, me);
+    else await addReaction(messageId, emoji, me);
+  }, [me, reactionsMap, addReaction, removeReaction]);
+
+  const onToggleReaction = useCallback((messageId: string, emoji: string, own: boolean) => {
+    if (!me) return;
+    if (own) void removeReaction(messageId, emoji, me);
+    else void addReaction(messageId, emoji, me);
+  }, [me, addReaction, removeReaction]);
+
+  const startReply = useCallback((m: ChatMessage) => {
+    setEditing(null);
+    setReplyTo(m);
+    inputRef.current?.focus?.();
+  }, []);
+
+  const startEdit = useCallback((m: ChatMessage) => {
+    setReplyTo(null);
+    setEditing(m);
+    setInputText(m.content ?? '');
+    inputRef.current?.focus?.();
+  }, []);
+
+  const cancelComposerMode = useCallback(() => {
+    if (editing) setInputText('');
+    setEditing(null);
+    setReplyTo(null);
+  }, [editing]);
+
+  const unsend = useCallback(async (m: ChatMessage) => {
+    const ok = await confirmAction(
+      'Unsend this message?',
+      'Everyone in the chat will see "Message unsent" instead.',
+      'Unsend',
+    );
+    if (!ok) return;
+    patchMessage(m.id, { deleted_at: new Date().toISOString() });
+    try {
+      await unsendMessage(m.id);
+      haptic('select');
+    } catch (e) {
+      patchMessage(m.id, { deleted_at: null });
+      showAlert("Couldn't unsend", e instanceof Error ? e.message : chatErrorMessage(e));
+    }
+  }, [patchMessage]);
+
+  const copy = useCallback(async (text: string) => {
+    try {
+      await Clipboard.setStringAsync(text);
+      haptic('select');
+      setToast('Copied');
+    } catch (e) {
+      logError(e, 'chat_copy');
+    }
+  }, []);
+
+  const reportMessage = useCallback((m: ChatMessage) => {
+    if (!m.sender_id) return;
+    // The one global ReportSheet, pointed at this exact message (CHAT-11).
+    openReportModal({ userId: m.sender_id, contentType: 'message', contentId: m.id });
+  }, [openReportModal]);
+
+  // ── header menu ──────────────────────────────────────────────────────────
+
+  const toggleMute = useCallback(async () => {
+    setMenuOpen(false);
+    try {
+      await muteConversation(conversationId, muted ? null : MUTE_FOREVER);
+      haptic('select');
+      void reloadMeta();
+      void refreshInbox();
+    } catch (e) {
+      showAlert("Couldn't update", e instanceof Error ? e.message : chatErrorMessage(e));
+    }
+  }, [conversationId, muted, reloadMeta, refreshInbox]);
+
+  const reportFromHeader = useCallback(() => {
+    setMenuOpen(false);
+    // The whole thread (content_type 'conversation', migration 132), DM or group.
+    const target = conversationReportTarget(meta, me);
+    if (!target) return;
+    openReportModal(target);
+  }, [meta, me, openReportModal]);
+
+  const blockFromHeader = useCallback(async () => {
+    setMenuOpen(false);
+    if (!other) return;
+    const ok = await confirmAction(
+      `Block ${header.title}?`,
+      "They won't be able to message you and you won't see their profile.",
+      'Block',
+    );
+    if (!ok) return;
+    try {
+      await blockUser(other.id);
+      router.back();
+    } catch {
+      showAlert('Error', 'Could not block. Please try again.');
+    }
+  }, [other, header.title, blockUser, router]);
+
+  const openHeaderTarget = useCallback(() => {
+    if (isGroup) router.push(groupInfoPath(conversationId) as never);
+    else if (other) router.push(`/user/${other.id}` as never);
+  }, [isGroup, other, conversationId, router]);
+
+  // ── message requests (CHAT-02) ───────────────────────────────────────────
+
+  const answerRequest = useCallback(async (accept: boolean, alsoBlock = false) => {
+    if (requestBusy) return;
+    if (alsoBlock) {
+      const ok = await confirmAction(
+        `Block ${header.title}?`,
+        "They won't be told. They won't be able to message you again.",
+        'Block',
+      );
+      if (!ok) return;
+    }
+    setRequestBusy(true);
+    try {
+      await respondMessageRequest(conversationId, accept);
+      const sender = meta?.others[0]?.id;
+      if (alsoBlock && sender) await blockUser(sender);
+      haptic(accept ? 'success' : 'tap');
+      void refreshInbox();
+      if (accept) {
+        await reloadMeta();
+      } else {
+        router.back();
+      }
+    } catch (e) {
+      showAlert("Couldn't answer that", e instanceof Error ? e.message : chatErrorMessage(e));
+    } finally {
+      setRequestBusy(false);
+    }
+  }, [requestBusy, header.title, conversationId, meta, blockUser, refreshInbox, reloadMeta, router]);
+
+  // ── Roxy (wingwoman) ─────────────────────────────────────────────────────
 
   const handleWingwoman = async () => {
     if (!conversationId) return;
     setWingwomanLoading(true);
     try {
       const history = messages
-        .filter((m) => m.message_type === 'text' && m.content)
+        .filter((m) => m.message_type === 'text' && m.content && !m.deleted_at)
         .slice(-6)
-        .map((m) => ({
-          sender: m.sender_id === user?.id ? 'Me' : 'Them',
-          content: m.content ?? '',
-        }));
+        .map((m) => ({ sender: m.sender_id === me ? 'Me' : 'Them', content: m.content ?? '' }));
       const { data, error } = await callEdgeFunction<{ suggestion: string }>('roxy-wingwoman', {
         conversation_id: conversationId,
         message_history: history,
         current_message: inputText || 'I want to keep the conversation going',
       });
-      if (error) { showAlert('Wingwoman unavailable', error); return; }
+      if (error) { showAlert('Roxy is busy', error); return; }
       if (data?.suggestion) {
+        // Local only, sender null: the one row allowed to wear Roxy's card.
         appendMessage({
           id: `roxy-${Date.now()}`,
           conversation_id: conversationId,
@@ -580,7 +503,7 @@ export default function ChatScreen() {
         });
       }
     } catch {
-      showAlert('Error', 'Failed to get suggestion. Please try again.');
+      showAlert('Error', 'Failed to get a suggestion. Please try again.');
     } finally {
       setWingwomanLoading(false);
     }
@@ -590,603 +513,537 @@ export default function ChatScreen() {
     if (!conversationId) return;
     setNudgeLoading(true);
     try {
-      const { data, error } = await callEdgeFunction<{ nudge: string }>('roxy-nudge', {
-        conversation_id: conversationId,
-      });
+      const { data, error } = await callEdgeFunction<{ nudge: string }>('roxy-nudge', { conversation_id: conversationId });
       if (error) {
         showAlert('Roxy Nudge', "Nudge limit reached for this conversation, but you've got this! 💜");
         return;
       }
       if (data?.nudge) setInputText(data.nudge);
     } catch {
-      showAlert('Error', 'Failed to get nudge. Please try again.');
+      showAlert('Error', 'Failed to get a nudge. Please try again.');
     } finally {
       setNudgeLoading(false);
     }
   };
 
-  const handleBlockPress = async () => {
-    setMenuVisible(false);
-    const ok = await confirmAction(
-      `Block ${partnerName}?`,
-      "They won't be able to message you and you won't see their profile.",
-      'Block',
-    );
-    if (!ok) return;
-    if (!partnerProfile?.id) return;
+  // ── list ─────────────────────────────────────────────────────────────────
+
+  const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
+  const query = searchActive ? searchQuery.trim().toLowerCase() : '';
+
+  const rows = useMemo(() => {
+    const trusted = trustRoxy(messages);
+    const base = query
+      ? trusted.filter((m) => !m.deleted_at && (m.content ?? '').toLowerCase().includes(query))
+      : trusted;
+    // Inverted list: newest first renders at the visual bottom.
+    return groupMessages(base, { me, isGroup }).reverse();
+  }, [messages, query, me, isGroup]);
+
+  const showReadState = !isGroup && readReceipts;
+
+  // Tap a quote → scroll to the original and flash it. One further back than
+  // what is loaded says so rather than doing nothing.
+  const goToQuoted = useCallback((messageId: string) => {
+    const index = rows.findIndex((r) => r.id === messageId);
+    if (index < 0) {
+      setToast('That message is further back');
+      return;
+    }
+    setFlashId(messageId);
     try {
-      await blockUser(partnerProfile.id);
-      router.back();
+      listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
     } catch {
-      showAlert('Error', 'Could not block user. Please try again.');
+      // onScrollToIndexFailed handles the unmeasured case
     }
-  };
+  }, [rows]);
 
-  const handleMuteToggle = async () => {
-    setMenuVisible(false);
-    if (!partnerProfile?.id) return;
-    const isMuted = mutedUserIds.includes(partnerProfile.id);
-    try {
-      if (isMuted) await unmuteUser(partnerProfile.id);
-      else await muteUser(partnerProfile.id);
-    } catch {
-      showAlert('Error', 'Could not update mute. Please try again.');
-    }
-  };
+  const renderItem: ListRenderItem<GroupedMessage> = useCallback(({ item }) => (
+    <MessageRow
+      message={item}
+      replyTo={item.reply_to_id ? byId.get(item.reply_to_id) : undefined}
+      currentUserId={me}
+      isGroup={isGroup}
+      nameOf={nameOf}
+      reactions={reactionsMap[item.id] ?? []}
+      showReadState={showReadState}
+      highlighted={flashId === item.id || (!!query && !!item.content?.toLowerCase().includes(query))}
+      onLongPress={setSheetFor}
+      onReply={startReply}
+      onQuotePress={goToQuoted}
+      onToggleReaction={onToggleReaction}
+      onRetry={retry}
+      onUseSuggestion={setInputText}
+    />
+  ), [byId, me, isGroup, nameOf, reactionsMap, showReadState, flashId, query, startReply, goToQuoted, onToggleReaction, retry]);
 
-  const handleReportPress = () => {
-    setMenuVisible(false);
-    setReportReason(null);
-    setReportDetail('');
-    if (partnerProfile?.id) openReportModal({ userId: partnerProfile.id, contentType: 'message' });
-    setReportVisible(true);
-  };
+  // ── render ───────────────────────────────────────────────────────────────
 
-  const handleReportSubmit = async () => {
-    if (!reportReason || !partnerProfile?.id) return;
-    setReportSubmitting(true);
-    try {
-      await submitReport(reportReason, reportDetail.trim() || undefined);
-      setReportVisible(false);
-      showAlert('Report submitted', 'Thank you for keeping our community safe 💜');
-    } catch {
-      showAlert('Error', 'Could not submit report. Please try again.');
-    } finally {
-      setReportSubmitting(false);
-    }
-  };
-
-  // Opens the reaction picker — reachable via the visible react button (regular
-  // tap) or, for muscle memory, a long-press on the bubble itself.
-  const openReactionPicker = (messageId: string) => setReactingToMessage(messageId);
-
-  // targetId is passed explicitly by the full emoji keyboard, which opens after
-  // the quick bar has already cleared reactingToMessage. The quick bar itself
-  // still relies on the state, so the parameter is optional.
-  const handleReact = async (emoji: string, targetId?: string) => {
-    const messageId = targetId ?? reactingToMessage;
-    if (!messageId || !user) return;
-    const existing = (reactionsMap[messageId] ?? []).find(
-      (r) => r.user_id === user.id && r.emoji === emoji
-    );
-    if (existing) {
-      await removeReaction(messageId, emoji, user.id);
-    } else {
-      await addReaction(messageId, emoji, user.id);
-    }
-    setReactingToMessage(null);
-  };
-
-  const handleReactionToggle = async (messageId: string, emoji: string, isOwn: boolean) => {
-    if (!user) return;
-    if (isOwn) {
-      await removeReaction(messageId, emoji, user.id);
-    } else {
-      await addReaction(messageId, emoji, user.id);
-    }
-  };
-
-  const renderItem: ListRenderItem<MessageWithGroup> = ({ item }) => {
-    const isOwn = item.sender_id === user?.id;
-    const isRoxy = item.message_type === 'roxy_suggestion';
-    const isImage = item.message_type === 'image';
-    const reactions = reactionsMap[item.id] ?? [];
-    const isHighlighted = searchActive && searchQuery.trim()
-      ? (item.content?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
-      : false;
-
-    // Timestamp separator — in inverted FlatList, isFirstInGroup items are oldest in group
-    // and render at the top of the visual group, so timestamp sits above them naturally.
-    const timeSep = item.showTimestamp ? (
-      <Text style={styles.timeSep}>{formatTimeSep(item.created_at)}</Text>
-    ) : null;
-
-    if (isRoxy) {
-      return (
-        <View>
-          {timeSep}
-          <Pressable onLongPress={() => openReactionPicker(item.id)} delayLongPress={400}>
-            <View style={[styles.roxyBubble, isHighlighted && styles.bubbleHighlighted]}>
-              <LinearGradient colors={BRAND_GRADIENT} style={styles.roxyAccentBar} />
-              <Text style={styles.roxyLabel}>✨ Roxy suggests</Text>
-              <Text style={styles.roxyText}>{item.content}</Text>
-              <View style={styles.roxyUseBtnRow}>
-                <TouchableOpacity
-                  style={styles.roxyUseBtn}
-                  onPress={() => setInputText(item.content ?? '')}
-                  accessibilityRole="button"
-                  accessibilityLabel="Use Roxy's suggestion"
-                >
-                  <LinearGradient colors={BRAND_GRADIENT} style={styles.roxyUseBtnGradient}>
-                    <Text style={styles.roxyUseBtnText}>Use this</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.reactBtn}
-                  onPress={() => openReactionPicker(item.id)}
-                  hitSlop={8}
-                  accessibilityLabel="React to message"
-                >
-                  <Ionicons name="happy-outline" size={18} color={colors.roxy} />
-                </TouchableOpacity>
-              </View>
-            </View>
-            {reactions.length > 0 && (
-              <ReactionChips
-                reactions={reactions}
-                currentUserId={user?.id ?? ''}
-                onToggle={(emoji, own) => void handleReactionToggle(item.id, emoji, own)}
-              />
-            )}
-          </Pressable>
-        </View>
-      );
-    }
-
+  if (unavailable && !meta) {
     return (
-      <View>
-        {timeSep}
-        <Pressable onLongPress={() => openReactionPicker(item.id)} delayLongPress={400}>
-          <View style={[styles.msgRow, isOwn ? styles.msgRowOwn : styles.msgRowOther]}>
-            {/* Avatar slot on left for partner messages; shown only for last in group */}
-            {!isOwn && (
-              <View style={styles.avaSlot}>
-                {item.isLastInGroup && (
-                  <LinearGradient colors={partnerGrad} style={styles.msgAva}>
-                    <Text style={styles.msgAvaText}>
-                      {partnerName[0]?.toUpperCase() ?? '?'}
-                    </Text>
-                  </LinearGradient>
-                )}
-              </View>
-            )}
-
-            {/* React — a regular, always-visible tap target. Long-press on
-                the bubble still works too, but nothing requires it. */}
-            {isOwn && (
-              <TouchableOpacity
-                style={styles.reactBtn}
-                onPress={() => openReactionPicker(item.id)}
-                hitSlop={8}
-                accessibilityLabel="React to message"
-              >
-                <Ionicons name="happy-outline" size={18} color={colors.textMuted} />
-              </TouchableOpacity>
-            )}
-
-            <View style={[
-              styles.bubble,
-              isOwn ? styles.bubbleOwn : styles.bubbleOther,
-              isOwn && item.isLastInGroup && styles.bubbleOwnLast,
-              !isOwn && item.isLastInGroup && styles.bubbleOtherLast,
-              isHighlighted && styles.bubbleHighlighted,
-            ]}>
-              {isImage && item.media_url ? (
-                <Image source={{ uri: item.media_url }} style={styles.gifImage} resizeMode="cover" />
-              ) : (
-                <Text style={[styles.bubbleText, isOwn ? styles.bubbleTextOwn : styles.bubbleTextOther]}>
-                  {item.content}
-                </Text>
-              )}
-              <View style={styles.bubbleMeta}>
-                <Text style={[styles.bubbleTime, !isOwn && styles.bubbleTimeOther]}>
-                  {format(new Date(item.created_at), 'HH:mm')}
-                </Text>
-                {isOwn && (
-                  // The tick used to be drawn from is_read alone, which meant a
-                  // message that never reached the server still wore one. It
-                  // now reads the delivery status, and an older row with no
-                  // status is 'sent' — those are rows the server already
-                  // returned, so the tick is honest for them.
-                  <MessageStatus
-                    status={item.deliveryStatus ?? 'sent'}
-                    isRead={item.is_read}
-                    onRetry={() => {
-                      const again = retryMessage(item.id);
-                      if (again) {
-                        void sendMessage(
-                          again.content ?? '',
-                          again.message_type,
-                          again.media_url ?? undefined,
-                        );
-                      }
-                    }}
-                  />
-                )}
-              </View>
-            </View>
-
-            {!isOwn && (
-              <TouchableOpacity
-                style={styles.reactBtn}
-                onPress={() => openReactionPicker(item.id)}
-                hitSlop={8}
-                accessibilityLabel="React to message"
-              >
-                <Ionicons name="happy-outline" size={18} color={colors.textMuted} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {reactions.length > 0 && (
-            <View style={{ paddingLeft: isOwn ? 0 : AVA_SIZE + AVA_GAP }}>
-              <ReactionChips
-                reactions={reactions}
-                currentUserId={user?.id ?? ''}
-                onToggle={(emoji, own) => void handleReactionToggle(item.id, emoji, own)}
-              />
-            </View>
-          )}
-        </Pressable>
-      </View>
+      <SafeAreaView style={s.container} edges={['top']}>
+        <View style={s.header}>
+          <BackButton s={s} colors={colors} onPress={() => router.back()} />
+        </View>
+        <View style={s.center} testID="chat-unavailable">
+          <Ionicons name="chatbubbles-outline" size={32} color={colors.textMuted} />
+          <Text style={s.centerTitle}>This chat isn&apos;t available</Text>
+          <Text style={s.centerBody}>It may have been deleted, or you&apos;re no longer in it.</Text>
+        </View>
+      </SafeAreaView>
     );
-  };
+  }
+
+  const canType = composer?.kind === 'open' || composer?.kind === 'outgoing_request';
+  const sendDisabled = !inputText.trim() || capped;
+  const replyName = replyTo ? nameOf(replyTo.sender_id) : '';
+  const headerGrad = avatarGradient(header.title);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+    <SafeAreaView style={s.container} edges={['top']}>
       {searchActive ? (
-        <View style={styles.header}>
+        <View style={s.header}>
           <TextInput
-            style={styles.searchInput}
+            style={s.searchInput}
             placeholder="Search messages..."
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoFocus
+            accessibilityLabel="Search messages"
           />
-          <TouchableOpacity onPress={() => { setSearchActive(false); setSearchQuery(''); }}>
-            <Text style={styles.searchCancelText}>Cancel</Text>
+          <TouchableOpacity
+            style={s.headerBtn}
+            onPress={() => { setSearchActive(false); setSearchQuery(''); }}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel search"
+          >
+            <Text style={s.searchCancel}>Cancel</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={styles.header}>
+        <View style={s.header}>
+          <BackButton s={s} colors={colors} onPress={() => router.back()} />
           <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backBtn}
-            hitSlop={6}
+            style={s.headerMain}
+            onPress={openHeaderTarget}
+            disabled={!meta}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={isGroup ? `${header.title}, group info` : `${header.title}, view profile`}
+            testID="chat-header-title"
           >
-            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+            <View>
+              {isGroup && header.emoji ? (
+                <View style={[s.headerAva, s.headerEmojiAva]}>
+                  <Text style={s.headerEmoji}>{header.emoji}</Text>
+                </View>
+              ) : (
+                <LinearGradient colors={headerGrad} style={s.headerAva}>
+                  <Text style={[s.headerAvaText, { color: inkOnGradient(headerGrad) }]}>
+                    {isGroup ? (header.title[0]?.toUpperCase() ?? '#') : (header.title[0]?.toUpperCase() ?? '?')}
+                  </Text>
+                </LinearGradient>
+              )}
+              {other && isOnline(other.last_seen_at) ? <View style={s.onlineDot} /> : null}
+            </View>
+            <View style={s.headerText}>
+              <View style={s.headerTitleRow}>
+                <Text style={s.headerName} numberOfLines={1}>{header.title}</Text>
+                {muted ? (
+                  <Ionicons name="notifications-off" size={13} color={colors.textMuted} accessibilityLabel="Muted" />
+                ) : null}
+              </View>
+              <Text style={s.headerSub} numberOfLines={1}>
+                {isGroup
+                  ? header.subtitle
+                  : other && isOnline(other.last_seen_at) ? 'Online now' : 'Tap to view profile'}
+              </Text>
+            </View>
           </TouchableOpacity>
-
           <TouchableOpacity
-            onPress={() => partnerProfile?.id && router.push(`/user/${partnerProfile.id}` as any)}
-            disabled={!partnerProfile?.id}
-            style={styles.headerAvaWrap}
-            accessibilityLabel="View profile"
-            hitSlop={6}
+            style={s.headerBtn}
+            onPress={() => setSearchActive(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Search messages"
           >
-            <LinearGradient colors={partnerGrad} style={styles.headerAva}>
-              <Text style={styles.headerAvaText}>{partnerName[0]?.toUpperCase() ?? '?'}</Text>
-            </LinearGradient>
-            {partnerIsOnline && <View style={styles.headerOnlineDot} />}
+            <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-
           <TouchableOpacity
-            onPress={() => partnerProfile?.id && router.push(`/user/${partnerProfile.id}` as any)}
-            disabled={!partnerProfile?.id}
-            style={styles.headerCenter}
+            style={s.headerBtn}
+            onPress={() => setMenuOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Conversation options"
+            testID="chat-menu"
           >
-            <Text style={styles.headerName} numberOfLines={1}>{partnerName}</Text>
-            <Text style={styles.headerSub}>{partnerIsOnline ? 'Online now' : 'Tap to view profile'}</Text>
+            <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.headerBtn}
-              onPress={() => setSearchActive(true)}
-              hitSlop={6}
-              accessibilityRole="button"
-              accessibilityLabel="Search messages"
-            >
-              <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerBtn}
-              onPress={() => setMenuVisible(true)}
-              hitSlop={6}
-              accessibilityRole="button"
-              accessibilityLabel="Conversation options"
-            >
-              <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
         </View>
       )}
 
-      {icebreaker && !searchActive && (
-        <View style={styles.iceBanner}>
-          <Text style={styles.iceLabel}>✨ Roxy's icebreaker</Text>
-          <Text style={styles.iceText}>{icebreaker}</Text>
-        </View>
-      )}
-
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
-      >
+      <KeyboardAvoidingView style={s.flex} behavior={keyboardBehavior(Platform.OS)} keyboardVerticalOffset={0}>
         {loadingInitial ? (
-          <ActivityIndicator color={colors.roxy} style={{ flex: 1 }} />
+          <ActivityIndicator color={colors.roxy} style={s.flex} accessibilityLabel="Loading messages" />
         ) : loadError ? (
-          <View style={styles.errorState}>
-            <Text style={styles.errorText}>Could not load messages</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={() => void loadMessages()}>
-              <Text style={styles.retryBtnText}>Retry</Text>
+          <View style={s.center}>
+            <Text style={s.centerBody}>Could not load messages</Text>
+            <TouchableOpacity
+              style={s.retryBtn}
+              onPress={() => void loadMessages()}
+              accessibilityRole="button"
+              accessibilityLabel="Try loading messages again"
+            >
+              <Text style={s.retryText}>Try again</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <FlatList
-            ref={listRef}
-            data={reversedMessages}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            inverted
-            contentContainerStyle={styles.listContent}
-            style={{ flex: 1 }}
-            keyboardShouldPersistTaps="handled"
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>
-                {searchActive ? 'No messages match your search.' : 'Send your first message 💜'}
-              </Text>
-            }
-          />
+          <View style={s.flex}>
+            <FlatList
+              ref={listRef}
+              testID="chat-list"
+              data={rows}
+              keyExtractor={(m) => m.id}
+              renderItem={renderItem}
+              inverted
+              style={s.flex}
+              contentContainerStyle={s.listContent}
+              keyboardShouldPersistTaps="handled"
+              onScroll={onScroll}
+              scrollEventThrottle={64}
+              onEndReached={onEndReached}
+              onEndReachedThreshold={0.3}
+              onScrollToIndexFailed={(info) => {
+                listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+              }}
+              maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: AT_BOTTOM_PX }}
+              ListFooterComponent={loadingOlder ? (
+                <ActivityIndicator color={colors.textMuted} style={s.olderSpinner} accessibilityLabel="Loading earlier messages" />
+              ) : null}
+              ListEmptyComponent={
+                <Text style={s.empty}>
+                  {searchActive ? 'No messages match your search.' : 'Say hi 💜'}
+                </Text>
+              }
+            />
+            {unseen > 0 ? (
+              <TouchableOpacity
+                style={s.pill}
+                onPress={() => scrollToBottom()}
+                accessibilityRole="button"
+                accessibilityLabel={`${unseen} new message${unseen === 1 ? '' : 's'}. Jump to latest`}
+                testID="new-messages-pill"
+              >
+                <Ionicons name="arrow-down" size={14} color={inkOn(colors.primary)} />
+                <Text style={s.pillText}>{unseen === 1 ? 'New message' : `${unseen} new messages`}</Text>
+              </TouchableOpacity>
+            ) : null}
+            {toast ? (
+              <View style={s.toast} pointerEvents="none" accessibilityLiveRegion="polite">
+                <Text style={s.toastText}>{toast}</Text>
+              </View>
+            ) : null}
+          </View>
         )}
 
-        <TypingIndicator partnerName={partnerName} visible={partnerIsTyping} />
+        <TypingIndicator
+          partnerName={header.title}
+          visible={partnerIsTyping}
+          label={isGroup ? typingLabel(typingNames) : undefined}
+        />
 
-        <View style={styles.inputWrap}>
-          {showTray && (
-            <ActionTray
-              onEmojiPress={() => {
-                Keyboard.dismiss();
-                setShowEmojiKeyboard((v) => !v);
-              }}
-              onGifPress={() => {
-                setShowTray(false);
-                setShowEmojiKeyboard(false);
-                setShowGifPicker(true);
-              }}
-              onWingwomanPress={() => {
-                setShowTray(false);
-                void handleWingwoman();
-              }}
-              onNudgePress={() => {
-                setShowTray(false);
-                void handleNudge();
-              }}
-              wingwomanLoading={wingwomanLoading}
-              nudgeLoading={nudgeLoading}
-            />
-          )}
-
-          {showEmojiKeyboard && (
-            <View style={styles.inlineEmojiContainer}>
-              <EmojiKeyboard
-                open={showEmojiKeyboard}
-                onClose={() => setShowEmojiKeyboard(false)}
-                onEmojiSelected={({ emoji }: { emoji: string }) => {
-                  setInputText((prev) => prev + emoji);
-                }}
-                expandable={false}
-                styles={{ container: { height: 300 } }}
-              />
-            </View>
-          )}
-
-          <View style={styles.inputBar}>
+        {composer?.kind === 'incoming_request' ? (
+          <RequestGate
+            name={header.title}
+            busy={requestBusy}
+            onAccept={() => void answerRequest(true)}
+            onDelete={() => void answerRequest(false)}
+            onBlock={() => void answerRequest(false, true)}
+          />
+        ) : composer?.kind === 'gone' ? (
+          <ThreadNotice kind="gone" reason={composer.reason} />
+        ) : !meta && !metaLoading ? (
+          // Who's in this thread didn't load, so whether she may type (request,
+          // left, removed) is unknown. Ask again rather than guess.
+          <View style={s.metaError}>
+            <Text style={s.centerBody}>Couldn&apos;t load this chat&apos;s details.</Text>
             <TouchableOpacity
-              style={[styles.roxyBtn, showTray && styles.roxyBtnActive]}
-              onPress={() => { setShowTray((v) => !v); setShowEmojiKeyboard(false); }}
-              hitSlop={8}
+              style={s.metaRetry}
+              onPress={() => void reloadMeta()}
               accessibilityRole="button"
-              accessibilityLabel="Roxy wingwoman tools"
+              accessibilityLabel="Try loading chat details again"
+              testID="chat-meta-retry"
             >
-              <Ionicons name="sparkles" size={16} color={colors.roxy} />
-            </TouchableOpacity>
-
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              placeholder="Say something..."
-              placeholderTextColor={colors.textMuted}
-              value={inputText}
-              onChangeText={(t) => { setInputText(t); sendTyping(); }}
-              onFocus={() => setShowEmojiKeyboard(false)}
-              multiline
-              maxLength={2000}
-              accessibilityLabel="Message input"
-              // Web: Enter sends, Shift+Enter inserts a newline (chat convention).
-              onKeyPress={(e: any) => {
-                if (Platform.OS === 'web' && e.nativeEvent?.key === 'Enter' && !e.nativeEvent?.shiftKey) {
-                  e.preventDefault?.();
-                  if (inputText.trim() && !sending) void sendMessage(inputText);
-                }
-              }}
-            />
-
-            <TouchableOpacity
-              style={[styles.sendBtn, (!inputText.trim() || sending) && styles.sendBtnDisabled]}
-              onPress={() => void sendMessage(inputText)}
-              disabled={!inputText.trim() || sending}
-              accessibilityRole="button"
-              accessibilityLabel="Send message"
-              hitSlop={6}
-            >
-              <LinearGradient colors={BRAND_GRADIENT} style={styles.sendBtnGradient}>
-                {sending ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Ionicons name="send" size={17} color="#fff" />
-                )}
-              </LinearGradient>
+              <Text style={s.metaRetryText}>Try again</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        ) : canType ? (
+          <View style={s.inputWrap}>
+            {composer?.kind === 'outgoing_request' ? (
+              <ThreadNotice kind="outgoing_request" remaining={composer.remaining} name={header.title} />
+            ) : null}
+            {sendError ? (
+              <Text style={s.sendError} accessibilityLiveRegion="polite" testID="chat-send-error">{sendError}</Text>
+            ) : null}
+            {replyTo ? (
+              <ReplyBar mode="reply" name={replyName} text={replyQuote(replyTo, nameOf).text} onCancel={cancelComposerMode} />
+            ) : editing ? (
+              <ReplyBar mode="edit" name="" text={editing.content ?? ''} onCancel={cancelComposerMode} />
+            ) : null}
+
+            {showTray ? (
+              <ActionTray
+                onEmojiPress={() => { Keyboard.dismiss(); setShowEmoji((v) => !v); }}
+                onGifPress={() => {
+                  setShowTray(false);
+                  setShowEmoji(false);
+                  if (inRequest) setSendError(chatErrorMessage({ message: 'request_text_only' }));
+                  else setShowGifs(true);
+                }}
+                onWingwomanPress={() => { setShowTray(false); void handleWingwoman(); }}
+                onNudgePress={() => { setShowTray(false); void handleNudge(); }}
+                wingwomanLoading={wingwomanLoading}
+                nudgeLoading={nudgeLoading}
+              />
+            ) : null}
+
+            {showEmoji ? (
+              <View style={s.emojiWrap}>
+                <EmojiKeyboard
+                  open={showEmoji}
+                  onClose={() => setShowEmoji(false)}
+                  onEmojiSelected={({ emoji }: { emoji: string }) => setInputText((prev) => prev + emoji)}
+                  expandable={false}
+                  styles={{ container: { height: 300 } }}
+                />
+              </View>
+            ) : null}
+
+            <View style={s.inputBar}>
+              <TouchableOpacity
+                style={[s.roxyBtn, showTray && s.roxyBtnOn]}
+                onPress={() => { setShowTray((v) => !v); setShowEmoji(false); }}
+                accessibilityRole="button"
+                accessibilityLabel="Roxy wingwoman tools"
+              >
+                <Ionicons name="sparkles" size={16} color={colors.roxy} />
+              </TouchableOpacity>
+              <TextInput
+                ref={inputRef}
+                testID="chat-input"
+                style={[s.input, capped && s.inputOff]}
+                placeholder={capped ? 'Waiting for her to accept' : editing ? 'Edit message' : 'Say something...'}
+                placeholderTextColor={colors.textMuted}
+                value={inputText}
+                editable={!capped}
+                onChangeText={(t) => {
+                  setInputText(t);
+                  if (sendError) setSendError(null);
+                  if (!editing) sendTyping();
+                }}
+                onFocus={() => setShowEmoji(false)}
+                onBlur={stopTyping}
+                multiline
+                maxLength={MESSAGE_MAX_LENGTH}
+                accessibilityLabel={editing ? 'Edit message' : 'Message input'}
+                // Web: Enter sends, Shift+Enter is a new line.
+                onKeyPress={(e) => {
+                  const ne = e.nativeEvent as { key?: string; shiftKey?: boolean };
+                  if (Platform.OS === 'web' && ne.key === 'Enter' && !ne.shiftKey) {
+                    (e as unknown as { preventDefault?: () => void }).preventDefault?.();
+                    if (!sendDisabled) submit();
+                  }
+                }}
+              />
+              <TouchableOpacity
+                testID="chat-send"
+                style={[s.sendBtn, sendDisabled && s.sendOff]}
+                onPress={submit}
+                disabled={sendDisabled}
+                accessibilityRole="button"
+                accessibilityLabel={editing ? 'Save edit' : 'Send message'}
+                accessibilityState={{ disabled: sendDisabled }}
+              >
+                <LinearGradient colors={BRAND_GRADIENT} style={s.sendFill}>
+                  <Ionicons name={editing ? 'checkmark' : 'send'} size={17} color={inkOnGradient(BRAND_GRADIENT)} />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
 
-      {/* Reaction quick-pick overlay */}
-      {reactingToMessage && (
-        <Modal transparent animationType="none" onRequestClose={() => setReactingToMessage(null)}>
-          <TouchableOpacity
-            style={styles.reactOverlay}
-            activeOpacity={1}
-            onPress={() => setReactingToMessage(null)}
-          >
-            <View style={styles.reactBarContainer}>
-              <QuickReactBar
-                onReact={(emoji) => void handleReact(emoji)}
-                // Keep the target message: dismissing the quick bar clears
-                // reactingToMessage, and the picker opens on the next frame with
-                // nothing to attach the reaction to.
-                onMore={() => setReactWithAnyEmojiFor(reactingToMessage)}
-              />
-            </View>
-          </TouchableOpacity>
-        </Modal>
-      )}
-
-      {/* Any emoji, not just the six shortcuts. Same keyboard the composer
-          uses — there was never a reason reactions had a smaller vocabulary
-          than messages. */}
-      {reactWithAnyEmojiFor && (
-        <EmojiKeyboard
-          open
-          onClose={() => {
-            setReactWithAnyEmojiFor(null);
-            setReactingToMessage(null);
-          }}
-          onEmojiSelected={({ emoji }: { emoji: string }) => {
-            const targetId = reactWithAnyEmojiFor;
-            setReactWithAnyEmojiFor(null);
-            setReactingToMessage(null);
-            if (targetId) void handleReact(emoji, targetId);
-          }}
-        />
-      )}
-
-      <GifPicker
-        visible={showGifPicker}
-        onGifSelected={(url) => void handleGifSelected(url)}
-        onClose={() => setShowGifPicker(false)}
+      <MessageActionSheet
+        message={sheetFor}
+        currentUserId={me}
+        onClose={() => setSheetFor(null)}
+        onReact={(messageId, emoji) => void toggleReaction(messageId, emoji)}
+        onMoreReactions={setReactAnyFor}
+        onReply={startReply}
+        onCopy={(text) => void copy(text)}
+        onEdit={startEdit}
+        onUnsend={(m) => void unsend(m)}
+        onReport={reportMessage}
       />
 
-      {/* Context menu */}
-      <Modal visible={menuVisible} transparent animationType="none" onRequestClose={() => setMenuVisible(false)}>
-        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
-          <View style={styles.actionSheet}>
-            <TouchableOpacity
-              style={styles.actionRow}
-              onPress={() => { setMenuVisible(false); setSearchActive(true); }}
-            >
-              <Ionicons name="search-outline" size={18} color={colors.textPrimary} />
-              <Text style={styles.actionRowText}>Search messages</Text>
-            </TouchableOpacity>
-            <View style={styles.actionSeparator} />
-            <TouchableOpacity
-              style={styles.actionRow}
-              onPress={() => { void handleMuteToggle(); }}
-              accessibilityRole="button"
-              accessibilityLabel={mutedUserIds.includes(partnerProfile?.id ?? '') ? `Unmute ${partnerName}` : `Mute ${partnerName}`}
-            >
-              <Ionicons
-                name={mutedUserIds.includes(partnerProfile?.id ?? '') ? 'notifications-outline' : 'notifications-off-outline'}
-                size={18}
-                color={colors.textPrimary}
-              />
-              <Text style={styles.actionRowText}>
-                {mutedUserIds.includes(partnerProfile?.id ?? '') ? `Unmute ${partnerName}` : `Mute ${partnerName}`}
-              </Text>
-            </TouchableOpacity>
-            <View style={styles.actionSeparator} />
-            <TouchableOpacity style={styles.actionRow} onPress={handleBlockPress}>
-              <Ionicons name="ban-outline" size={18} color={colors.error} />
-              <Text style={styles.actionRowTextDanger}>Block {partnerName}</Text>
-            </TouchableOpacity>
-            <View style={styles.actionSeparator} />
-            <TouchableOpacity style={styles.actionRow} onPress={handleReportPress}>
-              <Ionicons name="flag-outline" size={18} color={colors.textPrimary} />
-              <Text style={styles.actionRowText}>Report conversation</Text>
-            </TouchableOpacity>
-            <View style={styles.actionSeparator} />
-            <TouchableOpacity style={styles.actionRow} onPress={() => setMenuVisible(false)}>
-              <Text style={[styles.actionRowText, { textAlign: 'center', flex: 1, color: colors.textMuted }]}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      {reactAnyFor ? (
+        <EmojiKeyboard
+          open
+          onClose={() => setReactAnyFor(null)}
+          onEmojiSelected={({ emoji }: { emoji: string }) => {
+            const target = reactAnyFor;
+            setReactAnyFor(null);
+            haptic('select');
+            if (target) void toggleReaction(target, emoji);
+          }}
+        />
+      ) : null}
 
-      {/* Report modal */}
-      <Modal visible={reportVisible} transparent animationType="none" onRequestClose={() => setReportVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.reportCard}>
-            <Text style={styles.reportTitle}>Report</Text>
-            <Text style={styles.reportSubtitle}>What's the issue?</Text>
-            <FlatList
-              data={REPORT_REASONS}
-              keyExtractor={(item) => item.key}
-              scrollEnabled={false}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.reasonRow, reportReason === item.key && styles.reasonRowSelected]}
-                  onPress={() => setReportReason(item.key)}
-                >
-                  <View style={[styles.reasonRadio, reportReason === item.key && styles.reasonRadioSelected]} />
-                  <Text style={styles.reasonLabel}>{item.label}</Text>
-                </TouchableOpacity>
-              )}
-              ItemSeparatorComponent={() => <View style={styles.reasonSeparator} />}
-            />
-            <TextInput
-              style={styles.reportDetailInput}
-              placeholder="Add details (optional)"
-              placeholderTextColor={colors.textMuted}
-              value={reportDetail}
-              onChangeText={setReportDetail}
-              multiline
-              maxLength={500}
-            />
-            <View style={styles.reportActions}>
-              <TouchableOpacity style={styles.reportCancelBtn} onPress={() => setReportVisible(false)}>
-                <Text style={styles.reportCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.reportSubmitBtn, (!reportReason || !partnerProfile?.id || reportSubmitting) && styles.reportSubmitBtnDisabled]}
-                onPress={() => void handleReportSubmit()}
-                disabled={!reportReason || !partnerProfile?.id || reportSubmitting}
-              >
-                {reportSubmitting ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.reportSubmitText}>Submit</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
+      <GifPicker
+        visible={showGifs}
+        onGifSelected={(url) => { setShowGifs(false); void send('', 'image', url); }}
+        onClose={() => setShowGifs(false)}
+      />
+
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <Pressable style={s.scrim} onPress={() => setMenuOpen(false)} accessibilityLabel="Close options" />
+        <View style={s.sheet} testID="chat-menu-sheet">
+          <MenuRow s={s} colors={colors} icon="search-outline" label="Search messages" testID="chat-menu-search"
+            onPress={() => { setMenuOpen(false); setSearchActive(true); }} />
+          {isGroup ? (
+            <MenuRow s={s} colors={colors} icon="people-outline" label="Group info" testID="chat-menu-info"
+              onPress={() => { setMenuOpen(false); openHeaderTarget(); }} />
+          ) : other ? (
+            <MenuRow s={s} colors={colors} icon="person-outline" label="View profile" testID="chat-menu-profile"
+              onPress={() => { setMenuOpen(false); openHeaderTarget(); }} />
+          ) : null}
+          {meta?.me && (meta.me.status === 'active' || meta.me.status === 'request') ? (
+            <MenuRow s={s} colors={colors}
+              icon={muted ? 'notifications-outline' : 'notifications-off-outline'}
+              label={muted ? 'Unmute notifications' : 'Mute notifications'}
+              testID="chat-menu-mute"
+              onPress={() => void toggleMute()} />
+          ) : null}
+          {conversationReportTarget(meta, me) ? (
+            <MenuRow s={s} colors={colors} icon="flag-outline" label="Report conversation" testID="chat-menu-report"
+              onPress={reportFromHeader} danger />
+          ) : null}
+          {other ? (
+            <MenuRow s={s} colors={colors} icon="ban-outline" label={`Block ${header.title}`} testID="chat-menu-block"
+              onPress={() => void blockFromHeader()} danger />
+          ) : null}
+          <MenuRow s={s} colors={colors} label="Cancel" testID="chat-menu-cancel" onPress={() => setMenuOpen(false)} muted />
         </View>
       </Modal>
     </SafeAreaView>
   );
 }
+
+type Styles = ReturnType<typeof makeStyles>;
+
+function BackButton({ s, colors, onPress }: { s: Styles; colors: ThemeColors; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={s.headerBtn} onPress={onPress} accessibilityRole="button" accessibilityLabel="Go back">
+      <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+    </TouchableOpacity>
+  );
+}
+
+function MenuRow({
+  s, colors, icon, label, onPress, testID, danger, muted,
+}: {
+  s: Styles; colors: ThemeColors; icon?: keyof typeof Ionicons.glyphMap; label: string;
+  onPress: () => void; testID: string; danger?: boolean; muted?: boolean;
+}) {
+  return (
+    <TouchableOpacity style={s.menuRow} onPress={onPress} accessibilityRole="button" accessibilityLabel={label} testID={testID}>
+      {icon ? <Ionicons name={icon} size={19} color={danger ? colors.errorInk : colors.textSecondary} /> : null}
+      <Text style={[s.menuText, danger && s.menuDanger, muted && s.menuMuted]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
+  header: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 4, paddingVertical: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line,
+  },
+  headerBtn: { minWidth: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center' },
+  headerMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: MIN_TOUCH_TARGET },
+  headerAva: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  headerEmojiAva: { backgroundColor: colors.surfaceLight },
+  headerEmoji: { fontSize: 20 },
+  headerAvaText: { fontWeight: '800', fontSize: 15 },
+  onlineDot: {
+    position: 'absolute', bottom: 0, right: 0, width: 11, height: 11, borderRadius: 6,
+    backgroundColor: colors.success, borderWidth: 2, borderColor: colors.background,
+  },
+  headerText: { flex: 1 },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerName: { ...TYPE.bodyLg, color: colors.textPrimary, fontWeight: '700', flexShrink: 1 },
+  headerSub: { ...TYPE.caption, color: colors.textMuted },
+  searchInput: {
+    flex: 1, backgroundColor: colors.surface, borderRadius: RADII.pill, marginLeft: 8,
+    paddingHorizontal: 14, paddingVertical: 8, color: colors.textPrimary, fontSize: 14,
+  },
+  searchCancel: { ...TYPE.body, color: colors.primary, fontWeight: '700' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
+  centerTitle: { ...TYPE.bodyLg, color: colors.textPrimary, fontWeight: '700' },
+  centerBody: { ...TYPE.body, color: colors.textMuted, textAlign: 'center' },
+  retryBtn: {
+    backgroundColor: colors.primary, borderRadius: RADII.pill, paddingHorizontal: 24,
+    minHeight: MIN_TOUCH_TARGET, justifyContent: 'center',
+  },
+  retryText: { ...TYPE.body, color: inkOn(colors.primary), fontWeight: '700' },
+  listContent: { paddingVertical: 12, paddingHorizontal: 12 },
+  olderSpinner: { marginVertical: 12 },
+  empty: { ...TYPE.body, color: colors.textMuted, textAlign: 'center', marginTop: 40 },
+  pill: {
+    position: 'absolute', bottom: 12, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: colors.primary, borderRadius: RADII.pill, paddingHorizontal: 16, minHeight: 40,
+  },
+  pillText: { ...TYPE.caption, color: inkOn(colors.primary), fontWeight: '700' },
+  toast: {
+    position: 'absolute', top: 12, alignSelf: 'center', backgroundColor: colors.surface,
+    borderRadius: RADII.pill, paddingHorizontal: 14, paddingVertical: 6,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line,
+  },
+  toastText: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '700' },
+  inputWrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, backgroundColor: colors.background },
+  metaError: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line,
+  },
+  metaRetry: { minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 14, justifyContent: 'center' },
+  metaRetryText: { ...TYPE.body, color: colors.primary, fontWeight: '700' },
+  sendError: { ...TYPE.caption, color: colors.errorInk, paddingHorizontal: 16, paddingTop: 8 },
+  emojiWrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
+  inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 10, paddingVertical: 8 },
+  roxyBtn: {
+    width: 40, height: 40, borderRadius: 20, marginBottom: 2,
+    backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.roxy + '50',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  roxyBtnOn: { backgroundColor: colors.roxy + '18', borderColor: colors.roxy },
+  input: {
+    flex: 1, backgroundColor: colors.surface, borderRadius: 22,
+    paddingHorizontal: 16, paddingVertical: 10, minHeight: 44, maxHeight: 120,
+    color: colors.textPrimary, fontSize: 16,
+  },
+  inputOff: { opacity: 0.55 },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden' },
+  sendFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  sendOff: { opacity: 0.4 },
+  scrim: { flex: 1, backgroundColor: 'rgba(8,3,18,0.55)' },
+  sheet: {
+    backgroundColor: colors.surface, borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet,
+    paddingTop: 10, paddingBottom: 30, width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
+  },
+  menuRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, minHeight: MIN_TOUCH_TARGET + 4,
+  },
+  menuText: { ...TYPE.bodyLg, color: colors.textPrimary },
+  menuDanger: { color: colors.errorInk, fontWeight: '600' },
+  menuMuted: { color: colors.textMuted, textAlign: 'center', flex: 1 },
+});

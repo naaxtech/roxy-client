@@ -26,22 +26,27 @@ export function CommunitiesBrowser() {
   const colors = useThemeColors();
   const router = useRouter();
   const { user } = useAuthStore();
-  const { allCommunities, joinedIds, joinCommunity, leaveCommunity } = useCommunityStore();
+  const { allCommunities, joinedIds, requestedIds, joinCommunity, leaveCommunity } = useCommunityStore();
   const [search, setSearch] = useState('');
 
   const handleJoinLeave = useCallback(async (community: Community) => {
     if (!user) return;
+    // Already asked: a moderator decides; a second tap files nothing.
+    if (!joinedIds.has(community.id) && requestedIds?.has(community.id)) return;
     try {
       if (joinedIds.has(community.id)) {
         await leaveCommunity(community.id, user.id);
       } else {
-        await joinCommunity(community.id, user.id);
+        const outcome = await joinCommunity(community.id, user.id);
+        if (outcome === 'requested') {
+          showAlert('Request sent', `A moderator of ${community.name} will look at it. You'll be in as soon as they say yes.`);
+        }
       }
     } catch (e: any) {
       logError(e, 'communities_joinLeave');
       showAlert('Error', e?.message ?? 'Could not update membership');
     }
-  }, [user, joinedIds, joinCommunity, leaveCommunity]);
+  }, [user, joinedIds, requestedIds, joinCommunity, leaveCommunity]);
 
   const filtered = search
     ? allCommunities.filter(
@@ -109,6 +114,13 @@ export function CommunitiesBrowser() {
         renderItem={({ item, index }) => {
           const lvl = getCommunityLevel(item.member_count);
           const isJoined = joinedIds.has(item.id);
+          const isRequested = !isJoined && !!requestedIds?.has(item.id);
+          const joinLabel = isJoined
+            ? `Leave ${item.name}`
+            : isRequested
+              ? `Request sent to join ${item.name}`
+              : item.is_private ? `Ask to join ${item.name}` : `Join ${item.name}`;
+          const joinText = isJoined ? 'Joined ✓' : isRequested ? 'Requested' : item.is_private ? 'Ask to join' : 'Join';
           const chipColor = CHIP_COLORS[index % CHIP_COLORS.length];
           return (
             <TouchableOpacity
@@ -137,10 +149,11 @@ export function CommunitiesBrowser() {
                 style={[s.joinBtn, isJoined && s.joinBtnJoined]}
                 onPress={() => handleJoinLeave(item)}
                 activeOpacity={0.75}
-                accessibilityLabel={isJoined ? `Leave ${item.name}` : `Join ${item.name}`}
+                accessibilityRole="button"
+                accessibilityLabel={joinLabel}
               >
                 <Text style={[s.joinBtnText, isJoined && s.joinBtnTextJoined]}>
-                  {isJoined ? 'Joined ✓' : 'Join'}
+                  {joinText}
                 </Text>
               </TouchableOpacity>
             </TouchableOpacity>

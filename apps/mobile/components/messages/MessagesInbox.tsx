@@ -28,6 +28,14 @@ export type InboxDm = {
   partner: { id: string; display_name: string; username: string } | null;
   lastMessagePreview: string;
   unreadCount: number;
+  /** Private group (migration 132). Absent on older callers = 'direct'. */
+  kind?: 'direct' | 'group';
+  title?: string;
+  emoji?: string | null;
+  memberCount?: number;
+  /** Up to three names for the stacked-initials avatar. */
+  memberNames?: string[];
+  muted?: boolean;
 };
 
 type Props = {
@@ -131,36 +139,70 @@ export function MessagesInbox({
           const dm = item as InboxDm;
           const unread = unreadCounts[dm.id] ?? dm.unreadCount ?? 0;
           const hasUnread = unread > 0;
-          const online = isPartnerOnline(dm);
-          const name = dm.partner?.display_name ?? 'Unknown';
+          const isGroup = dm.kind === 'group';
+          const online = !isGroup && isPartnerOnline(dm);
+          const name = isGroup ? (dm.title ?? 'Group') : (dm.partner?.display_name ?? 'Unknown');
           const grad = avatarGradient(name);
+          const muted = !!dm.muted;
+          const label = [
+            name,
+            isGroup ? `group of ${dm.memberCount ?? 0}` : null,
+            hasUnread ? `${unread} unread` : null,
+            muted ? 'muted' : null,
+          ].filter(Boolean).join(', ');
           return (
             <TouchableOpacity
-              style={s.row}
+              style={[s.row, muted && s.rowMuted]}
               onPress={() => onOpenDm(dm)}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel={`${name}${hasUnread ? `, ${unread} unread` : ''}`}
-              testID={`inbox-dm-${dm.id}`}
+              accessibilityLabel={label}
+              testID={isGroup ? `inbox-group-${dm.id}` : `inbox-dm-${dm.id}`}
             >
               <View style={s.avaWrap}>
-                <LinearGradient colors={grad} style={s.ava}>
-                  <Text style={s.avaText}>{name[0]?.toUpperCase() ?? '?'}</Text>
-                </LinearGradient>
+                {isGroup && !dm.emoji ? (
+                  <View style={s.stack}>
+                    {(dm.memberNames ?? []).slice(0, 2).map((n, i) => (
+                      <LinearGradient
+                        key={`${n}-${i}`}
+                        colors={avatarGradient(n)}
+                        style={[s.stackAva, i === 0 ? s.stackBack : s.stackFront]}
+                      >
+                        <Text style={s.stackText}>{n[0]?.toUpperCase() ?? '?'}</Text>
+                      </LinearGradient>
+                    ))}
+                  </View>
+                ) : (
+                  <LinearGradient colors={grad} style={s.ava}>
+                    <Text style={isGroup ? s.emoji : s.avaText}>
+                      {isGroup ? dm.emoji : (name[0]?.toUpperCase() ?? '?')}
+                    </Text>
+                  </LinearGradient>
+                )}
                 {online ? <View style={s.onlineDot} /> : null}
               </View>
               <View style={s.content}>
                 <View style={s.nameLine}>
-                  <Text style={[s.name, hasUnread && s.nameUnread]} numberOfLines={1}>{name}</Text>
-                  <Text style={[s.time, hasUnread && s.timeUnread]}>{formatTime(dm.last_message_at)}</Text>
+                  <View style={s.nameWrap}>
+                    <Text style={[s.name, hasUnread && s.nameUnread]} numberOfLines={1}>{name}</Text>
+                    {muted ? (
+                      <Ionicons
+                        name="notifications-off"
+                        size={12}
+                        color={colors.textMuted}
+                        testID={`inbox-muted-${dm.id}`}
+                      />
+                    ) : null}
+                  </View>
+                  <Text style={[s.time, hasUnread && !muted && s.timeUnread]}>{formatTime(dm.last_message_at)}</Text>
                 </View>
                 <View style={s.bottom}>
                   <Text style={[s.preview, hasUnread && s.previewUnread]} numberOfLines={1}>
                     {dm.lastMessagePreview}
                   </Text>
                   {hasUnread ? (
-                    <View style={s.badge}>
-                      <Text style={s.badgeText}>{unread > 99 ? '99+' : unread}</Text>
+                    <View style={[s.badge, muted && s.badgeMuted]}>
+                      <Text style={[s.badgeText, muted && s.badgeTextMuted]}>{unread > 99 ? '99+' : unread}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -235,6 +277,17 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   avaText: { color: inkOn(colors.secondary), fontWeight: '800', fontSize: 16 },
+  emoji: { fontSize: 22 },
+  stack: { width: 44, height: 44 },
+  stackAva: {
+    position: 'absolute', width: 30, height: 30, borderRadius: RADII.pill,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colors.background,
+  },
+  stackBack: { top: 0, left: 0 },
+  stackFront: { bottom: 0, right: 0 },
+  stackText: { color: inkOn(colors.secondary), fontWeight: '800', fontSize: 12 },
+  nameWrap: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
   onlineDot: {
     position: 'absolute', bottom: 1, right: 1,
     width: 12, height: 12, borderRadius: 6,
@@ -262,6 +315,8 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginLeft: 8,
   },
   badgeText: { ...TYPE.micro, color: inkOn(colors.primary), fontWeight: '800' },
+  badgeMuted: { backgroundColor: colors.surfaceLight },
+  badgeTextMuted: { color: colors.textMuted },
   directEmpty: {
     marginHorizontal: 16, marginBottom: 8, paddingVertical: 10,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,

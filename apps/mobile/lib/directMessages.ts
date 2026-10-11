@@ -1,45 +1,20 @@
-import { supabase } from './supabase';
 import { Analytics } from './analytics';
+import { startDirect } from './chat';
 
-async function findDirectConversation(userId: string, partnerId: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('conversations')
-    .select('id')
-    .contains('participant_ids', [userId, partnerId])
-    .eq('conversation_type', 'direct')
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data?.id ?? null;
-}
-
-/** Find or create the 1:1 conversation between two users. Returns the conversation id. */
-export async function openDirectChat(userId: string, partnerId: string): Promise<string> {
-  const existing = await findDirectConversation(userId, partnerId);
-  if (existing) {
-    Analytics.dmOpened(existing);
-    return existing;
-  }
-
-  const { data: created, error } = await supabase
-    .from('conversations')
-    .insert({ participant_ids: [userId, partnerId], conversation_type: 'direct' })
-    .select('id')
-    .single();
-
-  if (error) {
-    // 23505: another session won the create race (unique index from migration
-    // 058) — the conversation exists now, so return it instead of failing.
-    if ((error as { code?: string }).code === '23505') {
-      const raced = await findDirectConversation(userId, partnerId);
-      if (raced) {
-        Analytics.dmOpened(raced);
-        return raced;
-      }
-    }
-    throw error;
-  }
-
-  Analytics.dmCreated();
-  return created.id;
+/**
+ * Find or open the 1:1 conversation with `partnerId`. Returns its id.
+ *
+ * One server call (`start_direct`, migration 132). The old version selected
+ * then inserted into `conversations` from the phone, which decided nothing
+ * about requests: a stranger's thread landed in her main inbox (CHAT-02).
+ * The RPC files it under the other woman's Requests, applies the daily cap,
+ * and refuses a block-paired pair as "not available" without saying why.
+ *
+ * `userId` is kept for call-site compatibility; the server uses auth.uid().
+ */
+export async function openDirectChat(_userId: string, partnerId: string): Promise<string> {
+  const id = await startDirect(partnerId);
+  if (!id) throw new Error('Could not open that chat. Please try again.');
+  Analytics.dmOpened(id);
+  return id;
 }

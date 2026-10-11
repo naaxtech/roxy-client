@@ -68,13 +68,14 @@ describe('communityStore', () => {
     const community = makeCommunity('c1', 'WLW Hikers');
     useCommunityStore.setState({ allCommunities: [community], joinedCommunities: [], joinedIds: new Set() });
 
-    supabase.from.mockReturnValue({
-      upsert: jest.fn().mockResolvedValue({ error: null }),
-    });
+    // CHAT-09: joining goes through request_to_join_community (migration
+    // 132), not a direct community_members upsert.
+    supabase.rpc = jest.fn().mockResolvedValue({ data: 'joined', error: null });
 
     const { result } = renderHook(() => useCommunityStore());
     await act(async () => { await result.current.joinCommunity('c1', 'user-1'); });
 
+    expect(supabase.rpc).toHaveBeenCalledWith('request_to_join_community', { p_community: 'c1', p_note: null });
     expect(result.current.joinedIds.has('c1')).toBe(true);
     expect(result.current.joinedCommunities).toHaveLength(1);
   });

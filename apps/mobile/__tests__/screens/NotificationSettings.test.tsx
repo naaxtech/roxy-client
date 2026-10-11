@@ -50,6 +50,12 @@ it('shows every type on and previews off for a woman who never changed anything'
   expect(v.getByTestId('notif-switch-show_previews').props.value).toBe(false);
 });
 
+it('says the Community chats switch also covers invites and join requests (135)', async () => {
+  const v = render(<NotificationSettingsScreen />);
+  await waitFor(() => expect(v.getByTestId('notif-switch-community_chats')).toBeTruthy());
+  expect(v.getByText(/invites, and join requests you moderate/)).toBeTruthy();
+});
+
 it('turning message notifications off saves it, with her timezone', async () => {
   const v = render(<NotificationSettingsScreen />);
   await waitFor(() => expect(v.getByTestId('notif-switch-messages')).toBeTruthy());

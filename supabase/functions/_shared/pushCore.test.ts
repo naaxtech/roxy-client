@@ -60,6 +60,8 @@ Deno.test('categoryOf maps every notification type to a preference and a channel
   eq(categoryOf('friend_request'), { pref: 'friends', channel: 'friends' });
   eq(categoryOf('friend_accept'), { pref: 'friends', channel: 'friends' });
   eq(categoryOf('community_event'), { pref: 'events', channel: 'events' });
+  eq(categoryOf('community_invite'), { pref: 'community_chats', channel: 'community' });
+  eq(categoryOf('community_join_request'), { pref: 'community_chats', channel: 'community' });
   eq(categoryOf('something_new'), null, 'unknown types are never pushed');
 });
 
@@ -90,6 +92,33 @@ Deno.test('previews OFF: a membership push says only that there is news', () => 
 
 Deno.test('membership switch off: no membership push', () => {
   eq(buildMessage(note({ type: 'application_decided' }), { ...DEFAULTS, membership: false }, 'ExponentPushToken[abc]', false), null);
+});
+
+Deno.test('previews OFF: an invite names who asked her, never the community', () => {
+  const m = buildMessage(
+    note({ type: 'community_invite', actor_name: 'Maya', title: 'Maya invited you to Femme Sapphics Manila', body: 'Join or say not now in Requests', link_path: '/messages?requests=1&community=c9' }),
+    DEFAULTS, 'ExponentPushToken[abc]', false,
+  );
+  eq(m!.title, 'Maya');
+  eq(m!.body, 'Invited you to a private community');
+  ok(!JSON.stringify(m).includes('Sapphics'), 'community name leaked');
+  eq(m!.data.url, 'roxy://messages?requests=1&community=c9');
+});
+
+Deno.test('previews OFF: a join request hides the community and her note', () => {
+  const m = buildMessage(
+    note({ type: 'community_join_request', actor_name: 'Bea', title: 'Bea asked to join Femme Sapphics Manila', body: 'hi, I run the book club', link_path: '/community/members/c9' }),
+    DEFAULTS, 'ExponentPushToken[abc]', false,
+  );
+  eq(m!.title, 'Bea');
+  eq(m!.body, 'Asked to join a community you moderate');
+  ok(!JSON.stringify(m).includes('Sapphics'), 'community name leaked');
+  ok(!JSON.stringify(m).includes('book club'), 'her note leaked');
+});
+
+Deno.test('community invites and requests follow the Community chats switch', () => {
+  eq(buildMessage(note({ type: 'community_invite' }), { ...DEFAULTS, community_chats: false }, 'ExponentPushToken[abc]', false), null);
+  eq(buildMessage(note({ type: 'community_join_request' }), { ...DEFAULTS, community_chats: false }, 'ExponentPushToken[abc]', false), null);
 });
 
 Deno.test('previews OFF (the default): a message push names the sender, never the words', () => {
