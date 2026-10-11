@@ -211,6 +211,11 @@ BEGIN
   );
 END $$;
 
+-- Her switch for membership news, ON by default like every type (Nicole,
+-- 2026-10-04). push-dispatch reads it as `membership`; absent means ON.
+ALTER TABLE public.notification_settings
+  ADD COLUMN IF NOT EXISTS membership boolean NOT NULL DEFAULT true;
+
 -- One in-app row per decision. The words are for inside the app (and for a
 -- lock screen only if she turned previews on): "rejected" is never on a lock
 -- screen, and no community is ever named. Never fails the decision.

@@ -32,8 +32,17 @@ describe('defaults', () => {
   it('every type is on, previews are off', () => {
     expect(DEFAULT_NOTIFICATION_SETTINGS).toMatchObject({
       push_enabled: true, messages: true, friends: true, events: true, community_chats: true,
-      show_previews: false, quiet_start: null, quiet_end: null,
+      membership: true, show_previews: false, quiet_start: null, quiet_end: null,
     });
+  });
+});
+
+describe('membership news (migration 134)', () => {
+  it('reads her membership switch, and a row saved before the column existed means ON', async () => {
+    from.mockReturnValue(selectReturning({ data: { user_id: 'u1', membership: false }, error: null }));
+    expect((await loadNotificationSettings('u1')).membership).toBe(false);
+    from.mockReturnValue(selectReturning({ data: { user_id: 'u1', messages: true }, error: null }));
+    expect((await loadNotificationSettings('u1')).membership).toBe(true);
   });
 });
 

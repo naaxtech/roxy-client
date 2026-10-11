@@ -44,7 +44,7 @@ beforeEach(() => {
 it('shows every type on and previews off for a woman who never changed anything', async () => {
   const v = render(<NotificationSettingsScreen />);
   await waitFor(() => expect(v.getByTestId('notif-switch-messages')).toBeTruthy());
-  for (const k of ['push_enabled', 'messages', 'friends', 'events', 'community_chats']) {
+  for (const k of ['push_enabled', 'messages', 'friends', 'events', 'community_chats', 'membership']) {
     expect(v.getByTestId(`notif-switch-${k}`).props.value).toBe(true);
   }
   expect(v.getByTestId('notif-switch-show_previews').props.value).toBe(false);

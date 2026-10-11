@@ -261,6 +261,7 @@ DROP FUNCTION IF EXISTS public.notify_on_appeal_upheld();
 DROP TRIGGER IF EXISTS trg_notify_application_status ON public.membership_applications;
 DROP FUNCTION IF EXISTS public.notify_on_application_status();
 DROP FUNCTION IF EXISTS public.notify_application_decided(uuid, boolean);
+ALTER TABLE public.notification_settings DROP COLUMN IF EXISTS membership;
 DELETE FROM public.notifications WHERE type = 'application_decided';
 DO $$
 DECLARE

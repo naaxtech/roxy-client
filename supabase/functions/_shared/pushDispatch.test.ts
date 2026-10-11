@@ -95,6 +95,23 @@ Deno.test('skips: already read, muted, blocked, no device, preference off', asyn
     [[1, 'already-read'], [2, 'muted'], [3, 'blocked'], [4, 'no-device'], [5, 'preference-off']]);
 });
 
+Deno.test('membership: the settings row decides, and no row means ON', async () => {
+  const h = harness({
+    outbox: [row(1, 'on', 'u1'), row(2, 'off', 'u2')],
+    notes: [
+      note('on', 'u1', { type: 'application_decided', actor_id: null }),
+      note('off', 'u2', { type: 'application_decided', actor_id: null }),
+    ],
+    devices: ['u1', 'u2'].map((u) => ({ user_id: u, token: TOKEN(u) })),
+    settings: [{ user_id: 'u2', membership: false }],
+    muted: new Set(), blocked: new Set(),
+  });
+  const s = await dispatchOnce(h.deps);
+  eq(h.sent.flat().map((m) => [m.to, m.channelId, m.body]), [[TOKEN('u1'), 'membership', 'There\'s news about your membership']]);
+  eq(s.sent, 1);
+  eq(h.updates.find((u) => u.id === 2)?.skip_reason, 'preference-off');
+});
+
 Deno.test('a dead token is disabled and its row does not retry forever', async () => {
   const h = harness({
     outbox: [row(1, 'n1', 'u1')], notes: [note('n1', 'u1')],

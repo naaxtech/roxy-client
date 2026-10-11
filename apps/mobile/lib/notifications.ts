@@ -2,7 +2,10 @@ import { supabase } from './supabase';
 
 export type RoxyNotification = {
   id: string;
-  type: 'friend_request' | 'friend_accept' | 'community_event' | 'message' | 'channel_message';
+  type:
+    | 'friend_request' | 'friend_accept' | 'community_event' | 'message' | 'channel_message'
+    // Migration 134: a decision on her application.
+    | 'application_decided';
   title: string;
   body: string | null;
   link_path: string | null;
