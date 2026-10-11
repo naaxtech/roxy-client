@@ -166,3 +166,31 @@ export const shouldRedirectToCode = (
 export const isDeletedProfile = (
   profile: { deleted_at?: string | null } | null | undefined,
 ): boolean => !!profile?.deleted_at;
+
+/** Is the user on the "You're in" screen? Same dual read as the others. */
+export const isWelcomeInRoute = (
+  segments: readonly string[],
+  pathname: string,
+): boolean => segments.some((s) => s === 'welcome-in') || pathname.includes('/welcome-in');
+
+/**
+ * May a just-approved member be interrupted by "You're in" here? (G-11)
+ *
+ * Only an approved member who has finished onboarding, and only once she is
+ * inside the app. Never from an auth-group screen — onboarding, pending,
+ * application, the welcome itself — and never on a recovery link (the token
+ * is single-use; see isResetPasswordRoute). Whether the greeting is actually
+ * due (fresh approval, not yet seen on this device) is lib/welcomeIn's call.
+ */
+export const canGreetNewMemberHere = (
+  vettingStatus: string | null | undefined,
+  onboardingCompleted: boolean,
+  segments: readonly string[],
+  pathname: string,
+): boolean => {
+  if (vettingStatus !== 'approved' || !onboardingCompleted) return false;
+  if (!segments.length) return false;
+  if (segments[0] === '(auth)') return false;
+  if (isResetPasswordRoute(segments, pathname)) return false;
+  return !isWelcomeInRoute(segments, pathname);
+};

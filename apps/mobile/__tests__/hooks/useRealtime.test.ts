@@ -62,7 +62,7 @@ describe('useRealtime', () => {
   it('creates a supabase channel on mount', () => {
     const EMPTY: Message[] = [];
     renderHook(() => useRealtime({ conversationId: 'conv-1', currentUserId: 'user-1', initialMessages: EMPTY }));
-    expect(supabase.channel).toHaveBeenCalledWith('messages:conv-1');
+    expect(supabase.channel).toHaveBeenCalledWith(expect.stringMatching(/^messages:conv-1:/));
   });
 
   it('removeChannel is called on unmount', () => {

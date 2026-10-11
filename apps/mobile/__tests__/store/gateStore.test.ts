@@ -310,6 +310,104 @@ describe('gateStore.submitForReview — submit_application', () => {
     expect(await useGateStore.getState().submitForReview()).toEqual({ ok: false, reason: 'unavailable' });
     expect(logError).toHaveBeenCalled();
   });
+
+  it('passes the missing criteria keys through', async () => {
+    supabase.rpc.mockResolvedValue({
+      data: { ok: false, reason: 'missing_required', missing: ['legal_name'] },
+      error: null,
+    });
+    expect(await useGateStore.getState().submitForReview()).toEqual({
+      ok: false, reason: 'missing_required', missing: ['legal_name'],
+    });
+  });
+
+  it('a thrown request never leaves the button stuck busy', async () => {
+    supabase.rpc.mockRejectedValue(new Error('socket hang up'));
+
+    expect(await useGateStore.getState().submitForReview()).toEqual({ ok: false, reason: 'unavailable' });
+    expect(useGateStore.getState().submitting).toBe(false);
+    expect(logError).toHaveBeenCalled();
+  });
+});
+
+/** G-24: the join reason earns its point at 40 characters, not for "asdf". */
+describe('gateStore.requestAppeal — append-only, one per application (G-12)', () => {
+  const mockAppealInsert = (result: { error: { code?: string; message: string } | null }) => {
+    const insert = jest.fn().mockResolvedValue(result);
+    supabase.from.mockReturnValue({ insert });
+    return insert;
+  };
+
+  beforeEach(() => {
+    useGateStore.setState({ application: { ...APPLICATION, status: 'rejected' }, appeal: null });
+  });
+
+  it('inserts only application_id and reason (the 130 column grant) and records it', async () => {
+    const insert = mockAppealInsert({ error: null });
+    expect(await useGateStore.getState().requestAppeal('  You missed my reference  ')).toBe('sent');
+    expect(supabase.from).toHaveBeenCalledWith('application_appeals');
+    expect(insert).toHaveBeenCalledWith({ application_id: 'app-1', reason: 'You missed my reference' });
+    expect(useGateStore.getState().appeal).toEqual(
+      expect.objectContaining({ resolved_at: null, outcome: null }),
+    );
+  });
+
+  it('a second appeal (UNIQUE application_id) is "already sent", not a failure', async () => {
+    mockAppealInsert({ error: { code: '23505', message: 'duplicate key' } });
+    expect(await useGateStore.getState().requestAppeal('Please look again at this')).toBe('already_sent');
+    expect(logError).not.toHaveBeenCalled();
+  });
+
+  it('a network or policy failure is a failure she can retry, and is logged', async () => {
+    mockAppealInsert({ error: { code: '08006', message: 'connection failure' } });
+    expect(await useGateStore.getState().requestAppeal('Please look again at this')).toBe('failed');
+    expect(logError).toHaveBeenCalled();
+    expect(useGateStore.getState().appeal).toBeNull();
+  });
+
+  it('refuses locally below the 10-character server minimum', async () => {
+    const insert = mockAppealInsert({ error: null });
+    expect(await useGateStore.getState().requestAppeal('short')).toBe('failed');
+    expect(insert).not.toHaveBeenCalled();
+  });
+});
+
+describe('gateStore.loadAppeal — her own appeal is read back (aa_own)', () => {
+  const mockAppealRead = (result: { data: unknown; error: unknown }) => {
+    supabase.from.mockImplementation(() => ({
+      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve(result) }) }),
+    }));
+  };
+
+  beforeEach(() => {
+    useGateStore.setState({ application: { ...APPLICATION, status: 'rejected' }, appeal: null });
+  });
+
+  it('loads a sent appeal with its outcome', async () => {
+    mockAppealRead({
+      data: { requested_at: '2026-10-02T10:00:00Z', resolved_at: '2026-10-04T10:00:00Z', outcome: 'upheld' },
+      error: null,
+    });
+    await useGateStore.getState().loadAppeal();
+    expect(supabase.from).toHaveBeenCalledWith('application_appeals');
+    expect(useGateStore.getState().appeal).toEqual({
+      requested_at: '2026-10-02T10:00:00Z', resolved_at: '2026-10-04T10:00:00Z', outcome: 'upheld',
+    });
+  });
+
+  it('no appeal -> null', async () => {
+    mockAppealRead({ data: null, error: null });
+    await useGateStore.getState().loadAppeal();
+    expect(useGateStore.getState().appeal).toBeNull();
+  });
+
+  it('a read error keeps what we had and is logged', async () => {
+    useGateStore.setState({ appeal: { requested_at: 'x', resolved_at: null, outcome: null } });
+    mockAppealRead({ data: null, error: { message: 'boom' } });
+    await useGateStore.getState().loadAppeal();
+    expect(useGateStore.getState().appeal).toEqual({ requested_at: 'x', resolved_at: null, outcome: null });
+    expect(logError).toHaveBeenCalled();
+  });
 });
 
 /** G-24: the join reason earns its point at 40 characters, not for "asdf". */

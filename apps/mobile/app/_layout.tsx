@@ -28,6 +28,7 @@ import {
   isDeletedProfile,
   isCodeRoute,
   isResetPasswordRoute,
+  isWelcomeInRoute,
 } from '../lib/authRouting';
 import { showAlert } from '../lib/confirm';
 import { storedProfileIsForUser } from '../lib/signupSession';
@@ -36,6 +37,7 @@ import { useViewAsStore } from '../store/viewAsStore';
 import { useGateStore } from '../store/gateStore';
 import { LaunchGate } from '../components/features/FeatureGate';
 import { applyBrandType } from '../lib/applyBrandType';
+import { useWelcomeInRedirect } from '../hooks/useWelcomeInRedirect';
 
 applyBrandType();
 
@@ -54,6 +56,9 @@ function AppNavigator() {
   const { ready: fontsReady } = useAppFonts();
   const themeName = useThemeStore((s) => s.theme);
   const viewAsPreview = useViewAsStore((s) => s.preview);
+  // G-11: a just-approved member is greeted once with "You're in" — on a cold
+  // start after approval, or the moment the live sync flips her profile.
+  useWelcomeInRedirect();
 
   const signOutDeleted = async () => {
     await signOut();
@@ -140,8 +145,11 @@ function AppNavigator() {
     // The signed-in code screen (G-15) is a destination, not a stop to route
     // through: once she is on it, the cascade below would only bounce her back.
     const onSignedInCode = isCodeRoute(segments, pathname);
+    // "You're in" (G-11) sits in the auth group but belongs to an approved
+    // member; the cascade below would send her straight to the feed.
+    const onWelcomeIn = isWelcomeInRoute(segments, pathname);
 
-    if (user && inAuth && !inOnboarding && !inRecovery && !onSignedInCode) {
+    if (user && inAuth && !inOnboarding && !inRecovery && !onSignedInCode && !onWelcomeIn) {
       // Prevent concurrent fetches for the same user from issuing conflicting
       // router.replace() calls (the other root cause of the flicker).
       if (fetchingForUserRef.current === user.id) return;
