@@ -1,14 +1,13 @@
 // supabase/functions/process-refunds/index.ts
 import { getSupabaseClient } from '../_shared/auth.ts';
 import { successResponse, errorResponse } from '../_shared/errorHandler.ts';
+import { isServiceRequest } from '../_shared/serviceAuth.ts';
 import Stripe from 'npm:stripe@16.12.0';
-
-const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 Deno.serve(async (req) => {
   // Service-role only — reject everything else
-  const authHeader = req.headers.get('Authorization') ?? '';
-  if (!authHeader.includes(SERVICE_ROLE_KEY)) {
+  // Exact `Bearer <service key>`, constant time, empty env => reject.
+  if (!isServiceRequest(req)) {
     return errorResponse('Forbidden', 403);
   }
 

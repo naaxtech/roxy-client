@@ -2,15 +2,16 @@
 import { handleCors } from '../_shared/cors.ts';
 import { getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
+import { isServiceRequest } from '../_shared/serviceAuth.ts';
 import Stripe from 'npm:stripe@16.12.0';
 
 Deno.serve(async (req) => {
   const corsRes = handleCors(req);
   if (corsRes) return corsRes;
 
-  const authHeader = req.headers.get('Authorization');
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!authHeader || authHeader !== `Bearer ${serviceRoleKey}`) {
+  // Exact `Bearer <service key>`, constant time, empty env => reject.
+  // (Was `!== \`Bearer ${key}\``: an unset key made `Bearer undefined` pass.)
+  if (!isServiceRequest(req)) {
     return errorResponse('Unauthorized', 401);
   }
 
