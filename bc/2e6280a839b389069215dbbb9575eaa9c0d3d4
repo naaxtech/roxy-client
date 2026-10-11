@@ -1,0 +1,30 @@
+apps/mobile/__tests__/screens/BlockedList.test.tsx
+  h_0549c11fec2ab0 2,19-23,48,59-75
+apps/mobile/__tests__/screens/UserProfileShell.test.tsx
+  h_0549c11fec2ab0 2,24-30,79-80,88,92-96,131-134,207,243-304
+apps/mobile/app/(tabs)/you/[userId].tsx
+  h_0549c11fec2ab0 2-4,92-94,96-97,115,117,119,134-144,233-237,344-345,347-349,353-355,396-429,599-613,627,639,653-670,705-710
+apps/mobile/app/(tabs)/you/blocked.tsx
+  h_0549c11fec2ab0 2-4,23-26,42-43,46,50-69,122-123,162-163,167-168,192-239,241-242,257,259-266
+apps/mobile/app/(tabs)/you/settings.tsx
+  h_0549c11fec2ab0 207
+apps/mobile/components/profile/ProfileShell.tsx
+  h_0549c11fec2ab0 3,149-151,220-221,435-437
+apps/mobile/lib/followCounts.ts
+  h_0549c11fec2ab0 1-36
+apps/mobile/lib/mutedProfiles.ts
+  h_0549c11fec2ab0 1-23
+apps/mobile/store/followStore.ts
+  h_0549c11fec2ab0 8-10,32,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc2e6280a839b389069215dbbb9575eaa9c0d3d4",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
