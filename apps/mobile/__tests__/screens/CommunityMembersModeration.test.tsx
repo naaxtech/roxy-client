@@ -46,6 +46,10 @@ jest.mock('../../lib/communityMembership', () => ({
   ])),
   respondJoinRequest: jest.fn(() => Promise.resolve()),
   removeCommunityMember: jest.fn(() => Promise.resolve()),
+  fetchCommunityBans: jest.fn(() => Promise.resolve([
+    { user_id: 'kim', reason: 'spam', created_at: '2026-10-10T09:00:00Z', expires_at: null, profile: { id: 'kim', display_name: 'Kim', username: 'kim', avatar_url: null } },
+  ])),
+  unbanCommunityMember: jest.fn(() => Promise.resolve()),
 }));
 
 const membership = jest.requireMock('../../lib/communityMembership');
@@ -95,4 +99,35 @@ it('a plain member sees no queue and no moderation buttons', async () => {
   expect(view.queryByTestId('join-request-bea')).toBeNull();
   expect(view.queryByLabelText('Ban Sam')).toBeNull();
   expect(membership.fetchJoinRequests).not.toHaveBeenCalled();
+  expect(membership.fetchCommunityBans).not.toHaveBeenCalled();
+  expect(view.queryByTestId('community-bans')).toBeNull();
+});
+
+it('a moderator sees who is banned and why, and can lift a ban after confirming', async () => {
+  const view = render(<MembersScreen />);
+  expect(await view.findByTestId('banned-kim')).toBeTruthy();
+  expect(view.getByText('Banned · 1')).toBeTruthy();
+  expect(view.getByText('spam')).toBeTruthy();
+  await act(async () => { fireEvent.press(view.getByLabelText('Lift the ban on Kim')); });
+  expect(confirmAction).toHaveBeenCalledWith('Lift the ban on Kim?', expect.any(String), 'Lift ban');
+  await waitFor(() => expect(membership.unbanCommunityMember).toHaveBeenCalledWith('com1', 'kim'));
+  await waitFor(() => expect(view.queryByTestId('banned-kim')).toBeNull());
+});
+
+it('changing her mind about lifting a ban changes nothing', async () => {
+  confirmAction.mockResolvedValueOnce(false);
+  const view = render(<MembersScreen />);
+  await view.findByTestId('banned-kim');
+  await act(async () => { fireEvent.press(view.getByLabelText('Lift the ban on Kim')); });
+  expect(membership.unbanCommunityMember).not.toHaveBeenCalled();
+  expect(view.getByTestId('banned-kim')).toBeTruthy();
+});
+
+it('banning someone puts her in the Banned list at once', async () => {
+  membership.fetchCommunityBans.mockResolvedValueOnce([]);
+  const view = render(<MembersScreen />);
+  await waitFor(() => expect(view.getByLabelText('Ban Sam')).toBeTruthy());
+  expect(view.queryByTestId('banned-sam')).toBeNull();
+  await act(async () => { fireEvent.press(view.getByLabelText('Ban Sam')); });
+  expect(await view.findByTestId('banned-sam')).toBeTruthy();
 });

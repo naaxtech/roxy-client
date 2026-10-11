@@ -64,6 +64,30 @@ export function unbanCommunityMember(communityId: string, userId: string): Promi
   return rpc<void>('unban_community_member', { p_community: communityId, p_user: userId });
 }
 
+export interface CommunityBan {
+  user_id: string;
+  reason: string | null;
+  created_at: string;
+  expires_at: string | null;
+  profile: { id: string; display_name: string | null; username: string | null; avatar_url: string | null } | null;
+}
+
+/**
+ * Moderators: who is banned here now (an expired ban no longer counts),
+ * newest first. community_bans_select (132) returns nothing to a member but
+ * her own row, so this is only called for moderators.
+ */
+export async function fetchCommunityBans(communityId: string): Promise<CommunityBan[]> {
+  const { data, error } = await supabase
+    .from('community_bans')
+    .select('user_id, reason, created_at, expires_at, profile:profiles!community_bans_user_id_fkey(id, display_name, username, avatar_url)')
+    .eq('community_id', communityId)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as CommunityBan[];
+}
+
 // ── Moderator tools ─────────────────────────────────────────────────────────
 
 const RANK: Record<string, number> = { owner: 4, admin: 3, moderator: 2, border_patrol: 1, member: 0 };

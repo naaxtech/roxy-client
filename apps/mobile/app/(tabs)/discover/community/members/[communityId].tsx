@@ -14,7 +14,8 @@ import { showAlert, confirmAction } from '../../../../../lib/confirm';
 import { fetchMyChannelRole } from '../../../../../lib/channels';
 import {
   canModerateMember, fetchElevatedRoles, fetchJoinRequests, removeCommunityMember, respondJoinRequest,
-  type JoinRequest,
+  fetchCommunityBans, unbanCommunityMember,
+  type JoinRequest, type CommunityBan,
 } from '../../../../../lib/communityMembership';
 import { MIN_TOUCH_TARGET } from '../../../../../lib/touchTargets';
 
@@ -41,6 +42,8 @@ export default function MembersScreen() {
   const [isModerator, setIsModerator] = useState(false);
   const [roles, setRoles] = useState<Map<string, string>>(new Map());
   const [requests, setRequests] = useState<JoinRequest[]>([]);
+  // Who is banned here, so a ban can be lifted (the ban copy promises it can).
+  const [bans, setBans] = useState<CommunityBan[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
 
   const loadModeration = useCallback(async () => {
@@ -49,9 +52,12 @@ export default function MembersScreen() {
       const { isModerator: mod } = await fetchMyChannelRole(communityId, user.id);
       setIsModerator(mod);
       if (!mod) return;
-      const [r, q] = await Promise.all([fetchElevatedRoles(communityId), fetchJoinRequests(communityId)]);
+      const [r, q, b] = await Promise.all([
+        fetchElevatedRoles(communityId), fetchJoinRequests(communityId), fetchCommunityBans(communityId),
+      ]);
       setRoles(r);
       setRequests(q);
+      setBans(b);
     } catch (e) {
       logError(e, 'members_moderation_load');
     }
@@ -87,8 +93,35 @@ export default function MembersScreen() {
     try {
       await removeCommunityMember(communityId, member.id, { ban });
       setMembers((prev) => prev.filter((m) => m.id !== member.id));
+      if (ban) {
+        setBans((prev) => [{
+          user_id: member.id, reason: null, created_at: new Date().toISOString(), expires_at: null,
+          profile: { id: member.id, display_name: member.display_name, username: member.username, avatar_url: member.avatar_url },
+        }, ...prev.filter((x) => x.user_id !== member.id)]);
+      }
     } catch (e) {
       logError(e, 'members_moderate');
+      showAlert('Not done', e instanceof Error && e.message ? e.message : 'Something went wrong. Please try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const liftBan = async (ban: CommunityBan) => {
+    if (!communityId || busy) return;
+    const name = ban.profile?.display_name || ban.profile?.username || 'this member';
+    const yes = await confirmAction(
+      `Lift the ban on ${name}?`,
+      `${name} can ask to join, be invited or join again. She is not added back by this.`,
+      'Lift ban',
+    );
+    if (!yes) return;
+    setBusy(`ban-${ban.user_id}`);
+    try {
+      await unbanCommunityMember(communityId, ban.user_id);
+      setBans((prev) => prev.filter((x) => x.user_id !== ban.user_id));
+    } catch (e) {
+      logError(e, 'members_unban');
       showAlert('Not done', e instanceof Error && e.message ? e.message : 'Something went wrong. Please try again.');
     } finally {
       setBusy(null);
@@ -198,6 +231,10 @@ export default function MembersScreen() {
     },
     reqNote: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
     modBtn: { minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center' },
+    liftBtn: {
+      minHeight: MIN_TOUCH_TARGET, justifyContent: 'center', paddingHorizontal: 12,
+      borderWidth: 1, borderColor: colors.textMuted + '60', borderRadius: 16,
+    },
   });
 
   if (loading) {
@@ -266,6 +303,38 @@ export default function MembersScreen() {
                 );
               })}
               <Text style={styles.section}>Members</Text>
+            </View>
+          ) : null
+        }
+        ListFooterComponent={
+          isModerator && bans.length > 0 ? (
+            <View testID="community-bans">
+              <Text style={styles.section}>Banned · {bans.length}</Text>
+              {bans.map((ban) => {
+                const name = ban.profile?.display_name || ban.profile?.username || 'Someone';
+                return (
+                  <View key={ban.user_id} style={styles.row} testID={`banned-${ban.user_id}`}>
+                    <View style={styles.rowLeft}>
+                      <View style={styles.avatar}>
+                        <Text style={styles.avatarText}>{name[0]?.toUpperCase() ?? '?'}</Text>
+                      </View>
+                      <View style={styles.rowInfo}>
+                        <Text style={styles.rowName}>{name}</Text>
+                        {ban.reason ? <Text style={styles.reqNote} numberOfLines={2}>{ban.reason}</Text> : null}
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.liftBtn}
+                      onPress={() => void liftBan(ban)}
+                      disabled={!!busy}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Lift the ban on ${name}`}
+                    >
+                      <Text style={styles.requestedText}>Lift ban</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
             </View>
           ) : null
         }

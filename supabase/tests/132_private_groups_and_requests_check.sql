@@ -502,6 +502,16 @@ BEGIN
     pg_temp.as_exec(f, format('insert into public.community_channel_messages (channel_id, sender_id, body) values (%L, %L, %L)', chan_priv, f, 'back')), 'ERR 42501');
   PERFORM pg_temp.expect('CHAT-09 anon cannot call the join RPC',
     (SELECT CASE WHEN has_function_privilege('anon', 'public.request_to_join_community(uuid, text)', 'EXECUTE') THEN 'yes' ELSE 'no' END), 'no');
+  -- The Members screen's Banned list (fetchCommunityBans) embeds the profile
+  -- through this FK name and reads as a moderator.
+  PERFORM pg_temp.expect('CHAT-09 ban FK name the client embeds',
+    (SELECT conname::text FROM pg_constraint WHERE conrelid = 'public.community_bans'::regclass AND contype = 'f'
+       AND conkey = ARRAY[(SELECT attnum FROM pg_attribute WHERE attrelid = 'public.community_bans'::regclass AND attname = 'user_id')]),
+    'community_bans_user_id_fkey');
+  PERFORM pg_temp.expect('CHAT-09 moderator lists the bans',
+    pg_temp.as_val(d, format('select count(*)::text from public.community_bans where community_id = %L', comm_priv)), '1');
+  PERFORM pg_temp.expect('CHAT-09 a member cannot list the bans',
+    pg_temp.as_val(c, format('select count(*)::text from public.community_bans where community_id = %L', comm_priv)), '0');
   RAISE NOTICE 'PASS CHAT-09 private: request/approve, decline cooldown, invite/accept, moderators ban, bans close every door';
 
   -- ── TO public → TO authenticated on the community + friendship tables ────

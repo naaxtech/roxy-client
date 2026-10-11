@@ -10,7 +10,7 @@ jest.mock('../../lib/supabase', () => ({ supabase: { rpc: jest.fn(), from: jest.
 
 import {
   requestToJoinCommunity, respondJoinRequest, inviteToCommunity, respondCommunityInvite,
-  removeCommunityMember, unbanCommunityMember,
+  removeCommunityMember, unbanCommunityMember, fetchCommunityBans,
 } from '../../lib/communityMembership';
 import { useCommunityStore } from '../../store/communityStore';
 
@@ -73,5 +73,30 @@ describe('communityStore.joinCommunity', () => {
     supabase.rpc.mockResolvedValueOnce({ data: null, error: { code: '42501', message: "you can't join this community" } });
     await expect(useCommunityStore.getState().joinCommunity('c1', 'me')).rejects.toThrow("You can't join this community.");
     expect(useCommunityStore.getState().joinedIds.has('c1')).toBe(false);
+  });
+});
+
+describe('fetchCommunityBans', () => {
+  it('lists the current bans for moderators, newest first, expired ones left out', async () => {
+    const ops: [string, unknown[]][] = [];
+    const rows = [{ user_id: 'u2', reason: 'spam', created_at: '2026-10-11T09:00:00Z', expires_at: null, profile: { id: 'u2', display_name: 'Sam', username: 'sam', avatar_url: null } }];
+    const q: Record<string, unknown> = {};
+    ['select', 'eq', 'or', 'order'].forEach((m) => { q[m] = (...a: unknown[]) => { ops.push([m, a]); return q; }; });
+    (q as { then: unknown }).then = (res: (v: unknown) => void) => res({ data: rows, error: null });
+    supabase.from.mockImplementation((t: string) => { ops.push(['from', [t]]); return q; });
+    const out = await fetchCommunityBans('c1');
+    expect(ops[0]).toEqual(['from', ['community_bans']]);
+    expect(ops).toContainEqual(['eq', ['community_id', 'c1']]);
+    expect(ops.find(([m]) => m === 'or')?.[1][0]).toMatch(/expires_at.is.null,expires_at.gt./);
+    expect(ops).toContainEqual(['order', ['created_at', { ascending: false }]]);
+    expect(out).toEqual(rows);
+  });
+
+  it('a refused read throws', async () => {
+    const q: Record<string, unknown> = {};
+    ['select', 'eq', 'or', 'order'].forEach((m) => { q[m] = () => q; });
+    (q as { then: unknown }).then = (res: (v: unknown) => void) => res({ data: null, error: { message: 'nope' } });
+    supabase.from.mockImplementation(() => q);
+    await expect(fetchCommunityBans('c1')).rejects.toBeTruthy();
   });
 });
