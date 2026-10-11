@@ -21,6 +21,7 @@ import {
 } from '../../../lib/profileRules';
 import { AvatarPickerSheet } from '../../../components/profile/AvatarPickerSheet';
 import { Avatar } from '../../../components/ui/Avatar';
+import { ProfilePromptsEditor } from '../../../components/profile/ProfileExtras';
 import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
 import { useThemeColors } from '../../../hooks/useThemeColors';
@@ -285,6 +286,7 @@ export default function EditProfileScreen() {
           </Text>
         </View>
 
+        <ProfilePromptsEditor userId={user.id} />
         <ProfilePhotoGrid userId={user.id} editable />
         <ProfileFavorites userId={user.id} editable />
 

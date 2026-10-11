@@ -21,6 +21,7 @@ jest.mock('../../lib/supabase', () => ({
 }));
 jest.mock('../../components/profile/ProfilePhotoGrid', () => ({ ProfilePhotoGrid: () => null }));
 jest.mock('../../components/profile/ProfileFavorites', () => ({ ProfileFavorites: () => null }));
+jest.mock('../../components/profile/ProfileExtras', () => ({ ProfilePromptsEditor: () => null, ProfileExtras: () => null }));
 jest.mock('../../components/profile/AvatarPickerSheet', () => {
   const { Pressable, Text } = jest.requireActual('react-native');
   return {
