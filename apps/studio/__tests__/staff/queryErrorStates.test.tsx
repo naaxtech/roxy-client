@@ -54,10 +54,12 @@ jest.mock('next/navigation', () => ({
   usePathname: jest.fn(() => '/staff'),
 }));
 jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }));
-// The overview imports server actions (next/server) and an async card; the
-// card has its own error state and tests (LaunchFunnel.test.tsx).
+// The overview imports server actions (next/server) and two async cards; each
+// card has its own error state and tests (LaunchFunnel.test.tsx,
+// gate-dashboard/PendingApplicationsCard.test.tsx).
 jest.mock('@/app/(dashboard)/staff/payout-actions', () => ({ setPayoutBlock: jest.fn(), releasePayout: jest.fn() }));
 jest.mock('@/app/(dashboard)/staff/LaunchFunnelCard', () => ({ LaunchFunnelCard: () => null }));
+jest.mock('@/app/(dashboard)/staff/PendingApplicationsCard', () => ({ PendingApplicationsCard: () => null }));
 jest.mock('@/lib/business', () => ({
   getOwnedBusiness: jest.fn(async () => ({ id: 'b1', name: 'Shop', stripe_account_id: null, can_sell: true })),
 }));
