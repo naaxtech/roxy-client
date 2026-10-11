@@ -8,7 +8,7 @@ import {
   ShoppingBag, Package, ShoppingCart, DollarSign, Settings,
   Shield, CheckSquare, Mail, RefreshCw, AlertTriangle, Building2,
   ChevronRight, LogOut, Lightbulb, Bug, UserCheck, Ticket, UserCog,
-  Archive, UserPlus, GitPullRequest, Flag, Unlock, Crown, BookOpen, Tag,
+  Archive, UserPlus, GitPullRequest, Flag, Unlock, Crown, BookOpen, Tag, UserX,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOutAction } from '@/app/auth/signout-action';
@@ -90,6 +90,7 @@ export const NAV_GROUPS: NavGroupDef[] = [
     staff: true,
     items: [
       { href: '/staff/reports', label: 'Reports', icon: Flag },
+      { href: '/staff/members', label: 'Members', icon: UserX },
     ],
   },
   {
