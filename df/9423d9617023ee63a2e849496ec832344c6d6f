@@ -1,0 +1,28 @@
+apps/mobile/__tests__/lib/archiveSafety.test.ts
+  h_0549c11fec2ab0 1-52
+apps/mobile/__tests__/screens/ArchiveEntry.test.tsx
+  h_0549c11fec2ab0 53-58,192-193
+apps/mobile/__tests__/screens/ArchiveEntrySafety.test.tsx
+  h_0549c11fec2ab0 1-224
+apps/mobile/app/archive/[slug]/index.tsx
+  h_0549c11fec2ab0 1-4,27-31,64,66-67,79,81-101,121-139,170-179,263-271,316,322-325,329,346-368,372-376,388-398,472-473,513-543,546,565-628,658-665
+apps/mobile/components/archive/ArchiveActionsSheet.tsx
+  h_0549c11fec2ab0 1-236
+apps/mobile/components/archive/ContentNoteChip.tsx
+  h_0549c11fec2ab0 48-49,69,91
+apps/mobile/components/archive/VoteCard.tsx
+  h_0549c11fec2ab0 9,19-25,45,139-147,160-165,168-170
+apps/mobile/lib/archiveSafety.ts
+  h_0549c11fec2ab0 1-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "df9423d9617023ee63a2e849496ec832344c6d6f",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
