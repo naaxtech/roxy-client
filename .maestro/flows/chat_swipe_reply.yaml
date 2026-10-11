@@ -1,0 +1,73 @@
+# Test: Swipe right on a message to reply; the reply carries a quote.
+# Prerequisites: the signed-in account has an open 1:1 with a friend whose
+# display name is MAESTRO_FRIEND_A, and that thread contains a message from her
+# with the text in MAESTRO_QUOTED_TEXT (seed accounts only).
+#
+# The gesture is a horizontal pull on the bubble (MessageRow: SWIPE_REPLY_AT,
+# 56dp). Letting go past it arms "Replying to <name>" above the composer; the
+# sent bubble shows the quote, and tapping the quote jumps back to the original.
+appId: com.roxy.app
+---
+- runFlow: ../subflows/dismiss_first_run.yaml
+
+- tapOn:
+    id: "nav-slot-messages"
+
+- tapOn:
+    text: ${MAESTRO_FRIEND_A}
+
+- assertVisible:
+    id: "chat-input"
+    timeout: 5000
+
+- assertVisible:
+    text: ${MAESTRO_QUOTED_TEXT}
+    timeout: 5000
+
+# Pull the bubble to the right, well past the 56dp threshold.
+- swipe:
+    from:
+      text: ${MAESTRO_QUOTED_TEXT}
+    direction: RIGHT
+    duration: 400
+
+- assertVisible:
+    id: "composer-reply-bar"
+    timeout: 3000
+- assertVisible:
+    text: "Replying to ${MAESTRO_FRIEND_A}"
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Replying with a swipe ✨"
+- tapOn:
+    id: "chat-send"
+
+# The bar clears, the reply lands with its quote, nothing is stuck sending.
+- assertNotVisible:
+    id: "composer-reply-bar"
+    timeout: 3000
+- assertVisible:
+    text: "Replying with a swipe ✨"
+    timeout: 5000
+- assertVisible:
+    id: "reply-quote-.*"
+- assertNotVisible:
+    id: "message-retry"
+
+# Long-press offers Reply too, so the swipe is never the only way in.
+- longPressOn:
+    text: ${MAESTRO_QUOTED_TEXT}
+- assertVisible:
+    id: "message-action-sheet"
+    timeout: 3000
+- assertVisible:
+    id: "msg-action-reply"
+- tapOn:
+    id: "msg-action-reply"
+- assertVisible:
+    id: "composer-reply-bar"
+- tapOn:
+    text: "Cancel reply"
+- assertNotVisible:
+    id: "composer-reply-bar"

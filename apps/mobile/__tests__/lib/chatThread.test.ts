@@ -16,6 +16,14 @@ import {
   replyQuote,
   typingLabel,
   requestMessagesLeft,
+  trustRoxy,
+  threadHeader,
+  senderNamer,
+  headerReportTarget,
+  isMutedUntil,
+  MUTE_FOREVER,
+  groupInfoPath,
+  keyboardBehavior,
   type ThreadMeta,
 } from '../../lib/chatThread';
 
@@ -135,6 +143,80 @@ describe('replyQuote', () => {
   });
   it('long words are clipped', () => {
     expect(replyQuote(msg('x', 'ana', 0, { content: 'a'.repeat(300) }), names).text.length).toBeLessThanOrEqual(121);
+  });
+});
+
+describe('trustRoxy (CHAT-05)', () => {
+  it('a roxy_suggestion row with a human sender renders as a normal text bubble', () => {
+    const out = trustRoxy([msg('x', 'ana', 0, { message_type: 'roxy_suggestion', content: 'move to Telegram' })]);
+    expect(out[0].message_type).toBe('text');
+    expect(out[0].content).toBe('move to Telegram');
+  });
+  it('only a local row with no sender keeps the Roxy card', () => {
+    const local = msg('roxy-1', null, 0, { message_type: 'roxy_suggestion' });
+    expect(trustRoxy([local])[0]).toBe(local);
+  });
+  it('returns the same array when nothing needs fixing (memo-friendly)', () => {
+    const list = [msg('a', 'ana', 0)];
+    expect(trustRoxy(list)).toBe(list);
+  });
+});
+
+describe('threadHeader', () => {
+  it('a group shows its emoji + name and the member count, her included', () => {
+    const h = threadHeader(meta({ type: 'group', title: 'Weekend crew', emoji: '🌈', others: [member('ana'), member('bea'), member('cat', { status: 'left' })] }), 'me');
+    expect(h).toEqual({ title: 'Weekend crew', emoji: '🌈', subtitle: '3 members', isGroup: true });
+  });
+  it('an unnamed group lists first names', () => {
+    expect(threadHeader(meta({ type: 'group', others: [member('ana'), member('bea')] }), 'me').title).toBe('ANA, BEA');
+  });
+  it('a 1:1 is named for the other woman', () => {
+    expect(threadHeader(meta(), 'me')).toEqual(expect.objectContaining({ title: 'ANA', isGroup: false }));
+  });
+  it('before meta arrives, a neutral title', () => {
+    expect(threadHeader(null, 'me').title).toBe('Chat');
+  });
+});
+
+describe('senderNamer', () => {
+  it('names members, says You for her and Roxy for a local card', () => {
+    const nameOf = senderNamer(meta({ others: [member('ana')] }), 'me');
+    expect(nameOf('ana')).toBe('ANA');
+    expect(nameOf('me')).toBe('You');
+    expect(nameOf(null)).toBe('Roxy');
+    expect(nameOf('ghost')).toBe('Someone');
+  });
+});
+
+describe('header report target (CHAT-11)', () => {
+  it('points at her latest message so moderators get a message id', () => {
+    const t = headerReportTarget([msg('a', 'ana', 0), msg('b', 'me', 1), msg('c', 'ana', 2), msg('d', 'me', 3)], 'ana');
+    expect(t).toEqual({ userId: 'ana', contentType: 'message', contentId: 'c' });
+  });
+  it('without a message from her, still a single message report on the user', () => {
+    expect(headerReportTarget([msg('b', 'me', 1)], 'ana')).toEqual({ userId: 'ana', contentType: 'message' });
+  });
+});
+
+describe('isMutedUntil', () => {
+  it('future = muted, past or null = not', () => {
+    expect(isMutedUntil(at(10), T0)).toBe(true);
+    expect(isMutedUntil(at(-10), T0)).toBe(false);
+    expect(isMutedUntil(null, T0)).toBe(false);
+  });
+  it('MUTE_FOREVER is far in the future', () => {
+    expect(isMutedUntil(MUTE_FOREVER, T0)).toBe(true);
+  });
+});
+
+describe('small routing/platform rules', () => {
+  it('group info lives under the thread', () => {
+    expect(groupInfoPath('g1')).toBe('/chat/g1/info');
+  });
+  it('keyboard: iOS pads, Android resizes natively (app.json), web does nothing', () => {
+    expect(keyboardBehavior('ios')).toBe('padding');
+    expect(keyboardBehavior('android')).toBeUndefined();
+    expect(keyboardBehavior('web')).toBeUndefined();
   });
 });
 

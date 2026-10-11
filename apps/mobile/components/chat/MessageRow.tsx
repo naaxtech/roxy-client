@@ -58,7 +58,9 @@ interface Props {
  * so the list still scrolls and the web build behaves like the app.
  */
 function MessageRowImpl({
-  message: m, replyTo, currentUserId, isGroup, nameOf, reactions, showReadState, highlighted,
+  // isGroup: kept on the props contract; whether a name shows is decided
+  // upstream by groupMessages().showName, so the row itself doesn't branch on it.
+  message: m, replyTo, currentUserId, isGroup: _isGroup, nameOf, reactions, showReadState, highlighted,
   onLongPress, onReply, onQuotePress, onToggleReaction, onRetry, onUseSuggestion,
 }: Props) {
   const colors = useThemeColors();
