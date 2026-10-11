@@ -10,6 +10,7 @@ import { useBuildStore } from '../../../store/buildStore';
 import { useMarketplaceStore } from '../../../store/marketplaceStore';
 import { supabase } from '../../../lib/supabase';
 import { ProfileShell } from '../../../components/profile/ProfileShell';
+import { ProfileNudge } from '../../../components/profile/ProfileNudge';
 import type { PopulatedTabs, ProfileTab } from '../../../components/profile/profileVariant';
 import { ProfilePostsGrid } from '../../../components/profile/ProfilePostsGrid';
 import { ReelsFeed } from '../../../components/feed/ReelsFeed';
@@ -558,6 +559,12 @@ export default function ProfileScreen() {
         beforeTabs={
           user?.id ? (
             <View>
+              <ProfileNudge
+                userId={user.id}
+                avatarUrl={profile.avatar_url}
+                bio={profile.bio}
+                onOpen={() => router.push('/(tabs)/you/edit' as never)}
+              />
               {/* Dating mode, Ghost mode and the streak used to sit here. All
                   three are settings, not identity: the first two already
                   existed in Settings under "Visibility & safety" — the profile

@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { logError } from '../../lib/errorLogger';
-import { showAlert } from '../../lib/confirm';
+import { confirmAction, showAlert } from '../../lib/confirm';
 import { uploadImageAsset, assetExtension } from '../../lib/uploads';
 
 const MAX_PHOTOS = 6;
@@ -99,14 +99,27 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
     }
   };
 
+  // Asked first and checked after (PRO-11): one stray tap used to delete a
+  // photo with no confirmation, and a refused delete looked like a success.
+  // The row goes first — that is what hides it — then the file.
   const removePhoto = async (row: PhotoRow) => {
     if (!editable) return;
-    const storagePrefix = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/profile-photos/`;
-    if (row.photo_url.startsWith(storagePrefix)) {
-      const storagePath = row.photo_url.slice(storagePrefix.length);
-      await supabase.storage.from('profile-photos').remove([storagePath]);
+    const ok = await confirmAction('Remove this photo?', 'It comes off your profile straight away.', 'Remove');
+    if (!ok) return;
+    try {
+      const { error } = await supabase.from('profile_photos').delete().eq('id', row.id);
+      if (error) throw error;
+      const storagePrefix = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/profile-photos/`;
+      if (row.photo_url.startsWith(storagePrefix)) {
+        const storagePath = row.photo_url.slice(storagePrefix.length);
+        const { error: fileError } = await supabase.storage.from('profile-photos').remove([storagePath]);
+        // The photo is already off her profile; a leftover file is logged, not shown.
+        if (fileError) logError(fileError, 'ProfilePhotoGrid.removeFile');
+      }
+    } catch (e) {
+      logError(e, 'ProfilePhotoGrid.removePhoto');
+      showAlert('Not removed', 'That photo was not removed. Check your connection and try again.');
     }
-    await supabase.from('profile_photos').delete().eq('id', row.id);
     await load();
   };
 
@@ -126,7 +139,14 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
               <>
                 <Image source={{ uri: p.photo_url }} style={styles.img} />
                 {editable && (
-                  <TouchableOpacity style={styles.remove} onPress={() => void removePhoto(p)}>
+                  <TouchableOpacity
+                    style={styles.remove}
+                    onPress={() => void removePhoto(p)}
+                    testID={`profile-photo-remove-${p.id}`}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove this photo"
+                    hitSlop={10}
+                  >
                     <Ionicons name="close" size={14} color="#fff" />
                   </TouchableOpacity>
                 )}
