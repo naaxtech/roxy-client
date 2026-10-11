@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { QueryError } from '@/components/QueryError';
 import { Badge } from '@/components/ui/badge';
 import { ResolveButton } from './ResolveButton';
 
@@ -16,7 +17,7 @@ export default async function StaffReconciliationPage() {
     .single();
   if (!profile?.is_staff) notFound();
 
-  const { data: alerts } = await supabase
+  const { data: alerts, error } = await supabase
     .from('reconciliation_alerts')
     .select('*')
     .order('created_at', { ascending: false })
@@ -37,7 +38,9 @@ export default async function StaffReconciliationPage() {
         Payment reconciliation alerts requiring review.
       </p>
 
-      {alertList.length === 0 ? (
+      {error ? (
+        <QueryError what="reconciliation alerts" />
+      ) : alertList.length === 0 ? (
         <p className="text-sm text-muted-foreground">No reconciliation alerts. All clear.</p>
       ) : (
         <div className="border rounded-lg overflow-hidden">
