@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { freshChannel } from '../lib/realtimeChannel';
 import { logError } from '../lib/errorLogger';
+import { fetchOnlineIds, presenceStamp } from '../lib/memberPresence';
 import type { ThreadMember, ThreadMeta } from '../lib/chatThread';
 
 type ConvRow = {
@@ -20,7 +21,7 @@ type MemberRow = {
   last_read_at: string | null;
   muted_until: string | null;
 };
-type ProfileRow = Pick<ThreadMember, 'id' | 'display_name' | 'username' | 'avatar_url' | 'last_seen_at'>;
+type ProfileRow = Pick<ThreadMember, 'id' | 'display_name' | 'username' | 'avatar_url'>;
 
 /**
  * Who is in this thread, and in what state (migration 132's
@@ -64,9 +65,15 @@ export function useThreadMeta(conversationId: string, me: string) {
         }
       }
       const ids = [...new Set(rows.map((r) => r.user_id))];
-      const profRes = ids.length
-        ? await supabase.from('profiles').select('id, display_name, username, avatar_url, last_seen_at').in('id', ids)
-        : { data: [] as ProfileRow[] };
+      // Public columns only: since migration 130 `last_seen_at` is private and
+      // naming it fails the whole read (42501), which blanked every name in
+      // the thread. Presence is online yes/no from member_presence instead.
+      const [profRes, online] = ids.length
+        ? await Promise.all([
+          supabase.from('profiles').select('id, display_name, username, avatar_url').in('id', ids),
+          fetchOnlineIds(ids.filter((id) => id !== me)),
+        ])
+        : [{ data: [] as ProfileRow[] }, new Set<string>()];
       const byId = new Map(((profRes.data ?? []) as ProfileRow[]).map((p) => [p.id, p]));
       const toMember = (r: MemberRow): ThreadMember => {
         const p = byId.get(r.user_id);
@@ -75,7 +82,8 @@ export function useThreadMeta(conversationId: string, me: string) {
           display_name: p?.display_name ?? null,
           username: p?.username ?? null,
           avatar_url: p?.avatar_url ?? null,
-          last_seen_at: p?.last_seen_at ?? null,
+          // A presence marker, never her real last-seen time (lib/memberPresence).
+          last_seen_at: presenceStamp(online.has(r.user_id)),
           role: r.role,
           status: r.status,
           joined_at: r.joined_at,
