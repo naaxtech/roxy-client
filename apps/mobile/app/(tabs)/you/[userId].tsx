@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Animated, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Modal, Pressable, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as Linking from 'expo-linking';
+import { compactCount, fetchFollowCounts, type FollowCounts } from '../../../lib/followCounts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -87,7 +89,12 @@ function UserProfileScreen() {
   const joinCommunity = useCommunityStore((s) => s.joinCommunity);
   const openReportModal = useSafetyStore((s) => s.openReportModal);
   const blockUser = useSafetyStore((s) => s.blockUser);
+  const mutedUserIds = useSafetyStore((s) => s.mutedUserIds) ?? [];
+  const muteUser = useSafetyStore((s) => s.muteUser);
+  const unmuteUser = useSafetyStore((s) => s.unmuteUser);
   const colors = useThemeColors();
+  const [counts, setCounts] = useState<FollowCounts | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
   const safetyPop = usePopIn(safetyOpen);
 
@@ -105,10 +112,11 @@ function UserProfileScreen() {
   const [reelInitialId, setReelInitialId] = useState<string | null>(null);
   const [eventsView, setEventsView] = useState<'list' | 'calendar'>('list');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { quiet?: boolean }) => {
     if (!userId) return;
-    setStatus('loading');
+    if (!opts?.quiet) setStatus('loading');
     setNotFound(false);
+    void fetchFollowCounts(userId).then(setCounts);
 
     // The post count went with the stat card. Its HEAD query went too — a round
     // trip on every profile open, for a number nothing renders.
@@ -123,8 +131,17 @@ function UserProfileScreen() {
 
     if (profileRes.error || !profileRes.data) {
       if (profileRes.error) logError(profileRes.error, 'userProfile_fetch');
-      setNotFound(true);
-      setStatus('ready');
+      // Only "no such row" is not-found (PGRST116 from .single(); RLS also
+      // answers it for a blocked or ghost profile). Offline or a 5xx is an
+      // error with a retry — it used to say "Profile not found" with no way
+      // back (PRO-08).
+      const code = (profileRes.error as { code?: string } | null)?.code;
+      if (!profileRes.error || code === 'PGRST116') {
+        setNotFound(true);
+        setStatus('ready');
+      } else {
+        setStatus('error');
+      }
       return;
     }
     setProfile(profileRes.data as Profile);
@@ -212,6 +229,11 @@ function UserProfileScreen() {
   }, [userId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await load({ quiet: true }); } finally { setRefreshing(false); }
+  }, [load]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -319,12 +341,18 @@ function UserProfileScreen() {
   const bindSocial = (button: SocialButton) => {
     const run = async () => {
       if (!userId || !user?.id) return;
+      // The store rolls the button back on failure; this says why, instead
+      // of the button silently flipping back (PRO-07).
       if (button.role === 'follow') {
-        await follow(user.id, userId);
+        const ok = await follow(user.id, userId);
+        if (!ok) showAlert('Could not follow her', 'Check your connection and try again.');
+        else setCounts((c) => (c ? { ...c, followers: c.followers + 1 } : c));
         return;
       }
       if (button.role === 'unfollow') {
-        await unfollow(user.id, userId);
+        const ok = await unfollow(user.id, userId);
+        if (!ok) showAlert('Could not unfollow her', 'Check your connection and try again.');
+        else setCounts((c) => (c ? { ...c, followers: Math.max(0, c.followers - 1) } : c));
         return;
       }
       if (button.role === 'join' && officialCommunityId) {
@@ -365,6 +393,40 @@ function UserProfileScreen() {
 
   const rowStyles = hostedStyles(colors);
   const online = official ? officialPresenceLine(presence, Date.now()) : null;
+  const isMuted = !!userId && mutedUserIds.includes(userId);
+  const stats = counts ? [
+    { value: compactCount(counts.followers), label: counts.followers === 1 ? 'Follower' : 'Followers' },
+    { value: compactCount(counts.following), label: 'Following' },
+  ] : [];
+
+  const shareProfile = async () => {
+    if (!userId) return;
+    const url = Linking.createURL(`/user/${userId}`);
+    const name = profile?.display_name ?? 'her';
+    try {
+      await Share.share({ message: `${name} on Roxy: ${url}`, url });
+    } catch (e) {
+      logError(e, 'userProfile_share');
+    }
+  };
+
+  const toggleMute = async () => {
+    if (!userId) return;
+    setSafetyOpen(false);
+    try {
+      if (isMuted) {
+        const ok = await unmuteUser(userId);
+        if (!ok) throw new Error('unmute-noop');
+        showAlert('Unmuted', 'Her posts and comments will show again.');
+      } else {
+        await muteUser(userId);
+        showAlert('Muted', 'You won’t see her posts or comments. She is not told. Undo any time in Settings → Blocked & muted.');
+      }
+    } catch (e) {
+      logError(e, 'userProfile_mute');
+      showAlert('Not saved', isMuted ? 'She is still muted. Try again in a moment.' : 'She was not muted. Check your connection and try again.');
+    }
+  };
 
   const renderTab = (tab: ProfileTab) => {
     if (tab === 'shop' && shop) {
@@ -534,9 +596,21 @@ function UserProfileScreen() {
           testID: 'profile-more',
           onPress: () => setSafetyOpen(true),
         }] : []}
-        beforeTabs={online ? (
-          <View style={rowStyles.online} testID="profile-online-row">
-            <Text style={rowStyles.onlineText}>{online.label}</Text>
+        stats={stats}
+        refreshing={refreshing}
+        onRefresh={() => { void onRefresh(); }}
+        beforeTabs={(online || counts?.followsYou) ? (
+          <View>
+            {counts?.followsYou ? (
+              <View style={rowStyles.followsYou} testID="profile-follows-you" accessibilityRole="text">
+                <Text style={rowStyles.followsYouText}>Follows you</Text>
+              </View>
+            ) : null}
+            {online ? (
+              <View style={rowStyles.online} testID="profile-online-row">
+                <Text style={rowStyles.onlineText}>{online.label}</Text>
+              </View>
+            ) : null}
           </View>
         ) : null}
         primaryAction={primaryAction}
@@ -550,6 +624,7 @@ function UserProfileScreen() {
         populated={populated}
         renderTab={renderTab}
         status={status}
+        errorMessage="This profile did not load. Check your connection."
         onRetry={() => void load()}
       />
 
@@ -561,7 +636,7 @@ function UserProfileScreen() {
       >
         <Pressable style={rowStyles.scrim} onPress={() => setSafetyOpen(false)}>
           <Animated.View style={[rowStyles.sheet, safetyPop]} testID="profile-more-sheet">
-            <Text style={rowStyles.sheetTitle}>Safety</Text>
+            <Text style={rowStyles.sheetTitle}>{profile?.display_name ?? 'This profile'}</Text>
             <TouchableOpacity
               style={rowStyles.sheetRow}
               onPress={() => {
@@ -574,6 +649,24 @@ function UserProfileScreen() {
               testID="profile-more-report"
             >
               <Text style={rowStyles.sheetLabel}>Report</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={rowStyles.sheetRow}
+              onPress={() => { void toggleMute(); }}
+              accessibilityRole="button"
+              accessibilityLabel={isMuted ? 'Unmute this account' : 'Mute this account'}
+              testID="profile-more-mute"
+            >
+              <Text style={rowStyles.sheetLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={rowStyles.sheetRow}
+              onPress={() => { setSafetyOpen(false); void shareProfile(); }}
+              accessibilityRole="button"
+              accessibilityLabel="Share this profile"
+              testID="profile-more-share"
+            >
+              <Text style={rowStyles.sheetLabel}>Share profile</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={rowStyles.sheetRow}
@@ -609,6 +702,12 @@ function UserProfileScreen() {
 
 function hostedStyles(colors: ReturnType<typeof useThemeColors>) {
   return StyleSheet.create({
+    followsYou: {
+      alignSelf: 'flex-start', marginHorizontal: 16, marginBottom: 8,
+      paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.secondary,
+    },
+    followsYouText: { ...TYPE.caption, color: colors.secondaryInk, fontWeight: '700' },
     list: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24, gap: 8 },
     row: {
       flexDirection: 'row',

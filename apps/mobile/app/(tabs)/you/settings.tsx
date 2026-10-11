@@ -204,7 +204,7 @@ export default function SettingsScreen() {
               accessibilityLabel={`Blocked, ${blockedCount} ${blockedCount === 1 ? 'person' : 'people'}`}
               testID="settings-blocked"
             >
-              <Text style={s.rowLabel}>Blocked</Text>
+              <Text style={s.rowLabel}>Blocked & muted</Text>
               <Text style={s.rowValue}>{blockedCount} ›</Text>
             </TouchableOpacity>
           </View>

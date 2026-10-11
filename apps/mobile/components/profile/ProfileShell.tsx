@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -146,6 +146,9 @@ export interface ProfileShellProps {
   errorMessage?: string;
   onRetry?: () => void;
   emptyMessage?: string;
+  /** Pull-to-refresh (PRO-08). Omit onRefresh and the gesture is not offered. */
+  refreshing?: boolean;
+  onRefresh?: () => void;
   testID?: string;
 }
 
@@ -214,6 +217,8 @@ export function ProfileShell({
   status = 'ready',
   errorMessage = 'We could not load this yet.',
   onRetry,
+  refreshing = false,
+  onRefresh,
   emptyMessage,
   testID = 'profile-shell',
 }: ProfileShellProps) {
@@ -427,6 +432,9 @@ export function ProfileShell({
       contentContainerStyle={s.scrollContent}
       showsVerticalScrollIndicator={false}
       testID={testID}
+      refreshControl={onRefresh ? (
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.roxy} colors={[colors.roxy]} />
+      ) : undefined}
     >
       <View style={s.headerBlock} testID="profile-header">
         <View style={s.coverWrap} testID="profile-cover">
