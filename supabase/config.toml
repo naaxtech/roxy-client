@@ -407,6 +407,8 @@ verify_jwt = false
 # Authorization header against SUPABASE_SERVICE_ROLE_KEY before doing any work.
 [functions.push-dispatch]
 verify_jwt = false
+[functions.account-purge]
+verify_jwt = false
 [functions.process-refunds]
 verify_jwt = false
 [functions.release-payout]

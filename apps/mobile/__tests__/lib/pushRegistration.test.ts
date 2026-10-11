@@ -64,7 +64,7 @@ describe('registerDevice', () => {
     await registerDevice();
     const ids = N.setNotificationChannelAsync.mock.calls.map((c) => c[0]);
     expect(ids).toEqual(ANDROID_CHANNELS.map((c) => c.id));
-    expect(ids).toEqual(expect.arrayContaining(['messages', 'friends', 'events', 'community', 'quiet']));
+    expect(ids).toEqual(expect.arrayContaining(['messages', 'friends', 'events', 'community', 'membership', 'quiet']));
   });
 
   it('asks once when permission is undetermined, and stops quietly on denial', async () => {

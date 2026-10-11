@@ -209,7 +209,12 @@ BEGIN
       WHERE user_id = '13400000-0000-0000-0000-0000000000c2' AND type = 'application_decided') <> 2 THEN
     RAISE EXCEPTION 'T2b G-12: an upheld appeal did not notify her';
   END IF;
-  RAISE NOTICE 'T2b PASS';
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_schema = 'public' AND table_name = 'notification_settings'
+                   AND column_name = 'membership' AND column_default = 'true' AND is_nullable = 'NO') THEN
+    RAISE EXCEPTION 'T2c notification_settings.membership is missing or not ON by default';
+  END IF;
+  RAISE NOTICE 'T2b-c PASS';
 END $$;
 
 -- ── T3 invite codes: who may mint ──────────────────────────────────────────

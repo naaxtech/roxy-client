@@ -19,7 +19,9 @@
 // Roxy is a wingwoman, never an assistant or a bot.
 
 export const APP_URL = 'https://roxy.expo.app';
-export const DEFAULT_STUDIO_URL = 'https://roxycommunity.netlify.app';
+// Studio's default address lives in emailConfig.ts (env STUDIO_URL overrides).
+import { DEFAULT_STUDIO_URL } from './emailConfig.ts';
+export { DEFAULT_STUDIO_URL };
 
 export interface RenderedEmail {
   subject: string;

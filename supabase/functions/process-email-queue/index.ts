@@ -2,10 +2,13 @@
 import { handleCors } from '../_shared/cors.ts';
 import { getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
-import { DEFAULT_STUDIO_URL, renderTemplate } from '../_shared/emailTemplates.ts';
+import { renderTemplate } from '../_shared/emailTemplates.ts';
+import { denoEnv, resolveEmailSender, resolveStudioUrl } from '../_shared/emailConfig.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const FROM_EMAIL = 'Roxy <noreply@getroxy.app>';
+// Sender: Roxy <noreply@roxyhq.com>, replies to hello@roxyhq.com (EMAIL_FROM /
+// EMAIL_REPLY_TO override). The old sender domain is retired.
+const SENDER = resolveEmailSender(denoEnv);
 
 function backoffMinutes(retryCount: number): number {
   const schedule = [0, 2, 10, 60, 360];
@@ -19,7 +22,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<str
       'Authorization': `Bearer ${RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+    body: JSON.stringify({ from: SENDER.from, reply_to: SENDER.replyTo, to, subject, html }),
   });
   if (!res.ok) {
     const err = await res.text();
@@ -32,7 +35,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<str
 // Templates live in _shared/emailTemplates.ts (pure, unit-tested). G-01: the
 // inline switch that was here had no application_* cases, so every decision
 // email threw "Unknown email type" and was dead-lettered.
-const STUDIO_URL = Deno.env.get('STUDIO_URL') ?? DEFAULT_STUDIO_URL;
+const STUDIO_URL = resolveStudioUrl(denoEnv);
 
 Deno.serve(async (req) => {
   const corsRes = handleCors(req);
