@@ -1,0 +1,18 @@
+apps/studio/__tests__/lib/reports.test.ts
+  h_0549c11fec2ab0 1-2,14-21,24-30
+apps/studio/app/(dashboard)/staff/reports/ReportsClient.tsx
+  h_0549c11fec2ab0 172
+apps/studio/lib/reports.ts
+  h_0549c11fec2ab0 20-23,53-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d9fc83327a9b44b42a9c951f2be215b38f605473",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
