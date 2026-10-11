@@ -1,0 +1,20 @@
+scripts/db-verify.sh
+  h_0549c11fec2ab0 39-52,100-113
+supabase/migrations/005_content_feed.sql
+  h_0549c11fec2ab0 77
+supabase/migrations/017_speed_date_realtime.sql
+  h_0549c11fec2ab0 9-12
+supabase/migrations/046_games.sql
+  h_0549c11fec2ab0 2-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa4151f000b982cc7ec97294b3ab145ea7632abf",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
