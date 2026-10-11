@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
 import { BlockPayoutButton } from './BlockPayoutButton';
 import { ReleasePayoutButton } from './ReleasePayoutButton';
+import { PendingApplicationsCard } from './PendingApplicationsCard';
 
 export default async function StaffPage() {
   const supabase = await createClient();
@@ -60,6 +61,8 @@ export default async function StaffPage() {
         <h1 className="text-2xl font-bold">Staff Dashboard</h1>
         <p className="text-muted-foreground mt-1">Payment operations and audit trail.</p>
       </div>
+
+      <PendingApplicationsCard />
 
       {/* Blocked Payouts */}
       <section className="space-y-3">
