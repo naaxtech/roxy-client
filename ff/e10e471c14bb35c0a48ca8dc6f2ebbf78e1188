@@ -1,0 +1,16 @@
+scripts/__tests__/supabase-mgmt-retry.test.mjs
+  h_0549c11fec2ab0 1-34
+scripts/lib/supabase-mgmt.mjs
+  h_0549c11fec2ab0 49,53-63,67,77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ffe10e471c14bb35c0a48ca8dc6f2ebbf78e1188",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
