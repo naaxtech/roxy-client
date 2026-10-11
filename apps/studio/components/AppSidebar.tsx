@@ -75,7 +75,8 @@ export const NAV_GROUPS: NavGroupDef[] = [
     staff: true,
     items: [
       { href: '/staff', label: 'Overview', icon: Shield, exact: true },
-      { href: '/staff/launch', label: 'Launch access', icon: Unlock },
+      { href: '/staff/launch', label: 'Launch access', icon: Unlock, exact: true },
+      { href: '/staff/launch/waves', label: 'Launch waves', icon: Ticket },
       { href: '/staff/team', label: 'Roxy team', icon: Crown, coreOnly: true },
       // Discover's Top 10 is the only place these appear. A page nothing links
       // to is a feature nobody can find.

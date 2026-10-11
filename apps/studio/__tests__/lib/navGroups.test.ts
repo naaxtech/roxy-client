@@ -23,6 +23,7 @@ describe('navGroupsFor', () => {
     expect(staff.find((g) => g.title === 'Roxy')?.items.map((i) => i.label)).toEqual([
       'Overview',
       'Launch access',
+      'Launch waves',
       'Member tags',
     ]);
 
@@ -30,9 +31,12 @@ describe('navGroupsFor', () => {
     expect(core.find((g) => g.title === 'Roxy')?.items.map((i) => i.label)).toEqual([
       'Overview',
       'Launch access',
+      'Launch waves',
       'Roxy team',
       'Member tags',
     ]);
+    expect(headerMetaFor('/staff/launch/waves')).toEqual({ title: 'Launch waves', section: 'Roxy' });
+    expect(headerMetaFor('/staff/launch')).toEqual({ title: 'Launch access', section: 'Roxy' });
   });
 
   it('puts the unified reports queue and member lookup under Safety for every staff role', () => {
