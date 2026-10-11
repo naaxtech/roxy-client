@@ -1,0 +1,14 @@
+apps/studio/__tests__/staff/queryErrorStates.test.tsx
+  h_0549c11fec2ab0 57-59,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3598a206b9ad0bdeb990f74e9317da4dbed36c0",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
