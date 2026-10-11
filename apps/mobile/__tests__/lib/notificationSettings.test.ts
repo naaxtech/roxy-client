@@ -74,7 +74,11 @@ describe('loadNotificationSettings', () => {
     from.mockReturnValue(chain);
     const s = await loadNotificationSettings('u1');
     expect(s.activity).toBe(false);
-    expect(String(chain.select.mock.calls[0][0])).toContain('activity');
+    // '*' (gate, 134) returns every column including activity, and does not
+    // fail on a database that has not had a later preference column yet; an
+    // explicit list must name it.
+    const cols = String(chain.select.mock.calls[0][0]);
+    expect(cols === '*' || cols.includes('activity')).toBe(true);
   });
 
   it('a row saved before the activity switch existed reads it as ON', async () => {

@@ -20,11 +20,12 @@ import { RADII, inkOn, type ThemeColors } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { a11yState } from '../../../lib/a11yState';
 
-type ToggleKey = 'push_enabled' | 'messages' | 'friends' | 'events' | 'community_chats' | 'membership' | 'show_previews';
+type ToggleKey = 'push_enabled' | 'messages' | 'friends' | 'events' | 'community_chats' | 'membership' | 'activity' | 'show_previews';
 
 const TYPES: { key: Exclude<ToggleKey, 'push_enabled' | 'show_previews'>; label: string; hint: string }[] = [
   { key: 'messages', label: 'Messages', hint: 'Direct messages sent to you' },
   { key: 'friends', label: 'Friend requests', hint: 'New requests, and when someone accepts yours' },
+  { key: 'activity', label: 'Likes, comments and follows', hint: 'When someone sends your post a ✿, comments, replies or follows you' },
   { key: 'events', label: 'Community events', hint: 'New events in communities you joined' },
   { key: 'community_chats', label: 'Community chats', hint: 'Chats where you turned alerts on, invites, and join requests you moderate' },
   { key: 'membership', label: 'Your membership', hint: 'When there is news about your application' },

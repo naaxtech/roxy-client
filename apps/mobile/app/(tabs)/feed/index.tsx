@@ -12,6 +12,8 @@ import { NowRail } from '../../../components/feed/NowRail';
 import { MiniWinsSheet } from '../../../components/feed/MiniWinsSheet';
 import { STAGE, STAGE_BG } from '../../../components/feed/stageColors';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
+import { FirstStepsCard } from '../../../components/account/FirstStepsCard';
+import { RAIL_GUTTER } from '../../../components/feed/feedChromeTokens';
 import { TYPE } from '../../../lib/typography';
 import { RADII } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
@@ -60,7 +62,8 @@ function FeedScreen() {
   const [nowOpen, setNowOpen] = useState(false);
   const [liveCount, setLiveCount] = useState(0);
   const [miniWinsOpen, setMiniWinsOpen] = useState(false);
-  const { can } = useAccess();
+  const { can, kind } = useAccess();
+  const showFirstSteps = segment === 'foryou' && kind !== 'pending';
 
   /**
    * Question of the day (audit #4). Null until we know she has not answered
@@ -218,6 +221,15 @@ function FeedScreen() {
         </View>
 
         <FeedSegments value={segment} onChange={setSegment} />
+
+        {/* Her first five minutes (G-11), the same card "You're in" showed.
+            Approved members only, For You only; it renders nothing once she
+            hides it or until it knows whether she did. */}
+        {showFirstSteps && (
+          <View style={s.firstSteps}>
+            <FirstStepsCard testID="feed-first-steps" />
+          </View>
+        )}
       </SafeAreaView>
 
       <MiniWinsSheet
@@ -238,6 +250,9 @@ const s = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   spacer: { flex: 1 },
   railWrap: { },
+  // Clear of the right-hand rail column, like every other full-width piece of
+  // chrome on the stage.
+  firstSteps: { marginTop: 8, marginRight: RAIL_GUTTER - 14 },
   searchBtn: {
     minHeight: MIN_TOUCH_TARGET,
     minWidth: MIN_TOUCH_TARGET,

@@ -23,14 +23,23 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 
+let mockKind = 'member';
 jest.mock('../../hooks/useAccess', () => ({
   useAccess: () => ({
+    kind: mockKind,
     tier: 'beta',
     isBeta: true,
     can: () => true,
     canCommunity: () => true,
   }),
 }));
+
+// FirstStepsCard owns its own reads and its dismiss/persist rules (tested in
+// WelcomeIn.test.tsx); here it is only a marker for "mounted or not".
+jest.mock('../../components/account/FirstStepsCard', () => {
+  const { View } = require('react-native');
+  return { FirstStepsCard: ({ testID }: { testID?: string }) => <View testID={testID ?? 'first-steps-card'} /> };
+});
 
 // StreakChip and NowRail each own a real Supabase query of their own; this
 // suite is about the header's composition and the ids ReelsFeed receives,
@@ -104,7 +113,29 @@ function lastReelsFeedProps(): Record<string, unknown> {
 
 beforeEach(() => {
   reelsFeedCalls.length = 0;
+  mockKind = 'member';
   useCommunityFilterStore.setState({ selectedCommunityId: null, filterable: false });
+});
+
+describe('First steps on the Feed (G-11, after "You\'re in")', () => {
+  it('an approved member sees her first-steps card over For You', () => {
+    const { getByTestId } = render(<FeedScreen />);
+    expect(getByTestId('feed-first-steps')).toBeTruthy();
+  });
+
+  it('only on For You, not over Following or Communities', () => {
+    const { getByTestId, queryByTestId } = render(<FeedScreen />);
+    fireEvent.press(getByTestId('feed-segment-following'));
+    expect(queryByTestId('feed-first-steps')).toBeNull();
+    fireEvent.press(getByTestId('feed-segment-communities'));
+    expect(queryByTestId('feed-first-steps')).toBeNull();
+  });
+
+  it('an applicant still waiting never gets it', () => {
+    mockKind = 'pending';
+    const { queryByTestId } = render(<FeedScreen />);
+    expect(queryByTestId('feed-first-steps')).toBeNull();
+  });
 });
 
 describe('FeedScreen — community context switcher', () => {

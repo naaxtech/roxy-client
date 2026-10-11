@@ -122,16 +122,15 @@ jest.mock('../../components/profile/ProfilePostsGrid', () => ({
 
 jest.mock('../../lib/supabase', () => ({
   supabase: {
-    rpc: jest.fn((fn: string, args: { p_user_ids?: string[] }) =>
-      Promise.resolve(
-        fn === 'member_presence'
-          ? {
-            data: (args.p_user_ids ?? []).map((id) => ({ user_id: id, online: mockOnline.includes(id) })),
-            error: null,
-          }
-          : { data: null, error: null },
-      ),
-    ),
+    // member_presence (gate, 130) answers from mockOnline; every other RPC
+    // (follow_counts, feed2) goes through mockRpc so tests can assert on it.
+    rpc: (fn: string, args: { p_user_ids?: string[] }) =>
+      fn === 'member_presence'
+        ? Promise.resolve({
+          data: (args.p_user_ids ?? []).map((id) => ({ user_id: id, online: mockOnline.includes(id) })),
+          error: null,
+        })
+        : mockRpc(fn, args),
     from: jest.fn((table: string) => {
       const chain: Record<string, unknown> = {};
       chain.select = () => chain;
@@ -216,7 +215,6 @@ jest.mock('../../lib/supabase', () => ({
       }
       return chain;
     }),
-    rpc: (...a: unknown[]) => mockRpc(...a),
   },
 }));
 

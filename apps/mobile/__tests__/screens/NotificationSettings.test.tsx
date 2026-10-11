@@ -44,10 +44,18 @@ beforeEach(() => {
 it('shows every type on and previews off for a woman who never changed anything', async () => {
   const v = render(<NotificationSettingsScreen />);
   await waitFor(() => expect(v.getByTestId('notif-switch-messages')).toBeTruthy());
-  for (const k of ['push_enabled', 'messages', 'friends', 'events', 'community_chats', 'membership']) {
+  for (const k of ['push_enabled', 'messages', 'friends', 'events', 'community_chats', 'membership', 'activity']) {
     expect(v.getByTestId(`notif-switch-${k}`).props.value).toBe(true);
   }
   expect(v.getByTestId('notif-switch-show_previews').props.value).toBe(false);
+});
+
+it('gives likes, comments and follows (133 activity) a switch of their own, and saves it', async () => {
+  const v = render(<NotificationSettingsScreen />);
+  await waitFor(() => expect(v.getByTestId('notif-switch-activity')).toBeTruthy());
+  fireEvent(v.getByTestId('notif-switch-activity'), 'valueChange', false);
+  await waitFor(() => expect(mockSave).toHaveBeenCalled());
+  expect(mockSave.mock.calls[0][1]).toEqual(expect.objectContaining({ activity: false, messages: true }));
 });
 
 it('says the Community chats switch also covers invites and join requests (135)', async () => {
