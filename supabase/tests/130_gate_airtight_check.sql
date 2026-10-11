@@ -41,9 +41,25 @@ INSERT INTO public.community_members (community_id, user_id, role)
 VALUES ('13000000-0000-0000-0000-0000000000f1', '13000000-0000-0000-0000-0000000000b1', 'admin')
 ON CONFLICT (community_id, user_id) DO UPDATE SET role = 'admin';
 
+-- 134 (gate follow-ups, Nicole #3) deliberately changes rules this file proves:
+-- every invite code is single use (CHECK max_uses = 1), an admin of a
+-- community may mint for it, and a store review code no longer approves its
+-- redeemer. When 134 is applied (db-verify from zero applies everything), the
+-- assertions it supersedes are adjusted below, each marked "after 134"; 134's
+-- own check (134_gate_followups_check.sql) proves the new rules. On a database
+-- at 130 only, this file runs exactly as written for 130.
+SELECT set_config('gate130.after134',
+  CASE WHEN EXISTS (SELECT 1 FROM pg_constraint
+                    WHERE conrelid = 'public.invite_codes'::regclass
+                      AND conname = 'invite_codes_single_use')
+       THEN 'on' ELSE 'off' END, true);
+
 INSERT INTO public.invite_codes (code, community_id, created_by, max_uses) VALUES
   ('GATETEST01', '13000000-0000-0000-0000-0000000000f1', '13000000-0000-0000-0000-0000000000a2', 1),
-  ('GATETEST02', '13000000-0000-0000-0000-0000000000f1', '13000000-0000-0000-0000-0000000000a2', 5),
+  -- after 134: single use only; the steps that use GATETEST02 (rate limit,
+  -- already-member, legacy redeem) each need it unused at most once.
+  ('GATETEST02', '13000000-0000-0000-0000-0000000000f1', '13000000-0000-0000-0000-0000000000a2',
+   CASE WHEN current_setting('gate130.after134') = 'on' THEN 1 ELSE 5 END),
   ('GATETEST03', '13000000-0000-0000-0000-0000000000f1', '13000000-0000-0000-0000-0000000000a2', 1);
 
 INSERT INTO public.membership_applications (auth_user_id, community_id, status, submitted_at, ready_at, decided_at)
@@ -445,8 +461,12 @@ BEGIN
     VALUES ('13000000-0000-0000-0000-0000000000f1', auth.uid(), NULL, NULL);
   EXCEPTION WHEN insufficient_privilege THEN ok := true; END;
   IF NOT ok THEN RAISE EXCEPTION 'T5e G-18: a reviewer minted an unlimited, never-expiring code'; END IF;
+  -- after 134: every code is single use (max_uses = 1), so the bounded code
+  -- a granted reviewer may mint is a single-use one.
   INSERT INTO public.invite_codes (community_id, created_by, max_uses, expires_at)
-  VALUES ('13000000-0000-0000-0000-0000000000f1', auth.uid(), 5, now() + interval '7 days');
+  VALUES ('13000000-0000-0000-0000-0000000000f1', auth.uid(),
+          CASE WHEN current_setting('gate130.after134') = 'on' THEN 1 ELSE 5 END,
+          now() + interval '7 days');
   ok := false;
   BEGIN PERFORM public.reveal_applicant_legal_name(v_app);
   EXCEPTION WHEN insufficient_privilege THEN ok := true; END;
@@ -603,6 +623,17 @@ DO $$
 DECLARE v jsonb;
 BEGIN
   v := public.redeem_invite_code(current_setting('gate130.review_code'));
+  -- after 134 (Nicole: minting never approves anyone): a store review code
+  -- redeems into review like every other code; the reviewer account is
+  -- approved in Studio (docs/ops/store-review-account.md). 134's check T5e
+  -- asserts that it does NOT approve. Here: it still redeems.
+  IF current_setting('gate130.after134') = 'on' THEN
+    IF NOT (v->>'ok')::boolean OR (v->>'approved')::boolean THEN
+      RAISE EXCEPTION 'T14b G-22 (after 134): a store review code must redeem into review, not approve: %', v;
+    END IF;
+    RAISE NOTICE 'T14b PASS (after 134: redeems, not self-approving)';
+    RETURN;
+  END IF;
   IF NOT (v->>'ok')::boolean OR NOT (v->>'approved')::boolean OR NOT public.is_approved_member() THEN
     RAISE EXCEPTION 'T14b G-22: a store review code did not admit the reviewer: %', v;
   END IF;

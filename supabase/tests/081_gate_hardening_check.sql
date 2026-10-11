@@ -77,6 +77,29 @@ BEGIN
   FROM pg_policies
   WHERE schemaname = 'public' AND tablename = 'application_answers' AND policyname = 'ans_own';
 
+  -- 130 (G-24) split ans_own into ans_own_read / ans_own_write / ans_own_update
+  -- so answers freeze once decided. The rule this asserts is unchanged: every
+  -- policy that lets an applicant WRITE an answer must gate it on
+  -- can_self_attest_criterion. After 130, check both write policies.
+  IF v_check IS NULL AND EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'application_answers' AND policyname = 'ans_own_write'
+  ) THEN
+    SELECT string_agg(policyname || ': ' || coalesce(with_check, 'MISSING'), ' | ' ORDER BY policyname)
+    INTO v_check
+    FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'application_answers'
+      AND policyname IN ('ans_own_write', 'ans_own_update');
+    IF (SELECT count(*) FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'application_answers'
+          AND policyname IN ('ans_own_write', 'ans_own_update')
+          AND coalesce(with_check, '') LIKE '%can_self_attest_criterion%') <> 2 THEN
+      RAISE EXCEPTION
+        'ans_own_write/ans_own_update WITH CHECK is % -- an applicant can still answer her way to gov_id and kyc_liveness', v_check;
+    END IF;
+    v_check := 'can_self_attest_criterion (130 split policies)';
+  END IF;
+
   IF v_check IS NULL OR v_check NOT LIKE '%can_self_attest_criterion%' THEN
     RAISE EXCEPTION
       'ans_own WITH CHECK is % -- an applicant can still answer her way to gov_id and kyc_liveness', coalesce(v_check, 'MISSING');
@@ -264,7 +287,15 @@ BEGIN
   FOREACH col IN ARRAY ARRAY['community_id','code_id','submitted_at','status','decided_at','rejected_until'] LOOP
     allowed := has_column_privilege('authenticated', 'public.membership_applications', col, 'UPDATE');
 
-    IF col = 'status' AND NOT allowed THEN
+    -- 130 (G-09) removed the direct withdraw path on purpose: ma_withdraw_own
+    -- is dropped and authenticated has no UPDATE at all on applications; every
+    -- status change goes through a logged function. The status column may then
+    -- be unwritable too. Only while ma_withdraw_own still exists must status
+    -- stay writable.
+    IF col = 'status' AND NOT allowed AND EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname = 'public' AND tablename = 'membership_applications' AND policyname = 'ma_withdraw_own'
+    ) THEN
       RAISE EXCEPTION
         'authenticated cannot UPDATE membership_applications.status -- ma_withdraw_own is now unusable and withdrawal is broken';
     END IF;
