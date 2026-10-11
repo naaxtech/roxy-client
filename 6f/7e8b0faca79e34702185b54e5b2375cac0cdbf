@@ -1,0 +1,24 @@
+apps/studio/__tests__/gate-appeals/AppealsClient.test.tsx
+  h_0549c11fec2ab0 1-175
+apps/studio/__tests__/lib/navGroups.test.ts
+  h_0549c11fec2ab0 25-26,28-32,39
+apps/studio/app/(dashboard)/staff/appeals/AppealsClient.tsx
+  h_0549c11fec2ab0 1-317
+apps/studio/app/(dashboard)/staff/appeals/loading.tsx
+  h_0549c11fec2ab0 1-17
+apps/studio/app/(dashboard)/staff/appeals/page.tsx
+  h_0549c11fec2ab0 1-144
+apps/studio/components/AppSidebar.tsx
+  h_0549c11fec2ab0 11,103-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6f7e8b0faca79e34702185b54e5b2375cac0cdbf",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
