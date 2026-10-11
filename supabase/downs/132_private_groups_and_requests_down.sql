@@ -16,6 +16,12 @@ DROP TRIGGER IF EXISTS friendships_promote_requests ON public.friendships;
 
 DROP POLICY IF EXISTS "chat members receive conversation broadcasts" ON realtime.messages;
 DROP POLICY IF EXISTS "chat members send conversation broadcasts" ON realtime.messages;
+DROP POLICY IF EXISTS "community members receive channel broadcasts" ON realtime.messages;
+DROP POLICY IF EXISTS "community members send channel broadcasts" ON realtime.messages;
+-- CHAT-17 channel reactions: a table 132 created, so it leaves with its policies.
+DROP TABLE IF EXISTS public.community_channel_reactions;
+DROP FUNCTION IF EXISTS public.realtime_channel_topic_ok(text);
+DROP FUNCTION IF EXISTS public.can_read_channel_message(uuid);
 
 DROP POLICY IF EXISTS conversations_select_member ON public.conversations;
 DROP POLICY IF EXISTS conversations_insert_direct ON public.conversations;

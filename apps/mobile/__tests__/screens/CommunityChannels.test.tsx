@@ -24,6 +24,14 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
+// Reactions and typing (CHAT-17) have their own suites; here they are inert so
+// channel switching is tested on its own.
+jest.mock('../../hooks/useReactions', () => ({
+  useReactions: () => ({ reactionsMap: {}, addReaction: jest.fn(), removeReaction: jest.fn() }),
+}));
+jest.mock('../../hooks/useTyping', () => ({
+  useTyping: () => ({ partnerIsTyping: false, typingNames: [], sendTyping: jest.fn(), stopTyping: jest.fn() }),
+}));
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn(), hashUserId: (s: string) => s }));
 
 jest.mock('../../store/authStore', () => ({

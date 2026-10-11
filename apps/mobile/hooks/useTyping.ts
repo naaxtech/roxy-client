@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { openBroadcastChannel, typingTopic } from '../lib/realtimeChannel';
+import { openBroadcastChannel, typingTopic, type RealtimeScope } from '../lib/realtimeChannel';
 
 interface UseTypingOptions {
+  /** The conversation id, or the community channel id when scope is 'channel'. */
   conversationId: string;
+  /** 'channel' = community channel typing on chan:<id>:typing (CHAT-17). */
+  scope?: RealtimeScope;
   currentUserId: string;
   /** Kept for call-site compatibility (DM header name). */
   partnerName: string;
@@ -55,6 +58,7 @@ type TypingPayload = { user_id: string; typing?: boolean; name?: string };
  */
 export function useTyping({
   conversationId,
+  scope = 'conversation',
   currentUserId,
   partnerName: _partnerName,
   selfName,
@@ -102,7 +106,7 @@ export function useTyping({
     clearAllTypers();
     if (!conversationId) return undefined;
 
-    const close = openBroadcastChannel(typingTopic(conversationId), (channel) => {
+    const close = openBroadcastChannel(typingTopic(conversationId, scope), (channel) => {
       channelRef.current = channel;
       channel
         .on('broadcast', { event: 'typing' }, ({ payload }: { payload: TypingPayload }) => {
@@ -135,7 +139,7 @@ export function useTyping({
       if (throttleRef.current) clearTimeout(throttleRef.current);
       throttleRef.current = null;
     };
-  }, [conversationId, currentUserId, subscribeKey, clearAllTypers, dropTyper]);
+  }, [conversationId, scope, currentUserId, subscribeKey, clearAllTypers, dropTyper]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {

@@ -129,4 +129,13 @@ describe('useTyping', () => {
 
     expect(channelInstance.send).toHaveBeenCalledTimes(2);
   });
+
+  it('in a community channel it joins the private chan:<id>:typing room (CHAT-17)', () => {
+    renderHook(() =>
+      useTyping({ conversationId: 'ch-1', scope: 'channel', currentUserId: 'user-1', partnerName: '' })
+    );
+    expect(supabase.channel).toHaveBeenCalledWith('chan:ch-1:typing', expect.objectContaining({
+      config: expect.objectContaining({ private: true }),
+    }));
+  });
 });

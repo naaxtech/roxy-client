@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { openBroadcastChannel, reactionsTopic } from '../lib/realtimeChannel';
+import { openBroadcastChannel, reactionsTopic, type RealtimeScope } from '../lib/realtimeChannel';
 import { MessageReaction } from '../types';
 
 type ReactionsMap = Record<string, MessageReaction[]>; // message_id → reactions
 
 interface UseReactionsOptions {
+  /** The conversation id, or the community channel id when scope is 'channel'. */
   conversationId: string;
+  /** 'channel' = community channel (CHAT-17): community_channel_reactions + chan: topic. */
+  scope?: RealtimeScope;
   messageIds: string[];
 }
 
@@ -26,7 +29,8 @@ interface UseReactionsReturn {
  * and nobody else; the old public `reactions:<id>` topic let anyone with a
  * conversation id broadcast fake reactions into it.
  */
-export function useReactions({ conversationId, messageIds }: UseReactionsOptions): UseReactionsReturn {
+export function useReactions({ conversationId, scope = 'conversation', messageIds }: UseReactionsOptions): UseReactionsReturn {
+  const table = scope === 'channel' ? 'community_channel_reactions' : 'message_reactions';
   const [reactionsMap, setReactionsMap] = useState<ReactionsMap>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
 
@@ -44,10 +48,17 @@ export function useReactions({ conversationId, messageIds }: UseReactionsOptions
     const ids = messageIds.filter((id) => !id.startsWith('roxy-'));
     if (ids.length === 0) return;
     void (async () => {
-      const { data } = await supabase
-        .from('message_reactions')
-        .select('*')
-        .in('message_id', ids);
+      // A failed read (offline, an old mock) leaves the chips as they were;
+      // it must never surface as an unhandled rejection on the chat screen.
+      let data: unknown[] | null = null;
+      try {
+        ({ data } = await supabase
+          .from(table)
+          .select('*')
+          .in('message_id', ids));
+      } catch {
+        return;
+      }
       if (!data) return;
       const map: ReactionsMap = {};
       for (const r of data as MessageReaction[]) {
@@ -57,12 +68,12 @@ export function useReactions({ conversationId, messageIds }: UseReactionsOptions
       setReactionsMap(map);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, idCount > 0, Math.floor(idCount / 25)]);
+  }, [conversationId, table, idCount > 0, Math.floor(idCount / 25)]);
 
   // Realtime via private Broadcast on conv:<id>:reactions
   useEffect(() => {
     if (!conversationId) return undefined;
-    const close = openBroadcastChannel(reactionsTopic(conversationId), (channel) => {
+    const close = openBroadcastChannel(reactionsTopic(conversationId, scope), (channel) => {
       channelRef.current = channel;
       channel
         .on('broadcast', { event: 'reaction_added' }, ({ payload }: { payload: MessageReaction }) => {
@@ -93,7 +104,7 @@ export function useReactions({ conversationId, messageIds }: UseReactionsOptions
       channelRef.current = null;
       close();
     };
-  }, [conversationId]);
+  }, [conversationId, scope]);
 
   const addReaction = useCallback(async (messageId: string, emoji: string, userId: string) => {
     const reaction = { message_id: messageId, user_id: userId, emoji };
@@ -110,7 +121,7 @@ export function useReactions({ conversationId, messageIds }: UseReactionsOptions
     });
     // DB insert
     const { data: inserted, error } = await supabase
-      .from('message_reactions')
+      .from(table)
       .insert(reaction)
       .select()
       .single();
@@ -132,7 +143,7 @@ export function useReactions({ conversationId, messageIds }: UseReactionsOptions
       event: 'reaction_added',
       payload: inserted,
     });
-  }, []);
+  }, [table]);
 
   const removeReaction = useCallback(async (messageId: string, emoji: string, userId: string) => {
     // Capture the exact removed reaction (if any) via the updater so a
@@ -148,7 +159,7 @@ export function useReactions({ conversationId, messageIds }: UseReactionsOptions
     });
     // DB delete
     const { error } = await supabase
-      .from('message_reactions')
+      .from(table)
       .delete()
       .eq('message_id', messageId)
       .eq('user_id', userId)
@@ -167,7 +178,7 @@ export function useReactions({ conversationId, messageIds }: UseReactionsOptions
       event: 'reaction_removed',
       payload: { message_id: messageId, user_id: userId, emoji },
     });
-  }, []);
+  }, [table]);
 
   return { reactionsMap, addReaction, removeReaction };
 }

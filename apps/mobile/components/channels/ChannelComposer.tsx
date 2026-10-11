@@ -13,6 +13,10 @@ interface Props {
   disabled?: boolean;
   /** Why she cannot post, when she cannot. Silence would read as a bug. */
   disabledReason?: string;
+  /** A keystroke (CHAT-17 typing). The hook throttles it. */
+  onTyping?: () => void;
+  /** She sent, emptied the box or left it: stop showing her as typing. */
+  onStopTyping?: () => void;
   testID?: string;
 }
 
@@ -24,7 +28,7 @@ interface Props {
  * twice, and there is no unsend.
  */
 export function ChannelComposer({
-  placeholder, onSend, disabled = false, disabledReason, testID = 'channel-composer',
+  placeholder, onSend, disabled = false, disabledReason, onTyping, onStopTyping, testID = 'channel-composer',
 }: Props) {
   const colors = useThemeColors();
   const [value, setValue] = useState('');
@@ -39,6 +43,7 @@ export function ChannelComposer({
     if (!canSend) return;
     setSending(true);
     setError(null);
+    onStopTyping?.();
     try {
       await onSend(trimmed);
       // Cleared only after the write settles. Clearing first loses her text
@@ -107,7 +112,11 @@ export function ChannelComposer({
         <TextInput
           style={s.input}
           value={value}
-          onChangeText={setValue}
+          onChangeText={(t) => {
+            setValue(t);
+            if (t.trim()) onTyping?.(); else onStopTyping?.();
+          }}
+          onBlur={onStopTyping}
           placeholder={placeholder}
           placeholderTextColor={colors.textMuted}
           multiline

@@ -49,7 +49,7 @@ DECLARE
   g uuid; g2 uuid; g3 uuid;
   m1 uuid; m2 uuid; m_other uuid;
   r text; n int; i int;
-  comm_pub uuid; comm_priv uuid; chan uuid; chan_priv uuid;
+  comm_pub uuid; comm_priv uuid; chan uuid; chan_priv uuid; cm uuid;
   giphy text := 'https://media2.giphy.com/media/abc123XYZ/200w.gif';
 BEGIN
   SELECT array_agg(id ORDER BY created_at, id) INTO ids FROM (
@@ -382,6 +382,58 @@ BEGIN
   IF n <> 0 THEN RAISE EXCEPTION 'CHAT-10: a blocked sender rang the channel bell'; END IF;
   PERFORM pg_temp.as_exec(c, format('select public.unblock_user(%L)', e));
   RAISE NOTICE 'PASS CHAT-09/10: private communities closed, moderators remove/ban, blocks hide both ways and silence the bell';
+
+  -- ── CHAT-17 channel reactions + private typing/reaction topics ──────────
+  INSERT INTO public.community_channel_messages (channel_id, sender_id, body) VALUES (chan, c, 'react to me')
+    RETURNING id INTO cm;
+  PERFORM pg_temp.expect('CHAT-17 outsider reacts in a channel',
+    pg_temp.as_exec(f, format('insert into public.community_channel_reactions (message_id, user_id, emoji) values (%L, %L, %L)', cm, f, '💜')), 'ERR 42501');
+  PERFORM pg_temp.expect('CHAT-17 banned woman reacts',
+    pg_temp.as_exec(b, format('insert into public.community_channel_reactions (message_id, user_id, emoji) values (%L, %L, %L)', cm, b, '💜')), 'ERR 42501');
+  PERFORM pg_temp.expect('CHAT-17 member reacts as someone else',
+    pg_temp.as_exec(e, format('insert into public.community_channel_reactions (message_id, user_id, emoji) values (%L, %L, %L)', cm, a, '💜')), 'ERR 42501');
+  PERFORM pg_temp.expect('CHAT-17 member reacts',
+    pg_temp.as_exec(e, format('insert into public.community_channel_reactions (message_id, user_id, emoji) values (%L, %L, %L)', cm, e, '💜')), 'ok 1');
+  PERFORM pg_temp.expect('CHAT-17 member sees the reaction',
+    pg_temp.as_val(a, format('select count(*)::text from public.community_channel_reactions where message_id = %L', cm)), '1');
+  PERFORM pg_temp.expect('CHAT-17 outsider sees no reaction',
+    pg_temp.as_val(f, format('select count(*)::text from public.community_channel_reactions where message_id = %L', cm)), '0');
+  PERFORM pg_temp.as_exec(c, format('select public.block_user(%L)', e));
+  PERFORM pg_temp.expect('CHAT-17 blocker never sees a blocked reactor',
+    pg_temp.as_val(c, format('select count(*)::text from public.community_channel_reactions where message_id = %L', cm)), '0');
+  PERFORM pg_temp.expect('CHAT-17 blocked woman cannot react to her blocker',
+    pg_temp.as_exec(e, format('insert into public.community_channel_reactions (message_id, user_id, emoji) values (%L, %L, %L)', cm, e, '🔥')), 'ERR 42501');
+  PERFORM pg_temp.as_exec(c, format('select public.unblock_user(%L)', e));
+  PERFORM pg_temp.expect('CHAT-17 nobody edits a reaction',
+    pg_temp.as_exec(e, format('update public.community_channel_reactions set emoji = %L where message_id = %L', '😡', cm)), 'ERR 42501');
+  PERFORM pg_temp.expect('CHAT-17 nobody removes another woman''s reaction',
+    pg_temp.as_exec(c, format('delete from public.community_channel_reactions where message_id = %L', cm)), 'ok 0');
+  PERFORM pg_temp.expect('CHAT-17 she removes her own',
+    pg_temp.as_exec(e, format('delete from public.community_channel_reactions where message_id = %L and user_id = %L', cm, e)), 'ok 1');
+  PERFORM pg_temp.expect('CHAT-17 member typing topic',
+    pg_temp.as_val(e, format('select public.realtime_channel_topic_ok(%L)::text', 'chan:' || chan || ':typing')), 'true');
+  PERFORM pg_temp.expect('CHAT-17 member reactions topic',
+    pg_temp.as_val(c, format('select public.realtime_channel_topic_ok(%L)::text', 'chan:' || chan || ':reactions')), 'true');
+  PERFORM pg_temp.expect('CHAT-17 outsider topic',
+    pg_temp.as_val(f, format('select public.realtime_channel_topic_ok(%L)::text', 'chan:' || chan || ':typing')), 'false');
+  PERFORM pg_temp.expect('CHAT-17 banned topic',
+    pg_temp.as_val(b, format('select public.realtime_channel_topic_ok(%L)::text', 'chan:' || chan || ':typing')), 'false');
+  PERFORM pg_temp.expect('CHAT-17 unknown topic shape',
+    pg_temp.as_val(e, format('select public.realtime_channel_topic_ok(%L)::text', 'chan:' || chan || ':presence')), 'false');
+  -- A ban row written straight by staff leaves the membership row in place:
+  -- the ban alone must still close the topics and the reactions.
+  INSERT INTO public.community_bans (community_id, user_id, reason) VALUES (comm_pub, e, 'staff ban');
+  PERFORM pg_temp.expect('CHAT-17 staff-banned member topic',
+    pg_temp.as_val(e, format('select public.realtime_channel_topic_ok(%L)::text', 'chan:' || chan || ':typing')), 'false');
+  PERFORM pg_temp.expect('CHAT-17 staff-banned member reacts',
+    pg_temp.as_exec(e, format('insert into public.community_channel_reactions (message_id, user_id, emoji) values (%L, %L, %L)', cm, e, '💜')), 'ERR 42501');
+  DELETE FROM public.community_bans WHERE community_id = comm_pub AND user_id = e;
+  PERFORM pg_temp.expect('CHAT-17 anon has no reactions table',
+    (SELECT CASE WHEN has_table_privilege('anon', 'public.community_channel_reactions', 'SELECT') THEN 'yes' ELSE 'no' END), 'no');
+  SELECT count(*) INTO n FROM pg_policies WHERE schemaname = 'realtime' AND tablename = 'messages'
+     AND policyname LIKE 'community members % channel broadcasts';
+  IF n <> 2 THEN RAISE EXCEPTION 'CHAT-17: realtime.messages channel policies missing (%)', n; END IF;
+  RAISE NOTICE 'PASS CHAT-17: channel reactions and typing/reaction topics are members-only and respect blocks and bans';
 
   -- ── CHAT-09 private communities: request → approve, invite → accept ──────
   INSERT INTO public.community_members (community_id, user_id, role) VALUES (comm_priv, a, 'admin') ON CONFLICT DO NOTHING;

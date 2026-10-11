@@ -133,6 +133,9 @@ export function ReactionChips({ reactions, currentUserId, onToggle }: ReactionCh
           style={[styles.chip, isOwn && styles.chipOwn]}
           onPress={() => onToggle(emoji, isOwn)}
           hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel={isOwn ? `Remove your ${emoji} reaction` : `React with ${emoji}, ${count} so far`}
+          accessibilityState={{ selected: isOwn }}
         >
           <Text style={styles.chipEmoji}>{emoji}</Text>
           {count > 1 && <Text style={[styles.chipCount, isOwn && styles.chipCountOwn]}>{count}</Text>}

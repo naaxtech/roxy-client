@@ -26,6 +26,15 @@ import {
   type Channel, type ChannelMessage as Message,
 } from '../../../../../lib/channels';
 import { useSafetyStore } from '../../../../../store/safetyStore';
+import { useProfileStore } from '../../../../../store/profileStore';
+import { useReactions } from '../../../../../hooks/useReactions';
+import { useTyping } from '../../../../../hooks/useTyping';
+import { ReactionChips } from '../../../../../components/chat/ReactionBar';
+import { TypingIndicator } from '../../../../../components/chat/TypingIndicator';
+import { SHEET_EMOJIS } from '../../../../../components/chat/MessageActionSheet';
+import { typingLabel } from '../../../../../lib/chatThread';
+import { haptic } from '../../../../../lib/haptics';
+import EmojiKeyboard from 'rn-emoji-keyboard';
 import { useAccess } from '../../../../../hooks/useAccess';
 import { ComingSoon } from '../../../../../components/features/ComingSoon';
 import { OFFICIAL_COMMUNITY_SLUG } from '../../../../../lib/features';
@@ -93,6 +102,29 @@ export default function CommunityChannelsScreen() {
     () => hideSilenced(messages, blockedUserIds ?? NONE, mutedUserIds ?? NONE),
     [messages, blockedUserIds, mutedUserIds],
   );
+
+  // CHAT-17: reactions and typing, on the open channel's private topics
+  // (chan:<id>:reactions / :typing; migration 132 admits members only).
+  const me = user?.id ?? '';
+  const selfName = useProfileStore((st) => st.profile?.display_name ?? st.profile?.username ?? undefined);
+  const messageIds = useMemo(() => visible.map((m) => m.id), [visible]);
+  const { reactionsMap, addReaction, removeReaction } = useReactions({
+    conversationId: active?.id ?? '', scope: 'channel', messageIds,
+  });
+  const { typingNames, sendTyping, stopTyping } = useTyping({
+    conversationId: active?.id ?? '', scope: 'channel', currentUserId: me, partnerName: '', selfName,
+  });
+  const [reactAnyFor, setReactAnyFor] = useState<string | null>(null);
+  const toggleReaction = useCallback((messageId: string, emoji: string, own: boolean) => {
+    if (!me) return;
+    haptic('select');
+    if (own) void removeReaction(messageId, emoji, me);
+    else void addReaction(messageId, emoji, me);
+  }, [me, addReaction, removeReaction]);
+  const reactFromMenu = useCallback((messageId: string, emoji: string) => {
+    const own = (reactionsMap[messageId] ?? []).some((r) => r.user_id === me && r.emoji === emoji);
+    toggleReaction(messageId, emoji, own);
+  }, [reactionsMap, me, toggleReaction]);
 
   const loadChannels = useCallback(async () => {
     if (!communityId) {
@@ -411,6 +443,9 @@ export default function CommunityChannelsScreen() {
     olderHit: { minHeight: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center' },
     older: { ...TYPE.caption, color: colors.primaryInk, fontWeight: '700' },
     olderError: { ...TYPE.caption, color: colors.errorInk, textAlign: 'center' },
+    reactRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingBottom: 8 },
+    reactHit: { minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center' },
+    reactEmoji: { fontSize: 24 },
     startOf: { ...TYPE.micro, color: colors.textMuted, textAlign: 'center', paddingVertical: 8 },
   });
 
@@ -511,6 +546,13 @@ export default function CommunityChannelsScreen() {
             onPressAuthor={(id) => router.push(`/user/${id}` as never)}
             onLongPress={(m) => setMenuFor(m)}
             onOpenCard={(path) => router.push(path as never)}
+            footer={(reactionsMap[item.id]?.length ?? 0) > 0 ? (
+              <ReactionChips
+                reactions={reactionsMap[item.id] ?? []}
+                currentUserId={me}
+                onToggle={(emoji, own) => toggleReaction(item.id, emoji, own)}
+              />
+            ) : null}
             testID={`channel-message-${item.id}`}
           />
         )}
@@ -615,6 +657,7 @@ export default function CommunityChannelsScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {body()}
+        <TypingIndicator partnerName="" visible={typingNames.length > 0} label={typingLabel(typingNames)} />
         {active ? (
           <ChannelComposer
             // Keyed per channel. Without it an unsent draft — and a failed-send
@@ -622,6 +665,8 @@ export default function CommunityChannelsScreen() {
             key={active.id}
             placeholder={`Message # ${active.slug}`}
             onSend={handleSend}
+            onTyping={sendTyping}
+            onStopTyping={stopTyping}
             disabled={!user?.id}
             disabledReason="Sign in to post here."
           />
@@ -633,7 +678,42 @@ export default function CommunityChannelsScreen() {
         actions={menuFor ? menuActions(menuFor) : []}
         visible={menuFor !== null}
         onClose={() => setMenuFor(null)}
+        header={menuFor && !menuFor.deleted_at && me ? (
+          <View style={s.reactRow}>
+            {SHEET_EMOJIS.map((emoji) => (
+              <Pressable
+                key={emoji}
+                style={s.reactHit}
+                onPress={() => { const id = menuFor.id; setMenuFor(null); reactFromMenu(id, emoji); }}
+                accessibilityRole="button"
+                accessibilityLabel={`React with ${emoji}`}
+              >
+                <Text style={s.reactEmoji}>{emoji}</Text>
+              </Pressable>
+            ))}
+            <Pressable
+              style={s.reactHit}
+              onPress={() => { const id = menuFor.id; setMenuFor(null); setReactAnyFor(id); }}
+              accessibilityRole="button"
+              accessibilityLabel="Choose any emoji"
+            >
+              <Ionicons name="add" size={22} color={colors.textPrimary} />
+            </Pressable>
+          </View>
+        ) : null}
       />
+
+      {reactAnyFor ? (
+        <EmojiKeyboard
+          open
+          onClose={() => setReactAnyFor(null)}
+          onEmojiSelected={({ emoji }: { emoji: string }) => {
+            const target = reactAnyFor;
+            setReactAnyFor(null);
+            if (target) reactFromMenu(target, emoji);
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

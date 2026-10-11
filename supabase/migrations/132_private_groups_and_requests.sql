@@ -164,6 +164,21 @@ CREATE INDEX IF NOT EXISTS idx_community_join_requests_pending
 CREATE INDEX IF NOT EXISTS idx_community_join_requests_user
   ON public.community_join_requests (user_id) WHERE status = 'pending';
 
+-- CHAT-17: reactions in community channels. Same shape and rules as DM
+-- message_reactions — one row per (message, woman, emoji), insert/delete only.
+-- Other phones hear about them on the private chan:<id>:reactions topic.
+CREATE TABLE IF NOT EXISTS public.community_channel_reactions (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_id uuid NOT NULL REFERENCES public.community_channel_messages(id) ON DELETE CASCADE,
+  user_id    uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  emoji      text NOT NULL CHECK (char_length(emoji) BETWEEN 1 AND 8),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (message_id, user_id, emoji)
+);
+ALTER TABLE public.community_channel_reactions ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_community_channel_reactions_user
+  ON public.community_channel_reactions (user_id);
+
 -- ── 3. Helpers (SECURITY DEFINER so policies never recurse) ──────────────
 
 CREATE OR REPLACE FUNCTION public.is_conversation_member(p_conv uuid)
@@ -381,6 +396,39 @@ BEGIN
   END IF;
   v_id := split_part(p_topic, ':', 2)::uuid;
   RETURN public.is_conversation_member(v_id) AND NOT public.blocked_in_conversation(v_id);
+END $$;
+
+-- CHAT-17: a community channel message she may read (member of its
+-- community, not banned, sender not block-paired with her). Reactions ride on
+-- this, so a reaction never reaches a message she cannot see.
+CREATE OR REPLACE FUNCTION public.can_read_channel_message(p_message uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.community_channel_messages m
+    JOIN public.community_channels c ON c.id = m.channel_id
+    WHERE m.id = p_message
+      AND public.is_community_member(c.community_id)
+      AND NOT public.is_banned_from_community(c.community_id, auth.uid())
+      AND NOT public.blocked_pair(auth.uid(), m.sender_id)
+  );
+$$;
+
+-- CHAT-17: private broadcast topics chan:<channel id>:typing|reactions admit
+-- members of the channel's community who are not banned from it.
+CREATE OR REPLACE FUNCTION public.realtime_channel_topic_ok(p_topic text)
+RETURNS boolean
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_community uuid;
+BEGIN
+  IF p_topic IS NULL OR p_topic !~ '^chan:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:(typing|reactions)$' THEN
+    RETURN false;
+  END IF;
+  SELECT community_id INTO v_community FROM public.community_channels WHERE id = split_part(p_topic, ':', 2)::uuid;
+  IF v_community IS NULL THEN RETURN false; END IF;
+  RETURN public.is_community_member(v_community)
+     AND NOT public.is_banned_from_community(v_community, auth.uid());
 END $$;
 
 -- ── 4. Backfill existing threads ─────────────────────────────────────────
@@ -767,6 +815,21 @@ CREATE POLICY reactions_insert ON public.message_reactions
   FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid() AND public.is_approved_member() AND public.can_read_message_id(message_id));
 
+-- channel reactions (CHAT-17): read and write only on a channel message she
+-- can read; a block-paired reactor is invisible both ways; delete only her own.
+DROP POLICY IF EXISTS channel_reactions_select ON public.community_channel_reactions;
+DROP POLICY IF EXISTS channel_reactions_insert ON public.community_channel_reactions;
+DROP POLICY IF EXISTS channel_reactions_delete ON public.community_channel_reactions;
+CREATE POLICY channel_reactions_select ON public.community_channel_reactions
+  FOR SELECT TO authenticated
+  USING (public.can_read_channel_message(message_id) AND NOT public.blocked_pair(auth.uid(), user_id));
+CREATE POLICY channel_reactions_insert ON public.community_channel_reactions
+  FOR INSERT TO authenticated
+  WITH CHECK (user_id = auth.uid() AND public.is_approved_member() AND public.can_read_channel_message(message_id));
+CREATE POLICY channel_reactions_delete ON public.community_channel_reactions
+  FOR DELETE TO authenticated
+  USING (user_id = auth.uid());
+
 -- friendships (G-05): a request is only ever 'pending' from its requester; only
 -- the addressee accepts; nobody but its author can touch a block.
 DROP POLICY IF EXISTS friendships_own ON public.friendships;
@@ -906,6 +969,15 @@ CREATE POLICY "chat members receive conversation broadcasts" ON realtime.message
 CREATE POLICY "chat members send conversation broadcasts" ON realtime.messages
   FOR INSERT TO authenticated
   WITH CHECK (extension IN ('broadcast', 'presence') AND public.realtime_conversation_topic_ok(realtime.topic()));
+-- CHAT-17: the same for community channels (chan:<id>:typing|reactions).
+DROP POLICY IF EXISTS "community members receive channel broadcasts" ON realtime.messages;
+DROP POLICY IF EXISTS "community members send channel broadcasts" ON realtime.messages;
+CREATE POLICY "community members receive channel broadcasts" ON realtime.messages
+  FOR SELECT TO authenticated
+  USING (extension IN ('broadcast', 'presence') AND public.realtime_channel_topic_ok(realtime.topic()));
+CREATE POLICY "community members send channel broadcasts" ON realtime.messages
+  FOR INSERT TO authenticated
+  WITH CHECK (extension IN ('broadcast', 'presence') AND public.realtime_channel_topic_ok(realtime.topic()));
 
 -- ── 7. Grants on the tables this lane owns ───────────────────────────────
 
@@ -933,6 +1005,10 @@ GRANT SELECT, INSERT, DELETE ON public.friendships TO authenticated;
 GRANT UPDATE (status) ON public.friendships TO authenticated;
 REVOKE UPDATE ON public.message_reactions FROM authenticated;
 GRANT SELECT, INSERT, DELETE ON public.message_reactions TO authenticated;
+-- CHAT-17: a reaction is added or taken back, never edited.
+REVOKE ALL ON public.community_channel_reactions FROM anon, PUBLIC;
+REVOKE UPDATE, TRUNCATE, TRIGGER, REFERENCES ON public.community_channel_reactions FROM authenticated;
+GRANT SELECT, INSERT, DELETE ON public.community_channel_reactions TO authenticated;
 REVOKE UPDATE ON public.community_members FROM authenticated;
 GRANT SELECT, INSERT, DELETE ON public.community_members TO authenticated;
 GRANT SELECT ON public.conversation_members, public.chat_settings, public.message_revisions, public.community_bans,
@@ -1625,6 +1701,8 @@ REVOKE ALL ON FUNCTION
   public.chat_display_name(uuid),
   public.is_banned_from_community(uuid, uuid),
   public.realtime_conversation_topic_ok(text),
+  public.can_read_channel_message(uuid),
+  public.realtime_channel_topic_ok(text),
   public.chat_require_member(),
   public.friendships_promote_requests(),
   public.chat_system_message(uuid, uuid, text),
@@ -1689,6 +1767,8 @@ GRANT EXECUTE ON FUNCTION
   public.chat_display_name(uuid),
   public.is_banned_from_community(uuid, uuid),
   public.realtime_conversation_topic_ok(text),
+  public.can_read_channel_message(uuid),
+  public.realtime_channel_topic_ok(text),
   public.chat_my_group_role(uuid),
   public.start_direct(uuid),
   public.respond_message_request(uuid, boolean),

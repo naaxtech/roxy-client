@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Animated, Modal, Text, Pressable, StyleSheet } from 'react-native';
 import { usePopIn } from '../ui/popIn';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -18,6 +19,8 @@ interface Props {
   actions: ChannelAction[];
   visible: boolean;
   onClose: () => void;
+  /** Above the actions: the one-tap reaction row (CHAT-17). */
+  header?: ReactNode;
   testID?: string;
 }
 
@@ -33,7 +36,7 @@ interface Props {
  * Android and web from the same tree.
  */
 export function ChannelMessageActions({
-  title, actions, visible, onClose, testID = 'channel-actions',
+  title, actions, visible, onClose, header, testID = 'channel-actions',
 }: Props) {
   const colors = useThemeColors();
   const pop = usePopIn(visible);
@@ -81,6 +84,7 @@ export function ChannelMessageActions({
         <Animated.View style={pop}>
         <Pressable style={s.sheet} onPress={() => {}} accessible={false} testID={testID}>
           <Text style={s.title} numberOfLines={1}>{title}</Text>
+          {header ?? null}
 
           {actions.map((action) => (
             <Pressable

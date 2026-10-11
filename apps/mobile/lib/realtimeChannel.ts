@@ -74,6 +74,12 @@ export function openBroadcastChannel(
   };
 }
 
-/** Private topic names, as authorised by realtime_conversation_topic_ok(). */
-export const typingTopic = (conversationId: string) => `conv:${conversationId}:typing`;
-export const reactionsTopic = (conversationId: string) => `conv:${conversationId}:reactions`;
+/**
+ * Private topic names, as authorised by realtime_conversation_topic_ok()
+ * (DMs/groups: conv:) and realtime_channel_topic_ok() (community channels:
+ * chan:, CHAT-17). Both are members-only on the server.
+ */
+export type RealtimeScope = 'conversation' | 'channel';
+const prefix = (scope: RealtimeScope) => (scope === 'channel' ? 'chan' : 'conv');
+export const typingTopic = (id: string, scope: RealtimeScope = 'conversation') => `${prefix(scope)}:${id}:typing`;
+export const reactionsTopic = (id: string, scope: RealtimeScope = 'conversation') => `${prefix(scope)}:${id}:reactions`;
