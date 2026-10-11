@@ -268,6 +268,23 @@ DROP TABLE IF EXISTS public.message_revisions;
 DROP TABLE IF EXISTS public.community_bans;
 DROP TABLE IF EXISTS public.community_join_requests;
 
+-- Reports: back to migration 100's list. A safety report is never deleted to
+-- make a down fit, so if any 'conversation' report was filed the constraint
+-- comes back NOT VALID (enforced for new rows, old rows kept for moderators).
+ALTER TABLE public.reports DROP CONSTRAINT IF EXISTS reports_content_type_check;
+DO $down$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.reports WHERE content_type = 'conversation') THEN
+    ALTER TABLE public.reports ADD CONSTRAINT reports_content_type_check
+      CHECK (content_type = ANY (ARRAY['message', 'post', 'profile', 'room', 'speed_date',
+                                       'archive_entry', 'archive_review'])) NOT VALID;
+  ELSE
+    ALTER TABLE public.reports ADD CONSTRAINT reports_content_type_check
+      CHECK (content_type = ANY (ARRAY['message', 'post', 'profile', 'room', 'speed_date',
+                                       'archive_entry', 'archive_review']));
+  END IF;
+END $down$;
+
 ALTER TABLE public.messages DROP CONSTRAINT IF EXISTS messages_content_len;
 ALTER TABLE public.messages DROP CONSTRAINT IF EXISTS message_has_content;
 ALTER TABLE public.messages ADD CONSTRAINT message_has_content CHECK (content IS NOT NULL OR media_url IS NOT NULL);

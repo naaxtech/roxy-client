@@ -484,6 +484,19 @@ BEGIN
   PERFORM pg_temp.expect('CHAT-12 existing thread still opens', pg_temp.as_val(a, format('select public.start_direct(%L)::text', b)), conv_ab::text);
   RAISE NOTICE 'PASS CHAT-12: 20 new conversations a day';
 
+  -- ── Report conversation: a whole DM or group can be reported ────────────
+  INSERT INTO public.reports (reporter_id, reported_user_id, content_type, content_id, reason)
+  VALUES (b, a, 'conversation', conv_ab, 'harassment');
+  BEGIN
+    INSERT INTO public.reports (reporter_id, reported_user_id, content_type, content_id, reason)
+    VALUES (b, a, 'thread', conv_ab, 'harassment');
+    RAISE EXCEPTION 'REPORTS: an unknown content_type was accepted';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  SELECT count(*) INTO n FROM public.reports WHERE content_type = 'conversation' AND content_id = conv_ab AND reporter_id = b;
+  IF n <> 1 THEN RAISE EXCEPTION 'REPORTS: conversation report not stored (%)', n; END IF;
+  RAISE NOTICE 'PASS reports: a conversation can be reported, unknown types still refused';
+
   -- ── Grants: nothing for anon, no UPDATE/DELETE on conversations ─────────
   SELECT count(*) INTO n FROM information_schema.role_table_grants
    WHERE table_schema = 'public' AND grantee = 'anon'

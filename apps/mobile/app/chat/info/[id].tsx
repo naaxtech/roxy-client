@@ -20,7 +20,7 @@ import {
   activeMembers, addableFriends, canChangeRole, canEditGroup, canRemove, isMuted, muteLabel,
   muteUntil, roleLabel, slotsLeft, GROUP_EMOJIS, GROUP_TITLE_MAX, MUTE_CHOICES, type MuteChoice,
 } from '../../../lib/groupInfo';
-import type { ThreadMember } from '../../../lib/chatThread';
+import { conversationReportTarget, type ThreadMember } from '../../../lib/chatThread';
 import { routeParam } from '../../../lib/routeParams';
 import { haptic } from '../../../lib/haptics';
 import { logError } from '../../../lib/errorLogger';
@@ -202,9 +202,10 @@ function GroupInfo() {
   };
 
   const onReport = () => {
-    const owner = members.find((x) => x.role === 'owner') ?? members.find((x) => x.id !== me);
-    if (!owner) return;
-    openReportModal({ userId: owner.id, contentType: 'message', contentId: conversationId });
+    // The group itself (content_type 'conversation', migration 132), never her.
+    const target = meta ? conversationReportTarget(meta, me) : null;
+    if (!target) return;
+    openReportModal(target);
   };
 
   return (

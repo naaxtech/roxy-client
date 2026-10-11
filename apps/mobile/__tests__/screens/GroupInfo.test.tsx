@@ -44,6 +44,10 @@ jest.mock('../../hooks/useAccess', () => ({
   useAccess: () => ({ tier: 'beta', isBeta: true, can: () => true, canCommunity: () => true }),
 }));
 const mockReload = jest.fn();
+const mockOpenReport = jest.fn();
+jest.mock('../../store/safetyStore', () => ({
+  useSafetyStore: (sel: (s: any) => unknown) => sel({ openReportModal: (...a: unknown[]) => mockOpenReport(...a) }),
+}));
 const mockThread: { meta: any; loading: boolean; unavailable: boolean } = { meta: null, loading: false, unavailable: false };
 jest.mock('../../hooks/useThreadMeta', () => ({
   useThreadMeta: () => ({ ...mockThread, reload: mockReload }),
@@ -228,5 +232,13 @@ describe('Group info', () => {
     expect(view.getByLabelText('Remove Bea from the group')).toBeTruthy();
     expect(view.getByLabelText('Make Bea an admin')).toBeTruthy();
     expect(view.getByLabelText('Remove Ana as admin')).toBeTruthy();
+  });
+
+  it('Report group files a conversation report against this group, never herself', () => {
+    // She owns it here; the report names the next active member and points at
+    // the conversation, which moderators open as a whole thread.
+    const view = render(<GroupInfoScreen />);
+    fireEvent.press(view.getByTestId('group-report'));
+    expect(mockOpenReport).toHaveBeenCalledWith({ userId: 'ana', contentType: 'conversation', contentId: 'g1' });
   });
 });

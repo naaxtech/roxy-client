@@ -71,6 +71,21 @@ ALTER TABLE public.messages ADD CONSTRAINT messages_content_len
 CREATE INDEX IF NOT EXISTS idx_messages_sender_recent
   ON public.messages (sender_id, created_at DESC);
 
+-- "Report conversation" (a whole DM or group). Before this the chat header had
+-- to aim a report at "her latest message", and a group whose owner had not
+-- written yet gave a moderator nothing to open. content_id = conversations.id.
+-- reports is ops-owned; this one value was approved for the chat lane. Keep the
+-- list literal: apps/mobile/__tests__/lib/reportContentTypes.test.ts parses
+-- the last `content_type IN (...)` across migrations and compares it with the
+-- client constant and the submit-report allowlist.
+ALTER TABLE public.reports DROP CONSTRAINT IF EXISTS reports_content_type_check;
+ALTER TABLE public.reports
+  ADD CONSTRAINT reports_content_type_check
+  CHECK (content_type IN (
+    'message', 'post', 'profile', 'room', 'speed_date',
+    'archive_entry', 'archive_review', 'conversation'
+  ));
+
 -- ── 2. New tables ────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.conversation_members (

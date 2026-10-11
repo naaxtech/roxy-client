@@ -295,13 +295,28 @@ describe('ChatScreen — reporting (CHAT-11)', () => {
     expect(mockOpenReport).toHaveBeenCalledWith({ userId: 'ana', contentType: 'message', contentId: 'm1' });
   });
 
-  it('header Report points at her latest message, and there is no local report modal', async () => {
+  it('header "Report conversation" reports the whole thread, and there is no local report modal', async () => {
     const view = await openThread();
     fireEvent.press(view.getByTestId('chat-menu'));
     fireEvent.press(await view.findByTestId('chat-menu-report'));
     expect(mockOpenReport).toHaveBeenCalledTimes(1);
-    expect(mockOpenReport).toHaveBeenCalledWith({ userId: 'ana', contentType: 'message', contentId: 'm1' });
+    expect(mockOpenReport).toHaveBeenCalledWith({ userId: 'ana', contentType: 'conversation', contentId: 'c1' });
     expect(view.queryByText("What's the issue?")).toBeNull();
+  });
+
+  it('a group can be reported from its header too, naming its owner', async () => {
+    mockThread.meta = directMeta({
+      type: 'group', title: 'Weekend crew', emoji: '🌈', createdBy: 'bea',
+      others: [member('ana', 'Ana'), member('bea', 'Bea', { role: 'owner' })],
+    });
+    const view = await openThread();
+    fireEvent.press(view.getByTestId('chat-menu'));
+    const item = await view.findByTestId('chat-menu-report');
+    expect(view.getByText('Report conversation')).toBeTruthy();
+    fireEvent.press(item);
+    expect(mockOpenReport).toHaveBeenCalledWith({ userId: 'bea', contentType: 'conversation', contentId: 'c1' });
+    // Block stays a person-level action; a group has no single person to block.
+    expect(view.queryByTestId('chat-menu-block')).toBeNull();
   });
 });
 

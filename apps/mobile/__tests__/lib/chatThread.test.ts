@@ -20,6 +20,7 @@ import {
   threadHeader,
   senderNamer,
   headerReportTarget,
+  conversationReportTarget,
   isMutedUntil,
   MUTE_FOREVER,
   groupInfoPath,
@@ -195,6 +196,31 @@ describe('header report target (CHAT-11)', () => {
   });
   it('without a message from her, still a single message report on the user', () => {
     expect(headerReportTarget([msg('b', 'me', 1)], 'ana')).toEqual({ userId: 'ana', contentType: 'message' });
+  });
+});
+
+describe('conversationReportTarget (Report conversation)', () => {
+  it('a DM reports the conversation, naming the other woman', () => {
+    expect(conversationReportTarget(meta(), 'me')).toEqual({ userId: 'ana', contentType: 'conversation', contentId: 'c' });
+  });
+  it('a group names its owner when that is someone else', () => {
+    const g = meta({
+      type: 'group', createdBy: 'bea',
+      others: [member('ana'), member('bea', { role: 'owner' })],
+    });
+    expect(conversationReportTarget(g, 'me')).toEqual({ userId: 'bea', contentType: 'conversation', contentId: 'c' });
+  });
+  it('her own group names an active member instead of herself (no self-report)', () => {
+    const g = meta({
+      type: 'group', createdBy: 'me',
+      me: member('me', { role: 'owner' }),
+      others: [member('gone', { status: 'left' }), member('ana', { role: 'admin' }), member('bea')],
+    });
+    expect(conversationReportTarget(g, 'me')).toEqual({ userId: 'ana', contentType: 'conversation', contentId: 'c' });
+  });
+  it('nobody else in it: nothing to report', () => {
+    expect(conversationReportTarget(meta({ type: 'group', others: [] }), 'me')).toBeNull();
+    expect(conversationReportTarget(null, 'me')).toBeNull();
   });
 });
 

@@ -175,10 +175,12 @@ export function senderNamer(meta: ThreadMeta | null, me: string): (senderId: str
 }
 
 /**
- * The header's "Report" (CHAT-11). The report table accepts content_type
- * 'message' only for chat (no 'conversation' type yet — ops owns that CHECK),
- * so the report points at her most recent message: moderators open the thread
- * from a real message id instead of a report with no evidence pointer.
+ * The header's "Report" before migration 132 added content_type
+ * 'conversation': it aimed the report at her most recent message so a
+ * moderator had a message id. Added in c94b6fc (chat lane); unused since
+ * chat3, which reports the whole thread via conversationReportTarget. Kept
+ * for a "report this person's messages" entry point (e.g. from a profile
+ * opened out of a thread) — delete only with Nicole's agreement.
  */
 export function headerReportTarget(
   messages: ChatMessage[],
@@ -195,6 +197,26 @@ export function headerReportTarget(
 
 /** "Until I turn it back on" for mute_conversation. */
 export const MUTE_FOREVER = '9999-12-31T00:00:00Z';
+
+/**
+ * "Report conversation" (header menu, Group info). The report points at the
+ * whole thread (content_type 'conversation', content_id = conversation id —
+ * migration 132), so a moderator opens the conversation itself. A report
+ * also has to name a person (reports.reported_user_id, no self-report): the
+ * other woman in a DM; in a group its owner, or — when she is the owner — the
+ * most senior other active member. Nobody else in it: nothing to report.
+ */
+export function conversationReportTarget(
+  meta: ThreadMeta | null,
+  me: string,
+): { userId: string; contentType: 'conversation'; contentId: string } | null {
+  if (!meta) return null;
+  const others = meta.others.filter((m) => m.id !== me && m.status !== 'left' && m.status !== 'removed');
+  const rank: Record<GroupRole, number> = { owner: 2, admin: 1, member: 0 };
+  const named = [...others].sort((a, b) => rank[b.role] - rank[a.role])[0];
+  if (!named) return null;
+  return { userId: named.id, contentType: 'conversation', contentId: meta.id };
+}
 
 export function isMutedUntil(mutedUntil: string | null | undefined, now: number = Date.now()): boolean {
   return !!mutedUntil && Date.parse(mutedUntil) > now;

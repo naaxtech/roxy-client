@@ -22,6 +22,9 @@ export const REPORT_CONTENT_TYPES = [
   'speed_date',
   'archive_entry',
   'archive_review',
+  // 132: a whole DM or group. content_id is the conversation id, so a
+  // moderator opens the thread rather than one message picked for her.
+  'conversation',
 ] as const;
 
 export type ReportContentType = (typeof REPORT_CONTENT_TYPES)[number];

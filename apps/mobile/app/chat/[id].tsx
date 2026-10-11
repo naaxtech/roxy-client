@@ -36,7 +36,7 @@ import {
 } from '../../lib/chat';
 import {
   groupMessages, composerState, replyQuote, typingLabel, trustRoxy, threadHeader,
-  senderNamer, headerReportTarget, isMutedUntil, MUTE_FOREVER, groupInfoPath,
+  senderNamer, conversationReportTarget, isMutedUntil, MUTE_FOREVER, groupInfoPath,
   keyboardBehavior, type GroupedMessage,
 } from '../../lib/chatThread';
 import type { Message } from '../../types';
@@ -414,9 +414,11 @@ export default function ChatScreen() {
 
   const reportFromHeader = useCallback(() => {
     setMenuOpen(false);
-    if (!other) return;
-    openReportModal(headerReportTarget(messages, other.id));
-  }, [other, messages, openReportModal]);
+    // The whole thread (content_type 'conversation', migration 132), DM or group.
+    const target = conversationReportTarget(meta, me);
+    if (!target) return;
+    openReportModal(target);
+  }, [meta, me, openReportModal]);
 
   const blockFromHeader = useCallback(async () => {
     setMenuOpen(false);
@@ -920,13 +922,13 @@ export default function ChatScreen() {
               testID="chat-menu-mute"
               onPress={() => void toggleMute()} />
           ) : null}
+          {conversationReportTarget(meta, me) ? (
+            <MenuRow s={s} colors={colors} icon="flag-outline" label="Report conversation" testID="chat-menu-report"
+              onPress={reportFromHeader} danger />
+          ) : null}
           {other ? (
-            <>
-              <MenuRow s={s} colors={colors} icon="flag-outline" label={`Report ${header.title}`} testID="chat-menu-report"
-                onPress={reportFromHeader} danger />
-              <MenuRow s={s} colors={colors} icon="ban-outline" label={`Block ${header.title}`} testID="chat-menu-block"
-                onPress={() => void blockFromHeader()} danger />
-            </>
+            <MenuRow s={s} colors={colors} icon="ban-outline" label={`Block ${header.title}`} testID="chat-menu-block"
+              onPress={() => void blockFromHeader()} danger />
           ) : null}
           <MenuRow s={s} colors={colors} label="Cancel" testID="chat-menu-cancel" onPress={() => setMenuOpen(false)} muted />
         </View>

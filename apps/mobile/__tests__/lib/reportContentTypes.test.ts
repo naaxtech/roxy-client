@@ -61,6 +61,12 @@ describe('what can be reported', () => {
     expect(REPORT_CONTENT_TYPES).toContain('speed_date');
   });
 
+  it('a whole conversation (a DM or a group) can be reported, not just one message', () => {
+    // Migration 132: before it, the chat header had to point a report at "her
+    // latest message", and a group with no message from the owner had nothing.
+    expect(REPORT_CONTENT_TYPES).toContain('conversation');
+  });
+
   it('matches the database CHECK exactly', () => {
     expect([...REPORT_CONTENT_TYPES].sort()).toEqual(checkedContentTypes().sort());
   });
