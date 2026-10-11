@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase, callEdgeFunction } from '../../../../lib/supabase';
 import { useAuthStore } from '../../../../store/authStore';
 import { useProfileStore } from '../../../../store/profileStore';
+import { useCelebrationStore } from '../../../../store/celebrationStore';
 import {
   postDestination, buildPostPayload, destinationLabel, afterPublishPath,
 } from '../../../../lib/postComposer';
@@ -266,6 +267,7 @@ export default function CreatePostScreen() {
         return;
       }
       router.replace(afterPublishPath(postType));
+      void useCelebrationStore.getState().celebrateFirstPost(authorId, postType);
       return;
     }
 
@@ -298,6 +300,9 @@ export default function CreatePostScreen() {
       return;
     }
     router.replace(afterPublishPath(postType));
+    // Her first post ever gets a moment; the store decides "first" and the
+    // root host renders it, so it outlives this screen's `replace`.
+    void useCelebrationStore.getState().celebrateFirstPost(authorId, postType);
   };
 
   const styles = StyleSheet.create({
