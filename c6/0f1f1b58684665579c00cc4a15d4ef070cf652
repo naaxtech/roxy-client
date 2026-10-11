@@ -1,0 +1,22 @@
+apps/mobile/__tests__/components/chat/MessageRow.test.tsx
+  h_0549c11fec2ab0 92-107
+apps/mobile/__tests__/lib/chatThread.test.ts
+  h_0549c11fec2ab0 213-222
+apps/mobile/__tests__/screens/ChatThread.test.tsx
+  h_0549c11fec2ab0 357
+apps/mobile/components/chat/MessageRow.tsx
+  h_0549c11fec2ab0 61,68-71,159
+apps/mobile/lib/chatThread.ts
+  h_0549c11fec2ab0 203-206,208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c60f1f1b58684665579c00cc4a15d4ef070cf652",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
