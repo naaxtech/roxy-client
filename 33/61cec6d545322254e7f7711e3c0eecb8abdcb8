@@ -1,0 +1,27 @@
+apps/mobile/__tests__/hooks/useTyping.test.ts
+  s_f8d6ceb53516cd::t_4ee305cd85c245 132-140
+apps/mobile/__tests__/lib/realtimeChannel.test.ts
+  s_f8d6ceb53516cd::t_1a19c9d8b1c5da 101-105
+apps/mobile/hooks/useTyping.ts
+  s_f8d6ceb53516cd::t_df9f005ea9a829 4,7,9-10,61,109,142
+apps/mobile/lib/realtimeChannel.ts
+  s_f8d6ceb53516cd::t_b1f207ef82ff54 77-85
+supabase/tests/132_private_groups_and_requests_check.sql
+  s_f8d6ceb53516cd::t_fe0e433e869b6c 52,386-437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3361cec6d545322254e7f7711e3c0eecb8abdcb8",
+  "prompts": {},
+  "sessions": {
+    "s_f8d6ceb53516cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c84df994-0d2a-4bdf-b97f-83f23f252335",
+        "model": "unknown"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
