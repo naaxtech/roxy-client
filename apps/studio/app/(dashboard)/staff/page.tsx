@@ -1,11 +1,15 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { requireStaffPage } from '@/lib/staff-guard';
 import { Badge } from '@/components/ui/badge';
 import { BlockPayoutButton } from './BlockPayoutButton';
 import { ReleasePayoutButton } from './ReleasePayoutButton';
 
 export default async function StaffPage() {
+  // Payout buttons act only for core staff (staff_set_payout_block and the
+  // release action both re-check is_roxy_core server-side).
+  const { isCore } = await requireStaffPage();
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
@@ -86,7 +90,7 @@ export default async function StaffPage() {
                     </p>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <ReleasePayoutButton eventId={ev.id} />
+                    <BlockPayoutButton eventId={ev.id} canManage={isCore} blocked />
                   </div>
                 </div>
               </li>
@@ -122,9 +126,9 @@ export default async function StaffPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {isReady
-                      ? <ReleasePayoutButton eventId={ev.id} />
+                      ? <ReleasePayoutButton eventId={ev.id} canManage={isCore} />
                       : <Badge variant="secondary">Waiting</Badge>}
-                    <BlockPayoutButton eventId={ev.id} />
+                    <BlockPayoutButton eventId={ev.id} canManage={isCore} />
                   </div>
                 </li>
               );
