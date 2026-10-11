@@ -124,6 +124,11 @@ if [ "$fail" = 0 ]; then
   echo "all ${#tests[@]} SQL checks passed"
   # Attest the exact migration contents that passed (apply-migration.mjs gate 3).
   # Skipped in CI: the ledger is a per-machine file under supabase/.temp.
-  if [ -z "${CI:-}" ]; then node "$ROOT/scripts/record-local-proof.mjs"; fi
+  if [ -z "${CI:-}" ]; then
+    # Native node on Windows cannot resolve an MSYS path (/d/Work/...).
+    PROOF_SCRIPT="$ROOT/scripts/record-local-proof.mjs"
+    if command -v cygpath >/dev/null 2>&1; then PROOF_SCRIPT="$(cygpath -m "$PROOF_SCRIPT")"; fi
+    node "$PROOF_SCRIPT"
+  fi
 fi
 exit "$fail"
