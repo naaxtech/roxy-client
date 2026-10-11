@@ -159,6 +159,16 @@ CREATE POLICY "Owners can update build fields" ON public.games FOR UPDATE TO aut
 DROP POLICY IF EXISTS "Authenticated users can submit games" ON public.games;
 CREATE POLICY "Authenticated users can submit games" ON public.games FOR INSERT TO authenticated
   WITH CHECK (submitted_by = auth.uid());
+-- games.slug default: only if 131 set it (its column comment says so).
+DO $$
+BEGIN
+  IF col_description('public.games'::regclass,
+       (SELECT attnum FROM pg_attribute WHERE attrelid = 'public.games'::regclass AND attname = 'slug'))
+     LIKE '%set by 131%' THEN
+    ALTER TABLE public.games ALTER COLUMN slug DROP DEFAULT;
+    COMMENT ON COLUMN public.games.slug IS NULL;
+  END IF;
+END $$;
 
 ALTER POLICY ai_log_no_client_access ON public.ai_call_log TO public;
 ALTER POLICY app_feedback_insert_own ON public.app_feedback TO public;

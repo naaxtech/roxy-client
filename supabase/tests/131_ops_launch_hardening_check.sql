@@ -61,6 +61,17 @@ BEGIN
      OR has_function_privilege('authenticated', 'public.increment_participant_count(text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'S1d: a service-only function is executable by members';
   END IF;
+  -- S1e: claim_speed_date_partner trusts its p_user_id; 102 had re-granted it
+  -- to authenticated (integration fix in 131 §2).
+  IF has_function_privilege('authenticated', 'public.claim_speed_date_partner(uuid,uuid,integer)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.claim_speed_date_partner(uuid,uuid,integer)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'S1e: claim_speed_date_partner must be service-role only (it takes a user id)';
+  END IF;
+  -- S1f: a community game pitch needs no slug (Studio never sends one).
+  IF (SELECT column_default FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'games' AND column_name = 'slug') IS NULL THEN
+    RAISE EXCEPTION 'S1f: games.slug has no default; every Studio game pitch fails (23502)';
+  END IF;
 
   -- ── S2 grants: tables ────────────────────────────────────────────────
   SELECT count(*) INTO n FROM pg_class c

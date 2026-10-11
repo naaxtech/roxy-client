@@ -164,6 +164,15 @@ GRANT EXECUTE ON FUNCTION public.increment_variant_stock(uuid, integer) TO servi
 GRANT EXECUTE ON FUNCTION public.decrement_variant_stock(uuid, integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.claim_ticket(uuid, uuid) TO service_role;
 
+-- claim_speed_date_partner(p_user_id, ...) trusts its user-id argument: 077
+-- made it service-role only, then 102 (block filter) re-created it with
+-- GRANT ... TO authenticated, so any member could pull any other member into
+-- a video call (prod: authenticated=X, found by db-verify's 077 check). Its
+-- only caller is the join-speed-date-session edge function, which uses the
+-- service role (getSupabaseClient). Back to service-role only.
+REVOKE EXECUTE ON FUNCTION public.claim_speed_date_partner(uuid, uuid, integer) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.claim_speed_date_partner(uuid, uuid, integer) TO service_role;
+
 -- ── 3. Reactions and room counters need a caller (SB-01) ───────────────────
 -- increment_reaction wrote any key into any post's reaction_counts for anyone
 -- holding the anon key. Now: signed in, can read the post, and the key is one
@@ -483,6 +492,24 @@ ALTER POLICY "Owners can update build fields" ON public.games
   WITH CHECK (submitted_by = auth.uid() AND status IN ('pitch_approved', 'build_changes', 'build_pending'));
 ALTER POLICY "Authenticated users can submit games" ON public.games
   WITH CHECK (submitted_by = auth.uid() AND status = 'pitch_pending' AND publisher_type = 'community');
+
+-- games.slug (from 016) is NOT NULL with no default in production, and the
+-- Studio pitch form (apps/studio games/submit) never sends one: every pitch
+-- insert failed with 23502 there. The local dev stack had a hand-added
+-- default (gen_random_uuid()::text) that hid it. Same default here, only when
+-- the column has none; slug stays the stable route key for built-in games
+-- (lib/contentNavigation GAME_ROUTES) and a pitch's uuid slug never matches
+-- one. The down removes it only if 131 is the one that set it.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema = 'public' AND table_name = 'games'
+               AND column_name = 'slug' AND column_default IS NULL) THEN
+    ALTER TABLE public.games ALTER COLUMN slug SET DEFAULT (gen_random_uuid())::text;
+    COMMENT ON COLUMN public.games.slug IS
+      'Stable key; built-in games carry a route slug. Default (uuid text) set by 131 for community pitches.';
+  END IF;
+END $$;
 
 -- ── 7. The 32 `TO public` policies on ops-owned tables → authenticated ─────
 -- (communities x3, community_members x4, friendships x1 are chat's.)
