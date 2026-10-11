@@ -27,6 +27,7 @@ import { enabledOAuthProviders } from '../../lib/authProviders';
 import { MIN_PASSWORD_LENGTH } from '../../lib/passwordPolicy';
 import { captchaRequired, captchaSiteKey } from '../../lib/captcha';
 import { TurnstileWidget } from '../../components/auth/TurnstileWidget';
+import { authErrorCopy } from '../../lib/authErrorCopy';
 
 // Bot protection (lib/captcha.ts): web only, and only once a site key is set.
 const NEEDS_CAPTCHA = captchaRequired(Platform.OS);
@@ -97,7 +98,8 @@ export default function WelcomeScreen() {
 
     if (error) {
       setLoading(false);
-      showAlert('Error', error.message);
+      const copy = authErrorCopy(error);
+      showAlert(copy.title, copy.body);
       return;
     }
 
