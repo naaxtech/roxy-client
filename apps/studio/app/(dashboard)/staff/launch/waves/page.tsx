@@ -2,10 +2,15 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaffPage } from '@/lib/staff-guard';
 import { formatUtcDate } from '@/lib/dates';
+import { mapLedgerRow, type LedgerRow } from '@/lib/inviteLedger';
+import { summariseWaves } from '@/lib/inviteWaves';
 import { InviteWaveClient, type WaveCommunity } from './InviteWaveClient';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Launch waves — Roxy Studio' };
+
+/** Enough for every wave a staffer mints at launch (200 codes per wave). */
+const LEDGER_LIMIT = 1000;
 
 interface WaveRow {
   label: string | null;
@@ -25,6 +30,16 @@ interface WaveSummary {
   expires: string | null;
 }
 
+/**
+ * UNUSED since integration (launch/integration, after migration 134). Origin:
+ * ops2 d3e6941 (ST-05), which read invite_codes directly and counted
+ * uses_count. 134 made every code single use and moved "who used it" to
+ * redeemed_by/redeemed_at, read through invite_code_ledger(); the page now
+ * uses lib/inviteWaves summariseWaves() over the ledger. Kept (not deleted)
+ * per the repo rule; may be used again if the page ever needs to run against
+ * a database without 134. Delete only with Nicole's agreement.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function summarise(rows: WaveRow[], now: number): WaveSummary[] {
   const map = new Map<string, WaveSummary>();
   for (const r of rows) {
@@ -46,19 +61,16 @@ export default async function LaunchWavesPage() {
   const viewer = await requireStaffPage();
   const supabase = await createClient();
 
+  // Waves read invite_code_ledger() (134), the one source that knows a code
+  // was used even after the woman's account is erased, and who minted it.
   const [communities, codes] = await Promise.all([
     supabase.from('communities').select('id, name').order('name').limit(200),
-    supabase
-      .from('invite_codes')
-      .select('label, uses_count, max_uses, expires_at, revoked_at, created_at')
-      .eq('created_by', viewer.userId)
-      .eq('max_uses', 1)
-      .not('label', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(2000),
+    supabase.rpc('invite_code_ledger', { p_community_id: null, p_limit: LEDGER_LIMIT }),
   ]);
 
-  const waves = codes.error ? [] : summarise((codes.data ?? []) as WaveRow[], Date.now());
+  const waves = codes.error
+    ? []
+    : summariseWaves(((codes.data ?? []) as LedgerRow[]).map(mapLedgerRow), viewer.userId, Date.now());
 
   return (
     <div className="max-w-5xl space-y-8">

@@ -8,6 +8,40 @@
  * which is what makes per-wave redemption → application → approval countable.
  */
 import { endOfUtcDayIso } from '@/lib/dates';
+import { codeState, type LedgerCode } from '@/lib/inviteLedger';
+
+/** One row of "Your waves" on /staff/launch/waves. */
+export interface WaveSummary {
+  label: string;
+  codes: number;
+  redeemed: number;
+  live: number;
+  firstCreated: string;
+  expires: string | null;
+}
+
+/**
+ * Her waves, from invite_code_ledger() rows (migration 134): her own invite
+ * codes that carry a label, grouped by it. "Redeemed" is the ledger's `used`
+ * (it survives the redeemer's account being erased); "still usable" is the
+ * ledger's 'active' state (not used, revoked, locked or expired). Newest
+ * wave first.
+ */
+export function summariseWaves(codes: LedgerCode[], userId: string, now: number): WaveSummary[] {
+  const map = new Map<string, WaveSummary>();
+  for (const c of codes) {
+    const label = c.label?.trim() ?? '';
+    if (c.kind !== 'invite' || c.minter?.id !== userId || label === '') continue;
+    const s = map.get(label) ?? { label, codes: 0, redeemed: 0, live: 0, firstCreated: c.createdAt, expires: c.expiresAt };
+    s.codes += 1;
+    if (c.used) s.redeemed += 1;
+    if (codeState(c, now) === 'active') s.live += 1;
+    if (c.createdAt < s.firstCreated) s.firstCreated = c.createdAt;
+    if (c.expiresAt && (!s.expires || c.expiresAt > s.expires)) s.expires = c.expiresAt;
+    map.set(label, s);
+  }
+  return [...map.values()].sort((a, b) => b.firstCreated.localeCompare(a.firstCreated));
+}
 
 export const WAVE_MAX_CODES = 200;
 export const WAVE_LABEL_MAX = 80;
