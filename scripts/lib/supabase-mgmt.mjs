@@ -46,14 +46,25 @@ export function redact(s) {
     .replace(/sb_(secret|publishable)_[A-Za-z0-9_-]{10,}/g, '[key]');
 }
 
-export function makeClient({ ref, token = process.env.SUPABASE_ACCESS_TOKEN, fetchImpl = fetch }) {
+export function makeClient({ ref, token = process.env.SUPABASE_ACCESS_TOKEN, fetchImpl = fetch, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), maxRetries = 6 }) {
   if (!token) throw new Error('SUPABASE_ACCESS_TOKEN is not set');
   if (!/^[a-z]{20}$/.test(ref)) throw new Error(`project ref looks wrong (${ref.length} chars)`);
   const base = `https://api.supabase.com/v1/projects/${ref}`;
+  // The Management API throttles bursts (HTTP 429 "ThrottlerException"). A full
+  // backup sends one query per table page, so it trips the limit part-way.
+  // Retry ONLY 429 with backoff (honouring Retry-After); every other status fails at once.
+  async function send(url, init) {
+    for (let attempt = 0; ; attempt++) {
+      const res = await fetchImpl(url, init);
+      if (res.status !== 429 || attempt >= maxRetries) return res;
+      const after = Number(res.headers?.get?.('retry-after'));
+      await sleep(Number.isFinite(after) && after > 0 ? after * 1000 : Math.min(30000, 2000 * 2 ** attempt));
+    }
+  }
   return {
     ref,
     async query(sql) {
-      const res = await fetchImpl(`${base}/database/query`, {
+      const res = await send(`${base}/database/query`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: sql }),
@@ -63,7 +74,7 @@ export function makeClient({ ref, token = process.env.SUPABASE_ACCESS_TOKEN, fet
       return JSON.parse(body);
     },
     async get(path) {
-      const res = await fetchImpl(`${base}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await send(`${base}${path}`, { headers: { Authorization: `Bearer ${token}` } });
       const body = await res.text();
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${redact(body).slice(0, 500)}`);
       return JSON.parse(body);
