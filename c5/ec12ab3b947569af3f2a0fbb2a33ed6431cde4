@@ -1,0 +1,16 @@
+apps/mobile/components/feed/FeedCellChrome.tsx
+  h_0549c11fec2ab0 11-12,252-253,255
+apps/mobile/lib/avatars.ts
+  h_0549c11fec2ab0 45,47-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c5ec12ab3b947569af3f2a0fbb2a33ed6431cde4",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
