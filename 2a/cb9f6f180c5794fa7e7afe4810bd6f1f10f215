@@ -1,0 +1,22 @@
+apps/mobile/__tests__/components/ProfilePhotoGrid.test.tsx
+  h_0549c11fec2ab0 1-79
+apps/mobile/__tests__/components/profile/ProfileNudge.test.tsx
+  h_0549c11fec2ab0 1-41
+apps/mobile/app/(tabs)/you/index.tsx
+  h_0549c11fec2ab0 13,562-567
+apps/mobile/components/profile/ProfileNudge.tsx
+  h_0549c11fec2ab0 1-97
+apps/mobile/components/profile/ProfilePhotoGrid.tsx
+  h_0549c11fec2ab0 10,102-104,107-121,142-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2acb9f6f180c5794fa7e7afe4810bd6f1f10f215",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
