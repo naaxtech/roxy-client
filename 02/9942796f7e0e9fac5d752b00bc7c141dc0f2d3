@@ -1,0 +1,24 @@
+apps/mobile/__tests__/lib/notificationSettings.test.ts
+  h_0549c11fec2ab0 77-81
+apps/mobile/__tests__/screens/FeedTab.test.tsx
+  h_0549c11fec2ab0 26,29,37-43,116,120-140
+apps/mobile/__tests__/screens/NotificationSettings.test.tsx
+  h_0549c11fec2ab0 47,53-60
+apps/mobile/__tests__/screens/UserProfileShell.test.tsx
+  h_0549c11fec2ab0 125-133
+apps/mobile/app/(tabs)/feed/index.tsx
+  h_0549c11fec2ab0 15-16,65-66,224-232,253-255
+apps/mobile/app/(tabs)/you/notification-settings.tsx
+  h_0549c11fec2ab0 23,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "029942796f7e0e9fac5d752b00bc7c141dc0f2d3",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
