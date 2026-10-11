@@ -2,10 +2,9 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
-import { getHostScope } from '@/lib/hostScope';
-import { InviteCodesClient, type InviteCodeItem, type CommunityOption } from './InviteCodesClient';
-import { resolveAccountKind } from '@/lib/accountKind';
-import { groupRedeemersByCode, type InviteRedeemer } from '@/lib/inviteRedeemers';
+import { InviteCodesClient, type CommunityOption } from './InviteCodesClient';
+import { ReviewCodeMint } from './ReviewCodeMint';
+import { mapLedgerRow, type LedgerRow } from '@/lib/inviteLedger';
 import { isMissingFunction } from '@/lib/schema-availability';
 
 export const dynamic = 'force-dynamic';
@@ -13,153 +12,139 @@ export const dynamic = 'force-dynamic';
 /** A codes list is a keyring. Nobody needs the whole history on one screen. */
 const CODE_LIMIT = 200;
 
-interface CodeRow {
-  id: string;
-  code: string;
-  community_id: string;
-  label: string | null;
-  max_uses: number | null;
-  uses_count: number;
-  expires_at: string | null;
-  revoked_at: string | null;
-  locked_at: string | null;
-  created_at: string;
-  communities: { name: string } | null;
-}
-
 /**
- * Invite codes — the only way anyone gets into Roxy.
+ * Invite codes — the only way anyone gets into Roxy (Nicole, 2026-10-11).
  *
- * There is no community filter on the codes query. `ic_read_own_community`
- * (migration 070) already restricts every row to a community the caller
- * administers, and Roxy staff to all of them. A second copy of that rule here
- * would be one more thing that can drift away from the one protecting the data.
+ * Who may mint: every Roxy staff member, for any community; a community admin
+ * or owner, for her own community. Every code is single use, and the database
+ * (migration 134) enforces all of it: can_mint_invite_for() on insert, the
+ * admin cap of unused codes (staff uncapped), single redemption. Minting never
+ * approves anyone: her application still goes to review.
  *
- * The community list answers a different question: not "which codes may I see"
- * but "which communities may I mint a code for". Roxy core may mint for every
- * community. Everyone else stays scoped to the ones they administer or patrol.
+ * Accountability: invite_code_ledger() returns, per code, who minted it, who
+ * used it, when, her membership status now and her last sign-in. Staff see
+ * every code; an admin sees the codes she minted. `?community=<id>` narrows the
+ * list to one community (the Community area links here per community).
  */
-export default async function InvitesPage() {
+export default async function InvitesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ community?: string }>;
+}) {
+  const params = await searchParams;
+  const onlyCommunity = params.community?.trim() || null;
+
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
   if (!userId) notFound();
 
-  const [scope, codes, redeemersRes] = await Promise.all([
-    getHostScope(supabase, userId, ['admin', 'border_patrol']),
-    supabase
-      .from('invite_codes')
-      .select(
-        'id, code, community_id, label, max_uses, uses_count, expires_at, revoked_at, locked_at, created_at, communities(name)',
-      )
-      .order('created_at', { ascending: false })
-      .limit(CODE_LIMIT),
-    supabase.rpc('invite_code_redeemers'),
+  const { data: me } = await supabase
+    .from('profiles')
+    .select('is_staff, staff_role')
+    .eq('id', userId)
+    .maybeSingle();
+  const isStaff = Boolean((me as { is_staff?: boolean } | null)?.is_staff);
+  const isCore = (me as { staff_role?: string | null } | null)?.staff_role === 'core';
+
+  // Where she may mint. Staff: every community. Otherwise the communities she
+  // administers or created; the insert policy has the final word either way.
+  const [allCommunities, adminOf, owned, ledger, quota] = await Promise.all([
+    isStaff
+      ? supabase.from('communities').select('id, name').order('name').limit(500)
+      : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
+    isStaff
+      ? Promise.resolve({ data: [] as unknown[], error: null })
+      : supabase
+          .from('community_members')
+          .select('community_id, communities(id, name)')
+          .eq('user_id', userId)
+          .eq('role', 'admin'),
+    isStaff
+      ? Promise.resolve({ data: [] as { id: string; name: string }[], error: null })
+      : supabase.from('communities').select('id, name').eq('created_by', userId),
+    supabase.rpc('invite_code_ledger', { p_community_id: onlyCommunity, p_limit: CODE_LIMIT }),
+    supabase.rpc('invite_code_quota_ok'),
   ]);
 
-  const communities: CommunityOption[] = scope.communities.map((community) => ({
-    id: community.id,
-    name: community.name,
-  }));
+  const scopeError = allCommunities.error ?? adminOf.error ?? owned.error;
+  const byId = new Map<string, CommunityOption>();
+  for (const c of (allCommunities.data ?? []) as { id: string; name: string }[]) byId.set(c.id, c);
+  for (const row of (adminOf.data ?? []) as { communities: { id: string; name: string | null } | null }[]) {
+    if (row.communities) byId.set(row.communities.id, { id: row.communities.id, name: row.communities.name ?? 'Unnamed community' });
+  }
+  for (const c of (owned.data ?? []) as { id: string; name: string }[]) byId.set(c.id, c);
+  let communities = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  if (onlyCommunity) communities = communities.filter((c) => c.id === onlyCommunity);
 
-  const codeRows = (codes.data ?? []) as unknown as CodeRow[];
-  const communityNames = new Map(communities.map((c) => [c.id, c.name]));
-  const redeemerRows = isMissingFunction(redeemersRes.error)
-    ? []
-    : ((redeemersRes.data ?? []) as {
-        code_id: string;
-        user_id: string;
-        display_name: string;
-        username: string | null;
-        vetting_status: string | null;
-        access_tier: string | null;
-        staff_role: string | null;
-        is_staff: boolean | null;
-        is_community_owner: boolean | null;
-        used_at: string;
-      }[]);
-  const redeemersByCode = groupRedeemersByCode(
-    redeemerRows.map((row): InviteRedeemer => ({
-      codeId: row.code_id,
-      userId: row.user_id,
-      displayName: row.display_name,
-      username: row.username,
-      accountKind: resolveAccountKind({
-        staff_role: row.staff_role,
-        is_staff: row.is_staff,
-        is_community_owner: row.is_community_owner,
-        vetting_status: row.vetting_status,
-      }),
-      usedAt: row.used_at,
-    })),
-  );
-  const items: InviteCodeItem[] = codeRows.map((row) => ({
-    id: row.id,
-    code: row.code,
-    communityName:
-      row.communities?.name ?? communityNames.get(row.community_id) ?? 'Unnamed community',
-    label: row.label,
-    maxUses: row.max_uses,
-    usesCount: row.uses_count,
-    expiresAt: row.expires_at,
-    revokedAt: row.revoked_at,
-    lockedAt: row.locked_at,
-    createdAt: row.created_at,
-    redeemers: (redeemersByCode.get(row.id) ?? []).map((person) => ({
-      displayName: person.displayName,
-      username: person.username,
-      accountKind: person.accountKind,
-      usedAt: person.usedAt,
-    })),
-  }));
+  const ledgerMissing = isMissingFunction(ledger.error);
+  const codes = ledger.error ? [] : ((ledger.data ?? []) as LedgerRow[]).map(mapLedgerRow);
+  const quotaOk = quota.error ? true : quota.data !== false;
+  const focused = onlyCommunity ? communities[0]?.name ?? null : null;
 
   return (
-    <div className="max-w-5xl space-y-8">
+    <div className="max-w-6xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">Invite codes</h1>
-        <p className="text-muted-foreground mt-1">
-          Roxy is invite-only. A code is how one specific woman gets in, and every member stays
-          traceable to the code that admitted her — so a code is a credential, not a link.
-          Hand it to someone you know, the way you would a house key.
+        <h1 className="text-2xl font-bold">Invite codes{focused ? ` — ${focused}` : ''}</h1>
+        <p className="text-muted-foreground mt-1 max-w-prose">
+          Roxy is invite-only. A code is how one specific woman gets in, once, and every member
+          stays traceable to the code and the person that brought her in. Hand it to someone you
+          know, the way you would a house key.
         </p>
+        {onlyCommunity && (
+          <Link href="/invites" className="text-sm underline underline-offset-4 mt-2 inline-block">
+            Show codes for every community
+          </Link>
+        )}
       </div>
 
-      {scope.error ? (
+      {scopeError ? (
         <ErrorPanel>
           We could not load the communities you administer, so the create form is unavailable.
           Reload the page — if it keeps failing, your session may have expired.
         </ErrorPanel>
-      ) : communities.length === 0 ? (
+      ) : communities.length === 0 && codes.length === 0 ? (
         <div className="border rounded-lg p-8 space-y-3">
           <p className="font-medium">
-            {scope.isCore ? 'There are no communities yet' : 'You do not administer a community yet'}
+            {isStaff ? 'There are no communities yet' : 'You do not administer a community yet'}
           </p>
           <p className="text-sm text-muted-foreground max-w-prose">
-            {scope.isCore
-              ? 'Invite codes belong to a community. Create one and you can mint a code for it from here.'
-              : 'Invite codes belong to a community — that is what makes an invitation attributable and what decides who reviews the application afterwards. Create a community, or ask an admin of yours to make you one, and this page opens.'}
+            Invite codes belong to a community: that is what makes an invitation attributable.
+            {isStaff
+              ? ' Create one and you can mint a code for it from here.'
+              : ' Create a community, or ask an admin of yours to make you one, and this page opens.'}
           </p>
           <Button asChild variant="outline" size="sm">
             <Link href="/community">Go to Community</Link>
           </Button>
         </div>
-      ) : codes.error ? (
+      ) : ledgerMissing ? (
         <ErrorPanel>
-          We could not load your existing codes. You can still create a new one below, but the
-          list is out of date until this loads — reload before revoking anything.
+          The code ledger is not switched on in this database yet (migration 134). Nothing is
+          wrong with your codes; the list appears once it is.
+        </ErrorPanel>
+      ) : ledger.error ? (
+        <ErrorPanel>
+          We could not load the codes. You can still create a new one below, but the list is out of
+          date until this loads — reload before revoking anything.
         </ErrorPanel>
       ) : null}
 
-      {communities.length > 0 && !scope.error && (
+      {!scopeError && (communities.length > 0 || codes.length > 0) && (
         <InviteCodesClient
           userId={userId}
+          isStaff={isStaff}
+          quotaOk={quotaOk}
           communities={communities}
-          codes={items}
-          codesFailedToLoad={Boolean(codes.error)}
-          truncated={items.length >= CODE_LIMIT}
+          codes={codes}
+          codesFailedToLoad={Boolean(ledger.error)}
+          truncated={codes.length >= CODE_LIMIT}
           nowIso={new Date().toISOString()}
+          readOnly={communities.length === 0}
         />
       )}
+
+      {isCore && !onlyCommunity && <ReviewCodeMint />}
     </div>
   );
 }

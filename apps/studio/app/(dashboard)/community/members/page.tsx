@@ -31,7 +31,6 @@ interface MemberRow {
   profiles: {
     display_name: string | null;
     username: string | null;
-    vetting_status: string | null;
   } | null;
 }
 
@@ -102,7 +101,10 @@ export default async function CommunityMembersPage() {
   const [roster, roleAudit] = await Promise.all([
     supabase
       .from('community_members')
-      .select('community_id, user_id, role, joined_at, profiles(display_name, username, vetting_status)')
+      // vetting_status is private since 130 (embedding it is a 42501). The
+      // profiles policy only shows an approved member's row to an approved
+      // admin, so a visible profile IS an approved one (see vettingStatus below).
+      .select('community_id, user_id, role, joined_at, profiles(display_name, username)')
       .in('community_id', communityIds)
       .limit(MEMBER_LIMIT),
     supabase.from('community_role_changes').select('id').limit(1),
@@ -139,7 +141,7 @@ export default async function CommunityMembersPage() {
       // without a name we can honestly show.
       displayName: row.profiles?.display_name ?? null,
       username: row.profiles?.username ?? null,
-      vettingStatus: row.profiles?.vetting_status ?? null,
+      vettingStatus: row.profiles ? 'approved' : null,
       joinedLabel: row.joined_at ? formatUtcDate(row.joined_at) : 'Unknown',
     }))
     .sort((a, b) => {

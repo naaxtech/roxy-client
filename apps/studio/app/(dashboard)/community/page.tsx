@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getHostScope } from '@/lib/hostScope';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +39,13 @@ export default async function CommunityPage() {
               {c.description && (
                 <p className="text-sm text-muted-foreground">{c.description}</p>
               )}
+              {/* Her codes for this community: who used each, when, and where she stands now. */}
+              <Link
+                href={`/invites?community=${encodeURIComponent(c.id)}`}
+                className="text-sm underline underline-offset-4"
+              >
+                Invite codes and who used them
+              </Link>
             </li>
           ))}
         </ul>
