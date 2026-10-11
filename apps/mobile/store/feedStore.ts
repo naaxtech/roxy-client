@@ -42,6 +42,11 @@ interface FeedState {
   fetchFeed: (communityIds: string[]) => Promise<void>;
   fetchMoreFeed: (communityIds: string[]) => Promise<void>;
   toggleLike: (postId: string) => Promise<void>;
+  /**
+   * The double tap: makes a post liked and never unlikes it. A no-op when it
+   * is already liked or a like write for it is in flight.
+   */
+  likePost: (postId: string) => Promise<void>;
   toggleSave: (postId: string) => Promise<void>;
   markSeen: (postId: string) => void;
   /**
@@ -61,6 +66,14 @@ interface FeedState {
 const PAGE_SIZE = 15;
 
 let fetchFeedGeneration = 0;
+
+/**
+ * Posts with a like write in flight. A second tap while the first write is
+ * out is ignored, so two writes can never race and leave the heart, the
+ * count and the server disagreeing. Module-scoped, not state: nothing renders
+ * from it.
+ */
+const likesInFlight = new Set<string>();
 
 function excludeSeen(posts: Post[], seenIds: Set<string>): Post[] {
   if (!seenIds.size) return posts;
@@ -180,6 +193,8 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   },
 
   toggleLike: async (postId) => {
+    if (likesInFlight.has(postId)) return;
+    likesInFlight.add(postId);
     const wasLiked = get().likedPostIds.has(postId);
     const step = wasLiked ? -1 : 1;
     set(s => ({
@@ -194,13 +209,21 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     // Upsert, not insert: a row can already exist server-side (state drift,
     // double-tap, another device) and a bare insert 409s on the PK — the
     // optimistic UI then reverts and the tap looks dead.
-    const { error } = wasLiked
-      ? await supabase.from('post_likes').delete().eq('post_id', postId)
-      : await supabase.from('post_likes').upsert(
-          { post_id: postId },
-          { onConflict: 'post_id,user_id', ignoreDuplicates: true },
-        );
+    let error: unknown = null;
+    try {
+      ({ error } = wasLiked
+        ? await supabase.from('post_likes').delete().eq('post_id', postId)
+        : await supabase.from('post_likes').upsert(
+            { post_id: postId },
+            { onConflict: 'post_id,user_id', ignoreDuplicates: true },
+          ));
+    } catch (e) {
+      error = e;
+    } finally {
+      likesInFlight.delete(postId);
+    }
     if (error) {
+      logError(error, 'feedStore.toggleLike');
       set(s => ({
         likedPostIds: wasLiked
           ? new Set([...s.likedPostIds, postId])
@@ -211,6 +234,11 @@ export const useFeedStore = create<FeedState>((set, get) => ({
         likeCountDeltas: { ...s.likeCountDeltas, [postId]: (s.likeCountDeltas[postId] ?? 0) - step },
       }));
     }
+  },
+
+  likePost: async (postId) => {
+    if (get().likedPostIds.has(postId) || likesInFlight.has(postId)) return;
+    await get().toggleLike(postId);
   },
 
   toggleSave: async (postId) => {

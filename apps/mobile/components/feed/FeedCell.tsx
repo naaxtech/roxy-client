@@ -28,6 +28,11 @@ export interface FeedCellProps
    * Defaults to true for single-cell surfaces with no pager around them.
    */
   playbackAllowed?: boolean;
+  /**
+   * Idempotent "make it liked" for the double tap, which every cell type
+   * offers. Without it a cell falls back to `onLike` when not liked.
+   */
+  onDoubleTapLike?: () => void;
   /** Records a poll vote. Defaults to the shared tally write. */
   onVote?: (postId: string, optionKey: string) => Promise<boolean>;
 }

@@ -1,15 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
-import { Platform, View, StyleSheet, TouchableOpacity } from 'react-native';
-import { GestureDetector } from 'react-native-gesture-handler';
-import { feedMediaTaps } from '../../lib/feedMediaTaps';
-import Animated, {
-  useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring,
-} from 'react-native-reanimated';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { FeedVideoPlayer } from './FeedVideoPlayer';
 import { FeedCellChrome } from './FeedCellChrome';
+import { DoubleTapCatcher, useDoubleTapLike } from './DoubleTapLike';
+import { LikeBurst } from './LikeBurst';
 import type { FeedCellChromeProps } from './FeedCellChrome';
 import { CHROME_SHADOW, RAIL_BACKING } from './feedChromeTokens';
 import { a11yState } from '../../lib/a11yState';
@@ -45,6 +42,8 @@ export interface ReelCellProps
    * behind Messages or a pushed profile (FEED-03). Defaults to true.
    */
   playbackAllowed?: boolean;
+  /** Idempotent "make it liked" for the double tap. See `useDoubleTapLike`. */
+  onDoubleTapLike?: () => void;
 }
 
 /**
@@ -59,7 +58,7 @@ export interface ReelCellProps
  */
 export function ReelCell({
   post, index, activeIndex, activeItemId, width, height,
-  muted, reducedMotion, liked, onToggleMute, onLike, playbackAllowed = true,
+  muted, reducedMotion, liked, onToggleMute, onLike, playbackAllowed = true, onDoubleTapLike,
   ...chrome
 }: ReelCellProps): ReactElement {
   const isActive = post.id === activeItemId;
@@ -83,65 +82,15 @@ export function ReelCell({
     if (!isActive) setPlayOverride(null);
   }, [isActive]);
 
-  const burst = useSharedValue(0);
-  const burstStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: burst.value }],
-  }));
-
-  const handleDoubleTap = useCallback(() => {
-    // Instagram's contract: a double tap likes, and a second double tap does
-    // not take it back. Unliking is the rail button's job.
-    if (!liked) onLike();
-    if (reducedMotion) return;
-    burst.value = withSequence(
-      withSpring(1.28, { damping: 10, stiffness: 420 }),
-      withDelay(80, withSpring(0, { damping: 14, stiffness: 380 })),
-    );
-  }, [liked, onLike, reducedMotion, burst]);
+  // Double tap likes (never unlikes), blooms the ✿ and ticks a haptic — the
+  // same hook every other cell type uses, so the gesture means one thing.
+  const { burstRef, onDoubleTap } = useDoubleTapLike({
+    liked, onLike, onDoubleTapLike, reducedMotion,
+  });
 
   const togglePlay = useCallback(() => {
     setPlayOverride((prev) => !(prev ?? autoplay));
   }, [autoplay]);
-
-  // runOnJS(true) keeps these callbacks off the UI thread so they can touch
-  // React state and the Zustand store directly.
-  // "when `true`, all the callbacks will be run on the JS thread instead of the
-  // UI thread, regardless of whether they are worklets or not." The versioned
-  // docs.swmansion.com path for 2.16.2 now 404s, so this cites the tag.
-  // src: https://github.com/software-mansion/react-native-gesture-handler/blob/2.16.2/src/handlers/gestures/gesture.ts · react-native-gesture-handler 2.16.2 · 2026-08-05
-  const tapGesture = useMemo(
-    () => feedMediaTaps(handleDoubleTap, togglePlay),
-    [handleDoubleTap, togglePlay],
-  );
-
-  // Web: RNGH's catcher still captures the pointer, so a swipe becomes a like
-  // and the pager never sees the drag. Click/dblclick do not steal scroll.
-  const webTapPending = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const webTapCatcher = Platform.OS === 'web' ? (
-    <View
-      testID="feed-media-taps"
-      style={StyleSheet.absoluteFill}
-      collapsable={false}
-      {...({
-        onClick: () => {
-          if (webTapPending.current) {
-            clearTimeout(webTapPending.current);
-            webTapPending.current = null;
-            handleDoubleTap();
-            return;
-          }
-          webTapPending.current = setTimeout(() => {
-            webTapPending.current = null;
-            togglePlay();
-          }, 260);
-        },
-      } as Record<string, unknown>)}
-    />
-  ) : (
-    <GestureDetector gesture={tapGesture} touchAction="pan-y">
-      <View style={StyleSheet.absoluteFill} collapsable={false} />
-    </GestureDetector>
-  );
 
   /**
    * The pause mechanism WCAG 2.2 SC 2.2.2 requires. Tap-anywhere does the same
@@ -177,14 +126,10 @@ export function ReelCell({
       />
 
       {/* Transparent catcher: sits over the video and under every control, so
-          the rail buttons keep their own touches. Native uses RNGH with a
-          slop so a swipe is never a like. Web uses click/dblclick — RNGH
-          still captures the pointer there and the pager never sees the drag. */}
-      {webTapCatcher}
+          the rail buttons keep their own touches. A single tap pauses. */}
+      <DoubleTapCatcher onDoubleTap={onDoubleTap} onSingleTap={togglePlay} />
 
-      <Animated.View style={[s.burst, burstStyle]} pointerEvents="none">
-        <Ionicons name="heart" size={110} color="rgba(255,255,255,0.92)" />
-      </Animated.View>
+      <LikeBurst ref={burstRef} reducedMotion={reducedMotion} />
 
       {isVideo && isActive && !playing ? (
         <View
@@ -227,11 +172,6 @@ export function ReelCell({
 // theme, and rebuilding this per cell would allocate on every swipe.
 const s = StyleSheet.create({
   page: { backgroundColor: '#000' },
-  burst: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   pausedGlyph: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',

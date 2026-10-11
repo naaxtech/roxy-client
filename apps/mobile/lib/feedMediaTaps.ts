@@ -9,13 +9,19 @@ import { Gesture } from 'react-native-gesture-handler';
  */
 export const FEED_TAP_SLOP = 12;
 
+const noop = (): void => undefined;
+
 /**
  * Double-tap likes, single-tap pauses. Exclusive so a like never also pauses.
  * Movement beyond `FEED_TAP_SLOP` fails both, and the pager takes the swipe.
+ *
+ * `onSingleTap` is optional: only a video has something to pause. The single
+ * tap is still composed, so a double tap on a photo or a text card resolves
+ * the same way it does on a video.
  */
 export function feedMediaTaps(
   onDoubleTap: () => void,
-  onSingleTap: () => void,
+  onSingleTap: () => void = noop,
 ) {
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)

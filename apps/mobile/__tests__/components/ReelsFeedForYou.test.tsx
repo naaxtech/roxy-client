@@ -140,6 +140,7 @@ jest.mock('../../store/feedStore', () => {
     seenPostIds: new Set<string>(),
     hiddenPostIds: new Set<string>(),
     toggleLike: jest.fn(),
+    likePost: jest.fn(),
     toggleSave: jest.fn(),
     markSeen: jest.fn(),
     hidePost: jest.fn(() => Promise.resolve(true)),

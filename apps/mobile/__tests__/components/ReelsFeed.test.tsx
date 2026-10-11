@@ -163,6 +163,7 @@ jest.mock('../../store/feedStore', () => {
     seenPostIds: new Set<string>(),
     hiddenPostIds: new Set<string>(),
     toggleLike: jest.fn(),
+    likePost: jest.fn(),
     toggleSave: jest.fn(),
     markSeen: jest.fn(),
     hidePost: jest.fn(() => Promise.resolve(true)),
@@ -583,6 +584,26 @@ describe('ReelsFeed playback (FEED-03)', () => {
       React.ReactElement<{ playbackAllowed: boolean; muted: boolean }>;
     expect(cell.props.playbackAllowed).toBe(true);
     expect(cell.props.muted).toBe(true);
+  });
+});
+
+describe('ReelsFeed likes (one source of truth)', () => {
+  it('double tap goes to the idempotent likePost, the rail to toggleLike', async () => {
+    const store = (jest.requireMock('../../store/feedStore') as {
+      useFeedStore: { getState: () => { likePost: jest.Mock; toggleLike: jest.Mock } };
+    }).useFeedStore.getState();
+    store.likePost.mockClear();
+    store.toggleLike.mockClear();
+    const list = await mountFeed();
+
+    const cell = list.renderItem({ item: list.data[1], index: 1 }) as unknown as
+      React.ReactElement<{ onDoubleTapLike: () => void; onLike: () => void }>;
+    cell.props.onDoubleTapLike();
+    expect(store.likePost).toHaveBeenCalledWith(PHOTO_ID);
+    expect(store.toggleLike).not.toHaveBeenCalled();
+
+    cell.props.onLike();
+    expect(store.toggleLike).toHaveBeenCalledWith(PHOTO_ID);
   });
 });
 

@@ -190,6 +190,9 @@ export function ReelsFeed({
   const likeCountDeltas = useFeedStore((st) => st.likeCountDeltas);
   const hiddenPostIds = useFeedStore((st) => st.hiddenPostIds);
   const toggleLike = useFeedStore((st) => st.toggleLike);
+  // The double tap: likes, never unlikes. Same store, so the rail heart, the
+  // count and the burst can never disagree.
+  const likePost = useFeedStore((st) => st.likePost);
   const toggleSave = useFeedStore((st) => st.toggleSave);
   const markSeen = useFeedStore((st) => st.markSeen);
   const hidePost = useFeedStore((st) => st.hidePost);
@@ -560,6 +563,7 @@ export function ReelsFeed({
         reducedMotion={reducedMotion}
         onToggleMute={toggleMute}
         onLike={() => void toggleLike(item.id)}
+        onDoubleTapLike={() => void likePost(item.id)}
         onSave={() => void toggleSave(item.id)}
         // Comments stay on this page — the sheet, not a detail route. Pushing
         // /community/post/:id here is what made the comment button feel broken:
@@ -593,7 +597,7 @@ export function ReelsFeed({
     );
   }, [
     muted, playbackAllowed, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion,
-    answeredPrompts, toggleMute, toggleLike, toggleSave, router, answerPrompt, dropPost,
+    answeredPrompts, toggleMute, toggleLike, likePost, toggleSave, router, answerPrompt, dropPost,
     openComments, followingIds, followAuthor, unfollowAuthor, userId,
   ]);
 

@@ -70,12 +70,17 @@ export default function TabLayout() {
   // Hidden posts (`hidden_posts`, 133) load beside mutes for the same reason:
   // a hide that only lived in memory came back on the next launch (FEED-01).
   const loadHiddenPosts = useFeedStore((s) => s.loadHiddenPosts);
+  // Her likes and saves, for the same reason: they were loaded only by the
+  // community screen, so on a cold Feed open every post she had liked showed
+  // an empty heart and a tap added a phantom +1 before the upsert no-oped.
+  const initFeed = useFeedStore((s) => s.init);
   useEffect(() => {
     if (!user?.id) return;
     void loadBlockedUsers();
     void loadMutedUsers();
     void loadHiddenPosts();
-  }, [user?.id, loadBlockedUsers, loadMutedUsers, loadHiddenPosts]);
+    void initFeed(user.id);
+  }, [user?.id, loadBlockedUsers, loadMutedUsers, loadHiddenPosts, initFeed]);
 
   // One device push token per signed-in user, so the server can reach her for
   // messages and friend requests with the app closed.
