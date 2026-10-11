@@ -1,0 +1,75 @@
+# Test: Accept a message request and land in an open chat.
+# Prerequisites: EXACTLY ONE pending message request to this user, from a seed
+# account she is not friends with (e.g. a `%@seed.roxy.app` account calls
+# `start_direct` + sends one text). Set MAESTRO_REQUEST_SENDER to that
+# account's display name.
+#
+# Roxy 3.0 / migration 132: a stranger's first message never lands in the chat
+# list. It waits behind `messages-requests-entry` → Requests sheet → Messages
+# tab. Accepting opens the thread with the composer unlocked; until then the
+# thread itself shows the request gate instead of a composer.
+appId: com.roxy.app
+---
+- runFlow: ../subflows/dismiss_first_run.yaml
+
+- tapOn:
+    id: "nav-slot-messages"
+
+# The entry only shows a count when something is waiting; its absence means
+# the prerequisite was not met, not that the feature is broken.
+- assertVisible:
+    id: "messages-requests-entry"
+    timeout: 5000
+
+- tapOn:
+    id: "messages-requests-entry"
+
+- assertVisible:
+    id: "requests-sheet"
+    timeout: 3000
+
+- tapOn:
+    id: "requests-tab-messages"
+
+- assertVisible:
+    text: ${MAESTRO_REQUEST_SENDER}
+    timeout: 5000
+
+# Accept from the sheet. The id carries the conversation uuid, so match on the
+# prefix rather than hard-coding a thread.
+- tapOn:
+    id: "message-request-accept-.*"
+    index: 0
+
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# Accepting opens the chat: no gate, the composer is there and usable.
+- assertNotVisible:
+    id: "request-gate"
+- assertVisible:
+    id: "chat-input"
+    timeout: 5000
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Hi! Thanks for reaching out 💜"
+- tapOn:
+    id: "chat-send"
+
+- assertVisible:
+    text: "Hi! Thanks for reaching out 💜"
+    timeout: 5000
+# Delivered, not stuck: no retry affordance on the bubble.
+- assertNotVisible:
+    id: "message-retry"
+
+# Back on Messages, the thread is a normal chat now and the request is gone.
+- back
+- tapOn:
+    id: "messages-requests-entry"
+- tapOn:
+    id: "requests-tab-messages"
+- assertVisible:
+    id: "requests-empty"
+    timeout: 5000
