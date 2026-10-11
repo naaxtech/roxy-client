@@ -81,6 +81,45 @@ export async function fetchChannelMessages(channelId: string): Promise<ChannelMe
 }
 
 /**
+ * The page before `before` (CHAT-16): a channel used to stop at its newest 50,
+ * so anything older was unreachable. Keyset on created_at, `lte` so a second
+ * message in the same instant as the oldest loaded one is not skipped
+ * (prependOlder drops the overlap). Same RLS as the first page, so a
+ * block-paired sender's rows stay hidden.
+ */
+export async function fetchOlderChannelMessages(channelId: string, before: string): Promise<ChannelMessage[]> {
+  const { data, error } = await supabase
+    .from('community_channel_messages')
+    .select(MESSAGE_FIELDS)
+    .eq('channel_id', channelId)
+    .lte('created_at', before)
+    .order('created_at', { ascending: false })
+    .limit(MESSAGE_PAGE);
+
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as ChannelMessage[];
+  return [...rows].reverse();
+}
+
+/**
+ * Put an older page (chronological) above what is loaded. `hasMore` is false
+ * once a short page comes back, or a full page added nothing new (every row
+ * shares one instant) — otherwise the list would ask for the same page forever.
+ * Same array back when nothing was added.
+ */
+export function prependOlder(
+  loaded: ChannelMessage[],
+  older: ChannelMessage[],
+  pageSize: number,
+): { messages: ChannelMessage[]; added: number; hasMore: boolean } {
+  const known = new Set(loaded.map((m) => m.id));
+  const fresh = older.filter((m) => !known.has(m.id));
+  const hasMore = older.length >= pageSize && fresh.length > 0;
+  if (fresh.length === 0) return { messages: loaded, added: 0, hasMore };
+  return { messages: [...fresh, ...loaded], added: fresh.length, hasMore };
+}
+
+/**
  * One message by id, with its author — for a realtime INSERT/UPDATE, whose
  * payload carries no joined author. RLS hides a block-paired sender's row
  * (migration 132), which comes back as null: not an error, just not hers to see.

@@ -18,6 +18,7 @@ import { ChannelComposer } from '../../../../../components/channels/ChannelCompo
 import { ChannelMessageActions, type ChannelAction } from '../../../../../components/channels/ChannelMessageActions';
 import {
   fetchChannels, fetchChannelMessages, fetchChannelMessage, sendChannelMessage, deleteChannelMessage,
+  fetchOlderChannelMessages, prependOlder, MESSAGE_PAGE,
   initialChannel, fetchMyChannelRole, writeFailureMessage, authorName, fetchLiveStage,
   markChannelRead, setChannelNotifications, fetchChannelNotifications,
   hideSilenced, mergeChannelMessage,
@@ -68,6 +69,13 @@ export default function CommunityChannelsScreen() {
   // CHAT-09: who outranks whom here, loaded only for moderators (a hint for
   // what to draw; remove_community_member is the gate). Absent = member.
   const [roles, setRoles] = useState<Map<string, string>>(new Map());
+
+  // CHAT-16: history older than the first page. hasOlder is true while the
+  // last page came back full; the header row loads the next one up.
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [olderError, setOlderError] = useState(false);
+  const loadingOlderRef = useRef(false);
 
   const listRef = useRef<FlatList<Message>>(null);
   // Which channel the screen is actually showing. A fetch that resolves after
@@ -156,6 +164,8 @@ export default function CommunityChannelsScreen() {
       // reply typed against them posts to the room she is not looking at.
       if (shownChannelId.current !== channelId) return;
       setMessages(rows);
+      setHasOlder(rows.length >= MESSAGE_PAGE);
+      setOlderError(false);
       setMessageError(null);
     } catch (e) {
       logError(e, 'community_channel_messages_failed');
@@ -174,11 +184,41 @@ export default function CommunityChannelsScreen() {
     atBottom.current = true;
     setMessages([]);
     setMessageError(null);
+    setHasOlder(false);
+    setOlderError(false);
     void loadMessages(active.id);
     // Opening the channel is reading it. Clear its unread cursor so the inbox
     // badge does not count messages she has already seen.
     void markChannelRead(active.id);
   }, [active, loadMessages]);
+
+  // The page before the oldest loaded row, put ABOVE what she is reading.
+  // The cursor is the oldest row she has loaded, including any she has hidden
+  // (block/mute), so a silenced sender never makes the same page load twice.
+  const messagesRef = useRef<Message[]>([]);
+  messagesRef.current = messages;
+  const loadOlder = useCallback(async () => {
+    const channelId = shownChannelId.current;
+    const oldest = messagesRef.current[0]?.created_at;
+    if (!channelId || !oldest || loadingOlderRef.current) return;
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    setOlderError(false);
+    try {
+      const older = await fetchOlderChannelMessages(channelId, oldest);
+      if (shownChannelId.current !== channelId) return;
+      // hasMore from the rows she has now; the updater re-merges against
+      // whatever landed meanwhile (a live message), never a stale copy.
+      setHasOlder(prependOlder(messagesRef.current, older, MESSAGE_PAGE).hasMore);
+      setMessages((prev) => prependOlder(prev, older, MESSAGE_PAGE).messages);
+    } catch (e) {
+      logError(e, 'community_channel_older_failed');
+      if (shownChannelId.current === channelId) setOlderError(true);
+    } finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  }, []);
 
   // Filtered by channel_id, never table-wide: a subscription to every message
   // in every community is the pattern CLAUDE.md §18 bans outright.
@@ -368,6 +408,10 @@ export default function CommunityChannelsScreen() {
     centreBody: { ...TYPE.caption, color: colors.textSecondary, textAlign: 'center' },
     retry: { ...TYPE.caption, color: colors.primaryInk, fontWeight: '700' },
     retryHit: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
+    olderHit: { minHeight: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center' },
+    older: { ...TYPE.caption, color: colors.primaryInk, fontWeight: '700' },
+    olderError: { ...TYPE.caption, color: colors.errorInk, textAlign: 'center' },
+    startOf: { ...TYPE.micro, color: colors.textMuted, textAlign: 'center', paddingVertical: 8 },
   });
 
   if (!loading && communitySlug && !canCommunity(communitySlug)) {
@@ -474,8 +518,39 @@ export default function CommunityChannelsScreen() {
           const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
           atBottom.current =
             contentOffset.y + layoutMeasurement.height >= contentSize.height - 60;
+          // CHAT-16: near the top, fetch the page before. A failed page waits
+          // for her tap instead of retrying on every scroll event.
+          if (contentOffset.y < 80 && hasOlder && !loadingOlderRef.current && !olderError) {
+            void loadOlder();
+          }
         }}
         scrollEventThrottle={16}
+        // Keeps her place when an older page lands above her (native; the web
+        // build keeps the offset as is, which also holds the visible row).
+        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+        ListHeaderComponent={
+          hasOlder || olderError ? (
+            <Pressable
+              onPress={() => { void loadOlder(); }}
+              disabled={loadingOlder}
+              style={s.olderHit}
+              accessibilityRole="button"
+              accessibilityLabel={olderError ? 'Try loading earlier messages again' : 'Load earlier messages'}
+              accessibilityState={{ busy: loadingOlder }}
+              testID="channel-load-older"
+            >
+              {loadingOlder ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Text style={olderError ? s.olderError : s.older}>
+                  {olderError ? "Couldn't load earlier messages. Tap to try again." : 'Earlier messages'}
+                </Text>
+              )}
+            </Pressable>
+          ) : (
+            <Text style={s.startOf} testID="channel-start">{`Start of # ${active.slug}`}</Text>
+          )
+        }
         // Only when she was already at the bottom, or a woman reading yesterday
         // is yanked to the newest message every time anybody posts.
         onContentSizeChange={() => {
