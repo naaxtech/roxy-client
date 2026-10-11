@@ -1,0 +1,33 @@
+apps/mobile/__tests__/lib/chatThread.test.ts
+  s_f8d6ceb53516cd::t_f64262a4307da0 23,202-226
+apps/mobile/__tests__/screens/ChatThread.test.tsx
+  s_f8d6ceb53516cd::t_4e542a10bfbd38 298,303,306-320
+apps/mobile/__tests__/screens/GroupInfo.test.tsx
+  s_f8d6ceb53516cd::t_b0dfb2943301af 47-50,236-243
+apps/mobile/lib/reportTargets.ts
+  s_f8d6ceb53516cd::t_c21cb2b2934594 25-27
+supabase/downs/132_private_groups_and_requests_down.sql
+  s_f8d6ceb53516cd::t_ef6f393f99ea23 271-287
+supabase/functions/submit-report/index.ts
+  s_f8d6ceb53516cd::t_20f18f12f334f0 23-25
+supabase/migrations/132_private_groups_and_requests.sql
+  s_f8d6ceb53516cd::t_8d0674f584c8f1 74-88
+supabase/tests/132_private_groups_and_requests_check.sql
+  s_f8d6ceb53516cd::t_ed63537b038f52 487-499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67c6a5f8cb36b2cea52afda80b75f6166833f086",
+  "prompts": {},
+  "sessions": {
+    "s_f8d6ceb53516cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c84df994-0d2a-4bdf-b97f-83f23f252335",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
