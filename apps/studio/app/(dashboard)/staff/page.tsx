@@ -5,6 +5,7 @@ import { requireStaffPage } from '@/lib/staff-guard';
 import { Badge } from '@/components/ui/badge';
 import { BlockPayoutButton } from './BlockPayoutButton';
 import { ReleasePayoutButton } from './ReleasePayoutButton';
+import { LaunchFunnelCard } from './LaunchFunnelCard';
 
 export default async function StaffPage() {
   // Payout buttons act only for core staff (staff_set_payout_block and the
@@ -64,6 +65,8 @@ export default async function StaffPage() {
         <h1 className="text-2xl font-bold">Staff Dashboard</h1>
         <p className="text-muted-foreground mt-1">Payment operations and audit trail.</p>
       </div>
+
+      <LaunchFunnelCard />
 
       {/* Blocked Payouts */}
       <section className="space-y-3">
