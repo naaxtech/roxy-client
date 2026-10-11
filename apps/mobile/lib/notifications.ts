@@ -2,7 +2,10 @@ import { supabase } from './supabase';
 
 export type RoxyNotification = {
   id: string;
-  type: 'friend_request' | 'friend_accept' | 'community_event' | 'message' | 'channel_message';
+  type:
+    | 'friend_request' | 'friend_accept' | 'community_event' | 'message' | 'channel_message'
+    // Migration 135: CHAT-09 invites and join requests.
+    | 'community_invite' | 'community_join_request';
   title: string;
   body: string | null;
   link_path: string | null;

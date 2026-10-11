@@ -63,6 +63,13 @@ BEGIN
   DELETE FROM public.conversations WHERE participant_ids && ids;
   DELETE FROM public.chat_settings WHERE user_id = ANY (ids);
   UPDATE public.profiles SET vetting_status = 'approved', is_active = true, dm_permission = 'everyone' WHERE id = ANY (ids);
+  -- Other lanes' checks may run first in a stacked proof: undo any staff flag,
+  -- soft-delete
+  -- (130) or open suspension (131) they left on these accounts.
+  UPDATE public.profiles SET deleted_at = NULL, is_staff = false WHERE id = ANY (ids);
+  IF to_regclass('public.account_suspensions') IS NOT NULL THEN
+    EXECUTE 'DELETE FROM public.account_suspensions WHERE user_id = ANY ($1)' USING ids;
+  END IF;
   UPDATE public.profiles SET dm_permission = 'friends' WHERE id = d;
   INSERT INTO public.friendships (requester_id, addressee_id, status) VALUES
     (a, b, 'accepted'), (a, c, 'accepted'), (a, d, 'accepted'), (b, c, 'accepted'), (b, d, 'accepted');
@@ -573,3 +580,9 @@ BEGIN
   END IF;
   RAISE NOTICE 'PASS grants';
 END $$;
+
+-- Leave no signed-in user behind for the next check in a stacked proof:
+-- auth.uid() reads the legacy request.jwt.claim.sub before request.jwt.claims,
+-- so a check that clears only the latter would still run as our last member.
+RESET ROLE;
+SELECT set_config('request.jwt.claim.sub', '', true), set_config('request.jwt.claims', '', true);

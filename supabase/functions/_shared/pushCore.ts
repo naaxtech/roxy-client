@@ -17,7 +17,11 @@ export type NotificationType =
   | 'channel_message'
   | 'friend_request'
   | 'friend_accept'
-  | 'community_event';
+  | 'community_event'
+  // Migration 135 (CHAT-09): a moderator invited her to a private community,
+  // or someone asked to join a community she moderates.
+  | 'community_invite'
+  | 'community_join_request';
 
 export type PrefKey = 'messages' | 'community_chats' | 'friends' | 'events';
 
@@ -83,6 +87,11 @@ const CATEGORY: Record<NotificationType, { pref: PrefKey; channel: Exclude<Chann
   friend_request: { pref: 'friends', channel: 'friends' },
   friend_accept: { pref: 'friends', channel: 'friends' },
   community_event: { pref: 'events', channel: 'events' },
+  // Community news shares the 'Community chats' switch and the community
+  // channel: no new switch or Android channel (one would need an app release
+  // before it could ring).
+  community_invite: { pref: 'community_chats', channel: 'community' },
+  community_join_request: { pref: 'community_chats', channel: 'community' },
 };
 
 /** Which preference gates a type, and which channel it rings on. Unknown types are never pushed. */
@@ -100,6 +109,12 @@ function privateCopy(n: QueuedNotification): { title: string; body: string } {
       return { title: who, body: 'Sent you a friend request' };
     case 'friend_accept':
       return { title: who, body: 'Accepted your friend request' };
+    case 'community_invite':
+      // Never the community's name: it may say what she is not out about.
+      return { title: who, body: 'Invited you to a private community' };
+    case 'community_join_request':
+      // Neither the community nor her note.
+      return { title: who, body: 'Asked to join a community you moderate' };
     case 'channel_message':
       return { title: 'Roxy', body: 'New message in a community chat' };
     case 'community_event':

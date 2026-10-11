@@ -21,6 +21,9 @@ const TYPE_EMOJI: Record<RoxyNotification['type'], string> = {
   community_event: '🗓️',
   message: '💬',
   channel_message: '#️⃣',
+  // Migration 135: an invite to a private community, a request to join one.
+  community_invite: '🔐',
+  community_join_request: '🚪',
 };
 
 export default function NotificationsScreen() {

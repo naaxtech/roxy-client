@@ -23,7 +23,14 @@ import { REPORT_CONTENT_TYPES } from '../../lib/reportTargets';
 const REPO = join(__dirname, '..', '..', '..', '..');
 const MIGRATIONS = join(REPO, 'supabase', 'migrations');
 
-/** The CHECK list from the LAST migration that constrains reports.content_type. */
+/**
+ * The CHECK list from the LAST migration that constrains reports.content_type,
+ * plus any type a later migration adds on top of whatever is there
+ * (`reports_content_type_union := ARRAY[...]`, 135). 133 rebuilds the CHECK
+ * from a literal list that predates 132's 'conversation', so 135 puts it back
+ * as a union rather than a second literal list that would drop another lane's
+ * type.
+ */
 const checkedContentTypes = (): string[] => {
   const files = readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort();
   let found: string[] | null = null;
@@ -36,6 +43,10 @@ const checkedContentTypes = (): string[] => {
     const matches = sql.matchAll(/content_type\s+IN\s*\(([^)]*)\)/gi);
     for (const m of matches) {
       found = m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, ''));
+    }
+    for (const m of sql.matchAll(/reports_content_type_union\s*:=\s*ARRAY\[([^\]]*)\]/gi)) {
+      const added = m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, ''));
+      found = [...new Set([...(found ?? []), ...added])];
     }
   }
 
@@ -65,6 +76,15 @@ describe('what can be reported', () => {
     // Migration 132: before it, the chat header had to point a report at "her
     // latest message", and a group with no message from the owner had nothing.
     expect(REPORT_CONTENT_TYPES).toContain('conversation');
+  });
+
+  it('the last migration to touch the CHECK keeps conversation reports (135 re-adds it after 133)', () => {
+    const files = readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort();
+    const last = files
+      .filter((f) => /reports_content_type_check/.test(readFileSync(join(MIGRATIONS, f), 'utf8')))
+      .pop() as string;
+    expect(readFileSync(join(MIGRATIONS, last), 'utf8'))
+      .toMatch(/reports_content_type_union\s*:=\s*ARRAY\[[^\]]*'conversation'/);
   });
 
   it('matches the database CHECK exactly', () => {

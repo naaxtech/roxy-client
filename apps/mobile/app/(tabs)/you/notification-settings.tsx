@@ -26,7 +26,7 @@ const TYPES: { key: Exclude<ToggleKey, 'push_enabled' | 'show_previews'>; label:
   { key: 'messages', label: 'Messages', hint: 'Direct messages sent to you' },
   { key: 'friends', label: 'Friend requests', hint: 'New requests, and when someone accepts yours' },
   { key: 'events', label: 'Community events', hint: 'New events in communities you joined' },
-  { key: 'community_chats', label: 'Community chats', hint: 'Only for communities where you turned chat alerts on' },
+  { key: 'community_chats', label: 'Community chats', hint: 'Chats where you turned alerts on, invites, and join requests you moderate' },
 ];
 
 const QUIET_PRESETS: { id: string; label: string; start: string | null; end: string | null }[] = [

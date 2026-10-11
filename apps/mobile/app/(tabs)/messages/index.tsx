@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter, usePathname, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../../store/authStore';
 import { useConnectStore } from '../../../store/connectStore';
@@ -62,6 +62,15 @@ function MessagesScreen() {
   const dmPermission = readDmPermission(profile as { dm_permission?: unknown } | null);
   const [search, setSearch] = useState('');
   const [requestsOpen, setRequestsOpen] = useState(false);
+  // A community-invite notification (135) links to /messages?requests=1: open
+  // Requests, where she answers it, then spend the param so a later visit to
+  // Messages does not pop the sheet again.
+  const params = useLocalSearchParams<{ requests?: string; community?: string }>();
+  useEffect(() => {
+    if (params.requests !== '1') return;
+    setRequestsOpen(true);
+    router.setParams({ requests: undefined, community: undefined });
+  }, [params.requests, router]);
   const [communityMeta, setCommunityMeta] = useState<Record<string, InboxCommunityMeta>>({});
   const [communityUnread, setCommunityUnread] = useState<Record<string, number>>({});
 
