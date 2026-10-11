@@ -42,8 +42,10 @@ export const AVATAR_GRADS: [string, string][] = [
   [T.secondary, T.roxy],
   [T.primary, T.secondary],
   [T.sister, T.secondary],
-  [T.gold, BRAND_GRADIENT[0]],
+  [BRAND_GRADIENT[1], T.secondary],
   [LIVE_GRADIENT[0], LIVE_GRADIENT[1]],
+  // No gold: several screens outside components/ui/Avatar still print a
+  // hard-coded white initial on these, and white on gold is ~1.9:1.
 ];
 
 export function avatarGradient(name: string | null | undefined): [string, string] {
