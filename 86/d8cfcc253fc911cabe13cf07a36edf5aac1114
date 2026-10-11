@@ -1,0 +1,45 @@
+supabase/downs/134_gate_followups_down.sql
+  s_f8d6ceb53516cd::t_ea3211c4efdbc5 264
+supabase/functions/_shared/emailConfig.test.ts
+  s_f8d6ceb53516cd::t_9fb668bcd35530 1-67
+supabase/functions/_shared/emailConfig.ts
+  s_f8d6ceb53516cd::t_507b95c6fe40a9 1-43
+supabase/functions/_shared/emailTemplates.ts
+  s_f8d6ceb53516cd::t_c46ffb16953f98 22-24
+supabase/functions/_shared/pushCore.test.ts
+  s_f8d6ceb53516cd::t_1a1c57475cc490 15,66-94
+supabase/functions/_shared/pushCore.ts
+  s_f8d6ceb53516cd::t_f83ca07ee9296b 20-23,25,27-31,39-44,59,99,121-123,165-166
+supabase/functions/_shared/pushDispatch.test.ts
+  s_f8d6ceb53516cd::t_777ea38230aae0 98-114
+supabase/functions/_shared/pushDispatch.ts
+  s_f8d6ceb53516cd::t_a4601842303b1a 85
+supabase/functions/connect-business-stripe/index.ts
+  s_f8d6ceb53516cd::t_b50a7237f9add2 5,42
+supabase/functions/process-email-queue/index.ts
+  s_f8d6ceb53516cd::t_032b94bcbf7242 5-6,9-11,25,38
+supabase/functions/push-dispatch/index.ts
+  s_f8d6ceb53516cd::t_4574c28f822715 65-68
+supabase/functions/stripe-connect-onboard/index.ts
+  s_f8d6ceb53516cd::t_e8b400ccca1bba 5,31
+supabase/migrations/134_gate_followups.sql
+  s_f8d6ceb53516cd::t_a08de261fd9be2 214-218
+supabase/tests/134_gate_followups_check.sql
+  s_f8d6ceb53516cd::t_83d88a5bf88983 212-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86d8cfcc253fc911cabe13cf07a36edf5aac1114",
+  "prompts": {},
+  "sessions": {
+    "s_f8d6ceb53516cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c84df994-0d2a-4bdf-b97f-83f23f252335",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
