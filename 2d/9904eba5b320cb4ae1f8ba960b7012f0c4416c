@@ -1,0 +1,108 @@
+.claude/skills/design-taste-frontend/README.md
+  h_0549c11fec2ab0 1-81
+.claude/skills/design-taste-frontend/SKILL.md
+  h_0549c11fec2ab0 1-529
+.claude/skills/design-taste-frontend/assets/app.css
+  h_0549c11fec2ab0 1-216
+.claude/skills/design-taste-frontend/assets/base.css
+  h_0549c11fec2ab0 1-105
+.claude/skills/design-taste-frontend/assets/base.js
+  h_0549c11fec2ab0 1-37
+.claude/skills/design-taste-frontend/assets/charts.js
+  h_0549c11fec2ab0 1-617
+.claude/skills/design-taste-frontend/assets/scenes/stage.css
+  h_0549c11fec2ab0 1-28
+.claude/skills/design-taste-frontend/assets/scenes/stage.js
+  h_0549c11fec2ab0 1-133
+.claude/skills/design-taste-frontend/evals/evals.json
+  h_0549c11fec2ab0 1-76
+.claude/skills/design-taste-frontend/library/app.json
+  h_0549c11fec2ab0 1-1327
+.claude/skills/design-taste-frontend/library/directions.json
+  h_0549c11fec2ab0 1-1078
+.claude/skills/design-taste-frontend/library/heroes.json
+  h_0549c11fec2ab0 1-1086
+.claude/skills/design-taste-frontend/library/motions.json
+  h_0549c11fec2ab0 1-92
+.claude/skills/design-taste-frontend/library/palettes.json
+  h_0549c11fec2ab0 1-1485
+.claude/skills/design-taste-frontend/library/photos.json
+  h_0549c11fec2ab0 1-7240
+.claude/skills/design-taste-frontend/library/sections.json
+  h_0549c11fec2ab0 1-4429
+.claude/skills/design-taste-frontend/library/sites.json
+  h_0549c11fec2ab0 1-8350
+.claude/skills/design-taste-frontend/library/type.json
+  h_0549c11fec2ab0 1-2024
+.claude/skills/design-taste-frontend/references/app-screens.md
+  h_0549c11fec2ab0 1-1199
+.claude/skills/design-taste-frontend/references/colour.md
+  h_0549c11fec2ab0 1-141
+.claude/skills/design-taste-frontend/references/copy.md
+  h_0549c11fec2ab0 1-177
+.claude/skills/design-taste-frontend/references/critique.md
+  h_0549c11fec2ab0 1-182
+.claude/skills/design-taste-frontend/references/imagery.md
+  h_0549c11fec2ab0 1-791
+.claude/skills/design-taste-frontend/references/layout.md
+  h_0549c11fec2ab0 1-292
+.claude/skills/design-taste-frontend/references/motion.md
+  h_0549c11fec2ab0 1-980
+.claude/skills/design-taste-frontend/references/research.md
+  h_0549c11fec2ab0 1-356
+.claude/skills/design-taste-frontend/references/scenes.md
+  h_0549c11fec2ab0 1-174
+.claude/skills/design-taste-frontend/references/tells.md
+  h_0549c11fec2ab0 1-115
+.claude/skills/design-taste-frontend/references/type.md
+  h_0549c11fec2ab0 1-170
+.claude/skills/design-taste-frontend/scripts/assets.mjs
+  h_0549c11fec2ab0 1-865
+.claude/skills/design-taste-frontend/scripts/draw.mjs
+  h_0549c11fec2ab0 1-584
+.claude/skills/design-taste-frontend/scripts/inspect.mjs
+  h_0549c11fec2ab0 1-303
+.claude/skills/design-taste-frontend/scripts/lib/app-draw.mjs
+  h_0549c11fec2ab0 1-203
+.claude/skills/design-taste-frontend/scripts/lib/cdp.mjs
+  h_0549c11fec2ab0 1-237
+.claude/skills/design-taste-frontend/scripts/lib/probe.mjs
+  h_0549c11fec2ab0 1-909
+.claude/skills/design-taste-frontend/scripts/lib/rules.mjs
+  h_0549c11fec2ab0 1-243
+.claude/skills/design-taste-frontend/scripts/lint.mjs
+  h_0549c11fec2ab0 1-119
+.claude/skills/design-taste-frontend/scripts/scenes.mjs
+  h_0549c11fec2ab0 1-124
+.easignore
+  h_0549c11fec2ab0 108-113
+.gitignore
+  h_0549c11fec2ab0 64-67
+polish/LIVE.log
+  h_0549c11fec2ab0 1
+polish/brief.md
+  h_0549c11fec2ab0 1-28
+polish/decisions.md
+  h_0549c11fec2ab0 1-10
+polish/matrix.md
+  h_0549c11fec2ab0 1-11
+polish/rubric.md
+  h_0549c11fec2ab0 1-26
+polish/rules/CLAUDE.md
+  h_0549c11fec2ab0 1-29
+polish/spec.md
+  h_0549c11fec2ab0 1-30
+skills-lock.json
+  h_0549c11fec2ab0 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d9904eba5b320cb4ae1f8ba960b7012f0c4416c",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
