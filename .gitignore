@@ -61,3 +61,7 @@ apps/mobile/shots/dogfood-*/
 
 # Dated local web exports (npx expo export --output-dir dist-YYYY-MM-DD)
 apps/mobile/dist-*/
+
+# Polish pipeline: evidence screenshots stay on disk, not in git; Taste Skill history
+polish/evidence/
+.taste-skill/

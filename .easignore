@@ -105,3 +105,9 @@ docs/nerp-claude-design/
 !.env.example
 **/.env
 **/.env.*
+
+# Polish pipeline docs and agent skills never ship in a build
+polish/
+.taste-skill/
+.claude/skills/design-taste-frontend/
+skills-lock.json
