@@ -1,1 +1,4 @@
 [orchestrator] 22:50:15 Phase 0 started: main synced (942ad17), Taste Skill v2 installed, /polish scaffolded
+[orchestrator] 23:31:15 Gates on 942ad17 green (jest 2057/2057, studio build ok; deno check 18 pre-existing). Scaffold committed 2d9904e (not pushed).
+[orchestrator] 23:31:15 Browser gate blocked: Roxy prod Supabase auth/rest flapping UNHEALTHY (sign-in 18-30s); 55/56 specs timed out at sign-in. Waiting for 3 healthy checks, then narrow re-run local+live (gate2.sh).
+[orchestrator] 23:55:37 Phase 1 done: features.md (227 rows). Phase 2 done: design-direction.md PROPOSED + 4 concept boards, reviewed by orchestrator with vision. main merged launch/integration (92638f4) after Cartographer found live = integration 9d4b0ac.

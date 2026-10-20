@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390, initial-scale=1">
+<title>Roxy concept 01: Give her a flower (Feed)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="roxy-tokens.css">
+<style>
+  /* Signature moment 1: a double-tap gives a flower, not a like. Frame shown: 280ms into the 600ms bloom. */
+  .media { position: absolute; inset: 0 0 82px 0; background: var(--stage) url(assets/eva-gonzales-bouquet-of-violets.jpg) center 38% / cover no-repeat; }
+  .scrim-top { position: absolute; left: 0; right: 0; top: 0; height: 132px; background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,0)); } /* taste-skill-ignore: neutral scrim over a photo (the allowed exception) */
+  .scrim-bottom { position: absolute; left: 0; right: 0; bottom: 82px; height: 250px;
+    background: linear-gradient(rgba(0,0,0,0) 0, rgba(0,0,0,.62) 96px, rgba(0,0,0,.88) 100%); } /* taste-skill-ignore: neutral caption scrim over media, dp-anchored as in feedChromeTokens */
+  .status { color: #fff; }
+  .top { position: absolute; top: 50px; left: 16px; right: 16px; height: 44px; display: flex; align-items: center; gap: 18px; color: #fff; z-index: 5; }
+  .seg { font: 500 15px/20px var(--font-text); color: rgba(255,255,255,.82); text-shadow: 0 1px 4px rgba(0,0,0,.5); } /* taste-skill-ignore: legibility over media (CHROME_SHADOW), not decoration */
+  .seg.on { font-weight: 600; color: #fff; position: relative; }
+  .seg.on::after { content: ""; position: absolute; left: 50%; bottom: -8px; width: 20px; height: 2px; margin-left: -10px; border-radius: 1px; background: #fff; }
+  .top .right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .live { display: flex; align-items: center; gap: 6px; font: 600 12px/16px var(--font-text); }
+  .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 1.5px rgba(0,0,0,.35); } /* taste-skill-ignore: 1.5px outline so the dot reads on any frame */
+  .top svg.icon { width: 24px; height: 24px; filter: drop-shadow(0 1px 3px rgba(0,0,0,.55)); } /* taste-skill-ignore: legibility over media */
+
+  .toast { position: absolute; top: 104px; left: 16px; right: 16px; z-index: 6; display: flex; gap: 12px; align-items: center;
+    background: var(--surface); border-radius: var(--r-md); padding: 12px 14px; box-shadow: var(--float); } /* taste-skill-ignore: a toast floats (elevation level float) */
+  .toast svg { width: 28px; height: 28px; color: var(--pink); flex: none; }
+  .toast b { display: block; font: 600 15px/20px var(--font-text); color: var(--ink); }
+  .toast span { display: block; font: 400 13px/18px var(--font-text); color: var(--ink2); }
+
+  .bloom { position: absolute; left: 84px; top: 310px; width: 128px; height: 128px; color: var(--pink); transform: rotate(-8deg) scale(.94); z-index: 4; }
+  .petal { position: absolute; color: var(--pink); opacity: .85; z-index: 4; }
+
+  .rail { position: absolute; right: 12px; bottom: 116px; width: 52px; display: flex; flex-direction: column; align-items: center; gap: 14px; z-index: 5; color: #fff; }
+  .rail .ctl { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 48px; }
+  .rail svg { width: 32px; height: 32px; filter: drop-shadow(0 0 1px rgba(0,0,0,.7)) drop-shadow(0 1px 3px rgba(0,0,0,.45)); } /* taste-skill-ignore: rail glyph legibility over media, replaces v0's 0.82 black plates */
+  .rail svg.icon { stroke-width: 1.9; }
+  .rail .n { font: 600 12px/16px var(--font-text); text-shadow: 0 1px 3px rgba(0,0,0,.7); } /* taste-skill-ignore: legibility over media */
+  .rail .liked { color: var(--pink); }
+
+  .who { position: absolute; left: 16px; right: 84px; bottom: 116px; z-index: 5; color: #fff; }
+  .who .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font: 700 15px/1 var(--font-display); color: var(--on-pink); flex: none; }
+  .who .name { font: 600 15px/20px var(--font-text); }
+  .who .in { font: 500 12px/16px var(--font-text); color: rgba(255,255,255,.82); display: flex; align-items: center; gap: 6px; }
+  .who .in .crest { width: 14px; height: 14px; border-radius: 4px; background: var(--crest-butter); }
+  .who p { font: 400 15px/21px var(--font-text); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="media" role="img" aria-label="Eva Gonzalès, The Bouquet of Violets, about 1877"></div>
+  <div class="scrim-top"></div>
+  <div class="scrim-bottom"></div>
+
+  <div class="status"><span>9:41</span><span class="sys"><svg class="bar" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#fff"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#fff"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#fff"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#fff"/></svg><svg width="25" height="12" viewBox="0 0 25 12"><rect x=".5" y=".5" width="21" height="11" rx="3" fill="none" stroke="#fff" opacity=".5"/><rect x="2" y="2" width="16" height="8" rx="2" fill="#fff"/></svg></span></div>
+
+  <div class="top">
+    <span class="seg on">For you</span><span class="seg">Following</span><span class="seg">Communities</span>
+    <div class="right"><span class="live"><i></i>8 live</span><svg data-i="search"></svg></div>
+  </div>
+
+  <div class="toast">
+    <svg data-flower="fill" data-centre="#1E1A1C"></svg>
+    <div><b>Your first flower.</b><span>Flowers, not likes. Women have given each other violets for a very long time.</span></div>
+  </div>
+
+  <svg class="bloom" data-flower="fill" data-stroke="#fff" data-sw="0.7" data-centre="#17080F" data-cr="1.9"></svg>
+  <svg class="petal" style="left:214px;top:268px;width:22px;height:22px;transform:rotate(18deg)" data-flower="fill" data-stroke="#fff" data-sw="1.2"></svg>
+  <svg class="petal" style="left:58px;top:262px;width:14px;height:14px;transform:rotate(-30deg);opacity:.7" data-flower="fill" data-stroke="#fff" data-sw="1.4"></svg>
+  <svg class="petal" style="left:178px;top:236px;width:10px;height:10px;opacity:.55" data-flower="fill"></svg>
+
+  <div class="rail">
+    <div class="ctl"><svg class="liked" data-flower="fill" data-stroke="#fff" data-sw="1.3" data-centre="#0B0A0A" data-cr="2.2"></svg><span class="n num">213</span></div>
+    <div class="ctl"><svg data-i="comment"></svg><span class="n num">18</span></div>
+    <div class="ctl"><svg data-i="save"></svg><span class="n">Save</span></div>
+    <div class="ctl"><svg data-i="share"></svg><span class="n">Share</span></div>
+    <div class="ctl"><svg data-i="more"></svg></div>
+  </div>
+
+  <div class="who">
+    <div class="row">
+      <div class="av" style="background:var(--crest-rose)">I</div>
+      <div><div class="name">Ines R. <span style="font-weight:500;color:rgba(255,255,255,.82)">· 2h</span></div>
+        <div class="in"><span class="crest"></span>in Queer Book Club London</div></div>
+    </div>
+    <p>Eva Gonzalès, 1877. Violets were how women said it first.</p>
+  </div>
+
+  <nav class="nav on-stage">
+    <div class="slot on"><svg data-i="feedOn"></svg>Feed</div>
+    <div class="slot"><svg data-i="discover"></svg>Discover</div>
+    <div class="slot"><div class="create"><svg data-i="plus" style="width:22px;height:22px"></svg></div><span style="height:16px"></span></div>
+    <div class="slot"><span class="badge"><svg data-i="messages"></svg></span>Messages</div>
+    <div class="slot"><svg data-i="you"></svg>You</div>
+  </nav>
+</div>
+<script src="roxy-concepts.js"></script>
+</body>
+</html>

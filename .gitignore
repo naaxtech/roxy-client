@@ -65,3 +65,4 @@ apps/mobile/dist-*/
 # Polish pipeline: evidence screenshots stay on disk, not in git; Taste Skill history
 polish/evidence/
 .taste-skill/
+polish/inspiration/shots/

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=852, initial-scale=1">
+<title>Roxy concept 04: Feed, v0 vs proposed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="roxy-tokens.css">
+<style>
+  html, body { width: 852px; height: 940px; background: #0B0A0A; }
+  .board { position: relative; width: 852px; height: 940px; padding: 24px; display: grid; grid-template-columns: 390px 390px; gap: 24px; }
+  .col h2 { font: 600 15px/20px var(--font-text); color: var(--ink); margin-bottom: 4px; }
+  .col p.sub { font: 400 13px/18px var(--font-text); color: var(--ink2); margin-bottom: 12px; height: 36px; }
+  .col img, .col .phone { display: block; width: 390px; height: 844px; border-radius: 0; }
+  .after { background: var(--field-paper); color: #1A1216; }
+  .after .status { color: #1A1216; }
+  .top { position: absolute; top: 50px; left: 16px; right: 16px; height: 44px; display: flex; align-items: center; gap: 18px; }
+  .seg { font: 500 15px/20px var(--font-text); color: #544A4F; }
+  .seg.on { font-weight: 600; color: #1A1216; position: relative; }
+  .seg.on::after { content: ""; position: absolute; left: 50%; bottom: -8px; width: 20px; height: 2px; margin-left: -10px; border-radius: 1px; background: #1A1216; }
+  .top .right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .live { display: flex; align-items: center; gap: 6px; font: 600 12px/16px var(--font-text); }
+  .live i { width: 8px; height: 8px; border-radius: 50%; background: #E8481E; }
+  .statement { position: absolute; left: 20px; width: 290px; top: 308px; }
+  .statement h1 { color: #1A1216; }
+  .statement p { margin-top: 20px; font: 400 17px/24px var(--font-text); color: #1A1216; }
+  .rail { position: absolute; right: 12px; bottom: 116px; width: 52px; display: flex; flex-direction: column; align-items: center; gap: 14px; color: #1A1216; }
+  .rail .ctl { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 48px; }
+  .rail svg { width: 32px; height: 32px; }
+  .rail svg.icon { stroke-width: 1.9; }
+  .rail .n { font: 600 12px/16px var(--font-text); }
+  .who { position: absolute; left: 20px; right: 84px; bottom: 120px; }
+  .who .row { display: flex; align-items: center; gap: 10px; }
+  .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font: 700 15px/1 var(--font-display); color: var(--on-pink); }
+  .who .name { font: 600 15px/20px var(--font-text); }
+  .who .in { font: 500 12px/16px var(--font-text); color: #544A4F; display: flex; align-items: center; gap: 6px; }
+  .who .in .crest { width: 14px; height: 14px; border-radius: 4px; background: var(--crest-sage); }
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="col">
+    <h2>v0, live build, 20 Oct 2026</h2>
+    <p class="sub">roxy.expo.app, For you, first screen after sign-in (polish/evidence/v0/feed-1-foryou.png)</p>
+    <img src="../evidence/v0/feed-1-foryou.png" alt="v0 Feed: a checklist card on a violet gradient under twenty pieces of chrome">
+  </div>
+  <div class="col">
+    <h2>Proposed</h2>
+    <p class="sub">Same screen. The post is the screen; chrome is type and four glyphs.</p>
+    <div class="phone after">
+      <div class="status"><span>9:41</span><span class="sys"><svg class="bar" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#1A1216"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#1A1216"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#1A1216"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#1A1216"/></svg><svg width="25" height="12" viewBox="0 0 25 12"><rect x=".5" y=".5" width="21" height="11" rx="3" fill="none" stroke="#1A1216" opacity=".5"/><rect x="2" y="2" width="16" height="8" rx="2" fill="#1A1216"/></svg></span></div>
+      <div class="top">
+        <span class="seg on">For you</span><span class="seg">Following</span><span class="seg">Communities</span>
+        <div class="right"><span class="live"><i></i>8 live</span><svg data-i="search"></svg></div>
+      </div>
+
+      <div class="statement">
+        <h1 class="t-moment">There is no late.</h1>
+        <p>Came out at 34. Met women here who came out at 51. What’s your “there’s no late” story?</p>
+      </div>
+
+      <div class="rail">
+        <div class="ctl"><svg data-flower="outline" data-sw="1.5"></svg><span class="n num">87</span></div>
+        <div class="ctl"><svg data-i="comment"></svg><span class="n num">24</span></div>
+        <div class="ctl"><svg data-i="save"></svg><span class="n">Save</span></div>
+        <div class="ctl"><svg data-i="share"></svg><span class="n">Share</span></div>
+        <div class="ctl"><svg data-i="more"></svg></div>
+      </div>
+
+      <div class="who">
+        <div class="row">
+          <div class="av" style="background:var(--crest-sage)">N</div>
+          <div><div class="name">Noor A. <span style="font-weight:500;color:#544A4F">· 3h</span></div>
+            <div class="in"><span class="crest"></span>in Late Bloomers</div></div>
+        </div>
+      </div>
+
+      <nav class="nav on-stage">
+        <div class="slot on"><svg data-i="feedOn"></svg>Feed</div>
+        <div class="slot"><svg data-i="discover"></svg>Discover</div>
+        <div class="slot"><div class="create"><svg data-i="plus" style="width:22px;height:22px"></svg></div><span style="height:16px"></span></div>
+        <div class="slot"><span class="badge"><svg data-i="messages"></svg></span>Messages</div>
+        <div class="slot"><svg data-i="you"></svg>You</div>
+      </nav>
+    </div>
+  </div>
+</div>
+<script src="roxy-concepts.js"></script>
+</body>
+</html>
