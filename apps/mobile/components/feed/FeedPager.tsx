@@ -79,6 +79,14 @@ export interface FeedPagerProps<TItem> {
    */
   onActiveItemChange?: (itemId: string, index: number) => void;
   onEndReached?: () => void;
+  /**
+   * Pull-to-refresh. Native only in practice: react-native-web renders no
+   * refresh control, so the web build refreshes on a segment change instead.
+   * Passed straight to FlashList, which wires its own RefreshControl.
+   */
+  onRefresh?: () => void;
+  /** True while a pull-to-refresh is in flight. */
+  refreshing?: boolean;
   testID?: string;
 }
 
@@ -108,6 +116,9 @@ const VIEWABILITY_CONFIG = { viewAreaCoveragePercentThreshold: 60 } as const;
 
 /** Ask for the next page well before the viewer reaches the end of this one. */
 const END_REACHED_THRESHOLD = 0.6;
+
+/** Clears the floating feed header (segments + streak chip). */
+const REFRESH_OFFSET = 72;
 
 /**
  * The vertical full-screen pager. One page per item, whatever an item is.
@@ -154,6 +165,8 @@ export function FeedPager<TItem>({
   placeholder,
   onActiveItemChange,
   onEndReached,
+  onRefresh,
+  refreshing = false,
   testID,
 }: FeedPagerProps<TItem>): ReactElement {
   const { width: windowWidth } = useWindowDimensions();
@@ -419,6 +432,9 @@ export function FeedPager<TItem>({
       scrollEventThrottle={16}
       onEndReached={onEndReached}
       onEndReachedThreshold={END_REACHED_THRESHOLD}
+      // The feed header floats over the top of the pager, so the spinner is
+      // pushed below it rather than drawn behind it (Android; iOS insets it).
+      {...(onRefresh ? { onRefresh, refreshing, progressViewOffset: REFRESH_OFFSET } : {})}
       viewabilityConfig={viewabilityConfig}
       onViewableItemsChanged={onViewableItemsChanged}
       renderItem={({ item, index }) => renderCell({

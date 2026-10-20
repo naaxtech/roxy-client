@@ -240,6 +240,8 @@ export type ArchiveQuery = {
   mediaType?: ArchiveMediaType | null;
   sort?: ArchiveSort;
   limit?: number;
+  /** Rows to skip — the next page of the browse list (ARC-07). */
+  offset?: number;
 };
 
 /**
@@ -251,7 +253,7 @@ export type ArchiveQuery = {
  * rather than a client-side `if`.
  */
 export async function fetchArchiveEntries(opts: ArchiveQuery = {}): Promise<ArchiveEntry[]> {
-  const { query, mediaType, sort = 'top', limit = 50 } = opts;
+  const { query, mediaType, sort = 'top', limit = 50, offset = 0 } = opts;
 
   let q = supabase
     .from('archive_ranked_view')
@@ -276,13 +278,45 @@ export async function fetchArchiveEntries(opts: ArchiveQuery = {}): Promise<Arch
     q = q.order('published_at', { ascending: false });
   }
 
-  const { data, error } = await q.limit(limit);
+  // Every sort ends on `id` so a page edge between equal scores is stable —
+  // without a unique last key, Postgres may return a tied row on both pages
+  // or on neither. Only a later page needs the range; the first keeps the
+  // plain limit every existing caller and test already reads.
+  q = q.order('id', { ascending: true });
+  const { data, error } = offset > 0
+    ? await q.range(offset, offset + limit - 1)
+    : await q.limit(limit);
   if (error) {
     logError(error, 'archive.fetchArchiveEntries');
     throw error;
   }
 
   return (data ?? []) as unknown as ArchiveEntry[];
+}
+
+/**
+ * Published entries per media type, as five head-only counts.
+ *
+ * The browse screen used to fetch 500 full rows on every mount just to count
+ * the chips (ARC-13). A failed count rejects; the screen then renders the
+ * chips without numbers.
+ */
+export async function fetchArchiveTypeCounts(): Promise<Record<ArchiveMediaType, number>> {
+  const types: ArchiveMediaType[] = ['film', 'tv', 'book', 'comic', 'music'];
+  const results = await Promise.all(types.map((t) => supabase
+    .from('archive_entries')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'published')
+    .eq('media_type', t)));
+  const out = { film: 0, tv: 0, book: 0, comic: 0, music: 0 } as Record<ArchiveMediaType, number>;
+  results.forEach((res, i) => {
+    if (res.error) {
+      logError(res.error, 'archive.fetchArchiveTypeCounts');
+      throw res.error;
+    }
+    out[types[i]] = res.count ?? 0;
+  });
+  return out;
 }
 
 export async function fetchArchiveEntry(slug: string): Promise<ArchiveEntry | null> {

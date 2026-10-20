@@ -9,6 +9,9 @@ import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
 import { BRAND_GRADIENT, CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
 import { pollShare, pollVoteTotal } from './poll';
+import { DoubleTapCatcher, useDoubleTapLike } from './DoubleTapLike';
+import { LikeBurst } from './LikeBurst';
+import { tapLight } from '../../lib/haptics';
 import type { ParsedPoll } from './poll';
 import { a11yState } from '../../lib/a11yState';
 
@@ -45,8 +48,12 @@ function votesLabel(n: number): string {
  * the community thinks.
  */
 export function PollCell({
-  post, poll, width, height, onOpenPost, onVote, ...chrome
+  post, poll, width, height, onOpenPost, onVote, onDoubleTapLike, ...chrome
 }: PollCellProps): ReactElement {
+  const { burstRef, onDoubleTap } = useDoubleTapLike({
+    liked: chrome.liked, onLike: chrome.onLike, onDoubleTapLike,
+    reducedMotion: chrome.reducedMotion,
+  });
   const [votedKey, setVotedKey] = useState<string | null>(null);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -58,6 +65,8 @@ export function PollCell({
     setFailed(false);
     setPendingKey(optionKey);
     setVotedKey(optionKey);
+    // The vote is a small yes too (FEED-09).
+    tapLight(chrome.reducedMotion);
 
     let ok = false;
     try {
@@ -71,7 +80,7 @@ export function PollCell({
       setVotedKey(null);
       setFailed(true);
     }
-  }, [onVote, pendingKey, votedKey]);
+  }, [onVote, pendingKey, votedKey, chrome.reducedMotion]);
 
   // The viewer's own vote is folded into the tally the moment she casts it, so
   // the bars she sees include her.
@@ -90,6 +99,10 @@ export function PollCell({
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
+
+      {/* Under the composition, which is box-none: a double tap anywhere but
+          an option likes the poll; an option keeps its own touch. */}
+      <DoubleTapCatcher onDoubleTap={onDoubleTap} />
 
       <View
         style={[s.composition, { paddingBottom: Math.round(height * 0.24) }]}
@@ -189,6 +202,8 @@ export function PollCell({
           <Text style={s.openText}>See the discussion</Text>
         </TouchableOpacity>
       </View>
+
+      <LikeBurst ref={burstRef} reducedMotion={chrome.reducedMotion} />
 
       <FeedCellChrome post={post} showCaption={false} onOpenPost={onOpenPost} {...chrome} />
     </View>

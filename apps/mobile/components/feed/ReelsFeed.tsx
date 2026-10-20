@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -11,14 +11,20 @@ import { loadPostComments, toggleCommentLike } from '../../lib/comments';
 import type { Comment } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { useFollowStore } from '../../store/followStore';
-import { excludeSeenReels, displayedLikeCount, initialReelIndex } from '../../lib/reels';
+import {
+  excludeSeenReels, excludeHidden, excludeMutedAuthors, displayedLikeCount, initialReelIndex,
+} from '../../lib/reels';
 import type { ReelRow } from '../../lib/reels';
 import { fetchAnnouncementPage } from '../../lib/announcements';
+import type { ForYouCursor } from '../../lib/announcements';
+import { fetchWallPage } from '../../lib/wallFeed';
+import type { WallCursor } from '../../lib/wallFeed';
 import { ownerIdsFromProfiles } from '../../lib/officialGrant';
 import { useFeedStore } from '../../store/feedStore';
 import { useSafetyStore } from '../../store/safetyStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { usePlaybackAllowed } from '../../hooks/usePlaybackAllowed';
 import { TYPE } from '../../lib/typography';
 import { STAGE, STAGE_BG } from './stageColors';
 import { FeedPager } from './FeedPager';
@@ -26,10 +32,19 @@ import type { FeedPagerCell } from './FeedPager';
 import { FeedCell, feedItemType } from './FeedCell';
 import { FeedInterestCard } from './FeedInterestCard';
 import { FeedSafetySheet } from './FeedSafetySheet';
+import { FeedStageSkeleton } from './FeedStageSkeleton';
 import { CommentSheet } from './CommentSheet';
 import { reportPost } from './feedSafety';
 import type { ReportReason } from './feedSafety';
+import { DailyPromptCell } from './DailyPromptCell';
+import {
+  isDailyPromptId, isDailyPromptItem, withDailyPrompt, type DailyPrompt,
+} from '../../lib/dailyPrompt';
 
+/** A page in the pager: a post, or For You's question of the day. */
+type FeedItem = ReelRow | DailyPrompt;
+
+/** Wall pages (Following, a community, a profile). For You pages at its RPC's own size. */
 const PAGE_SIZE = 10;
 
 /**
@@ -55,18 +70,19 @@ function toReelRows(data: unknown[] | null | undefined): ReelRow[] {
 }
 
 /**
- * Which videos this list plays. Two scopes, because Roxy has two:
+ * Which posts this list pages. Two kinds of source, because Roxy has two:
  *
- *  - `announcements` — the public square. Profile-wall videos, ranked by
- *    `announcement_feed` (migration 118). Follow is a bonus, not a filter.
- *    `communityIds` is not consulted.
- *  - `community` — videos on the official account that owns `communityIds`.
+ *  - `announcements` — For You, the public square. Every profile-wall post,
+ *    ranked by `feed_rank_page` (migration 133). `communityIds` is not read.
+ *  - `community` — posts on the official account that owns `communityIds`.
  *    Posts do not live on the community row.
  *  - `community-announcements` — same owner wall. Kept as a separate scope so
  *    existing call sites do not have to rename.
- *  - `following` — video by the people in `authorIds`. The Feed tab passes the
- *    viewer's `follows` ids. Friends are still request-first for DMs; they are
- *    not this list.
+ *  - `following` — posts by the people in `authorIds`. The Feed tab passes the
+ *    viewer's `follows` ids; a profile passes that one person.
+ *
+ * Every wall scope pages through `wall_feed_page` (133) on a composite
+ * (feed_score, created_at, id) cursor, so tied scores are never skipped.
  */
 export type ReelsScope =
   | 'announcements'
@@ -89,38 +105,55 @@ interface ReelsFeedProps {
   /** Required by `following`; ignored by every other scope. */
   authorIds?: string[];
   /**
-   * Open on this video rather than at the top — set when the viewer tapped a
-   * video card in the announcements feed. The post is spliced in if it is not
-   * already on the first page.
+   * Open on this post rather than at the top — set when the viewer tapped a
+   * post card elsewhere. The post is spliced in if it is not already on the
+   * first page.
    */
   initialPostId?: string | null;
+  /**
+   * Keep posts by authors she muted. Only for a profile she opened on purpose:
+   * a mute keeps someone out of her feeds, it does not make their profile
+   * look empty when she goes looking.
+   */
+  showMutedAuthors?: boolean;
+  /**
+   * For You only: today's question, slotted in as the third page (audit #4).
+   * The Feed tab passes null once she has answered it today. Ignored by every
+   * other scope and when opening on a specific post.
+   */
+  dailyPrompt?: DailyPrompt | null;
 }
 
+type LoadMode = 'initial' | 'refresh';
+
 /**
- * The vertical video feed: a data source for `FeedPager`.
+ * The vertical feed: a data source for `FeedPager`.
  *
  * The paging machinery — measurement, snap, viewability, which item is active —
  * belongs to `FeedPager` and is shared with every other surface that pages
  * full-screen content. What is left here is the part that is actually about
- * reels: the query, the cursor, the scopes, and the cell.
+ * the feed: the source, the cursor, the scopes, safety, and the cell.
  *
- * Owns its own query and its own cursor rather than reading feedStore's. That
- * is deliberate: feedStore has a single `cursor`, and two lists paginating
- * through one cursor interleave their pages — scroll the cards feed, come back
- * here, and this list resumes from the other one's position. Likes and saves
- * still go through the store, because those are per-user state that both feeds
- * must agree on.
+ * Owns its own query and its own cursor rather than reading feedStore's: two
+ * lists paginating through one cursor interleave their pages. Likes, saves and
+ * hides still go through the store, because those are per-user state every
+ * surface must agree on.
  *
- * Video also still appears in the announcements feed as a card. A tap there
- * opens this list at that post; the two surfaces are the same content in two
- * containers, the way Instagram keeps video in Home and in Reels.
+ * Three things keep a post off this list, each for its own reason:
+ *  - hidden (`hidden_posts`, 133) — never comes back, even if the page empties;
+ *  - muted author (`mutes`, 127) — gone from feeds, not from her profile;
+ *  - seen — dropped while there is something unseen to show instead.
+ * The server applies the first two as well; this covers the page already held.
  */
 export function ReelsFeed({
-  scope = 'community', communityIds, authorIds, initialPostId,
+  scope = 'community', communityIds, authorIds, initialPostId, showMutedAuthors = false,
+  dailyPrompt = null,
 }: ReelsFeedProps) {
   const colors = useThemeColors();
   const router = useRouter();
   const reducedMotion = useReducedMotion();
+  // Blurred tab, pushed profile, backgrounded app: nothing plays (FEED-03).
+  const playbackAllowed = usePlaybackAllowed();
   const userId = useAuthStore((st) => st.user?.id ?? '');
   const followingIds = useFollowStore((st) => st.followingIds);
   const followAuthor = useFollowStore((st) => st.follow);
@@ -128,10 +161,12 @@ export function ReelsFeed({
 
   const [reels, setReels] = useState<ReelRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [initialIndex, setInitialIndex] = useState(0);
+  // Sound is opt-in: every session starts muted.
   const [muted, setMuted] = useState(true);
 
   /**
@@ -153,106 +188,133 @@ export function ReelsFeed({
    */
   const filterValues = scope === 'following' ? authors : ids;
 
-  /** Community scopes page by feed_score; announcements page by created_at. */
-  const cursorRef = useRef<number | null>(null);
-  const beforeRef = useRef<string | null>(null);
+  /** For You pages on a ranked keyset; walls page on a score keyset. */
+  const forYouCursorRef = useRef<ForYouCursor | null>(null);
+  const wallCursorRef = useRef<WallCursor | null>(null);
+  /** The wall authors `load` resolved, reused by `loadMore` without a second lookup. */
+  const wallAuthorsRef = useRef<string[]>([]);
+  /** A load that finishes after a newer one started must not paint. */
+  const generationRef = useRef(0);
 
   // Selector subscriptions, not the whole store: `markSeen` writes `seenPostIds`
   // on every swipe, and subscribing to the store object would re-render the
-  // entire list each time a video is watched.
+  // entire list each time a post is looked at.
   const likedPostIds = useFeedStore((st) => st.likedPostIds);
   const savedPostIds = useFeedStore((st) => st.savedPostIds);
   const likeCountDeltas = useFeedStore((st) => st.likeCountDeltas);
+  const hiddenPostIds = useFeedStore((st) => st.hiddenPostIds);
   const toggleLike = useFeedStore((st) => st.toggleLike);
+  // The double tap: likes, never unlikes. Same store, so the rail heart, the
+  // count and the burst can never disagree.
+  const likePost = useFeedStore((st) => st.likePost);
   const toggleSave = useFeedStore((st) => st.toggleSave);
   const markSeen = useFeedStore((st) => st.markSeen);
+  const hidePost = useFeedStore((st) => st.hidePost);
 
   // The one entry point for blocking anywhere in the app: it calls the
   // `block_user` RPC migration 085 added and keeps `blockedUserIds` — which
   // the chat surfaces read — in step. A second path would be a second list of
   // who is blocked, and one of them would be wrong.
   const blockUser = useSafetyStore((st) => st.blockUser);
+  // Same rule for mutes: `mute_user` (127) through the store chat already uses.
+  const muteUser = useSafetyStore((st) => st.muteUser);
+  const mutedUserIds = useSafetyStore((st) => st.mutedUserIds);
+  const skipMuted = !showMutedAuthors;
 
-  const load = useCallback(async () => {
+  /** Hidden posts and (unless this is her chosen profile view) muted authors. */
+  const keepVisible = useCallback((rows: ReelRow[]): ReelRow[] => {
+    const hidden = excludeHidden(rows, useFeedStore.getState().hiddenPostIds);
+    return skipMuted
+      ? excludeMutedAuthors(hidden, useSafetyStore.getState().mutedUserIds)
+      : hidden;
+  }, [skipMuted]);
+
+  /**
+   * The wall authors for this scope: the people given, or the official owners
+   * of the given communities. Null when the owner lookup failed.
+   */
+  const resolveWallAuthors = useCallback(async (): Promise<string[] | null> => {
+    if (scope === 'following') return filterValues;
+    const { data: owners, error: ownersError } = await supabase
+      .from('profiles')
+      .select('id')
+      .in('official_community_id', filterValues);
+    if (ownersError) {
+      logError(ownersError, 'ReelsFeed.owners');
+      return null;
+    }
+    return ownerIdsFromProfiles(owners);
+  }, [scope, filterValues]);
+
+  const load = useCallback(async (mode: LoadMode = 'initial') => {
+    const generation = ++generationRef.current;
+    const stale = (): boolean => generation !== generationRef.current;
+
     if (scope !== 'announcements' && !filterValues.length) {
       setReels([]);
       setLoading(false);
+      setRefreshing(false);
       setHasMore(false);
       return;
     }
-    setLoading(true);
+    // A refresh keeps the page she is looking at on screen and shows the
+    // pull spinner; only a first load puts the skeleton up.
+    if (mode === 'initial') setLoading(true);
     setError(null);
 
-    // Cursor and hasMore come from the RAW page, before seen videos are dropped:
-    // paginating from the last KEPT row would skip every unwatched video that
-    // happened to sort after a watched one.
+    // Cursor and hasMore come from the RAW page, before seen, hidden or muted
+    // rows are dropped: paginating from the last KEPT row would skip every
+    // row that sorted after a dropped one.
     let raw: ReelRow[];
 
     if (scope === 'announcements') {
       // Every post type, not just video: For You is the front door and most
-      // walls are text and photos. FeedCell already routes each type to its
-      // own cell. This used to call `fetchAnnouncementVideos` (video only),
-      // which is kept in lib/announcements.ts for a future video-only surface
-      // — do not switch the Feed tab back to it.
-      const { page, error: rpcError } = await fetchAnnouncementPage({ before: null });
+      // walls are text and photos. FeedCell routes each type to its own cell.
+      // Do not switch the Feed tab to `fetchAnnouncementVideos` (video only).
+      const { page, error: rpcError } = await fetchAnnouncementPage({ cursor: null });
+      if (stale()) return;
       if (rpcError || !page) {
-        logError(rpcError ?? new Error('announcement_feed returned no page'), 'ReelsFeed.load');
+        logError(rpcError ?? new Error('feed_rank_page returned no page'), 'ReelsFeed.load');
         setError('Could not load the feed.');
         setLoading(false);
+        setRefreshing(false);
         return;
       }
-      beforeRef.current = page.before;
+      forYouCursorRef.current = page.cursor;
       setHasMore(page.hasMore);
       raw = page.rows;
     } else {
-      let authorIdsForQuery = filterValues;
-      if (scope === 'community' || scope === 'community-announcements') {
-        const { data: owners } = await supabase
-          .from('profiles')
-          .select('id')
-          .in('official_community_id', filterValues);
-        authorIdsForQuery = ownerIdsFromProfiles(owners);
-        if (!authorIdsForQuery.length) {
-          setReels([]);
-          setLoading(false);
-          setHasMore(false);
-          return;
-        }
-      }
-
-      const { data, error: err } = await supabase
-        .from('posts')
-        .select(POST_WITH_AUTHOR_AND_COMMUNITY)
-        .in('author_id', authorIdsForQuery)
-        // NOT filtered to video. `FeedCell` routes on `post_type` to ReelCell,
-        // PhotoCell, TextCell, PollCell and ResourceCell, and `getItemType`
-        // below keeps a recycling pool per type — the list was built for a
-        // mixed feed. This one clause starved it: a woman could publish a text
-        // card or a photo and it could not appear in any segment, for anyone,
-        // ever. Two of the three things the composer offers were unpostable in
-        // the only sense that matters.
-        .is('deleted_at', null)
-        .order('feed_score', { ascending: false })
-        .limit(PAGE_SIZE);
-
-      if (err) {
-        logError(err, 'ReelsFeed.load');
+      const wallAuthors = await resolveWallAuthors();
+      if (stale()) return;
+      if (wallAuthors === null) {
         setError('Could not load the feed.');
         setLoading(false);
+        setRefreshing(false);
         return;
       }
-
-      raw = toReelRows(data);
-      cursorRef.current = raw.length ? raw[raw.length - 1].feed_score : null;
-      setHasMore(raw.length === PAGE_SIZE);
+      wallAuthorsRef.current = wallAuthors;
+      const { page, error: wallError } = await fetchWallPage({
+        authorIds: wallAuthors, limit: PAGE_SIZE, cursor: null, skipMuted,
+      });
+      if (stale()) return;
+      if (wallError || !page) {
+        logError(wallError ?? new Error('wall_feed_page returned no page'), 'ReelsFeed.load');
+        setError('Could not load the feed.');
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      wallCursorRef.current = page.cursor;
+      setHasMore(page.hasMore);
+      raw = page.rows;
     }
 
     // Read seen ids imperatively — subscribing would re-run this loader every
-    // time a swipe marks a video seen.
-    let rows = excludeSeenReels(raw, useFeedStore.getState().seenPostIds);
+    // time a swipe marks a post seen.
+    let rows = keepVisible(excludeSeenReels(raw, useFeedStore.getState().seenPostIds));
 
-    // Arrived by tapping a card whose video did not make the first page: fetch
-    // that one row so "open this video" actually opens that video.
+    // Arrived by tapping a post that did not make the first page: fetch that
+    // one row so "open this post" actually opens that post.
     if (initialPostId && !rows.some((r) => r.id === initialPostId)) {
       const { data: one } = await supabase
         .from('posts')
@@ -260,7 +322,8 @@ export function ReelsFeed({
         .eq('id', initialPostId)
         .is('deleted_at', null)
         .maybeSingle();
-      const spliced = toReelRows(one ? [one] : []);
+      if (stale()) return;
+      const spliced = keepVisible(toReelRows(one ? [one] : []));
       if (spliced.length) rows = [...spliced, ...rows];
     }
 
@@ -271,74 +334,65 @@ export function ReelsFeed({
     setReels(rows);
     setInitialIndex(startAt);
     setLoading(false);
-  }, [scope, filterValues, initialPostId]);
+    setRefreshing(false);
+  }, [scope, filterValues, initialPostId, keepVisible, resolveWallAuthors, skipMuted]);
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMore || !hasMore || loading) return;
+    const generation = generationRef.current;
 
     let raw: ReelRow[];
 
     if (scope === 'announcements') {
-      if (beforeRef.current === null) return;
+      const cursor = forYouCursorRef.current;
+      if (cursor === null) return;
       setLoadingMore(true);
-      const { page, error: rpcError } = await fetchAnnouncementPage({ before: beforeRef.current });
+      const { page, error: rpcError } = await fetchAnnouncementPage({ cursor });
+      if (generation !== generationRef.current) { setLoadingMore(false); return; }
       if (rpcError || !page) {
-        logError(rpcError ?? new Error('announcement_feed returned no page'), 'ReelsFeed.loadMore');
+        logError(rpcError ?? new Error('feed_rank_page returned no page'), 'ReelsFeed.loadMore');
         setLoadingMore(false);
         return;
       }
-      beforeRef.current = page.before;
+      forYouCursorRef.current = page.cursor;
       setHasMore(page.hasMore);
       raw = page.rows;
     } else {
-      const cursor = cursorRef.current;
-      if (cursor === null || !filterValues.length) return;
+      const cursor = wallCursorRef.current;
+      const wallAuthors = wallAuthorsRef.current;
+      if (cursor === null || !wallAuthors.length) return;
       setLoadingMore(true);
-
-      let authorIdsForQuery = filterValues;
-      if (scope === 'community' || scope === 'community-announcements') {
-        const { data: owners } = await supabase
-          .from('profiles')
-          .select('id')
-          .in('official_community_id', filterValues);
-        authorIdsForQuery = ownerIdsFromProfiles(owners);
-        if (!authorIdsForQuery.length) {
-          setLoadingMore(false);
-          setHasMore(false);
-          return;
-        }
-      }
-
-      const { data, error: err } = await supabase
-        .from('posts')
-        .select(POST_WITH_AUTHOR_AND_COMMUNITY)
-        .in('author_id', authorIdsForQuery)
-        // Same as the first page — see the note in `load`.
-        .is('deleted_at', null)
-        .lt('feed_score', cursor)
-        .order('feed_score', { ascending: false })
-        .limit(PAGE_SIZE);
-
-      if (err) {
-        logError(err, 'ReelsFeed.loadMore');
+      const { page, error: wallError } = await fetchWallPage({
+        authorIds: wallAuthors, limit: PAGE_SIZE, cursor, skipMuted,
+      });
+      if (generation !== generationRef.current) { setLoadingMore(false); return; }
+      if (wallError || !page) {
+        logError(wallError ?? new Error('wall_feed_page returned no page'), 'ReelsFeed.loadMore');
         setLoadingMore(false);
         return;
       }
-
-      raw = toReelRows(data);
-      cursorRef.current = raw.length ? raw[raw.length - 1].feed_score : cursorRef.current;
-      setHasMore(raw.length === PAGE_SIZE);
+      wallCursorRef.current = page.cursor;
+      setHasMore(page.hasMore);
+      raw = page.rows;
     }
 
-    const fresh = excludeSeenReels(raw, useFeedStore.getState().seenPostIds);
+    const fresh = keepVisible(excludeSeenReels(raw, useFeedStore.getState().seenPostIds));
     setReels((prev) => {
       const seen = new Set(prev.map((p) => p.id));
       return [...prev, ...fresh.filter((r) => !seen.has(r.id))];
     });
     setLoadingMore(false);
-  }, [scope, filterValues, hasMore, loadingMore]);
+  }, [scope, hasMore, loadingMore, loading, keepVisible, skipMuted]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load('initial'); }, [load]);
+
+  /** Pull-to-refresh: the first page again, from fresh cursors (FEED-06). */
+  const refresh = useCallback(() => {
+    setRefreshing(true);
+    forYouCursorRef.current = null;
+    wallCursorRef.current = null;
+    void load('refresh');
+  }, [load]);
 
   /**
    * Marking seen follows the pager's active item rather than viewability, so a
@@ -349,11 +403,13 @@ export function ReelsFeed({
   const handleActiveItemChange = useCallback((itemId: string) => {
     if (lastSeenRef.current === itemId) return;
     lastSeenRef.current = itemId;
+    // The question of the day is not a post: there is no seen_posts row for it.
+    if (isDailyPromptId(itemId)) return;
     markSeen(itemId);
   }, [markSeen]);
 
   /**
-   * The negative half of the feed, which it shipped without entirely.
+   * The negative half of the feed.
    *
    * `safetyPost` is the post the `⋯` was tapped on — one sheet for the whole
    * list rather than one per cell, because a modal per mounted cell is ten
@@ -409,25 +465,29 @@ export function ReelsFeed({
   }, [likedCommentIds, userId]);
 
   /**
-   * Drop a post from this viewer's feed, now and in future.
+   * Drop a post from her feeds for good (FEED-01).
    *
-   * `markSeen` upserts `seen_posts`, which is what both feed queries already
-   * filter on — so this is durable rather than a local hide that comes back on
-   * the next launch. Removing the row here as well is what makes it immediate:
-   * the pager is holding this page, and the exclusion only applies to pages
-   * fetched later.
+   * `hidePost` writes `hidden_posts`, which every feed RPC excludes and which
+   * is loaded at startup, so a hide survives a relaunch. Removing the row here
+   * as well is what makes it immediate: the pager is holding this page.
    */
-  const dropPost = useCallback((postId: string) => {
-    markSeen(postId);
+  const dropPost = useCallback((postId: string, reason: 'hide' | 'not_for_me') => {
+    void hidePost(postId, reason);
     setReels((prev) => prev.filter((r) => r.id !== postId));
-  }, [markSeen]);
+  }, [hidePost]);
 
   const handleBlock = useCallback(async (post: ReelRow) => {
     await blockUser(post.author_id);
     // Everything of hers goes, not merely the post that prompted it — a block
-    // that leaves her next four videos in the pager is not a block.
+    // that leaves her next four posts in the pager is not a block.
     setReels((prev) => prev.filter((r) => r.author_id !== post.author_id));
   }, [blockUser]);
+
+  const handleMute = useCallback(async (post: ReelRow) => {
+    // Rejects when the RPC failed, and the sheet says so; nothing is dropped.
+    await muteUser(post.author_id);
+    setReels((prev) => prev.filter((r) => r.author_id !== post.author_id));
+  }, [muteUser]);
 
   const handleReport = useCallback(
     (post: ReelRow) => (reason: ReportReason, detail: string) =>
@@ -443,20 +503,49 @@ export function ReelsFeed({
     });
   }, []);
 
+  /**
+   * What the pager shows: the held page minus anything hidden or muted since
+   * it was fetched. Hides and mutes made on another screen land here too,
+   * because both lists live in stores.
+   */
+  const visibleReels = useMemo(() => {
+    const kept = excludeHidden(reels, hiddenPostIds);
+    return skipMuted ? excludeMutedAuthors(kept, mutedUserIds) : kept;
+  }, [reels, hiddenPostIds, mutedUserIds, skipMuted]);
+
+  /**
+   * The pages: the posts, plus — on For You only — today's question as the
+   * third page. Not when opening on a chosen post: `initialIndex` is counted
+   * over the posts alone, and a page slotted in ahead of it would open one off.
+   */
+  const pagerItems = useMemo<FeedItem[]>(
+    () => (scope === 'announcements' && dailyPrompt && !initialPostId
+      ? withDailyPrompt<FeedItem>(visibleReels, dailyPrompt)
+      : visibleReels),
+    [scope, dailyPrompt, initialPostId, visibleReels],
+  );
+
   // FlashList recycles cells. Without this it has no reason to re-render one
   // when the mute state or a like changes, so a recycled cell keeps the previous
   // post's icons. The pager merges its own active-item state into this.
   const extraData = useMemo(
-    () => ({ muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion, answeredPrompts }),
-    [muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion, answeredPrompts],
+    () => ({
+      muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion, answeredPrompts,
+      playbackAllowed,
+    }),
+    [muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion, answeredPrompts,
+      playbackAllowed],
   );
 
   /**
    * One recycling pool per post type — the router's own function, so the pool
    * key and the component choice can never drift apart. See `feedItemType`.
    */
-  const getItemType = useCallback((item: ReelRow) => feedItemType(item), []);
-  const keyExtractor = useCallback((item: ReelRow) => item.id, []);
+  const getItemType = useCallback(
+    (item: FeedItem) => (isDailyPromptItem(item) ? 'daily_prompt' : feedItemType(item)),
+    [],
+  );
+  const keyExtractor = useCallback((item: FeedItem) => item.id, []);
   const handleEndReached = useCallback(() => { void loadMore(); }, [loadMore]);
 
   // Placeholders are stage surfaces, so they take STAGE ink, not `colors`.
@@ -480,14 +569,16 @@ export function ReelsFeed({
 
   /**
    * `FeedCell` picks the body from `post_type`; this list keeps supplying the
-   * data and the callbacks. Every cell type is reachable through here, so a
-   * caller that hands this pager a mixed page gets a mixed feed with no further
-   * work — what this particular list still fetches is video, because widening
-   * the query is a feed-source change and not a cell change.
+   * data and the callbacks. Every cell type is reachable through here.
    */
   const renderCell = useCallback(({
     item, index, activeIndex, activeItemId, width, height,
-  }: FeedPagerCell<ReelRow>) => {
+  }: FeedPagerCell<FeedItem>) => {
+    if (isDailyPromptItem(item)) {
+      return (
+        <DailyPromptCell prompt={item} width={width} height={height} reducedMotion={reducedMotion} />
+      );
+    }
     // Offered on a cadence rather than on every cell, and only once per post.
     const asks = index % INTEREST_PROMPT_EVERY === INTEREST_PROMPT_EVERY - 1
       && !answeredPrompts.has(item.id);
@@ -501,12 +592,14 @@ export function ReelsFeed({
         width={width}
         height={height}
         muted={muted}
+        playbackAllowed={playbackAllowed}
         liked={likedPostIds.has(item.id)}
         saved={savedPostIds.has(item.id)}
         likeCount={displayedLikeCount(item, likeCountDeltas)}
         reducedMotion={reducedMotion}
         onToggleMute={toggleMute}
         onLike={() => void toggleLike(item.id)}
+        onDoubleTapLike={() => void likePost(item.id)}
         onSave={() => void toggleSave(item.id)}
         // Comments stay on this page — the sheet, not a detail route. Pushing
         // /community/post/:id here is what made the comment button feel broken:
@@ -531,7 +624,7 @@ export function ReelsFeed({
         onOpenSafety={() => setSafetyPost(item)}
         interestPrompt={asks ? (
           <FeedInterestCard
-            onNotForMe={() => { answerPrompt(item.id); dropPost(item.id); }}
+            onNotForMe={() => { answerPrompt(item.id); dropPost(item.id, 'not_for_me'); }}
             onMoreOfThis={() => answerPrompt(item.id)}
             onDismiss={() => answerPrompt(item.id)}
           />
@@ -539,9 +632,9 @@ export function ReelsFeed({
       />
     );
   }, [
-    muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion, answeredPrompts,
-    toggleMute, toggleLike, toggleSave, router, answerPrompt, dropPost, openComments,
-    followingIds, followAuthor, unfollowAuthor, userId,
+    muted, playbackAllowed, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion,
+    answeredPrompts, toggleMute, toggleLike, likePost, toggleSave, router, answerPrompt, dropPost,
+    openComments, followingIds, followAuthor, unfollowAuthor, userId,
   ]);
 
   // The three states this surface owes a viewer. Non-null means the pager shows
@@ -549,18 +642,15 @@ export function ReelsFeed({
   // list is ready to build the moment the placeholder clears.
   let placeholder: JSX.Element | null = null;
   if (loading) {
-    placeholder = (
-      <View style={s.centred}>
-        <ActivityIndicator color={colors.roxy} />
-      </View>
-    );
+    placeholder = <FeedStageSkeleton reducedMotion={reducedMotion} />;
   } else if (error) {
     placeholder = (
-      <View style={s.centred}>
+      <View style={s.centred} testID="reels-feed-error">
         <Ionicons name="cloud-offline-outline" size={36} color={colors.textMuted} />
         <Text style={s.errorText}>{error}</Text>
         <TouchableOpacity
-          onPress={() => void load()}
+          testID="reels-feed-retry"
+          onPress={() => void load('initial')}
           accessibilityRole="button"
           accessibilityLabel="Try again"
         >
@@ -568,7 +658,7 @@ export function ReelsFeed({
         </TouchableOpacity>
       </View>
     );
-  } else if (reels.length === 0) {
+  } else if (visibleReels.length === 0) {
     // Deliberately not `<EmptyState>`: that component reads `useThemeColors()`,
     // which paints light-theme ink on this permanently dark stage.
     placeholder = (
@@ -576,15 +666,23 @@ export function ReelsFeed({
         <Text style={s.emptyEmoji}>✿</Text>
         <Text style={s.emptyTitle}>Nothing here yet</Text>
         <Text style={s.emptyBody}>{EMPTY_BODY[scope]}</Text>
+        <TouchableOpacity
+          testID="reels-feed-empty-refresh"
+          onPress={refresh}
+          accessibilityRole="button"
+          accessibilityLabel="Check for new posts"
+        >
+          <Text style={s.retry}>Check again</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={s.frame}>
-      <FeedPager<ReelRow>
+      <FeedPager<FeedItem>
         testID="reels-feed"
-        items={reels}
+        items={pagerItems}
         keyExtractor={keyExtractor}
         getItemType={getItemType}
         renderCell={renderCell}
@@ -593,6 +691,8 @@ export function ReelsFeed({
         placeholder={placeholder}
         onActiveItemChange={handleActiveItemChange}
         onEndReached={handleEndReached}
+        onRefresh={refresh}
+        refreshing={refreshing}
       />
 
       {/* One sheet for the whole list. It reads `safetyPost` rather than being
@@ -603,7 +703,8 @@ export function ReelsFeed({
         onClose={() => setSafetyPost(null)}
         onReport={safetyPost ? handleReport(safetyPost) : noReport}
         onBlock={safetyPost ? () => handleBlock(safetyPost) : noBlock}
-        onHide={safetyPost ? () => dropPost(safetyPost.id) : noHide}
+        onMute={safetyPost ? () => handleMute(safetyPost) : noMute}
+        onHide={safetyPost ? () => dropPost(safetyPost.id, 'hide') : noHide}
       />
 
       <CommentSheet
@@ -632,4 +733,5 @@ export function ReelsFeed({
  */
 const noReport = (): Promise<void> => Promise.resolve();
 const noBlock = (): Promise<void> => Promise.resolve();
+const noMute = (): Promise<void> => Promise.resolve();
 const noHide = (): void => undefined;

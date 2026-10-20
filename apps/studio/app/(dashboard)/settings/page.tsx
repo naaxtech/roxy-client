@@ -37,10 +37,10 @@ export default async function SettingsPage({
       .eq('user_id', userId)
       .maybeSingle(),
     getOwnedBusinessFull(),
+    // Her own private column: my_profile (130), not profiles (42501).
     supabase
-      .from('profiles')
+      .from('my_profile')
       .select('display_name, notification_preferences')
-      .eq('id', userId)
       .maybeSingle(),
   ]);
 

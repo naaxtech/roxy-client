@@ -2,7 +2,8 @@
 import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
-import Stripe from 'npm:stripe@17';
+import Stripe from 'npm:stripe@16.12.0';
+import { denoEnv, resolveStudioUrl } from '../_shared/emailConfig.ts';
 
 const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 
@@ -38,7 +39,7 @@ Deno.serve(async (req) => {
   console.log('[connect-business-stripe] stripe key prefix:', stripeKey.slice(0, 7));
 
   const stripe = new Stripe(stripeKey, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
-  const STUDIO_URL = Deno.env.get('STUDIO_URL') ?? 'https://roxycommunity.netlify.app';
+  const STUDIO_URL = resolveStudioUrl(denoEnv);
   console.log('[connect-business-stripe] STUDIO_URL:', STUDIO_URL);
 
   // Verify business ownership

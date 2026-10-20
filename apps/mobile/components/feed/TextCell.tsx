@@ -6,12 +6,18 @@ import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
 import { RAIL_GUTTER } from './feedChromeTokens';
 import { TextCardFace } from './TextCardFace';
+import { DoubleTapCatcher, useDoubleTapLike } from './DoubleTapLike';
+import { LikeBurst } from './LikeBurst';
 
 /** A text post: Claude Design's p3 card, full-bleed on the plum ramp. */
 export function TextCell({
-  post, width, height, onOpenPost, ...chrome
+  post, width, height, onOpenPost, onDoubleTapLike, ...chrome
 }: FeedBodyCellProps): ReactElement {
   const body = post.content.trim();
+  const { burstRef, onDoubleTap } = useDoubleTapLike({
+    liked: chrome.liked, onLike: chrome.onLike, onDoubleTapLike,
+    reducedMotion: chrome.reducedMotion,
+  });
   const overflow = body.length > TEXT_CARD_READ_MORE;
 
   return (
@@ -36,6 +42,10 @@ export function TextCell({
           </Text>
         </View>
       )}
+
+      {/* Over the words, under "Read more" and the rail. */}
+      <DoubleTapCatcher onDoubleTap={onDoubleTap} />
+      <LikeBurst ref={burstRef} reducedMotion={chrome.reducedMotion} />
 
       {overflow ? (
         <TouchableOpacity

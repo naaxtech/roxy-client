@@ -24,6 +24,14 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
+// Reactions and typing (CHAT-17) have their own suites; here they are inert so
+// channel switching is tested on its own.
+jest.mock('../../hooks/useReactions', () => ({
+  useReactions: () => ({ reactionsMap: {}, addReaction: jest.fn(), removeReaction: jest.fn() }),
+}));
+jest.mock('../../hooks/useTyping', () => ({
+  useTyping: () => ({ partnerIsTyping: false, typingNames: [], sendTyping: jest.fn(), stopTyping: jest.fn() }),
+}));
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn(), hashUserId: (s: string) => s }));
 
 jest.mock('../../store/authStore', () => ({
@@ -41,7 +49,12 @@ jest.mock('../../lib/supabase', () => ({
     from: () => ({
       select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { name: 'Queer Gamers' } }) }) }),
     }),
-    channel: () => ({ on: () => ({ subscribe: () => ({}) }) }),
+    channel: () => {
+      // Chainable like the real client: the screen subscribes to INSERT and
+      // UPDATE on one channel (CHAT-16).
+      const ch: { on: () => unknown; subscribe: () => unknown } = { on: () => ch, subscribe: () => ch };
+      return ch;
+    },
     removeChannel: jest.fn(),
     // markChannelRead (migration 124) posts a read cursor on channel open.
     rpc: jest.fn(() => Promise.resolve({ data: null, error: null })),

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet,
   TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Animated,
@@ -7,10 +7,16 @@ import { usePopIn } from '../ui/popIn';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
+import { useCommentLikes } from '../../hooks/useCommentLikes';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { CommentThread } from './CommentThread';
-import { appendComment, submitComment } from '../../lib/comments';
+import { CommentCounter } from './CommentCounter';
+import {
+  COMMENT_MAX, COMMENT_PAGE, appendComment, applyCommentRemoval,
+  loadOlderComments, oldestTopLevel, prependEarlier, submitComment,
+} from '../../lib/comments';
 import { showAlert } from '../../lib/confirm';
+import { logError } from '../../lib/errorLogger';
 import { useFeedStore } from '../../store/feedStore';
 import type { Comment } from '../../types';
 
@@ -20,6 +26,7 @@ interface CommentSheetProps {
   visible: boolean;
   postId: string;
   comments: Comment[];
+  /** Seeds which comments she liked; the sheet owns the toggles from then on. */
   likedCommentIds: Set<string>;
   currentUserId: string;
   /**
@@ -36,22 +43,68 @@ interface CommentSheetProps {
   error?: string | null;
   /** Known count from the post row, so the title does not jump 'Comments' -> 'Comments (12)'. */
   knownCount?: number;
+  /**
+   * Whether older comments exist. Hosts that do not pass it get a heuristic:
+   * a first page that came back full probably has more behind it, and an
+   * earlier page that comes back short ends it.
+   */
+  hasEarlier?: boolean;
   onClose: () => void;
-  onLikeComment: (id: string) => void;
+  /**
+   * Legacy. The sheet now writes likes itself (`useCommentLikes`) so a refused
+   * write rolls the heart back; this is no longer called. Kept optional so
+   * hosts that still pass it compile.
+   */
+  onLikeComment?: (id: string) => void;
   onCommentsChange: (comments: Comment[]) => void;
 }
 
 export function CommentSheet({
   visible, postId, comments, likedCommentIds, currentUserId,
-  loading = false, error = null, knownCount,
-  onClose, onLikeComment, onCommentsChange,
+  loading = false, error = null, knownCount, hasEarlier: hasEarlierProp,
+  onClose, onCommentsChange,
 }: CommentSheetProps) {
   const colors = useThemeColors();
   const pop = usePopIn(visible);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+  const [earlierExhausted, setEarlierExhausted] = useState(false);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
   const bumpCommentCount = useFeedStore((s) => s.bumpCommentCount);
+  const likes = useCommentLikes(currentUserId);
+  const { setLikedIds } = likes;
+
+  // The host's set is the truth on every (re)load; the sheet takes it over.
+  useEffect(() => { setLikedIds(new Set(likedCommentIds)); }, [likedCommentIds, setLikedIds]);
+
+  // A new post is a new thread: forget "no earlier comments" from the last.
+  const lastPost = useRef(postId);
+  if (lastPost.current !== postId) {
+    lastPost.current = postId;
+    setEarlierExhausted(false);
+  }
+
+  const hasEarlier = hasEarlierProp ?? (!earlierExhausted && comments.length >= COMMENT_PAGE);
+
+  const loadEarlier = async () => {
+    const cursor = oldestTopLevel(comments);
+    if (!cursor || loadingEarlier) return;
+    setLoadingEarlier(true);
+    try {
+      const page = await loadOlderComments(postId, currentUserId, cursor);
+      if (page.error) {
+        logError(page.error, 'CommentSheet.loadEarlier');
+        showAlert('Earlier comments did not load', 'Check your connection and try again.');
+        return;
+      }
+      likes.mergeLikedIds(page.likedIds);
+      onCommentsChange(prependEarlier(comments, page.comments));
+      if (!page.hasEarlier) setEarlierExhausted(true);
+    } finally {
+      setLoadingEarlier(false);
+    }
+  };
 
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
@@ -102,15 +155,15 @@ export function CommentSheet({
     if (!text.trim() || !currentUserId || submitting) return;
     setSubmitting(true);
     const parentId = replyingTo?.parent_id ?? replyingTo?.id ?? null;
-    const { comment, error } = await submitComment({
+    const { comment, error: sendError } = await submitComment({
       postId,
       authorId: currentUserId,
       content: text.trim(),
       parentId,
     });
     setSubmitting(false);
-    if (error || !comment) {
-      showAlert('Comment not saved', error ?? 'Please try again.');
+    if (sendError || !comment) {
+      showAlert('Comment not saved', sendError ?? 'Please try again.');
       return;
     }
     setText('');
@@ -138,7 +191,7 @@ export function CommentSheet({
                 ? (knownCount ? `Comments (${knownCount})` : 'Comments')
                 : comments.length === 0
                   ? 'Comments'
-                  : `Comments (${comments.reduce((n, c) => n + 1 + (c.replies?.length ?? 0), 0)})`}
+                  : `Comments (${Math.max(knownCount ?? 0, comments.reduce((n, c) => n + 1 + (c.replies?.length ?? 0), 0))})`}
             </Text>
             <TouchableOpacity onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close comments">
               <Ionicons name="close" size={22} color={colors.textMuted} />
@@ -164,9 +217,13 @@ export function CommentSheet({
                 postId={postId}
                 comments={comments}
                 currentUserId={currentUserId}
-                likedCommentIds={likedCommentIds}
-                onLikeComment={onLikeComment}
+                likedCommentIds={likes.likedIds}
+                onLikeComment={(id) => { void likes.toggle(id); }}
                 onReply={setReplyingTo}
+                onRemoved={(id, outcome) => onCommentsChange(applyCommentRemoval(comments, id, outcome))}
+                hasEarlier={hasEarlier}
+                loadingEarlier={loadingEarlier}
+                onLoadEarlier={() => { void loadEarlier(); }}
               />
             )}
             <View style={{ height: 8 }} />
@@ -186,6 +243,7 @@ export function CommentSheet({
               </TouchableOpacity>
             </View>
           ) : null}
+          <CommentCounter length={text.length} style={{ paddingHorizontal: 20 }} />
           <View style={styles.inputRow}>
             <TextInput
               style={styles.input}
@@ -193,6 +251,7 @@ export function CommentSheet({
               placeholderTextColor={colors.textMuted}
               value={text}
               onChangeText={setText}
+              maxLength={COMMENT_MAX}
               returnKeyType="send"
               onSubmitEditing={() => void handleSubmit()}
               testID="comment-input"

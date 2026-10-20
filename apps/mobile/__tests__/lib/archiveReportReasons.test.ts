@@ -31,12 +31,20 @@ const checkedReasons = (): string[] => {
 
   for (const file of files) {
     const sql = readFileSync(join(MIGRATIONS, file), 'utf8');
-    // Any CHECK naming reason — the original column definition in 008 or a
-    // later ADD CONSTRAINT that replaces it. Last one wins, which is what
-    // Postgres ends up with too.
-    const matches = sql.matchAll(/\breason\s+IN\s*\(([^)]*)\)/gi);
-    for (const m of matches) {
-      found = m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '').replace(/'$/, ''));
+    // Any CHECK naming reason INSIDE a statement on the reports table — the
+    // original column definition in 008 or a later ADD CONSTRAINT that
+    // replaces it. Last one wins, which is what Postgres ends up with too.
+    // Scoped to `reports` because other tables have a `reason` CHECK of
+    // their own (133: hidden_posts, archive_note_flags), and reading theirs
+    // here made this test compare the edge function to the wrong table.
+    for (const statement of sql.split(';')) {
+      if (!/\b(?:create|alter)\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?reports\b/i.test(statement)) {
+        continue;
+      }
+      const matches = statement.matchAll(/\breason\s+IN\s*\(([^)]*)\)/gi);
+      for (const m of matches) {
+        found = m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '').replace(/'$/, ''));
+      }
     }
   }
 

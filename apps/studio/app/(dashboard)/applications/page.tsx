@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { isMissingColumn } from '@/lib/schema-availability';
 import { Badge } from '@/components/ui/badge';
 import { ReviewQueueClient, ReviewerAgreement } from './ReviewQueueClient';
 
@@ -9,20 +8,30 @@ export const dynamic = 'force-dynamic';
 interface ApplicationRow {
   id: string;
   community_id: string;
-  status: string;
-  submitted_at: string;
+  ready_at: string;
   communities: { name: string } | null;
 }
 
 /**
- * The review queue.
+ * The review queue: applications she has sent for review, oldest first, each
+ * with its wait against the 48-hour promise (G-10), the full context a reviewer
+ * needs (G-13, loaded per card from application_review_context) and decisions
+ * through decide_application, which writes the append-only decision log and
+ * queues her email (130).
  *
  * There is deliberately no community filter in the query below. RLS
- * (`can_review_application`, migration 070) already restricts every row to the
- * caller's own community, plus the aged overflow pool if they opted in, plus
- * everything if they are staff. Re-implementing that filter here would create a
- * second copy of the rule that could drift from the one that actually protects
- * the data.
+ * (`can_review_application`, rewritten in 130) already restricts every row to
+ * communities staff made the caller a reviewer for, plus everything for staff.
+ * Re-implementing that filter here would create a second copy of the rule that
+ * could drift from the one that actually protects the data.
+ *
+ * Overflow moved, it did not disappear: since 130 the aged-overflow pool is
+ * staff-only (any community admin could otherwise read strangers'
+ * applications, G-07), and staff see every application here already. The old
+ * per-reviewer opt-in toggle wrote a table members can no longer write.
+ *
+ * Not staff-only: community reviewers whom staff granted use this page too.
+ * Their gate is the database's (granted + agreement signed + approved).
  */
 export default async function ApplicationsPage() {
   const supabase = await createClient();
@@ -30,74 +39,93 @@ export default async function ApplicationsPage() {
   const userId = claimsData?.claims?.sub;
   if (!userId) notFound();
 
-  const first = await supabase
-    .from('profiles')
+  // Her own private columns come from my_profile since 130: vetting_status is
+  // no longer in the column grant on profiles, so selecting it there is a
+  // permission error, which used to land here as a 404.
+  const { data: me } = await supabase
+    .from('my_profile')
     .select('is_staff, staff_role, vetting_status')
-    .eq('id', userId)
-    .single();
-
-  let profile = first.data as {
+    .maybeSingle();
+  const profile = me as {
     is_staff: boolean | null;
-    staff_role?: string | null;
+    staff_role: string | null;
     vetting_status: string | null;
   } | null;
-
-  if (isMissingColumn(first.error)) {
-    const fallback = await supabase
-      .from('profiles')
-      .select('is_staff, vetting_status')
-      .eq('id', userId)
-      .single();
-    profile = fallback.data ? { ...fallback.data, staff_role: null } : null;
-  }
-
-  // A reviewer must herself be vetted. A grandfathered 'unvetted' admin has
-  // full app access but has never been checked by anyone, and applicant files
-  // contain legal names and identity outcomes. Roxy core owns review — they
-  // do not sit behind those member gates.
   if (!profile) notFound();
+
   const isCore = profile.staff_role === 'core';
+  const isStaff = profile.is_staff === true;
 
-  const { data: settings } = await supabase
-    .from('reviewer_settings')
-    .select('accepts_overflow, reviewer_agreement_at')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  const hasAgreement = Boolean(settings?.reviewer_agreement_at);
-  const canReview = isCore || profile.vetting_status === 'approved';
-
-  if (!canReview) {
+  if (!isCore && profile.vetting_status !== 'approved') {
     return (
       <div className="max-w-2xl space-y-4">
         <h1 className="text-2xl font-bold">Applications</h1>
         <div className="border rounded-lg p-6 space-y-2">
           <p className="font-semibold">Your own account needs to be verified first</p>
           <p className="text-sm text-muted-foreground">
-            Reviewing applications means reading other people&apos;s legal names and identity
-            check results. Only members who have been through verification themselves can do
-            it. Complete your own verification in the Roxy app and this page will open.
+            Reviewing applications means reading other women&apos;s answers and identity check
+            results. Only members who have been through verification themselves can do it.
           </p>
         </div>
       </div>
     );
   }
 
-  if (!isCore && !hasAgreement) {
-    return <ReviewerAgreement userId={userId} />;
+  const { data: settings } = await supabase
+    .from('reviewer_settings')
+    .select('reviewer_agreement_at, reviewer_granted_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!isStaff && !isCore && !settings?.reviewer_granted_at) {
+    return (
+      <div className="max-w-2xl space-y-4">
+        <h1 className="text-2xl font-bold">Applications</h1>
+        <div className="border rounded-lg p-6 space-y-2">
+          <p className="font-semibold">Roxy staff haven&apos;t made you a reviewer yet</p>
+          <p className="text-sm text-muted-foreground">
+            Community admins and border patrol review applications once Roxy staff grant them
+            reviewer access. Ask the Roxy team if your community needs a reviewer.
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  const { data: applications } = await supabase
-    .from('membership_applications')
-    .select('id, community_id, status, submitted_at, communities(name)')
-    .eq('status', 'pending')
-    .order('submitted_at', { ascending: true });
+  if (!isCore && !settings?.reviewer_agreement_at) {
+    return <ReviewerAgreement />;
+  }
+
+  const [{ data: applications, error }, { data: staffReviewer }] = await Promise.all([
+    supabase
+      .from('membership_applications')
+      .select('id, community_id, ready_at, communities(name)')
+      .eq('status', 'pending')
+      // Drafts are hers until she presses "Send for review" (G-14).
+      .not('ready_at', 'is', null)
+      .order('ready_at', { ascending: true }),
+    supabase.rpc('is_staff_reviewer'),
+  ]);
+
+  if (error) {
+    return (
+      <div className="max-w-5xl space-y-4">
+        <h1 className="text-2xl font-bold">Applications</h1>
+        <div role="alert" className="border border-destructive/40 bg-destructive/5 rounded-lg px-4 py-3">
+          <p className="text-sm text-destructive">
+            We could not load the queue. Reload the page — if it keeps failing, your session may
+            have expired.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const rows = (applications ?? []) as unknown as ApplicationRow[];
 
   // Scores in one round trip rather than an RPC per row. Computed from the same
-  // active criteria the server's application_score() uses, so the ordering here
-  // matches what the applicant sees on her own checklist.
+  // active criteria the server's application_score() uses. Shown, not sorted
+  // by: the queue is oldest first so nothing rots at the bottom.
   const scores: Record<string, number> = {};
   if (rows.length > 0) {
     const { data: met } = await supabase
@@ -115,37 +143,29 @@ export default async function ApplicationsPage() {
     }
   }
 
-  // Highest score first: the most complete applications are the quickest to
-  // decide. Oldest first within a score so nothing rots at the bottom.
-  const sorted = [...rows].sort((a, b) => {
-    const diff = (scores[b.id] ?? 0) - (scores[a.id] ?? 0);
-    if (diff !== 0) return diff;
-    return a.submitted_at.localeCompare(b.submitted_at);
-  });
-
   return (
     <div className="max-w-5xl space-y-8">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-3">
           Applications
-          {sorted.length > 0 && <Badge variant="destructive">{sorted.length}</Badge>}
+          {rows.length > 0 && <Badge variant="destructive">{rows.length}</Badge>}
         </h1>
         <p className="text-muted-foreground mt-1">
-          {isCore
-            ? 'Every pending application on Roxy. You decide — the score only changes what you see first.'
-            : 'Every person here was invited by a code your community issued. A human decides on each one — the score only changes what you see first.'}
+          {isStaff || isCore
+            ? 'Every application on Roxy that has been sent for review. A human decides on each one.'
+            : 'Every person here was invited by a code your community issued. A human decides on each one.'}
         </p>
       </div>
 
       <ReviewQueueClient
-        userId={userId}
-        applications={sorted.map((r) => ({
+        applications={rows.map((r) => ({
           id: r.id,
           communityName: r.communities?.name ?? 'Unknown community',
-          submittedAt: r.submitted_at,
+          readyAt: r.ready_at,
           score: scores[r.id] ?? 0,
         }))}
-        acceptsOverflow={settings?.accepts_overflow ?? false}
+        canRevealNames={staffReviewer === true}
+        now={new Date().toISOString()}
       />
     </div>
   );

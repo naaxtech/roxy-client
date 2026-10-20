@@ -10,6 +10,8 @@ import { getPostImageUrl } from '../../lib/media';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
+import { DoubleTapCatcher, useDoubleTapLike } from './DoubleTapLike';
+import { LikeBurst } from './LikeBurst';
 
 type SlideStatus = 'loading' | 'ready' | 'error';
 
@@ -24,9 +26,13 @@ type SlideStatus = 'loading' | 'ready' | 'error';
  * src: https://github.com/Shopify/flash-list/issues/1200 · 2026-08-05
  */
 export function PhotoCell({
-  post, width, height, onOpenPost, ...chrome
+  post, width, height, onOpenPost, onDoubleTapLike, ...chrome
 }: FeedBodyCellProps): ReactElement {
   const urls = post.media_urls ?? [];
+  const { burstRef, onDoubleTap } = useDoubleTapLike({
+    liked: chrome.liked, onLike: chrome.onLike, onDoubleTapLike,
+    reducedMotion: chrome.reducedMotion,
+  });
   const [index, setIndex] = useState(0);
   const [status, setStatus] = useState<Record<number, SlideStatus>>({});
 
@@ -52,6 +58,10 @@ export function PhotoCell({
           <Text style={s.stateText}>This photo is unavailable</Text>
         </View>
       ) : (
+        // The catcher WRAPS the gallery rather than sitting on it, so a swipe
+        // through the photos still reaches the horizontal pager (a tap fails
+        // past 12dp of travel) and a double tap on any photo likes the post.
+        <DoubleTapCatcher onDoubleTap={onDoubleTap}>
         <ScrollView
           testID="photo-cell-pager"
           horizontal
@@ -109,6 +119,7 @@ export function PhotoCell({
             />
           ))}
         </ScrollView>
+        </DoubleTapCatcher>
       )}
 
       {urls.length > 0 && active === 'loading' ? (
@@ -173,6 +184,8 @@ export function PhotoCell({
           ))}
         </View>
       ) : null}
+
+      <LikeBurst ref={burstRef} reducedMotion={chrome.reducedMotion} />
 
       <FeedCellChrome post={post} onOpenPost={onOpenPost} {...chrome} />
     </View>

@@ -46,11 +46,12 @@ describe('useTyping', () => {
     expect(typeof result.current.sendTyping).toBe('function');
   });
 
-  it('subscribes to typing:conversationId channel on mount', () => {
+  it('subscribes to the private conv:<id>:typing channel on mount', () => {
     renderHook(() =>
       useTyping({ conversationId: 'conv-1', currentUserId: 'user-1', partnerName: 'Alex' })
     );
-    expect(supabase.channel).toHaveBeenCalledWith('typing:conv-1');
+    // Private, membership-checked topic (CHAT-15, migration 132).
+    expect(supabase.channel).toHaveBeenCalledWith('conv:conv-1:typing', expect.anything());
   });
 
   it('calls removeChannel on unmount', () => {
@@ -127,5 +128,14 @@ describe('useTyping', () => {
     await act(async () => { result.current.sendTyping(); });
 
     expect(channelInstance.send).toHaveBeenCalledTimes(2);
+  });
+
+  it('in a community channel it joins the private chan:<id>:typing room (CHAT-17)', () => {
+    renderHook(() =>
+      useTyping({ conversationId: 'ch-1', scope: 'channel', currentUserId: 'user-1', partnerName: '' })
+    );
+    expect(supabase.channel).toHaveBeenCalledWith('chan:ch-1:typing', expect.objectContaining({
+      config: expect.objectContaining({ private: true }),
+    }));
   });
 });

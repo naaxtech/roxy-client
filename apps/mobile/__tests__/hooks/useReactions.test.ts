@@ -99,7 +99,8 @@ describe('useReactions', () => {
     renderHook(() =>
       useReactions({ conversationId: 'conv-1', messageIds: [] })
     );
-    expect(supabase.channel).toHaveBeenCalledWith('reactions:conv-1');
+    // Private, membership-checked topic (CHAT-15, migration 132).
+    expect(supabase.channel).toHaveBeenCalledWith('conv:conv-1:reactions', expect.anything());
   });
 
   it('unsubscribes (removeChannel) on unmount', () => {
@@ -229,5 +230,38 @@ describe('useReactions', () => {
     });
 
     expect(result.current.reactionsMap['msg-1']).toHaveLength(1);
+  });
+
+  describe('community channels (CHAT-17)', () => {
+    it('reads and writes community_channel_reactions and joins chan:<id>:reactions', async () => {
+      const { result } = renderHook(() =>
+        useReactions({ conversationId: 'ch-1', scope: 'channel', messageIds: ['cm-1'] })
+      );
+      await act(async () => {});
+      expect(supabase.channel).toHaveBeenCalledWith('chan:ch-1:reactions', expect.anything());
+      expect(supabase.from).toHaveBeenCalledWith('community_channel_reactions');
+      expect(supabase.from).not.toHaveBeenCalledWith('message_reactions');
+      supabase.from.mockClear();
+      await act(async () => {
+        await result.current.addReaction('cm-1', '💜', 'user-1');
+      });
+      expect(supabase.from).toHaveBeenCalledWith('community_channel_reactions');
+      supabase.from.mockClear();
+      await act(async () => {
+        await result.current.removeReaction('cm-1', '💜', 'user-1');
+      });
+      expect(supabase.from).toHaveBeenCalledWith('community_channel_reactions');
+    });
+  });
+
+  it('a reactions read that throws (offline) is contained, not an unhandled rejection', async () => {
+    supabase.from.mockImplementation(() => ({
+      select: jest.fn().mockReturnValue({ in: jest.fn().mockRejectedValue(new Error('offline')) }),
+    }));
+    const { result } = renderHook(() =>
+      useReactions({ conversationId: 'conv-1', messageIds: ['msg-1'] })
+    );
+    await act(async () => {});
+    expect(result.current.reactionsMap).toEqual({});
   });
 });

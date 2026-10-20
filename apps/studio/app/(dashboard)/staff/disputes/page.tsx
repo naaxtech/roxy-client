@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { QueryError } from '@/components/QueryError';
 import { Badge } from '@/components/ui/badge';
 
 const RISK_BADGE: Record<string, { label: string; className: string }> = {
@@ -22,7 +23,7 @@ export default async function StaffDisputesPage() {
     .single();
   if (!profile?.is_staff) notFound();
 
-  const { data: disputes } = await supabase
+  const { data: disputes, error } = await supabase
     .from('orders')
     .select('id, status, total_cents, created_at, stripe_payment_intent_id, risk_level, buyer_id')
     .eq('status', 'disputed')
@@ -40,7 +41,9 @@ export default async function StaffDisputesPage() {
       </div>
       <p className="text-muted-foreground -mt-4">Orders currently in dispute. Review via Stripe.</p>
 
-      {disputeList.length === 0 ? (
+      {error ? (
+        <QueryError what="disputed orders" />
+      ) : disputeList.length === 0 ? (
         <p className="text-sm text-muted-foreground">No active disputes.</p>
       ) : (
         <div className="border rounded-lg overflow-hidden">

@@ -82,6 +82,7 @@ function prefsFor(row: SettingsRow | undefined): PushPrefs {
     friends: row.friends ?? DEFAULT_PREFS.friends,
     events: row.events ?? DEFAULT_PREFS.events,
     community_chats: row.community_chats ?? DEFAULT_PREFS.community_chats,
+    membership: row.membership ?? DEFAULT_PREFS.membership,
     show_previews: row.show_previews ?? DEFAULT_PREFS.show_previews,
     quiet_start: row.quiet_start ?? null,
     quiet_end: row.quiet_end ?? null,

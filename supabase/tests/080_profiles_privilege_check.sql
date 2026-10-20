@@ -134,7 +134,14 @@ SET LOCAL ROLE anon;
 DO $$
 DECLARE n int;
 BEGIN
-  SELECT count(*) INTO n FROM public.profiles;
+  -- 130 (PRO-01) went further than RLS: anon holds no privilege on profiles at
+  -- all, so the read is refused outright (42501). Either way the roster is not
+  -- public; a successful read of any row is the only failure.
+  BEGIN
+    SELECT count(*) INTO n FROM public.profiles;
+  EXCEPTION WHEN insufficient_privilege THEN
+    n := 0;
+  END;
   IF n > 0 THEN
     RAISE EXCEPTION 'LEAK: anon can read % profile row(s) -- the WLW roster is public', n;
   END IF;

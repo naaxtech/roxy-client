@@ -12,6 +12,7 @@ import {
   buildMessage,
   categoryOf,
   classifyTicket,
+  DEFAULT_PREFS,
   inQuietHours,
   isExpoPushToken,
   type PushPrefs,
@@ -33,6 +34,7 @@ const DEFAULTS: PushPrefs = {
   friends: true,
   events: true,
   community_chats: true,
+  activity: true,
   show_previews: false,
   quiet_start: null,
   quiet_end: null,
@@ -59,7 +61,105 @@ Deno.test('categoryOf maps every notification type to a preference and a channel
   eq(categoryOf('friend_request'), { pref: 'friends', channel: 'friends' });
   eq(categoryOf('friend_accept'), { pref: 'friends', channel: 'friends' });
   eq(categoryOf('community_event'), { pref: 'events', channel: 'events' });
+  eq(categoryOf('community_invite'), { pref: 'community_chats', channel: 'community' });
+  eq(categoryOf('community_join_request'), { pref: 'community_chats', channel: 'community' });
+  eq(categoryOf('post_reaction'), { pref: 'activity', channel: 'friends' });
+  eq(categoryOf('comment'), { pref: 'activity', channel: 'friends' });
+  eq(categoryOf('follow'), { pref: 'activity', channel: 'friends' });
   eq(categoryOf('something_new'), null, 'unknown types are never pushed');
+});
+
+Deno.test('previews OFF: activity pushes name who, never the comment or the post', () => {
+  const c = buildMessage(
+    note({ type: 'comment', title: 'Maya commented on your post', body: 'you look amazing at pride', link_path: '/community/post/p1?comment=c1' }),
+    DEFAULTS, 'ExponentPushToken[abc]', false,
+  )!;
+  eq(c.title, 'Maya');
+  eq(c.body, 'Commented on your post');
+  ok(!JSON.stringify(c).includes('pride'), 'comment text leaked');
+  const r = buildMessage(
+    note({ type: 'post_reaction', title: 'Maya sent your post a ✿', body: null, link_path: '/community/post/p1' }),
+    DEFAULTS, 'ExponentPushToken[abc]', false,
+  )!;
+  eq([r.title, r.body], ['Maya', 'Sent your post a ✿']);
+  const f = buildMessage(
+    note({ type: 'follow', title: 'Maya started following you', body: null, link_path: '/user/u-sender' }),
+    DEFAULTS, 'ExponentPushToken[abc]', false,
+  )!;
+  eq([f.title, f.body], ['Maya', 'Started following you']);
+  eq(f.data.url, 'roxy://user/u-sender');
+});
+
+Deno.test('activity switched off: likes, comments and follows are not pushed', () => {
+  for (const type of ['post_reaction', 'comment', 'follow']) {
+    eq(buildMessage(note({ type }), { ...DEFAULTS, activity: false }, 'ExponentPushToken[abc]', false), null, type);
+  }
+});
+
+Deno.test('a settings row read without the activity column still pushes activity (default ON)', () => {
+  const { activity: _omit, ...older } = DEFAULTS;
+  ok(buildMessage(note({ type: 'follow' }), older as PushPrefs, 'ExponentPushToken[abc]', false), 'expected a push');
+});
+
+Deno.test('an Archive decision is in-app only, never pushed', () => {
+  eq(categoryOf('archive_revision'), null);
+});
+
+
+// Migration 134 (G-11): a decision on her application reaches her phone.
+Deno.test('membership: application_decided rings on its own channel behind its own switch', () => {
+  eq(categoryOf('application_decided'), { pref: 'membership', channel: 'membership' });
+  eq(DEFAULT_PREFS.membership, true, 'ON by default like every other type');
+  // DEFAULTS (this file) predates the column: a row without it still pushes.
+  ok(buildMessage(note({ type: 'application_decided' }), DEFAULTS, 'ExponentPushToken[abc]', false), 'absent pref must mean ON');
+});
+
+Deno.test('previews OFF: a membership push says only that there is news', () => {
+  for (const [title, body] of [
+    ['You\'re in 💜', 'Your membership was approved. Welcome to Roxy.'],
+    ['About your membership', 'There\'s an update on your application. Open Roxy to read it.'],
+  ]) {
+    const m = buildMessage(
+      note({ type: 'application_decided', actor_id: null, actor_name: null, title, body, link_path: '/pending' }),
+      DEFAULTS, 'ExponentPushToken[abc]', false,
+    );
+    ok(m, 'expected a membership push');
+    eq(m!.title, 'Roxy');
+    eq(m!.body, 'There\'s news about your membership');
+    eq(m!.channelId, 'membership');
+    ok(!/approved|reject|application|welcome/i.test(JSON.stringify([m!.title, m!.body])), 'the decision leaked onto the lock screen');
+  }
+});
+
+Deno.test('membership switch off: no membership push', () => {
+  eq(buildMessage(note({ type: 'application_decided' }), { ...DEFAULTS, membership: false }, 'ExponentPushToken[abc]', false), null);
+});
+
+Deno.test('previews OFF: an invite names who asked her, never the community', () => {
+  const m = buildMessage(
+    note({ type: 'community_invite', actor_name: 'Maya', title: 'Maya invited you to Femme Sapphics Manila', body: 'Join or say not now in Requests', link_path: '/messages?requests=1&community=c9' }),
+    DEFAULTS, 'ExponentPushToken[abc]', false,
+  );
+  eq(m!.title, 'Maya');
+  eq(m!.body, 'Invited you to a private community');
+  ok(!JSON.stringify(m).includes('Sapphics'), 'community name leaked');
+  eq(m!.data.url, 'roxy://messages?requests=1&community=c9');
+});
+
+Deno.test('previews OFF: a join request hides the community and her note', () => {
+  const m = buildMessage(
+    note({ type: 'community_join_request', actor_name: 'Bea', title: 'Bea asked to join Femme Sapphics Manila', body: 'hi, I run the book club', link_path: '/community/members/c9' }),
+    DEFAULTS, 'ExponentPushToken[abc]', false,
+  );
+  eq(m!.title, 'Bea');
+  eq(m!.body, 'Asked to join a community you moderate');
+  ok(!JSON.stringify(m).includes('Sapphics'), 'community name leaked');
+  ok(!JSON.stringify(m).includes('book club'), 'her note leaked');
+});
+
+Deno.test('community invites and requests follow the Community chats switch', () => {
+  eq(buildMessage(note({ type: 'community_invite' }), { ...DEFAULTS, community_chats: false }, 'ExponentPushToken[abc]', false), null);
+  eq(buildMessage(note({ type: 'community_join_request' }), { ...DEFAULTS, community_chats: false }, 'ExponentPushToken[abc]', false), null);
 });
 
 Deno.test('previews OFF (the default): a message push names the sender, never the words', () => {

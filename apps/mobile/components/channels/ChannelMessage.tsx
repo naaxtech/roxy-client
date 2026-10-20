@@ -22,6 +22,8 @@ interface Props {
   onLongPress?: (message: Message) => void;
   /** Opens a parsed event / product / archive / room card. */
   onOpenCard?: (path: string) => void;
+  /** Under the words: the reaction chips (CHAT-17). Never on a removed message. */
+  footer?: ReactNode;
   testID?: string;
 }
 
@@ -34,7 +36,7 @@ const AVATAR = 34;
  * precisely so moderating one reply does not punch a hole in the conversation
  * around it, and the row has to render that state rather than vanish.
  */
-export function ChannelMessage({ message, onPressAuthor, onLongPress, onOpenCard, testID }: Props) {
+export function ChannelMessage({ message, onPressAuthor, onLongPress, onOpenCard, footer, testID }: Props) {
   const colors = useThemeColors();
   const name = authorName(message.author);
   const removed = message.deleted_at !== null;
@@ -171,6 +173,7 @@ export function ChannelMessage({ message, onPressAuthor, onLongPress, onOpenCard
                   <Text style={s.cardCta}>{card.cta}</Text>
                 </Pressable>
               ) : null}
+              {footer ?? null}
             </>
           )}
         </View>

@@ -8,6 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import { avatarGradient, isPresetAvatar, presetColor, presetEmoji } from '../../lib/avatars';
+import { inkOnGradient } from '../../lib/theme';
+import { initialsOf } from '../ui/Avatar';
 import { contentDetailPath } from '../../lib/contentNavigation';
 import { MIN_INLINE_TOUCH_TARGET, MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { ReelRow } from '../../lib/reels';
@@ -15,6 +17,7 @@ import type { PostType } from '../../types';
 import { CommunityCrest } from './CommunityCrest';
 import { ShoppableProductCard } from './ShoppableProductCard';
 import { a11yState } from '../../lib/a11yState';
+import { tapLight } from '../../lib/haptics';
 import {
   CAPTION_CAP, CAPTION_COLLAPSED_LINES, CAPTION_EXPANDED_CAP, CAPTION_EXPANDED_LINES,
   CAPTION_LINE_HEIGHT,
@@ -124,6 +127,11 @@ export interface FeedBodyCellProps
   /** Measured page size from the pager. Never the window: a page is not a screen. */
   width: number;
   height: number;
+  /**
+   * Idempotent "make it liked", for the double tap. A body cell takes it out
+   * of the bag before the rest reaches the chrome. See `useDoubleTapLike`.
+   */
+  onDoubleTapLike?: () => void;
 }
 
 /**
@@ -247,8 +255,10 @@ export function FeedCellChrome({
     );
   } else {
     avatarFace = (
+      // Same initials and ink as components/ui/Avatar, so she has one face
+      // across the feed, comments and her profile.
       <LinearGradient colors={grad} style={s.avatarFace}>
-        <Text style={s.avatarLetter}>{(authorName[0] ?? '?').toUpperCase()}</Text>
+        <Text style={[s.avatarLetter, { color: inkOnGradient(grad) }]}>{initialsOf(authorName)}</Text>
       </LinearGradient>
     );
   }
@@ -435,7 +445,11 @@ export function FeedCellChrome({
           <TouchableOpacity
             testID="rail-like"
             style={s.railBtn}
-            onPress={onLike}
+            onPress={() => {
+              // A soft tick on the yes, not on the take-back (FEED-09).
+              if (!liked) tapLight(reducedMotion);
+              onLike();
+            }}
             accessibilityRole="button"
             accessibilityLabel={
               liked ? `Unlike ${noun}, ${likeCount} likes` : `Like ${noun}, ${likeCount} likes`

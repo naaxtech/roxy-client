@@ -36,6 +36,20 @@ find "$STAGE/supabase" -type f \( -name '*.sql' -o -name '*.toml' \) -exec sed -
 # Own project id + shift every 543xx port to 544xx (db 54322 -> 54422, shadow, pooler...).
 sed -i -e "s/^project_id *= *\".*\"/project_id = \"${PROJECT_ID}\"/" \
        -e 's/\b543\([0-9][0-9]\)\b/544\1/g' "$STAGE/supabase/config.toml"
+# Pin the Postgres image to production's. A fresh stage has no .temp, so the CLI
+# would pull its own default image; supabase/postgres 17.6.1.106 segfaults
+# (signal 11) on any "permission denied for function", which every grant check
+# here exercises. Order: ROXY_PG_VERSION, then the linked project's recorded
+# version (supabase/.temp/postgres-version, written by `supabase link`), then
+# production's version as of 2026-10-11.
+PG_VERSION="${ROXY_PG_VERSION:-}"
+if [ -z "$PG_VERSION" ] && [ -f "$ROOT/supabase/.temp/postgres-version" ]; then
+  PG_VERSION="$(tr -d '[:space:]' < "$ROOT/supabase/.temp/postgres-version")"
+fi
+PG_VERSION="${PG_VERSION:-17.6.1.084}"
+mkdir -p "$STAGE/supabase/.temp"
+printf '%s' "$PG_VERSION" > "$STAGE/supabase/.temp/postgres-version"
+echo "postgres image: supabase/postgres:${PG_VERSION}"
 
 started_here=0
 cleanup() {
@@ -83,9 +97,20 @@ if [ ${#tests[@]} -eq 0 ]; then echo "no supabase/tests/*.sql found" >&2; exit 1
 for t in "${tests[@]}"; do
   name="$(basename "$t")"
   echo "::group::$name"
-  # Each check runs in its own transaction-free session; ON_ERROR_STOP makes any
-  # RAISE EXCEPTION / SQL error a non-zero exit.
-  if docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -X < "$t"; then
+  # ON_ERROR_STOP makes any RAISE EXCEPTION / SQL error a non-zero exit.
+  # A check that manages its own transaction (a top-level BEGIN;) runs as is.
+  # Every other check is written to run inside ONE transaction that is rolled
+  # back (migration-proof.cjs does exactly that): its SET LOCAL ROLE, its
+  # set_config(..., true) JWT claims and its fixtures only live for that
+  # transaction. Run raw, each statement autocommits, so the role and claims
+  # are gone by the next statement and fixtures leak into the next check.
+  if grep -qiE '^[[:space:]]*BEGIN[[:space:]]*;' "$t"; then
+    run_check() { docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -X < "$t"; }
+  else
+    run_check() { { echo 'BEGIN;'; cat "$t"; printf '\nROLLBACK;\n'; } \
+      | docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -X; }
+  fi
+  if run_check; then
     echo "PASS $name"
   else
     echo "FAIL $name"
@@ -99,6 +124,11 @@ if [ "$fail" = 0 ]; then
   echo "all ${#tests[@]} SQL checks passed"
   # Attest the exact migration contents that passed (apply-migration.mjs gate 3).
   # Skipped in CI: the ledger is a per-machine file under supabase/.temp.
-  if [ -z "${CI:-}" ]; then node "$ROOT/scripts/record-local-proof.mjs"; fi
+  if [ -z "${CI:-}" ]; then
+    # Native node on Windows cannot resolve an MSYS path (/d/Work/...).
+    PROOF_SCRIPT="$ROOT/scripts/record-local-proof.mjs"
+    if command -v cygpath >/dev/null 2>&1; then PROOF_SCRIPT="$(cygpath -m "$PROOF_SCRIPT")"; fi
+    node "$PROOF_SCRIPT"
+  fi
 fi
 exit "$fail"

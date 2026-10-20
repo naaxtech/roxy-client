@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, AppState } from 'react-native';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import { RoxyCompanionButton } from '../../components/ui/RoxyCompanionButton';
 import { FloatingTabBar } from '../../components/nav/FloatingTabBar';
 import { CreateSheet } from '../../components/nav/CreateSheet';
 import { useFriendStore } from '../../store/friendStore';
 import { useConnectStore } from '../../store/connectStore';
+import { useChatSettingsStore } from '../../store/chatSettingsStore';
 import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
 import { useSafetyStore } from '../../store/safetyStore';
+import { useFeedStore } from '../../store/feedStore';
 import { useAccess } from '../../hooks/useAccess';
 import { ViewAsBanner } from '../../components/settings/ViewAsBanner';
 import { PendingStatusHost } from '../../components/account/PendingStatusHost';
@@ -16,7 +18,11 @@ import { navSlotsFor } from '../../components/nav/navSlots3';
 import { supabase } from '../../lib/supabase';
 import { freshChannel } from '../../lib/realtimeChannel';
 import { registerPushToken, pushResponsePath } from '../../lib/push';
-import * as Notifications from 'expo-notifications';
+import { useLastPushResponse } from '../../hooks/useLastPushResponse';
+// `import * as Notifications from 'expo-notifications'` moved to
+// hooks/useLastPushResponse.ts (its only use here was useLastNotificationResponse,
+// which throws on web). Re-add it here only if this layout needs another
+// expo-notifications API, and guard native-only calls with Platform.OS.
 
 /**
  * The companion FAB pins itself 90pt above its parent's bottom edge, a number
@@ -66,11 +72,20 @@ export default function TabLayout() {
   // every launch with nothing ever refilling it.
   const loadBlockedUsers = useSafetyStore((s) => s.loadBlockedUsers);
   const loadMutedUsers = useSafetyStore((s) => s.loadMutedUsers);
+  // Hidden posts (`hidden_posts`, 133) load beside mutes for the same reason:
+  // a hide that only lived in memory came back on the next launch (FEED-01).
+  const loadHiddenPosts = useFeedStore((s) => s.loadHiddenPosts);
+  // Her likes and saves, for the same reason: they were loaded only by the
+  // community screen, so on a cold Feed open every post she had liked showed
+  // an empty heart and a tap added a phantom +1 before the upsert no-oped.
+  const initFeed = useFeedStore((s) => s.init);
   useEffect(() => {
     if (!user?.id) return;
     void loadBlockedUsers();
     void loadMutedUsers();
-  }, [user?.id, loadBlockedUsers, loadMutedUsers]);
+    void loadHiddenPosts();
+    void initFeed(user.id);
+  }, [user?.id, loadBlockedUsers, loadMutedUsers, loadHiddenPosts, initFeed]);
 
   // One device push token per signed-in user, so the server can reach her for
   // messages and friend requests with the app closed.
@@ -83,45 +98,62 @@ export default function TabLayout() {
   // where the response is already waiting when this layout mounts. Routed
   // through expo-router (not Linking.openURL) so it lands inside the signed-in
   // stack instead of re-entering the app from the top.
-  const lastPush = Notifications.useLastNotificationResponse();
+  const lastPush = useLastPushResponse();
   useEffect(() => {
     const path = pushResponsePath(lastPush);
     if (path) router.push(path as never);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastPush]);
 
-  const unreadCounts = useConnectStore((s) => s.unreadCounts);
-  const totalUnread = Object.values(unreadCounts).reduce((sum, n) => sum + n, 0);
+  // The Messages badge comes from the server (CHAT-13): unread chats, message
+  // requests, friend requests and community-chat unread, all from
+  // messages_badge(). Realtime events only NUDGE a refresh — nothing here
+  // increments, so a message can never be counted twice.
+  const badgeTotal = useConnectStore((s) => s.badgeTotal);
+  const refreshInbox = useConnectStore((s) => s.refresh);
 
-  // Global message listener — fires for every INSERT on messages that RLS
-  // allows this user to see (i.e. only messages in their own conversations).
-  // When a message arrives for a conversation that isn't currently open,
-  // increment its unread count to drive the Connect tab badge.
-  // We call getState() inside the callback so we always read the live value
-  // of activeConversationId with no stale-closure risk.
   useEffect(() => {
     if (!user?.id) return;
+    void refreshInbox();
+    // Read receipts are reciprocal: every tick on screen draws by her setting,
+    // so it is loaded with the inbox, not only when Settings opens.
+    void useChatSettingsStore.getState().load();
+    // Debounced: a burst of inserts becomes one round trip.
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const nudge = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { timer = null; void refreshInbox(); }, 400);
+    };
 
-    const channel = freshChannel(`global-messages:${user.id}`)
+    // RLS limits both feeds to rows she may read: messages in her threads and
+    // her own membership rows (added to a group, request answered, muted).
+    const channel = freshChannel(`inbox:${user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, nudge)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          const msg = payload.new as { conversation_id: string; sender_id: string | null };
-          // Own messages are already shown via optimistic update — skip.
-          if (msg.sender_id === user.id) return;
-          const { activeConversationId, incrementUnread } = useConnectStore.getState();
-          // If the user is currently inside this conversation, skip —
-          // the per-conversation subscription handles display and the screen
-          // calls clearUnread on mount.
-          if (msg.conversation_id === activeConversationId) return;
-          incrementUnread(msg.conversation_id);
-        }
+        { event: '*', schema: 'public', table: 'conversation_members', filter: `user_id=eq.${user.id}` },
+        nudge,
       )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_channel_messages' }, nudge)
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [user?.id]);
+    // Coming back to the app: the socket may have slept through everything.
+    const appSub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void refreshInbox();
+    });
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      appSub.remove();
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id, refreshInbox]);
+
+  // The friend-request count lives in friendStore too; refresh the server
+  // badge whenever it moves so the two never disagree on screen.
+  useEffect(() => {
+    if (user?.id) void refreshInbox();
+  }, [pendingCount, user?.id, refreshInbox]);
 
   // Four bar slots plus the ＋ action, per `components/nav/navSlots3.ts`.
   //
@@ -161,9 +193,9 @@ export default function TabLayout() {
           name="messages"
           options={{
             title: 'Messages',
-            // Friend requests are messages now: the request-first inbox is where
-            // they land, so the count that used to badge Home badges Messages.
-            tabBarBadge: totalUnread + pendingCount > 0 ? totalUnread + pendingCount : undefined,
+            // Unread chats + message requests + friend requests + community
+            // unread — one server number (messages_badge, migration 132).
+            tabBarBadge: badgeTotal > 0 ? (badgeTotal > 99 ? '99+' : badgeTotal) : undefined,
           }}
         />
         <Tabs.Screen name="you" options={{ title: 'You' }} />

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { QueryError } from '@/components/QueryError';
 import { requireStaffPage } from '@/lib/staff-guard';
 import { FeatureRequestsClient } from './FeatureRequestsClient';
 
@@ -7,7 +8,7 @@ export const metadata = { title: 'Feature Requests — Roxy Studio' };
 export default async function FeatureRequestsPage() {
   await requireStaffPage();
   const supabase = await createClient();
-  const { data: features } = await supabase
+  const { data: features, error } = await supabase
     .from('feature_requests')
     .select('id, title, description, type, status, vote_count, created_at, created_by')
     .order('vote_count', { ascending: false })
@@ -22,7 +23,11 @@ export default async function FeatureRequestsPage() {
           Community-pitched ideas and Roxy team picks — sorted by votes.
         </p>
       </div>
-      <FeatureRequestsClient initialFeatures={features ?? []} />
+      {error ? (
+        <QueryError what="feature requests" />
+      ) : (
+        <FeatureRequestsClient initialFeatures={features ?? []} />
+      )}
     </div>
   );
 }

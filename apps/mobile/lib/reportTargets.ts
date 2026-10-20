@@ -22,6 +22,12 @@ export const REPORT_CONTENT_TYPES = [
   'speed_date',
   'archive_entry',
   'archive_review',
+  // 132: a whole DM or group. content_id is the conversation id, so a
+  // moderator opens the thread rather than one message picked for her.
+  'conversation',
+  // 133: comments are where harassment lands; a comment report names the
+  // comment itself so a moderator can find it.
+  'comment',
 ] as const;
 
 export type ReportContentType = (typeof REPORT_CONTENT_TYPES)[number];

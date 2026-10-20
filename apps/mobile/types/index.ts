@@ -4,11 +4,15 @@ export interface Profile {
   display_name: string;
   onboarding_completed: boolean;
   /**
-   * Invite gate (migration 070). 'unvetted' is the grandfathered population
-   * from before the gate — they keep full access, which is why the enforcement
-   * predicate accepts it alongside 'approved'.
+   * Invite gate. Only 'approved' is a member (migration 130). The pre-gate
+   * 'unvetted' accounts were grandfathered to 'approved' and the value no
+   * longer exists; new accounts are forced to 'pending' by a trigger.
    */
-  vetting_status: 'unvetted' | 'pending' | 'approved' | 'rejected';
+  vetting_status: 'pending' | 'approved' | 'rejected';
+  /** Set when she asks to delete her account. A deleted account has no access (130 / G-16). */
+  deleted_at?: string | null;
+  /** When a reviewer (or the grandfather migration) admitted her. */
+  admitted_at?: string | null;
   /**
    * Limited launch (migration 108). 'public' sees Archive + Roxy Official
    * chat. 'beta' sees the rest of the app. Missing on a stale client row
@@ -101,12 +105,16 @@ export interface Friendship {
 export interface Conversation {
   id: string;
   participant_ids: string[];
-  conversation_type: 'direct' | 'speed_date' | 'sister';
+  /** 'group' (migration 132) keeps participant_ids empty; members live in conversation_members. */
+  conversation_type: 'direct' | 'group' | 'speed_date' | 'sister';
   last_message_at: string | null;
   roxy_nudge_count: number;
   roxy_wingwoman_count_today: number;
   last_roxy_call_date: string | null;
   created_at: string;
+  title?: string | null;
+  avatar_emoji?: string | null;
+  created_by?: string | null;
 }
 
 export interface Message {
@@ -115,10 +123,15 @@ export interface Message {
   sender_id: string | null;
   content: string | null;
   media_url: string | null;
-  message_type: 'text' | 'image' | 'voice' | 'roxy_suggestion';
+  /** 'system' rows ("Ana added Bea") are written only by the group RPCs. */
+  message_type: 'text' | 'image' | 'voice' | 'roxy_suggestion' | 'system';
   is_read: boolean;
   created_at: string;
   reactions?: MessageReaction[];
+  reply_to_id?: string | null;
+  edited_at?: string | null;
+  /** Unsent: the row stays (replies, receipts), the words are gone. */
+  deleted_at?: string | null;
 }
 
 export interface MessageReaction {
@@ -215,6 +228,11 @@ export interface Comment {
   created_at: string;
   profiles?: { display_name: string; avatar_url: string | null };
   replies?: Comment[];
+  /**
+   * Client-only: a muted woman's comment kept as a quiet placeholder because
+   * other people replied to it (`hideMutedComments`). Never sent to the API.
+   */
+  mutedPlaceholder?: boolean;
 }
 
 export interface Event {

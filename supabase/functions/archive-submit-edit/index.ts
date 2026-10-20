@@ -178,14 +178,15 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (entryErr) return errorResponse(entryErr.message, 500);
   if (!entry) return errorResponse('Entry not found', 404);
+  // The select list is built at runtime, so supabase-js types the row as
+  // GenericStringError; the columns are EDITABLE_FIELDS + id + status.
+  const current = entry as unknown as Record<EditableField, unknown> & { id: string; status: string };
   // Only a published row is a stable target: a pending row already has its
   // own create-revision in flight, and rejected/hidden rows are not part of
   // the live catalogue for a member to be looking at in the first place.
-  if ((entry as { status: string }).status !== 'published') {
+  if (current.status !== 'published') {
     return errorResponse('Only published entries can be edited', 409);
   }
-
-  const current = entry as Record<EditableField, unknown> & { id: string; status: string };
 
   const patch: Partial<Record<EditableField, unknown>> = {};
   const prev: Partial<Record<EditableField, unknown>> = {};

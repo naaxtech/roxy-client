@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { QueryError } from '@/components/QueryError';
 import { Badge } from '@/components/ui/badge';
 import { StripeDashboardButton } from './StripeDashboardButton';
 
@@ -51,7 +52,7 @@ export default async function PayoutsPage() {
   }
 
   // Events hosted by this user that are paid, with aggregated payment_logs
-  const { data: events } = await supabase
+  const { data: events, error: eventsError } = await supabase
     .from('events')
     .select(`
       id, title, starts_at, status, payout_blocked, payout_released_at,
@@ -64,12 +65,12 @@ export default async function PayoutsPage() {
 
   // Fetch payment_logs summary per event
   const eventIds = (events ?? []).map(e => e.id);
-  const { data: paymentLogs } = eventIds.length
+  const { data: paymentLogs, error: logsError } = eventIds.length
     ? await supabase
         .from('payment_logs')
         .select('event_id, amount_cents, status, stripe_refund_id')
         .in('event_id', eventIds)
-    : { data: [] };
+    : { data: [], error: null };
 
   // Build per-event summary
   const logsByEvent = new Map<string, { gross: number; refunded: number }>();
@@ -124,7 +125,9 @@ export default async function PayoutsPage() {
 
       <div>
         <h2 className="text-lg font-semibold mb-3">Event Breakdown</h2>
-        {(events ?? []).length === 0 ? (
+        {eventsError || logsError ? (
+          <QueryError what="your paid events and their takings" />
+        ) : (events ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">No paid events yet.</p>
         ) : (
           <ul className="space-y-2">

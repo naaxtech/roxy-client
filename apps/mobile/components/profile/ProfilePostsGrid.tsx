@@ -39,6 +39,13 @@ export function ProfilePostsGrid({ userId, communityId, onVideoPress }: Props) {
   const router = useRouter();
   const [posts, setPosts] = useState<GridPost[]>([]);
   const [loading, setLoading] = useState(true);
+  // PRO-08: the wall used to stop at 60 rows with no way to older posts.
+  // `fetched` counts raw rows (text posts included) so the next range starts
+  // where the last one ended, whatever the media filter kept.
+  const [fetched, setFetched] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [resolvedAuthor, setResolvedAuthor] = useState<string | null>(null);
   const s = styles(colors);
 
   const load = useCallback(async () => {
@@ -59,14 +66,18 @@ export function ProfilePostsGrid({ userId, communityId, onVideoPress }: Props) {
       setLoading(false);
       return;
     }
+    setResolvedAuthor(authorId);
     const { data, error } = await supabase
       .from('posts')
       .select('id, content, post_type, media_urls, video_thumbnail_url')
       .eq('author_id', authorId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(60);
+      .order('id', { ascending: false })
+      .limit(GRID_PAGE);
     if (error) logError(error, 'ProfilePostsGrid.load');
+    setFetched((data ?? []).length);
+    setHasMore((data ?? []).length >= GRID_PAGE);
     // Text posts live in the Thoughts tab now. A square is the wrong container
     // for a sentence — it crops the one thing the post is made of — and a wall
     // of cropped paragraphs read as broken image tiles.
@@ -75,6 +86,28 @@ export function ProfilePostsGrid({ userId, communityId, onVideoPress }: Props) {
   }, [userId, communityId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const loadMore = async () => {
+    if (!resolvedAuthor || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const { data, error } = await supabase
+      .from('posts')
+      .select('id, content, post_type, media_urls, video_thumbnail_url')
+      .eq('author_id', resolvedAuthor)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(fetched, fetched + GRID_PAGE - 1);
+    setLoadingMore(false);
+    if (error) { logError(error, 'ProfilePostsGrid.loadMore'); return; }
+    const rows = (data ?? []) as GridPost[];
+    setFetched((n) => n + rows.length);
+    setHasMore(rows.length >= GRID_PAGE);
+    setPosts((cur) => {
+      const seen = new Set(cur.map((p) => p.id));
+      return [...cur, ...rows.filter((p) => isMediaPost(p.post_type) && !seen.has(p.id))];
+    });
+  };
 
   if (loading) {
     return <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />;
@@ -126,11 +159,30 @@ export function ProfilePostsGrid({ userId, communityId, onVideoPress }: Props) {
           );
         })}
       </View>
+      {hasMore ? (
+        <TouchableOpacity
+          style={s.more}
+          onPress={() => { void loadMore(); }}
+          disabled={loadingMore}
+          testID="profile-posts-more"
+          accessibilityRole="button"
+          accessibilityLabel="Show older posts"
+        >
+          {loadingMore
+            ? <ActivityIndicator color={colors.primary} />
+            : <Text style={s.moreText}>Show older posts</Text>}
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
 
+/** Rows per page of the wall. */
+const GRID_PAGE = 60;
+
 const styles = (colors: ThemeColors) => StyleSheet.create({
+  more: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  moreText: { color: colors.primaryInk, fontWeight: '700', fontSize: 14 },
   wrap: { marginTop: 12, paddingHorizontal: 12, width: '100%' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tile: {

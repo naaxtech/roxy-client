@@ -12,6 +12,8 @@ import { NowRail } from '../../../components/feed/NowRail';
 import { MiniWinsSheet } from '../../../components/feed/MiniWinsSheet';
 import { STAGE, STAGE_BG } from '../../../components/feed/stageColors';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
+import { FirstStepsCard } from '../../../components/account/FirstStepsCard';
+import { RAIL_GUTTER } from '../../../components/feed/feedChromeTokens';
 import { TYPE } from '../../../lib/typography';
 import { RADII } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
@@ -22,6 +24,9 @@ import { useCommunityFilterStore } from '../../../store/communityFilterStore';
 import { useFollowStore } from '../../../store/followStore';
 import { a11yState } from '../../../lib/a11yState';
 import { useAccess } from '../../../hooks/useAccess';
+import {
+  dailyPromptFor, hasAnsweredDailyPrompt, onDailyPromptAnswered, type DailyPrompt,
+} from '../../../lib/dailyPrompt';
 import ArchiveBrowseScreen from '../../archive/index';
 
 /** One Mini Wins prompt per calendar day, per device. */
@@ -57,6 +62,30 @@ function FeedScreen() {
   const [nowOpen, setNowOpen] = useState(false);
   const [liveCount, setLiveCount] = useState(0);
   const [miniWinsOpen, setMiniWinsOpen] = useState(false);
+  const { can, kind } = useAccess();
+  const showFirstSteps = segment === 'foryou' && kind !== 'pending';
+
+  /**
+   * Question of the day (audit #4). Null until we know she has not answered
+   * today, so an answered question never flashes into the pager; null again
+   * the moment she answers it in the composer (this screen stays mounted).
+   * Only for women who can post — the card's one action is "answer it".
+   */
+  const canCreate = can('create');
+  const [dailyPrompt, setDailyPrompt] = useState<DailyPrompt | null>(null);
+  useEffect(() => {
+    const uid = user?.id;
+    if (!uid || !canCreate) { setDailyPrompt(null); return; }
+    const today = dailyPromptFor();
+    let cancelled = false;
+    void hasAnsweredDailyPrompt(uid, today.dateKey).then((answered) => {
+      if (!cancelled && !answered) setDailyPrompt(today);
+    });
+    const off = onDailyPromptAnswered((answeredBy, dateKey) => {
+      if (answeredBy === uid && dateKey === today.dateKey) setDailyPrompt(null);
+    });
+    return () => { cancelled = true; off(); };
+  }, [user?.id, canCreate]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -143,6 +172,7 @@ function FeedScreen() {
         scope={scope}
         communityIds={filteredCommunityIds}
         authorIds={authorIds}
+        dailyPrompt={segment === 'foryou' ? dailyPrompt : null}
       />
 
       {/* Absolute overlay so the pager keeps the full box it measures against. */}
@@ -191,6 +221,15 @@ function FeedScreen() {
         </View>
 
         <FeedSegments value={segment} onChange={setSegment} />
+
+        {/* Her first five minutes (G-11), the same card "You're in" showed.
+            Approved members only, For You only; it renders nothing once she
+            hides it or until it knows whether she did. */}
+        {showFirstSteps && (
+          <View style={s.firstSteps}>
+            <FirstStepsCard testID="feed-first-steps" />
+          </View>
+        )}
       </SafeAreaView>
 
       <MiniWinsSheet
@@ -211,6 +250,9 @@ const s = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   spacer: { flex: 1 },
   railWrap: { },
+  // Clear of the right-hand rail column, like every other full-width piece of
+  // chrome on the stage.
+  firstSteps: { marginTop: 8, marginRight: RAIL_GUTTER - 14 },
   searchBtn: {
     minHeight: MIN_TOUCH_TARGET,
     minWidth: MIN_TOUCH_TARGET,

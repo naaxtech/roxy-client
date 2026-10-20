@@ -52,6 +52,8 @@ interface UseRealtimeReturn {
   loadOlder: () => Promise<number>;
   hasMoreOlder: boolean;
   loadingOlder: boolean;
+  /** Apply her own edit/unsend on screen straight away (the server echo confirms it). */
+  patchMessage: (id: string, patch: Partial<Message>) => void;
 }
 
 const DEFAULT_PAGE_SIZE = 50;
@@ -219,6 +221,13 @@ export function useRealtime({
     [applyMessages],
   );
 
+  const patchMessage = useCallback(
+    (id: string, patch: Partial<Message>) => {
+      applyMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+    },
+    [applyMessages],
+  );
+
   const settleSend = useCallback(
     (tempId: string, result: SendResult): boolean => {
       const realId = result?.data?.id;
@@ -230,9 +239,13 @@ export function useRealtime({
         );
         return false;
       }
-      applyMessages((prev) =>
-        prev.map((m) => (m.id === tempId ? { ...m, id: realId, deliveryStatus: 'sent' } : m)),
-      );
+      applyMessages((prev) => {
+        // With a client-minted id (CHAT-06) the realtime echo may have settled
+        // this bubble already; drop any other copy of the same id.
+        const settled = prev.map((m) => (m.id === tempId ? { ...m, id: realId, deliveryStatus: 'sent' as const } : m));
+        const seen = new Set<string>();
+        return settled.filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true)));
+      });
       return true;
     },
     [applyMessages, failMessage],
@@ -332,10 +345,10 @@ export function useRealtime({
   }, [conversationId, pageSize, applyMessages]);
 
   // Subscription. Both listeners are filtered to this one conversation — never
-  // a table-wide listener (CLAUDE.md §18). `freshChannel` tears down any stale
-  // channel on the same topic first: `supabase.channel()` hands back the CACHED
-  // instance, and `.on()` on an already-subscribed channel throws, which on a
-  // resume re-subscribe would take the whole screen down.
+  // a table-wide listener (CLAUDE.md §18). `freshChannel` gives every effect run
+  // its own topic (CHAT-08): `supabase.channel()` hands back the CACHED instance
+  // while an old one is still leaving, and `.on()` on that throws or binds to a
+  // channel about to close.
   useEffect(() => {
     if (!conversationId) return;
     const isResume = resumeToken > 0;
@@ -351,10 +364,21 @@ export function useRealtime({
         },
         (payload) => {
           const msg = payload.new as Message;
-          // Skip own INSERTs — already handled optimistically via appendOptimistic
-          // + settleSend. Without this, the Realtime event races with the id swap
-          // and creates a duplicate.
-          if (msg.sender_id === currentUserId) return;
+          // Her own message: the id was minted on this phone (CHAT-06), so the
+          // echo matches the optimistic bubble. A row in the database is a
+          // delivered message — settle it rather than add a second copy. An id
+          // this phone never minted is her other device, and must appear.
+          if (msg.sender_id === currentUserId) {
+            const mine = messagesRef.current.find((m) => m.id === msg.id);
+            if (mine) {
+              if (mine.deliveryStatus !== 'sent') {
+                applyMessages((prev) =>
+                  prev.map((m) => (m.id === msg.id ? { ...m, deliveryStatus: 'sent' as const } : m)),
+                );
+              }
+              return;
+            }
+          }
           appendMessage(msg);
         },
       )
@@ -367,10 +391,20 @@ export function useRealtime({
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          // Flip is_read so ✓ → ✓✓ updates in realtime when partner reads
+          // Read receipts (✓ → ✓✓), edits (new words + edited_at) and unsends
+          // (deleted_at, words gone) all arrive here.
           const updated = payload.new as Message;
           applyMessages((prev) =>
-            prev.map((m) => (m.id === updated.id ? { ...m, is_read: updated.is_read } : m)),
+            prev.map((m) => (m.id === updated.id
+              ? {
+                ...m,
+                is_read: updated.is_read,
+                content: updated.content,
+                media_url: updated.media_url,
+                edited_at: updated.edited_at ?? null,
+                deleted_at: updated.deleted_at ?? null,
+              }
+              : m)),
           );
         },
       )
@@ -419,5 +453,6 @@ export function useRealtime({
     loadOlder,
     hasMoreOlder,
     loadingOlder,
+    patchMessage,
   };
 }

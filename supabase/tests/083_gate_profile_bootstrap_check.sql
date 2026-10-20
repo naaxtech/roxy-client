@@ -99,13 +99,27 @@ BEGIN
   END IF;
 
   IF v_src NOT LIKE '%INSERT INTO public.profiles%' THEN
-    RAISE EXCEPTION
-      'create_membership_application does not create the applicant profile row -- vetting_status never becomes pending, so the gate does not close and onboarding later creates the row at its unvetted DEFAULT';
+    -- 130 (G-08) made create_membership_application a thin wrapper for older
+    -- builds: it calls redeem_invite_code(), which now creates the applicant
+    -- row. Same rule, one hop further: the function it delegates to must.
+    IF v_src LIKE '%redeem_invite_code%'
+       AND to_regprocedure('public.redeem_invite_code(text)') IS NOT NULL
+       AND pg_get_functiondef('public.redeem_invite_code(text)'::regprocedure) LIKE '%INSERT INTO public.profiles%' THEN
+      v_src := v_src;  -- satisfied through redeem_invite_code
+    ELSE
+      RAISE EXCEPTION
+        'create_membership_application does not create the applicant profile row -- vetting_status never becomes pending, so the gate does not close and onboarding later creates the row at its unvetted DEFAULT';
+    END IF;
   END IF;
 
   SELECT pg_get_functiondef(p.oid) INTO v_src
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public' AND p.proname = '_apply_decision';
+  WHERE n.nspname = 'public' AND p.proname = '_apply_decision'
+  -- 130 added a 5-argument overload (with a reason) and made the 4-argument
+  -- one delegate to it. Read the overload that does the work: the body that
+  -- mentions is_active when one does, else any.
+  ORDER BY (pg_get_functiondef(p.oid) LIKE '%is_active%') DESC, p.pronargs DESC
+  LIMIT 1;
 
   IF v_src IS NULL THEN
     RAISE EXCEPTION 'MISSING public._apply_decision -- 071 is not applied';

@@ -74,7 +74,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 
 CREATE TRIGGER trg_attendee_count
   AFTER INSERT OR DELETE ON public.event_attendees

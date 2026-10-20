@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ComposerShell } from '../../components/archive/ComposerShell';
-import { ComposerField, ComposerSubmit } from '../../components/archive/ComposerField';
-import { submitEntry } from '../../components/archive/composerActions';
+import { ComposerChoice, ComposerField, ComposerSubmit } from '../../components/archive/ComposerField';
+import { submitEntry, validateReleaseYear } from '../../components/archive/composerActions';
+import { archiveTypeLabel } from '../../lib/archiveTypes';
+import { useArchiveStore } from '../../store/archiveStore';
 import { useMembership } from '../../hooks/useMembership';
 import { Analytics } from '../../lib/analytics';
 
@@ -27,17 +29,19 @@ export default function AddArchiveEntryScreen() {
   const [summary, setSummary] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const setFlash = useArchiveStore((st) => st.setFlash);
 
   const close = () => router.back();
 
   const send = async () => {
+    const checked = validateReleaseYear(year);
+    if (checked.error) { setError(checked.error); return; }
     setBusy(true);
     setError(null);
-    const parsedYear = year.trim() ? Number(year.trim()) : null;
     const res = await submitEntry({
       title: title.trim(),
       media_type: mediaType,
-      release_year: Number.isFinite(parsedYear) ? parsedYear : null,
+      release_year: checked.year,
       creator: creator.trim() || null,
       summary: summary.trim() || null,
     });
@@ -47,6 +51,8 @@ export default function AddArchiveEntryScreen() {
     // submission for a network blip.
     if (res.error) { setError(res.error); return; }
     Analytics.archiveEntrySubmitted();
+    // The loop used to end in silence: back to the list, nothing said (ARC-09).
+    setFlash(`Sent to the mods ✿ “${title.trim()}” will be credited to you — you’ll get a notification when it’s decided.`);
     close();
   };
 
@@ -77,13 +83,13 @@ export default function AddArchiveEntryScreen() {
         maxLength={200}
         testID="archive-add-title"
       />
-      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }} accessibilityRole="radiogroup" accessibilityLabel="What kind of thing is it?">
         {TYPES.map((t) => (
-          <ComposerSubmit
+          <ComposerChoice
             key={t}
-            label={t.toUpperCase()}
+            label={archiveTypeLabel(t)}
+            selected={mediaType === t}
             onPress={() => setMediaType(t)}
-            disabled={mediaType !== t}
             testID={`archive-add-type-${t}`}
           />
         ))}

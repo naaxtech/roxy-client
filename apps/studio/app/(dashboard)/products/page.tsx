@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { QueryError } from '@/components/QueryError';
 import { getOwnedBusiness } from '@/lib/business';
 import { ProductsClient } from './ProductsClient';
 
@@ -19,7 +20,7 @@ export default async function ProductsPage() {
   }
 
   const supabase = await createClient();
-  const { data: products } = await supabase
+  const { data: products, error } = await supabase
     .from('products')
     .select(
       'id, name, category, base_price_cents, status, is_active, description, created_at, product_variants(count), product_photos(id, url, position)'
@@ -37,7 +38,7 @@ export default async function ProductsPage() {
         </p>
       </div>
 
-      <ProductsClient products={products ?? []} />
+      {error ? <QueryError what="your products" /> : <ProductsClient products={products ?? []} />}
     </div>
   );
 }

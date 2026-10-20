@@ -23,6 +23,20 @@ import { useGateStore } from '../../store/gateStore';
 import { showAlert } from '../../lib/confirm';
 import { BRAND_GRADIENT } from '../../lib/theme';
 import { POP_FROM, SNAP_SPRING } from '../../lib/motion';
+import { enabledOAuthProviders } from '../../lib/authProviders';
+import { MIN_PASSWORD_LENGTH } from '../../lib/passwordPolicy';
+import { captchaRequired, captchaSiteKey } from '../../lib/captcha';
+import { TurnstileWidget } from '../../components/auth/TurnstileWidget';
+import { authErrorCopy } from '../../lib/authErrorCopy';
+
+// Bot protection (lib/captcha.ts): web only, and only once a site key is set.
+const NEEDS_CAPTCHA = captchaRequired(Platform.OS);
+const CAPTCHA_HINT = 'One moment: finish the check below first.';
+
+/** G-19: a safety app asks for more than six characters. Matches the Supabase Auth setting. */
+export const MIN_PASSWORD = MIN_PASSWORD_LENGTH;
+
+const OAUTH = enabledOAuthProviders();
 
 // Roxy brand gradient — same 3 stops as the Grow hero card.
 
@@ -31,7 +45,9 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const { height } = useWindowDimensions();
   const { validatedCode, validatedCommunityName, submitApplicationForCode } = useGateStore();
-  const [showEmail, setShowEmail] = useState(false);
+  // With no provider configured (G-03) the email form is the only way in, so
+  // it is open from the start instead of hiding behind "Use email instead".
+  const [showEmail, setShowEmail] = useState(OAUTH.length === 0);
   // Arriving without a code means she tapped "I already have an account" on the
   // gate, so open in sign-in mode rather than making her switch.
   const [isSignIn, setIsSignIn] = useState(!validatedCode);
@@ -41,6 +57,9 @@ export default function WelcomeScreen() {
   const [oauthPending, setOauthPending] = useState<'apple' | 'google' | null>(null);
   const [resetSent, setResetSent] = useState(false);
   const [revealPassword, setRevealPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // A Turnstile token is single-use: every attempt asks for a fresh one.
+  const [captchaRound, setCaptchaRound] = useState(0);
   const { signUp, signInWithPassword, resetPassword, signInWithApple, signInWithGoogle } = useAuth();
 
   const heroAnim = useRef(new Animated.Value(POP_FROM)).current;
@@ -50,8 +69,10 @@ export default function WelcomeScreen() {
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) return;
-    if (password.length < 6) {
-      showAlert('Error', 'Password must be at least 6 characters.');
+    // Sign-in keeps accepting older, shorter passwords; only new ones are held
+    // to the minimum.
+    if (!isSignIn && password.length < MIN_PASSWORD) {
+      showAlert('A little longer', `Use at least ${MIN_PASSWORD} characters — it keeps your account yours.`);
       return;
     }
 
@@ -64,14 +85,21 @@ export default function WelcomeScreen() {
       return;
     }
 
+    if (NEEDS_CAPTCHA && !captchaToken) {
+      showAlert('Almost', CAPTCHA_HINT);
+      return;
+    }
+
     setLoading(true);
     const { error } = isSignIn
-      ? await signInWithPassword(email.trim(), password)
-      : await signUp(email.trim(), password);
+      ? await signInWithPassword(email.trim(), password, captchaToken)
+      : await signUp(email.trim(), password, captchaToken);
+    if (NEEDS_CAPTCHA) setCaptchaRound((n) => n + 1);
 
     if (error) {
       setLoading(false);
-      showAlert('Error', error.message);
+      const copy = authErrorCopy(error);
+      showAlert(copy.title, copy.body);
       return;
     }
 
@@ -81,10 +109,11 @@ export default function WelcomeScreen() {
       const applicationId = await submitApplicationForCode();
       setLoading(false);
       if (!applicationId) {
-        showAlert(
-          'Almost there',
-          "Your account exists, but we couldn't attach your invite code. Sign in and try again.",
-        );
+        // G-15: her account exists but the code could not open an application
+        // (exhausted a moment ago, expired, the network dropped). She is never
+        // let in on that basis — she lands on the code screen, still signed
+        // in, with the reason shown and a way to try another code.
+        router.replace('/(auth)/code');
         return;
       }
       router.replace('/(auth)/application');
@@ -129,8 +158,13 @@ export default function WelcomeScreen() {
       showAlert('Enter your email', 'Please enter your email address first.');
       return;
     }
+    if (NEEDS_CAPTCHA && !captchaToken) {
+      showAlert('Almost', CAPTCHA_HINT);
+      return;
+    }
     setLoading(true);
-    const { error } = await resetPassword(email.trim());
+    const { error } = await resetPassword(email.trim(), captchaToken);
+    if (NEEDS_CAPTCHA) setCaptchaRound((n) => n + 1);
     setLoading(false);
     if (error) {
       showAlert('Error', error.message);
@@ -334,6 +368,7 @@ export default function WelcomeScreen() {
               </>
             ) : (
               <>
+                {OAUTH.includes('apple') && (
                 <TouchableOpacity
                   testID="oauth-apple-btn"
                   style={[styles.btn, styles.btnApple, busy && styles.btnDisabled]}
@@ -350,7 +385,9 @@ export default function WelcomeScreen() {
                     </>
                   )}
                 </TouchableOpacity>
+                )}
 
+                {OAUTH.includes('google') && (
                 <TouchableOpacity
                   testID="oauth-google-btn"
                   style={[styles.btn, styles.btnGoogle, busy && styles.btnDisabled]}
@@ -367,6 +404,7 @@ export default function WelcomeScreen() {
                     </>
                   )}
                 </TouchableOpacity>
+                )}
 
                 {!showEmail ? (
                   <TouchableOpacity onPress={() => setShowEmail(true)} testID="use-email-link">
@@ -374,11 +412,13 @@ export default function WelcomeScreen() {
                   </TouchableOpacity>
                 ) : (
                   <>
-                    <View style={styles.dividerRow}>
-                      <View style={styles.dividerLine} />
-                      <Text style={styles.dividerText}>OR</Text>
-                      <View style={styles.dividerLine} />
-                    </View>
+                    {OAUTH.length > 0 && (
+                      <View style={styles.dividerRow}>
+                        <View style={styles.dividerLine} />
+                        <Text style={styles.dividerText}>OR</Text>
+                        <View style={styles.dividerLine} />
+                      </View>
+                    )}
 
                     <View>
                       <Text style={styles.inputLabel} nativeID="email-label">Email</Text>
@@ -439,15 +479,31 @@ export default function WelcomeScreen() {
                         </TouchableOpacity>
                       </View>
                     </View>
+                    {!isSignIn && (
+                      <Text style={styles.privacy} testID="password-hint">
+                        At least {MIN_PASSWORD} characters.
+                      </Text>
+                    )}
                     {isSignIn && (
-                      <TouchableOpacity onPress={handleForgotPassword}>
+                      <TouchableOpacity
+                        onPress={handleForgotPassword}
+                        accessibilityRole="button"
+                        accessibilityLabel="Forgot password"
+                      >
                         <Text style={styles.forgotLink}>Forgot password?</Text>
                       </TouchableOpacity>
                     )}
+                    <TurnstileWidget
+                      siteKey={NEEDS_CAPTCHA ? captchaSiteKey() : null}
+                      onToken={setCaptchaToken}
+                      resetKey={captchaRound}
+                    />
                     <TouchableOpacity
                       testID="auth-submit-btn"
                       onPress={handleSubmit}
                       disabled={busy}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: busy, busy: loading }}
                       accessibilityLabel={isSignIn ? 'Sign In' : 'Sign Up'}
                     >
                       <LinearGradient
@@ -463,7 +519,10 @@ export default function WelcomeScreen() {
                         )}
                       </LinearGradient>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setIsSignIn(!isSignIn)}>
+                    <TouchableOpacity
+                      onPress={() => setIsSignIn(!isSignIn)}
+                      accessibilityRole="button"
+                    >
                       <Text style={styles.emailLink}>
                         {isSignIn ? 'New here? Sign Up' : 'Already have an account? Sign In'}
                       </Text>

@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { sanitizeForPattern } from './ilikePattern';
 
 export type SearchCommunity = { id: string; name: string; description: string | null };
-export type SearchPerson = { id: string; display_name: string | null; username: string | null };
+export type SearchPerson = { id: string; display_name: string | null; username: string | null; avatar_url?: string | null };
 export type SearchEvent = { id: string; title: string; starts_at: string };
 export type SearchBusiness = { id: string; name: string; description: string | null };
 /** A post (text or video), as search returns it — the TikTok-style half of search. */
@@ -146,7 +146,7 @@ export async function globalSearch(q: string): Promise<GlobalSearchResult> {
     ),
     safeQuery<SearchPerson>(
       andAnyColumn(
-        supabase.from('profiles').select('id,display_name,username'),
+        supabase.from('profiles').select('id,display_name,username,avatar_url'),
         ['display_name', 'username'],
         patterns
       ).limit(LIMIT)

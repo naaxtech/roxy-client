@@ -17,12 +17,27 @@ export type NotificationType =
   | 'channel_message'
   | 'friend_request'
   | 'friend_accept'
-  | 'community_event';
+  | 'community_event'
+  // Migration 134 (G-11): a decision on her application (approved, not
+  // approved, appeal upheld).
+  | 'application_decided'
+  // Migration 135 (CHAT-09): a moderator invited her to a private community,
+  // or someone asked to join a community she moderates.
+  | 'community_invite'
+  | 'community_join_request'
+  // Migration 133: the creator loop: someone sent her post a ✿, commented on
+  // it or replied to her comment, or followed her.
+  | 'post_reaction'
+  | 'comment'
+  | 'follow';
 
-export type PrefKey = 'messages' | 'community_chats' | 'friends' | 'events';
+export type PrefKey = 'messages' | 'community_chats' | 'friends' | 'events' | 'membership' | 'activity';
 
-/** Android notification channel ids; created by the app (lib/push.ts). */
-export type ChannelId = 'messages' | 'community' | 'friends' | 'events' | 'quiet';
+/**
+ * Android notification channel ids; created by the app (lib/pushRegistration.ts)
+ * before it registers a token, so every device that can receive a push has them.
+ */
+export type ChannelId = 'messages' | 'community' | 'friends' | 'events' | 'membership' | 'quiet';
 
 export type PushPrefs = {
   push_enabled: boolean;
@@ -30,6 +45,18 @@ export type PushPrefs = {
   friends: boolean;
   events: boolean;
   community_chats: boolean;
+  /**
+   * News about her membership (migration 134). Optional because a settings
+   * row read before the column existed has no value; absent means ON, the
+   * column default.
+   */
+  membership?: boolean;
+  /**
+   * Likes, comments and follows (migration 133). Optional because a settings
+   * row read before the column existed has no value; absent means ON, the
+   * column default.
+   */
+  activity?: boolean;
   show_previews: boolean;
   /** 'HH:MM' in her timezone, or null for no quiet hours. */
   quiet_start: string | null;
@@ -44,6 +71,8 @@ export const DEFAULT_PREFS: PushPrefs = {
   friends: true,
   events: true,
   community_chats: true,
+  membership: true,
+  activity: true,
   show_previews: false,
   quiet_start: null,
   quiet_end: null,
@@ -83,6 +112,18 @@ const CATEGORY: Record<NotificationType, { pref: PrefKey; channel: Exclude<Chann
   friend_request: { pref: 'friends', channel: 'friends' },
   friend_accept: { pref: 'friends', channel: 'friends' },
   community_event: { pref: 'events', channel: 'events' },
+  application_decided: { pref: 'membership', channel: 'membership' },
+  // Community news shares the 'Community chats' switch and the community
+  // channel: no new switch or Android channel (one would need an app release
+  // before it could ring).
+  community_invite: { pref: 'community_chats', channel: 'community' },
+  community_join_request: { pref: 'community_chats', channel: 'community' },
+  // Social activity rings on the existing 'friends' channel: the app creates
+  // the Android channels (lib/push.ts) and a new channel id would need an app
+  // release before it could ring at all.
+  post_reaction: { pref: 'activity', channel: 'friends' },
+  comment: { pref: 'activity', channel: 'friends' },
+  follow: { pref: 'activity', channel: 'friends' },
 };
 
 /** Which preference gates a type, and which channel it rings on. Unknown types are never pushed. */
@@ -100,10 +141,27 @@ function privateCopy(n: QueuedNotification): { title: string; body: string } {
       return { title: who, body: 'Sent you a friend request' };
     case 'friend_accept':
       return { title: who, body: 'Accepted your friend request' };
+    case 'community_invite':
+      // Never the community's name: it may say what she is not out about.
+      return { title: who, body: 'Invited you to a private community' };
+    case 'community_join_request':
+      // Neither the community nor her note.
+      return { title: who, body: 'Asked to join a community you moderate' };
+    case 'post_reaction':
+      return { title: who, body: 'Sent your post a ✿' };
+    case 'comment':
+      // Never the comment's words, and never the post: her post may be about
+      // something she is not out about.
+      return { title: who, body: 'Commented on your post' };
+    case 'follow':
+      return { title: who, body: 'Started following you' };
     case 'channel_message':
       return { title: 'Roxy', body: 'New message in a community chat' };
     case 'community_event':
       return { title: 'Roxy', body: 'A community you joined posted a new event' };
+    case 'application_decided':
+      // Never the decision ("rejected" on a lock screen), never a community.
+      return { title: 'Roxy', body: 'There\'s news about your membership' };
     default:
       return { title: 'Roxy', body: 'You have a new notification' };
   }
@@ -145,7 +203,8 @@ export function buildMessage(
 ): ExpoMessage | null {
   const cat = categoryOf(n.type);
   if (!cat) return null;
-  if (!prefs.push_enabled || !prefs[cat.pref]) return null;
+  // `=== false`, not falsy: a pref missing from an older settings row is ON.
+  if (!prefs.push_enabled || prefs[cat.pref] === false) return null;
 
   const copy = prefs.show_previews ? fullCopy(n) : privateCopy(n);
   // One stack per sender per destination: five messages from Maya in the same

@@ -109,6 +109,31 @@ describe('useAuth', () => {
     expect(response!.error?.message).toMatch(/did not open the new account/i);
   });
 
+  // Bot protection (gate wave 3): with a Turnstile token the call carries it
+  // as options.captchaToken; without one the call is exactly as before, so
+  // nothing changes until EXPO_PUBLIC_TURNSTILE_SITE_KEY is set.
+  it('passes a captcha token to signUp, signIn and the reset email when she has one', async () => {
+    mockSignUp.mockResolvedValueOnce({
+      data: { user: { identities: [{ id: 'i1' }] }, session: { user: { email: 'test@example.com' } } },
+      error: null,
+    });
+    const { result } = renderHook(() => useAuth());
+    await act(async () => {
+      await result.current.signUp('test@example.com', 'password1234', 'tok-1');
+      await result.current.signInWithPassword('test@example.com', 'password1234', 'tok-2');
+      await result.current.resetPassword('test@example.com', 'tok-3');
+    });
+    expect(mockSignUp).toHaveBeenCalledWith({
+      email: 'test@example.com', password: 'password1234', options: { captchaToken: 'tok-1' },
+    });
+    expect(mockSignInWithPassword).toHaveBeenCalledWith({
+      email: 'test@example.com', password: 'password1234', options: { captchaToken: 'tok-2' },
+    });
+    expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
+      'test@example.com', expect.objectContaining({ captchaToken: 'tok-3' }),
+    );
+  });
+
   it('signInWithPassword calls supabase.auth.signInWithPassword', async () => {
     const { result } = renderHook(() => useAuth());
     await act(async () => {

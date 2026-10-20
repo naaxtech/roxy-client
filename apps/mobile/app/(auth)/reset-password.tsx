@@ -26,8 +26,8 @@ import {
 } from '../../lib/passwordReset';
 import { logError } from '../../lib/errorLogger';
 import { BRAND_GRADIENT } from '../../lib/theme';
-
-const MIN_PASSWORD_LENGTH = 6;
+// Same rule as sign-up (10): a reset used to accept 6, so the weakest rule won.
+import { MIN_PASSWORD_LENGTH, passwordTooShortMessage } from '../../lib/passwordPolicy';
 
 /**
  * How long native waits for a deep link before calling it absent. Long enough
@@ -236,8 +236,9 @@ export default function ResetPasswordScreen() {
   }, [resolveWithoutToken]);
 
   const handleSave = async () => {
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setFormError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+    const tooShort = passwordTooShortMessage(password);
+    if (tooShort) {
+      setFormError(tooShort);
       return;
     }
     if (password !== confirm) {

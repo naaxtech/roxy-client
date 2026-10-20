@@ -8,7 +8,7 @@ import {
   ShoppingBag, Package, ShoppingCart, DollarSign, Settings,
   Shield, CheckSquare, Mail, RefreshCw, AlertTriangle, Building2,
   ChevronRight, LogOut, Lightbulb, Bug, UserCheck, Ticket, UserCog,
-  Archive, UserPlus, GitPullRequest, Flag, Unlock, Crown, BookOpen, Tag,
+  Archive, UserPlus, GitPullRequest, Flag, Unlock, Crown, BookOpen, Tag, UserX, Scale,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOutAction } from '@/app/auth/signout-action';
@@ -75,11 +75,23 @@ export const NAV_GROUPS: NavGroupDef[] = [
     staff: true,
     items: [
       { href: '/staff', label: 'Overview', icon: Shield, exact: true },
-      { href: '/staff/launch', label: 'Launch access', icon: Unlock },
+      { href: '/staff/launch', label: 'Launch access', icon: Unlock, exact: true },
+      { href: '/staff/launch/waves', label: 'Launch waves', icon: Ticket },
       { href: '/staff/team', label: 'Roxy team', icon: Crown, coreOnly: true },
       // Discover's Top 10 is the only place these appear. A page nothing links
       // to is a feature nobody can find.
       { href: '/staff/member-tags', label: 'Member tags', icon: Tag },
+    ],
+  },
+  {
+    // Launch safety: one queue for every member report, and the member lookup
+    // that suspends. Both pages re-check staff server-side; the RPCs re-check
+    // again (migration 131).
+    title: 'Safety',
+    staff: true,
+    items: [
+      { href: '/staff/reports', label: 'Reports', icon: Flag },
+      { href: '/staff/members', label: 'Members', icon: UserX },
     ],
   },
   {
@@ -100,6 +112,8 @@ export const NAV_GROUPS: NavGroupDef[] = [
       { href: '/staff/businesses', label: 'Businesses', icon: Building2 },
       { href: '/staff/products', label: 'Products', icon: CheckSquare },
       { href: '/staff/games', label: 'Games', icon: Gamepad2 },
+      // Rejected applicants' appeals and grandfathered members (G-12, G-23).
+      { href: '/staff/appeals', label: 'Appeals', icon: Scale },
     ],
   },
   {

@@ -1,38 +1,58 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { releasePayout } from './payout-actions';
 
-export function ReleasePayoutButton({ eventId }: { eventId: string }) {
+/**
+ * Release one event payout now. Core staff only (the server action re-checks).
+ * The release-payout function answers { released, skipped, failed }; a skip
+ * (not completed, waiting period, blocked, already paid, host not onboarded)
+ * is shown as "not released", never as success.
+ */
+export function ReleasePayoutButton({ eventId, canManage }: { eventId: string; canManage: boolean }) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+
+  if (!canManage) return null;
 
   const handleRelease = async () => {
-    if (!confirm('Release payout for this event? This cannot be undone.')) return;
+    if (!window.confirm('Release the payout for this event to the host now? This cannot be undone.')) return;
     setError(null);
+    setStatus(null);
     setLoading(true);
-    const res = await fetch('/api/staff/release-payout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ event_id: eventId }),
-    });
-    const json = await res.json();
-    setLoading(false);
-    if (!res.ok) {
-      setError(json.error ?? 'Failed');
-      return;
+    try {
+      const result = await releasePayout(eventId);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setStatus(result.message);
+      startTransition(() => router.refresh());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'That did not go through. Try again.');
+    } finally {
+      setLoading(false);
     }
-    router.refresh();
   };
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button size="sm" onClick={handleRelease} disabled={loading}>
-        {loading ? 'Releasing…' : 'Release Payout'}
+      <Button size="sm" onClick={() => void handleRelease()} disabled={loading}>
+        {loading ? 'Releasing…' : 'Release payout'}
       </Button>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      <span role="status" aria-live="polite" className="text-xs text-muted-foreground">
+        {status}
+      </span>
+      {error && (
+        <p role="alert" className="text-xs text-destructive max-w-64 text-right">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

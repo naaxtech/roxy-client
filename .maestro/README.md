@@ -85,6 +85,9 @@ Where the old screens went:
 | `friends_request_accept.yaml` | Send a request from community members, then find it under Sent |
 | `friends_request_decline.yaml` | Decline from the request-first inbox on Messages |
 | `community_members_screen.yaml` | Community members list |
+| `dm_request_accept.yaml` | Accept a message request from the Requests sheet → the thread opens with the composer unlocked |
+| `group_create_send.yaml` | New message → pick two friends → name + emoji → group thread header, send, Group info door |
+| `chat_swipe_reply.yaml` | Swipe a bubble right → "Replying to …" → reply lands with its quote; long-press Reply as the non-gesture path |
 
 ## The first-run sheet
 
@@ -110,7 +113,9 @@ Run the relevant flow **before pushing** any change that touches:
 - `store/communityStore.ts` → `community_join_leave.yaml`
 - `app/(tabs)/discover/community/[id].tsx` → all community flows
 - `app/(tabs)/discover/community/post/[postId].tsx` → `community_post_comments.yaml`
-- `components/messages/RequestsSheet.tsx` → `friends_request_decline.yaml`
+- `components/messages/RequestsSheet.tsx` → `friends_request_decline.yaml`, `dm_request_accept.yaml`
+- `app/chat/[id].tsx`, `components/chat/**`, `lib/chat*.ts` → `dm_request_accept.yaml`, `group_create_send.yaml`, `chat_swipe_reply.yaml`
+- `app/(tabs)/messages/new.tsx` → `group_create_send.yaml`
 - Any Supabase migration touching `community_members`, `posts`, `comments`,
   or `friendships` → the matching flows
 

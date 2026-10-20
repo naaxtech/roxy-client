@@ -72,11 +72,34 @@ describe('VoteCard', () => {
         comment="Loved it"
         onCommentChange={jest.fn()}
         onSubmitComment={onSubmitComment}
+        ack
         testID="v"
       />,
     );
     fireEvent.press(v.getByTestId('v-review-submit'));
     expect(onSubmitComment).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not publish until she ticks the no-spoilers box (ARC-05)', () => {
+    const onSubmitComment = jest.fn();
+    const onAckChange = jest.fn();
+    const v = render(
+      <VoteCard
+        myStars={5}
+        onRate={jest.fn()}
+        canComment
+        comment="Loved it"
+        onCommentChange={jest.fn()}
+        onSubmitComment={onSubmitComment}
+        ack={false}
+        onAckChange={onAckChange}
+        testID="v"
+      />,
+    );
+    fireEvent.press(v.getByTestId('v-review-submit'));
+    expect(onSubmitComment).not.toHaveBeenCalled();
+    fireEvent.press(v.getByTestId('v-ack'));
+    expect(onAckChange).toHaveBeenCalledWith(true);
   });
 
   it('resolves in the light theme', () => {

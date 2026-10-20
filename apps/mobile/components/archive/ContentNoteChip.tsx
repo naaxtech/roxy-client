@@ -45,6 +45,8 @@ interface Props {
   /** Position in the row, which picks the palette slot. */
   index: number;
   onPress: () => void;
+  /** Flag the note (spoiler / wrong / abuse) — 133 §6. */
+  onLongPress?: () => void;
   testID?: string;
 }
 
@@ -64,7 +66,7 @@ interface Props {
  *
  * src: docs/handoff/roxy-3.0/Roxy App.dc.html · behaviour 2019–2023 · 2026-09-01
  */
-export function ContentNoteChip({ label, agreeCount, agreed, index, onPress, testID }: Props) {
+export function ContentNoteChip({ label, agreeCount, agreed, index, onPress, onLongPress, testID }: Props) {
   const colors = useThemeColors();
   const palette = notePalette(colors, index, agreed);
 
@@ -86,7 +88,7 @@ export function ContentNoteChip({ label, agreeCount, agreed, index, onPress, tes
   });
 
   return (
-    <Pressable onPress={onPress} accessible={false}>
+    <Pressable onPress={onPress} onLongPress={onLongPress} delayLongPress={400} accessible={false}>
       {/* The a11y identity sits on this View, not on the Pressable wrapping it.
           RN's Pressable builds an explicit prop list and DROPS unknown props —
           verified here: a host Pressable receives testID and accessibilityState

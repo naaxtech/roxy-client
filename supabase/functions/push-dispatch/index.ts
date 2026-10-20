@@ -2,6 +2,7 @@ import { getSupabaseClient } from '../_shared/auth.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
 import { dispatchOnce, type DispatchDeps, pairKey, type RowUpdate } from '../_shared/pushDispatch.ts';
 import { chunk, type ExpoMessage, type ExpoTicket } from '../_shared/pushCore.ts';
+import { isServiceRequest } from '../_shared/serviceAuth.ts';
 
 /**
  * push-dispatch — drains push_outbox (migration 129) to Expo Push.
@@ -26,19 +27,11 @@ function expoHeaders(): Record<string, string> {
   return h;
 }
 
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return errorResponse('Method not allowed', 405);
 
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-  const presented = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
-  if (!serviceKey || !constantTimeEqual(presented, serviceKey)) return errorResponse('Unauthorized', 401);
+  // Shared check (was a local copy): exact `Bearer <service key>`, constant time, empty env => reject.
+  if (!isServiceRequest(req)) return errorResponse('Unauthorized', 401);
 
   const db = getSupabaseClient();
 
@@ -62,7 +55,10 @@ Deno.serve(async (req) => {
     },
     async settings(userIds) {
       const { data, error } = await db.from('notification_settings')
-        .select('user_id, push_enabled, messages, friends, events, community_chats, show_previews, quiet_start, quiet_end, timezone')
+        // Every column: preference columns arrive with later migrations
+        // (membership in 134), and naming one before it exists fails the whole
+        // batch. A column she has never set is absent, which means ON.
+        .select('*')
         .in('user_id', userIds);
       if (error) throw error;
       return data ?? [];

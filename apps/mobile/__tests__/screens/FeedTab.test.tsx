@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 
 // Inline mock factories only — see CLAUDE.md §12.2 (jest.mock hoisting).
 
@@ -11,22 +11,35 @@ jest.mock('react-native-safe-area-context', () => ({
 
 // The Mini Wins gate reads AsyncStorage for "already shown today" — resolve
 // with today's key so the sheet-open effect is a no-op and this suite stays
-// about the header, not about that gate.
+// about the header, not about that gate. Every other key (the question of the
+// day's "answered") starts empty; a test may answer it via mockStorage.
+const mockStorage: Record<string, string> = {};
 jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn(() => Promise.resolve(new Date().toISOString().slice(0, 10))),
+  getItem: jest.fn((key: string) => Promise.resolve(
+    key === 'roxy_mini_wins_last_shown' ? new Date().toISOString().slice(0, 10) : (mockStorage[key] ?? null),
+  )),
   setItem: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 
+let mockKind = 'member';
 jest.mock('../../hooks/useAccess', () => ({
   useAccess: () => ({
+    kind: mockKind,
     tier: 'beta',
     isBeta: true,
     can: () => true,
     canCommunity: () => true,
   }),
 }));
+
+// FirstStepsCard owns its own reads and its dismiss/persist rules (tested in
+// WelcomeIn.test.tsx); here it is only a marker for "mounted or not".
+jest.mock('../../components/account/FirstStepsCard', () => {
+  const { View } = require('react-native');
+  return { FirstStepsCard: ({ testID }: { testID?: string }) => <View testID={testID ?? 'first-steps-card'} /> };
+});
 
 // StreakChip and NowRail each own a real Supabase query of their own; this
 // suite is about the header's composition and the ids ReelsFeed receives,
@@ -87,6 +100,7 @@ jest.mock('../../store/communityStore', () => {
 
 import FeedScreen from '../../app/(tabs)/feed/index';
 import { useCommunityFilterStore } from '../../store/communityFilterStore';
+import { dailyPromptFor, markDailyPromptAnswered } from '../../lib/dailyPrompt';
 
 const { __calls: reelsFeedCalls } = jest.requireMock('../../components/feed/ReelsFeed') as {
   __calls: Record<string, unknown>[];
@@ -99,7 +113,29 @@ function lastReelsFeedProps(): Record<string, unknown> {
 
 beforeEach(() => {
   reelsFeedCalls.length = 0;
+  mockKind = 'member';
   useCommunityFilterStore.setState({ selectedCommunityId: null, filterable: false });
+});
+
+describe('First steps on the Feed (G-11, after "You\'re in")', () => {
+  it('an approved member sees her first-steps card over For You', () => {
+    const { getByTestId } = render(<FeedScreen />);
+    expect(getByTestId('feed-first-steps')).toBeTruthy();
+  });
+
+  it('only on For You, not over Following or Communities', () => {
+    const { getByTestId, queryByTestId } = render(<FeedScreen />);
+    fireEvent.press(getByTestId('feed-segment-following'));
+    expect(queryByTestId('feed-first-steps')).toBeNull();
+    fireEvent.press(getByTestId('feed-segment-communities'));
+    expect(queryByTestId('feed-first-steps')).toBeNull();
+  });
+
+  it('an applicant still waiting never gets it', () => {
+    mockKind = 'pending';
+    const { queryByTestId } = render(<FeedScreen />);
+    expect(queryByTestId('feed-first-steps')).toBeNull();
+  });
 });
 
 describe('FeedScreen — community context switcher', () => {
@@ -194,5 +230,44 @@ describe('Feed publishes whether a community filter can do anything', () => {
 
     unmount();
     expect(useCommunityFilterStore.getState().selectedCommunityId).toBeNull();
+  });
+});
+
+describe('Question of the day reaching For You (audit #4)', () => {
+  const today = dailyPromptFor();
+  const answeredKey = `roxy.dailyPromptAnswered.feed-tab-tester.${today.dateKey}`;
+
+  beforeEach(() => {
+    for (const k of Object.keys(mockStorage)) delete mockStorage[k];
+  });
+
+  it("hands For You today's question once it knows she has not answered", async () => {
+    render(<FeedScreen />);
+    await waitFor(() => expect(lastReelsFeedProps().dailyPrompt).toEqual(today));
+  });
+
+  it('never hands it to Following or Communities', async () => {
+    const { getByTestId } = render(<FeedScreen />);
+    await waitFor(() => expect(lastReelsFeedProps().dailyPrompt).toEqual(today));
+
+    fireEvent.press(getByTestId('feed-segment-following'));
+    expect(lastReelsFeedProps().dailyPrompt).toBeNull();
+    fireEvent.press(getByTestId('feed-segment-communities'));
+    expect(lastReelsFeedProps().dailyPrompt).toBeNull();
+  });
+
+  it('stays out once she answered today', async () => {
+    mockStorage[answeredKey] = '1';
+    render(<FeedScreen />);
+    await act(async () => { await Promise.resolve(); });
+    expect(lastReelsFeedProps().dailyPrompt).toBeNull();
+  });
+
+  it('drops the page the moment she answers from the composer', async () => {
+    render(<FeedScreen />);
+    await waitFor(() => expect(lastReelsFeedProps().dailyPrompt).toEqual(today));
+
+    await act(async () => { await markDailyPromptAnswered('feed-tab-tester', today.dateKey); });
+    expect(lastReelsFeedProps().dailyPrompt).toBeNull();
   });
 });

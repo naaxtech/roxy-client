@@ -27,11 +27,15 @@ export default async function MemberTagsPage() {
   await requireStaffPage();
   const supabase = await createClient();
 
+  // staff_profiles (130): vetting_status and deleted_at left the profiles
+  // column grant, so filtering on them through `profiles` is a 42501.
+  // 'unvetted' no longer exists (130 folded it into approved/pending).
   const { data, error } = await supabase
-    .from('profiles')
+    .from('staff_profiles')
     .select('id, display_name, username, gamification_points, staff_tag, staff_tag_set_at')
     .eq('is_ghost', false)
-    .in('vetting_status', ['approved', 'unvetted'])
+    .eq('vetting_status', 'approved')
+    .is('deleted_at', null)
     .order('gamification_points', { ascending: false })
     .order('display_name', { ascending: true })
     .limit(10);

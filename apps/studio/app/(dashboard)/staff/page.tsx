@@ -1,11 +1,18 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { requireStaffPage } from '@/lib/staff-guard';
 import { Badge } from '@/components/ui/badge';
+import { QueryError } from '@/components/QueryError';
 import { BlockPayoutButton } from './BlockPayoutButton';
 import { ReleasePayoutButton } from './ReleasePayoutButton';
+import { LaunchFunnelCard } from './LaunchFunnelCard';
+import { PendingApplicationsCard } from './PendingApplicationsCard';
 
 export default async function StaffPage() {
+  // Payout buttons act only for core staff (staff_set_payout_block and the
+  // release action both re-check is_roxy_core server-side).
+  const { isCore } = await requireStaffPage();
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
@@ -20,7 +27,7 @@ export default async function StaffPage() {
   if (!profile?.is_staff) notFound();
 
   // Events with blocked payouts or pending payouts
-  const { data: blockedEvents } = await supabase
+  const { data: blockedEvents, error: blockedError } = await supabase
     .from('events')
     .select('id, title, starts_at, status, payout_blocked, payout_released_at, host_id, communities(name)')
     .eq('is_paid', true)
@@ -29,7 +36,7 @@ export default async function StaffPage() {
     .order('starts_at', { ascending: false })
     .limit(20);
 
-  const { data: pendingPayouts } = await supabase
+  const { data: pendingPayouts, error: pendingError } = await supabase
     .from('events')
     .select('id, title, starts_at, payout_delay_days, ends_at, communities(name)')
     .eq('status', 'completed')
@@ -40,7 +47,7 @@ export default async function StaffPage() {
     .limit(20);
 
   // Pending refunds
-  const { data: pendingRefunds } = await supabase
+  const { data: pendingRefunds, error: refundsError } = await supabase
     .from('payment_logs')
     .select('id, event_id, amount_cents, needs_refund, refund_error, events(title)')
     .eq('needs_refund', true)
@@ -48,7 +55,7 @@ export default async function StaffPage() {
     .limit(20);
 
   // Recent audit log
-  const { data: auditLog } = await supabase
+  const { data: auditLog, error: auditError } = await supabase
     .from('audit_log')
     .select('id, action, target_type, target_id, metadata, created_at')
     .order('created_at', { ascending: false })
@@ -61,6 +68,9 @@ export default async function StaffPage() {
         <p className="text-muted-foreground mt-1">Payment operations and audit trail.</p>
       </div>
 
+      <LaunchFunnelCard />
+      <PendingApplicationsCard />
+
       {/* Blocked Payouts */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -69,7 +79,9 @@ export default async function StaffPage() {
             <Badge variant="destructive">{blockedEvents!.length}</Badge>
           )}
         </h2>
-        {(blockedEvents ?? []).length === 0 ? (
+        {blockedError ? (
+          <QueryError what="blocked payouts" />
+        ) : (blockedEvents ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">None.</p>
         ) : (
           <ul className="space-y-2">
@@ -86,7 +98,7 @@ export default async function StaffPage() {
                     </p>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <ReleasePayoutButton eventId={ev.id} />
+                    <BlockPayoutButton eventId={ev.id} canManage={isCore} blocked />
                   </div>
                 </div>
               </li>
@@ -98,7 +110,9 @@ export default async function StaffPage() {
       {/* Pending Payouts */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Pending Payouts</h2>
-        {(pendingPayouts ?? []).length === 0 ? (
+        {pendingError ? (
+          <QueryError what="pending payouts" />
+        ) : (pendingPayouts ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">None.</p>
         ) : (
           <ul className="space-y-2">
@@ -122,9 +136,9 @@ export default async function StaffPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {isReady
-                      ? <ReleasePayoutButton eventId={ev.id} />
+                      ? <ReleasePayoutButton eventId={ev.id} canManage={isCore} />
                       : <Badge variant="secondary">Waiting</Badge>}
-                    <BlockPayoutButton eventId={ev.id} />
+                    <BlockPayoutButton eventId={ev.id} canManage={isCore} />
                   </div>
                 </li>
               );
@@ -141,7 +155,9 @@ export default async function StaffPage() {
             <Badge variant="destructive">{pendingRefunds!.length}</Badge>
           )}
         </h2>
-        {(pendingRefunds ?? []).length === 0 ? (
+        {refundsError ? (
+          <QueryError what="pending refunds" />
+        ) : (pendingRefunds ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">None.</p>
         ) : (
           <ul className="space-y-2">
@@ -161,7 +177,9 @@ export default async function StaffPage() {
       {/* Audit Log */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Audit Log</h2>
-        {(auditLog ?? []).length === 0 ? (
+        {auditError ? (
+          <QueryError what="the audit log" />
+        ) : (auditLog ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">No entries.</p>
         ) : (
           <ul className="divide-y border rounded-lg overflow-hidden">

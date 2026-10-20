@@ -9,7 +9,7 @@ jest.mock('../../lib/supabase', () => ({
     from: (table: string) => {
       mockOps.push(['from', [table]]);
       const chain: Record<string, unknown> = {};
-      ['select', 'eq', 'insert', 'update'].forEach((m) => {
+      ['select', 'eq', 'lte', 'insert', 'update'].forEach((m) => {
         chain[m] = (...args: unknown[]) => { mockOps.push([m, args]); return chain; };
       });
       chain.order = (...args: unknown[]) => { mockOps.push(['order', args]); return chain; };
@@ -28,7 +28,8 @@ jest.mock('../../lib/supabase', () => ({
 }));
 
 import {
-  fetchChannels, fetchChannelMessages, sendChannelMessage, deleteChannelMessage,
+  fetchChannels, fetchChannelMessages, fetchOlderChannelMessages, prependOlder, MESSAGE_PAGE,
+  sendChannelMessage, deleteChannelMessage,
   authorName, channelLabel, initialChannel, MAX_MESSAGE_LENGTH,
   type Channel, type ChannelMessage,
 } from '../../lib/channels';
@@ -89,6 +90,45 @@ describe('fetchChannelMessages', () => {
     mockRows.push({ ...message() });
     await fetchChannelMessages('c1');
     expect(opNames()).toContain('limit');
+  });
+});
+
+describe('fetchOlderChannelMessages (CHAT-16: history past the first 50)', () => {
+  it('asks for the page at or before the oldest loaded row, newest first, and hands it back oldest-first', async () => {
+    mockRows.push(
+      { ...message({ id: 'b', created_at: '2026-09-04T12:00:00Z' }) },
+      { ...message({ id: 'a', created_at: '2026-09-04T09:00:00Z' }) },
+    );
+    const out = await fetchOlderChannelMessages('c1', '2026-09-05T09:00:00Z');
+    expect(argsOf('eq')).toContainEqual(['channel_id', 'c1']);
+    // lte, not lt: two messages in the same instant must not lose the second.
+    expect(argsOf('lte')).toContainEqual(['created_at', '2026-09-05T09:00:00Z']);
+    expect(argsOf('order')[0]).toEqual(['created_at', { ascending: false }]);
+    expect(argsOf('limit')[0]).toEqual([MESSAGE_PAGE]);
+    expect(out.map((m) => m.id)).toEqual(['a', 'b']);
+  });
+});
+
+describe('prependOlder', () => {
+  const loaded = [message({ id: 'm3', created_at: '2026-09-05T10:00:00Z' }), message({ id: 'm4', created_at: '2026-09-05T11:00:00Z' })];
+
+  it('puts the older page above what she is reading and counts only new rows', () => {
+    const older = [message({ id: 'm1', created_at: '2026-09-04T10:00:00Z' }), message({ id: 'm3', created_at: '2026-09-05T10:00:00Z' })];
+    const r = prependOlder(loaded, older, MESSAGE_PAGE);
+    expect(r.messages.map((m) => m.id)).toEqual(['m1', 'm3', 'm4']);
+    expect(r.added).toBe(1);
+  });
+
+  it('there is more only when a full page came back with something new', () => {
+    const full = Array.from({ length: MESSAGE_PAGE }, (_, i) =>
+      message({ id: `o${i}`, created_at: new Date(Date.parse('2026-09-01T00:00:00Z') + i * 1000).toISOString() }));
+    expect(prependOlder(loaded, full, MESSAGE_PAGE).hasMore).toBe(true);
+    expect(prependOlder(loaded, full.slice(0, 3), MESSAGE_PAGE).hasMore).toBe(false);
+    // A full page of rows she already has (all one instant): stop, don't loop.
+    const dupes = Array.from({ length: MESSAGE_PAGE }, () => loaded[0]);
+    const r = prependOlder(loaded, dupes, MESSAGE_PAGE);
+    expect(r.hasMore).toBe(false);
+    expect(r.messages).toBe(loaded);
   });
 });
 

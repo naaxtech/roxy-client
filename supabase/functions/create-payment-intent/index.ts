@@ -3,7 +3,7 @@ import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
-import Stripe from 'npm:stripe@14';
+import Stripe from 'npm:stripe@16.12.0';
 
 const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

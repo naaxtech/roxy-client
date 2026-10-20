@@ -79,8 +79,10 @@ export default async function StaffTeamPage({
     'id, display_name, username, staff_role, is_staff, is_community_owner, vetting_status, created_at';
   const TEAM_COLS_FALLBACK = 'id, display_name, username, staff_role, is_staff, created_at';
 
+  // staff_profiles (130): vetting_status is private on `profiles` (42501).
+  // The fallback below reads only granted columns, so it stays on profiles.
   const teamFull = await supabase
-    .from('profiles')
+    .from('staff_profiles')
     .select(TEAM_COLS)
     .or('is_staff.eq.true,is_community_owner.eq.true')
     .order('created_at', { ascending: false })

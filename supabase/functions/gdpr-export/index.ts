@@ -2,6 +2,7 @@ import { handleCors } from '../_shared/cors.ts';
 import { verifyJWT, getSupabaseClient } from '../_shared/auth.ts';
 import { consumeRateLimit } from '../_shared/rateLimit.ts';
 import { errorResponse, successResponse } from '../_shared/errorHandler.ts';
+import { assembleExport, type PageFn } from '../_shared/gdprExport.ts';
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
@@ -28,41 +29,41 @@ Deno.serve(async (req) => {
 
   const supabase = getSupabaseClient();
 
-  // Count messages sent by the user
-  const { count: messageCount, error: msgError } = await supabase
-    .from('messages')
-    .select('*', { count: 'exact', head: true })
-    .eq('sender_id', auth.userId);
-  if (msgError) return errorResponse(msgError.message, 500);
+  // PRO-03: this used to return {profile: 1, messages: N, posts: N} — counts,
+  // not a copy. Art. 15(3)/20 entitle her to the data itself. The assembler
+  // (_shared/gdprExport.ts) reads her own rows from every table that holds
+  // them, each query filtered on the column that carries her id (the service
+  // role bypasses RLS, so that filter IS the access rule), page by page, and
+  // fails the whole export rather than hand her a partial file.
+  const page: PageFn = async (table, columns, filters, from, to) => {
+    let q = supabase.from(table).select(columns);
+    for (const f of filters) q = q.eq(f.col, f.value);
+    if (/\bcreated_at\b/.test(columns)) q = q.order('created_at', { ascending: true });
+    const { data, error } = await q.range(from, to);
+    return {
+      data: (data ?? null) as unknown as Record<string, unknown>[] | null,
+      error: error ? { code: error.code, message: error.message } : null,
+    };
+  };
 
-  // Count posts authored by the user
-  const { count: postCount, error: postError } = await supabase
-    .from('posts')
-    .select('*', { count: 'exact', head: true })
-    .eq('author_id', auth.userId);
-  if (postError) return errorResponse(postError.message, 500);
-
-  // Art. 15(3) entitles her to a COPY of the data, not a count of it. Counts
-  // are fine for messages and posts -- she can already read those in the app --
-  // but nothing in the invite gate is visible to her anywhere, so it has to be
+  // Nothing in the invite gate is visible to her anywhere in the app, so it is
   // returned in full: her legal name, her answers, her verification outcomes,
-  // her appeals, and which processors received anything.
-  const { data: gateData, error: gateError } = await supabase.rpc('export_gate_data', {
-    p_user_id: auth.userId,
-  });
-  if (gateError) return errorResponse('Could not assemble your data export.', 500);
+  // her appeals, and which processors received anything. Internal safety
+  // assessments and the reviewer audit log stay excluded under Art. 15(4) and
+  // are named in `withheld`, so the omission is a disclosed decision.
+  const gate = async () => {
+    const { data, error } = await supabase.rpc('export_gate_data', { p_user_id: auth.userId });
+    if (error) throw new Error('export_gate_data failed');
+    return data ?? null;
+  };
 
-  return successResponse({
-    ok: true,
-    summary: {
-      profile: 1,
-      messages: messageCount ?? 0,
-      posts: postCount ?? 0,
-    },
-    // Internal safety assessments and the reviewer audit log are excluded under
-    // Art. 15(4) -- releasing them would identify the reviewer. Named here
-    // rather than silently omitted, so the omission is a disclosed decision.
-    membership: gateData ?? null,
-    withheld: ['internal_safety_assessment', 'reviewer_access_log'],
-  });
+  try {
+    const payload = await assembleExport(auth.userId, page, gate);
+    return successResponse({ ok: true, ...payload });
+  } catch {
+    // No detail in the response or the log: a message could name a table or
+    // carry a value. The client says "try again" either way.
+    console.error('gdpr-export: assembly failed');
+    return errorResponse('Could not assemble your data export.', 500);
+  }
 });

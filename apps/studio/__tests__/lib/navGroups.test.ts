@@ -14,6 +14,7 @@ describe('navGroupsFor', () => {
       'Live',
       'Shop',
       'Roxy',
+      'Safety',
       'Archive',
       'Approvals',
       'Inbox',
@@ -22,14 +23,39 @@ describe('navGroupsFor', () => {
     expect(staff.find((g) => g.title === 'Roxy')?.items.map((i) => i.label)).toEqual([
       'Overview',
       'Launch access',
+      'Launch waves',
+      // Added with Discover's Top 10 (873e8e4); this list had not caught up.
+      'Member tags',
     ]);
+    // Appeals sit with the other things staff approve, one click from the
+    // queue that produced them (G-12).
+    expect(staff.find((g) => g.title === 'Approvals')?.items.map((i) => i.href)).toContain(
+      '/staff/appeals',
+    );
 
     const core = navGroupsFor({ isStaff: true, isCore: true });
     expect(core.find((g) => g.title === 'Roxy')?.items.map((i) => i.label)).toEqual([
       'Overview',
       'Launch access',
+      'Launch waves',
       'Roxy team',
+      'Member tags',
     ]);
+    expect(headerMetaFor('/staff/launch/waves')).toEqual({ title: 'Launch waves', section: 'Roxy' });
+    expect(headerMetaFor('/staff/launch')).toEqual({ title: 'Launch access', section: 'Roxy' });
+  });
+
+  it('puts the unified reports queue and member lookup under Safety for every staff role', () => {
+    for (const isCore of [false, true]) {
+      const safety = navGroupsFor({ isStaff: true, isCore }).find((g) => g.title === 'Safety');
+      expect(safety?.items.map((i) => i.href)).toEqual(['/staff/reports', '/staff/members']);
+    }
+    expect(navGroupsFor({ isStaff: false, isCore: false }).find((g) => g.title === 'Safety')).toBeUndefined();
+    expect(headerMetaFor('/staff/reports')).toEqual({ title: 'Reports', section: 'Safety' });
+    expect(headerMetaFor('/staff/members/4f1c2d3e-5a6b-4c7d-8e9f-0a1b2c3d4e5f')).toEqual({
+      title: 'Members',
+      section: 'Safety',
+    });
   });
 });
 

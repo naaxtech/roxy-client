@@ -1,5 +1,5 @@
 // supabase/functions/_shared/stockHold.ts
-import type Stripe from 'npm:stripe@14';
+import type Stripe from 'npm:stripe@16.12.0';
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 /**

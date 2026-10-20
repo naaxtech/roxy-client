@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { Analytics } from '../lib/analytics';
+import { fetchOnlineIds, presenceStamp } from '../lib/memberPresence';
 
 export type ProfileSnippet = {
   id: string;
@@ -72,12 +73,21 @@ export const useFriendStore = create<FriendStore>((set, get) => ({
       .from('friendships')
       .select(`
         id, requester_id, addressee_id, status, created_at,
-        requester:profiles!requester_id(id, display_name, username, avatar_url, last_seen_at),
-        addressee:profiles!addressee_id(id, display_name, username, avatar_url, last_seen_at)
+        requester:profiles!requester_id(id, display_name, username, avatar_url),
+        addressee:profiles!addressee_id(id, display_name, username, avatar_url)
       `)
       .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
 
-    const rows = (data ?? []) as any[];
+    const fetched = (data ?? []) as any[];
+    // last_seen_at is no longer readable on another member's row (130 /
+    // PRO-01). member_presence() answers "online now" for accepted friends
+    // only; the stamp keeps isOnline/sortByPresence working and is not a time.
+    const friendIds = fetched
+      .filter((r) => r.status === 'accepted')
+      .map((r) => (r.requester_id === userId ? r.addressee_id : r.requester_id) as string);
+    const online = await fetchOnlineIds(friendIds);
+    const stamp = (p: any) => (p ? { ...p, last_seen_at: presenceStamp(online.has(p.id)) } : p);
+    const rows = fetched.map((r) => ({ ...r, requester: stamp(r.requester), addressee: stamp(r.addressee) }));
 
     const friends: FriendshipRow[] = rows
       .filter((r) => r.status === 'accepted')

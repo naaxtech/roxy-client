@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
@@ -7,6 +7,7 @@ jest.mock('expo-image', () => ({ Image: 'ExpoImage' }));
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 
 const mockOrder = jest.fn();
+const mockRange = jest.fn();
 
 jest.mock('../../../lib/supabase', () => ({
   supabase: {
@@ -15,6 +16,10 @@ jest.mock('../../../lib/supabase', () => ({
         eq: () => ({
           is: () => ({
             order: () => ({
+              order: () => ({
+                limit: () => mockOrder(),
+                range: (...a: unknown[]) => mockRange(...a),
+              }),
               limit: () => mockOrder(),
             }),
           }),
@@ -30,6 +35,20 @@ describe('ProfilePostsGrid', () => {
   beforeEach(() => {
     mockOrder.mockReset();
     mockOrder.mockResolvedValue({ data: [], error: null });
+    mockRange.mockReset();
+  });
+
+  // PRO-08: the wall stopped at 60 rows with no way to see older posts.
+  it('offers older posts when the first page is full, and appends them', async () => {
+    const photo = (i: number) => ({ id: `p${i}`, content: null, post_type: 'photo', media_urls: [`https://x/${i}.jpg`], video_thumbnail_url: null });
+    mockOrder.mockResolvedValue({ data: Array.from({ length: 60 }, (_, i) => photo(i)), error: null });
+    mockRange.mockResolvedValue({ data: [photo(60), photo(61)], error: null });
+    const r = render(<ProfilePostsGrid userId="u1" />);
+    await waitFor(() => expect(r.getByTestId('profile-posts-more')).toBeTruthy());
+    await act(async () => { fireEvent.press(r.getByTestId('profile-posts-more')); });
+    expect(mockRange).toHaveBeenCalledWith(60, 119);
+    expect(r.getByTestId('profile-post-p61')).toBeTruthy();
+    expect(r.queryByTestId('profile-posts-more')).toBeNull();
   });
 
   it('shows an empty wall when she has not published yet', async () => {

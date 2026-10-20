@@ -10,7 +10,7 @@ import {
   SHIPPING_COST_CENTS, asCheckoutRequest, asString, priceCart,
   type CartItemRow, type CheckoutRequest,
 } from './checkout.ts';
-import Stripe from 'npm:stripe@14';
+import Stripe from 'npm:stripe@16.12.0';
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const DEV_MOCK = Deno.env.get('SUPABASE_URL')?.includes('localhost') ?? false;
@@ -201,7 +201,10 @@ async function openCheckout(
   //    the gap a mismatched variant used to walk through. `business.id` is the account
   //    that gets paid, so it is what every product in the basket must belong to.
   const priced = priceCart({ businessId: business.id, items });
-  if (!priced.ok) return errorResponse(priced.rejection.message, priced.rejection.status);
+  // `=== false`, not `!priced.ok`: deno check here inherits the repo-root
+  // tsconfig (strictNullChecks off), where only an explicit literal compare
+  // narrows a boolean discriminant.
+  if (priced.ok === false) return errorResponse(priced.rejection.message, priced.rejection.status);
   const { lines, subtotalCents } = priced.cart;
 
   // 3. Ensure a Stripe customer, and reap abandoned holds while that round trip is in

@@ -57,6 +57,9 @@ interface CapturedListProps {
   scrollEventThrottle: number;
   onEndReached?: () => void;
   onEndReachedThreshold: number;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  progressViewOffset?: number;
   viewabilityConfig: {
     viewAreaCoveragePercentThreshold?: number;
     itemVisiblePercentThreshold?: number;
@@ -100,6 +103,8 @@ interface PagerOptions {
   getItemType?: (item: TestItem, index: number) => string | number;
   onActiveItemChange?: (itemId: string, index: number) => void;
   onEndReached?: () => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 function pager(o: PagerOptions = {}): React.ReactElement {
@@ -115,6 +120,8 @@ function pager(o: PagerOptions = {}): React.ReactElement {
       placeholder={o.placeholder}
       onActiveItemChange={o.onActiveItemChange}
       onEndReached={o.onEndReached}
+      onRefresh={o.onRefresh}
+      refreshing={o.refreshing}
     />
   );
 }
@@ -188,6 +195,25 @@ describe('FeedPager viewport gate', () => {
     measure(view, PAGE_H + 0.4, PAGE_W + 0.4);
 
     expect(captured().length).toBe(before);
+  });
+});
+
+describe('FeedPager pull-to-refresh (FEED-06)', () => {
+  it('hands the list a refresh handler and its spinner state', () => {
+    const onRefresh = jest.fn();
+    mountPager({ onRefresh, refreshing: true });
+
+    expect(latest().onRefresh).toBe(onRefresh);
+    expect(latest().refreshing).toBe(true);
+    // Clears the floating header instead of spinning behind it.
+    expect(latest().progressViewOffset).toBeGreaterThan(0);
+  });
+
+  it('offers no refresh control when the caller has nothing to refresh', () => {
+    mountPager();
+
+    expect(latest().onRefresh).toBeUndefined();
+    expect(latest().refreshing).toBeUndefined();
   });
 });
 

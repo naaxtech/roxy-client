@@ -69,8 +69,10 @@ export default async function StaffLaunchAccessPage({
   if (!profile?.is_staff) notFound();
 
   const pattern = ilikePattern(q);
+  // staff_profiles (130): access_tier and vetting_status are private columns
+  // now; through `profiles` this select is a 42501 and the page errors.
   let rosterQuery = supabase
-    .from('profiles')
+    .from('staff_profiles')
     .select('id, display_name, username, access_tier, vetting_status, created_at')
     .order('created_at', { ascending: false })
     .limit(MEMBER_LIMIT);

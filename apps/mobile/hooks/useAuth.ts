@@ -3,9 +3,7 @@ import { supabase } from '../lib/supabase';
 import { isGhostSignupUser, sessionEmailMatches } from '../lib/signupSession';
 import { resetRedirectUrl } from '../lib/passwordReset';
 import { useAuthStore } from '../store/authStore';
-import { useGateStore } from '../store/gateStore';
-import { useProfileStore } from '../store/profileStore';
-import { useViewAsStore } from '../store/viewAsStore';
+import { resetAllStores } from '../store/resetAllStores';
 import { unregisterDevice } from '../lib/pushRegistration';
 
 const EXISTING_EMAIL = 'That email already has an account. Sign in instead.';
@@ -13,11 +11,14 @@ const WRONG_SESSION = 'Sign-up did not open the new account. Sign out and try ag
 const CONFIRM_EMAIL = 'Check your email to confirm this account, then sign in.';
 const WRONG_SIGNIN = 'Sign-in opened a different account. Try again.';
 
+/**
+ * Forget everything this phone holds about whoever was signed in: auth,
+ * profile, view-as, and every other per-user store (Archive votes, likes,
+ * follows, blocks, cart, conversations — ARC-08). `resetGate` false keeps an
+ * invite code / application in progress through the sign-up error paths.
+ */
 function forgetLocalIdentity(resetGate: boolean) {
-  useAuthStore.getState().signOut();
-  useProfileStore.getState().setProfile(null);
-  useViewAsStore.getState().setPreview(null);
-  if (resetGate) useGateStore.getState().reset();
+  resetAllStores({ keepGate: !resetGate });
 }
 
 export function useAuth() {
@@ -34,19 +35,33 @@ export function useAuth() {
         setLoading(false);
       });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      // A session can end or change without our signOut(): a refresh token
+      // revoked elsewhere, an account deleted, another account opened by a
+      // deep link. Her data must not outlive it (ARC-08).
+      const prev = useAuthStore.getState().user?.id ?? null;
+      const next = session?.user?.id ?? null;
+      if (event === 'SIGNED_OUT' || (prev !== null && next !== null && prev !== next)) {
+        resetAllStores({ keepGate: true });
+      }
       setSession(session);
     });
 
     return () => data?.subscription?.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string) => {
+  /**
+   * `captchaToken`: a Turnstile token (lib/captcha.ts, web only today). When
+   * absent the call is exactly what it was before captcha existed.
+   */
+  const signUp = async (email: string, password: string, captchaToken?: string | null) => {
     // A leftover session on this device is how a new signup can attach to
     // (or then render as) whoever was here last — see signupSession.ts.
     await supabase.auth.signOut({ scope: 'local' });
     forgetLocalIdentity(false);
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp(
+      captchaToken ? { email, password, options: { captchaToken } } : { email, password },
+    );
     if (error) return { error };
     if (isGhostSignupUser(data.user)) {
       await supabase.auth.signOut({ scope: 'local' });
@@ -66,10 +81,12 @@ export function useAuth() {
     return { error: null };
   };
 
-  const signInWithPassword = async (email: string, password: string) => {
+  const signInWithPassword = async (email: string, password: string, captchaToken?: string | null) => {
     await supabase.auth.signOut({ scope: 'local' });
     forgetLocalIdentity(false);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword(
+      captchaToken ? { email, password, options: { captchaToken } } : { email, password },
+    );
     if (error) return { error };
     if (!sessionEmailMatches(data.session, email)) {
       await supabase.auth.signOut({ scope: 'local' });
@@ -88,9 +105,10 @@ export function useAuth() {
    * recipient's own machine. See lib/passwordReset.ts.
    * src: https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail · supabase-js 2.105.4 · 2026-09-20
    */
-  const resetPassword = async (email: string) => {
+  const resetPassword = async (email: string, captchaToken?: string | null) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: resetRedirectUrl(),
+      ...(captchaToken ? { captchaToken } : {}),
     });
     return { error };
   };

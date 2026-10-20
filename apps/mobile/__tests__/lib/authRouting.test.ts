@@ -2,8 +2,48 @@ import {
   isApplicationRoute,
   shouldRedirectToPending,
   shouldRedirectToApplication,
+  shouldRedirectToCode,
+  isCodeRoute,
+  isDeletedProfile,
   isResetPasswordRoute,
+  isWelcomeInRoute,
+  canGreetNewMemberHere,
 } from '../../lib/authRouting';
+
+/** "You're in" (G-11): where a just-approved member may be interrupted by it. */
+describe('canGreetNewMemberHere', () => {
+  const tabs = ['(tabs)', 'feed'];
+  it('an approved, onboarded member in the tabs may be greeted', () => {
+    expect(canGreetNewMemberHere('approved', true, tabs, '/feed')).toBe(true);
+  });
+  it('never a pending or rejected account', () => {
+    expect(canGreetNewMemberHere('pending', true, tabs, '/feed')).toBe(false);
+    expect(canGreetNewMemberHere('rejected', true, tabs, '/feed')).toBe(false);
+  });
+  it('not before onboarding is finished (onboarding owns that route)', () => {
+    expect(canGreetNewMemberHere('approved', false, tabs, '/feed')).toBe(false);
+  });
+  it('never from an auth screen: welcome-in itself, onboarding, pending, recovery', () => {
+    expect(canGreetNewMemberHere('approved', true, ['(auth)', 'welcome-in'], '/welcome-in')).toBe(false);
+    expect(canGreetNewMemberHere('approved', true, ['(auth)', 'onboarding', 'step2'], '/onboarding/step2')).toBe(false);
+    expect(canGreetNewMemberHere('approved', true, ['(auth)', 'pending'], '/pending')).toBe(false);
+    expect(canGreetNewMemberHere('approved', true, ['(auth)', 'reset-password'], '/reset-password')).toBe(false);
+  });
+  it('not on a recovery link that landed outside the auth group (web paths drop groups)', () => {
+    expect(canGreetNewMemberHere('approved', true, [], '/reset-password')).toBe(false);
+  });
+  it('not before the router has segments', () => {
+    expect(canGreetNewMemberHere('approved', true, [], '/')).toBe(false);
+  });
+});
+
+describe('isWelcomeInRoute', () => {
+  it('reads segments or pathname', () => {
+    expect(isWelcomeInRoute(['(auth)', 'welcome-in'], '/')).toBe(true);
+    expect(isWelcomeInRoute(['(auth)'], '/welcome-in')).toBe(true);
+    expect(isWelcomeInRoute(['(tabs)', 'feed'], '/feed')).toBe(false);
+  });
+});
 
 /**
  * The applicant flow hangs on this rule. An applicant's profile is 'pending' by
@@ -186,5 +226,46 @@ describe('shouldRedirectToApplication — holding a code does not interrupt a re
     expect(
       shouldRedirectToApplication(false, true, ['(auth)', 'reset-password'], '/reset-password'),
     ).toBe(false);
+  });
+});
+
+/**
+ * G-15: a signed-in account with no profile and no held code (the code was
+ * exhausted between validation and signup, the redeem call dropped, or the
+ * app was killed) goes back to the code screen — never to onboarding, which
+ * would create a profile with nothing for a reviewer to review.
+ */
+describe('shouldRedirectToCode — no profile, no code, never onboarding', () => {
+  it('sends her to the code screen from anywhere else', () => {
+    expect(shouldRedirectToCode(false, false, ['(tabs)', 'feed'], '/(tabs)/feed')).toBe(true);
+    expect(shouldRedirectToCode(false, false, ['(auth)', 'welcome'], '/(auth)/welcome')).toBe(true);
+    expect(
+      shouldRedirectToCode(false, false, ['(auth)', 'onboarding', 'step1-identity'], '/(auth)/onboarding/step1-identity'),
+    ).toBe(true);
+  });
+
+  it('does not loop once she is on the code screen', () => {
+    expect(shouldRedirectToCode(false, false, ['(auth)', 'code'], '/(auth)/code')).toBe(false);
+    expect(isCodeRoute(['(auth)', 'code'], '/code')).toBe(true);
+  });
+
+  it('leaves her alone when a profile exists or a code is held', () => {
+    expect(shouldRedirectToCode(true, false, ['(tabs)', 'feed'], '/(tabs)/feed')).toBe(false);
+    expect(shouldRedirectToCode(false, true, ['(tabs)', 'feed'], '/(tabs)/feed')).toBe(false);
+  });
+
+  it('never interrupts a password reset or the application screen', () => {
+    expect(shouldRedirectToCode(false, false, ['(auth)', 'reset-password'], '/reset-password')).toBe(false);
+    expect(shouldRedirectToCode(false, false, ['(auth)', 'application'], '/(auth)/application')).toBe(false);
+  });
+});
+
+/** G-16: a deleted account cannot use the app. */
+describe('isDeletedProfile', () => {
+  it('is true only when deleted_at is set', () => {
+    expect(isDeletedProfile({ deleted_at: '2026-10-01T00:00:00Z' })).toBe(true);
+    expect(isDeletedProfile({ deleted_at: null })).toBe(false);
+    expect(isDeletedProfile({})).toBe(false);
+    expect(isDeletedProfile(null)).toBe(false);
   });
 });
