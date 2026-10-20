@@ -1,0 +1,70 @@
+.gitignore
+  h_0549c11fec2ab0 68
+polish/LIVE.log
+  h_0549c11fec2ab0 2-4
+polish/concepts/01-give-her-a-flower.html
+  h_0549c11fec2ab0 1-101
+polish/concepts/02-youre-in.html
+  h_0549c11fec2ab0 1-41
+polish/concepts/03-invite-poster.html
+  h_0549c11fec2ab0 1-82
+polish/concepts/04-feed-before-after.html
+  h_0549c11fec2ab0 1-91
+polish/concepts/README.md
+  h_0549c11fec2ab0 1-29
+polish/concepts/assets/roxy-logo-mono-black.svg
+  h_0549c11fec2ab0 1-10
+polish/concepts/roxy-concepts.js
+  h_0549c11fec2ab0 1-45
+polish/concepts/roxy-tokens.css
+  h_0549c11fec2ab0 1-79
+polish/decisions.md
+  h_0549c11fec2ab0 11-12
+polish/design-direction.md
+  h_0549c11fec2ab0 1-309
+polish/features.md
+  h_0549c11fec2ab0 1-413
+polish/inspiration/arc.md
+  h_0549c11fec2ab0 1-34
+polish/inspiration/bereal.md
+  h_0549c11fec2ab0 1-36
+polish/inspiration/cashapp.md
+  h_0549c11fec2ab0 1-36
+polish/inspiration/discord.md
+  h_0549c11fec2ab0 1-36
+polish/inspiration/duolingo.md
+  h_0549c11fec2ab0 1-37
+polish/inspiration/finch.md
+  h_0549c11fec2ab0 1-36
+polish/inspiration/headspace.md
+  h_0549c11fec2ab0 1-35
+polish/inspiration/her.md
+  h_0549c11fec2ab0 1-37
+polish/inspiration/lex.md
+  h_0549c11fec2ab0 1-36
+polish/inspiration/locket.md
+  h_0549c11fec2ab0 1-35
+polish/inspiration/partiful.md
+  h_0549c11fec2ab0 1-35
+polish/inspiration/raycast.md
+  h_0549c11fec2ab0 1-36
+polish/inspiration/revolut.md
+  h_0549c11fec2ab0 1-36
+polish/inspiration/tiktok.md
+  h_0549c11fec2ab0 1-36
+polish/inspiration/v0-audit.md
+  h_0549c11fec2ab0 1-132
+polish/rules/CLAUDE.md
+  h_0549c11fec2ab0 30-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0475cf389543193482760ea3859f3b5008b6b165",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
