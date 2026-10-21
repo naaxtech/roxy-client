@@ -136,3 +136,28 @@ export function onListScroll(e: NativeSyntheticEvent<NativeScrollEvent>): void {
 
 /** How often a list reports its scroll to `onListScroll` (ms). */
 export const LIST_SCROLL_THROTTLE = 16;
+
+/**
+ * Whether the Roxy AI button shows (the tabs layout's call): the tier has the
+ * companion, she has Roxy AI switched on — and that choice is HERS, already
+ * loaded (otherwise an "off" would flash the button on at launch) — and the
+ * route is not one where she must not sit (`suppressedOn`, the layout's
+ * `FAB_SUPPRESSED_ON`: her own chat, Messages, chats, Sister, live rooms).
+ */
+export function fabVisible(input: {
+  pathname: string;
+  allowed: boolean;
+  enabled: boolean;
+  loadedFor: string | null;
+  userId: string | null | undefined;
+  suppressedOn: readonly string[];
+}): boolean {
+  const { pathname, allowed, enabled, loadedFor, userId, suppressedOn } = input;
+  if (!allowed || !enabled || !userId || loadedFor !== userId) return false;
+  return !suppressedOn.some((fragment) => pathname.includes(fragment));
+}
+
+/** The Feed is the dark stage: the button wears `brandPink` there. */
+export function fabOnStage(pathname: string): boolean {
+  return pathname === '/feed' || pathname.startsWith('/feed/');
+}

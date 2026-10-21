@@ -1,33 +1,87 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import fs from 'fs';
+import path from 'path';
+import { StyleSheet } from 'react-native';
+import { render, fireEvent, act, configure } from '@testing-library/react-native';
+
+configure({ defaultIncludeHiddenElements: true });
 
 const mockPush = jest.fn();
-const mockPathname = jest.fn(() => '/(tabs)/grow');
+const mockPathname = jest.fn(() => '/(tabs)/discover');
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush }),
   usePathname: () => mockPathname(),
 }));
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
-jest.mock('expo-image', () => ({ Image: 'ExpoImage' }));
-jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
+jest.mock('react-native-svg', () => ({
+  __esModule: true, default: 'Svg', Circle: 'Circle', Ellipse: 'Ellipse', Path: 'Path', G: 'G',
+}));
+const mockImpact = jest.fn((_style?: unknown) => Promise.resolve());
+jest.mock('expo-haptics', () => ({
+  impactAsync: (style: unknown) => mockImpact(style),
+  selectionAsync: jest.fn(() => Promise.resolve()),
+  notificationAsync: jest.fn(() => Promise.resolve()),
+  ImpactFeedbackStyle: { Light: 'light' },
+  NotificationFeedbackType: { Success: 'success' },
+}));
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => true }));
+jest.mock('../../lib/supabase', () => ({ callEdgeFunction: jest.fn() }));
+jest.mock('../../store/authStore', () => ({
+  useAuthStore: (sel?: (s: unknown) => unknown) => {
+    const state = { user: { id: 'amara' } };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
+}));
+jest.mock('../../store/profileStore', () => ({
+  useProfileStore: (sel?: (s: unknown) => unknown) => {
+    const state = { profile: { display_name: 'Amara Okafor' } };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
+}));
 
 import { RoxyCompanionButton } from '../../components/ui/RoxyCompanionButton';
 import { useCommunityFilterStore } from '../../store/communityFilterStore';
 import { useCommunityStore } from '../../store/communityStore';
+import { useRoxyFab } from '../../lib/roxyFab';
+import {
+  FAB_LANE, FAB_MARGIN, FAB_SIZE, FAB_TUCKED, FAB_TUCKED_HIT, NAV_HEIGHT, NAV_MIN_BOTTOM,
+} from '../../components/nav/navTokens';
+import { THEMES } from '../../lib/theme';
+import { useThemeStore } from '../../store/themeStore';
+
+const flat = (node: { props: { style?: unknown } }) =>
+  StyleSheet.flatten(node.props.style as never) as Record<string, unknown>;
 
 beforeEach(() => {
   jest.useFakeTimers();
   mockPush.mockClear();
-  mockPathname.mockReturnValue('/(tabs)/grow');
+  mockImpact.mockClear();
+  mockPathname.mockReturnValue('/(tabs)/discover');
   useCommunityFilterStore.setState({ selectedCommunityId: null, filterable: false });
   useCommunityStore.setState({ joinedCommunities: [] });
+  useRoxyFab.setState({ enabled: true, loadedFor: 'amara', tucked: false, anchor: 0 });
+  useThemeStore.setState({ theme: 'light', choice: 'light' });
 });
 
 afterEach(() => {
   jest.useRealTimers();
 });
 
+/**
+ * The Roxy AI button, v2 (design direction › The Roxy AI button; Nicole
+ * 2026-10-21: the floating button STAYS and opens Roxy AI).
+ *
+ * v0 opened a three-pill menu (Chat with Roxy · Search Roxy · Filter this
+ * view). M3 rules a FAB menu out for one job, so the button now does one thing
+ * — open Roxy AI — and the other two moved, neither disappeared: search is the
+ * search button on Feed and Discover, and the community filter is the
+ * switcher chip on Feed › Communities. Each test that asserted the menu now
+ * asserts where that job went (its v0 name is in the comment above it).
+ */
 describe('RoxyCompanionButton', () => {
   it('renders when visible is true (default)', () => {
     const { getByTestId } = render(<RoxyCompanionButton />);
@@ -37,6 +91,7 @@ describe('RoxyCompanionButton', () => {
   it('renders nothing when visible is false', () => {
     const { queryByTestId } = render(<RoxyCompanionButton visible={false} />);
     expect(queryByTestId('fab-button')).toBeNull();
+    expect(queryByTestId('fab-lane')).toBeNull();
   });
 
   it('does not call router.push when visible is false (not rendered)', () => {
@@ -45,117 +100,164 @@ describe('RoxyCompanionButton', () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it('long-press navigates straight to roxy-chat, bypassing the action stack', () => {
+  it('is the Roxy O, named "Roxy AI", with a hint that says what it opens', () => {
+    const { getByTestId } = render(<RoxyCompanionButton />);
+    const fab = getByTestId('fab-button');
+    expect(fab.props.accessibilityLabel).toBe('Roxy AI');
+    expect(fab.props.accessibilityHint).toBe('Opens your chat with Roxy AI');
+    expect(getByTestId('fab-o-open')).toBeTruthy();
+    expect(getByTestId('fab-o-ring').props.fill).toBe(THEMES.light.pink);
+  });
+
+  it('wears the brand pink ring on the dark Feed stage', () => {
+    const { getByTestId } = render(<RoxyCompanionButton onStage />);
+    expect(getByTestId('fab-o-ring').props.fill).toBe(THEMES.light.brandPink);
+  });
+
+  it('sits in its 88 dp lane, 16 dp from the edge and 16 dp above the bar', () => {
+    const { getByTestId } = render(<RoxyCompanionButton />);
+    const lane = flat(getByTestId('fab-lane'));
+    expect(lane.width).toBe(FAB_LANE);
+    expect(lane.height).toBe(FAB_LANE);
+    expect(lane.end).toBe(0);
+    expect(lane.bottom).toBe(NAV_HEIGHT + NAV_MIN_BOTTOM);
+    const seat = flat(getByTestId('fab-seat'));
+    expect(seat.width).toBe(FAB_SIZE);
+    expect(seat.end).toBe(FAB_MARGIN);
+    expect(seat.bottom).toBe(FAB_MARGIN);
+  });
+
+  // v0: 'long-press navigates straight to roxy-chat, bypassing the action
+  // stack'. v2 has no stack: long-press does exactly what a tap does.
+  it('long-press does what a tap does: opens Hello, Roxy (no FAB menu)', () => {
     const { getByTestId } = render(<RoxyCompanionButton />);
     fireEvent(getByTestId('fab-button'), 'longPress');
-    expect(mockPush).toHaveBeenCalledWith('/roxy-chat');
+    expect(getByTestId('hello-roxy-sheet')).toBeTruthy();
   });
 
-  it('tap opens the pop-out action stack instead of navigating immediately', () => {
-    const { getByTestId, getByLabelText } = render(<RoxyCompanionButton />);
+  // v0: 'tap opens the pop-out action stack instead of navigating immediately'.
+  it('tap opens the Hello, Roxy sheet with a light haptic, not a menu', () => {
+    const { getByTestId, queryByLabelText } = render(<RoxyCompanionButton />);
     fireEvent.press(getByTestId('fab-button'));
     expect(mockPush).not.toHaveBeenCalled();
-    expect(getByLabelText('Chat with Roxy')).toBeTruthy();
-    expect(getByLabelText('Search Roxy')).toBeTruthy();
-    expect(getByLabelText('Filter this view')).toBeTruthy();
+    expect(getByTestId('hello-roxy-sheet')).toBeTruthy();
+    expect(queryByLabelText('Search Roxy')).toBeNull();
+    expect(queryByLabelText('Filter this view')).toBeNull();
+    expect(mockImpact).toHaveBeenCalledWith('light');
   });
 
-  it('"Chat with Roxy" pill navigates to roxy-chat', () => {
-    const { getByTestId, getByLabelText } = render(<RoxyCompanionButton />);
+  it('greets her by her first name', () => {
+    const { getByTestId, getByText } = render(<RoxyCompanionButton />);
     fireEvent.press(getByTestId('fab-button'));
-    fireEvent.press(getByLabelText('Chat with Roxy'));
+    expect(getByText(/Amara/)).toBeTruthy();
+  });
+
+  // v0: '"Chat with Roxy" pill navigates to roxy-chat'.
+  it('the sheet opens the full chat at /roxy-chat and closes behind it', () => {
+    const { getByTestId, queryByTestId } = render(<RoxyCompanionButton />);
+    fireEvent.press(getByTestId('fab-button'));
+    fireEvent.press(getByTestId('hello-roxy-expand'));
     expect(mockPush).toHaveBeenCalledWith('/roxy-chat');
+    expect(queryByTestId('hello-roxy-sheet')).toBeNull();
   });
 
-  it('"Search Roxy" pill pushes /search', () => {
-    const { getByTestId, getByLabelText } = render(<RoxyCompanionButton />);
-    fireEvent.press(getByTestId('fab-button'));
-    fireEvent.press(getByLabelText('Search Roxy'));
-    expect(mockPush).toHaveBeenCalledWith('/search');
+  // v0: '"Search Roxy" pill pushes /search'. Search moved to the headers it
+  // belongs to (design direction v2 › The Roxy AI button › Tap).
+  it('search moved, it did not disappear: Feed and Discover headers push /search', () => {
+    const root = path.join(__dirname, '../../app/(tabs)');
+    for (const screen of ['feed/index.tsx', 'discover/index.tsx']) {
+      const src = fs.readFileSync(path.join(root, screen), 'utf8');
+      expect(src).toMatch(/router\.push\('\/search'/);
+    }
   });
 
-  // Connect and Build were folded into the 3.0 four-tab shell and their own
-  // CommunityContextSwitcher instances went with them — the Feed tab's
-  // Communities segment is the only place a switcher renders now. The hint
-  // Disabled is decided by `filterable`, never by the route.
-  //
-  // Two earlier versions of this decided it by pathname, and both were wrong in
-  // the same way. The first named `/connect` and `/build`, tabs the 3.0
-  // flattening deleted. The second named `/feed` — and passed for exactly the
-  // broken case, because the Feed honours a community filter on ONE of its
-  // three segments. On For You the scope is `announcements`, `ReelsFeed`
-  // ignores `communityIds` entirely, and the action wrote a selection that
-  // changed nothing on screen with no explanation.
-  //
-  // The hint copy is asserted too: a stale place name in a disabled-state hint
-  // is invisible to every other kind of check.
-  it('"Filter this view" is disabled while no surface claims the filter, on any route', () => {
+  // v0: '"Filter this view" is disabled while no surface claims the filter,
+  // on any route'. Now: no route turns the button into anything but Roxy AI.
+  it('has one job on every route', () => {
     for (const route of ['/(tabs)/discover', '/(tabs)/feed', '/(tabs)/you']) {
       mockPathname.mockReturnValue(route);
-      const { getByTestId, getByText, getByLabelText, unmount } = render(<RoxyCompanionButton />);
+      const { getByTestId, queryByText, unmount } = render(<RoxyCompanionButton />);
       fireEvent.press(getByTestId('fab-button'));
-
-      expect(getByText('Works on Feed › Communities')).toBeTruthy();
-      expect(getByLabelText('Filter this view').props.accessibilityState?.disabled).toBe(true);
+      expect(getByTestId('hello-roxy-sheet')).toBeTruthy();
+      expect(queryByText('Filter this view')).toBeNull();
+      expect(queryByText('Works on Feed › Communities')).toBeNull();
       unmount();
     }
   });
 
-  it('being on the Feed route is not on its own enough to make a selection', () => {
+  // v0: 'being on the Feed route is not on its own enough to make a selection'.
+  it('opening Roxy AI never touches the community filter', () => {
     mockPathname.mockReturnValue('/(tabs)/feed');
-    useCommunityStore.setState({
-      joinedCommunities: [
-        { id: 'c1', name: 'Femme Fest', slug: 'femme-fest', description: null, cover_image_url: null, category: 'social', is_private: false, member_count: 10, created_by: 'u1', created_at: '2026-01-01' },
-      ],
-    });
-    const { getByTestId, getByLabelText, queryByTestId } = render(<RoxyCompanionButton />);
+    useCommunityFilterStore.setState({ filterable: true });
+    const { getByTestId } = render(<RoxyCompanionButton onStage />);
     fireEvent.press(getByTestId('fab-button'));
-    fireEvent.press(getByLabelText('Filter this view'));
-
-    expect(queryByTestId('fab-filter-c1')).toBeNull();
     expect(useCommunityFilterStore.getState().selectedCommunityId).toBeNull();
   });
 
   it('names no tab that has been retired', () => {
-    mockPathname.mockReturnValue('/(tabs)/discover');
     const { getByTestId, queryByText } = render(<RoxyCompanionButton />);
     fireEvent.press(getByTestId('fab-button'));
-
     for (const dead of [/Connect/, /Build/, /Grow/, /Play/]) {
       expect(queryByText(dead)).toBeNull();
     }
   });
 
-  it('"Filter this view" expands the joined-community list on a filterable view and applies a selection', () => {
-    mockPathname.mockReturnValue('/(tabs)/feed');
-    useCommunityFilterStore.setState({ filterable: true });
-    useCommunityStore.setState({
-      joinedCommunities: [
-        { id: 'c1', name: 'Femme Fest', slug: 'femme-fest', description: null, cover_image_url: null, category: 'social', is_private: false, member_count: 10, created_by: 'u1', created_at: '2026-01-01' },
-      ],
-    });
-    const { getByTestId, getByLabelText } = render(<RoxyCompanionButton />);
-    fireEvent.press(getByTestId('fab-button'));
-    fireEvent.press(getByLabelText('Filter this view'));
-    fireEvent.press(getByTestId('fab-filter-c1'));
-    expect(useCommunityFilterStore.getState().selectedCommunityId).toBe('c1');
+  // v0: '"Filter this view" expands the joined-community list on a filterable
+  // view and applies a selection' and '... clear back to All Communities'.
+  // That job is the Feed › Communities switcher chip now; it writes the same
+  // store (CommunityContextSwitcher.test.tsx covers the list itself).
+  it('the community filter moved to the Feed › Communities chip', () => {
+    const feed = fs.readFileSync(path.join(__dirname, '../../app/(tabs)/feed/index.tsx'), 'utf8');
+    expect(feed).toMatch(/<CommunityContextSwitcher\b/);
+    const chip = fs.readFileSync(path.join(__dirname, '../../components/CommunityContextSwitcher.tsx'), 'utf8');
+    expect(chip).toMatch(/useCommunityFilterStore/);
   });
 
-  it('"Filter this view" on a filterable view also lets her clear back to All Communities', () => {
-    mockPathname.mockReturnValue('/(tabs)/feed');
-    useCommunityFilterStore.setState({ selectedCommunityId: 'c1', filterable: true });
-    const { getByTestId, getByLabelText } = render(<RoxyCompanionButton />);
+  // v0: 'scrim tap closes the sheet' (then the menu's scrim).
+  it('the scrim closes the sheet', () => {
+    const { getByTestId, queryByTestId } = render(<RoxyCompanionButton />);
     fireEvent.press(getByTestId('fab-button'));
-    fireEvent.press(getByLabelText('Filter this view'));
-    fireEvent.press(getByTestId('fab-filter-all'));
-    expect(useCommunityFilterStore.getState().selectedCommunityId).toBeNull();
+    expect(getByTestId('hello-roxy-sheet')).toBeTruthy();
+    fireEvent.press(getByTestId('hello-roxy-scrim'));
+    expect(queryByTestId('hello-roxy-sheet')).toBeNull();
+  });
+});
+
+describe('RoxyCompanionButton — tuck on scroll', () => {
+  it('tucked: eyes closed, 40 dp, centred on the end edge', () => {
+    useRoxyFab.setState({ tucked: true });
+    const { getByTestId } = render(<RoxyCompanionButton />);
+    expect(getByTestId('fab-o-rest')).toBeTruthy();
+    const transform = flat(getByTestId('fab-tuck')).transform as Record<string, number>[];
+    // Reduce Motion is on in this suite: the tuck lands at its end state.
+    expect(transform).toEqual([
+      { translateX: FAB_MARGIN + FAB_SIZE / 2 },
+      { scale: FAB_TUCKED / FAB_SIZE },
+    ]);
   });
 
-  it('scrim tap closes the sheet', () => {
-    const { getByTestId, getByLabelText, queryByLabelText } = render(<RoxyCompanionButton />);
-    fireEvent.press(getByTestId('fab-button'));
-    expect(getByLabelText('Chat with Roxy')).toBeTruthy();
-    fireEvent.press(getByLabelText('Close Roxy menu'));
-    expect(queryByLabelText('Chat with Roxy')).toBeNull();
+  it('a tap on the tucked button brings her back instead of opening the sheet', () => {
+    useRoxyFab.setState({ tucked: true });
+    const { getByTestId, queryByTestId } = render(<RoxyCompanionButton />);
+    fireEvent.press(getByTestId('fab-tucked'));
+    expect(useRoxyFab.getState().tucked).toBe(false);
+    expect(queryByTestId('hello-roxy-sheet')).toBeNull();
+  });
+
+  it('the tucked target is 28 × 48 dp at the screen edge', () => {
+    useRoxyFab.setState({ tucked: true });
+    const { getByTestId } = render(<RoxyCompanionButton />);
+    const hit = flat(getByTestId('fab-tucked'));
+    expect(hit.width).toBe(FAB_TUCKED_HIT.width);
+    expect(hit.height).toBe(FAB_TUCKED_HIT.height);
+    expect(hit.end).toBe(0);
+  });
+
+  it('comes back when the store says so', () => {
+    useRoxyFab.setState({ tucked: true });
+    const { getByTestId, queryByTestId } = render(<RoxyCompanionButton />);
+    act(() => { useRoxyFab.getState().untuck(); });
+    expect(getByTestId('fab-o-open')).toBeTruthy();
+    expect(queryByTestId('fab-tucked')).toBeNull();
   });
 });

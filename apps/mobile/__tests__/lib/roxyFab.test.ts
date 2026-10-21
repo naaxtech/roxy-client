@@ -4,6 +4,8 @@ import {
   onListScroll,
   nextTuck,
   enabledKeyFor,
+  fabVisible,
+  fabOnStage,
   TUCK_THRESHOLD,
   EDGE_ZONE,
 } from '../../lib/roxyFab';
@@ -161,5 +163,42 @@ describe('Roxy AI on/off, kept per member on this phone', () => {
   it('the screen changes before storage answers (optimistic)', () => {
     void useRoxyFab.getState().setEnabled('amara', false);
     expect(useRoxyFab.getState().enabled).toBe(false);
+  });
+});
+
+describe('fabVisible / fabOnStage (the tabs layout decides where she shows)', () => {
+  const SUPPRESSED = ['roxy-chat', '/messages', '/chat/'];
+  const base = { pathname: '/discover', allowed: true, enabled: true, loadedFor: 'amara', userId: 'amara', suppressedOn: SUPPRESSED };
+
+  it('shows on Feed, Discover and You when she is on', () => {
+    for (const pathname of ['/feed', '/discover', '/you']) {
+      expect(fabVisible({ ...base, pathname })).toBe(true);
+    }
+  });
+
+  it('leaves at once when switched off', () => {
+    expect(fabVisible({ ...base, enabled: false })).toBe(false);
+  });
+
+  it('waits for her own choice to load, so an "off" never flashes on', () => {
+    expect(fabVisible({ ...base, loadedFor: null })).toBe(false);
+    expect(fabVisible({ ...base, loadedFor: 'someone-else' })).toBe(false);
+  });
+
+  it('stays off where FAB_SUPPRESSED_ON says (her chat, Messages, chats)', () => {
+    for (const pathname of ['/roxy-chat', '/messages', '/messages/requests', '/chat/abc']) {
+      expect(fabVisible({ ...base, pathname })).toBe(false);
+    }
+  });
+
+  it('stays off for a tier without the companion', () => {
+    expect(fabVisible({ ...base, allowed: false })).toBe(false);
+  });
+
+  it('knows the Feed stage', () => {
+    expect(fabOnStage('/feed')).toBe(true);
+    expect(fabOnStage('/feed/following')).toBe(true);
+    expect(fabOnStage('/discover')).toBe(false);
+    expect(fabOnStage('/feedback')).toBe(false);
   });
 });

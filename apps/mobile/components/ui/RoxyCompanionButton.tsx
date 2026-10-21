@@ -1,252 +1,205 @@
 import { useEffect, useRef, useState } from 'react';
-import { TouchableOpacity, StyleSheet, Animated, View, Text, Modal, Pressable, FlatList } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Image as ExpoImage } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Animated, I18nManager, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { useCommunityStore } from '../../store/communityStore';
-import { useCommunityFilterStore } from '../../store/communityFilterStore';
-import { BRAND_GRADIENT } from '../../lib/theme';
-import { PRESS_SPRING, SNAP_SPRING } from '../../lib/motion';
-import { a11yState } from '../../lib/a11yState';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useAuthStore } from '../../store/authStore';
+import { useProfileStore } from '../../store/profileStore';
+import { RADII, floatElevation } from '../../lib/theme';
+import { POP_FROM, runSpring } from '../../lib/motion';
+import { tapLight } from '../../lib/haptics';
+import { useRoxyFab } from '../../lib/roxyFab';
+import {
+  FAB_LANE, FAB_MARGIN, FAB_SIZE, FAB_TUCKED, FAB_TUCKED_HIT, NAV_HEIGHT, NAV_MIN_BOTTOM,
+} from '../nav/navTokens';
+import { PressableScale } from './PressableScale';
+import { RoxyO } from '../roxy/RoxyO';
+import { HelloRoxySheet, type HelloRoxyOrigin } from '../roxy/HelloRoxySheet';
+import { firstNameOf } from '../roxy/roxyConversation';
 
 interface Props {
   visible?: boolean;
+  /** On the Feed's dark stage the ring is the hot `brandPink`. */
+  onStage?: boolean;
 }
 
-// Whether "Filter this view" can do anything is not a property of the route.
-//
-// It used to be decided by matching the pathname — first against `/connect` and
-// `/build`, two tabs the 3.0 shell retired, and then against `/feed`. Both were
-// wrong in the same way: the Feed honours a community filter on ONE of its
-// three segments, and a pathname cannot tell them apart. On For You the action
-// rendered enabled, opened the radio list, wrote a selection and changed
-// nothing on screen. The filterable surface now says so itself, in
-// `communityFilterStore`.
+/** How far the tucked O travels toward the end edge: its centre lands on it. */
+const TUCK_TRAVEL = FAB_MARGIN + FAB_SIZE / 2;
+const TUCK_SCALE = FAB_TUCKED / FAB_SIZE;
+/** Reduce Motion: the tuck is a short fade to the end state. */
+const FADE_MS = 120;
 
-export function RoxyCompanionButton({ visible = true }: Props) {
+/*
+ * RETIRED (v2, 2026-10-21): the v0 three-pill FAB menu — "Chat with Roxy",
+ * "Search Roxy", "Filter this view" with its joined-community radio list.
+ * Origin: fd4c608 (2026-07-19, "R-mark companion button with actions + global
+ * search"). Why: M3 rules a FAB menu out for a button with one job, and Nicole
+ * kept the button to open Roxy AI. Its other two jobs MOVED, they did not
+ * disappear: search is the search button on the Feed and Discover headers
+ * (`router.push('/search')`), and the community filter is the
+ * CommunityContextSwitcher chip on Feed › Communities, which writes the same
+ * `communityFilterStore`. Bring a menu back only if the FAB gains 2-6 related
+ * actions (M3's rule); the old implementation is in git at 4e346cf.
+ */
+
+/**
+ * The Roxy AI button (design direction v2 › The Roxy AI button).
+ *
+ * The Roxy O, 56 dp, in its own 88 × 88 lane at the bottom end corner: 16 dp
+ * from the edge and 16 dp above the bar, so at rest nothing readable or
+ * tappable sits under her. One job: a tap (or a long-press — there is no
+ * menu) gives a light haptic and grows the O into the "Hello, Roxy" sheet.
+ *
+ * While a list scrolls down she tucks in (`lib/roxyFab.ts`): 40 dp, eyes
+ * closed, centred on the screen edge, on `SPRING.fastSpatial`; a tap on the
+ * tucked button, a scroll up, the top or the end of the list brings her back.
+ * Reduce Motion: the tuck is a short fade and she does not blink.
+ *
+ * Whether she shows at all (switched on in Settings, and not on a screen in
+ * `FAB_SUPPRESSED_ON`) is the tabs layout's call: `visible`. Position is
+ * measured from the window bottom, so the parent must be full-window.
+ */
+export function RoxyCompanionButton({ visible = true, onStage = false }: Props) {
   const colors = useThemeColors();
   const router = useRouter();
+  const reducedMotion = useReducedMotion();
+  const insets = useSafeAreaInsets();
+  const { width: winW, height: winH } = useWindowDimensions();
+  const user = useAuthStore((s) => s.user);
+  const profile = useProfileStore((s) => s.profile);
+  const tucked = useRoxyFab((s) => s.tucked);
+  const untuck = useRoxyFab((s) => s.untuck);
 
-  const joinedCommunities = useCommunityStore((s) => s.joinedCommunities);
-  const canFilter = useCommunityFilterStore((s) => s.filterable);
-  const selectedCommunityId = useCommunityFilterStore((s) => s.selectedCommunityId);
-  const setSelectedCommunity = useCommunityFilterStore((s) => s.setSelectedCommunity);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const tuck = useRef(new Animated.Value(tucked ? 1 : 0)).current;
+  const fade = useRef(new Animated.Value(1)).current;
+  const enter = useRef(new Animated.Value(reducedMotion ? 1 : POP_FROM)).current;
+  const lastTucked = useRef(tucked);
 
-  const fabScale = useRef(new Animated.Value(0.55)).current;
-
-  const [open, setOpen] = useState(false);
-  const [filterExpanded, setFilterExpanded] = useState(false);
-  const pillAnims = useRef(
-    [0, 1, 2].map(() => ({
-      translateY: new Animated.Value(18),
-      scale: new Animated.Value(0.7),
-    }))
-  ).current;
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    Animated.spring(fabScale, { toValue: 1, ...PRESS_SPRING }).start();
-  }, []);
+    if (visible) runSpring(enter, 1, 'fastSpatial', reducedMotion);
+  }, [visible, reducedMotion, enter]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!open) {
-      setFilterExpanded(false);
-      return;
+    const changed = lastTucked.current !== tucked;
+    lastTucked.current = tucked;
+    runSpring(tuck, tucked ? 1 : 0, 'fastSpatial', reducedMotion);
+    if (reducedMotion && changed) {
+      fade.setValue(0);
+      Animated.timing(fade, { toValue: 1, duration: FADE_MS, useNativeDriver: true }).start();
     }
-    pillAnims.forEach((anim, i) => {
-      anim.translateY.setValue(18);
-      anim.scale.setValue(0.7);
-      Animated.parallel([
-        Animated.spring(anim.translateY, { toValue: 0, delay: i * 40, ...SNAP_SPRING }),
-        Animated.spring(anim.scale, { toValue: 1, delay: i * 40, ...SNAP_SPRING }),
-      ]).start();
-    });
-  }, [open]);
-
-  const styles = StyleSheet.create({
-    fabWrap: { position: 'absolute', bottom: 90, right: 20, zIndex: 1000 },
-    button: {
-      width: 56, height: 56, borderRadius: 28,
-      alignItems: 'center', justifyContent: 'center',
-      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3, shadowRadius: 6, elevation: 8,
-      overflow: 'hidden',
-    },
-    buttonGradient: {
-      width: '100%', height: '100%',
-      alignItems: 'center', justifyContent: 'center',
-    },
-    icon: { width: 34, height: 34 },
-    scrim: { flex: 1 },
-    scrimFill: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
-    sheetWrap: {
-      position: 'absolute', bottom: 158, right: 20,
-      alignItems: 'flex-end', gap: 12,
-    },
-    pill: {
-      backgroundColor: colors.surface,
-      borderRadius: 24,
-      shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.2, shadowRadius: 6, elevation: 6,
-      minWidth: 170,
-    },
-    pillTouchable: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      paddingHorizontal: 18, paddingVertical: 12, minHeight: 44,
-    },
-    pillDisabled: { opacity: 0.55 },
-    pillEmoji: { fontSize: 15, color: colors.roxy },
-    pillText: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
-    pillTextDisabled: { color: colors.textMuted },
-    pillHint: {
-      color: colors.textMuted, fontSize: 11, fontWeight: '600',
-      paddingHorizontal: 18, paddingBottom: 10, marginTop: -8,
-    },
-    communityList: {
-      borderTopWidth: 1, borderTopColor: colors.surfaceLight,
-      paddingTop: 6, paddingBottom: 6,
-    },
-    communityRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 10,
-      paddingHorizontal: 18, paddingVertical: 10, minHeight: 40,
-    },
-    radio: {
-      width: 16, height: 16, borderRadius: 8,
-      borderWidth: 2, borderColor: colors.textMuted,
-    },
-    radioSelected: { borderColor: colors.roxy, backgroundColor: colors.roxy },
-    communityRowText: { color: colors.textSecondary, fontSize: 13, flex: 1 },
-    communityEmpty: {
-      color: colors.textMuted, fontSize: 12,
-      paddingHorizontal: 18, paddingVertical: 10,
-    },
-  });
+  }, [tucked, reducedMotion, tuck, fade]);
 
   if (!visible) return null;
 
-  const closeSheet = () => setOpen(false);
+  const barTop = NAV_HEIGHT + Math.max(insets.bottom, NAV_MIN_BOTTOM);
+  const dir = I18nManager.isRTL ? -1 : 1;
 
-  const goToChat = () => {
-    setOpen(false);
-    router.push('/roxy-chat' as any);
+  const origin: HelloRoxyOrigin = {
+    x: I18nManager.isRTL ? FAB_MARGIN + FAB_SIZE / 2 : winW - FAB_MARGIN - FAB_SIZE / 2,
+    y: winH - barTop - FAB_MARGIN - FAB_SIZE / 2,
+    size: FAB_SIZE,
   };
 
-  const goToSearch = () => {
-    setOpen(false);
-    router.push('/search' as any);
+  const openRoxy = () => {
+    if (tucked) {
+      untuck();
+      return;
+    }
+    tapLight();
+    setSheetOpen(true);
   };
 
-  const handleFilterPress = () => {
-    if (!canFilter) return;
-    setFilterExpanded((v) => !v);
-  };
-
-  const handleSelectCommunity = (id: string | null) => {
-    setSelectedCommunity(id);
-    setOpen(false);
-  };
+  const tuckStyle = reducedMotion
+    ? { transform: [{ translateX: tucked ? dir * TUCK_TRAVEL : 0 }, { scale: tucked ? TUCK_SCALE : 1 }] }
+    : {
+        transform: [
+          { translateX: tuck.interpolate({ inputRange: [0, 1], outputRange: [0, dir * TUCK_TRAVEL] }) },
+          { scale: tuck.interpolate({ inputRange: [0, 1], outputRange: [1, TUCK_SCALE] }) },
+        ],
+      };
 
   return (
     <>
-      <Animated.View style={[styles.fabWrap, { transform: [{ scale: fabScale }] }]}>
-        <TouchableOpacity
-          testID="fab-button"
-          style={styles.button}
-          onPress={() => setOpen(true)}
-          onLongPress={goToChat}
-          activeOpacity={1}
-          accessibilityLabel="Roxy companion menu"
+      <View testID="fab-lane" pointerEvents="box-none" style={[s.lane, { bottom: barTop }]}>
+        <Animated.View
+          testID="fab-seat"
+          pointerEvents="box-none"
+          style={[s.seat, { opacity: sheetOpen ? 0 : fade, transform: [{ scale: enter }] }]}
         >
-          <LinearGradient colors={BRAND_GRADIENT} style={styles.buttonGradient}>
-            <ExpoImage
-              source={require('../../assets/brand/roxy-icon.png')}
-              style={styles.icon}
-              contentFit="contain"
-              // White mark on the brand gradient (colored-on-colored didn't read).
-              tintColor="#FFFFFF"
-              accessibilityLabel="Roxy"
-            />
-          </LinearGradient>
-        </TouchableOpacity>
-      </Animated.View>
-
-      <Modal visible={open} transparent animationType="none" onRequestClose={closeSheet}>
-        <Pressable style={styles.scrim} onPress={closeSheet} accessibilityLabel="Close Roxy menu">
-          <View style={styles.scrimFill} />
-        </Pressable>
-
-        <View style={styles.sheetWrap} pointerEvents="box-none">
-          <Animated.View
-            style={[styles.pill, { transform: [{ translateY: pillAnims[0].translateY }, { scale: pillAnims[0].scale }] }]}
-          >
-            <TouchableOpacity style={styles.pillTouchable} onPress={goToChat} accessibilityLabel="Chat with Roxy">
-              <Text style={styles.pillEmoji}>✦</Text>
-              <Text style={styles.pillText}>Chat with Roxy</Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          <Animated.View
-            style={[styles.pill, { transform: [{ translateY: pillAnims[1].translateY }, { scale: pillAnims[1].scale }] }]}
-          >
-            <TouchableOpacity style={styles.pillTouchable} onPress={goToSearch} accessibilityLabel="Search Roxy">
-              <Ionicons name="search" size={16} color={colors.roxy} />
-              <Text style={styles.pillText}>Search Roxy</Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          <Animated.View
-            style={[styles.pill, { transform: [{ translateY: pillAnims[2].translateY }, { scale: pillAnims[2].scale }] }]}
-          >
-            <TouchableOpacity
-              style={[styles.pillTouchable, !canFilter && styles.pillDisabled]}
-              onPress={handleFilterPress}
-              accessibilityLabel="Filter this view"
-              accessibilityHint={canFilter ? undefined : 'Works on Feed › Communities'}
-              {...a11yState({ disabled: !canFilter })}
+          <Animated.View testID="fab-tuck" style={[s.disc, floatElevation(colors), tuckStyle]}>
+            <PressableScale
+              testID="fab-button"
+              onPress={openRoxy}
+              onLongPress={openRoxy}
+              accessibilityRole="button"
+              accessibilityLabel="Roxy AI"
+              accessibilityHint="Opens your chat with Roxy AI"
+              style={s.disc}
             >
-              <Ionicons name="options" size={16} color={canFilter ? colors.roxy : colors.textMuted} />
-              <Text style={[styles.pillText, !canFilter && styles.pillTextDisabled]}>Filter this view</Text>
-            </TouchableOpacity>
-            {!canFilter && <Text style={styles.pillHint}>Works on Feed › Communities</Text>}
-
-            {canFilter && filterExpanded && (
-              <View style={styles.communityList}>
-                <TouchableOpacity
-                  style={styles.communityRow}
-                  onPress={() => handleSelectCommunity(null)}
-                  testID="fab-filter-all"
-                  accessibilityLabel="View all communities"
-                >
-                  <View style={[styles.radio, selectedCommunityId === null && styles.radioSelected]} />
-                  <Text style={styles.communityRowText}>All Communities</Text>
-                </TouchableOpacity>
-                <FlatList
-                  data={joinedCommunities}
-                  keyExtractor={(c) => c.id}
-                  style={{ maxHeight: 160 }}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.communityRow}
-                      onPress={() => handleSelectCommunity(item.id)}
-                      testID={`fab-filter-${item.id}`}
-                      accessibilityLabel={`View ${item.name}`}
-                    >
-                      <View style={[styles.radio, selectedCommunityId === item.id && styles.radioSelected]} />
-                      <Text style={styles.communityRowText} numberOfLines={1}>{item.name}</Text>
-                    </TouchableOpacity>
-                  )}
-                  ListEmptyComponent={
-                    <Text style={styles.communityEmpty}>Join a community first 🌸</Text>
-                  }
-                />
-              </View>
-            )}
+              <RoxyO
+                size={FAB_SIZE}
+                mood={tucked ? 'rest' : 'open'}
+                blink={!tucked && !sheetOpen}
+                ring={onStage ? colors.brandPink : undefined}
+                testID="fab-o"
+              />
+            </PressableScale>
           </Animated.View>
-        </View>
-      </Modal>
+        </Animated.View>
+
+        {tucked ? (
+          <Pressable
+            testID="fab-tucked"
+            onPress={untuck}
+            accessibilityRole="button"
+            accessibilityLabel="Roxy AI"
+            accessibilityHint="Brings the Roxy AI button back"
+            style={s.tuckedHit}
+          />
+        ) : null}
+      </View>
+
+      <HelloRoxySheet
+        visible={sheetOpen}
+        userId={user?.id ?? null}
+        firstName={firstNameOf(profile?.display_name)}
+        origin={origin}
+        onClose={() => setSheetOpen(false)}
+        onOpenChat={() => {
+          setSheetOpen(false);
+          router.push('/roxy-chat' as never);
+        }}
+      />
     </>
   );
 }
+
+const s = StyleSheet.create({
+  lane: {
+    position: 'absolute',
+    end: 0,
+    width: FAB_LANE,
+    height: FAB_LANE,
+  },
+  seat: {
+    position: 'absolute',
+    end: FAB_MARGIN,
+    bottom: FAB_MARGIN,
+    width: FAB_SIZE,
+    height: FAB_SIZE,
+  },
+  disc: {
+    width: FAB_SIZE,
+    height: FAB_SIZE,
+    borderRadius: RADII.pill,
+  },
+  tuckedHit: {
+    position: 'absolute',
+    end: 0,
+    bottom: FAB_MARGIN + FAB_SIZE / 2 - FAB_TUCKED_HIT.height / 2,
+    width: FAB_TUCKED_HIT.width,
+    height: FAB_TUCKED_HIT.height,
+  },
+});
