@@ -15,6 +15,21 @@ export function isPostReaction(emoji: string): emoji is PostReaction {
   return (POST_REACTIONS as readonly string[]).includes(emoji);
 }
 
+/**
+ * What a screen reader says for each reaction ("React with laughing"). Words,
+ * not the emoji's Unicode name: VoiceOver and TalkBack read "face with tears
+ * of joy", which is a mouthful on a 48 dp button. Keyed by meaning for the
+ * string catalogue (M174).
+ */
+export const REACTION_NAMES: Record<PostReaction, string> = {
+  '❤️': 'heart',
+  '😂': 'laughing',
+  '😮': 'wow',
+  '😢': 'sad',
+  '😡': 'angry',
+  '💜': 'purple heart',
+};
+
 /** The tally for one emoji, defaulting to zero rather than to undefined. */
 export function reactionCount(
   counts: Record<string, number> | null | undefined,

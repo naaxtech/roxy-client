@@ -125,6 +125,44 @@ export const CHROME_SHADOW: TextStyle = {
   textShadowRadius: 6,
 };
 
+/**
+ * v2: the rail has no plates (direction › the always-dark feed stage: "chrome
+ * is white glyphs with a 1 dp dark outline"). The outline is drawn, not
+ * shadowed: four copies of the glyph in `RAIL_OUTLINE.color`, offset
+ * `RAIL_OUTLINE.width` dp up, down, left and right, under the white one
+ * (`components/feed/RailGlyph.tsx`). Solid pixels, so the contrast is
+ * scoreable: white on the outline 19.77:1, the outline on a white frame
+ * 19.77:1 (`feedChromeContrast.test.ts`), whatever the media behind.
+ */
+export const RAIL_OUTLINE = { color: '#0B0A0A', width: 1 } as const;
+
+/**
+ * The Roxy AI button's lane (direction › The Roxy AI button): 88 × 88 dp at
+ * the bottom end corner of every feed page. The rail's lowest control starts
+ * at the lane's top and captions keep an end margin of the same 88.
+ * Mirrors `components/nav/navTokens.ts` `FAB_LANE` (lane roxy-ai adds it on
+ * its branch); the orchestrator dedupes the two at merge.
+ */
+export const FAB_LANE = 88;
+
+/** Rail glyphs (direction › Spacing: rail glyphs 32 in 48 targets). */
+export const RAIL_GLYPH = 32;
+
+/**
+ * The rail's end inset: 48 dp targets centred 44 dp from the edge, on the
+ * Roxy AI button's own centre line (FAB 56 dp, 16 dp from the edge).
+ */
+export const RAIL_END = 20;
+
+/** Space between rail controls; the label under a glyph sits inside its target. */
+export const RAIL_GAP = 4;
+
+/** Her reaction's disc on the rail (`pinkContainer`, 48 dp). */
+export const REACTION_DISC = 48;
+
+/** The post dims while the reaction picker is open (stage black at 45%). */
+export const PICKER_DIM = 'rgba(11,10,10,0.45)';
+
 /** One brand ramp, not a second palette. It lives in `lib/theme.ts`. */
 export { BRAND_GRADIENT } from '../../lib/theme';
 
