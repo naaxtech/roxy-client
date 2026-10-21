@@ -1,0 +1,25 @@
+apps/mobile/__tests__/lib/applyBrandType.test.ts
+  s_37deb30b6489aa::t_e3f4f15120b01e 6,8
+apps/mobile/__tests__/typography.test.ts
+  s_37deb30b6489aa::t_fcbdbcaffab36d 2,6-7,9-16,18-25,27-29,31-32,36-47,50-66,69-77,80-91,96-98,102-107,110-118,122-137,141,146-150,152-153,155,158,160,165,169-180
+apps/mobile/hooks/useAppFonts.ts
+  s_37deb30b6489aa::t_e05e2a4697f341 3,5-9,13-19,27-29,31,33-41,43
+apps/mobile/lib/typography.ts
+  s_37deb30b6489aa::t_8e2e58a0461d1a 1-2,4-12,14-16,18-20,22-24,26-27,31,33-36,38,40-48,52-74,82,85-129,131-132,134-152,154,156-157,159-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a600610b120d5c2229792f74611ddd6ca66c0059",
+  "prompts": {},
+  "sessions": {
+    "s_37deb30b6489aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "791c066c-b99f-499a-832d-4bb799f2daf9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
