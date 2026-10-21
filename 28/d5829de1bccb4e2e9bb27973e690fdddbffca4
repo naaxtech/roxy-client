@@ -1,0 +1,24 @@
+apps/mobile/__tests__/lib/motion.test.ts
+  h_0549c11fec2ab0 2-11,20-21,35-124
+apps/mobile/app/(auth)/code.tsx
+  h_0549c11fec2ab0 16,39
+apps/mobile/app/(auth)/welcome.tsx
+  h_0549c11fec2ab0 25,67
+apps/mobile/app/event/[id].tsx
+  h_0549c11fec2ab0 18,141
+apps/mobile/components/ui/popIn.ts
+  h_0549c11fec2ab0 4,22
+apps/mobile/lib/motion.ts
+  h_0549c11fec2ab0 4,6-85,93-96,106,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "28d5829de1bccb4e2e9bb27973e690fdddbffca4",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
