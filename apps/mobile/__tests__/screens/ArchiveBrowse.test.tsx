@@ -161,11 +161,13 @@ describe('the Archive browse screen', () => {
     const wrapStyle = flat(wrap);
     const inputStyle = flat(input);
     expect(wrapStyle.alignSelf).toBe('center');
-    expect(wrapStyle.backgroundColor).toBe(THEMES.dark.surfaceLight);
-    expect(wrapStyle.backgroundColor).not.toBe(THEMES.dark.background);
-    expect(inputStyle.color).toBe(THEMES.dark.textPrimary);
-    expect(inputStyle.backgroundColor).toBe(THEMES.dark.surfaceLight);
-    expect(input.props.placeholderTextColor).toBe(THEMES.dark.textSecondary);
+    // Light is the default theme since v2 (Nicole, 2026-10-21); this screen
+    // renders under the default, so its tokens are the light ones.
+    expect(wrapStyle.backgroundColor).toBe(THEMES.light.surfaceLight);
+    expect(wrapStyle.backgroundColor).not.toBe(THEMES.light.background);
+    expect(inputStyle.color).toBe(THEMES.light.textPrimary);
+    expect(inputStyle.backgroundColor).toBe(THEMES.light.surfaceLight);
+    expect(input.props.placeholderTextColor).toBe(THEMES.light.textSecondary);
   });
 
   it('pushes the typed query into the store filters', () => {
