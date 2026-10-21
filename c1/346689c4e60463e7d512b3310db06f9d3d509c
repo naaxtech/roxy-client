@@ -1,0 +1,23 @@
+apps/mobile/__tests__/lib/flatSurfaces.test.ts
+  s_37deb30b6489aa::t_1c6136313738c3 1-102
+apps/mobile/lib/avatars.ts
+  s_37deb30b6489aa::t_17fc97f1f5db4f 2,9-12,25,32-38
+apps/mobile/lib/textCard.ts
+  s_37deb30b6489aa::t_ee97ed5a9461c0 3,11-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c1346689c4e60463e7d512b3310db06f9d3d509c",
+  "prompts": {},
+  "sessions": {
+    "s_37deb30b6489aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "791c066c-b99f-499a-832d-4bb799f2daf9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
