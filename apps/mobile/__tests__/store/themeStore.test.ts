@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useThemeStore, THEME_CHOICE_KEY } from '../../store/themeStore';
+import { useThemeStore, THEME_CHOICE_KEY, resolveTheme, phoneSchemeChanged } from '../../store/themeStore';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   setItem: jest.fn().mockResolvedValue(undefined),
@@ -88,6 +88,89 @@ describe('themeStore', () => {
   it('ignores a corrupt stored value', async () => {
     stored({ [THEME_CHOICE_KEY]: 'purple' });
     await useThemeStore.getState().init(null);
+    expect(useThemeStore.getState().theme).toBe('light');
+  });
+});
+
+/**
+ * "Match phone" (design direction v2 › Settings: Light · Dark · Match phone).
+ *
+ * `theme` stays the RESOLVED light/dark every screen paints with; `choice` is
+ * what she picked. With 'system' the phone's scheme decides, live.
+ * `profiles.theme_preference` only allows 'light' | 'dark' (CHECK, migration
+ * 050), so Match phone is a per-device choice that never touches the profile.
+ */
+describe('themeStore — Match phone', () => {
+  const Appearance = jest.requireActual('react-native').Appearance as {
+    getColorScheme: () => 'light' | 'dark' | null;
+  };
+  let scheme: 'light' | 'dark' | null = 'light';
+
+  beforeEach(() => {
+    useThemeStore.setState({ theme: 'light', choice: 'light' });
+    jest.clearAllMocks();
+    getItem.mockReset();
+    getItem.mockResolvedValue(null);
+    scheme = 'light';
+    jest.spyOn(Appearance, 'getColorScheme').mockImplementation(() => scheme);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('resolveTheme: system follows the phone; null (unknown) falls back to light', () => {
+    expect(resolveTheme('light', 'dark')).toBe('light');
+    expect(resolveTheme('dark', 'light')).toBe('dark');
+    expect(resolveTheme('system', 'dark')).toBe('dark');
+    expect(resolveTheme('system', 'light')).toBe('light');
+    expect(resolveTheme('system', null)).toBe('light');
+  });
+
+  it("setTheme('system') paints the phone's scheme and records the choice on this device only", async () => {
+    scheme = 'dark';
+    await useThemeStore.getState().setTheme('system');
+    expect(useThemeStore.getState().choice).toBe('system');
+    expect(useThemeStore.getState().theme).toBe('dark');
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(THEME_CHOICE_KEY, 'system');
+    // 'system' would violate the profile's CHECK: no profile write is attempted.
+    const { supabase } = jest.requireMock('../../lib/supabase');
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it('a light or dark choice still records the choice', async () => {
+    await useThemeStore.getState().setTheme('dark');
+    expect(useThemeStore.getState().choice).toBe('dark');
+    expect(useThemeStore.getState().theme).toBe('dark');
+  });
+
+  it('follows the phone live while she has Match phone on', async () => {
+    await useThemeStore.getState().setTheme('system');
+    expect(useThemeStore.getState().theme).toBe('light');
+    phoneSchemeChanged('dark');
+    expect(useThemeStore.getState().theme).toBe('dark');
+    phoneSchemeChanged('light');
+    expect(useThemeStore.getState().theme).toBe('light');
+  });
+
+  it('ignores the phone once she has picked Light or Dark herself', async () => {
+    await useThemeStore.getState().setTheme('light');
+    phoneSchemeChanged('dark');
+    expect(useThemeStore.getState().theme).toBe('light');
+  });
+
+  it('init restores Match phone from this device, even over a light profile value', async () => {
+    scheme = 'dark';
+    stored({ [THEME_CHOICE_KEY]: 'system' });
+    await useThemeStore.getState().init('light');
+    expect(useThemeStore.getState().choice).toBe('system');
+    expect(useThemeStore.getState().theme).toBe('dark');
+  });
+
+  it('init with no choice anywhere is the light default, not Match phone', async () => {
+    scheme = 'dark';
+    await useThemeStore.getState().init(null);
+    expect(useThemeStore.getState().choice).toBe('light');
     expect(useThemeStore.getState().theme).toBe('light');
   });
 });
