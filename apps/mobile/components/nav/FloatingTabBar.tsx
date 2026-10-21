@@ -1,22 +1,25 @@
 import { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { type ThemeColors } from '../../lib/theme';
-import { FONTS } from '../../lib/typography';
+import { RADII, THEMES, type ThemeColors } from '../../lib/theme';
+import { FONTS, TYPE, emphasized } from '../../lib/typography';
 import { NAV_SLOTS_3 } from './navSlots3';
 import { NavIcon, type NavIconName } from './NavIcons';
 import type { NavSlot } from './navTokens';
 import { a11yState } from '../../lib/a11yState';
-import { PRESS_SPRING, SNAP_SPRING, runSnap } from '../../lib/motion';
+import { PRESS, animatedSpring, runSpring } from '../../lib/motion';
+import { haptic } from '../../lib/haptics';
+import { PressableScale } from '../ui/PressableScale';
 import {
-  ACTIVE_TINT_ALPHA,
-  BRAND_GRADIENT,
-  PILL_INSET,
-  PILL_MIN_BOTTOM,
+  CREATE_KEY,
+  NAV_HEIGHT,
+  NAV_INDICATOR,
+  NAV_MIN_BOTTOM,
   TAB_MIN_TOUCH,
+  UNREAD_DOT,
+  indicatorSnapsInstantly,
 } from './navTokens';
 
 export type TabBarRoute = { key: string; name: string };
@@ -28,27 +31,52 @@ export type FloatingTabBarProps = {
    *  to the layout that has the real navigation object; this bar only reports. */
   onTabPress: (route: TabBarRoute, isFocused: boolean) => void;
   onCreatePress: () => void;
-  /** Defaults to the full 3.0 bar. Public launch passes the three-slot set. */
+  /** While the Create sheet is open the key turns 45° into a close ×. */
+  createOpen?: boolean;
+  /** Defaults to the full bar. Public launch passes the three-slot set. */
   slots?: readonly NavSlot[];
 };
 
-/** The ink the create plate carries. Derived from the darkest stop of the brand
- *  ramp, because that is the stop with the least headroom — whatever reads
- *  there reads on the other two. `inkOn` answers 4.43:1 here; white answers
- *  3.19:1 and would fail even the 3:1 bar for icons. */
-const CREATE_INK = '#fff';
+/** The bar's palette: the theme's, or the always-dark stage's on the Feed. */
+type BarInk = {
+  ground: string;
+  pill: string;
+  activeIcon: string;
+  activeLabel: string;
+  idle: string;
+};
 
-function Badge({ value, slotKey, colors }: { value: number | string; slotKey: string; colors: ThemeColors }) {
-  const s = styles(colors);
+function barInk(colors: ThemeColors, onStage: boolean): BarInk {
+  if (onStage) {
+    return {
+      ground: colors.stage,
+      pill: colors.stageRaised,
+      activeIcon: '#FFFFFF',
+      activeLabel: '#FFFFFF',
+      idle: THEMES.dark.ink2,
+    };
+  }
+  return {
+    ground: colors.ground,
+    pill: colors.pinkContainer,
+    activeIcon: colors.onPinkContainer,
+    activeLabel: colors.ink,
+    idle: colors.ink2,
+  };
+}
+
+function UnreadDot({ value, slotKey, colors }: { value: number | string; slotKey: string; colors: ThemeColors }) {
   return (
-    <View style={s.badge} testID={`nav-badge-${slotKey}`}>
-      <Text style={s.badgeText} numberOfLines={1}>{value}</Text>
-    </View>
+    <View
+      testID={`nav-badge-${slotKey}`}
+      accessibilityLabel={`${value} unread`}
+      style={[s.dot, { backgroundColor: colors.pink }]}
+    />
   );
 }
 
 function RouteSlot({
-  route, label, icon, isFocused, badge, colors, reducedMotion, onPress,
+  route, label, icon, isFocused, badge, colors, ink, reducedMotion, onPress,
 }: {
   route: TabBarRoute;
   label: string;
@@ -56,146 +84,142 @@ function RouteSlot({
   isFocused: boolean;
   badge: number | string | undefined;
   colors: ThemeColors;
+  ink: BarInk;
   reducedMotion: boolean;
   onPress: () => void;
 }) {
-  const s = styles(colors);
-  const indicator = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
-  const iconPop = useRef(new Animated.Value(1)).current;
-  const press = useRef(new Animated.Value(1)).current;
-  // Born at rest so the first paint does not schedule a spring on every slot.
+  // The pill grows 32 → 56 dp wide on selection (shape morph #2). Width cannot
+  // run on the native driver, so this one spring is JS-driven.
+  const width = useRef(new Animated.Value(isFocused ? NAV_INDICATOR.width : NAV_INDICATOR.from)).current;
   const wasFocused = useRef(isFocused);
 
   useEffect(() => {
     if (wasFocused.current === isFocused) return;
     wasFocused.current = isFocused;
-    if (reducedMotion) {
-      indicator.setValue(isFocused ? 1 : 0);
-      iconPop.setValue(1);
+    if (!isFocused) {
+      width.setValue(NAV_INDICATOR.from);
       return;
     }
-    if (isFocused) {
-      indicator.setValue(0.4);
-      iconPop.setValue(0.82);
-      Animated.parallel([
-        Animated.spring(indicator, { toValue: 1, ...SNAP_SPRING }),
-        Animated.spring(iconPop, { toValue: 1, ...PRESS_SPRING }),
-      ]).start();
+    if (indicatorSnapsInstantly(reducedMotion)) {
+      width.setValue(NAV_INDICATOR.width);
       return;
     }
-    runSnap(indicator, 0);
-  }, [isFocused, reducedMotion, indicator, iconPop]);
+    width.setValue(NAV_INDICATOR.from);
+    Animated.spring(width, { toValue: NAV_INDICATOR.width, ...animatedSpring('fastSpatial', false) }).start();
+  }, [isFocused, reducedMotion, width]);
 
-  const tint = isFocused ? colors.roxy : colors.textMuted;
+  const labelStyle = isFocused ? emphasized('meta') : TYPE.meta;
 
   return (
-    <TouchableOpacity
+    <PressableScale
       testID={`nav-slot-${route.name}`}
       style={s.slot}
+      feedback="layer"
       onPress={onPress}
-      onPressIn={() => { if (!reducedMotion) Animated.spring(press, { toValue: 0.88, ...PRESS_SPRING }).start(); }}
-      onPressOut={() => runSnap(press, 1, reducedMotion)}
-      activeOpacity={1}
       accessibilityRole="tab"
       {...a11yState({ selected: isFocused })}
       accessibilityLabel={label}
     >
-      <Animated.View
-        pointerEvents="none"
-        style={[s.indicator, { transform: [{ scale: indicator }] }]}
-      />
-      <Animated.View style={{ transform: [{ scale: press }], alignItems: 'center' }}>
-        <Animated.View style={[s.iconWrap, { transform: [{ scale: iconPop }] }]}>
-          <NavIcon name={icon} color={tint} />
-          {badge !== undefined && <Badge value={badge} slotKey={route.name} colors={colors} />}
-        </Animated.View>
-        <Text
-          style={[s.label, { color: tint, fontFamily: isFocused ? FONTS.text.bold : FONTS.text.semibold }]}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
-      </Animated.View>
-    </TouchableOpacity>
+      <View style={s.indicatorWrap}>
+        {isFocused ? (
+          <Animated.View
+            testID={`nav-indicator-${route.name}`}
+            pointerEvents="none"
+            style={[s.indicator, { backgroundColor: ink.pill, width }]}
+          />
+        ) : null}
+        <NavIcon
+          name={icon}
+          color={isFocused ? ink.activeIcon : ink.idle}
+          testID={`nav-icon-${route.name}`}
+        />
+        {badge !== undefined ? <UnreadDot value={badge} slotKey={route.name} colors={colors} /> : null}
+      </View>
+      <Text
+        style={[s.label, labelStyle, { color: isFocused ? ink.activeLabel : ink.idle }]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </PressableScale>
   );
 }
 
 function CreateSlot({
-  label, colors, reducedMotion, onPress,
+  label, colors, open, reducedMotion, onPress,
 }: {
   label: string;
   colors: ThemeColors;
+  open: boolean;
   reducedMotion: boolean;
   onPress: () => void;
 }) {
-  const s = styles(colors);
+  // The plus turns 45° into a close × while the sheet is open (shape morph #3).
+  const turn = useRef(new Animated.Value(open ? 1 : 0)).current;
   const press = useRef(new Animated.Value(1)).current;
+  const wasOpen = useRef(open);
+  useEffect(() => {
+    if (wasOpen.current === open) return;
+    wasOpen.current = open;
+    if (reducedMotion) turn.setValue(open ? 1 : 0);
+    else Animated.spring(turn, { toValue: open ? 1 : 0, ...animatedSpring('spatial') }).start();
+  }, [open, reducedMotion, turn]);
+  const rotate = turn.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] });
+
   return (
-    <TouchableOpacity
+    <Pressable
       testID="nav-slot-create"
       style={s.slot}
       onPress={onPress}
-      onPressIn={() => { if (!reducedMotion) Animated.spring(press, { toValue: 0.88, ...PRESS_SPRING }).start(); }}
-      onPressOut={() => runSnap(press, 1, reducedMotion)}
-      activeOpacity={1}
+      onPressIn={() => runSpring(press, PRESS.scale, 'fastSpatial', reducedMotion)}
+      onPressOut={() => runSpring(press, 1, 'fastSpatial', reducedMotion)}
       accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityHint="Choose what to create"
+      accessibilityLabel={open ? 'Close create menu' : label}
+      accessibilityHint={open ? undefined : 'Choose what to create'}
     >
-      <Animated.View style={{ transform: [{ scale: press }], alignItems: 'center' }}>
-        <View style={s.iconWrap}>
-          <LinearGradient
-            colors={BRAND_GRADIENT}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.createPlate}
-          >
-            <Text testID="nav-create-icon" style={s.createPlus}>+</Text>
-          </LinearGradient>
-        </View>
-        <Text style={[s.label, { color: colors.textPrimary }]} numberOfLines={1}>{label}</Text>
+      <Animated.View
+        testID="nav-create-key"
+        style={[s.createKey, { backgroundColor: colors.pink, transform: [{ scale: press }] }]}
+      >
+        <Animated.View testID="nav-create-glyph" style={{ transform: [{ rotate }] }}>
+          <Text testID="nav-create-icon" style={[s.createPlus, { color: colors.onPink }]}>+</Text>
+        </Animated.View>
       </Animated.View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
 /**
- * Roxy's navigation shell: an inset, rounded, elevated pill rather than a
- * full-width bar.
+ * Roxy's navigation: the M3 Expressive flexible navigation bar (design
+ * direction v2 › Navigation; board v2-04, v2-05).
  *
- * **Why the fill is opaque.** The pill has to stay readable over whatever the
- * screen behind it happens to be — including a full-bleed photo. Translucency
- * is exactly what fails that test, and `expo-blur` is not a dependency of this
- * app, so a frosted treatment would mean shipping a new native module for
- * decoration. The fill is therefore a solid theme surface, and legibility is a
- * property of the pill rather than a bet about its backdrop. Depth comes from
- * the inset, the radius, a hairline border and a real offset shadow.
+ * Docked full width on `ground` with no shadow, 64 dp plus the bottom inset;
+ * five slots Feed · Discover · ＋Create · Messages · You with labels always
+ * shown (12/16, emphasized when active). The active slot wears a 56 × 32
+ * `pinkContainer` pill behind its icon (it grows from 32 on selection). On the
+ * Feed the bar takes the stage's colours (`stage`, a `stageRaised` pill, white
+ * active, dark `ink2` idle) so the post stays the screen. Create is a 52 × 40
+ * `pink` key at radius 12 whose label is for screen readers; it turns 45° into
+ * a close × while the Create sheet is open. Unread is an 8 dp `pink` dot.
  *
- * **Why every colour is derived.** The active tint is `colors.roxy` and the
- * inactive tint is `colors.textMuted`, both of which `__tests__/theme.contrast`
- * holds to 4.5:1 against every surface in their own theme. The one brand fill
- * in the bar — the create plate — uses white ink on the brand gradient, per the brand owner's call
- * reflexive white, which measures 3.19:1 on the deepest pink.
- *
- * The bar sits in the navigator's normal flow, so React Navigation reserves its
- * height and no screen loses its last row behind it. Making it overlay content
- * would need a `useBottomTabBarHeight()` padding pass across all six tab
- * screens; that is its own slice.
+ * The bar sits in the navigator's normal flow, so React Navigation reserves
+ * its height and no screen loses its last row behind it. Full width leaves room
+ * for labels 40% longer than English.
  */
 export function FloatingTabBar({
-  state, descriptors, onTabPress, onCreatePress, slots = NAV_SLOTS_3,
+  state, descriptors, onTabPress, onCreatePress, createOpen = false, slots = NAV_SLOTS_3,
 }: FloatingTabBarProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
-  const s = styles(colors);
-  const bottomInset = Math.max(insets.bottom, PILL_MIN_BOTTOM);
+  const bottomInset = Math.max(insets.bottom, NAV_MIN_BOTTOM);
 
   const focusedName = state.routes[state.index]?.name;
+  const ink = barInk(colors, focusedName === 'feed');
 
   return (
-    <View testID="nav-bar" style={[s.bar, { paddingBottom: bottomInset }]}>
-      <View testID="nav-pill" style={s.pill}>
+    <View testID="nav-bar" style={[s.bar, { backgroundColor: ink.ground, paddingBottom: bottomInset }]}>
+      <View testID="nav-pill" style={[s.row, { backgroundColor: ink.ground }]}>
         {slots.map((slot) => {
           if (slot.kind === 'action') {
             return (
@@ -203,6 +227,7 @@ export function FloatingTabBar({
                 key={slot.key}
                 label={slot.label}
                 colors={colors}
+                open={createOpen}
                 reducedMotion={reducedMotion}
                 onPress={onCreatePress}
               />
@@ -220,8 +245,13 @@ export function FloatingTabBar({
               isFocused={isFocused}
               badge={descriptors[route.key]?.options.tabBarBadge}
               colors={colors}
+              ink={ink}
               reducedMotion={reducedMotion}
-              onPress={() => onTabPress(route, isFocused)}
+              onPress={() => {
+                // Haptics stay under Reduce Motion (direction › Motion).
+                if (!isFocused) haptic('select');
+                onTabPress(route, isFocused);
+              }}
             />
           );
         })}
@@ -230,30 +260,17 @@ export function FloatingTabBar({
   );
 }
 
-const styles = (colors: ThemeColors) => StyleSheet.create({
+const s = StyleSheet.create({
   bar: {
-    backgroundColor: colors.background,
-    paddingHorizontal: PILL_INSET,
-    // TikTok gives the bottom bar as little of the screen as it can and hands
-    // the rest to the content. Every pixel trimmed here is a pixel of post.
-    paddingTop: 4,
+    // Docked: full width, no inset, no radius, no shadow (M3 flexible bar).
+    paddingHorizontal: 0,
   },
-  pill: {
+  row: {
+    height: NAV_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    // Opaque by construction — see the component doc.
-    backgroundColor: colors.surface,
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: colors.textPrimary + '14',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    elevation: 14,
+    justifyContent: 'space-around',
+    paddingHorizontal: 4,
   },
   slot: {
     flex: 1,
@@ -263,57 +280,42 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     minWidth: TAB_MIN_TOUCH,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
+    gap: 4,
+    borderRadius: RADII.md,
+  },
+  indicatorWrap: {
+    width: NAV_INDICATOR.width,
+    height: NAV_INDICATOR.height,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   indicator: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 20,
-    backgroundColor: colors.roxy + ACTIVE_TINT_ALPHA,
+    position: 'absolute',
+    height: NAV_INDICATOR.height,
+    borderRadius: RADII.pill,
   },
-  // Fixed width so the badge, which is absolutely positioned inside it, stays
-  // within its parent's bounds — Android clips an overflowing absolute child.
-  iconWrap: { width: 46, height: 28, alignItems: 'center', justifyContent: 'center' },
-  createPlate: {
-    width: 46,
-    height: 32,
-    borderRadius: 11,
+  label: {
+    textAlign: 'center',
+  },
+  dot: {
+    position: 'absolute',
+    top: 3,
+    right: 12,
+    width: UNREAD_DOT,
+    height: UNREAD_DOT,
+    borderRadius: UNREAD_DOT / 2,
+  },
+  createKey: {
+    width: CREATE_KEY.width,
+    height: CREATE_KEY.height,
+    borderRadius: RADII.press,
     alignItems: 'center',
     justifyContent: 'center',
   },
   createPlus: {
-    color: CREATE_INK,
     fontFamily: FONTS.display.bold,
-    fontSize: 21,
-    fontWeight: '700',
-    lineHeight: 21,
+    fontSize: 26,
+    lineHeight: 28,
     marginTop: -1,
-  },
-  label: {
-    fontSize: 10,
-    lineHeight: 12,
-    fontFamily: FONTS.text.semibold,
-    marginTop: 1,
-  },
-  badge: {
-    position: 'absolute',
-    top: -2,
-    left: 24,
-    minWidth: 17,
-    height: 17,
-    paddingHorizontal: 4,
-    borderRadius: 9,
-    backgroundColor: colors.roxy,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.surface,
-  },
-  // The old bar hardcoded `#fff` on `#E81C8E`, which measures 3.19:1. inkOn()
-  // answers 6.85:1 in dark and 5.24:1 in light.
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    lineHeight: 13,
-    fontFamily: FONTS.display.extrabold,
   },
 });

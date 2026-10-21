@@ -183,7 +183,8 @@ export default function TabLayout() {
                 props.navigation.navigate(route.name);
               }
             }}
-            onCreatePress={() => setCreateOpen(true)}
+            onCreatePress={() => setCreateOpen((open) => !open)}
+            createOpen={createOpen}
           />
         )}
       >

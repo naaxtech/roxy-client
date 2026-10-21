@@ -2,10 +2,9 @@ import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { NavIconName } from './NavIcons';
 
 /**
- * The brand ramp, re-exported so the shell's call sites keep reading in the
- * shell's own vocabulary. The array itself now lives in `lib/theme.ts` — the
- * consolidation this comment used to ask for, done by the 3.0 token slice. The
- * values changed with it: the ramp is `#FF5A2E → #F22481 → #E0189A`.
+ * The brand ramp, re-exported for any shell caller still reading it from here.
+ * v2 narrows the gradient to the wordmark and the app icon: the Create key is
+ * a flat `pink` key now and no longer reads this.
  */
 export { BRAND_GRADIENT } from '../../lib/theme';
 
@@ -25,27 +24,42 @@ export { BRAND_GRADIENT } from '../../lib/theme';
 export const TAB_MIN_TOUCH = MIN_TOUCH_TARGET;
 
 /**
- * The floating pill never sits flush with the screen edge — it is inset on all
- * three sides so it reads as an object over the app rather than a bar welded to
- * the chassis. Netflix and Discord both do this; a full-width bar was the thing
- * the peg study argued against.
+ * The M3 Expressive flexible navigation bar (design direction v2 ›
+ * Navigation): docked full width, no shadow, 64 dp plus the bottom inset.
  */
-export const PILL_INSET = 14;
+export const NAV_HEIGHT = 64;
 
-/** Minimum gap under the pill when the device reports no bottom inset at all. */
-export const PILL_MIN_BOTTOM = 12;
+/** Bottom padding when the device reports no inset (web, button-nav Android). */
+export const NAV_MIN_BOTTOM = 12;
 
 /**
- * Alpha, as a hex pair, for the tint behind the active slot.
- *
- * It is not a decorative number. The active label is `colors.roxy` at 11pt, so
- * it needs 4.5:1 against whatever it ends up sitting on — and the tint lightens
- * that surface toward `roxy` itself, which *reduces* the ratio. At `1F` the
- * light theme measures 4.42:1 and fails; at `14` it measures 4.69:1 (dark:
- * 4.97:1). `__tests__/components/nav/FloatingTabBar.test.tsx` composites the
- * tint over both themes and holds the result to the bar.
- *
- * src: https://www.w3.org/TR/WCAG22/#contrast-minimum · SC 1.4.3 · 2026-08-07
+ * The active indicator: a 56 × 32 pill (`pinkContainer`; `stageRaised` on the
+ * Feed) that grows from 32 dp wide on selection — shape morph #2.
+ */
+export const NAV_INDICATOR = { width: 56, height: 32, from: 32 } as const;
+
+/** The Create key: a 52 × 40 `pink` key at the press radius (12). */
+export const CREATE_KEY = { width: 52, height: 40, radius: 12 } as const;
+
+/** The unread mark: an 8 dp `pink` dot. */
+export const UNREAD_DOT = 8;
+
+/**
+ * RETIRED with the floating pill (v2: the bar is docked full width, so there
+ * is no inset). Kept exported for any caller still reading it. Origin: the
+ * Roxy 3.0 shell (`git log -S PILL_INSET`). Superseded 2026-10-21; remove once
+ * nothing imports it.
+ */
+export const PILL_INSET = 0;
+
+/** RETIRED (v2): see `NAV_MIN_BOTTOM`, which took its job. */
+export const PILL_MIN_BOTTOM = NAV_MIN_BOTTOM;
+
+/**
+ * RETIRED (v2): the active slot is no longer a translucent tint of `roxy`
+ * behind the label; it is a solid `pinkContainer` pill behind the icon, whose
+ * pairs `__tests__/theme.contrast.test.ts` holds directly. Kept exported for
+ * any caller still reading it. Superseded 2026-10-21.
  */
 export const ACTIVE_TINT_ALPHA = '14';
 
@@ -76,7 +90,7 @@ export type NavSlot =
 
 /**
  * Whether the active-slot indicator jumps instead of springing. Reduce Motion
- * still has to show the selected slot — only the pop goes away.
+ * still has to show the selected slot — only the motion goes away.
  */
 export function indicatorSnapsInstantly(reducedMotion: boolean): boolean {
   return reducedMotion;

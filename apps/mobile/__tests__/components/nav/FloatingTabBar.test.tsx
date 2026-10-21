@@ -21,9 +21,11 @@ jest.mock('../../../hooks/useReducedMotion', () => ({
 
 import { FloatingTabBar } from '../../../components/nav/FloatingTabBar';
 import {
-  ACTIVE_TINT_ALPHA, indicatorSnapsInstantly, TAB_MIN_TOUCH,
+  indicatorSnapsInstantly, TAB_MIN_TOUCH, NAV_HEIGHT, NAV_INDICATOR, CREATE_KEY,
 } from '../../../components/nav/navTokens';
-import { THEMES, contrastRatio } from '../../../lib/theme';
+import { THEMES, contrastRatio, RADII } from '../../../lib/theme';
+import { FONTS } from '../../../lib/typography';
+import { useThemeStore } from '../../../store/themeStore';
 
 type Route = { key: string; name: string };
 
@@ -48,6 +50,7 @@ function renderBar(overrides: {
   descriptors?: Record<string, { options: { tabBarBadge?: number | string } }>;
   onTabPress?: jest.Mock;
   onCreatePress?: jest.Mock;
+  createOpen?: boolean;
 } = {}) {
   const onTabPress = overrides.onTabPress ?? jest.fn();
   const onCreatePress = overrides.onCreatePress ?? jest.fn();
@@ -56,21 +59,29 @@ function renderBar(overrides: {
     Object.fromEntries(ROUTES.map((r) => [r.key, { options: {} }]));
   const utils = render(
     <FloatingTabBar
-      state={{ index: overrides.index ?? 0, routes: ROUTES }}
+      state={{ index: overrides.index ?? 1, routes: ROUTES }}
       descriptors={descriptors}
       onTabPress={onTabPress}
       onCreatePress={onCreatePress}
+      createOpen={overrides.createOpen}
     />
   );
   return { ...utils, onTabPress, onCreatePress };
 }
 
 const flat = (node: { props: { style?: unknown } }) =>
-  StyleSheet.flatten(node.props.style as never) as Record<string, number | string>;
+  StyleSheet.flatten(node.props.style as never) as Record<string, unknown>;
+
+type HostNode = { props: Record<string, unknown>; findAll: (p: (n: HostNode) => boolean) => HostNode[] };
+
+/** The icon's colour: the stroke of its first stroked shape. */
+const iconColor = (node: unknown) =>
+  (node as HostNode).findAll((n) => typeof n.props.stroke === 'string')[0]?.props.stroke;
 
 beforeEach(() => {
   mockInsets.mockReturnValue({ top: 0, bottom: 34, left: 0, right: 0 });
-  mockReducedMotion.mockReturnValue(false);
+  mockReducedMotion.mockReturnValue(true);
+  useThemeStore.setState({ theme: 'light' });
 });
 
 describe('FloatingTabBar', () => {
@@ -85,11 +96,14 @@ describe('FloatingTabBar', () => {
     ]);
   });
 
-  it('labels every slot — icon-only navigation fails a first-timer', () => {
-    const { getByText } = renderBar();
-    for (const label of ['Feed', 'Discover', 'Create', 'Messages', 'You']) {
+  // v2 (direction › Navigation): labels are always shown on the four routes;
+  // Create is the pink key and "its 'Create' label is for screen readers".
+  it('labels every route slot, and names the Create key for screen readers', () => {
+    const { getByText, getByTestId } = renderBar();
+    for (const label of ['Feed', 'Discover', 'Messages', 'You']) {
       expect(getByText(label)).toBeTruthy();
     }
+    expect(getByTestId('nav-slot-create').props.accessibilityLabel).toBe('Create');
   });
 
   it('draws no slot for a route the redesign dissolved, even though it is still registered', () => {
@@ -102,7 +116,7 @@ describe('FloatingTabBar', () => {
     }
   });
 
-  it('gives every slot a real 44pt touch target rather than hitSlop', () => {
+  it('gives every slot a real 48 dp touch target rather than hitSlop', () => {
     const { getAllByTestId } = renderBar();
     const slots = getAllByTestId(/^nav-slot-/);
     expect(slots).toHaveLength(5);
@@ -115,7 +129,7 @@ describe('FloatingTabBar', () => {
   });
 
   it('routes Discover at the discover folder, whatever the folder used to mean', () => {
-    const { getByTestId, onTabPress } = renderBar();
+    const { getByTestId, onTabPress } = renderBar({ index: 0 });
     fireEvent.press(getByTestId('nav-slot-discover'));
     expect(onTabPress).toHaveBeenCalledWith({ key: 'discover-1', name: 'discover' }, false);
   });
@@ -145,29 +159,10 @@ describe('FloatingTabBar', () => {
     expect(getByTestId('nav-slot-feed').props.accessibilityState).toEqual({ selected: false });
   });
 
-  it('keeps the pill fill fully opaque so it stays legible over an arbitrary photo', () => {
+  it('keeps the bar fill fully opaque so it stays legible over an arbitrary photo', () => {
     const { getByTestId } = renderBar();
     const bg = String(flat(getByTestId('nav-pill')).backgroundColor);
     expect(bg).toMatch(/^#[0-9a-fA-F]{6}$/);
-  });
-
-  // The create plate carries WHITE, not inkOn()'s dark ink. That is a brand
-  // decision made by the brand owner on 2026-08-07 after seeing dark ink on the
-  // gradient plates: it read as heavy and wrong against the rest of the app.
-  //
-  // The cost is recorded here rather than lost. The glyph is an icon, so the bar
-  // is WCAG 2.2 SC 1.4.11 non-text contrast at 3:1, not 4.5:1. White measures
-  // 4.21:1 on #E81C8E and 3.56:1 on #FF2F71 — both pass 3:1 — and 2.86:1 on
-  // #FF6A2E, which does not. The glyph sits centred, so it renders over the
-  // middle stop rather than the orange end.
-  //
-  // If this needs to satisfy 3:1 at every stop, the fix is NOT dark ink: it is
-  // BRAND_VEIL (rgba(26,10,46,0.42), already in feedChromeTokens), which takes
-  // white on #FF6A2E to 6.38:1 while keeping the ink white.
-  // src: https://www.w3.org/TR/WCAG22/#non-text-contrast · read 2026-08-06
-  it('carries white ink on the create plate, per the brand decision', () => {
-    const { getByTestId } = renderBar();
-    expect(flat(getByTestId('nav-create-icon')).color).toBe('#fff');
   });
 
   it('clears the home indicator using the live safe-area inset, not a constant', () => {
@@ -182,11 +177,17 @@ describe('FloatingTabBar', () => {
     expect(padding).toBeGreaterThanOrEqual(12);
   });
 
-  it('renders a tab badge from the navigator options', () => {
+  // v2: "unread is an 8 dp pink dot". The count is not lost: it is the dot's
+  // accessibility label, so a screen reader still hears how many.
+  it('renders the unread badge as an 8 dp pink dot that still announces the count', () => {
     const descriptors = Object.fromEntries(ROUTES.map((r) => [r.key, { options: {} }]));
     descriptors['messages-1'] = { options: { tabBarBadge: 7 } };
     const { getByTestId, queryByTestId } = renderBar({ descriptors });
-    expect(getByTestId('nav-badge-messages')).toHaveTextContent('7');
+    const dot = getByTestId('nav-badge-messages');
+    expect(flat(dot).width).toBe(8);
+    expect(flat(dot).height).toBe(8);
+    expect(flat(dot).backgroundColor).toBe(THEMES.light.pink);
+    expect(dot.props.accessibilityLabel).toBe('7 unread');
     expect(queryByTestId('nav-badge-feed')).toBeNull();
   });
 
@@ -194,35 +195,102 @@ describe('FloatingTabBar', () => {
     expect(indicatorSnapsInstantly(false)).toBe(false);
     expect(indicatorSnapsInstantly(true)).toBe(true);
   });
+});
 
-  // The active tint lightens the surface toward `roxy`, which is the colour the
-  // active label is painted in — so raising the tint lowers the ratio. At 1F the
-  // light theme lands on 4.42:1. Composite it and hold both themes to the bar.
-  it.each(['dark', 'light'] as const)(
-    'keeps the active label at 4.5:1 once the indicator tint is composited (%s)',
-    (theme) => {
-      const { roxy, surface } = THEMES[theme];
-      const alpha = parseInt(ACTIVE_TINT_ALPHA, 16) / 255;
-      const channels = (hex: string) =>
-        [0, 2, 4].map((i) => parseInt(hex.replace('#', '').slice(i, i + 2), 16));
-      const [fr, fg, fb] = channels(roxy);
-      const [br, bg, bb] = channels(surface);
-      const mix = (f: number, b: number) => Math.round(b + (f - b) * alpha);
-      const composited =
-        '#' + [mix(fr, br), mix(fg, bg), mix(fb, bb)]
-          .map((v) => v.toString(16).padStart(2, '0'))
-          .join('');
+/** Design direction v2 › Navigation: the M3 Expressive flexible navigation bar. */
+describe('FloatingTabBar — M3 flexible navigation bar (v2)', () => {
+  it('is docked full width on ground with no shadow, 64 dp tall plus the inset', () => {
+    const { getByTestId } = renderBar();
+    const bar = flat(getByTestId('nav-bar'));
+    expect(bar.backgroundColor).toBe(THEMES.light.ground);
+    expect(bar.paddingHorizontal ?? 0).toBe(0);
+    expect(bar.shadowOpacity ?? 0).toBe(0);
+    expect(bar.elevation ?? 0).toBe(0);
+    const row = flat(getByTestId('nav-pill'));
+    expect(row.height).toBe(NAV_HEIGHT);
+    expect(NAV_HEIGHT).toBe(64);
+    expect(row.borderRadius ?? 0).toBe(0);
+    expect(row.shadowOpacity ?? 0).toBe(0);
+  });
 
-      expect(contrastRatio(roxy, composited)).toBeGreaterThanOrEqual(4.5);
-    }
-  );
+  it('marks the active slot with a 56 × 32 pinkContainer pill and an onPinkContainer icon', () => {
+    const { getByTestId, queryByTestId } = renderBar({ index: 1 });
+    const pill = flat(getByTestId('nav-indicator-discover'));
+    expect(pill.backgroundColor).toBe(THEMES.light.pinkContainer);
+    expect(pill.width).toBe(NAV_INDICATOR.width);
+    expect(pill.height).toBe(NAV_INDICATOR.height);
+    expect(NAV_INDICATOR).toEqual({ width: 56, height: 32, from: 32 });
+    expect(pill.borderRadius).toBe(RADII.pill);
+    expect(iconColor(getByTestId('nav-icon-discover'))).toBe(THEMES.light.onPinkContainer);
+    expect(queryByTestId('nav-indicator-you')).toBeNull();
+  });
 
-  // The inactive label carries the other four fifths of the bar's copy.
-  it.each(['dark', 'light'] as const)(
-    'keeps the inactive label at 4.5:1 on the pill fill (%s)',
-    (theme) => {
-      const { textMuted, surface } = THEMES[theme];
-      expect(contrastRatio(textMuted, surface)).toBeGreaterThanOrEqual(4.5);
-    }
-  );
+  it('labels at 12/16: active emphasized (600) in ink, inactive 500 in ink2', () => {
+    const { getByText } = renderBar({ index: 1 });
+    const active = flat(getByText('Discover'));
+    const idle = flat(getByText('You'));
+    expect(active.fontSize).toBe(12);
+    expect(active.lineHeight).toBe(16);
+    expect(active.color).toBe(THEMES.light.ink);
+    expect(active.fontFamily).toBe(FONTS.text.semibold);
+    expect(idle.color).toBe(THEMES.light.ink2);
+    expect(idle.fontFamily).toBe(FONTS.text.medium);
+  });
+
+  it('takes the stage colours on the Feed: stage ground, stageRaised pill, white active, dark ink2 idle', () => {
+    const { getByTestId, getByText } = renderBar({ index: 0 });
+    expect(flat(getByTestId('nav-bar')).backgroundColor).toBe(THEMES.light.stage);
+    expect(flat(getByTestId('nav-pill')).backgroundColor).toBe(THEMES.light.stage);
+    expect(flat(getByTestId('nav-indicator-feed')).backgroundColor).toBe(THEMES.light.stageRaised);
+    expect(iconColor(getByTestId('nav-icon-feed'))).toBe('#FFFFFF');
+    expect(flat(getByText('Feed')).color).toBe('#FFFFFF');
+    expect(flat(getByText('You')).color).toBe(THEMES.dark.ink2);
+  });
+
+  it('draws Create as a 52 × 40 pink key, radius 12, with an onPink plus', () => {
+    const { getByTestId } = renderBar();
+    const key = flat(getByTestId('nav-create-key'));
+    expect(key.width).toBe(CREATE_KEY.width);
+    expect(key.height).toBe(CREATE_KEY.height);
+    expect(CREATE_KEY).toEqual({ width: 52, height: 40, radius: 12 });
+    expect(key.borderRadius).toBe(RADII.press);
+    expect(key.backgroundColor).toBe(THEMES.light.pink);
+    expect(flat(getByTestId('nav-create-icon')).color).toBe(THEMES.light.onPink);
+  });
+
+  it('uses the dark roles in dark: pink key with the dark onPink plus, dark pinkContainer pill', () => {
+    useThemeStore.setState({ theme: 'dark' });
+    const { getByTestId } = renderBar({ index: 1 });
+    expect(flat(getByTestId('nav-bar')).backgroundColor).toBe(THEMES.dark.ground);
+    expect(flat(getByTestId('nav-create-key')).backgroundColor).toBe(THEMES.dark.pink);
+    expect(flat(getByTestId('nav-create-icon')).color).toBe(THEMES.dark.onPink);
+    expect(flat(getByTestId('nav-indicator-discover')).backgroundColor).toBe(THEMES.dark.pinkContainer);
+  });
+
+  it('turns the plus 45° into a close × while the Create sheet is open', () => {
+    const closed = renderBar({ createOpen: false });
+    const rotateOf = (node: { props: { style?: unknown } }) =>
+      ((flat(node).transform ?? []) as Record<string, unknown>[]).map((t) => t.rotate).filter(Boolean);
+    expect(rotateOf(closed.getByTestId('nav-create-glyph'))).toEqual(['0deg']);
+    closed.unmount();
+    const open = renderBar({ createOpen: true });
+    expect(rotateOf(open.getByTestId('nav-create-glyph'))).toEqual(['45deg']);
+    expect(open.getByTestId('nav-slot-create').props.accessibilityLabel).toBe('Close create menu');
+  });
+
+  // The direction's measured pairs for the bar, held here so the bar cannot
+  // drift from them.
+  it.each(['light', 'dark'] as const)('keeps its labels and marks legible (%s)', (theme) => {
+    const c = THEMES[theme];
+    expect(contrastRatio(c.ink, c.ground)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(c.ink2, c.ground)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(c.onPinkContainer, c.pinkContainer)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(c.onPink, c.pink)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(c.pink, c.ground)).toBeGreaterThanOrEqual(3);
+  });
+
+  it('keeps its stage labels legible on the Feed', () => {
+    expect(contrastRatio('#FFFFFF', THEMES.light.stageRaised)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(THEMES.dark.ink2, THEMES.light.stage)).toBeGreaterThanOrEqual(4.5);
+  });
 });
