@@ -411,3 +411,17 @@ Times are CST. One browser context per run, sequential pages, 8 sign-ins in tota
 - M020 (pending gate shown to an approved member) happened in this window too and may be the client's fail-closed reaction to slow profile loads.
 
 No row was left unverified because of the outage: every **C** row is code-only for an account, write or platform reason given in its Notes.
+
+## Orchestrator additions (Nicole decisions, 2026-10-21)
+
+Rows added from `decisions.md`, not from the crawl. Status is from a code search on main 06e404d.
+
+| id | feature | route(s) | primary action | role | status | notes |
+|---|---|---|---|---|---|---|
+| M173 | Roxy AI on/off switch | `/you/settings` | toggle | member | missing | The floating Roxy button (`components/ui/RoxyCompanionButton.tsx`) is only hidden on the routes in `FAB_SUPPRESSED_ON` (`app/(tabs)/_layout.tsx`); there is no member setting |
+| M174 | Language setting and localisation | `/you/settings` + every screen | pick language | everyone | missing | `expo-localization` ~15.0.3 is installed, but there is no i18n library, string catalogue or language picker; copy is hardcoded English. Worldwide launch |
+| M175 | Discreet mode in Messages | `/messages`, `/chat/[id]` | toggle | premium member | missing | Premium feature (Nicole). Hides previews, names and community names inside the app |
+| M176 | Roxy premium membership (gate for discreet mode) | `/you` (TBD) | upgrade | member | missing | No premium tier, entitlement or paywall in code (Stripe is used only for orders/tickets/donations). Store rules apply to in-app digital subscriptions on iOS/Android |
+| M177 | Reactions are the regular emoji set; no flower reaction or count | feed rail, post detail, chat | react | member | partial | `lib/postReactions.ts` already shares 6 emoji with chat; the flower/like code (`components/feed/DoubleTapLike.tsx`, `LikeBurst.tsx`, `FirstPostCelebration.tsx`, `PostActionRow.tsx`) must be retired (commented, not deleted) |
+
+M015 note: Nicole named her "Roxy AI" (2026-10-21), so the onboarding line that calls her AI is no longer a copy defect; it still needs the new voice.

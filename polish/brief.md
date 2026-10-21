@@ -16,7 +16,7 @@ Most WLW spaces are either dating apps (you leave when you match) or general soc
 ## Product invariants (non-negotiable for every agent)
 - Nav: Feed · Discover · ＋Create (a sheet, not a route) · Messages · You.
 - Feature parity: features move or merge, never disappear.
-- In-app persona Roxy is a "wingwoman"; never call her AI, assistant or chatbot. Sister is the quieter companion.
+- Roxy AI is the emotional AI companion, sister to the Roxy app, reached from the omnipresent floating Roxy button; members can switch her on or off in Settings. Sister is the quieter companion. Dating is opt-in.
 - Safety first: block/mute/report on every surface, request-first DMs, LIVE = dot + word, deliberate loading/empty/error states, never log PII.
 - Privacy outside the app: a push, lock screen or share preview never shows message text or a community, channel or event name by default, because that can out someone.
 
