@@ -1,0 +1,18 @@
+apps/mobile/__tests__/screens/SettingsChat.test.tsx
+  h_0549c11fec2ab0 46-50,63,69,78,87,94,97
+apps/mobile/__tests__/screens/SettingsRoxy.test.tsx
+  h_0549c11fec2ab0 1-204
+apps/mobile/app/(tabs)/you/settings.tsx
+  h_0549c11fec2ab0 3,25-26,30-55,58-70,84,90-93,109-128,151-155,157,165,167,170-189,191-197,199-237,239-274,276,280,282-334,337,339,345,356,362,380,383,412,415,417-418,424,428,430-431,433,435-436,438,443-448,450,461-463,469,471-478,487,496,505-507,520,522-531,541-550,552,556-559,562-563,568-570,572-574,581,583,586-588,590-591,593-605,607-618,622,624-625
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3e7c6477351b016d62899b93b49d51ccdb910244",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
