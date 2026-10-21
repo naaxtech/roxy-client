@@ -137,6 +137,9 @@ export function onListScroll(e: NativeSyntheticEvent<NativeScrollEvent>): void {
 /** How often a list reports its scroll to `onListScroll` (ms). */
 export const LIST_SCROLL_THROTTLE = 16;
 
+/** The one sentence when she switches Roxy AI off (design direction v2 › Copy voice). */
+export const ROXY_OFF_COPY = 'Roxy AI is off. The round button is gone from your screens.';
+
 /**
  * Whether the Roxy AI button shows (the tabs layout's call): the tier has the
  * companion, she has Roxy AI switched on — and that choice is HERS, already

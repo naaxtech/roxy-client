@@ -12,8 +12,9 @@ import { SPRING, runSpring } from '../../lib/motion';
 import { TYPE, emphasized } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
-import { PressableScale, TouchableOpacity } from '../ui/PressableScale';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { RoxyO } from './RoxyO';
+import { RoxyChip } from './RoxyChip';
 import { HELLO_SUGGESTIONS, greetingFor, sendToRoxy } from './roxyConversation';
 
 /** The avatar on the sheet's top edge (the FAB's 56 dp O grows into it). */
@@ -224,18 +225,7 @@ export function HelloRoxySheet({
 
           <View style={s.chips}>
             {HELLO_SUGGESTIONS.map((text) => (
-              <PressableScale
-                key={text}
-                testID={`hello-roxy-chip-${text}`}
-                onPress={() => void send(text)}
-                accessibilityRole="button"
-                accessibilityLabel={text}
-                style={({ pressed }) => [s.chip, { backgroundColor: pressed ? colors.pinkContainer : colors.raised }]}
-              >
-                {({ pressed }) => (
-                  <Text style={[s.chipLabel, { color: pressed ? colors.onPinkContainer : colors.ink }]}>{text}</Text>
-                )}
-              </PressableScale>
+              <RoxyChip key={text} testID={`hello-roxy-chip-${text}`} label={text} onPress={() => void send(text)} />
             ))}
           </View>
 
@@ -320,14 +310,6 @@ const s = StyleSheet.create({
   greeting: { ...TYPE.headline },
   intro: { ...TYPE.body, marginTop: SPACE[2] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE[1], marginTop: SPACE[4] },
-  chip: {
-    minHeight: MIN_TOUCH_TARGET,
-    paddingHorizontal: MARGIN,
-    borderRadius: RADII.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipLabel: { ...TYPE.label },
   composer: {
     marginTop: SPACE[6],
     minHeight: MIN_TOUCH_TARGET + SPACE[1],
