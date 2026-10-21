@@ -1,4 +1,4 @@
-Status: PROPOSED v2 — awaiting Nicole's approval
+Status: APPROVED v2 by Nicole on 2026-10-21 ("deploy them to the code and site right away"). Locked; changes go through `polish/decisions.md`.
 
 # Design Direction — Roxy (v2)
 
