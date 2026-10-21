@@ -1,0 +1,16 @@
+apps/mobile/__tests__/screens/DiscoverFabLane.test.tsx
+  h_0549c11fec2ab0 1-65
+apps/mobile/app/(tabs)/discover/index.tsx
+  h_0549c11fec2ab0 15-16,248-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ec9a496ca9d587faba4b09c0b305a301c7156f5",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
