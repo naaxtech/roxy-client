@@ -1,10 +1,16 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import { render, fireEvent, within } from '@testing-library/react-native';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 
+import { Text } from 'react-native';
 import { MessagesInbox } from '../../../components/messages/MessagesInbox';
+import { THEMES } from '../../../lib/theme';
+
+const flat = (node: { props: { style?: unknown } }) =>
+  StyleSheet.flatten(node.props.style as never) as Record<string, number | string>;
 
 const aDm = {
   id: 'dm1',
@@ -13,6 +19,14 @@ const aDm = {
   partner: { id: 'u2', display_name: 'Priya Shah', username: 'priya' },
   lastMessagePreview: 'save me a seat',
   unreadCount: 1,
+};
+
+const aReadDm = {
+  ...aDm,
+  id: 'dm2',
+  partner: { id: 'u3', display_name: 'Sofía Marín', username: 'sofia' },
+  lastMessagePreview: 'You: haha same',
+  unreadCount: 0,
 };
 
 const aCommunity = {
@@ -42,13 +56,20 @@ const renderInbox = (
     />,
   );
 
-describe('MessagesInbox — Direct and Community are two lists', () => {
-  it('labels both sections the way the prototype does', () => {
+describe('MessagesInbox — people and Communities are two lists', () => {
+  it('labels the Communities group in sentence case, no caps eyebrows', () => {
     const view = renderInbox();
     expect(view.getByTestId('inbox-section-direct')).toBeTruthy();
     expect(view.getByTestId('inbox-section-community')).toBeTruthy();
-    expect(view.getByText('DIRECT')).toBeTruthy();
-    expect(view.getByText('COMMUNITY CHATS')).toBeTruthy();
+    expect(view.getByText('Communities')).toBeTruthy();
+    expect(view.queryByText('DIRECT')).toBeNull();
+    expect(view.queryByText('COMMUNITY CHATS')).toBeNull();
+  });
+
+  it('opens the people list with the screen’s Requests row', () => {
+    const view = renderInbox({ directHeader: <Text testID="requests-row-stub">Requests</Text> });
+    const section = within(view.getByTestId('inbox-section-direct'));
+    expect(section.getByTestId('requests-row-stub')).toBeTruthy();
   });
 
   it('still shows Community chats when there are no private messages', () => {
@@ -58,16 +79,39 @@ describe('MessagesInbox — Direct and Community are two lists', () => {
     expect(view.getByTestId('inbox-section-community')).toBeTruthy();
     expect(view.getByTestId('inbox-community-c1')).toBeTruthy();
     expect(view.getByText('WLW London')).toBeTruthy();
-    expect(view.queryByText('No messages yet')).toBeNull();
     expect(view.getByTestId('inbox-direct-empty')).toBeTruthy();
+    expect(
+      view.getByText('No messages yet. When someone writes, it waits here as a request until you say yes.'),
+    ).toBeTruthy();
   });
 
-  it('paints a community row differently from a private one', () => {
+  it('draws skeleton rows while the first load runs, not a spinner', () => {
+    const view = renderInbox({ chats: [], loading: true });
+    expect(view.getByTestId('inbox-direct-loading')).toBeTruthy();
+    expect(view.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
+  it('gives a community a crest squircle with its initials and no caps channel pill', () => {
     const view = renderInbox();
-    expect(view.getByTestId('inbox-dm-dm1')).toBeTruthy();
-    expect(view.getByTestId('inbox-community-c1')).toBeTruthy();
-    expect(view.getByText('4 CHANNELS')).toBeTruthy();
+    const row = view.getByTestId('inbox-community-c1');
+    expect(within(row).getByText('WL')).toBeTruthy();
+    expect(view.queryByText('4 CHANNELS')).toBeNull();
+    expect(String(row.props.accessibilityLabel)).toMatch(/4 channels/);
     expect(view.getByText('#general · Tasha: I can do a cab-share from Soho')).toBeTruthy();
+  });
+
+  it('marks an unread row with a pink dot and the emphasized preview; read rows stay quiet', () => {
+    const view = renderInbox({ chats: [aDm, aReadDm], unreadCounts: {} });
+    const dot = view.getByTestId('inbox-unread-dm1');
+    expect(flat(dot).backgroundColor).toBe(THEMES.light.pink);
+    expect(view.queryByTestId('inbox-unread-dm2')).toBeNull();
+    const unreadPreview = flat(view.getByText('save me a seat'));
+    const readPreview = flat(view.getByText('You: haha same'));
+    expect(unreadPreview.color).toBe(THEMES.light.ink);
+    expect(readPreview.color).toBe(THEMES.light.ink2);
+    expect(unreadPreview.fontFamily).not.toBe(readPreview.fontFamily);
+    // The count is spoken, not painted.
+    expect(String(view.getByTestId('inbox-dm-dm1').props.accessibilityLabel)).toMatch(/1 unread/);
   });
 
   it('opens the right kind of chat from each section', () => {

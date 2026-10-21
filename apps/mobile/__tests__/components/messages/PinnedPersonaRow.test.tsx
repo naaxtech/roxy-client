@@ -6,19 +6,21 @@ jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 
 import { PinnedPersonaRow } from '../../../components/messages/PinnedPersonaRow';
+import { THEMES } from '../../../lib/theme';
 
 const flat = (node: { props: { style?: unknown } }) =>
   StyleSheet.flatten(node.props.style as never) as Record<string, number | string>;
 
 /**
- * Roxy and Sister do very different jobs — one hypes you up about a date, the
- * other holds the days that are not going well — and they sit next to each
- * other in the inbox. Confusing them is not a cosmetic bug.
+ * Roxy AI and Sister do very different jobs — Roxy AI is the emotional
+ * companion, Sister holds the days that are not going well — and they sit next
+ * to each other at the top of Messages (v2 board v2-06). Confusing them is not
+ * a cosmetic bug.
  *
  * So the assertions below are about telling them apart WITHOUT colour, and
  * about Sister never acquiring a score.
  */
-describe('the two pinned personas', () => {
+describe('the two pinned rows', () => {
   it('names its purpose in the accessibility label, not just on screen', () => {
     const roxy = render(<PinnedPersonaRow persona="roxy" onPress={jest.fn()} />);
     const sister = render(<PinnedPersonaRow persona="sister" onPress={jest.fn()} />);
@@ -26,18 +28,26 @@ describe('the two pinned personas', () => {
     const roxyLabel = String(roxy.getByTestId('persona-row-roxy').props.accessibilityLabel);
     const sisterLabel = String(sister.getByTestId('persona-row-sister').props.accessibilityLabel);
 
-    expect(roxyLabel).toMatch(/wingwoman/i);
+    expect(roxyLabel).toMatch(/Roxy AI/);
+    expect(roxyLabel).toMatch(/companion/i);
     expect(sisterLabel).toMatch(/private/i);
     expect(roxyLabel).not.toBe(sisterLabel);
   });
 
-  it('never calls Roxy an AI, an assistant or a chatbot', () => {
-    const { getByTestId } = render(<PinnedPersonaRow persona="roxy" onPress={jest.fn()} />);
+  /**
+   * Since 2026-10-21 (Nicole) her name is "Roxy AI" and the copy may say so.
+   * The banned words stay banned: she is never an assistant, a chatbot, "ask
+   * me anything" or "always on".
+   */
+  it('calls her Roxy AI and never an assistant, a chatbot or "always on"', () => {
+    const { getByTestId, getByText } = render(<PinnedPersonaRow persona="roxy" onPress={jest.fn()} />);
+    expect(getByText('Roxy AI')).toBeTruthy();
     const label = String(getByTestId('persona-row-roxy').props.accessibilityLabel);
-    expect(label).not.toMatch(/\b(AI|assistant|chatbot|bot)\b/i);
+    expect(label).not.toMatch(/assistant|chatbot|\bbot\b|ask me anything|always on|wingwoman/i);
+    expect(getByText('Only you see this chat.')).toBeTruthy();
   });
 
-  it('gives them different shapes — a gradient ring is not a plain plate', () => {
+  it('gives them different marks — her pink circle is not Sister’s quiet plate', () => {
     const roxy = render(<PinnedPersonaRow persona="roxy" onPress={jest.fn()} />);
     const sister = render(<PinnedPersonaRow persona="sister" onPress={jest.fn()} />);
 
@@ -45,16 +55,25 @@ describe('the two pinned personas', () => {
     expect(roxy.queryByTestId('persona-sister-plate')).toBeNull();
     expect(sister.queryByTestId('persona-sister-plate')).not.toBeNull();
     expect(sister.queryByTestId('persona-roxy-ring')).toBeNull();
+    expect(flat(roxy.getByTestId('persona-roxy-ring')).backgroundColor).toBe(THEMES.light.pink);
+    expect(flat(sister.getByTestId('persona-sister-plate')).backgroundColor).toBe(THEMES.light.sister);
   });
 
-  it('gives them different type weight, so the difference survives greyscale', () => {
+  it('tells them apart in greyscale: her initial and line vs Sister’s plain disc and line', () => {
     const roxy = render(<PinnedPersonaRow persona="roxy" onPress={jest.fn()} />);
     const sister = render(<PinnedPersonaRow persona="sister" onPress={jest.fn()} />);
+    // Her mark carries a letter; Sister's disc carries nothing.
+    expect(roxy.getByTestId('persona-roxy-initial').props.children).toBe('R');
+    expect(sister.queryByTestId('persona-roxy-initial')).toBeNull();
+    expect(sister.getByText('Just for you. Nothing leaves here.')).toBeTruthy();
+  });
 
-    const roxyName = flat(roxy.getByTestId('persona-name-roxy'));
-    const sisterName = flat(sister.getByTestId('persona-name-sister'));
-
-    expect(roxyName.fontSize).not.toBe(sisterName.fontSize);
+  it('wears no caps pill and no emoji in its chrome', () => {
+    for (const persona of ['roxy', 'sister'] as const) {
+      const view = render(<PinnedPersonaRow persona={persona} onPress={jest.fn()} />);
+      expect(view.queryByText(/^[A-Z ]{4,}$/)).toBeNull();
+      expect(view.queryByText(/\p{Extended_Pictographic}/u)).toBeNull();
+    }
   });
 
   /**
@@ -63,14 +82,23 @@ describe('the two pinned personas', () => {
    * that could put a number there, and this asserts none appears.
    */
   it('puts no gamification anywhere near Sister', () => {
-    const { queryByText, getByTestId } = render(
-      <PinnedPersonaRow persona="sister" onPress={jest.fn()} />
+    const { queryByText, getByTestId, queryByTestId } = render(
+      <PinnedPersonaRow persona="sister" onPress={jest.fn()} unread />
     );
     for (const forbidden of [/streak/i, /\bXP\b/i, /points/i, /badge/i, /level/i, /\d+\s*day/i]) {
       expect(queryByText(forbidden)).toBeNull();
     }
     const label = String(getByTestId('persona-row-sister').props.accessibilityLabel);
     expect(label).toMatch(/nothing here is shared, scored or saved/i);
+    // Not even an unread dot: Sister never asks for attention.
+    expect(queryByTestId('persona-unread-sister')).toBeNull();
+  });
+
+  it('shows her unread dot only when she has written', () => {
+    const quiet = render(<PinnedPersonaRow persona="roxy" onPress={jest.fn()} />);
+    expect(quiet.queryByTestId('persona-unread-roxy')).toBeNull();
+    const unread = render(<PinnedPersonaRow persona="roxy" onPress={jest.fn()} unread />);
+    expect(flat(unread.getByTestId('persona-unread-roxy')).backgroundColor).toBe(THEMES.light.pink);
   });
 
   it('opens on press', () => {
