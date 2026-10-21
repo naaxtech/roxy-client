@@ -1,0 +1,25 @@
+apps/mobile/__tests__/components/feedStageContrast.test.ts
+  s_37deb30b6489aa::t_7ea4ec4f3f66f6 39-47
+apps/mobile/components/feed/feedChromeTokens.ts
+  s_37deb30b6489aa::t_77712cf68dc37d 131-150
+apps/mobile/components/feed/stageColors.ts
+  s_37deb30b6489aa::t_3d4ebc1bed4a1f 7,11-13,18,20-21,23-28,31-34
+apps/mobile/lib/theme.ts
+  s_37deb30b6489aa::t_d2c749e3914c82 4-9,13-28,30-31,33-34,37-40,42-100,102-104,106-107,109,111,113,115,117,119,121-125,127,129,131,133,135,137-141,148,150-152,154,156,162-164,171-172,175-193,197-202,204,207-231,234-235,237-238,241,243,245,283-287,300,302-306,308,349-351,353-458,461-462,466-467,470-475
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f069ae41c9dc780c5f0727c8fb945b46d496910",
+  "prompts": {},
+  "sessions": {
+    "s_37deb30b6489aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "791c066c-b99f-499a-832d-4bb799f2daf9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
