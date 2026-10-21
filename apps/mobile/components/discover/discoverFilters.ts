@@ -18,14 +18,15 @@
 export type DiscoverChip = 'all' | 'archive' | 'events' | 'shops' | 'live' | 'comms' | 'games';
 
 export const DISCOVER_CHIPS: { key: DiscoverChip; label: string }[] = [
-  { key: 'all', label: 'All' },
-  // Second, right after All. The Archive is the one surface a pending member
-  // can use, so it must be reachable before she has joined anything.
-  { key: 'archive', label: 'Archive' },
+  // v2 order and words (design direction › Discover): For you · Events ·
+  // Communities · Archive · Shops · Live · Games. The key stays `all` so
+  // links, tests and e2e selectors (`discover-chips-all`) keep working.
+  { key: 'all', label: 'For you' },
   { key: 'events', label: 'Events' },
+  { key: 'comms', label: 'Communities' },
+  { key: 'archive', label: 'Archive' },
   { key: 'shops', label: 'Shops' },
   { key: 'live', label: 'Live' },
-  { key: 'comms', label: 'Communities' },
   { key: 'games', label: 'Games' },
 ];
 
@@ -107,7 +108,8 @@ export type EconomyFilter = 'all' | 'saved' | 'wlw' | 'impact' | 'support';
 export const ECONOMY_FILTERS: { key: EconomyFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'saved', label: 'Saved' },
-  { key: 'wlw', label: '✿ WLW only' },
+  // v2: no flower glyph anywhere (Nicole 2026-10-21); was '✿ WLW only'.
+  { key: 'wlw', label: 'WLW-owned' },
   { key: 'impact', label: 'Impact' },
   { key: 'support', label: 'Support' },
 ];

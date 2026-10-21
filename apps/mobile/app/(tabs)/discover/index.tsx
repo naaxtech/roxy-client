@@ -6,11 +6,12 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { useAppWidth } from '../../../hooks/useAppWidth';
 import { useAuthStore } from '../../../store/authStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useBuildStore } from '../../../store/buildStore';
-import { TYPE, FONTS } from '../../../lib/typography';
-import { RADII, type ThemeColors } from '../../../lib/theme';
+import { TYPE } from '../../../lib/typography';
+import { RADII, SPACE, MARGIN, type ThemeColors } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { formatMoney } from '../../../lib/currency';
 import { isPlayableGameUrl } from '../../../lib/gameUrl';
@@ -21,9 +22,10 @@ import { ArchiveRail } from '../../../components/archive/ArchiveRail';
 import { fetchArchiveEntries, type ArchiveEntry } from '../../../lib/archive';
 import { archiveDetailPath } from '../../../lib/contentNavigation';
 import { FilterChips } from '../../../components/discover/FilterChips';
-import { PosterCard, RowCard, HeroCard } from '../../../components/discover/DiscoverCards';
+import {
+  EventPoster, CommunityRow, LiveRow, ListRow, MemberCard, TileCard, type JoinState,
+} from '../../../components/discover/DiscoverCards';
 import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayCard';
-import { eventModeLabel } from '../../../components/events/EventModeBadge';
 import {
   DISCOVER_CHIPS, EVENT_FILTERS, ECONOMY_FILTERS,
   discoverLayout, railVisible, eventMatchesFilter, economyKind, economyWlwOnly, economySavedOnly,
@@ -36,29 +38,58 @@ import {
 import { FeatureGate } from '../../../components/features/FeatureGate';
 import { officialFirst } from '../../../lib/officialGrant';
 
+/** Header icons: 24 dp outlines. */
+const ICON = 24;
+/** The search pill (direction › Discover: "a 52 dp pill search field on raised"). */
+const SEARCH_HEIGHT = 52;
+/** Rails show two full cards plus a peek (direction › FAB lane). */
+const CARDS_PER_VIEW = 2.4;
+/** Rows shown under For you before "See all". */
+const COMMUNITY_ROWS = 3;
+
+type EventMode = 'online' | 'in_person' | 'hybrid';
+
+/** The event's mode in words — sentence case, and a hybrid event says both. */
+function modeWords(mode: EventMode): string {
+  if (mode === 'online') return 'Online';
+  if (mode === 'hybrid') return 'In person and online';
+  return 'In person';
+}
+
+/** "2,310 members" — tabular, grouped by the device locale. */
+function membersLine(count: number): string {
+  const n = Math.max(0, count ?? 0);
+  return `${n.toLocaleString()} ${n === 1 ? 'member' : 'members'}`;
+}
+
 /**
- * Discover — search-first, then rails.
+ * Discover (design direction v2 › Discover, board v2-05).
  *
- * This screen replaces three things at once: the old Play tab (games + rooms),
- * the Build directory, and Connect's browse. The rails are the seam that makes
- * that possible — each one is a category that used to be a tab, and the top chip
- * row is the tab bar those tabs left behind.
+ * `headline` title and the bell; a 52 dp search pill on `raised`; the chip row
+ * (For you · Events · Communities · Archive · Shops · Live · Games) with an end
+ * fade. Then sections with a `title` heading and "See all" only when there is
+ * more: events as posters in identity colours (two full plus a peek),
+ * Communities for you as 72 dp rows with crest squircles and a tonal Join, the
+ * Question of the Day, From the Archive, Live now (dot + word), Shops, Games
+ * and Top 10 members (photo-first, rank as a plain number).
  *
- * Every rail owns its own loading, empty and error state through `Rail`, and
- * every rail loads independently — one slow edge function must not hold up six
- * rails that already have their data. `discoverFilters.ts` owns which rails are
- * on screen; this file only asks.
+ * v0's hero card is retired: the posters are the lead block. Every section
+ * owns its loading, empty and error state through `Rail`, and every section
+ * loads independently. `discoverFilters.ts` owns which sections are on screen.
  */
 function DiscoverScreen() {
   const colors = useThemeColors();
   const router = useRouter();
+  const appWidth = useAppWidth();
   const s = styles(colors);
 
   const user = useAuthStore((st) => st.user);
   const allCommunities = useCommunityStore((st) => st.allCommunities);
   const joinedIds = useCommunityStore((st) => st.joinedIds);
+  const requestedIds = useCommunityStore((st) => st.requestedIds);
   const officialCommunityIds = useCommunityStore((st) => st.officialCommunityIds);
   const hydrate = useCommunityStore((st) => st.hydrate);
+  const joinCommunity = useCommunityStore((st) => st.joinCommunity);
 
   const businesses = useBuildStore((st) => st.businesses);
   const bookmarkedIds = useBuildStore((st) => st.bookmarkedBusinessIds);
@@ -68,6 +99,9 @@ function DiscoverScreen() {
   const [chip, setChip] = useState<DiscoverChip>('all');
   // Rails while she is browsing everything; a filled grid once she has chosen.
   const layout = discoverLayout(chip);
+  const cardWidth = layout === 'rail'
+    ? Math.round((appWidth - MARGIN - 2 * SPACE[2]) / CARDS_PER_VIEW)
+    : Math.floor((appWidth - 2 * MARGIN - SPACE[2]) / 2);
 
   // The rail's own slice of the Archive: the top few, plus the catalogue total
   // so "Browse all N" promises the real number rather than the rail's length.
@@ -78,9 +112,6 @@ function DiscoverScreen() {
   const loadArchive = useCallback(async () => {
     setArchiveStatus('loading');
     try {
-      // Two queries rather than one: the rail shows the best few, and the
-      // count is of everything published. Deriving the total from the rail's
-      // own length would make the link under-promise by an order of magnitude.
       const [top, all] = await Promise.all([
         fetchArchiveEntries({ sort: 'top', limit: 12 }),
         fetchArchiveEntries({ sort: 'voted', limit: 200 }),
@@ -99,6 +130,7 @@ function DiscoverScreen() {
   const [economyFilter, setEconomyFilter] = useState<EconomyFilter>('all');
   const [shopsStatus, setShopsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   const live = useLiveRooms();
   const events = useEvents();
@@ -147,10 +179,18 @@ function DiscoverScreen() {
     [businesses, bookmarkedIds, economyFilter],
   );
 
-  const placedCommunities = useMemo(
-    () => officialFirst(allCommunities, officialCommunityIds ?? new Set()),
-    [allCommunities, officialCommunityIds],
-  );
+  // "For you": the ones she has not joined lead, official communities first.
+  const placedCommunities = useMemo(() => {
+    const placed = officialFirst(allCommunities, officialCommunityIds ?? new Set());
+    return [
+      ...placed.filter((c) => !joinedIds.has(c.id)),
+      ...placed.filter((c) => joinedIds.has(c.id)),
+    ];
+  }, [allCommunities, officialCommunityIds, joinedIds]);
+  const shownCommunities = layout === 'rail'
+    ? placedCommunities.slice(0, COMMUNITY_ROWS)
+    : placedCommunities;
+
   const [topMembers, setTopMembers] = useState<TopMember[]>([]);
   const [topMembersStatus, setTopMembersStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
@@ -167,33 +207,28 @@ function DiscoverScreen() {
 
   useEffect(() => { void loadTopMembers(); }, [loadTopMembers]);
   // The card's own query is `.in('community_id', communityIds)` — the ids she
-  // has joined, not the ids on screen. `joinedIds` is a Set for O(1) lookups
-  // elsewhere on this screen; the card wants an array to hand Supabase.
+  // has joined, not the ids on screen.
   const qotdCommunityIds = useMemo(() => Array.from(joinedIds), [joinedIds]);
-  const heroEvent = shownEvents[0] ?? events.rows[0] ?? null;
   const kind = economyKind(economyFilter);
-
-  const eventMeta = (e: typeof events.rows[number]) => {
-    const when = format(new Date(e.starts_at), 'EEE d MMM · h:mm a');
-    const where = e.location_text ?? e.community_name ?? 'Online';
-    return `${when} · ${where}`;
-  };
 
   const eventPrice = (e: typeof events.rows[number]) =>
     e.is_paid && e.price_cents ? formatMoney(e.price_cents) : 'Free';
 
-  // PosterCard's `badge` prop is a fixed BadgeKind enum — 'online' | 'inPerson'
-  // — with no hybrid value and no way to carry a component, so the real
-  // EventModeBadge can't slot in here without reshaping DiscoverCards, which
-  // is out of scope for this screen. Forcing hybrid onto 'inPerson' would
-  // repeat the exact lie EventModeBadge exists to stop — telling her to
-  // travel for something she could open from bed — so the pill is only
-  // offered where it can be truthful, composed from the actual values the
-  // column stores rather than "not online" by elimination.
-  const eventBadgeKind = (mode: typeof events.rows[number]['event_type']) => {
-    if (mode === 'online') return 'online' as const;
-    if (mode === 'in_person') return 'inPerson' as const;
-    return undefined;
+  const joinStateOf = (id: string): JoinState => {
+    if (joinedIds.has(id)) return 'joined';
+    if (requestedIds?.has(id)) return 'requested';
+    return 'join';
+  };
+
+  const join = async (communityId: string) => {
+    if (!user?.id) return;
+    setJoinError(null);
+    try {
+      await joinCommunity(communityId, user.id);
+    } catch (e) {
+      logError(e, 'discover.joinCommunity');
+      setJoinError('That didn’t go through. Check your connection and tap Join again.');
+    }
   };
 
   return (
@@ -203,7 +238,7 @@ function DiscoverScreen() {
           <Text style={s.wordmark} accessibilityRole="header">Discover</Text>
           {/* The bell's only home used to be the Grow tab. It is here rather
               than on Feed because Feed is a full-bleed pager with no chrome to
-              spare, and the prototype puts it in this header too. */}
+              spare. */}
           <TouchableOpacity
             onPress={() => router.push('/notifications' as never)}
             accessibilityRole="button"
@@ -212,11 +247,10 @@ function DiscoverScreen() {
                 ? `Notifications, ${unreadNotifications} unread`
                 : 'Notifications'
             }
-            activeOpacity={0.85}
             style={s.bell}
             testID="discover-notifications"
           >
-            <Ionicons name="notifications-outline" size={21} color={colors.textPrimary} />
+            <Ionicons name="notifications-outline" size={ICON} color={colors.ink} />
             {unreadNotifications > 0 ? (
               <View style={s.bellDot} testID="discover-notifications-dot" />
             ) : null}
@@ -225,132 +259,39 @@ function DiscoverScreen() {
         <TouchableOpacity
           onPress={() => router.push('/search')}
           accessibilityRole="button"
-          accessibilityLabel="Search Roxy"
-          activeOpacity={0.85}
+          accessibilityLabel="Search people, communities, events"
           style={s.search}
           testID="discover-search"
         >
-          <Ionicons name="search" size={17} color={colors.textSecondary} />
-          <Text style={s.searchText}>Search people, communities, events, shops…</Text>
+          <Ionicons name="search-outline" size={ICON} color={colors.ink2} />
+          <Text style={s.searchText} numberOfLines={1}>Search people, communities, events</Text>
         </TouchableOpacity>
-        <FilterChips
-          chips={DISCOVER_CHIPS}
-          value={chip}
-          onChange={setChip}
-          label="Filter Discover"
-          emphasis="primary"
-          testID="discover-chips"
-        />
       </View>
+      <FilterChips
+        chips={DISCOVER_CHIPS}
+        value={chip}
+        onChange={setChip}
+        label="Filter Discover"
+        emphasis="primary"
+        testID="discover-chips"
+      />
 
       <ScrollView contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
-        {/* qotd leads the all-view, ahead of hero — a today thing below a
-            browse rail is a today thing nobody scrolls far enough to answer.
-            Gated on a real user id: the card's own query is
-            `.eq('user_id', userId)`, and an undefined id there is a query
-            that quietly matches nothing rather than an error. */}
-        {railVisible(chip, 'qotd') && user?.id ? (
-          <View style={s.qotd} testID="rail-qotd">
-            <QuestionOfTheDayCard communityIds={qotdCommunityIds} userId={user.id} />
-          </View>
-        ) : null}
-
-        {railVisible(chip, 'hero') && heroEvent ? (
-          <HeroCard
-            badge={eventBadgeKind(heroEvent.event_type)}
-            title={heroEvent.title}
-            // The mode leads the meta line for the same reason it leads the rail
-            // cards' subtitle: `eventBadgeKind` returns undefined for a hybrid
-            // event rather than lying, so this is where "BOTH" is said.
-            meta={`${eventModeLabel(heroEvent.event_type)} · ${eventMeta(heroEvent)}`}
-            body={heroEvent.community_name ? `Hosted by ${heroEvent.community_name}` : 'Open to members'}
-            cta={heroEvent.is_paid ? 'Get a ticket' : 'RSVP — it’s free'}
-            artSeed={heroEvent.id}
-            onPress={() => router.push(`/event/${heroEvent.id}` as never)}
-          />
-        ) : null}
-
-        {/* The Archive. Mounted here rather than left to global search, which
-            was its only route in — a catalogue you can only reach by already
-            knowing the name of something inside it is not a catalogue. It sits
-            above the community rails on purpose: it is the one surface a
-            PENDING member can use, and she reaches Discover before she has
-            joined anything. */}
-        {railVisible(chip, 'archive') ? (
-          <ArchiveRail
-            entries={archiveEntries}
-            total={archiveTotal}
-            status={archiveStatus}
-            onRetry={() => void loadArchive()}
-            onPressEntry={(entry) => router.push(archiveDetailPath(entry.slug) as never)}
-            onSeeAll={() => router.push('/archive' as never)}
-          />
-        ) : null}
-
-        {railVisible(chip, 'top10') ? (
-          <Rail
-            layout={layout}
-            title="Top 10 members"
-            status={topMembersStatus}
-            count={topMembers.length}
-            emptyBody="Nobody on the board yet."
-            onRetry={() => void loadTopMembers()}
-            testID="rail-top10"
-          >
-            {topMembers.map((m, i) => (
-              <PosterCard
-                key={m.id}
-                rank={i + 1}
-                title={memberName(m)}
-                // The staff tag when there is one — it is the editorial reason
-                // she is on the chart. Points otherwise.
-                subtitle={memberSubtitle(m)}
-                badge="member"
-                artSeed={memberName(m)}
-                onPress={() => router.push(`/user/${m.id}` as never)}
-                testID={`top10-${m.id}`}
-              />
-            ))}
-          </Rail>
-        ) : null}
-
-        {railVisible(chip, 'live') ? (
-          <Rail
-            layout={layout}
-            title="Live now"
-            status={live.status}
-            count={live.rows.length}
-            emptyBody="Nothing live right now. Rooms open through the day."
-            onRetry={live.reload}
-            testID="rail-live"
-          >
-            {live.rows.map((room) => (
-              <RowCard
-                key={room.id}
-                icon={room.room_type === 'audio' ? 'mic' : 'videocam'}
-                badge="live"
-                title={room.name}
-                subtitle={`${room.participant_count} in${room.community_name ? ` · ${room.community_name}` : ''}`}
-                artSeed={room.name}
-                onPress={() => router.push(`/community-room-session?room_id=${room.id}` as never)}
-                testID={`live-${room.id}`}
-              />
-            ))}
-          </Rail>
-        ) : null}
-
         {railVisible(chip, 'events') ? (
           <Rail
             layout={layout}
-            title="Events"
+            // "Coming up", not the board's "This week": the query is every
+            // upcoming event, and a title that promised this week would lie
+            // about the one three weeks out.
+            title={chip === 'all' ? 'Coming up' : 'Events'}
             status={events.status}
             count={shownEvents.length}
             emptyBody={
               eventFilter === 'online'
-                ? 'No online events on the calendar yet.'
+                ? 'No online events on the calendar yet. Your communities post events here first.'
                 : eventFilter === 'in_person'
-                  ? 'No in-person events on the calendar yet.'
-                  : 'Nothing on the calendar yet.'
+                  ? 'No in-person events on the calendar yet. Your communities post events here first.'
+                  : 'Nothing on the calendar yet. Your communities post events here first.'
             }
             onRetry={events.reload}
             testID="rail-events"
@@ -365,24 +306,92 @@ function DiscoverScreen() {
             }
           >
             {shownEvents.map((e) => (
-              <PosterCard
+              <EventPoster
                 key={e.id}
+                seed={e.community_name ?? e.id}
                 title={e.title}
-                // The word only leads the subtitle when the pill above cannot
-                // carry it. For `online` and `in_person` the pill already says
-                // it, and repeating it costs the start time: this subtitle is
-                // `numberOfLines={1}` at TYPE.micro on a 150pt card, so
-                // "IN PERSON · " pushes the one piece of information she came
-                // for off the end of the line.
-                subtitle={
-                  eventBadgeKind(e.event_type)
-                    ? `${eventPrice(e)} · ${eventMeta(e)}`
-                    : `${eventModeLabel(e.event_type)} · ${eventPrice(e)} · ${eventMeta(e)}`
-                }
-                badge={eventBadgeKind(e.event_type)}
-                artSeed={e.id}
+                when={format(new Date(e.starts_at), 'EEE d MMM')}
+                host={e.community_name ?? 'Open to members'}
+                detail={`${modeWords(e.event_type)} · ${eventPrice(e)}`}
+                width={cardWidth}
                 onPress={() => router.push(`/event/${e.id}` as never)}
                 testID={`event-${e.id}`}
+              />
+            ))}
+          </Rail>
+        ) : null}
+
+        {railVisible(chip, 'communities') ? (
+          <Rail
+            layout="list"
+            title={chip === 'all' ? 'Communities for you' : 'Communities'}
+            status={allCommunities.length ? 'ready' : 'loading'}
+            count={shownCommunities.length}
+            emptyBody="No communities yet. New ones open here first."
+            onRetry={() => void hydrate(user?.id)}
+            linkLabel={placedCommunities.length > shownCommunities.length || chip === 'all' ? 'See all' : undefined}
+            onLinkPress={() => router.push('/communities' as never)}
+            testID="rail-communities"
+          >
+            {joinError ? (
+              <Text style={s.joinError} accessibilityLiveRegion="polite" testID="discover-join-error">
+                {joinError}
+              </Text>
+            ) : null}
+            {shownCommunities.map((c) => (
+              <CommunityRow
+                key={c.id}
+                id={c.id}
+                name={c.name}
+                meta={`${officialCommunityIds?.has(c.id) ? 'Official · ' : ''}${membersLine(c.member_count)}`}
+                join={joinStateOf(c.id)}
+                onJoin={() => void join(c.id)}
+                onPress={() => router.push(`/community/${c.id}` as never)}
+                testID={`community-${c.id}`}
+              />
+            ))}
+          </Rail>
+        ) : null}
+
+        {/* qotd: gated on a real user id — the card's own query is
+            `.eq('user_id', userId)`, and an undefined id there is a query that
+            quietly matches nothing rather than an error. */}
+        {railVisible(chip, 'qotd') && user?.id ? (
+          <View style={s.qotd} testID="rail-qotd">
+            <QuestionOfTheDayCard communityIds={qotdCommunityIds} userId={user.id} />
+          </View>
+        ) : null}
+
+        {/* The Archive: its own rail (lane moments owns the covers). */}
+        {railVisible(chip, 'archive') ? (
+          <ArchiveRail
+            entries={archiveEntries}
+            total={archiveTotal}
+            status={archiveStatus}
+            onRetry={() => void loadArchive()}
+            onPressEntry={(entry) => router.push(archiveDetailPath(entry.slug) as never)}
+            onSeeAll={() => router.push('/archive' as never)}
+          />
+        ) : null}
+
+        {railVisible(chip, 'live') ? (
+          <Rail
+            layout="list"
+            title="Live now"
+            status={live.status}
+            count={live.rows.length}
+            emptyBody="Nothing live right now. Rooms open through the day."
+            onRetry={live.reload}
+            testID="rail-live"
+          >
+            {live.rows.map((room) => (
+              <LiveRow
+                key={room.id}
+                seed={room.community_name ?? room.name}
+                title={room.community_name ? `${room.name} · ${room.community_name}` : room.name}
+                count={`${room.participant_count} ${room.room_type === 'audio' ? 'listening' : 'watching'}`}
+                onPress={() => router.push(`/community-room-session?room_id=${room.id}` as never)}
+                testID={`live-${room.id}`}
               />
             ))}
           </Rail>
@@ -391,14 +400,14 @@ function DiscoverScreen() {
         {railVisible(chip, 'economy') ? (
           <Rail
             layout={layout}
-            title="WLW economy"
+            title="Shops"
             status={kind === 'shops' ? shopsStatus : kind === 'impact' ? impact.status : support.status}
             count={kind === 'shops' ? shownShops.length : kind === 'impact' ? impact.rows.length : support.rows.length}
             emptyBody={
               kind === 'impact'
                 ? 'No impact projects yet.'
                 : kind === 'support'
-                  ? 'No ideas pitched yet — yours could be first.'
+                  ? 'No ideas pitched yet. Yours could be first.'
                   : economySavedOnly(economyFilter)
                     ? 'Nothing saved yet. Tap the heart on any shop.'
                     : 'No shops here yet.'
@@ -410,40 +419,40 @@ function DiscoverScreen() {
                 chips={ECONOMY_FILTERS}
                 value={economyFilter}
                 onChange={setEconomyFilter}
-                label="Filter the WLW economy"
+                label="Filter shops"
                 testID="economy-chips"
               />
             }
           >
             {kind === 'shops' && shownShops.map((b) => (
-              <PosterCard
+              <TileCard
                 key={b.id}
+                seed={b.name}
                 title={b.name}
-                subtitle={b.location_city ?? b.category ?? 'WLW-owned'}
-                badge="shop"
-                artSeed={b.name}
+                meta={b.location_city ?? b.category ?? 'WLW-owned'}
+                width={cardWidth}
                 onPress={() => router.push(`/business/${b.id}` as never)}
                 testID={`shop-${b.id}`}
               />
             ))}
             {kind === 'impact' && impact.rows.map((p) => (
-              <PosterCard
+              <TileCard
                 key={p.id}
+                seed={p.title}
                 title={p.title}
-                subtitle={`${p.supporter_count} supporters`}
-                badge="impact"
-                artSeed={p.title}
+                meta={`${p.supporter_count} supporters`}
+                width={cardWidth}
                 onPress={() => router.push('/support' as never)}
                 testID={`impact-${p.id}`}
               />
             ))}
             {kind === 'support' && support.rows.map((f) => (
-              <RowCard
+              <ListRow
                 key={f.id}
                 icon="bulb-outline"
+                seed={f.title}
                 title={f.title}
                 subtitle={`${f.vote_count} votes${f.type === 'planned' ? ' · Roxy pick' : ''}`}
-                artSeed={f.title}
                 onPress={() => router.push('/support' as never)}
                 testID={`support-${f.id}`}
               />
@@ -451,50 +460,23 @@ function DiscoverScreen() {
           </Rail>
         ) : null}
 
-        {railVisible(chip, 'communities') ? (
-          <Rail
-            layout={layout}
-            title="Communities"
-            status={allCommunities.length ? 'ready' : 'loading'}
-            count={allCommunities.length}
-            emptyBody="No communities yet."
-            onRetry={() => void hydrate(user?.id)}
-            linkLabel="See all"
-            onLinkPress={() => router.push('/communities' as never)}
-            testID="rail-communities"
-          >
-            {placedCommunities.slice(0, 12).map((c) => (
-              <PosterCard
-                key={c.id}
-                title={c.name}
-                subtitle={`${officialCommunityIds?.has(c.id) ? 'Official · ' : ''}${c.member_count} members${joinedIds.has(c.id) ? ' · joined' : ''}`}
-                badge="community"
-                artSeed={c.name}
-                onPress={() => router.push(`/community/${c.id}` as never)}
-                testID={`community-${c.id}`}
-              />
-            ))}
-          </Rail>
-        ) : null}
-
         {railVisible(chip, 'games') ? (
           <Rail
-            layout={layout}
+            layout="list"
             title="Games"
             status={games.status}
             count={games.rows.length}
-            emptyBody="No games yet."
+            emptyBody="No games yet. New ones land here first."
             onRetry={games.reload}
             testID="rail-games"
           >
             {games.rows.map((g) => (
-              <RowCard
+              <ListRow
                 key={g.id}
-                icon="game-controller"
-                badge="game"
+                icon="game-controller-outline"
+                seed={g.name}
                 title={g.name}
                 subtitle={g.short_description}
-                artSeed={g.name}
                 onPress={() => {
                   // Speed Dating is a native route, not a WebView game.
                   if (g.name === 'Speed Dating') { router.push('/speed-dating' as never); return; }
@@ -508,6 +490,34 @@ function DiscoverScreen() {
           </Rail>
         ) : null}
 
+        {railVisible(chip, 'top10') ? (
+          <Rail
+            layout={layout}
+            title="Top 10 members"
+            status={topMembersStatus}
+            count={topMembers.length}
+            emptyBody="Nobody on the board yet."
+            onRetry={() => void loadTopMembers()}
+            testID="rail-top10"
+          >
+            {topMembers.map((m, i) => (
+              <MemberCard
+                key={m.id}
+                rank={i + 1}
+                name={memberName(m)}
+                // The staff tag when there is one — it is the editorial reason
+                // she is on the chart. Points otherwise.
+                subtitle={memberSubtitle(m)}
+                avatarUrl={m.avatar_url}
+                seed={m.id}
+                width={cardWidth}
+                onPress={() => router.push(`/user/${m.id}` as never)}
+                testID={`top10-${m.id}`}
+              />
+            ))}
+          </Rail>
+        ) : null}
+
         {/* Clears the floating tab bar and the Roxy FAB. */}
         <View style={s.tail} />
       </ScrollView>
@@ -516,35 +526,30 @@ function DiscoverScreen() {
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
+  screen: { flex: 1, backgroundColor: colors.ground },
   header: {
-    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, gap: 10,
-    backgroundColor: colors.backgroundAlt, borderBottomWidth: 1, borderBottomColor: colors.line,
+    paddingHorizontal: MARGIN, paddingTop: SPACE[2], paddingBottom: SPACE[1], gap: SPACE[2],
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  wordmark: {
-    ...TYPE.headline, color: colors.textPrimary,
-    fontFamily: FONTS.display.extrabold, letterSpacing: -0.2, flex: 1,
-  },
+  wordmark: { ...TYPE.headline, color: colors.ink, flex: 1 },
   bell: {
-    width: 36, height: 36, borderRadius: RADII.pill,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, borderRadius: RADII.pill,
+    alignItems: 'center', justifyContent: 'center', marginRight: -SPACE[2],
   },
   bellDot: {
-    position: 'absolute', top: 6, right: 6,
-    width: 7, height: 7, borderRadius: 99,
-    backgroundColor: colors.primary, borderWidth: 1.5, borderColor: colors.surface,
+    position: 'absolute', top: SPACE[2], right: SPACE[2],
+    width: SPACE[1], height: SPACE[1], borderRadius: RADII.pill,
+    backgroundColor: colors.pink,
   },
   search: {
-    flexDirection: 'row', alignItems: 'center', gap: 9,
-    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 13,
-    borderRadius: 14,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    flexDirection: 'row', alignItems: 'center', gap: SPACE[2],
+    height: SEARCH_HEIGHT, paddingHorizontal: SPACE[4],
+    borderRadius: RADII.pill, backgroundColor: colors.raised,
   },
-  searchText: { ...TYPE.caption, color: colors.textSecondary },
+  searchText: { ...TYPE.body, color: colors.ink2, flex: 1 },
+  joinError: { ...TYPE.meta, color: colors.dangerInk, paddingHorizontal: MARGIN },
   body: { paddingBottom: 8 },
-  qotd: { marginHorizontal: 16, marginTop: 4, marginBottom: 10 },
+  qotd: { marginHorizontal: MARGIN, marginTop: SPACE[5] },
   tail: { height: 120 },
 });
 

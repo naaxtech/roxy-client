@@ -11,7 +11,9 @@
  * questions and puts the answer where a member can reach it.
  */
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { render, fireEvent, waitFor, within } from '@testing-library/react-native';
+import { IDENTITY } from '../../lib/theme';
 
 jest.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => children,
@@ -30,15 +32,7 @@ jest.mock('expo-router', () => {
 });
 
 jest.mock('../../hooks/useThemeColors', () => ({
-  useThemeColors: () => ({
-    background: '#14082A', backgroundAlt: '#1A0A2E', surface: '#211039',
-    surfaceLight: '#2D1B4E', line: '#3D2B5E', lineStrong: '#55407F',
-    textPrimary: '#F7F3FC', textSecondary: '#C6B5E4', textMuted: '#9C89C2',
-    primary: '#F22481', primaryInk: '#FF7AB5', secondary: '#A78BFA', secondaryInk: '#C9B9F5',
-    gold: '#F5B73D', goldInk: '#FFD37E', warning: '#F5B73D',
-    success: '#2FC97E', successInk: '#7CE0AC', error: '#EF4444', errorInk: '#F15B5B',
-    sister: '#8E9BFF', sisterInk: '#BCC5FF', roxy: '#E879A6', devPanel: '#FF1493',
-  }),
+  useThemeColors: () => jest.requireActual('../../lib/theme').THEMES.light,
 }));
 
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
@@ -68,6 +62,8 @@ jest.mock('../../store/communityStore', () => {
     allCommunities: [] as unknown[],
     joinedIds: new Set<string>(['joined-c1', 'joined-c2']),
     hydrate: jest.fn(() => Promise.resolve()),
+    joinCommunity: jest.fn(() => Promise.resolve('joined')),
+    requestedIds: new Set<string>(),
   };
   return {
     __communityState: state,
@@ -185,54 +181,74 @@ describe('Discover — Communities rail "See all"', () => {
   });
 });
 
-describe('Discover — the events rail carries the true event mode', () => {
-  it('gives a hybrid event its own word instead of forcing it onto one side', async () => {
+describe('Discover — the events posters carry the true event mode', () => {
+  it('gives a hybrid event its own words instead of forcing it onto one side', async () => {
     const { getByTestId } = render(<DiscoverScreen />);
     await waitFor(() => expect(getByTestId('event-e-hybrid')).toBeTruthy());
 
     const card = within(getByTestId('event-e-hybrid'));
-    expect(card.getByText(/BOTH/)).toBeTruthy();
-    // The colour pill only ever tells the truth — BadgeKind has no hybrid
-    // value, so a hybrid card must never wear the "IN PERSON" pill.
-    expect(card.queryByText('IN PERSON')).toBeNull();
+    // v2: sentence case, no caps pill (direction › Bans). The words still
+    // say both, and never "In person" alone.
+    expect(card.getByText(/In person and online/)).toBeTruthy();
+    expect(card.queryByText(/^In person ·/)).toBeNull();
   });
 
   it('still carries the word for a plain online event', async () => {
     const { getByTestId } = render(<DiscoverScreen />);
     await waitFor(() => expect(getByTestId('event-e-online')).toBeTruthy());
-
-    // Two, deliberately: the colour pill (truthful for this mode) and the
-    // subtitle line (`eventModeLabel`, always present for every mode). Unlike
-    // the hybrid card, there is no lie to avoid here — just the word said
-    // twice by two independent parts of the card.
-    expect(within(getByTestId('event-e-online')).getAllByText(/ONLINE/).length).toBeGreaterThan(0);
+    expect(within(getByTestId('event-e-online')).getAllByText(/Online/).length).toBeGreaterThan(0);
   });
 
-  it('does not let the hero card force a hybrid event onto one side either', async () => {
-    // The hero had the same `=== 'online' ? 'online' : 'inPerson'` collapse the
-    // rail was just fixed for, and it is the LOUDEST card on the screen — a
-    // full-width promise that a both-ways event is in-person only.
-    //
-    // Reaching it through the "In person" chip is the point: a hybrid event
-    // survives BOTH event filters, so this selects a board whose only event is
-    // the hybrid one, which makes it the hero.
-    const { getByTestId } = render(<DiscoverScreen />);
+  it('does not let the first poster force a hybrid event onto one side either', async () => {
+    // v0 had a full-width hero card with the same collapse bug; v2 retires the
+    // hero (the posters are the lead block), and the guarantee moves with it:
+    // under "In person" the hybrid event is the only poster, and it says both.
+    const { getByTestId, queryByTestId } = render(<DiscoverScreen />);
     await waitFor(() => expect(getByTestId('event-chips-in_person')).toBeTruthy());
 
     fireEvent.press(getByTestId('event-chips-in_person'));
 
-    const hero = within(getByTestId('discover-hero'));
-    expect(hero.getByText(/Hybrid Meetup/)).toBeTruthy();
-    expect(hero.getByText(/BOTH/)).toBeTruthy();
-    expect(hero.queryByText('IN PERSON')).toBeNull();
+    await waitFor(() => expect(queryByTestId('event-e-online')).toBeNull());
+    const poster = within(getByTestId('event-e-hybrid'));
+    expect(poster.getByText(/Hybrid Meetup/)).toBeTruthy();
+    expect(poster.getByText(/In person and online/)).toBeTruthy();
+    expect(queryByTestId('discover-hero')).toBeNull();
   });
 
-  it('keeps the truthful pill on a hero that really is one mode', async () => {
+  it('paints each event as a poster in an identity colour, not a gradient', async () => {
     const { getByTestId } = render(<DiscoverScreen />);
-    await waitFor(() => expect(getByTestId('discover-hero')).toBeTruthy());
+    await waitFor(() => expect(getByTestId('event-e-online')).toBeTruthy());
+    const poster = getByTestId('event-e-online');
+    const fill = (StyleSheet.flatten(poster.props.style) as { backgroundColor?: string }).backgroundColor;
+    expect(IDENTITY as readonly string[]).toContain(fill);
+    expect(within(poster).UNSAFE_queryAllByType('LinearGradient' as never)).toHaveLength(0);
+  });
+});
 
-    const hero = within(getByTestId('discover-hero'));
-    expect(hero.getByText(/Online Mixer/)).toBeTruthy();
-    expect(hero.getAllByText(/ONLINE/).length).toBeGreaterThan(0);
+describe('Discover — v2 header', () => {
+  it('leads with a search pill and a For you chip', async () => {
+    const { getByTestId, getByText } = render(<DiscoverScreen />);
+    await waitFor(() => expect(getByTestId('discover-search')).toBeTruthy());
+    expect(getByText('Search people, communities, events')).toBeTruthy();
+    expect(getByTestId('discover-chips-all')).toBeTruthy();
+    expect(getByText('For you')).toBeTruthy();
+    expect(getByTestId('discover-chips-fade')).toBeTruthy();
+  });
+});
+
+describe('Discover — Communities for you', () => {
+  it('lists communities as rows with a crest and a tonal Join that joins', async () => {
+    const { __communityState: state } = jest.requireMock('../../store/communityStore');
+    state.allCommunities = [
+      { id: 'c-late', name: 'Late Bloomers', member_count: 2310, is_private: false },
+    ];
+    const { getByTestId } = render(<DiscoverScreen />);
+    await waitFor(() => expect(getByTestId('community-c-late')).toBeTruthy());
+    const row = within(getByTestId('community-c-late'));
+    expect(row.getByText('LB')).toBeTruthy();
+    expect(row.getByText('2,310 members')).toBeTruthy();
+    fireEvent.press(getByTestId('community-join-c-late'));
+    expect(state.joinCommunity).toHaveBeenCalledWith('c-late', 'discover-test-user');
+    state.allCommunities = [];
   });
 });
