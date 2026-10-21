@@ -1,0 +1,25 @@
+apps/mobile/package-lock.json
+  s_37deb30b6489aa::t_3f32c3ec921772 13,15-16,1979-1984,1991-2002
+apps/mobile/package.json
+  s_37deb30b6489aa::t_b78bf807dea18b 30,32-33
+polish/decisions.md
+  s_37deb30b6489aa::t_57994531b824fb 22-24
+polish/design-direction.md
+  s_37deb30b6489aa::t_b255032bbc2f42 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2415afc5b94ead428d6c9b244b359bca0836af3d",
+  "prompts": {},
+  "sessions": {
+    "s_37deb30b6489aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "791c066c-b99f-499a-832d-4bb799f2daf9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
