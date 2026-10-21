@@ -1,0 +1,29 @@
+polish/concepts/roxy-tokens-v2.css
+  s_37deb30b6489aa::t_c50bf6d4ddf7c4 1-126
+polish/concepts/v2-02-youre-in.html
+  s_37deb30b6489aa::t_a774ae698f5831 1-48
+polish/concepts/v2-03-invite-poster.html
+  s_37deb30b6489aa::t_dfbe2824380f1d 1-84
+polish/concepts/v2-04-feed-before-after.html
+  s_37deb30b6489aa::t_b5d4c723c3a877 1-138
+polish/concepts/v2-08-type-and-scripts.html
+  s_37deb30b6489aa::t_0f9519e0ee82f8 1-123
+polish/proposed-tokens-v2.md
+  s_37deb30b6489aa::t_d6a40925505541 1-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8e84be7113921b5c81d34e24cfb81a951f4eeb59",
+  "prompts": {},
+  "sessions": {
+    "s_37deb30b6489aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "791c066c-b99f-499a-832d-4bb799f2daf9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
