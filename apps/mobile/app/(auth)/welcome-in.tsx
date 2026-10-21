@@ -16,7 +16,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
-import { BRAND_GRADIENT, inkOnGradient, RADII } from '../../lib/theme';
+import { BRAND_GRADIENT, RADII, pinkFill } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { celebrate } from '../../lib/haptics';
@@ -101,7 +101,7 @@ export default function WelcomeInScreen() {
     return () => { cancelled = true; };
   }, [userId]);
 
-  const heroInk = inkOnGradient(BRAND_GRADIENT);
+  const heroInk = colors.onPink;
   const petalColors = [...BRAND_GRADIENT, colors.secondary, colors.gold];
   const s = styles(colors, heroInk);
 
@@ -109,7 +109,7 @@ export default function WelcomeInScreen() {
     <SafeAreaView style={s.container} testID="welcome-in">
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {phase === 'party' ? (
-          <LinearGradient colors={BRAND_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
+          <LinearGradient colors={pinkFill(colors)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
             {Array.from({ length: PETAL_COUNT }, (_, i) => (
               <Petal key={i} index={i} width={Math.min(width, 520) - 40} color={petalColors[i % petalColors.length]} reduced={reduced} />
             ))}
@@ -144,7 +144,7 @@ export default function WelcomeInScreen() {
             accessibilityLabel="Show me around"
             testID="welcome-in-continue"
           >
-            <LinearGradient colors={BRAND_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.ctaFill}>
+            <LinearGradient colors={pinkFill(colors)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.ctaFill}>
               <Text style={s.ctaText}>Show me around</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -156,7 +156,7 @@ export default function WelcomeInScreen() {
             accessibilityLabel="Take me to Roxy"
             testID="welcome-in-done"
           >
-            <LinearGradient colors={BRAND_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.ctaFill}>
+            <LinearGradient colors={pinkFill(colors)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.ctaFill}>
               <Text style={s.ctaText}>Take me to Roxy</Text>
             </LinearGradient>
           </TouchableOpacity>

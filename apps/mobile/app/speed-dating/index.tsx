@@ -11,6 +11,7 @@ import { callEdgeFunction, supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { showAlert } from '../../lib/confirm';
+import { pinkFill } from '../../lib/theme';
 
 export default function SpeedDatingLobby() {
   const router = useRouter();
@@ -141,7 +142,7 @@ export default function SpeedDatingLobby() {
       {/* Body */}
       <View style={styles.body}>
         <LinearGradient
-          colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
+          colors={pinkFill(colors)}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}
@@ -183,7 +184,7 @@ export default function SpeedDatingLobby() {
           accessibilityLabel="Join speed dating"
         >
           <LinearGradient
-            colors={['#FF6A2E', '#FF2F71', '#E81C8E']}
+            colors={pinkFill(colors)}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={[styles.joinBtn, joining && { opacity: 0.7 }]}

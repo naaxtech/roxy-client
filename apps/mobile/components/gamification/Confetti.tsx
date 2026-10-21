@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { IDENTITY } from '../../lib/theme';
 
 interface Props {
   /** Starts the fall when this turns true. */
@@ -10,7 +11,8 @@ interface Props {
 }
 
 /** The brand gradient's own colours, plus the two accents Roxy already uses. */
-const COLOURS = ['#FF5A2E', '#F22481', '#E0189A', '#8B5CF6', '#FFD166', '#FFF8FB'];
+// v2: the identity palette (v0 list carried violet #8B5CF6).
+const COLOURS = [...IDENTITY];
 
 const FALL_MS = 2600;
 

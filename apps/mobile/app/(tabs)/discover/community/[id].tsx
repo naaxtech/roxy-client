@@ -31,7 +31,7 @@ import { ProfileShell } from '../../../../components/profile/ProfileShell';
 import type { PopulatedTabs, ProfileTab } from '../../../../components/profile/profileVariant';
 import { EventModeBadge, type EventMode } from '../../../../components/events/EventModeBadge';
 import { TYPE } from '../../../../lib/typography';
-import { RADII, inkOn, BRAND_GRADIENT } from '../../../../lib/theme';
+import { RADII, inkOn, pinkFill } from '../../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../../lib/touchTargets';
 import { useAccess } from '../../../../hooks/useAccess';
 import { ComingSoon } from '../../../../components/features/ComingSoon';
@@ -594,7 +594,7 @@ export default function CommunityDetailScreen() {
                 {game.publisher_type === 'roxy' && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 6 }}>
                     <LinearGradient
-                      colors={BRAND_GRADIENT}
+                      colors={pinkFill(colors)}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={{ width: 15, height: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}

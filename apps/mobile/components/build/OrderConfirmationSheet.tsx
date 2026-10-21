@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { usePopIn } from '../ui/popIn';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { BRAND_GRADIENT } from '../../lib/theme';
+import { pinkFill } from '../../lib/theme';
 
 
 interface OrderConfirmationSheetProps {
@@ -42,7 +42,7 @@ export function OrderConfirmationSheet({ visible, orderId, onClose, onViewOrders
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Animated.View style={[styles.card, pop]}>
-          <LinearGradient colors={BRAND_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconPlate}>
+          <LinearGradient colors={pinkFill(colors)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconPlate}>
             <Ionicons name="checkmark-circle" size={34} color="#fff" />
           </LinearGradient>
           <Text style={styles.title}>{orderId ? 'Order Placed!' : 'Payment Received'}</Text>

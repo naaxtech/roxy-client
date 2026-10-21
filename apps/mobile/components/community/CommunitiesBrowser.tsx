@@ -9,6 +9,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { logError } from '../../lib/errorLogger';
 import { showAlert } from '../../lib/confirm';
 import { EmptyState } from '../ui/EmptyState';
+import { IDENTITY, BRAND_INK } from '../../lib/theme';
 
 function getCommunityLevel(n: number): { label: string; emoji: string } {
   if (n >= 100) return { label: 'Radiant', emoji: '✨' };
@@ -17,7 +18,8 @@ function getCommunityLevel(n: number): { label: string; emoji: string } {
   return { label: 'Seedling', emoji: '🌱' };
 }
 
-const CHIP_COLORS = ['#FF6A2E', '#8B5CF6', '#FF2F71', '#F472B6', '#C4476A', '#FF8A3D'];
+// v2: the identity palette, inked onBrandPink (v0 list carried violet #8B5CF6).
+const CHIP_COLORS: readonly string[] = IDENTITY;
 
 /**
  * Inline communities browser — lives as the Communities subtab of Connect so
@@ -75,7 +77,7 @@ export function CommunitiesBrowser() {
       width: 46, height: 46, borderRadius: 14,
       alignItems: 'center', justifyContent: 'center',
     },
-    avaText: { fontSize: 20, color: '#fff', fontWeight: '700' },
+    avaText: { fontSize: 20, color: BRAND_INK, fontWeight: '700' },
     info: { flex: 1 },
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
     name: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },

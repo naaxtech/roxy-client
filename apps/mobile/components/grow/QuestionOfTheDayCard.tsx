@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { BRAND_GRADIENT, inkOnGradient } from '../../lib/theme';
+import { pinkFill, THEMES } from '../../lib/theme';
 import { AnswerSheet } from './AnswerSheet';
 
 // The CTA label sits on the whole brand ramp, so it is measured against the
@@ -22,7 +22,10 @@ import { AnswerSheet } from './AnswerSheet';
 //
 // `inkOnGradient` takes the worst stop, which is the only one a glyph does not
 // get to avoid. Computed once: the ramp is a constant, not a per-render lookup.
-const CTA_INK = inkOnGradient(BRAND_GRADIENT);
+// v2: the CTA is the flat pink fill now, so its ink is the theme's onPink
+// (white on light pink 5.60:1; dark ink on dark pink). The module constant is
+// the light value for the static sheet; the render passes the live one.
+const CTA_INK = THEMES.light.onPink;
 
 interface Question {
   id: string;
@@ -185,12 +188,12 @@ export function QuestionOfTheDayCard({ communityIds, userId }: Props) {
           accessibilityLabel="Add your answer"
         >
           <LinearGradient
-            colors={BRAND_GRADIENT}
+            colors={pinkFill(colors)}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={q.addBtn}
           >
-            <Text style={q.addBtnText}>
+            <Text style={[q.addBtnText, { color: colors.onPink }]}>
               {answered ? 'You answered \u2713' : '+ Add yours'}
             </Text>
           </LinearGradient>

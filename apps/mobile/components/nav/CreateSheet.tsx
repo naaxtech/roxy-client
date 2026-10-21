@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 import { logError } from '../../lib/errorLogger';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { RADII, BRAND_GRADIENT, type ThemeColors } from '../../lib/theme';
+import { RADII, type ThemeColors, scrim, pinkFill } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { deriveSellerStatus, canSell, type SellerStatus } from '../../lib/sellerStatus';
 import { eventBlockedReason } from '../../lib/createAccess';
@@ -166,7 +166,7 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={BRAND_GRADIENT}
+                  colors={pinkFill(colors)}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[s.plate, blocked && s.plateBlocked]}
@@ -198,7 +198,7 @@ interface Props {
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: 'rgba(8,3,18,0.66)' },
+  scrim: { flex: 1, backgroundColor: scrim(0.66) },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: RADII.sheet,

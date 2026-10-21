@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { formatMoney } from '../../lib/currency';
 import { logError } from '../../lib/errorLogger';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
+import { scrim } from '../../lib/theme';
 
 type ShopProduct = {
   id: string;
@@ -72,7 +73,7 @@ export function ShoppableProductCard({ productId, testID = 'feed-cell-shop' }: P
       flexDirection: 'row', alignItems: 'center', gap: 10,
       alignSelf: 'flex-start', marginBottom: 8, paddingRight: 12,
       borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
-      backgroundColor: 'rgba(20,8,42,0.72)', overflow: 'hidden',
+      backgroundColor: scrim(0.72), overflow: 'hidden',
     },
     thumb: { width: 44, height: 44 },
     thumbPlaceholder: {

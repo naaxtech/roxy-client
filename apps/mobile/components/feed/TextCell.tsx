@@ -9,6 +9,7 @@ import { RAIL_GUTTER } from './feedChromeTokens';
 import { TextCardFace } from './TextCardFace';
 import { DoubleTapCatcher, useDoubleTapLike } from './DoubleTapLike';
 import { LikeBurst } from './LikeBurst';
+import { THEMES } from '../../lib/theme';
 
 /** A text post: Claude Design's p3 card, full-bleed on the plum ramp. */
 export function TextCell({
@@ -73,7 +74,7 @@ export function TextCell({
 }
 
 const s = StyleSheet.create({
-  page: { backgroundColor: '#0D0520' },
+  page: { backgroundColor: THEMES.dark.stage },
   face: { flex: 1 },
   emptyWrap: {
     ...StyleSheet.absoluteFillObject,

@@ -18,7 +18,7 @@ export type Theme = 'light' | 'dark';
  *    for grounds, one pink for the action and the selected state (`pinkContainer`
  *    does the area work), identity colours for communities and events,
  *    semantics for state, butter for Premium only. Violet, indigo and lilac are
- *    banned (v0's ground #14082A and lilac secondary are gone).
+ *    banned (v0's violet-black ground and lilac secondary are gone).
  *
  * **Legacy keys.** About a thousand call sites read the v0 names (`background`,
  * `textPrimary`, `primary`, `surfaceLight`…). Each one is kept as an alias that
@@ -347,7 +347,7 @@ export function inkOnGradient(stops: readonly string[], threshold = 4.5): string
 
 /**
  * The rotating fills behind a community's initial on the community chips: the
- * v2 identity fields (v0's list carried violet #7B45F5). Lives here so the
+ * v2 identity fields (v0's list carried a violet). Lives here so the
  * contrast gate imports the real array — every entry carries `inkOn()` at 4.5:1.
  */
 export const COMMUNITY_CHIP_COLORS = IDENTITY;

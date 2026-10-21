@@ -10,7 +10,12 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { isPresetAvatar, presetEmoji, presetColor, avatarGradient } from '../../lib/avatars';
 import { TYPE } from '../../lib/typography';
 import {
-  RADII, LIVE_GRADIENT, BRAND_GRADIENT, inkOnGradient, type ThemeColors,
+  RADII,
+  LIVE_GRADIENT,
+  inkOnGradient,
+  type ThemeColors,
+  flatFill,
+  pinkFill,
 } from '../../lib/theme';
 import { initialsOf } from '../ui/Avatar';
 import {
@@ -342,9 +347,8 @@ export function ProfileShell({
           testID={id}
         >
           <LinearGradient
-            colors={['#F22481', '#8B5CF6']}
-            // 120deg in the design's CSS: left to right with a downward tilt,
-            // not the flat horizontal sweep this had.
+            colors={flatFill(colors.pinkContainer)}
+            // v2: one flat pinkContainer field (was the pink -> violet 120deg ramp).
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
             style={s.selfEditBtn}
           >
@@ -498,7 +502,7 @@ export function ProfileShell({
               testID="profile-level-badge"
             >
               <LinearGradient
-                colors={[...BRAND_GRADIENT]}
+                colors={pinkFill(colors)}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={s.levelBadge}
               >
@@ -549,7 +553,7 @@ export function ProfileShell({
                 <Text style={s.xpLabel}>{xp.label}</Text>
                 <View style={s.xpTrack}>
                   <LinearGradient
-                    colors={['#F22481', '#8B5CF6']}
+                    colors={pinkFill(colors)}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     style={[s.xpFill, { width: `${Math.round(Math.min(1, Math.max(0, xp.progress)) * 100)}%` }]}
                   />

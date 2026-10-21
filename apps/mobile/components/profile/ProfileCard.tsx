@@ -11,7 +11,7 @@ import { BadgeRow } from './BadgeRow';
 import { supabase } from '../../lib/supabase';
 import type { Profile, Business } from '../../types';
 import type { EarnedBadge } from './BadgeRow';
-import { BRAND_GRADIENT } from '../../lib/theme';
+import { pinkFill } from '../../lib/theme';
 
 const AVATAR_SIZE = 110;
 
@@ -251,7 +251,7 @@ export function ProfileCard({
     }
     return (
       <LinearGradient
-        colors={BRAND_GRADIENT}
+        colors={pinkFill(colors)}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={s.cover}
       />
@@ -303,7 +303,7 @@ export function ProfileCard({
           <Text style={s.displayName}>{profile.display_name}</Text>
           {profile.gov_verified && (
             <LinearGradient
-              colors={BRAND_GRADIENT}
+              colors={pinkFill(colors)}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={s.verifiedBadge}
               accessibilityLabel="Government verified"

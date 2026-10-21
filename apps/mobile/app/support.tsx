@@ -13,7 +13,7 @@ import { useAuthStore } from '../store/authStore';
 import { useBuildStore } from '../store/buildStore';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { TYPE } from '../lib/typography';
-import { RADII, inkOn, type ThemeColors } from '../lib/theme';
+import { RADII, inkOn, type ThemeColors, scrim } from '../lib/theme';
 import { MIN_TOUCH_TARGET } from '../lib/touchTargets';
 import { FeatureVoteCard, type FeatureRequest } from '../components/build/FeatureVoteCard';
 import { DonateModal } from '../components/donations/DonateModal';
@@ -360,7 +360,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   pitchCtaText: { ...TYPE.bodyLg, color: colors.roxy, fontWeight: '800' },
   tail: { height: 40 },
-  scrim: { flex: 1, backgroundColor: 'rgba(8,3,18,0.66)', justifyContent: 'flex-end' },
+  scrim: { flex: 1, backgroundColor: scrim(0.66), justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.surface, padding: 18, gap: 10,
     borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet,

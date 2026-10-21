@@ -28,11 +28,12 @@ import { handLabel, setRoomHand } from '../lib/roomHands';
 import { roomReportTarget, roomBlockTarget } from './roomSafety';
 import { useAppWidth } from '../hooks/useAppWidth';
 import type { RemoteParticipant } from '../lib/video/VideoCallProvider';
+import { THEMES, scrim } from '../lib/theme';
 
 // Always-dark video-stage palette — this screen stays visually consistent
 // regardless of the app's light/dark theme (a call stage is not a themed surface).
-const STAGE_BG = '#0d0520';
-const STAGE_SURFACE = '#1a0a2e';
+const STAGE_BG = THEMES.dark.stage;
+const STAGE_SURFACE = THEMES.dark.stageRaised;
 
 const EMPTY_COPY = 'Waiting for others to join 🌸';
 
@@ -236,7 +237,7 @@ export default function CommunityRoomSession() {
     },
     unavailableIcon: { fontSize: 52 },
     unavailableTitle: { color: '#fff', fontSize: 18, fontWeight: '800', textAlign: 'center', lineHeight: 25 },
-    unavailableBody: { color: '#C4B5D4', fontSize: 14, textAlign: 'center', lineHeight: 20 },
+    unavailableBody: { color: THEMES.dark.ink2, fontSize: 14, textAlign: 'center', lineHeight: 20 },
     unavailableBackBtn: {
       marginTop: 8, minHeight: 44, minWidth: 120,
       borderRadius: 22, paddingHorizontal: 22,
@@ -317,7 +318,7 @@ export default function CommunityRoomSession() {
     statusPill: {
       flexDirection: 'row', alignItems: 'center', gap: 5,
       borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4,
-      backgroundColor: 'rgba(26,10,46,0.55)',
+      backgroundColor: scrim(0.55),
     },
     statusPillLive: { backgroundColor: '#E5484D' },
     statusPulse: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' },

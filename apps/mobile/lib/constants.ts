@@ -1,3 +1,5 @@
+import { THEMES } from './theme';
+
 export const IDENTITY_LABELS = [
   'Lesbian', 'Bisexual', 'Queer', 'Pansexual', 'Trans',
   'Non-binary', 'Questioning', 'WLW ally',
@@ -14,21 +16,29 @@ export const INTERESTS = [
   'Politics', 'Volunteering', 'Pets',
 ] as const;
 
+/**
+ * RETIRED palette. Origin: 9a50bb1 (2026-03-04, "shared TypeScript types and
+ * app constants"), the first dark violet palette, before lib/theme.ts. No app
+ * code reads it now; it stays exported (never delete unused code) and points
+ * at the v2 dark roles so nothing violet survives (direction v2 › Bans,
+ * superseded 2026-10-21). Remove once a release confirms no caller.
+ */
+const V2 = THEMES.dark;
 export const COLORS = {
-  primary: '#C4476A',
-  secondary: '#8B5CF6',
-  accent: '#F472B6',
-  background: '#1a0a2e',
-  surface: '#2d1b4e',
-  surfaceLight: '#3d2b5e',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#C4B5D4',
-  textMuted: '#8B7AA8',
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  roxy: '#E879A6',
-  devPanel: '#FF1493',
+  primary: V2.pink,
+  secondary: V2.pinkInk,
+  accent: V2.pinkInk,
+  background: V2.ground,
+  surface: V2.surface,
+  surfaceLight: V2.raised,
+  textPrimary: V2.ink,
+  textSecondary: V2.ink2,
+  textMuted: V2.ink3,
+  success: V2.success,
+  warning: V2.warning,
+  error: V2.danger,
+  roxy: V2.roxy,
+  devPanel: V2.pink,
 } as const;
 
 export const ROXY_SISTER_RESOURCES = {

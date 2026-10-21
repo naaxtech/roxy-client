@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { type ThemeColors } from '../../lib/theme';
+import { type ThemeColors, scrim } from '../../lib/theme';
 import { TextCardFace } from '../feed/TextCardFace';
 import { parseTextCard } from '../../lib/textCard';
 import { contentDetailPath } from '../../lib/contentNavigation';
@@ -197,7 +197,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   play: {
     position: 'absolute', right: 6, bottom: 6,
     width: 22, height: 22, borderRadius: 11,
-    backgroundColor: 'rgba(13,5,32,0.55)',
+    backgroundColor: scrim(0.55),
     alignItems: 'center', justifyContent: 'center',
   },
   empty: { paddingHorizontal: 24, paddingVertical: 36, alignItems: 'center', gap: 8 },

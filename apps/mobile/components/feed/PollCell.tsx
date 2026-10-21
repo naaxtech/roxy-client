@@ -4,11 +4,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { THEMES } from '../../lib/theme';
+import { THEMES, pinkFill, flatFill } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
-import { BRAND_GRADIENT, CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
+import { CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
 import { pollShare, pollVoteTotal } from './poll';
 import { DoubleTapCatcher, useDoubleTapLike } from './DoubleTapLike';
 import { LikeBurst } from './LikeBurst';
@@ -94,7 +94,7 @@ export function PollCell({
   return (
     <View testID="poll-cell" style={[s.page, { width, height }]}>
       <LinearGradient
-        colors={[DARK.surface, DARK.background]}
+        colors={flatFill(DARK.surface)}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -149,7 +149,7 @@ export function PollCell({
                 {showResults ? (
                   <LinearGradient
                     testID={`poll-fill-${i}`}
-                    colors={BRAND_GRADIENT}
+                    colors={pinkFill(DARK)}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     // Held at 0.55 over the track: a solid brand fill puts white

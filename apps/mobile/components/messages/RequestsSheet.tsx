@@ -20,7 +20,7 @@ import { confirmAction } from '../../lib/confirm';
 import { logError } from '../../lib/errorLogger';
 import { avatarGradient } from '../../lib/avatars';
 import { TYPE } from '../../lib/typography';
-import { RADII, inkOn, type ThemeColors } from '../../lib/theme';
+import { RADII, inkOn, type ThemeColors, scrim } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
 interface Props {
@@ -391,7 +391,7 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: 'rgba(8,3,18,0.66)' },
+  scrim: { flex: 1, backgroundColor: scrim(0.66) },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet,

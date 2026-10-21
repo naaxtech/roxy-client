@@ -2,7 +2,7 @@ import { View, Text, Pressable, Share, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
-import { RADII } from '../../lib/theme';
+import { RADII, scrim } from '../../lib/theme';
 import { coverGradientFor } from '../../lib/coverGradient';
 import { archiveTypeLabel } from '../../lib/archiveTypes';
 import { archiveShare } from '../../lib/archiveShare';
@@ -89,7 +89,7 @@ export function EntryHero({ slug, title, mediaType, meta, coverGradient, testID 
       justifyContent: 'center',
       // The design's own glass: a dark wash over the art with a hairline edge,
       // which is what keeps the icon legible on a banner of unknown colour.
-      backgroundColor: 'rgba(13,5,32,0.5)',
+      backgroundColor: scrim(0.5),
       borderWidth: 1,
       borderColor: 'rgba(255,249,251,0.25)',
     },

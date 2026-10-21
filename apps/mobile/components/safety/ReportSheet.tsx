@@ -3,7 +3,7 @@ import { View, Text, Modal, Pressable, TextInput, StyleSheet } from 'react-nativ
 import { useSafetyStore } from '../../store/safetyStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
-import { RADII } from '../../lib/theme';
+import { RADII, scrim } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
 import { logError } from '../../lib/errorLogger';
@@ -69,7 +69,7 @@ export function ReportSheet() {
   };
 
   const s = StyleSheet.create({
-    scrim: { flex: 1, backgroundColor: 'rgba(8,3,18,0.66)', justifyContent: 'flex-end' },
+    scrim: { flex: 1, backgroundColor: scrim(0.66), justifyContent: 'flex-end' },
     sheet: {
       backgroundColor: colors.background,
       borderTopLeftRadius: RADII.sheet,

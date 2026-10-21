@@ -9,7 +9,7 @@ import { usePopIn } from '../ui/popIn';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { clampDonationAmount, startDonationCheckout, type DonationCadence } from '../../lib/donations';
 import { showAlert } from '../../lib/confirm';
-import { BRAND_GRADIENT } from '../../lib/theme';
+import { scrim, pinkFill } from '../../lib/theme';
 
 const STEP_CENTS = 500; // $5
 const DEFAULT_AMOUNT_CENTS = 2000; // $20
@@ -60,7 +60,7 @@ export function DonateModal({ visible, onClose }: DonateModalProps) {
 
   const styles = StyleSheet.create({
     overlay: {
-      flex: 1, backgroundColor: 'rgba(26,10,46,0.55)',
+      flex: 1, backgroundColor: scrim(0.55),
       alignItems: 'center', justifyContent: 'center', padding: 28,
     },
     card: {
@@ -171,7 +171,7 @@ export function DonateModal({ visible, onClose }: DonateModalProps) {
               accessibilityLabel="Donate"
             >
               <LinearGradient
-                colors={BRAND_GRADIENT}
+                colors={pinkFill(colors)}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.cta}

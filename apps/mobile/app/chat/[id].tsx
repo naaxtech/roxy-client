@@ -26,7 +26,7 @@ import { logError } from '../../lib/errorLogger';
 import { Analytics } from '../../lib/analytics';
 import { haptic } from '../../lib/haptics';
 import { avatarGradient } from '../../lib/avatars';
-import { BRAND_GRADIENT, inkOn, inkOnGradient, RADII, type ThemeColors } from '../../lib/theme';
+import { inkOn, inkOnGradient, RADII, type ThemeColors, scrim, pinkFill } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
@@ -863,8 +863,8 @@ export default function ChatScreen() {
                 accessibilityLabel={editing ? 'Save edit' : 'Send message'}
                 accessibilityState={{ disabled: sendDisabled }}
               >
-                <LinearGradient colors={BRAND_GRADIENT} style={s.sendFill}>
-                  <Ionicons name={editing ? 'checkmark' : 'send'} size={17} color={inkOnGradient(BRAND_GRADIENT)} />
+                <LinearGradient colors={pinkFill(colors)} style={s.sendFill}>
+                  <Ionicons name={editing ? 'checkmark' : 'send'} size={17} color={colors.onPink} />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -1036,7 +1036,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   sendBtn: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden' },
   sendFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   sendOff: { opacity: 0.4 },
-  scrim: { flex: 1, backgroundColor: 'rgba(8,3,18,0.55)' },
+  scrim: { flex: 1, backgroundColor: scrim(0.55) },
   sheet: {
     backgroundColor: colors.surface, borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet,
     paddingTop: 10, paddingBottom: 30, width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',

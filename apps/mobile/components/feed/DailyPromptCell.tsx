@@ -4,7 +4,7 @@ import { TouchableOpacity } from '../ui/PressableScale';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
-import { RADII, inkOn } from '../../lib/theme';
+import { RADII, inkOn, THEMES } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { tapLight } from '../../lib/haptics';
 import { DAILY_PROMPT_KICK, type DailyPrompt } from '../../lib/dailyPrompt';
@@ -74,7 +74,7 @@ export function DailyPromptCell({ prompt, width, height, reducedMotion }: Props)
 }
 
 const s = StyleSheet.create({
-  page: { backgroundColor: '#0D0520' },
+  page: { backgroundColor: THEMES.dark.stage },
   footer: {
     position: 'absolute',
     left: 30,

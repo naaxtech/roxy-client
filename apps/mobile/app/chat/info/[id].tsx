@@ -28,7 +28,7 @@ import { logError } from '../../../lib/errorLogger';
 import { confirmAction, showAlert } from '../../../lib/confirm';
 import { avatarGradient } from '../../../lib/avatars';
 import { TYPE } from '../../../lib/typography';
-import { RADII, inkOn, type ThemeColors } from '../../../lib/theme';
+import { RADII, inkOn, type ThemeColors, BRAND_INK } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { FeatureGate } from '../../../components/features/FeatureGate';
 
@@ -565,7 +565,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   ava: { width: 40, height: 40, borderRadius: RADII.pill, alignItems: 'center', justifyContent: 'center' },
   addAva: { backgroundColor: colors.surfaceLight },
-  avaText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  avaText: { color: BRAND_INK, fontWeight: '800', fontSize: 15 },
   badge: {
     ...TYPE.micro, color: colors.primaryInk, fontWeight: '800',
     paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADII.pill,

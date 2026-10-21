@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
-import { THEMES } from '../../lib/theme';
+import { THEMES, scrim } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
@@ -99,7 +99,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     // A wash rather than a solid bar: the video keeps going underneath, but the
     // labels stay legible over whatever happens to be on screen.
-    backgroundColor: 'rgba(8,3,18,0.72)',
+    backgroundColor: scrim(0.72),
     gap: 6,
   },
   row: { flexDirection: 'row', justifyContent: 'center', gap: 14, flexWrap: 'wrap' },

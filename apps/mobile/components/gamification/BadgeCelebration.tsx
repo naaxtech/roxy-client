@@ -3,7 +3,7 @@ import { Animated, Modal, View, Text, Pressable, StyleSheet } from 'react-native
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { TYPE } from '../../lib/typography';
-import { RADII, inkOn } from '../../lib/theme';
+import { RADII, inkOn, scrim } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { Confetti } from './Confetti';
 import type { EarnedBadgeCard } from '../../lib/badges';
@@ -62,7 +62,7 @@ export function BadgeCelebration({ badges, onDismiss, testID = 'badge-celebratio
   const s = StyleSheet.create({
     scrim: {
       flex: 1,
-      backgroundColor: 'rgba(8,3,18,0.86)',
+      backgroundColor: scrim(0.86),
       alignItems: 'center',
       justifyContent: 'center',
       padding: 28,
