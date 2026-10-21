@@ -474,3 +474,8 @@ export function elevated(colors: ThemeColors): string {
 export function floatElevation(colors: ThemeColors) {
   return colors.ground === THEMES.dark.ground ? ELEVATION.float.dark : ELEVATION.float.light;
 }
+
+/** The v2 `pop` elevation (sheets) for the active theme. */
+export function popElevation(colors: ThemeColors) {
+  return colors.ground === THEMES.dark.ground ? ELEVATION.pop.dark : ELEVATION.pop.light;
+}

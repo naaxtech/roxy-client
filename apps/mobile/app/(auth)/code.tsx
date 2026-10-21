@@ -1,11 +1,10 @@
 import { useRef, useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, ActivityIndicator,
+  View, Text, TextInput, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Animated, useWindowDimensions,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
@@ -13,7 +12,9 @@ import { RoxyWordmark } from '../../components/ui/RoxyWordmark';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore, CODE_MESSAGES, REDEEM_MESSAGES } from '../../store/gateStore';
 import { normaliseInviteCode, INVITE_CODE_LENGTH } from '../../lib/inviteCode';
-import { BRAND_GRADIENT } from '../../lib/theme';
+import { popElevation } from '../../lib/theme';
+import { FONTS } from '../../lib/typography';
+import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { POP_FROM, animatedSpring } from '../../lib/motion';
 
 /** G-17. The landing site's /request page takes introductions. */
@@ -66,28 +67,26 @@ export default function CodeGateScreen() {
   const shownError = codeError ? CODE_MESSAGES[codeError] : redeemError ? REDEEM_MESSAGES[redeemError] : null;
 
   const styles = StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, backgroundColor: colors.ground },
     flex: { flex: 1 },
     hero: {
       flex: 1, alignItems: 'center', justifyContent: 'center',
       paddingHorizontal: 32, minHeight: compact ? 120 : 200,
     },
+    // v2: the wordmark sits straight on `ground` — the brand gradient lives
+    // in the wordmark itself, so it needs no plate or glow.
     logoPlate: {
-      backgroundColor: 'rgba(255,255,255,0.96)', borderRadius: 32,
       paddingHorizontal: 34, paddingVertical: compact ? 14 : 22,
-      shadowColor: '#7A0E45', shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.28, shadowRadius: 30, elevation: 14,
     },
     tagline: {
-      fontSize: 17, fontWeight: '600', color: 'rgba(255,255,255,0.95)',
-      marginTop: 16, letterSpacing: 0.2, textAlign: 'center',
+      fontSize: 17, fontWeight: '600', color: colors.textSecondary,
+      marginTop: 16, textAlign: 'center',
     },
     sheet: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
       borderTopLeftRadius: 28, borderTopRightRadius: 28,
       paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, gap: 14,
-      shadowColor: '#000', shadowOffset: { width: 0, height: -6 },
-      shadowOpacity: 0.15, shadowRadius: 16, elevation: 16,
+      ...popElevation(colors),
     },
     grabber: {
       alignSelf: 'center', width: 44, height: 4, borderRadius: 2,
@@ -99,9 +98,9 @@ export default function CodeGateScreen() {
       fontSize: 14, lineHeight: 20, marginBottom: 2,
     },
     input: {
-      backgroundColor: colors.surface, borderRadius: 14,
+      backgroundColor: colors.raised, borderRadius: 8,
       paddingHorizontal: 16, paddingVertical: 16,
-      color: colors.textPrimary, fontSize: 22, fontWeight: '800',
+      color: colors.textPrimary, fontSize: 22, fontFamily: FONTS.mono.medium,
       letterSpacing: 6, textAlign: 'center',
       borderWidth: 1.5, borderColor: 'transparent',
     },
@@ -114,12 +113,6 @@ export default function CodeGateScreen() {
       paddingHorizontal: 4, justifyContent: 'center',
     },
     okText: { color: colors.roxy, fontSize: 13, fontWeight: '700' },
-    btn: {
-      minHeight: 52, borderRadius: 16, alignItems: 'center',
-      justifyContent: 'center', flexDirection: 'row', gap: 10,
-    },
-    btnDisabled: { opacity: 0.5 },
-    btnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 16 },
     link: {
       color: colors.roxy, fontWeight: '700', textAlign: 'center',
       paddingVertical: 10, fontSize: 15,
@@ -132,13 +125,7 @@ export default function CodeGateScreen() {
   });
 
   return (
-    <LinearGradient
-      colors={BRAND_GRADIENT}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.container}
-      testID="code-gate-screen"
-    >
+    <View style={styles.container} testID="code-gate-screen">
       <SafeAreaView style={styles.flex} edges={['top']}>
         <Animated.View
           style={[styles.hero, { transform: [{ scale: heroAnim }] }]}
@@ -199,25 +186,14 @@ export default function CodeGateScreen() {
               </View>
             )}
 
-            <TouchableOpacity
+            <PrimaryButton
               testID="code-submit"
+              label="Continue"
               onPress={handleSubmit}
-              disabled={code.length < 4 || busy}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: code.length < 4 || busy, busy }}
+              disabled={code.length < 4}
+              busy={busy}
               accessibilityLabel="Continue with this code"
-            >
-              <LinearGradient
-                colors={BRAND_GRADIENT}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.btn, (code.length < 4 || busy) && styles.btnDisabled]}
-              >
-                {busy
-                  ? <ActivityIndicator color="#FFFFFF" />
-                  : <Text style={styles.btnText}>Continue</Text>}
-              </LinearGradient>
-            </TouchableOpacity>
+            />
 
             {signedIn ? (
               <TouchableOpacity
@@ -247,6 +223,6 @@ export default function CodeGateScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }

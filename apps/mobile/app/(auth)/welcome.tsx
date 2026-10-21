@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { RoxyWordmark } from '../../components/ui/RoxyWordmark';
@@ -21,7 +20,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore } from '../../store/gateStore';
 import { showAlert } from '../../lib/confirm';
-import { BRAND_GRADIENT } from '../../lib/theme';
+import { popElevation } from '../../lib/theme';
+import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { POP_FROM, animatedSpring } from '../../lib/motion';
 import { enabledOAuthProviders } from '../../lib/authProviders';
 import { MIN_PASSWORD_LENGTH } from '../../lib/passwordPolicy';
@@ -178,7 +178,7 @@ export default function WelcomeScreen() {
   const busy = loading || oauthPending !== null;
 
   const styles = StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, backgroundColor: colors.ground },
     flex: { flex: 1 },
 
     hero: {
@@ -191,39 +191,27 @@ export default function WelcomeScreen() {
     tagline: {
       fontSize: 17,
       fontWeight: '600',
-      color: 'rgba(255,255,255,0.95)',
+      color: colors.textSecondary,
       marginTop: 16,
-      letterSpacing: 0.2,
       textAlign: 'center',
     },
-    // Colored wordmark disappears straight on the brand gradient — float it
-    // on a soft white plate so the brand colors stay legible.
+    // v2: the wordmark sits straight on `ground`; the brand gradient lives in
+    // the wordmark itself, so it needs no plate or glow.
     logoPlate: {
-      backgroundColor: 'rgba(255,255,255,0.96)',
-      borderRadius: 32,
       paddingHorizontal: 34,
       paddingVertical: compactHero ? 14 : 22,
-      shadowColor: '#7A0E45',
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.28,
-      shadowRadius: 30,
-      elevation: 14,
     },
 
     // Bottom sheet card that carries all auth actions.
     sheet: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
       borderTopLeftRadius: 28,
       borderTopRightRadius: 28,
       paddingHorizontal: 24,
       paddingTop: 24,
       paddingBottom: 12,
       gap: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -6 },
-      shadowOpacity: 0.15,
-      shadowRadius: 16,
-      elevation: 16,
+      ...popElevation(colors),
     },
     grabber: {
       alignSelf: 'center',
@@ -251,7 +239,6 @@ export default function WelcomeScreen() {
     },
     btnGoogleText: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
     btnDisabled: { opacity: 0.6 },
-    btnGradText: { color: '#FFFFFF', fontWeight: '800', fontSize: 16 },
 
     dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 2 },
     dividerLine: { flex: 1, height: 1, backgroundColor: colors.textMuted + '30' },
@@ -325,13 +312,7 @@ export default function WelcomeScreen() {
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
 
   return (
-    <LinearGradient
-      colors={BRAND_GRADIENT}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.container}
-      testID="welcome-screen"
-    >
+    <View style={styles.container} testID="welcome-screen">
       <SafeAreaView style={styles.flex} edges={['top']}>
         <Animated.View
           style={[
@@ -498,27 +479,14 @@ export default function WelcomeScreen() {
                       onToken={setCaptchaToken}
                       resetKey={captchaRound}
                     />
-                    <TouchableOpacity
+                    <PrimaryButton
                       testID="auth-submit-btn"
+                      label={isSignIn ? 'Sign In' : 'Sign Up'}
                       onPress={handleSubmit}
                       disabled={busy}
-                      accessibilityRole="button"
-                      accessibilityState={{ disabled: busy, busy: loading }}
+                      busy={loading}
                       accessibilityLabel={isSignIn ? 'Sign In' : 'Sign Up'}
-                    >
-                      <LinearGradient
-                        colors={BRAND_GRADIENT}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={[styles.btn, busy && styles.btnDisabled]}
-                      >
-                        {loading ? (
-                          <ActivityIndicator color="#FFFFFF" />
-                        ) : (
-                          <Text style={styles.btnGradText}>{isSignIn ? 'Sign In' : 'Sign Up'}</Text>
-                        )}
-                      </LinearGradient>
-                    </TouchableOpacity>
+                    />
                     <TouchableOpacity
                       onPress={() => setIsSignIn(!isSignIn)}
                       accessibilityRole="button"
@@ -538,6 +506,6 @@ export default function WelcomeScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }

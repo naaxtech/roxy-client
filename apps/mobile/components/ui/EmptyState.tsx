@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { TouchableOpacity } from './PressableScale';
+import { PrimaryButton } from './PrimaryButton';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 type Props = {
@@ -10,7 +10,10 @@ type Props = {
   onCtaPress?: () => void;
 };
 
-/** Standard centered empty state: emoji, title, body, optional roxy CTA pill. */
+/**
+ * Standard centered empty state: emoji, title, body, optional CTA. The CTA is
+ * the screen's one primary action, so it is the v2 PrimaryButton (with lip).
+ */
 export function EmptyState({ emoji, title, body, ctaLabel, onCtaPress }: Props) {
   const colors = useThemeColors();
   const styles = StyleSheet.create({
@@ -18,15 +21,7 @@ export function EmptyState({ emoji, title, body, ctaLabel, onCtaPress }: Props) 
     emoji: { fontSize: 46 },
     title: { color: colors.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' },
     body: { color: colors.textSecondary, fontSize: 14, textAlign: 'center', lineHeight: 21 },
-    cta: {
-      backgroundColor: colors.roxy,
-      borderRadius: 22,
-      paddingHorizontal: 22,
-      minHeight: 44,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    ctaText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+    cta: { alignSelf: 'center', marginTop: 4 },
   });
   return (
     <View style={styles.wrap}>
@@ -34,9 +29,7 @@ export function EmptyState({ emoji, title, body, ctaLabel, onCtaPress }: Props) 
       <Text style={styles.title}>{title}</Text>
       {body ? <Text style={styles.body}>{body}</Text> : null}
       {ctaLabel && onCtaPress ? (
-        <TouchableOpacity style={styles.cta} onPress={onCtaPress} accessibilityLabel={ctaLabel}>
-          <Text style={styles.ctaText}>{ctaLabel}</Text>
-        </TouchableOpacity>
+        <PrimaryButton style={styles.cta} label={ctaLabel} onPress={onCtaPress} />
       ) : null}
     </View>
   );
