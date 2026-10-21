@@ -1,0 +1,18 @@
+apps/mobile/__tests__/lib/roxyFab.test.ts
+  h_0549c11fec2ab0 1-165
+apps/mobile/components/nav/navTokens.ts
+  h_0549c11fec2ab0 47-70
+apps/mobile/lib/roxyFab.ts
+  h_0549c11fec2ab0 1-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee5098f916aa5f253d7828af42d6fc5bbb528f6a",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
