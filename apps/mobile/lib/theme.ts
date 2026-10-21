@@ -1,147 +1,248 @@
 export type Theme = 'light' | 'dark';
 
 /**
- * Roxy 3.0 token set.
+ * Roxy v2 token set (design direction v2, approved by Nicole 2026-10-21).
+ *
+ * Source of truth: `polish/design-direction.md` › Color, and the key-by-key map
+ * in `polish/proposed-tokens-v2.md`. Light is the default theme and the design
+ * reference; dark ships the same roles. The feed stage is dark in both themes
+ * (`stage`, see `components/feed/stageColors.ts`).
  *
  * Two rules run through the whole table and explain every name in it:
  *
- * 1. **A colour is either a fill or an ink, never both.** `primary` is what a
- *    button is painted with; `primaryInk` is what that colour looks like as
- *    text on a page. They are different luminances because they have different
- *    jobs, and the pair is what lets the brand pink stay `#F22481` while small
- *    text still clears WCAG AA. The handoff prototype ships the same split
- *    (`--pk` / `--pkT`); these are those values.
- * 2. **Hue and saturation are the brand and are not negotiable; luminance is
- *    arithmetic and is.** Where a handoff value could not clear 4.5:1 as body
- *    text on every surface of its own theme, it was re-solved at the same H/S
- *    for a luminance that does, and the deviation is named in a comment.
+ * 1. **A colour is either a fill or an ink, never both.** `pink` is what the one
+ *    primary button is painted with; `pinkInk` is pink as text. In light they
+ *    happen to be the same value (#C8126A carries white at 5.60:1 AND reads as
+ *    text at 5.07:1 on `ground`); in dark they differ.
+ * 2. **Colour carries meaning or identity, never decoration.** Warm neutrals
+ *    for grounds, one pink for the action and the selected state (`pinkContainer`
+ *    does the area work), identity colours for communities and events,
+ *    semantics for state, butter for Premium only. Violet, indigo and lilac are
+ *    banned (v0's ground #14082A and lilac secondary are gone).
  *
- * There are deliberately no `// 4.9:1 on white ✓` notes here. One of those was
- * how `textMuted` shipped at 3.5:1 as body copy: the note was accurate for the
- * size it was written about and silently wrong for the size it got used at.
- * The ratios live in `__tests__/theme.contrast.test.ts`, which fails the build
- * instead of ageing quietly.
+ * **Legacy keys.** About a thousand call sites read the v0 names (`background`,
+ * `textPrimary`, `primary`, `surfaceLight`…). Each one is kept as an alias that
+ * IS the v2 role which took over its job, and `__tests__/lib/themeV2.test.ts`
+ * asserts the alias equals the role, so the two cannot drift. New code reads
+ * the v2 names. Every value stays a `#RRGGBB` hex because call sites append
+ * alpha pairs (`colors.primary + '20'`).
  *
- * src: docs/handoff/roxy-3.0/README.md · Roxy 3.0 handoff · 2026-08-16
- * src: docs/handoff/roxy-3.0/Roxy App.dc.html · `.rxa` / `.rxa.lt` custom properties
+ * The contrast ratios live in `__tests__/theme.contrast.test.ts`, which fails
+ * the build instead of ageing quietly in a comment.
+ *
+ * src: polish/design-direction.md · v2 › Color · 2026-10-21
+ * src: polish/proposed-tokens-v2.md · Colour (light / dark) · 2026-10-21
  */
 export type ThemeColors = {
-  // — surfaces, back to front ————————————————————————————————
-  /** Page ground. `--bg`. */
-  background: string;
-  /** The second ground the prototype washes headers and full-bleed media over. `--bg2`. */
-  backgroundAlt: string;
-  /** Cards, sheets, rails. `--sf`. */
+  // — v2 roles: surfaces, back to front ————————————————————————
+  /** The page. */
+  ground: string;
+  /** Cards, sheets, other people's chat bubbles. */
   surface: string;
-  /**
-   * Raised chrome inside a card — chips, tracks, inline rows. `--sf2`.
-   * Named `surfaceLight` rather than `elevated` because ~200 call sites already
-   * say `surfaceLight`; `elevated` is exported below as the 3.0 alias.
-   */
-  surfaceLight: string;
-  /** Hairlines and dividers. Never a text ground. `--ln`. */
+  /** Inputs, chips at rest, quiet buttons, skeletons. */
+  raised: string;
+  /** Rules inside settings cards and inputs only. Never a text ground. */
   line: string;
-  /** The divider that has to be seen — focus rings, active borders. `--ln2`. */
-  lineStrong: string;
+  /** Outlined controls, switch-off outline, radio rings (non-text, 3:1). */
+  control: string;
 
-  // — ink ————————————————————————————————————————————————————
-  textPrimary: string;
-  textSecondary: string;
-  textMuted: string;
+  // — v2 roles: ink steps ————————————————————————————————————————
+  ink: string;
+  ink2: string;
+  ink3: string;
 
-  // — brand and semantic pairs (fill / ink) ——————————————————
-  /** Action pink. A fill: buttons, active chips, the reaction burst. `--pk`. */
-  primary: string;
-  /** The same pink as small text. `--pkT`. */
-  primaryInk: string;
-  /** Lilac. Everything social that is deliberately *not* romantic. `--li`. */
-  secondary: string;
-  secondaryInk: string;
-  /** Streaks, levels, achievements. The 3.0 name for this role is "gold". `--gd`. */
-  gold: string;
-  goldInk: string;
-  /**
-   * Alias of `gold`, kept because existing call sites say `warning`.
-   * The contrast test asserts the two are equal, so they cannot drift apart.
-   */
+  // — v2 roles: the one pink ————————————————————————————————————
+  /** The action: the one primary button, Create, switch on, unread dot. */
+  pink: string;
+  /** Label on `pink`. White in light, dark ink in dark. */
+  onPink: string;
+  /** Pink as text and links. */
+  pinkInk: string;
+  /** The 3 dp lip under the primary button. */
+  pinkLip: string;
+  /** Selection and her own things: nav pill, selected chip, reaction disc, her bubbles. */
+  pinkContainer: string;
+  /** Ink on `pinkContainer`. Never `pink` text on it (4.35:1, fails). */
+  onPinkContainer: string;
+  /** The hot brand pink as a field ("You're in") and the Roxy O ring on the stage. */
+  brandPink: string;
+  /** Ink on `brandPink` and on every identity fill. */
+  onBrandPink: string;
+
+  // — v2 roles: inverse, premium, semantic ——————————————————————
+  /** Snackbars. */
+  inverse: string;
+  onInverse: string;
+  /** The snackbar's Undo. */
+  inversePink: string;
+  /** The Premium tag and lock badge only. */
+  premium: string;
+  onPremium: string;
+  /** Warning, also the streak. A fill. */
   warning: string;
+  warningInk: string;
   success: string;
   successInk: string;
-  error: string;
-  errorInk: string;
-  /** Sister — the private vent space. Cool, quiet, never gamified. `--si`. */
+  danger: string;
+  dangerInk: string;
+  /** Sister — the private vent space. Cool, quiet, never gamified. */
   sister: string;
   sisterInk: string;
-  /** Roxy the wingwoman. Warm. Distinct from `sister` at a glance, by contract. */
+  /** The LIVE dot. Always shown with the word. */
+  live: string;
+  /** The feed stage, always dark. */
+  stage: string;
+  /** Raised on the stage: the active nav pill on the Feed. */
+  stageRaised: string;
+
+  // — legacy keys (aliases of the v2 roles above) ——————————————————
+  /** = `ground`. */
+  background: string;
+  /**
+   * RETIRED (v2 has one ground) = `ground`.
+   * Origin: Roxy 3.0 token slice (`--bg2`, docs/handoff/roxy-3.0). Superseded
+   * by v2 2026-10-21; remove once no call site reads it (22 today).
+   */
+  backgroundAlt: string;
+  /** = `raised`. ~200 call sites say `surfaceLight`. */
+  surfaceLight: string;
+  /** = `control`. */
+  lineStrong: string;
+  /** = `ink`. */
+  textPrimary: string;
+  /** = `ink2`. */
+  textSecondary: string;
+  /** = `ink3`. */
+  textMuted: string;
+  /** = `pink`. */
+  primary: string;
+  /** = `pinkInk`. */
+  primaryInk: string;
+  /**
+   * RETIRED (lilac; violet is banned) = `ink2`: social-not-romantic UI uses
+   * ink/ink2. Origin: Roxy 3.0 token slice (`--li`). Superseded by v2
+   * 2026-10-21; remove once its ~20 call sites move to `ink2`.
+   */
+  secondary: string;
+  /** RETIRED with `secondary` = `ink2`. */
+  secondaryInk: string;
+  /** = `warning` (the 3.0 name for the streak role). */
+  gold: string;
+  /** = `warningInk`. */
+  goldInk: string;
+  /** = `danger`. */
+  error: string;
+  /** = `dangerInk`. */
+  errorInk: string;
+  /**
+   * = `pinkInk`. Legacy `roxy` call sites paint text and icon tints (nav
+   * labels, links), so the alias is the pink that holds AA as text in both
+   * themes. The Roxy O ring itself reads `pink` (`brandPink` on the stage).
+   */
   roxy: string;
   /** The `__DEV__` panel handle. Not a product colour. */
   devPanel: string;
 };
 
 /**
- * Ink for anything that sits ON a brand fill — gradient icon plates, the
- * companion FAB, chips whose background is a brand colour.
+ * `onBrandPink`: the ink for anything that sits ON a brand or identity fill.
  *
- * White is the reflex and it is wrong here: `#FFFFFF` on `#FF5A2E` is 2.9:1,
- * which fails even the 3:1 bar SC 1.4.11 sets for icons. The brand ramp is
- * light, so the legible ink is dark. `#1A0A2E` is `THEMES.dark.backgroundAlt`
- * — already in the palette, so the fix costs no new colour.
+ * v0 used #1A0A2E here — a dark violet, banned in v2. #17080F is the v2 ink for
+ * `brandPink` (4.96:1) and every identity field (≥ 4.96:1). White on #F22481 is
+ * 3.93:1 and fails, which is why the hot brand pink carries dark ink.
  *
- * The handoff prototype paints `--onpk:#FFF8FB` on the pink fill instead, which
- * measures 3.75:1 and does not clear AA for a button label. `inkOn()` is the
- * shipped rule and it wins; this is the one place the build deliberately does
- * not match the prototype.
- *
- * src: https://www.w3.org/TR/WCAG22/#contrast-minimum · SC 1.4.3 / 1.4.11 · 2026-08-06
+ * src: polish/design-direction.md · v2 › Color (identity fields) · 2026-10-21
  */
-export const BRAND_INK = '#1A0A2E';
+export const BRAND_INK = '#17080F';
 
 /** The other half of the pair. `inkOn` picks between the two. */
 export const BRAND_INK_INVERSE = '#FFFFFF';
 
 /**
- * The logo ramp. Reserved for identity — the wordmark, the ＋ create button,
- * the Roxy FAB. Not decoration: a gradient anywhere else reads as "live".
+ * The logo ramp. v2 narrows its use to the wordmark and the app icon ONLY.
+ * Create, the FAB, buttons, cards and pills are flat tokens now
+ * (`pink`, `pinkContainer`, `raised`, identity fields).
  *
  * `linear-gradient(120°, …)` in the prototype; pass `start`/`end` to
  * `LinearGradient` to get the same angle in React Native.
  */
 export const BRAND_GRADIENT = ['#FF5A2E', '#F22481', '#E0189A'] as const;
 
-/** Live and urgent only — LIVE pills, a room that is on air, a timer running out. */
-export const LIVE_GRADIENT = ['#FF5C3D', '#F22481'] as const;
+/** The LIVE dot, light value (the default theme). Dark reads `colors.live`. */
+export const LIVE = '#E8481E';
 
 /**
- * Corner radii. The prototype uses five steps and no others; a sixth value in a
- * StyleSheet is a bug, not a nuance.
+ * RETIRED: v2 shows LIVE as a flat dot plus the word, never a gradient pill.
+ * Kept exported, both stops the flat `live` colour, so a call site that still
+ * paints it renders flat. Origin: Roxy 3.0 token slice. Superseded 2026-10-21;
+ * remove once no call site reads it.
+ */
+export const LIVE_GRADIENT = [LIVE, LIVE] as const;
+
+/**
+ * Identity fields: crests, posters, member initials, fallback covers; never
+ * chrome. Each carries `onBrandPink` at ≥ 4.96:1. Pick by a stable id.
+ */
+export const IDENTITY = ['#F22481', '#FF7A45', '#F2C94C', '#8FC4A0', '#8FB8DE', '#E8A0BF'] as const;
+
+/**
+ * Corner radii: bimodal plus one press step (M3's corner scale trimmed).
+ * `sm` 8 for inputs, code cells, small tiles and covers; `md` 20 for cards,
+ * posters, bubbles and snackbars; `sheet` 28 for sheet tops; `pill` for buttons,
+ * chips, the nav indicator and the FAB. `press` 12 exists only as the
+ * press-morph target and the Create key. Nested radii step down 28 → 20 → 8.
  */
 export const RADII = {
-  /** Pills and chips. */
   pill: 999,
-  /** Inline controls, inputs, small tiles. */
-  sm: 10,
-  /** The default card. */
-  md: 15,
-  /** Feature cards, media tiles. */
-  lg: 18,
+  sm: 8,
+  /** The press-morph target and the Create key only. */
+  press: 12,
+  md: 20,
+  /** RETIRED: merged into `md` (v2 has no 18). Kept so call sites compile. */
+  lg: 20,
   /** Bottom sheets — top corners only. */
-  sheet: 26,
+  sheet: 28,
 } as const;
+
+/** Base unit 4. Inside a group 8-12; between groups 24-32. */
+export const SPACE = [4, 8, 12, 16, 20, 24, 32, 48, 64] as const;
+
+/** Screen margin (20 on text posts). */
+export const MARGIN = 16;
+
+/**
+ * Elevation, only on what floats (FAB, reaction picker, menus, snackbars:
+ * `float`; sheets: `pop`). Nothing at rest has a shadow; cards separate from
+ * the ground by one tone step. Shadow colours are the light ink and black.
+ */
+export const ELEVATION = {
+  float: {
+    light: { shadowColor: '#1A1216', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.16, shadowRadius: 28, elevation: 8 },
+    dark: { shadowColor: '#000000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 28, elevation: 8 },
+  },
+  pop: {
+    light: { shadowColor: '#1A1216', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4 },
+    dark: { shadowColor: '#000000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 4 },
+  },
+} as const;
+
+/** The primary button's hard lip, in dp (no blur). */
+export const LIP = 3;
 
 /**
  * Motion durations for the few places that still time a property (rail
- * scrolls, spin). Entrance and press use `lib/motion.ts` springs — scale and
- * translate, never opacity.
+ * scrolls, spin). Presses, sheets and pops use the M3 Expressive springs in
+ * `lib/motion.ts` (`SPRING`). `pulse` is the LIVE dot only.
  *
- * `bezier` is `cubic-bezier(.32,.72,0,1)` from the prototype — spread it into
- * `Easing.bezier(...MOTION.bezier)`.
+ * `bezier` is `cubic-bezier(.32,.72,0,1)` — spread it into
+ * `Easing.bezier(...MOTION.bezier)` where a CSS-style curve is unavoidable.
  */
 export const MOTION = {
-  /** Chips, toggles. */
+  /** Superseded by `SPRING.fastSpatial` for presses and chips. */
   fast: 160,
-  /** Rail scrolls. */
+  /** Superseded by `SPRING.fastEffects` for colour changes. */
   base: 220,
-  /** Sheets in and out. */
+  /** Superseded by `SPRING.spatial` for sheets. */
   sheet: 320,
   /** The live pulse. */
   pulse: 1400,
@@ -179,8 +280,11 @@ export function contrastRatio(a: string, b: string): number {
 
 /**
  * The legible ink for a given fill. Use this instead of hardcoding `'#fff'`
- * on anything whose background is a brand colour or a theme token — `roxy` is
- * `#AF3B74` in light and `#E879A6` in dark, and those two want opposite inks.
+ * on anything whose background is a brand colour or a theme token.
+ *
+ * v2: it answers WHITE on the light action pink #C8126A (5.60:1) and the dark
+ * ink `onBrandPink` on the dark-theme pink #F22481 (4.96:1) and on every
+ * identity field — the same answers as the `onPink` token in each theme.
  *
  * It does not promise 4.5:1: a mid-luminance fill such as `#E0189A` carries no
  * ink at AA. `__tests__/theme.contrast.test.ts` names every fill that falls in
@@ -193,20 +297,15 @@ export function inkOn(fill: string): string {
 }
 
 /**
- * A deeper brand ink, for text that sits on a gradient rather than a fill.
+ * A deeper ink for text that sits on a gradient rather than a fill.
  *
- * `BRAND_INK` is `#1A0A2E` and answers 4.74:1 on the ramp's middle stop — which
- * is why measuring against that stop feels safe and is not. On `#E0189A` at the
- * end of the ramp the same ink measures 4.23:1, and the trailing glyphs of a
- * centred label land there. Neither brand ink clears 4.5:1 across all three
- * stops (white is worse: 3.11:1 on the orange end), so the answer is a darker
- * ink rather than a choice between the two.
- *
- * Luminance only — the hue and saturation of `BRAND_INK` are held, the same
- * departure this file already documents for `textMuted` and `roxy` in light.
- * It measures 6.51 / 5.15 / 4.60 across the ramp.
+ * Neither `BRAND_INK` (4.42:1) nor white (3.11:1 on the orange end) clears
+ * 4.5:1 across all three brand stops, so the answer is a darker ink. v0's value
+ * was a violet near-black (#0B0314); v2 takes the stage's warm hue, deepened
+ * until it clears #E0189A (4.60:1). With the gradient narrowed to the wordmark,
+ * its remaining job is the dark veil behind celebration overlays.
  */
-export const BRAND_INK_DEEP = '#0B0314';
+export const BRAND_INK_DEEP = '#060505';
 
 /** Every ink `inkOnGradient` may answer with, darkest last. */
 const GRADIENT_INKS = [BRAND_INK_INVERSE, BRAND_INK, BRAND_INK_DEEP] as const;
@@ -247,89 +346,131 @@ export function inkOnGradient(stops: readonly string[], threshold = 4.5): string
 }
 
 /**
- * The rotating fills behind a community's initial on the community chips. Lives
- * here rather than inline in the screen so the contrast gate can import the real
- * array instead of a copy of it — every entry has to carry `inkOn()` at 4.5:1.
+ * The rotating fills behind a community's initial on the community chips: the
+ * v2 identity fields (v0's list carried violet #7B45F5). Lives here so the
+ * contrast gate imports the real array — every entry carries `inkOn()` at 4.5:1.
  */
-export const COMMUNITY_CHIP_COLORS = [
-  '#FF6A2E', '#7B45F5', '#FF2F71', '#F472B6', '#BD3D60', '#FF8A3D',
-] as const;
+export const COMMUNITY_CHIP_COLORS = IDENTITY;
+
+/** The identity field for a stable id (community, event, archive entry). */
+export function identityFor(id: string | null | undefined): string {
+  const key = id ?? '';
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) | 0;
+  return IDENTITY[Math.abs(hash) % IDENTITY.length];
+}
+
+const LIGHT_ROLES = {
+  ground: '#F6F3F2',
+  surface: '#FFFDFD',
+  raised: '#ECE7E6',
+  line: '#E0D9D8',
+  control: '#8C8186',
+  ink: '#1A1216',
+  ink2: '#544A4F',
+  ink3: '#675C61',
+  pink: '#C8126A',
+  onPink: '#FFFFFF',
+  pinkInk: '#C8126A',
+  pinkLip: '#8E0C4A',
+  pinkContainer: '#FFD9E7',
+  onPinkContainer: '#5C0A31',
+  brandPink: '#F22481',
+  onBrandPink: '#17080F',
+  inverse: '#2B2427',
+  onInverse: '#F7F2F4',
+  inversePink: '#FF9EC3',
+  premium: '#F2C94C',
+  onPremium: '#1A1216',
+  warning: '#B07A10',
+  warningInk: '#8A5E06',
+  success: '#177A47',
+  successInk: '#13703F',
+  danger: '#C8262C',
+  dangerInk: '#B21F25',
+  sister: '#4F6B7C',
+  sisterInk: '#3E5868',
+  live: LIVE,
+  stage: '#0B0A0A',
+  stageRaised: '#262124',
+  devPanel: '#FF1493',
+} as const;
+
+const DARK_ROLES = {
+  ground: '#141113',
+  surface: '#1E1A1C',
+  raised: '#2A2528',
+  line: '#3A3337',
+  control: '#6E6469',
+  ink: '#F7F2F4',
+  ink2: '#C3B8BD',
+  ink3: '#A1959B',
+  pink: '#F22481',
+  onPink: '#17080F',
+  pinkInk: '#FF6FA6',
+  pinkLip: '#A5145A',
+  pinkContainer: '#5A1236',
+  onPinkContainer: '#FFD9E7',
+  brandPink: '#F22481',
+  onBrandPink: '#17080F',
+  inverse: '#F1ECEA',
+  onInverse: '#1A1216',
+  inversePink: '#C8126A',
+  premium: '#F2C94C',
+  onPremium: '#1A1216',
+  warning: '#F2B33D',
+  warningInk: '#F6C766',
+  success: '#3CCB86',
+  successInk: '#62DBA0',
+  danger: '#FF5D5D',
+  dangerInk: '#FF7B7B',
+  sister: '#9FB6C4',
+  sisterInk: '#B9CBD6',
+  live: '#FF5A2E',
+  stage: '#0B0A0A',
+  stageRaised: '#262124',
+  devPanel: '#FF1493',
+} as const;
+
+type Roles = typeof LIGHT_ROLES | typeof DARK_ROLES;
+
+/** Legacy key → the v2 role that took its job. */
+function withLegacyAliases(r: Roles): ThemeColors {
+  return {
+    ...r,
+    background: r.ground,
+    backgroundAlt: r.ground,
+    surfaceLight: r.raised,
+    lineStrong: r.control,
+    textPrimary: r.ink,
+    textSecondary: r.ink2,
+    textMuted: r.ink3,
+    primary: r.pink,
+    primaryInk: r.pinkInk,
+    secondary: r.ink2,
+    secondaryInk: r.ink2,
+    gold: r.warning,
+    goldInk: r.warningInk,
+    error: r.danger,
+    errorInk: r.dangerInk,
+    roxy: r.pinkInk,
+  };
+}
 
 export const THEMES: Record<Theme, ThemeColors> = {
-  dark: {
-    background: '#14082A',
-    backgroundAlt: '#1A0A2E',
-    surface: '#211039',
-    surfaceLight: '#2D1B4E',
-    line: '#3D2B5E',
-    lineStrong: '#55407F',
-
-    textPrimary: '#F7F3FC',
-    textSecondary: '#C6B5E4',
-    textMuted: '#9C89C2',
-
-    primary: '#F22481',
-    primaryInk: '#FF7AB5',
-    secondary: '#A78BFA',
-    secondaryInk: '#C9B9F5',
-    gold: '#F5B73D',
-    goldInk: '#FFD37E',
-    warning: '#F5B73D',
-    success: '#2FC97E',
-    successInk: '#7CE0AC',
-    error: '#EF4444',
-    // Handoff names no error colour, so this pair is ours. `#EF4444` is the
-    // shipped fill; the ink is the same hue lifted from L 60% to L 65% to clear
-    // 4.5:1 on `surfaceLight`, where the fill measures 3.98:1.
-    errorInk: '#F15B5B',
-    sister: '#8E9BFF',
-    sisterInk: '#BCC5FF',
-    roxy: '#E879A6',
-    devPanel: '#FF1493',
-  },
-  light: {
-    // Warm paper, not blush. Same job as Studio's light `--background`:
-    // a faint yellow-white so long sessions are easier on the eye than
-    // the old #FAF2F6 / #F6EAF2 pink wash.
-    background: '#F7F5EE',
-    backgroundAlt: '#FBF9F3',
-    surface: '#FBF9F3',
-    surfaceLight: '#F0EDE4',
-    line: '#E3DFD4',
-    lineStrong: '#D0CBBE',
-
-    textPrimary: '#241234',
-    textSecondary: '#5D4980',
-    // Handoff value is #8672A8 (L 55%), which measures 3.69:1 on `surfaceLight`
-    // and 4.22:1 on `surface` — below AA on the two grounds body copy most
-    // often lands on. Same hue (262°) and saturation (24%), re-solved at L 48%.
-    textMuted: '#735D97',
-
-    primary: '#D81368',
-    primaryInk: '#C11060',
-    secondary: '#7C5CE0',
-    secondaryInk: '#6547C8',
-    gold: '#B07A10',
-    goldInk: '#8A5E06',
-    warning: '#B07A10',
-    success: '#178A4C',
-    successInk: '#0E7A40',
-    error: '#B91C1C',
-    errorInk: '#B91C1C',
-    sister: '#6474E8',
-    sisterInk: '#4D5BD0',
-    // Was #B83E7A, which measures exactly 4.50:1 on the new `surfaceLight` —
-    // a value that rounds either side of the bar depending on the arithmetic.
-    // Same hue (330°), re-solved at L 46% for margin.
-    roxy: '#AF3B74',
-    devPanel: '#FF1493',
-  },
+  light: withLegacyAliases(LIGHT_ROLES),
+  dark: withLegacyAliases(DARK_ROLES),
 };
 
 /**
- * The 3.0 name for `surfaceLight`. New code should read `elevated(colors)`;
- * the key stays `surfaceLight` until the last call site moves.
+ * The 3.0 name for `surfaceLight`, which v2 calls `raised`. New code reads
+ * `colors.raised`; this stays for the call sites that already use it.
  */
 export function elevated(colors: ThemeColors): string {
-  return colors.surfaceLight;
+  return colors.raised;
+}
+
+/** The v2 `float` elevation for the active theme. */
+export function floatElevation(colors: ThemeColors) {
+  return colors.ground === THEMES.dark.ground ? ELEVATION.float.dark : ELEVATION.float.light;
 }

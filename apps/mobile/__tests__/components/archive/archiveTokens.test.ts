@@ -1,7 +1,7 @@
 import { THEMES } from '../../../lib/theme';
 import { formatScore, scoreTone } from '../../../lib/archive';
 import {
-  SCORE_GRADIENT, SCORE_ICON, scoreGradient, scoreIcon, scoreRingColor,
+  SCORE_GRADIENT, SCORE_ICON, scoreGradient, scoreIcon, scoreRingColor, scoreFill,
   isDarkTheme, withAlpha, tintFill, tintLine, notePalette, NOTE_PALETTE_SLOTS,
   RING_DEGREES_PER_PERCENT, ringSweepDegrees, ringDash,
 } from '../../../components/archive/archiveTokens';
@@ -24,13 +24,20 @@ describe('score bands', () => {
     expect(scoreIcon('none')).toBeNull();
   });
 
-  it('builds every score gradient out of theme tokens, never a literal', () => {
-    // The prototype paints the same two-stop ramp in both themes, and for the
-    // first two bands those two stops ARE the light and dark values of one role.
-    expect(SCORE_GRADIENT.good).toEqual([THEMES.light.success, THEMES.dark.success]);
-    expect(SCORE_GRADIENT.mixed).toEqual([THEMES.light.gold, THEMES.dark.gold]);
-    expect(SCORE_GRADIENT.poor).toEqual([THEMES.light.primary, THEMES.dark.primary]);
+  it('builds every score fill out of theme tokens, never a literal, and never a ramp', () => {
+    // v2 (2026-10-21): gradients survive only on the wordmark, so the retired
+    // SCORE_GRADIENT pairs are flat (both stops one light role) and the pill
+    // reads the theme-aware flat fill from scoreFill().
+    expect(SCORE_GRADIENT.good).toEqual([THEMES.light.success, THEMES.light.success]);
+    expect(SCORE_GRADIENT.mixed).toEqual([THEMES.light.warning, THEMES.light.warning]);
+    expect(SCORE_GRADIENT.poor).toEqual([THEMES.light.pink, THEMES.light.pink]);
     expect(scoreGradient('none')).toBeNull();
+    for (const theme of [THEMES.light, THEMES.dark]) {
+      expect(scoreFill('good', theme)).toBe(theme.success);
+      expect(scoreFill('mixed', theme)).toBe(theme.warning);
+      expect(scoreFill('poor', theme)).toBe(theme.pink);
+      expect(scoreFill('none', theme)).toBeNull();
+    }
   });
 
   it('resolves the ring colour inside the active theme, not across both', () => {
@@ -71,16 +78,17 @@ describe('tints', () => {
 
   it('reproduces --pkBg from the primary token', () => {
     // dark  --pkBg: rgba(242,36,129,.16)   → primary #F22481 at .16
-    // light --pkBg: rgba(216,19,104,.09)   → primary #D81368 at .09
+    // light: v2 moved the light primary from #D81368 to #C8126A (2026-10-21),
+    // so the same .09 wash of it is rgba(200,18,106,.09).
     expect(withAlpha(THEMES.dark.primary, 0.16)).toBe('rgba(242, 36, 129, 0.16)');
     expect(tintFill(THEMES.dark, THEMES.dark.primary)).toBe('rgba(242, 36, 129, 0.16)');
-    expect(tintFill(THEMES.light, THEMES.light.primary)).toBe('rgba(216, 19, 104, 0.09)');
+    expect(tintFill(THEMES.light, THEMES.light.primary)).toBe('rgba(200, 18, 106, 0.09)');
   });
 
   it('reproduces --pkLn from the primary ink token', () => {
-    // dark --pkLn: rgba(255,122,181,.4) → primaryInk #FF7AB5 at .4
-    expect(tintLine(THEMES.dark, THEMES.dark.primaryInk)).toBe('rgba(255, 122, 181, 0.4)');
-    expect(tintLine(THEMES.light, THEMES.light.primaryInk)).toBe('rgba(193, 16, 96, 0.3)');
+    // v2 pinkInk: dark #FF6FA6, light #C8126A (was #FF7AB5 / #C11060).
+    expect(tintLine(THEMES.dark, THEMES.dark.primaryInk)).toBe('rgba(255, 111, 166, 0.4)');
+    expect(tintLine(THEMES.light, THEMES.light.primaryInk)).toBe('rgba(200, 18, 106, 0.3)');
   });
 
   it('refuses a colour it cannot parse instead of emitting rgba(NaN)', () => {
@@ -89,24 +97,27 @@ describe('tints', () => {
 });
 
 describe('content-note palette', () => {
-  it('rotates through three slots', () => {
+  // v2 (2026-10-21): colour is never decoration and lilac is banned, so the
+  // v0 pink / lilac / neutral rotation is gone: every slot at rest is the
+  // neutral chip, and agreement (state) is the selected-chip fill.
+  it('keeps three slots but paints every one the neutral raised chip at rest', () => {
     expect(NOTE_PALETTE_SLOTS).toBe(3);
     const c = THEMES.dark;
-    expect(notePalette(c, 0, false).ink).toBe(c.primaryInk);
-    expect(notePalette(c, 1, false).ink).toBe(c.secondaryInk);
-    expect(notePalette(c, 2, false).ink).toBe(c.textSecondary);
-    expect(notePalette(c, 3, false).ink).toBe(c.primaryInk);
+    for (const i of [0, 1, 2, 3]) {
+      expect(notePalette(c, i, false)).toEqual({ bg: c.raised, line: c.line, ink: c.ink2 });
+    }
   });
 
-  it('paints an agreed note pink whatever slot it landed in', () => {
+  it('paints an agreed note pinkContainer whatever slot it landed in', () => {
     const c = THEMES.dark;
     expect(notePalette(c, 2, true)).toEqual(notePalette(c, 0, true));
-    expect(notePalette(c, 2, true).ink).toBe(c.primaryInk);
+    expect(notePalette(c, 2, true).bg).toBe(c.pinkContainer);
+    expect(notePalette(c, 2, true).ink).toBe(c.onPinkContainer);
   });
 
   it('resolves in light as well as dark', () => {
     const c = THEMES.light;
-    expect(notePalette(c, 1, false).ink).toBe(c.secondaryInk);
+    expect(notePalette(c, 1, false).ink).toBe(c.ink2);
     expect(notePalette(c, 2, false).bg).toBe(c.surfaceLight);
   });
 });

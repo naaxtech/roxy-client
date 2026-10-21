@@ -36,9 +36,15 @@ function expectContrast(fg: string, bg: string, min: number): void {
 }
 
 describe('the feed stage', () => {
-  it('is the dark theme, whichever theme the viewer chose', () => {
-    expect(STAGE).toBe(THEMES.dark);
-    expect(STAGE_BG).toBe(THEMES.dark.background);
+  // v2 (2026-10-21): the stage is its own token, `stage` #0B0A0A, darker than
+  // the dark theme's ground; STAGE is the dark theme's roles on that ground.
+  it('is the dark theme on the v2 stage colour, whichever theme the viewer chose', () => {
+    expect(STAGE_BG).toBe(THEMES.dark.stage);
+    expect(STAGE_BG).toBe('#0B0A0A');
+    expect(STAGE.background).toBe(STAGE_BG);
+    expect(STAGE.ground).toBe(STAGE_BG);
+    expect(STAGE.textPrimary).toBe(THEMES.dark.textPrimary);
+    expect(STAGE.textMuted).toBe(THEMES.dark.textMuted);
   });
 
   it.each(STAGE_INK)('paints %s at AA on the stage ground', (ink) => {

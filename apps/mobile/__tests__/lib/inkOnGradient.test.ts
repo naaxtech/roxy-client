@@ -20,7 +20,9 @@ import {
  */
 describe('worstContrast', () => {
   it('reports the weakest stop, not the average or the first', () => {
-    expect(worstContrast(BRAND_INK, BRAND_GRADIENT)).toBeCloseTo(4.23, 2);
+    // v2 (2026-10-21): BRAND_INK moved from the violet #1A0A2E (4.23:1 here)
+    // to onBrandPink #17080F, which measures 4.42:1 on #E0189A.
+    expect(worstContrast(BRAND_INK, BRAND_GRADIENT)).toBeCloseTo(4.42, 2);
     expect(worstContrast(BRAND_INK_INVERSE, BRAND_GRADIENT)).toBeCloseTo(3.11, 2);
   });
 

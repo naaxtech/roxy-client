@@ -69,12 +69,13 @@ function expectContrast(fg: string, bg: string, min: number): void {
 type InkKey = keyof ThemeColors;
 
 /**
- * Every ground a screen paints text on. `line` and `lineStrong` are absent on
- * purpose: they are hairlines, never a fill behind a label. In light,
- * `backgroundAlt` and `surface` are the same colour — the duplicate assertion
- * is free and survives them diverging later.
+ * Every ground a screen paints text on (v2: one ground, one surface, one
+ * raised step). `line` and `control` are absent on purpose: they are hairlines
+ * and outlines, never a fill behind a label. The legacy names (`background`,
+ * `backgroundAlt`, `surfaceLight`) are asserted to BE these roles in
+ * `__tests__/lib/themeV2.test.ts`, so they are covered here too.
  */
-const SURFACES = ['background', 'backgroundAlt', 'surface', 'surfaceLight'] as const;
+const SURFACES = ['ground', 'surface', 'raised'] as const;
 
 const THEME_NAMES: Theme[] = ['light', 'dark'];
 
@@ -83,35 +84,34 @@ const THEME_NAMES: Theme[] = ['light', 'dark'];
  * so they are licensed on every surface and must hold AA on all of them —
  * no per-token usage rule to remember, and none to get wrong.
  */
-const BODY_INK: InkKey[] = ['textPrimary', 'textSecondary', 'textMuted'];
+const BODY_INK: InkKey[] = ['ink', 'ink2', 'ink3'];
 
 /**
- * The ink half of each fill/ink pair, plus `roxy`, which is one colour doing
- * both jobs and clears AA either way. These are what new 3.0 code writes when
- * it wants a brand or semantic colour *as text*. All licensed on every surface.
+ * The ink half of each fill/ink pair, plus legacy `roxy` (an alias of
+ * `pinkInk` in v2). These are what new code writes when it wants a brand or
+ * semantic colour *as text*. All licensed on every surface.
  */
 const SEMANTIC_INK_AT_AA: InkKey[] = [
-  'primaryInk',
-  'secondaryInk',
-  'goldInk',
+  'pinkInk',
+  'warningInk',
   'successInk',
-  'errorInk',
+  'dangerInk',
   'sisterInk',
   'roxy',
 ];
 
 /**
  * The fill half. These are painted under something — a button, a dot, a meter,
- * a LIVE pill — so they answer to SC 1.4.11's 3:1 non-text floor against every
+ * the LIVE dot — so they answer to SC 1.4.11's 3:1 non-text floor against every
  * surface they can sit on, not to the 4.5:1 text bar.
  */
 const SEMANTIC_FILLS: InkKey[] = [
-  'primary',
-  'secondary',
-  'gold',
+  'pink',
+  'warning',
   'success',
-  'error',
+  'danger',
   'sister',
+  'live',
 ];
 
 /**
@@ -128,39 +128,96 @@ const SEMANTIC_FILLS: InkKey[] = [
  * the day one clears AA on every surface, delete it from this list.
  */
 const INK_BELOW_AA: Record<Theme, InkKey[]> = {
-  dark: ['primary', 'error'],
-  light: ['primary', 'secondary', 'success'],
+  // v2: dark `pink` (#F22481) is 4.38:1 on `surface` and 3.83:1 on `raised`;
+  // text call sites move to `pinkInk`. Light `primary` (#C8126A), the retired
+  // lilac `secondary` (now `ink2`) and dark `error` (now `danger`) all clear AA
+  // in v2, so they left this list with the v2 palette (2026-10-21).
+  dark: ['primary'],
+  // Light `success` (#177A47) is 4.38:1 on `raised`; text uses `successInk`.
+  light: ['success'],
 };
 
 /**
- * Fills that carry `BRAND_INK` — gradient icon plates and solid brand chips.
- * Every one of these used to carry `#fff`, which is why the audit found
- * 1.8:1 and 2.9:1 on three screens.
+ * Fills that carry `BRAND_INK` (= `onBrandPink`, #17080F) or white, whichever
+ * `inkOn` picks: the brand field, the wordmark ramp, the identity fields, the
+ * Premium tag and the dev handle. v0's gradient icon plates (Sister lilac,
+ * Badges, MiniWins green ramps) are flat tokens in v2 and left this list.
  */
 const BRAND_FILLS: { fill: string; where: string }[] = [
-  { fill: '#FF5A2E', where: 'BRAND_GRADIENT stop 1 — logo, ＋ create button, Roxy FAB' },
-  { fill: '#F22481', where: 'BRAND_GRADIENT stop 2 — same plates; also THEMES.dark.primary' },
-  { fill: '#FF5C3D', where: 'LIVE_GRADIENT stop 1 — LIVE pills, on-air rooms' },
-  { fill: '#8E7CF7', where: 'Sister plate stop 1 — grow/index.tsx, sister-button/index.tsx' },
-  { fill: '#C86DD7', where: 'Sister plate stop 2 — grow/index.tsx, sister-button/index.tsx' },
-  { fill: '#F7B42C', where: 'Badges plate stop 1 — grow/index.tsx' },
-  { fill: '#FC575E', where: 'Badges plate stop 2 — grow/index.tsx' },
-  { fill: '#2BB673', where: 'MiniWins completed plate stop 1 — components/grow/MiniWinsCard.tsx' },
-  { fill: '#1E9E62', where: 'MiniWins completed plate stop 2 — components/grow/MiniWinsCard.tsx' },
+  { fill: '#FF5A2E', where: 'BRAND_GRADIENT stop 1 — the wordmark and app icon only' },
+  { fill: '#F22481', where: 'brandPink — "You\'re in" field, the Roxy O ring on the stage; dark pink' },
+  { fill: '#C8126A', where: 'light pink — the one primary button, the Create key' },
+  { fill: '#FF7A45', where: 'identity tangerine' },
+  { fill: '#F2C94C', where: 'identity butter; also `premium`' },
+  { fill: '#8FC4A0', where: 'identity sage' },
+  { fill: '#8FB8DE', where: 'identity sky' },
+  { fill: '#E8A0BF', where: 'identity rose' },
+  { fill: '#E8481E', where: 'LIVE_GRADIENT (retired, flat live dot)' },
   { fill: '#FF1493', where: 'THEMES.*.devPanel — the __DEV__ FAB in components/dev/DevPanel.tsx' },
 ];
 
 /**
- * Theme tokens used as a solid fill under a label: `primary` on the onboarding
- * and report buttons, `roxy` on the feedback submit button and the donation
- * cadence chips. `roxy` inverts between themes — #AF3B74 wants white, #E879A6
- * wants ink — which is the whole reason `inkOn` exists.
+ * Theme tokens used as a solid fill under a label: `pink` on the primary
+ * button and Create key, legacy `roxy` on the feedback submit button and the
+ * donation cadence chips. Both invert between themes — light wants white,
+ * dark wants ink — which is the whole reason `inkOn` exists.
  */
 const THEME_FILLS: { theme: Theme; key: InkKey }[] = [
-  { theme: 'light', key: 'primary' },
+  { theme: 'light', key: 'pink' },
   { theme: 'light', key: 'roxy' },
-  { theme: 'dark', key: 'primary' },
+  { theme: 'dark', key: 'pink' },
   { theme: 'dark', key: 'roxy' },
+];
+
+/**
+ * The key pairs from the direction's measured table (light first, then dark,
+ * then the always-dark stage). `fail: true` rows are RULES, asserted to fail
+ * so nobody "fixes" them by using the pair: never `pink` text on
+ * `pinkContainer`, never white on the brand pink.
+ *
+ * src: polish/design-direction.md · v2 › Color › Measured contrast · 2026-10-21
+ */
+type Pair = { name: string; fg: string; bg: string; min: number; fail?: boolean };
+const L = THEMES.light;
+const D = THEMES.dark;
+const DIRECTION_PAIRS: Pair[] = [
+  { name: 'light onPink label on pink fill', fg: L.onPink, bg: L.pink, min: AA_TEXT },
+  { name: 'light pink as text on ground', fg: L.pink, bg: L.ground, min: AA_TEXT },
+  { name: 'light pink as text on raised', fg: L.pink, bg: L.raised, min: AA_TEXT },
+  { name: 'light onPinkContainer on pinkContainer', fg: L.onPinkContainer, bg: L.pinkContainer, min: AA_TEXT },
+  { name: 'light ink on pinkContainer', fg: L.ink, bg: L.pinkContainer, min: AA_TEXT },
+  { name: 'light ink2 on pinkContainer', fg: L.ink2, bg: L.pinkContainer, min: AA_TEXT },
+  { name: 'light pink text on pinkContainer (rule: never)', fg: L.pink, bg: L.pinkContainer, min: AA_TEXT, fail: true },
+  { name: 'light onBrandPink on brandPink', fg: L.onBrandPink, bg: L.brandPink, min: AA_TEXT },
+  { name: 'light white on brandPink (rule: rejected)', fg: '#FFFFFF', bg: L.brandPink, min: AA_TEXT, fail: true },
+  { name: 'light onInverse on inverse', fg: L.onInverse, bg: L.inverse, min: AA_TEXT },
+  { name: 'light inversePink on inverse', fg: L.inversePink, bg: L.inverse, min: AA_TEXT },
+  { name: 'light onPremium on premium', fg: L.onPremium, bg: L.premium, min: AA_TEXT },
+  { name: 'light surface label on success fill', fg: L.surface, bg: L.success, min: AA_TEXT },
+  { name: 'light surface label on danger fill', fg: L.surface, bg: L.danger, min: AA_TEXT },
+  { name: 'light ink label on warning fill', fg: L.ink, bg: L.warning, min: AA_TEXT },
+  { name: 'light live dot on ground', fg: L.live, bg: L.ground, min: AA_LARGE_OR_NON_TEXT },
+  { name: 'light control outline on ground', fg: L.control, bg: L.ground, min: AA_LARGE_OR_NON_TEXT },
+  { name: 'light control outline on surface', fg: L.control, bg: L.surface, min: AA_LARGE_OR_NON_TEXT },
+  { name: 'light control thumb on raised track', fg: L.control, bg: L.raised, min: AA_LARGE_OR_NON_TEXT },
+  { name: 'light primary lip vs ground', fg: L.pinkLip, bg: L.ground, min: AA_LARGE_OR_NON_TEXT },
+  { name: 'light nav inactive label (ink2) on ground', fg: L.ink2, bg: L.ground, min: AA_TEXT },
+  { name: 'dark onPink label on pink fill', fg: D.onPink, bg: D.pink, min: AA_TEXT },
+  { name: 'dark white on pink (rule: rejected)', fg: '#FFFFFF', bg: D.pink, min: AA_TEXT, fail: true },
+  { name: 'dark onPinkContainer on pinkContainer', fg: D.onPinkContainer, bg: D.pinkContainer, min: AA_TEXT },
+  { name: 'dark pink fill as a mark on ground', fg: D.pink, bg: D.ground, min: AA_LARGE_OR_NON_TEXT },
+  { name: 'dark onInverse on inverse', fg: D.onInverse, bg: D.inverse, min: AA_TEXT },
+  { name: 'dark inversePink on inverse', fg: D.inversePink, bg: D.inverse, min: AA_TEXT },
+  { name: 'dark ground label on success fill', fg: D.ground, bg: D.success, min: AA_TEXT },
+  { name: 'dark ground label on danger fill', fg: D.ground, bg: D.danger, min: AA_TEXT },
+  { name: 'dark live dot on ground', fg: D.live, bg: D.ground, min: AA_LARGE_OR_NON_TEXT },
+  { name: 'dark control outline on ground', fg: D.control, bg: D.ground, min: AA_LARGE_OR_NON_TEXT },
+  { name: 'dark control outline on surface', fg: D.control, bg: D.surface, min: AA_LARGE_OR_NON_TEXT },
+  { name: 'dark onPremium on premium', fg: D.onPremium, bg: D.premium, min: AA_TEXT },
+  { name: 'stage white on stage', fg: '#FFFFFF', bg: L.stage, min: AA_TEXT },
+  { name: 'stage white on stageRaised (Feed nav pill)', fg: '#FFFFFF', bg: L.stageRaised, min: AA_TEXT },
+  { name: 'stage brandPink FAB on stage', fg: L.brandPink, bg: L.stage, min: AA_LARGE_OR_NON_TEXT },
+  { name: 'stage nav inactive label (dark ink2) on stage', fg: D.ink2, bg: L.stage, min: AA_TEXT },
 ];
 
 /**
@@ -219,6 +276,19 @@ describe.each(THEME_NAMES)('%s theme', (theme) => {
   it('gold and warning are the same token under two names', () => {
     expect(colors.warning).toBe(colors.gold);
   });
+});
+
+describe("the direction's measured pairs (v2, light first)", () => {
+  it.each(DIRECTION_PAIRS.filter((p) => !p.fail))('$name clears $min:1', ({ fg, bg, min }) => {
+    expectContrast(fg, bg, min);
+  });
+
+  it.each(DIRECTION_PAIRS.filter((p) => p.fail))(
+    '$name stays below $min:1 — it is a rule, not a pairing to use',
+    ({ fg, bg, min }) => {
+      expect(ratio(fg, bg)).toBeLessThan(min);
+    }
+  );
 });
 
 describe('documented gap: pre-3.0 call sites paint fill tokens as small text', () => {

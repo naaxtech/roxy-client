@@ -1,10 +1,9 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII, inkOn } from '../../lib/theme';
 import { scoreTone, type ArchiveScore } from '../../lib/archive';
-import { scoreGradient, scoreIcon } from './archiveTokens';
+import { scoreFill, scoreIcon } from './archiveTokens';
 
 interface Props {
   score: ArchiveScore;
@@ -25,7 +24,7 @@ interface Props {
 export function ScorePill({ score, testID }: Props) {
   const colors = useThemeColors();
   const tone = scoreTone(score);
-  const gradient = scoreGradient(tone);
+  const fill = scoreFill(tone, colors);
   const icon = scoreIcon(tone);
 
   const s = StyleSheet.create({
@@ -47,7 +46,7 @@ export function ScorePill({ score, testID }: Props) {
     unscoredText: { ...TYPE.micro, fontWeight: '800', color: colors.textSecondary },
   });
 
-  if (!gradient || score.percent === null) {
+  if (!fill || score.percent === null) {
     return (
       <View
         style={[s.pill, s.unscored]}
@@ -59,16 +58,13 @@ export function ScorePill({ score, testID }: Props) {
     );
   }
 
-  const ink = inkOn(gradient[1]);
+  const ink = inkOn(fill);
 
   return (
-    <LinearGradient
-      colors={gradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={s.pill}
+    <View
+      style={[s.pill, { backgroundColor: fill }]}
       testID={testID}
-      // A flower is not a sentence. Assistive tech gets the claim the pill is
+      // A glyph is not a sentence. Assistive tech gets the claim the pill is
       // actually making, including the sample size it rests on.
       accessibilityLabel={
         score.average != null
@@ -78,6 +74,6 @@ export function ScorePill({ score, testID }: Props) {
     >
       {icon ? <Text style={[s.text, { color: ink }]}>{icon}</Text> : null}
       <Text style={[s.text, { color: ink }]}>{score.label}</Text>
-    </LinearGradient>
+    </View>
   );
 }

@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 import { ScorePill } from '../../../components/archive/ScorePill';
 import { formatScore } from '../../../lib/archive';
 import { THEMES } from '../../../lib/theme';
-import { SCORE_GRADIENT } from '../../../components/archive/archiveTokens';
+import { scoreFill } from '../../../components/archive/archiveTokens';
 import { useThemeStore } from '../../../store/themeStore';
 
 // House convention (see QuestionOfTheDayCard.contrast.test): render the
@@ -42,9 +42,19 @@ describe('ScorePill', () => {
     expect(v.getByText('100%')).toBeTruthy();
   });
 
-  it('paints the band gradient, not the brand ramp', () => {
-    const v = render(<ScorePill score={formatScore(84, 100)} testID="p" />);
-    expect(v.getByTestId('p').props.colors).toEqual(SCORE_GRADIENT.good);
+  // v2 (2026-10-21): no ramp on the score pill; the band is one flat role
+  // resolved inside the active theme (scoreFill), carrying inkOn() ink.
+  it('paints the band as one flat theme fill, not a ramp', () => {
+    useThemeStore.setState({ theme: 'dark' });
+    const dark = render(<ScorePill score={formatScore(84, 100)} testID="p" />);
+    expect(dark.getByTestId('p').props.colors).toBeUndefined();
+    expect(flat(dark.getByTestId('p')).backgroundColor).toBe(THEMES.dark.success);
+    dark.unmount();
+
+    useThemeStore.setState({ theme: 'light' });
+    const light = render(<ScorePill score={formatScore(84, 100)} testID="p" />);
+    expect(flat(light.getByTestId('p')).backgroundColor).toBe(THEMES.light.success);
+    expect(scoreFill('good', THEMES.light)).toBe(THEMES.light.success);
   });
 
   it('drops to a neutral theme surface when unreviewed, in both themes', () => {

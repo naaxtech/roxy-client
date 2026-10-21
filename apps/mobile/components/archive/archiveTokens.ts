@@ -23,17 +23,19 @@ export const SCORE_ICON = {
 } as const satisfies Record<Exclude<ScoreTone, 'none'>, string>;
 
 /**
- * The two-stop ramp behind a score pill.
+ * The two-stop ramp that used to sit behind a score pill (v0: one role read
+ * from both palettes, `#178A4C` → `#2FC97E`).
  *
- * For each band the prototype's two stops happen to BE the light and dark
- * values of one role — `#178A4C` → `#2FC97E` is `success` in both themes. So
- * the gradient is that role read from both palettes, which keeps the ramp
- * identical to the design while leaving one place to change it.
+ * RETIRED as a ramp: v2 paints the score pill flat (gradients survive only on
+ * the wordmark). Kept exported with both stops the same light-theme role so a
+ * caller that still feeds it to `LinearGradient` renders flat. Theme-aware
+ * callers use `scoreFill(tone, colors)`. Origin: the 3.0 Archive slice
+ * (prototype `scoreBg`). Superseded 2026-10-21.
  */
 export const SCORE_GRADIENT = {
-  good: [THEMES.light.success, THEMES.dark.success],
-  mixed: [THEMES.light.gold, THEMES.dark.gold],
-  poor: [THEMES.light.primary, THEMES.dark.primary],
+  good: [THEMES.light.success, THEMES.light.success],
+  mixed: [THEMES.light.warning, THEMES.light.warning],
+  poor: [THEMES.light.pink, THEMES.light.pink],
 } as const satisfies Record<Exclude<ScoreTone, 'none'>, readonly [string, string]>;
 
 /** No icon below the gate: an unscored entry has no verdict to illustrate. */
@@ -43,6 +45,14 @@ export function scoreIcon(tone: ScoreTone): string | null {
 
 export function scoreGradient(tone: ScoreTone): readonly [string, string] | null {
   return tone === 'none' ? null : SCORE_GRADIENT[tone];
+}
+
+/** The flat v2 fill behind a score pill, inside the active theme. */
+export function scoreFill(tone: ScoreTone, colors: ThemeColors): string | null {
+  if (tone === 'good') return colors.success;
+  if (tone === 'mixed') return colors.warning;
+  if (tone === 'poor') return colors.pink;
+  return null;
 }
 
 /**
@@ -134,13 +144,13 @@ export const NOTE_PALETTE_SLOTS = 3;
 export type NotePaletteEntry = { bg: string; line: string; ink: string };
 
 /**
- * The prototype's `cwPal` rotation — pink, lilac, neutral — with agreement
- * overriding it.
+ * The content-note chip palette (v2).
  *
- * A note she has agreed with is pink whatever slot it landed in, because the
- * rotation is decoration and the agreement is state. Letting position win would
- * mean the same note looked different depending on how many notes sat above it,
- * which is the one thing a colour that means something must not do.
+ * v0 rotated pink, lilac, neutral by position. v2 bans colour as decoration
+ * and bans lilac, so every slot at rest is the neutral `raised` chip with
+ * `ink2`, and agreement — state, not position — is the selected-chip fill:
+ * `pinkContainer` with `onPinkContainer`. `NOTE_PALETTE_SLOTS` and the `index`
+ * parameter stay so callers do not change.
  */
 export function notePalette(
   colors: ThemeColors,
@@ -149,26 +159,12 @@ export function notePalette(
 ): NotePaletteEntry {
   if (agreed) {
     return {
-      bg: tintFill(colors, colors.primary),
-      line: tintLine(colors, colors.primaryInk),
-      ink: colors.primaryInk,
+      bg: colors.pinkContainer,
+      line: colors.pinkContainer,
+      ink: colors.onPinkContainer,
     };
   }
-
-  const slot = ((index % NOTE_PALETTE_SLOTS) + NOTE_PALETTE_SLOTS) % NOTE_PALETTE_SLOTS;
-  if (slot === 0) {
-    return {
-      bg: tintFill(colors, colors.primary),
-      line: tintLine(colors, colors.primaryInk),
-      ink: colors.primaryInk,
-    };
-  }
-  if (slot === 1) {
-    return {
-      bg: tintFill(colors, colors.secondary),
-      line: tintLine(colors, colors.secondaryInk),
-      ink: colors.secondaryInk,
-    };
-  }
-  return { bg: colors.surfaceLight, line: colors.line, ink: colors.textSecondary };
+  // Position no longer changes the colour; the index is accepted and ignored.
+  void index;
+  return { bg: colors.raised, line: colors.line, ink: colors.ink2 };
 }

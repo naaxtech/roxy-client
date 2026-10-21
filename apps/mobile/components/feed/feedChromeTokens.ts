@@ -128,8 +128,26 @@ export const CHROME_SHADOW: TextStyle = {
 /** One brand ramp, not a second palette. It lives in `lib/theme.ts`. */
 export { BRAND_GRADIENT } from '../../lib/theme';
 
-/** `THEMES.dark.background` at the alpha the contrast maths above assumes. */
-export const BRAND_VEIL = 'rgba(26,10,46,0.42)';
+/**
+ * RETIRED in v2 (no gradient text cells: text posts bring a flat field —
+ * `fieldInk`, `fieldPaper` or `brandPink`). Kept exported for any caller still
+ * reading it; the value moved from the violet #1A0A2E to the stage's warm
+ * near-black at the same alpha. Origin: the 3.0 feed-chrome contrast slice.
+ * Superseded 2026-10-21; remove once no call site reads it.
+ */
+export const BRAND_VEIL = 'rgba(11,10,10,0.42)';
+
+/**
+ * The three text-post fields (v2): a post brings its own flat ground instead of
+ * a gradient. `paper` takes `fieldInk` text, `ink` takes `fieldPaper` text and
+ * `pink` takes `onBrandPink` (16.63 / 16.63 / 4.96:1).
+ */
+export const FIELD = {
+  ink: '#151113',
+  paper: '#F3F1F0',
+  pink: '#F22481',
+  onPink: '#17080F',
+} as const;
 
 /**
  * Alpha of the plate behind each rail control. See note 2 above — this number
