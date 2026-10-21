@@ -1,0 +1,21 @@
+apps/mobile/__tests__/components/nav/FloatingTabBar.test.tsx
+  s_37deb30b6489aa::t_461b24919df4fb 228-237
+apps/mobile/__tests__/components/ui/PressableScale.test.tsx
+  s_37deb30b6489aa::t_bad87eaf0de10f 2,74-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67b9f7ced5d486ade4eb1d6586ee5b90396919fd",
+  "prompts": {},
+  "sessions": {
+    "s_37deb30b6489aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "791c066c-b99f-499a-832d-4bb799f2daf9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
