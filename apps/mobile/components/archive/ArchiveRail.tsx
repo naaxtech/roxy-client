@@ -1,13 +1,14 @@
-import { View, Text, Pressable, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
+import { RADII } from '../../lib/theme';
 import { scoreFromEntry, type ArchiveEntry } from '../../lib/archive';
-import { ScorePill } from './ScorePill';
-import { coverGradientFor } from '../../lib/coverGradient';
 import { archiveTypeLabel } from '../../lib/archiveTypes';
-import { scrim } from '../../lib/theme';
+import { PressableScale } from '../ui/PressableScale';
+import { ArchiveCover } from './ArchiveCover';
+import { COVER_ASPECT, COVER_WIDTH } from './archiveTokens';
+import { describeScore } from './scoreWords';
 
 interface Props {
   entries: ArchiveEntry[];
@@ -20,29 +21,25 @@ interface Props {
   testID?: string;
 }
 
-const RAIL_TITLE = 'The WLW Archive';
-const RAIL_BLURB =
-  'Films, shows, books, comics and music — scored by us, for us. ' +
-  'Open to everyone, even while your membership is pending.';
+const RAIL_TITLE = 'From the Archive';
+/** Skeleton covers while loading: two full and a peek, like the loaded rail. */
+const SKELETON_COUNT = 3;
 
 /**
- * The Archive's rail on Discover.
+ * The Archive's rail on Discover (design direction v2 › Discover, board v2-05
+ * "From the Archive").
  *
- * The blurb says "open to everyone, even while your membership is pending"
- * because this rail is the one thing on Discover a pending member can actually
- * use, and she has no way to know that from a row of posters. Migration 079 is
- * the postmortem for what happens when nothing tells her.
+ * A section like every other on Discover: a `title` heading and "See all" only
+ * when there is more than the rail shows. Each card is a 2:3 cover — the
+ * uploaded one, or the designed type cover (`ArchiveCover`) — with the title
+ * and "Type · year" under it and the score in words. Nothing is written over a
+ * cover, and nothing is a gradient.
  *
- * `Browse all N →` shows the CATALOGUE total, not the number of cards on the
- * rail. A rail capped at a handful that advertised its own length would be a
- * link promising less than it delivers — and the same mistake the communities
- * rail made before it got a "See all".
+ * v0 headed it "The WLW Archive" with a blurb and "Browse all N →", which read
+ * "Browse all 0 →" on an empty catalogue; the v2 copy hides the count and the
+ * empty state says the next step in words instead.
  *
- * The link survives every state, including empty and error. It is the route to
- * the full Archive, and the moment it is most worth offering is when the rail
- * itself has nothing to show.
- *
- * src: docs/handoff/roxy-3.0/Roxy App.dc.html · behaviour 1994–1996 · 2026-09-01
+ * src: polish/design-direction.md · v2 › Screen notes › Discover, Archive · 2026-10-21
  */
 export function ArchiveRail({
   entries,
@@ -56,59 +53,45 @@ export function ArchiveRail({
   const colors = useThemeColors();
 
   const s = StyleSheet.create({
-    wrap: { gap: 8, paddingVertical: 12 },
-    header: { paddingHorizontal: 16, gap: 4 },
-    titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-    title: { ...TYPE.title, color: colors.textPrimary },
-    link: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
-    linkText: { ...TYPE.caption, color: colors.primaryInk, fontWeight: '700' },
-    blurb: { ...TYPE.caption, color: colors.textSecondary },
-    rail: { gap: 10, paddingHorizontal: 16, paddingTop: 4 },
-    // The design's rail is a POSTER, not a surface card: 126 wide, a 168-tall
-    // gradient with the type chip and the score sitting on the art itself. The
-    // card that stood here framed a score pill in a grey box, which is the
-    // catalogue's only visual on Discover and read as a settings list.
-    card: { width: 126, gap: 7, minHeight: MIN_TOUCH_TARGET },
-    poster: {
-      height: 168,
-      borderRadius: 14,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: colors.line,
+    wrap: { gap: 12, paddingVertical: 12 },
+    header: {
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'space-between',
-      padding: 7,
+      gap: 12,
     },
-    posterArt: { ...StyleSheet.absoluteFillObject },
-    // Transparent for the top 45%, then darkening — the design's own scrim, and
-    // what keeps a white chip legible over art of any colour.
-    posterScrim: { ...StyleSheet.absoluteFillObject },
-    typeChip: {
-      alignSelf: 'flex-start',
-      backgroundColor: scrim(0.6),
-      borderRadius: 5,
-      paddingHorizontal: 6,
-      paddingVertical: 3,
+    title: { ...TYPE.title, color: colors.ink, flexShrink: 1 },
+    link: { minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET, justifyContent: 'center', alignItems: 'flex-end' },
+    linkText: { ...TYPE.label, color: colors.pinkInk },
+    rail: { gap: 12, paddingHorizontal: 16 },
+    card: { width: COVER_WIDTH.rail, gap: 8, minHeight: MIN_TOUCH_TARGET },
+    cardText: { gap: 2 },
+    cardTitle: { ...TYPE.label, color: colors.ink },
+    cardMeta: { ...TYPE.meta, color: colors.ink2 },
+    bone: {
+      width: COVER_WIDTH.rail,
+      height: COVER_WIDTH.rail * COVER_ASPECT,
+      borderRadius: RADII.sm,
+      backgroundColor: colors.raised,
     },
-    typeChipText: {
-      ...TYPE.micro,
-      color: 'rgba(255,249,251,0.85)',
-      fontWeight: '800',
-      letterSpacing: 1,
-    },
-    scoreSlot: { alignSelf: 'flex-start' },
-    cardTitle: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '800' },
-    cardMeta: { ...TYPE.micro, color: colors.textMuted },
-    state: { paddingHorizontal: 16, paddingVertical: 14, gap: 8, alignItems: 'flex-start' },
-    stateText: { ...TYPE.caption, color: colors.textSecondary },
-    retry: { ...TYPE.caption, color: colors.primaryInk, fontWeight: '700' },
-    retryHit: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
+    state: { paddingHorizontal: 16, gap: 4, alignItems: 'flex-start' },
+    stateText: { ...TYPE.body, color: colors.ink2 },
+    action: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
+    actionText: { ...TYPE.label, color: colors.pinkInk },
   });
 
   const body = () => {
     if (status === 'loading') {
       return (
-        <View style={s.state} testID={`${testID}-loading`}>
-          <ActivityIndicator color={colors.primary} />
+        <View
+          style={[s.rail, { flexDirection: 'row' }]}
+          testID={`${testID}-loading`}
+          accessibilityLabel="Loading the Archive"
+        >
+          {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+            <View key={i} style={s.bone} testID={`${testID}-skeleton`} />
+          ))}
         </View>
       );
     }
@@ -116,15 +99,15 @@ export function ArchiveRail({
     if (status === 'error') {
       return (
         <View style={s.state} testID={`${testID}-error`}>
-          <Text style={s.stateText}>Could not load the Archive.</Text>
-          <Pressable
+          <Text style={s.stateText}>The Archive didn&apos;t load. Check your connection and try again.</Text>
+          <PressableScale
             onPress={onRetry}
-            style={s.retryHit}
+            style={s.action}
             accessibilityRole="button"
             accessibilityLabel="Try again"
           >
-            <Text style={s.retry}>Try again</Text>
-          </Pressable>
+            <Text style={s.actionText}>Try again</Text>
+          </PressableScale>
         </View>
       );
     }
@@ -133,8 +116,17 @@ export function ArchiveRail({
       return (
         <View style={s.state} testID={`${testID}-empty`}>
           <Text style={s.stateText}>
-            Nothing scored yet. Be the first — every score counts from the moment you cast it.
+            Nothing in the Archive yet. Add the first film, show or book you think belongs here.
           </Text>
+          <PressableScale
+            onPress={onSeeAll}
+            style={s.action}
+            testID={`${testID}-link`}
+            accessibilityRole="button"
+            accessibilityLabel="Open the Archive"
+          >
+            <Text style={s.actionText}>Open the Archive</Text>
+          </PressableScale>
         </View>
       );
     }
@@ -143,24 +135,17 @@ export function ArchiveRail({
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.rail}>
         {entries.map((entry) => {
           const score = scoreFromEntry(entry);
-          // "0 votes" beside a pill already reading "Unreviewed" is the same
-          // fact twice, and the second telling reads as a defect. Same rule
-          // ArchiveRow follows — it was fixed there and missed here, which is
-          // what a shared helper would have prevented.
-          const meta = [
-            entry.release_year ?? null,
-            entry.vote_count > 0
-              ? `${entry.vote_count} ${entry.vote_count === 1 ? 'vote' : 'votes'}`
-              : null,
-          ]
+          const words = describeScore(score);
+          const meta = [archiveTypeLabel(entry.media_type), entry.release_year ?? null]
             .filter((part) => part !== null)
             .join(' · ');
 
           return (
-            <Pressable
+            <PressableScale
               key={entry.id}
               onPress={() => onPressEntry(entry)}
               accessible={false}
+              feedback="layer"
             >
               {/* Keyed and identified by SLUG, not index: the caller gets the
                   entry back, and a rail that reorders between renders must not
@@ -169,58 +154,46 @@ export function ArchiveRail({
                 style={s.card}
                 testID={`${testID}-card-${entry.slug}`}
                 accessibilityRole="button"
-                accessibilityLabel={`${entry.title}. ${score.label}.`}
+                accessibilityLabel={`${entry.title}. ${meta}. ${words}.`}
               >
-                <View style={s.poster}>
-                  <LinearGradient
-                    colors={coverGradientFor(entry.cover_gradient, entry.slug) as [string, string, ...string[]]}
-                    start={{ x: 0.15, y: 0 }}
-                    end={{ x: 0.85, y: 1 }}
-                    style={s.posterArt}
-                    testID={`${testID}-art-${entry.slug}`}
-                  />
-                  <LinearGradient
-                    colors={['transparent', scrim(0.72)]}
-                    locations={[0.45, 1]}
-                    style={s.posterScrim}
-                  />
-                  <View style={s.typeChip}>
-                    <Text style={s.typeChipText}>
-                      {archiveTypeLabel(entry.media_type).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={s.scoreSlot}>
-                    <ScorePill score={score} />
-                  </View>
-                </View>
-                <View>
+                <ArchiveCover
+                  entryId={entry.id}
+                  title={entry.title}
+                  coverUrl={entry.cover_url}
+                  width={COVER_WIDTH.rail}
+                  testID={`${testID}-art-${entry.slug}`}
+                />
+                <View style={s.cardText}>
                   <Text style={s.cardTitle} numberOfLines={2}>{entry.title}</Text>
                   <Text style={s.cardMeta} numberOfLines={1}>{meta}</Text>
+                  <Text style={s.cardMeta} numberOfLines={1}>{words}</Text>
                 </View>
               </View>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </ScrollView>
     );
   };
 
+  // "See all" only when there is more than the rail shows (v2 sections).
+  const more = status === 'ready' && entries.length > 0 && total > entries.length;
+
   return (
     <View style={s.wrap} testID={testID}>
       <View style={s.header}>
-        <View style={s.titleRow}>
-          <Text style={s.title}>{RAIL_TITLE}</Text>
-          <Pressable
+        <Text style={s.title} accessibilityRole="header">{RAIL_TITLE}</Text>
+        {more ? (
+          <PressableScale
             onPress={onSeeAll}
             style={s.link}
             testID={`${testID}-link`}
             accessibilityRole="button"
-            accessibilityLabel={`Browse all ${total} Archive entries`}
+            accessibilityLabel={`See all ${total} Archive entries`}
           >
-            <Text style={s.linkText}>Browse all {total} →</Text>
-          </Pressable>
-        </View>
-        <Text style={s.blurb}>{RAIL_BLURB}</Text>
+            <Text style={s.linkText}>See all</Text>
+          </PressableScale>
+        ) : null}
       </View>
       {body()}
     </View>

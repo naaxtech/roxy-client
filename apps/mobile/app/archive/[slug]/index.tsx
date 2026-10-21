@@ -407,11 +407,12 @@ export default function ArchiveEntryScreen() {
             its lower edge. The page had neither, and a bare ring on a flat
             background read as a settings row rather than a catalogue entry. */}
         <EntryHero
+          entryId={entry.id}
           slug={entry.slug}
           title={entry.title}
           mediaType={entry.media_type}
           meta={meta}
-          coverGradient={entry.cover_gradient}
+          coverUrl={entry.cover_url}
           testID="archive-entry-hero"
         />
         <Pressable

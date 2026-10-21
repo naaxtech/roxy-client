@@ -1,15 +1,14 @@
-import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, StyleSheet } from 'react-native';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { TYPE } from '../../lib/typography';
-import { RADII } from '../../lib/theme';
+import { TYPE, emphasized } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { scoreFromEntry, type ArchiveEntry } from '../../lib/archive';
-import { ScorePill } from './ScorePill';
+import { archiveTypeLabel } from '../../lib/archiveTypes';
+import { PressableScale } from '../ui/PressableScale';
 import { ContentNoteChip, visibleNotes, type ArchiveNote } from './ContentNoteChip';
-import { coverGradientFor } from '../../lib/coverGradient';
+import { ArchiveCover } from './ArchiveCover';
+import { COVER_WIDTH } from './archiveTokens';
+import { describeScore } from './scoreWords';
 
 interface Props {
   entry: ArchiveEntry;
@@ -22,91 +21,62 @@ interface Props {
 const NOTES_ON_A_ROW = 2;
 
 /**
- * One result in the Archive browse list.
+ * Type, year and creator, from the parts that exist. An entry with no year and
+ * no creator gets "Movies", not "Movies ·  · ".
+ */
+export function archiveRowMeta(entry: Pick<ArchiveEntry, 'media_type' | 'release_year' | 'creator'>): string {
+  return [archiveTypeLabel(entry.media_type), entry.release_year ?? null, entry.creator ?? null]
+    .filter((part) => part !== null && String(part).length > 0)
+    .join(' · ');
+}
+
+/**
+ * One result in the Archive browse list (design direction v2 › Archive).
  *
- * The score comes from `formatScore` like every other surface, which is what
- * stops a one-vote entry rendering 100% in a list where nobody reads the vote
- * count. The meta line is assembled from the parts that exist rather than a
- * template with holes — an entry with no year and no creator gets "100 votes",
- * not " ·  · 100 votes".
+ * A 2:3 cover and words: the uploaded cover, or the designed type cover when
+ * there is none (`ArchiveCover`); the title; type · year · creator; the score
+ * said in words with its sample size ("4.4 from 7 members"), never a coloured
+ * pill or a flower. Rows are separated by space, not bordered cards.
  *
  * The whole row is ONE button. Splitting the cover, the title and the notes
  * into separate targets would make a screen reader walk four stops to learn one
  * thing; the notes become tappable on the entry screen, where agreeing with one
  * is a real action rather than a way to open the row.
  *
- * src: docs/handoff/roxy-3.0/Roxy App.dc.html · markup 968–1006 · 2026-09-01
+ * src: polish/design-direction.md · v2 › Screen notes › Archive · 2026-10-21
  */
 export function ArchiveRow({ entry, notes = [], onPress, testID }: Props) {
   const colors = useThemeColors();
-  const [coverFailed, setCoverFailed] = useState(false);
 
   const score = scoreFromEntry(entry);
+  const scoreWords = describeScore(score);
   const shown = visibleNotes(notes, NOTES_ON_A_ROW);
-
-  // "0 votes" beside a pill already saying "Unreviewed" is the same fact twice,
-  // and the second telling reads as a defect rather than as an empty category.
-  // With no votes the meta line is just the work: year and creator.
-  const meta = [
-    entry.release_year ?? null,
-    entry.creator ?? null,
-    entry.vote_count > 0
-      ? `${entry.vote_count} ${entry.vote_count === 1 ? 'vote' : 'votes'}`
-      : null,
-  ]
-    .filter((part) => part !== null && String(part).length > 0)
-    .join(' · ');
+  const meta = archiveRowMeta(entry);
 
   const s = StyleSheet.create({
     row: {
       flexDirection: 'row',
-      gap: 12,
-      padding: 12,
+      gap: 16,
       minHeight: MIN_TOUCH_TARGET,
-      borderRadius: RADII.md,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.line,
-    },
-    // The design's own poster: 62 wide, 88 tall, the type word tucked into the
-    // bottom-left corner OVER the art rather than centred in a grey box.
-    coverWrap: {
-      width: 62,
-      minHeight: 88,
-      borderRadius: RADII.sm,
-      overflow: 'hidden',
-      backgroundColor: colors.surfaceLight,
-      justifyContent: 'flex-end',
-    },
-    cover: { width: '100%', height: '100%' },
-    coverPlate: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-    coverType: {
-      ...TYPE.micro,
-      // Fixed against the art, not the theme: this text sits on a gradient of
-      // unknown colour, so a theme token would be unreadable on half of them.
-      color: 'rgba(255,249,251,0.8)',
-      fontWeight: '800',
-      letterSpacing: 0.6,
-      paddingHorizontal: 5,
-      paddingBottom: 5,
     },
     body: { flex: 1, gap: 4 },
-    title: { ...TYPE.body, color: colors.textPrimary, fontWeight: '800' },
-    meta: { ...TYPE.micro, color: colors.textMuted },
-    blurb: { ...TYPE.caption, color: colors.textSecondary },
-    notes: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
-    reviews: { ...TYPE.micro, color: colors.textMuted },
-    invite: { ...TYPE.micro, color: colors.primaryInk, fontWeight: '700' },
+    title: { ...TYPE.title, color: colors.ink },
+    meta: { ...TYPE.meta, color: colors.ink3 },
+    score: { ...TYPE.label, color: colors.ink, marginTop: 4 },
+    invite: { ...emphasized('meta'), color: colors.pinkInk },
+    blurb: { ...TYPE.body, color: colors.ink2 },
+    notes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+    reviews: { ...TYPE.meta, color: colors.ink3 },
   });
 
-  const showImage = !!entry.cover_url && !coverFailed;
-  // Migration 098 seeded the design's own CSS gradients, one per entry. The
-  // ternary that stood here had two identical branches, so every poster painted
-  // the same grey plate and the art never reached the screen.
-  const gradient = coverGradientFor(entry.cover_gradient, entry.slug);
+  const reviewsLine = score.total === 0
+    ? null
+    : entry.review_count > 0
+      ? `${entry.review_count} ${entry.review_count === 1 ? 'review' : 'reviews'}`
+      : 'No reviews yet';
 
   return (
-    <Pressable onPress={onPress} accessible={false}>
+    <PressableScale onPress={onPress} accessible={false} feedback="layer">
       {/* The a11y identity lives on this View rather than the Pressable: RN's
           Pressable drops unknown props, so `aria-*` never reaches the node, and
           accessibilityState alone is inert on react-native-web 0.19. */}
@@ -114,35 +84,23 @@ export function ArchiveRow({ entry, notes = [], onPress, testID }: Props) {
         style={s.row}
         testID={testID}
         accessibilityRole="button"
-        accessibilityLabel={`${entry.title}. ${score.label}. ${meta}`}
+        accessibilityLabel={[entry.title, scoreWords, meta].join('. ')}
       >
-        <View style={s.coverWrap}>
-          <LinearGradient
-            colors={gradient as [string, string, ...string[]]}
-            start={{ x: 0.15, y: 0 }}
-            end={{ x: 0.85, y: 1 }}
-            style={s.coverPlate}
-            testID={testID ? `${testID}-cover-art` : undefined}
-          />
-          {showImage ? (
-            <ExpoImage
-              source={{ uri: entry.cover_url as string }}
-              style={s.cover}
-              contentFit="cover"
-              testID={testID ? `${testID}-cover-image` : undefined}
-              // A broken cover must fall back to the plate, not leave a hole
-              // where the poster was.
-              onError={() => setCoverFailed(true)}
-            />
-          ) : (
-            <Text style={s.coverType}>{entry.media_type.toUpperCase()}</Text>
-          )}
-        </View>
+        <ArchiveCover
+          entryId={entry.id}
+          title={entry.title}
+          coverUrl={entry.cover_url}
+          width={COVER_WIDTH.row}
+          testID={testID ? `${testID}-cover` : undefined}
+        />
 
         <View style={s.body}>
           <Text style={s.title} numberOfLines={2}>{entry.title}</Text>
-          <ScorePill score={score} />
           <Text style={s.meta} numberOfLines={1}>{meta}</Text>
+          <Text style={s.score}>{scoreWords}</Text>
+          {/* An unrated entry is an invitation, not a gap: at this stage of
+              the Archive that is the whole product loop. */}
+          {score.total === 0 ? <Text style={s.invite}>Be the first to rate it</Text> : null}
           {entry.summary ? (
             <Text style={s.blurb} numberOfLines={2}>{entry.summary}</Text>
           ) : null}
@@ -164,22 +122,9 @@ export function ArchiveRow({ entry, notes = [], onPress, testID }: Props) {
             </View>
           ) : null}
 
-          {/* An unrated entry is an invitation, not a gap. "Unreviewed" in the
-              pill states the fact; this states what she can do about it, and
-              at this stage of the Archive that is the whole product loop. */}
-          {score.total === 0 ? (
-            <Text style={s.invite}>Be the first to rate this →</Text>
-          ) : entry.review_count > 0 ? (
-            <Text style={s.reviews}>
-              {entry.review_count} {entry.review_count === 1 ? 'review' : 'reviews'}
-            </Text>
-          ) : (
-            <Text style={s.reviews}>
-              {score.total} {score.total === 1 ? 'rating' : 'ratings'} · no reviews yet
-            </Text>
-          )}
+          {reviewsLine ? <Text style={s.reviews}>{reviewsLine}</Text> : null}
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }

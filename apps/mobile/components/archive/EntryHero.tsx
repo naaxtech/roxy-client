@@ -1,166 +1,121 @@
-import { View, Text, Pressable, Share, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, Share, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
-import { RADII, scrim } from '../../lib/theme';
-import { coverGradientFor } from '../../lib/coverGradient';
 import { archiveTypeLabel } from '../../lib/archiveTypes';
 import { archiveShare } from '../../lib/archiveShare';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { ArchiveMediaType } from '../../lib/archive';
+import { PressableScale } from '../ui/PressableScale';
+import { ArchiveCover } from './ArchiveCover';
+import { COVER_WIDTH } from './archiveTokens';
 
 interface Props {
+  /** Picks the type cover's identity field. */
+  entryId: string;
   slug: string;
   title: string;
   mediaType: ArchiveMediaType;
+  /** Year · creator · length, already joined by the screen. */
   meta: string;
-  coverGradient: string | null;
+  /** The uploaded cover, if any. */
+  coverUrl: string | null;
+  /**
+   * RETIRED (v2): the seeded CSS gradient (migration 098) is no longer painted
+   * — the fallback is the designed type cover. Kept so the screen and older
+   * callers compile; the value is ignored. Origin: `git log -S coverGradientFor`
+   * (Roxy 3.0 Archive hero, 2026-09-05).
+   */
+  coverGradient?: string | null;
+  /** Opens Suggest an edit with the cover field focused. Shown only without a cover. */
+  onAddCover?: () => void;
   testID?: string;
 }
 
-/** The design's own numbers: a 196px banner, a poster lifted 42px into it. */
-const BANNER_HEIGHT = 196;
-const POSTER_WIDTH = 84;
-const POSTER_HEIGHT = 118;
-const POSTER_LIFT = -42;
-
 /**
- * The entry page's masthead.
+ * The entry page's masthead (design direction v2 › Screen notes › Archive).
  *
- * The design gives an Archive entry a 196px gradient banner with a poster
- * overlapping its lower edge, and that colour is most of what makes the screen
- * feel like a catalogue rather than a form. The live page had neither: a bare
- * score ring on a flat background, which read as a settings row.
+ * The cover leads: uploaded covers at 2:3 with nothing written over them, or
+ * the designed type cover (`ArchiveCover`) with an "Add a cover" text button
+ * under it that opens Suggest an edit with the cover field focused. Title,
+ * type and year sit under the cover, in sentence case — no caps eyebrow.
  *
- * The scrim is the part that makes it work. A gradient banner running straight
- * into the page background produces a hard seam, so the design lays a
- * background-coloured wash over it — transparent at the top, opaque at the
- * bottom — and the banner appears to dissolve into the page. The poster then
- * sits across that boundary with a 2px border in the background colour, which
- * is what separates it from the banner behind it.
+ * v0 led with a 196 dp gradient banner and a gradient poster lifted into it;
+ * v2 keeps gradients on the wordmark only, so the art is the cover itself.
  *
- * src: docs/handoff/roxy-3.0/Roxy App.dc.html · markup 1015–1022 · 2026-09-05
+ * src: polish/design-direction.md · v2 › Screen notes › Archive · 2026-10-21
  */
-export function EntryHero({ slug, title, mediaType, meta, coverGradient, testID }: Props) {
+export function EntryHero({ entryId, slug, title, mediaType, meta, coverUrl, onAddCover, testID }: Props) {
   const colors = useThemeColors();
-  const art = coverGradientFor(coverGradient, slug);
+  const typeLine = [archiveTypeLabel(mediaType), meta].filter((p) => p.length > 0).join(' · ');
 
   const s = StyleSheet.create({
-    banner: { height: BANNER_HEIGHT },
-    scrim: { ...StyleSheet.absoluteFillObject },
-    // Pulled up into the banner so the poster crosses the seam, exactly as the
-    // design has it. `zIndex` because on web the banner paints after otherwise.
-    body: {
-      paddingHorizontal: 16,
-      marginTop: POSTER_LIFT,
-      flexDirection: 'row',
-      gap: 12,
-      alignItems: 'flex-end',
-      zIndex: 1,
-    },
-    poster: {
-      width: POSTER_WIDTH,
-      height: POSTER_HEIGHT,
-      borderRadius: RADII.md,
-      borderWidth: 2,
-      // The border is the page's own background, which is what lifts the poster
-      // off the banner rather than letting the two colours meet.
-      borderColor: colors.background,
-      overflow: 'hidden',
-    },
-    posterFill: { flex: 1 },
-    // The design floats this in the banner's top-right corner. A hit target of
-    // 44 with a 32px visual is the same target/pill split the chips use.
+    wrap: { paddingHorizontal: 16, gap: 12 },
+    top: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+    coverCol: { gap: 4, alignItems: 'flex-start' },
+    addCover: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
+    addCoverText: { ...TYPE.label, color: colors.pinkInk },
     shareHit: {
-      position: 'absolute',
-      top: 10,
-      right: 10,
       width: MIN_TOUCH_TARGET,
       height: MIN_TOUCH_TARGET,
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 2,
     },
-    shareGlass: {
-      width: 32,
-      height: 32,
-      borderRadius: 99,
-      alignItems: 'center',
-      justifyContent: 'center',
-      // The design's own glass: a dark wash over the art with a hairline edge,
-      // which is what keeps the icon legible on a banner of unknown colour.
-      backgroundColor: scrim(0.5),
-      borderWidth: 1,
-      borderColor: 'rgba(255,249,251,0.25)',
-    },
-    shareGlyph: { color: '#FFF8FB', fontSize: 15, lineHeight: 17 },
-    text: { flex: 1, paddingBottom: 4, gap: 2 },
-    eyebrow: {
-      ...TYPE.micro,
-      color: colors.primaryInk,
-      fontWeight: '800',
-      letterSpacing: 1.2,
-    },
-    title: { ...TYPE.headline, color: colors.textPrimary },
-    meta: { ...TYPE.caption, color: colors.textSecondary },
+    text: { gap: 4 },
+    title: { ...TYPE.headline, color: colors.ink },
+    meta: { ...TYPE.body, color: colors.ink2 },
   });
 
   return (
-    <View testID={testID}>
-      <LinearGradient
-        colors={art as [string, string, ...string[]]}
-        start={{ x: 0.15, y: 0 }}
-        end={{ x: 0.85, y: 1 }}
-        style={s.banner}
-        testID={testID ? `${testID}-banner` : undefined}
-      >
-        {/* Transparent at the top, the page's background at the bottom, so the
-            banner dissolves instead of ending in a seam. */}
-        <LinearGradient
-          colors={['transparent', colors.background]}
-          locations={[0.35, 1]}
-          style={s.scrim}
-        />
-      </LinearGradient>
-
-      <Pressable
-        onPress={() => {
-          const payload = archiveShare(slug, title);
-          void Share.share(payload).catch(() => { /* viewer dismissed the sheet */ });
-        }}
-        style={s.shareHit}
-        testID={testID ? `${testID}-share` : undefined}
-        accessible={false}
-      >
-        {/* On a View, not the Pressable: RNW strips unknown props from Pressable,
-            so a11y identity placed there never reaches the DOM. */}
-        <View
-          style={s.shareGlass}
-          accessibilityRole="button"
-          accessibilityLabel={`Share ${title}`}
-          aria-label={`Share ${title}`}
-        >
-          <Text style={s.shareGlyph}>➦</Text>
-        </View>
-      </Pressable>
-
-      <View style={s.body}>
-        <View style={s.poster} testID={testID ? `${testID}-poster` : undefined}>
-          <LinearGradient
-            colors={art as [string, string, ...string[]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.posterFill}
+    <View style={s.wrap} testID={testID}>
+      <View style={s.top}>
+        <View style={s.coverCol}>
+          <ArchiveCover
+            entryId={entryId}
+            title={title}
+            coverUrl={coverUrl}
+            width={COVER_WIDTH.hero}
+            testID={testID ? `${testID}-poster` : undefined}
           />
+          {!coverUrl && onAddCover ? (
+            <PressableScale
+              onPress={onAddCover}
+              style={s.addCover}
+              testID={testID ? `${testID}-add-cover` : undefined}
+              accessibilityRole="button"
+              accessibilityLabel="Add a cover"
+              accessibilityHint="Opens Suggest an edit with the cover field ready"
+            >
+              <Text style={s.addCoverText}>Add a cover</Text>
+            </PressableScale>
+          ) : null}
         </View>
 
-        <View style={s.text}>
-          <Text style={s.eyebrow}>{archiveTypeLabel(mediaType).toUpperCase()}</Text>
-          {/* Two lines. A 39-character title on one line is the crop this
-              codebase already fixed in the rails. */}
-          <Text style={s.title} numberOfLines={2}>{title}</Text>
-          <Text style={s.meta} numberOfLines={2}>{meta}</Text>
-        </View>
+        <PressableScale
+          onPress={() => {
+            const payload = archiveShare(slug, title);
+            void Share.share(payload).catch(() => { /* viewer dismissed the sheet */ });
+          }}
+          style={s.shareHit}
+          testID={testID ? `${testID}-share` : undefined}
+          accessible={false}
+        >
+          {/* On a View, not the Pressable: RNW strips unknown props from Pressable,
+              so a11y identity placed there never reaches the DOM. */}
+          <View
+            accessibilityRole="button"
+            accessibilityLabel={`Share ${title}`}
+            aria-label={`Share ${title}`}
+          >
+            <Ionicons name="share-outline" size={24} color={colors.ink2} />
+          </View>
+        </PressableScale>
+      </View>
+
+      <View style={s.text}>
+        {/* Two lines in English at 360 dp (direction › Typography). */}
+        <Text style={s.title} numberOfLines={2} accessibilityRole="header">{title}</Text>
+        <Text style={s.meta} numberOfLines={2}>{typeLine}</Text>
       </View>
     </View>
   );
