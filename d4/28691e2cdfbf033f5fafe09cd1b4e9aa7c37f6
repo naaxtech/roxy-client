@@ -1,0 +1,19 @@
+apps/mobile/__tests__/components/nav/FloatingTabBar.test.tsx
+  s_37deb30b6489aa::t_50a52cfd65441a 24,26-28,53,62,66,73-79,83-84,99-103,106,119,132,162,180-182,186-190,198-214,216-226,228-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d428691e2cdfbf033f5fafe09cd1b4e9aa7c37f6",
+  "prompts": {},
+  "sessions": {
+    "s_37deb30b6489aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "791c066c-b99f-499a-832d-4bb799f2daf9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
