@@ -84,6 +84,10 @@ export const PressableScale = forwardRef<View, PressableScaleProps>(function Pre
   const layer = useRef(new Animated.Value(0)).current;
   const corner = useRef(new Animated.Value(0)).current;
   const [pressed, setPressed] = useState(false);
+  // The release must not read `pressed` from render state: a quick click (web)
+  // fires pressIn and pressOut before React re-renders, and a stale `false`
+  // left the state layer on for good. The ref is always current.
+  const pressedRef = useRef(false);
   const [layerOn, setLayerOn] = useState(false);
   const [height, setHeight] = useState<number | null>(null);
 
@@ -98,6 +102,7 @@ export const PressableScale = forwardRef<View, PressableScaleProps>(function Pre
   const handlePressIn = useCallback(
     (e: GestureResponderEvent) => {
       if (active) {
+        pressedRef.current = true;
         setPressed(true);
         setLayerOn(true);
         if (reducedMotion) {
@@ -121,7 +126,8 @@ export const PressableScale = forwardRef<View, PressableScaleProps>(function Pre
 
   const handlePressOut = useCallback(
     (e: GestureResponderEvent) => {
-      if (pressed) {
+      if (pressedRef.current) {
+        pressedRef.current = false;
         setPressed(false);
         if (reducedMotion) {
           scale.setValue(1);
@@ -137,14 +143,15 @@ export const PressableScale = forwardRef<View, PressableScaleProps>(function Pre
           }
           Animated.spring(layer, { toValue: 0, ...animatedSpring('fastEffects', native) }).start(
             ({ finished }) => {
-              if (finished) setLayerOn(false);
+              // Interrupted by a new press: that press owns the layer now.
+              if (finished && !pressedRef.current) setLayerOn(false);
             },
           );
         }
       }
       onPressOut?.(e);
     },
-    [pressed, feedback, morphs, native, reducedMotion, scale, corner, layer, onPressOut],
+    [feedback, morphs, native, reducedMotion, scale, corner, layer, onPressOut],
   );
 
   const handleLayout = useCallback(

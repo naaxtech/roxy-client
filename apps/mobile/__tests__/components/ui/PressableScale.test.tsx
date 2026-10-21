@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, StyleSheet, Text } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text } from 'react-native';
 import { render, fireEvent, act } from '@testing-library/react-native';
 
 const mockReducedMotion = jest.fn(() => false);
@@ -69,6 +69,23 @@ describe('PressableScale — v2 press states', () => {
     fireEvent(v.getByTestId('p'), 'pressOut', { nativeEvent: {} });
     const back = springSpy.mock.calls.filter(([, cfg]) => cfg.toValue === 1);
     expect(back.length).toBeGreaterThan(0);
+  });
+
+  // Regression (seen on the web export): a quick click fires pressIn and
+  // pressOut before React re-renders, so a release handler that read `pressed`
+  // from render state saw `false` and left the state layer on for good.
+  it('releases even when pressIn and pressOut land in the same tick', () => {
+    mockReducedMotion.mockReturnValue(true);
+    const v = render(<PressableScale testID="p" onPress={() => {}} />);
+    // React Native Web's press responder calls start and end back to back on
+    // a quick click; call the handlers the same way, inside one act().
+    const pressable = v.UNSAFE_getByType(Pressable);
+    act(() => {
+      pressable.props.onPressIn({ nativeEvent: {} });
+      pressable.props.onPressOut({ nativeEvent: {} });
+    });
+    expect(v.queryByTestId('press-state-layer')).toBeNull();
+    expect(scaleOf(v.getByTestId('p'))).toBe(1);
   });
 
   it('jumps to 0.96 under Reduce Motion instead of springing', () => {

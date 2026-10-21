@@ -128,11 +128,13 @@ function RouteSlot({
             style={[s.indicator, { backgroundColor: ink.pill, width }]}
           />
         ) : null}
-        <NavIcon
-          name={icon}
-          color={isFocused ? ink.activeIcon : ink.idle}
-          testID={`nav-icon-${route.name}`}
-        />
+        <View testID={`nav-icon-layer-${route.name}`} style={s.iconLayer}>
+          <NavIcon
+            name={icon}
+            color={isFocused ? ink.activeIcon : ink.idle}
+            testID={`nav-icon-${route.name}`}
+          />
+        </View>
         {badge !== undefined ? <UnreadDot value={badge} slotKey={route.name} colors={colors} /> : null}
       </View>
       <Text
@@ -293,12 +295,20 @@ const s = StyleSheet.create({
     position: 'absolute',
     height: NAV_INDICATOR.height,
     borderRadius: RADII.pill,
+    zIndex: 0,
+  },
+  // Above the pill: on the web an absolutely positioned pill would otherwise
+  // paint over the (non-positioned) icon whatever the DOM order.
+  iconLayer: {
+    position: 'relative',
+    zIndex: 1,
   },
   label: {
     textAlign: 'center',
   },
   dot: {
     position: 'absolute',
+    zIndex: 2,
     top: 3,
     right: 12,
     width: UNREAD_DOT,

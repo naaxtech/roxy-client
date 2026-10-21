@@ -225,6 +225,16 @@ describe('FloatingTabBar — M3 flexible navigation bar (v2)', () => {
     expect(queryByTestId('nav-indicator-you')).toBeNull();
   });
 
+  // Regression (web export): an absolutely positioned pill paints over a
+  // non-positioned sibling in CSS whatever the DOM order, which hid the active
+  // icon. The icon sits in its own layer above the pill.
+  it('stacks the active icon above its pill', () => {
+    const { getByTestId } = renderBar({ index: 1 });
+    const pillZ = Number(flat(getByTestId('nav-indicator-discover')).zIndex ?? 0);
+    const iconZ = Number(flat(getByTestId('nav-icon-layer-discover')).zIndex ?? 0);
+    expect(iconZ).toBeGreaterThan(pillZ);
+  });
+
   it('labels at 12/16: active emphasized (600) in ink, inactive 500 in ink2', () => {
     const { getByText } = renderBar({ index: 1 });
     const active = flat(getByText('Discover'));
