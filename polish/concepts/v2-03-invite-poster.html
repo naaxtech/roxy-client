@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roxy v2 concept 03: The invite is a poster (community event, just after "I'm going")</title>
+<link rel="stylesheet" href="roxy-tokens-v2.css">
+<style>
+  html, body { width: 390px; height: 844px; overflow: hidden; }
+  .bar { position: absolute; top: 47px; left: 4px; right: 4px; height: 48px; display: flex; align-items: center; color: var(--ink); }
+  .bar .hit { width: 48px; height: 48px; display: grid; place-items: center; }
+  .bar .sp { flex: 1; }
+  .poster { position: absolute; left: 16px; top: 100px; width: 358px; height: 372px; border-radius: var(--r-lg); background: var(--crest-sky); color: var(--on-brand-pink); overflow: hidden; }
+  .poster .host { position: absolute; left: 20px; top: 20px; font: 600 15px/20px var(--font-text); }
+  .poster h1 { position: absolute; left: 18px; top: 116px; }
+  .poster .when { position: absolute; left: 20px; bottom: 20px; font: 600 15px/20px var(--font-text); }
+  .poster .moon { position: absolute; right: 26px; bottom: 74px; width: 108px; height: 108px; border-radius: 50%; background: var(--crest-butter); }
+  .poster .sea { position: absolute; left: -10px; right: -10px; bottom: -40px; height: 128px; border-radius: 50% 50% 0 0 / 60% 60% 0 0; background: #6F9CC8; }
+  .poster .sea2 { position: absolute; left: 150px; right: -60px; bottom: -70px; height: 120px; border-radius: 50% 50% 0 0; background: #5C8BBA; }
+  .poster .when { z-index: 2; }
+  .stamp { position: absolute; left: 270px; top: 104px; width: 104px; height: 104px; z-index: 3; transform: rotate(9deg); }
+  .stamp .lab { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--on-pink); font: 800 16px/17px var(--font-display); }
+  .stamp .lab svg { width: 22px; height: 22px; stroke-width: 2.6; display: block; margin: 0 auto 2px; }
+
+  .facts { position: absolute; left: 16px; right: 16px; top: 492px; display: grid; gap: 14px; }
+  .fact { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start; }
+  .fact svg { color: var(--ink2); margin-top: -1px; }
+  .fact b { display: block; font: 600 15px/20px var(--font-text); }
+  .fact span { display: block; font: 400 14px/20px var(--font-text); color: var(--ink2); }
+  .fact a { color: var(--pink); font-weight: 600; text-decoration: none; }
+
+  .ticket { position: absolute; left: 16px; right: 16px; top: 676px; height: 64px; border-radius: var(--r-md); background: var(--surface); display: flex; align-items: center; padding: 0 16px; gap: 12px; }
+  .ticket .ok { width: 32px; height: 32px; border-radius: 50%; background: var(--success); color: #FFFDFD; display: grid; place-items: center; flex: none; }
+  .ticket .ok svg { width: 18px; height: 18px; stroke-width: 2.6; }
+  .ticket b { display: block; font: 600 15px/20px var(--font-text); }
+  .ticket .code { color: var(--ink2); }
+  .ticket .open { margin-left: auto; font: 600 15px/20px var(--font-text); color: var(--pink); }
+  .cta { position: absolute; left: 16px; right: 16px; top: 752px; }
+  .note { position: absolute; left: 16px; right: 16px; top: 814px; text-align: center; color: var(--ink2); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status"><span>18:40</span><span class="sys"></span></div>
+  <div class="bar">
+    <span class="hit"><svg data-i="back"></svg></span><span class="sp"></span>
+    <span class="hit"><svg data-i="share"></svg></span><span class="hit"><svg data-i="more"></svg></span>
+  </div>
+
+  <div class="poster" role="img" aria-label="Poster: Full moon swim, hosted by Clovelly Dawn Dippers, Friday 5 December, 8:30 pm">
+    <div class="moon"></div><div class="sea"></div><div class="sea2"></div>
+    <div class="host">Clovelly Dawn Dippers</div>
+    <h1 class="t-moment">Full moon<br>swim</h1>
+    <div class="when">Fri 5 Dec · 8:30 pm</div>
+  </div>
+  <div class="stamp" aria-label="You're going">
+    <svg viewBox="0 0 104 104" width="104" height="104" id="seal"></svg>
+    <div class="lab"><div><svg data-i="check"></svg>You’re<br>going</div></div>
+  </div>
+
+  <div class="facts">
+    <div class="fact"><svg data-i="calendar"></svg><div><b>Friday 5 December, 8:30 – 10:00 pm</b><span>Towel, warm layers, a torch. <a>Add to calendar</a></span></div></div>
+    <div class="fact"><svg data-i="pin"></svg><div><b>In person · Eastern suburbs, Sydney</b><span>The exact meeting point is on your ticket.</span></div></div>
+    <div class="fact"><svg data-i="lock"></svg><div><b class="num">23 going</b><span>Only people who are going can see who’s going.</span></div></div>
+  </div>
+
+  <div class="ticket">
+    <div class="ok"><svg data-i="check"></svg></div>
+    <div><b>Your ticket</b><span class="t-mono code">CDD-0512-023</span></div>
+    <span class="open">Open</span>
+  </div>
+  <div class="cta"><div class="btn btn-primary">Bring a friend</div></div>
+  <p class="note t-meta">The link preview won’t name the event or the club.</p>
+</div>
+<script>
+  // RSVP seal: a 16-point burst (sticker edge), the end shape of the "I'm going" button morph.
+  (function () {
+    const pts = [], n = 32, c = 52, R = 51, r = 45;
+    for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 - Math.PI / 2; const rad = i % 2 ? r : R; pts.push((c + rad * Math.cos(a)).toFixed(1) + ',' + (c + rad * Math.sin(a)).toFixed(1)); }
+    document.getElementById('seal').innerHTML = `<polygon points="${pts.join(' ')}" fill="var(--pink)" stroke="var(--ground)" stroke-width="4" stroke-linejoin="round"/>`;
+  })();
+</script>
+<script src="roxy-concepts-v2.js"></script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roxy v2 concept 06: Messages, normal vs discreet (Premium) vs locked + upgrade moment</title>
+<link rel="stylesheet" href="roxy-tokens-v2.css">
+<style>
+  html, body { width: 1266px; height: 968px; overflow: hidden; background: #E9E4E2; }
+  .board { display: grid; grid-template-columns: 390px 390px 390px; gap: 24px; padding: 24px; }
+  .hdr { position: absolute; top: 52px; left: 16px; right: 4px; height: 52px; display: flex; align-items: center; }
+  .hdr h1 { flex: 1; }
+  .iconbtn { width: 48px; height: 48px; display: grid; place-items: center; color: var(--ink); position: relative; }
+  .iconbtn.on span.pillbg { position: absolute; inset: 6px 2px; border-radius: var(--r-full); background: var(--pink-container); }
+  .iconbtn.on svg { position: relative; color: var(--on-pink-container); }
+  .iconbtn .lk { position: absolute; right: 6px; bottom: 8px; width: 16px; height: 16px; border-radius: 50%; background: var(--premium); display: grid; place-items: center; }
+  .iconbtn .lk svg { width: 11px; height: 11px; stroke-width: 2.4; color: var(--on-premium); }
+  .state { position: absolute; top: 108px; left: 16px; right: 16px; height: 44px; border-radius: var(--r-md); background: var(--pink-container); color: var(--on-pink-container); display: flex; align-items: center; gap: 10px; padding: 0 14px; font: 500 13px/18px var(--font-text); }
+  .list { position: absolute; left: 0; right: 0; }
+  .row { display: flex; align-items: center; gap: 12px; height: 72px; padding: 0 16px; }
+  .row .txt { flex: 1; min-width: 0; }
+  .row .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .row .top .t-meta { color: var(--ink2); flex: none; }
+  .row .prev { font: 400 14px/20px var(--font-text); color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row.unread .prev { color: var(--ink); font-weight: 500; }
+  .row .u { width: 10px; height: 10px; border-radius: 50%; background: var(--pink); flex: none; }
+  .row .sq { width: 48px; height: 48px; border-radius: 14px; flex: none; }
+  .row .sister { width: 48px; height: 48px; border-radius: 50%; background: var(--sister); flex: none; }
+  .row .neutral { width: 48px; height: 48px; border-radius: 50%; background: var(--raised); display: grid; place-items: center; color: var(--ink2); font: 700 16px/1 var(--font-display); flex: none; }
+  .row .neutral.sqn { border-radius: 14px; }
+  .group { padding: 16px 16px 4px; color: var(--ink2); font: 600 13px/18px var(--font-text); }
+  .reqs { display: flex; align-items: center; justify-content: space-between; height: 48px; padding: 0 16px; }
+  .reqs b { font: 600 15px/20px var(--font-text); }
+  .reqs span { color: var(--pink); font: 600 14px/18px var(--font-text); display: flex; align-items: center; gap: 2px; }
+  .reqs span svg { width: 18px; height: 18px; }
+
+  .sheet { padding: 0 20px; height: 668px; }
+  .prevbox { margin-top: 18px; border-radius: var(--r-md); background: var(--ground); padding: 8px 0; display: grid; grid-template-columns: 1fr 28px 1fr; align-items: center; }
+  .prevbox .mini { padding: 0 10px; display: grid; gap: 8px; }
+  .prevbox .mrow { display: flex; align-items: center; gap: 8px; height: 36px; }
+  .prevbox .mav { width: 28px; height: 28px; border-radius: 50%; flex: none; }
+  .prevbox .ml { font: 600 12px/16px var(--font-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 112px; }
+  .prevbox .ms { font: 400 11.5px/15px var(--font-text); color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+  .prevbox .arrow { color: var(--ink2); display: grid; place-items: center; }
+  .sheet h2 { margin-top: 20px; }
+  .sheet p.lede { margin-top: 8px; color: var(--ink2); }
+  .ticks { margin-top: 16px; display: grid; gap: 10px; }
+  .ticks div { display: flex; gap: 10px; align-items: flex-start; font: 500 15px/21px var(--font-text); }
+  .ticks svg { color: var(--success); flex: none; stroke-width: 2.4; width: 22px; height: 22px; }
+  .free { margin-top: 18px; padding: 12px 14px; border-radius: var(--r-md); background: var(--raised); font: 400 13px/19px var(--font-text); color: var(--ink); }
+  .ptag { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: var(--r-full); background: var(--premium); color: var(--on-premium); font: 600 12px/16px var(--font-text); }
+  .acts { position: absolute; left: 20px; right: 20px; bottom: 28px; display: grid; gap: 4px; }
+  .acts .btn-text { height: 48px; color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="board">
+
+  <!-- 1. normal -->
+  <div class="col">
+    <div class="board-label">Messages, normal</div>
+    <div class="board-sub">Roxy AI and Sister pinned as rows. The eye button at the top is the discreet switch.</div>
+    <div class="phone">
+      <div class="status"><span>12:48</span><span class="sys"></span></div>
+      <div class="hdr"><h1 class="t-headline">Messages</h1><span class="iconbtn"><svg data-i="eyeoff"></svg></span><span class="iconbtn"><svg data-i="edit"></svg></span></div>
+      <div class="list" style="top:112px">
+        <div class="row unread"><span data-o="happy" data-size="48"></span><div class="txt"><div class="top"><span class="t-label">Roxy AI</span><span class="t-meta">21:15</span></div><div class="prev">Your hello for Sunday is ready</div></div><span class="u"></span></div>
+        <div class="row"><span class="sister"></span><div class="txt"><div class="top"><span class="t-label">Sister</span></div><div class="prev">Just for you. Nothing leaves here.</div></div></div>
+        <div class="reqs"><b>Requests</b><span>2 waiting<svg data-i="fwd"></svg></span></div>
+        <div class="row unread"><span class="av" style="width:48px;height:48px;background:var(--crest-butter)">T</span><div class="txt"><div class="top"><span class="t-label">Tolu Adeyemi</span><span class="t-meta">12:31</span></div><div class="prev">Sunday? I’ll save you a seat by the window</div></div><span class="u"></span></div>
+        <div class="row"><span class="av" style="width:48px;height:48px;background:var(--crest-sky)">S</span><div class="txt"><div class="top"><span class="t-label">Sofía Marín</span><span class="t-meta">Tue</span></div><div class="prev">You: haha same, see you at karaoke</div></div></div>
+        <div class="group">Communities</div>
+        <div class="row unread"><span class="sq crest" style="background:var(--crest-tangerine)">LS</span><div class="txt"><div class="top"><span class="t-label">Lagos Sapphic Readers</span><span class="t-meta">11:02</span></div><div class="prev"># sunday-swap · Ngozi: bringing two Toni Morrisons</div></div><span class="u"></span></div>
+        <div class="row"><span class="sq crest" style="background:var(--crest-sage)">LB</span><div class="txt"><div class="top"><span class="t-label">Late Bloomers</span><span class="t-meta">Mon</span></div><div class="prev"># coming-out-stories · Hana: thank you all</div></div></div>
+      </div>
+      <nav class="nav" data-on="messages"></nav>
+    </div>
+  </div>
+
+  <!-- 2. discreet on (premium) -->
+  <div class="col">
+    <div class="board-label">Discreet on (Premium member)</div>
+    <div class="board-sub">One tap at the top. Names, photos, previews and community names are hidden on screen; chats open after Face ID or the passcode.</div>
+    <div class="phone">
+      <div class="status"><span>12:48</span><span class="sys"></span></div>
+      <div class="hdr"><h1 class="t-headline">Messages</h1><span class="iconbtn on"><span class="pillbg"></span><svg data-i="eyeoff"></svg></span><span class="iconbtn"><svg data-i="edit"></svg></span></div>
+      <div class="state"><svg data-i="eyeoff" style="width:20px;height:20px"></svg>Discreet is on. Tap a chat to open it.</div>
+      <div class="list" style="top:160px">
+        <div class="row unread"><span data-o="rest" data-size="48"></span><div class="txt"><div class="top"><span class="t-label">Roxy AI</span><span class="t-meta">21:15</span></div><div class="prev">1 new message</div></div><span class="u"></span></div>
+        <div class="row"><span class="sister"></span><div class="txt"><div class="top"><span class="t-label">Sister</span></div><div class="prev">Private space</div></div></div>
+        <div class="reqs"><b>Requests</b><span>2 waiting<svg data-i="fwd"></svg></span></div>
+        <div class="row unread"><span class="neutral">T</span><div class="txt"><div class="top"><span class="t-label">T.</span><span class="t-meta">12:31</span></div><div class="prev">1 new message</div></div><span class="u"></span></div>
+        <div class="row"><span class="neutral">S</span><div class="txt"><div class="top"><span class="t-label">S.</span><span class="t-meta">Tue</span></div><div class="prev">Conversation</div></div></div>
+        <div class="group">Communities</div>
+        <div class="row unread"><span class="neutral sqn"></span><div class="txt"><div class="top"><span class="t-label">Community chat</span><span class="t-meta">11:02</span></div><div class="prev">3 new messages</div></div><span class="u"></span></div>
+        <div class="row"><span class="neutral sqn"></span><div class="txt"><div class="top"><span class="t-label">Community chat</span><span class="t-meta">Mon</span></div><div class="prev">Conversation</div></div></div>
+      </div>
+      <nav class="nav" data-on="messages"></nav>
+    </div>
+  </div>
+
+  <!-- 3. locked + upgrade moment -->
+  <div class="col">
+    <div class="board-label">Not Premium: tap the eye</div>
+    <div class="board-sub">The switch is visible to everyone and wears a small lock. Tapping it shows her own inbox going discreet, what is already free, and one way forward.</div>
+    <div class="phone">
+      <div class="status"><span>12:48</span><span class="sys"></span></div>
+      <div class="hdr"><h1 class="t-headline">Messages</h1><span class="iconbtn"><svg data-i="eyeoff"></svg><span class="lk"><svg data-i="lock"></svg></span></span><span class="iconbtn"><svg data-i="edit"></svg></span></div>
+      <div class="list" style="top:112px">
+        <div class="row unread"><span data-o="happy" data-size="48"></span><div class="txt"><div class="top"><span class="t-label">Roxy AI</span><span class="t-meta">21:15</span></div><div class="prev">Your hello for Sunday is ready</div></div><span class="u"></span></div>
+      </div>
+      <div class="scrim"></div>
+      <section class="sheet" aria-label="Discreet mode">
+        <div class="grabber"></div>
+        <div class="prevbox" aria-label="Your inbox, before and after">
+          <div class="mini">
+            <div class="mrow"><span class="mav" style="background:var(--crest-butter)"></span><div><div class="ml">Tolu Adeyemi</div><div class="ms">Sunday? I’ll save you a seat</div></div></div>
+            <div class="mrow"><span class="mav" style="background:var(--crest-tangerine);border-radius:8px"></span><div><div class="ml">Lagos Sapphic Readers</div><div class="ms">Ngozi: bringing two…</div></div></div>
+          </div>
+          <div class="arrow"><svg data-i="fwd"></svg></div>
+          <div class="mini">
+            <div class="mrow"><span class="mav" style="background:var(--raised)"></span><div><div class="ml">T.</div><div class="ms">1 new message</div></div></div>
+            <div class="mrow"><span class="mav" style="background:var(--raised);border-radius:8px"></span><div><div class="ml">Community chat</div><div class="ms">3 new messages</div></div></div>
+          </div>
+        </div>
+        <h2 class="t-headline">Keep your chats<br>to yourself</h2>
+        <p class="lede t-body">For when someone can see your screen. Discreet mode comes with <span class="ptag">Roxy Premium</span></p>
+        <div class="ticks">
+          <div><svg data-i="check"></svg>Names, photos and previews hidden in Messages</div>
+          <div><svg data-i="check"></svg>Chats open with Face ID or your passcode</div>
+          <div><svg data-i="check"></svg>On and off with one tap, whenever you like</div>
+        </div>
+        <div class="free">Free for everyone, always: private lock-screen previews, request-first messages, block and report.</div>
+        <div class="acts"><div class="btn btn-primary">See Roxy Premium</div><div class="btn btn-text">Not now</div></div>
+      </section>
+    </div>
+  </div>
+</div>
+<script src="roxy-concepts-v2.js"></script>
+</body>
+</html>

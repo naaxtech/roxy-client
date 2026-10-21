@@ -35,3 +35,16 @@ Screenshots:
 - polish/inspiration/shots/duolingo-2.png (App Store screenshot 6)
 - polish/inspiration/shots/duolingo-3.png (duolingo.com at 390px)
 - polish/inspiration/shots/duolingo-4.png (App Store listing page)
+
+## Revisit for direction v2 (2026-10-21): what makes it snappy
+
+Nicole asked for "snappier and nicer, in the spirit of Duolingo". Re-read from the same shots plus two public sources: Duolingo's engineering blog on its Rive character animation (https://blog.duolingo.com/world-character-visemes/, 2022) and Rive's case study on Lily's video call (https://rive.app/blog/duolingo-s-ai-powered-video-call-brings-lily-to-life, 2025). Third-party design-system write-ups that quote exact Duolingo hex values and pixel sizes were read but are not cited as fact.
+
+- **The press is physical and instant.** Buttons and answer tiles have a hard, darker lip under the face (no blur), and the face drops onto the lip on touch-down, before the finger lifts (duolingo-1, duolingo-3). Feedback happens on press-in, not on release. Roxy: the one primary button per screen carries a 3 dp lip in a darker pink and sinks 3 dp on press-in; everything else answers press-in with a scale to 0.96 on the fast spatial spring.
+- **Selection is a full fill, never a glow.** A chosen tile turns into a flat field of colour with the same shape (duolingo-1). Roxy: selected chips, her reaction and the active nav item take the flat `pinkContainer` fill.
+- **Feedback says right or wrong in under a second, then gets out of the way.** The answer bar slides up in a colour that means the result. Roxy has no right or wrong, so the equivalent is: every tap answers within one frame (optimistic state), and errors arrive as one sentence with the next step.
+- **Celebration is earned and rare.** Sparkles and the gold combo bar appear only on a streak or a lesson finished (duolingo-4). Roxy celebrates only at the three signature moments; reactions get a small burst, not confetti.
+- **A character carries the emotion.** Duolingo's characters blink, nod and react to what you do, driven by a Rive state machine whose files stay under a megabyte (Rive case study). Roxy AI gets a face the same way, drawn with `react-native-svg` and moved with reanimated (no Rive runtime needed for blinks, a glance and four expressions).
+
+What we still will NOT take: the cartoon world, streak guilt, uppercase button labels, and the rainbow of section colours.
+

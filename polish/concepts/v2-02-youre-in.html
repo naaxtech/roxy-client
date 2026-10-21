@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roxy v2 concept 02: You're in (the code becomes a membership card)</title>
+<link rel="stylesheet" href="roxy-tokens-v2.css">
+<style>
+  html, body { width: 390px; height: 844px; overflow: hidden; }
+  .phone { background: var(--brand-pink); color: var(--on-brand-pink); }
+  .status { color: var(--on-brand-pink); }
+  .mark { position: absolute; top: 60px; left: 20px; height: 20px; width: auto; }
+  .head { position: absolute; top: 102px; left: 20px; right: 20px; }
+  .head p { margin-top: 16px; font: 500 17px/24px var(--font-text); max-width: 330px; }
+  .card { position: absolute; top: 330px; left: 26px; width: 338px; height: 262px; background: var(--surface); color: var(--ink); border-radius: var(--r-lg); padding: 22px; transform: rotate(-3deg); box-shadow: 0 6px 0 rgba(23,8,15,.18); } /* taste-skill-ignore: hard 6dp card edge on the field (lip language), no blur */
+  .card .who { display: flex; gap: 12px; align-items: center; }
+  .card .crest { width: 44px; height: 44px; border-radius: 12px; background: var(--crest-tangerine); }
+  .card .name { margin-top: 28px; }
+  .card .since { color: var(--ink2); margin-top: 4px; }
+  .card .foot { position: absolute; left: 22px; right: 22px; bottom: 20px; display: flex; justify-content: space-between; align-items: center; color: var(--ink2); }
+  .card .foot img { height: 15px; width: auto; }
+  .cta { position: absolute; left: 20px; right: 20px; bottom: 112px; }
+  .btn-inkfill { background: var(--on-brand-pink); color: #FFFDFD; }
+  .second { position: absolute; left: 20px; right: 20px; bottom: 56px; display: flex; justify-content: center; }
+  .second span { display: flex; align-items: center; gap: 8px; height: 48px; font: 600 16px/20px var(--font-text); }
+  .fine { position: absolute; left: 20px; right: 20px; bottom: 26px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status"><span>19:02</span><span class="sys"></span></div>
+  <img class="mark" src="assets/v2-roxy-wordmark-black.svg" alt="Roxy">
+  <div class="head">
+    <h1 class="t-moment">You’re in,<br>Amara.</h1>
+    <p>Your card is ready. Show it to the friend who sent you the code.</p>
+  </div>
+  <div class="card" aria-label="Your Roxy card">
+    <div class="who"><span class="crest">LS</span><div><div class="t-label">Lagos Sapphic Readers</div><div class="t-meta" style="color:var(--ink2)">vouched for you</div></div></div>
+    <div class="name t-headline">Amara Okafor</div>
+    <div class="since t-body">Member since 21 October 2026</div>
+    <div class="foot"><span class="t-mono">No. 48 120</span><img src="assets/v2-roxy-wordmark-black.svg" alt="Roxy"></div>
+  </div>
+  <div class="cta"><div class="btn btn-inkfill">Come in</div></div>
+  <div class="second"><span><svg data-i="share"></svg>Share your card</span></div>
+  <p class="fine t-meta">A shared card never names the community unless you add it.</p>
+</div>
+<script src="roxy-concepts-v2.js"></script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+/* Roxy, PROPOSED v2 tokens (design-direction.md v2). Concept boards only; nothing here is in theme.ts.
+   Light is the default theme; `.dark` and `.stage` scopes carry the dark roles. Fonts are the exact static
+   TTFs the @expo-google-fonts packages ship (Geologica 0.4.2, Commissioner 0.4.1, IBM Plex Mono 0.4.1,
+   Noto Sans Arabic 0.4.3 / Hebrew 0.4.1 / Devanagari 0.4.1 / Thai 0.4.2); CJK and emoji use Google Fonts
+   subsets of Noto Sans JP/SC/TC/KR and Noto Color Emoji for the few glyphs on the boards. */
+@font-face { font-family: "Roxy Display"; font-weight: 700; src: url(assets/Geologica_700Bold.ttf); }
+@font-face { font-family: "Roxy Display"; font-weight: 800; src: url(assets/Geologica_800ExtraBold.ttf); }
+@font-face { font-family: "Roxy Text"; font-weight: 400; src: url(assets/Commissioner_400Regular.ttf); }
+@font-face { font-family: "Roxy Text"; font-weight: 500; src: url(assets/Commissioner_500Medium.ttf); }
+@font-face { font-family: "Roxy Text"; font-weight: 600; src: url(assets/Commissioner_600SemiBold.ttf); }
+@font-face { font-family: "Roxy Mono"; font-weight: 500; src: url(assets/IBMPlexMono_500Medium.ttf); } /* taste-skill-ignore: mono for codes and IDs only */
+@font-face { font-family: "Roxy Arabic"; font-weight: 400; src: url(assets/NotoSansArabic_400Regular.ttf); }
+@font-face { font-family: "Roxy Arabic"; font-weight: 600; src: url(assets/NotoSansArabic_600SemiBold.ttf); }
+@font-face { font-family: "Roxy Arabic"; font-weight: 700; src: url(assets/NotoSansArabic_700Bold.ttf); }
+@font-face { font-family: "Roxy Hebrew"; font-weight: 500; src: url(assets/NotoSansHebrew_500Medium.ttf); }
+@font-face { font-family: "Roxy Devanagari"; font-weight: 500; src: url(assets/NotoSansDevanagari_500Medium.ttf); }
+@font-face { font-family: "Roxy Thai"; font-weight: 500; src: url(assets/NotoSansThai_500Medium.ttf); }
+@font-face { font-family: "Roxy JP"; font-weight: 500; src: url(assets/NotoSansJP-500-subset.woff2); }
+@font-face { font-family: "Roxy SC"; font-weight: 500; src: url(assets/NotoSansSC-500-subset.woff2); }
+@font-face { font-family: "Roxy TC"; font-weight: 500; src: url(assets/NotoSansTC-500-subset.woff2); }
+@font-face { font-family: "Roxy KR"; font-weight: 500; src: url(assets/NotoSansKR-500-subset.woff2); }
+@font-face { font-family: "Roxy Emoji"; src: url(assets/NotoColorEmoji-reactions-subset.woff2); unicode-range: U+2764, U+FE0F, U+1F49C, U+1F602, U+1F621-1F622, U+1F62E; }
+
+:root {
+  /* colour, light (default) */
+  --ground: #F6F3F2; --surface: #FFFDFD; --raised: #ECE7E6; --line: #E0D9D8; --control: #8C8186;
+  --ink: #1A1216; --ink2: #544A4F; --ink3: #675C61;
+  --pink: #C8126A; --on-pink: #FFFFFF; --pink-lip: #8E0C4A;
+  --pink-container: #FFD9E7; --on-pink-container: #5C0A31;
+  --brand-pink: #F22481; --on-brand-pink: #17080F;
+  --inverse: #2B2427; --on-inverse: #F7F2F4; --inverse-pink: #FF9EC3;
+  --success: #177A47; --success-ink: #13703F; --warning: #B07A10; --warning-ink: #8A5E06;
+  --danger: #C8262C; --danger-ink: #B21F25; --sister: #4F6B7C; --sister-ink: #3E5868; --live: #E8481E;
+  --premium: #F2C94C; --on-premium: #1A1216;
+  /* the always-dark feed stage */
+  --stage: #0B0A0A; --stage-raised: #262124; --stage-ink2: #C3B8BD;
+  --field-ink: #151113; --field-paper: #F3F1F0;
+  /* identity fields: crests, posters, fallback covers (each carries --on-brand-pink at >= 4.96:1) */
+  --crest-pink: #F22481; --crest-tangerine: #FF7A45; --crest-butter: #F2C94C;
+  --crest-sage: #8FC4A0; --crest-sky: #8FB8DE; --crest-rose: #E8A0BF;
+
+  --font-display: "Roxy Display", system-ui, sans-serif;
+  --font-text: "Roxy Text", "Roxy Emoji", system-ui, sans-serif;
+  --font-mono: "Roxy Mono", ui-monospace, monospace; /* taste-skill-ignore: codes and IDs only */
+  --font-emoji: "Roxy Emoji", sans-serif;
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px; --s12: 48px;
+  /* shape: bimodal radii + full; 12 is the press-morph target only */
+  --r-sm: 8px; --r-press: 12px; --r-md: 20px; --r-lg: 28px; --r-xl: 40px; --r-full: 999px;
+  /* elevation: only what floats */
+  --float: 0 10px 28px rgba(26,18,22,.16), 0 2px 6px rgba(26,18,22,.10); /* taste-skill-ignore: FAB, menus, toasts float */
+  --pop: 0 -2px 10px rgba(26,18,22,.10); /* taste-skill-ignore: sheets sit on a scrim; tone does the lift, the shadow only edges it */
+}
+.dark, .stage {
+  --ground: #141113; --surface: #1E1A1C; --raised: #2A2528; --line: #3A3337; --control: #6E6469;
+  --ink: #F7F2F4; --ink2: #C3B8BD; --ink3: #A1959B;
+  --pink: #F22481; --on-pink: #17080F; --pink-lip: #A5145A;
+  --pink-container: #5A1236; --on-pink-container: #FFD9E7;
+  --inverse: #F1ECEA; --on-inverse: #1A1216; --inverse-pink: #C8126A; --live: #FF5A2E;
+  --float: 0 10px 28px rgba(0,0,0,.5); /* taste-skill-ignore: floats */
+}
+.stage { --ground: #0B0A0A; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #E9E4E2; }
+body { font-family: var(--font-text); color: var(--ink); -webkit-font-smoothing: antialiased; font-size: 15px; line-height: 22px; }
+.phone { position: relative; width: 390px; height: 844px; overflow: hidden; background: var(--ground); color: var(--ink); }
+
+/* type: baseline + emphasized (heavier) */
+.t-meta { font: 500 12px/16px var(--font-text); }
+.t-meta-em { font: 600 12px/16px var(--font-text); }
+.t-body { font: 400 15px/22px var(--font-text); }
+.t-body-em { font: 600 15px/22px var(--font-text); }
+.t-label { font: 600 15px/20px var(--font-text); }
+.t-title { font: 700 20px/24px var(--font-display); letter-spacing: -0.2px; }
+.t-headline { font: 800 28px/32px var(--font-display); letter-spacing: -0.4px; }
+.t-display { font: 800 40px/42px var(--font-display); letter-spacing: -0.8px; }
+.t-moment { font: 800 56px/56px var(--font-display); letter-spacing: -1.4px; }
+.t-mono { font: 500 13px/18px var(--font-mono); letter-spacing: 0.5px; } /* taste-skill-ignore: codes and IDs only */
+.num { font-variant-numeric: tabular-nums; }
+.emoji { font-family: var(--font-emoji); font-weight: 400; }
+
+/* status bar (device chrome) */
+.status { position: absolute; top: 0; left: 0; right: 0; height: 47px; display: flex; align-items: center; justify-content: space-between; padding: 14px 26px 0 32px; font: 600 15px/20px var(--font-text); z-index: 30; color: var(--ink); }
+.status .sys { display: flex; gap: 6px; align-items: center; }
+
+/* flexible navigation bar (M3 Expressive): 64 + inset, pill indicator, labels always shown */
+.nav { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; padding: 8px 4px 20px; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--ground); z-index: 15; }
+.nav .slot { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ink2); font: 500 12px/16px var(--font-text); }
+.nav .ind { width: 56px; height: 32px; border-radius: var(--r-full); display: grid; place-items: center; position: relative; }
+.nav .slot.on { color: var(--ink); font-weight: 600; }
+.nav .slot.on .ind { background: var(--pink-container); color: var(--on-pink-container); }
+.stage .nav .slot.on .ind { background: var(--stage-raised); color: #FFFFFF; }
+.nav .ind svg { width: 24px; height: 24px; }
+.nav .create { width: 52px; height: 40px; border-radius: var(--r-press); background: var(--pink); color: var(--on-pink); display: grid; place-items: center; margin-top: 4px; }
+.nav .dot::after { content: ""; position: absolute; top: 3px; right: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 0 2px var(--ground); } /* taste-skill-ignore: 2dp ground ring separates the unread dot from the nav icon */
+
+.icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* buttons: one primary per screen, Duolingo lip on the primary only */
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 52px; padding: 0 24px; border-radius: var(--r-full); font: 600 16px/20px var(--font-text); }
+.btn-primary { background: var(--pink); color: var(--on-pink); box-shadow: 0 3px 0 var(--pink-lip); } /* taste-skill-ignore: hard 3dp lip, not a blur shadow (Duolingo press) */
+.btn-tonal { background: var(--pink-container); color: var(--on-pink-container); }
+.btn-quiet { background: var(--raised); color: var(--ink); }
+.btn-text { color: var(--pink); background: none; padding: 0 12px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: var(--r-full); background: var(--raised); color: var(--ink); font: 500 14px/18px var(--font-text); white-space: nowrap; }
+.chip.on { background: var(--pink-container); color: var(--on-pink-container); font-weight: 600; }
+
+/* the Roxy O: the O of the wordmark with two eyes; FAB, sheet header, Messages row */
+.roxy-o { display: block; }
+.fab { position: absolute; right: 16px; width: 56px; height: 56px; border-radius: 50%; box-shadow: var(--float); z-index: 20; } /* taste-skill-ignore: the FAB floats */
+.fab.mini { width: 40px; height: 40px; }
+
+/* switches */
+.switch { width: 52px; height: 32px; border-radius: 16px; background: var(--pink); position: relative; flex: none; }
+.switch::after { content: ""; position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; background: var(--on-pink); }
+.switch.off { background: var(--raised); box-shadow: inset 0 0 0 2px var(--control); } /* taste-skill-ignore: switch track outline */
+.switch.off::after { right: auto; left: 6px; top: 6px; width: 20px; height: 20px; background: var(--control); }
+
+.crest { display: grid; place-items: center; color: var(--on-brand-pink); font: 800 15px/1 var(--font-display); }
+.av { border-radius: 50%; display: grid; place-items: center; color: var(--on-brand-pink); font: 700 15px/1 var(--font-display); flex: none; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: var(--r-lg) var(--r-lg) 0 0; box-shadow: var(--pop); z-index: 25; } /* taste-skill-ignore: sheets float */
+.grabber { width: 32px; height: 4px; border-radius: 2px; background: var(--control); margin: 10px auto 0; }
+.scrim { position: absolute; inset: 0; background: rgba(26,18,22,.42); z-index: 24; } /* taste-skill-ignore: modal scrim under a sheet */
+.board-label { font: 600 14px/18px var(--font-text); color: #1A1216; margin-bottom: 4px; }
+.board-sub { font: 400 13px/18px var(--font-text); color: #544A4F; margin-bottom: 12px; height: 54px; overflow: hidden; }

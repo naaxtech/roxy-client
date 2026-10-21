@@ -11,7 +11,10 @@ Live in `apps/mobile/lib/theme.ts`, `components/feed/feedChromeTokens.ts`, `comp
 
 ## Product invariants
 - Nav: Feed · Discover · ＋Create (sheet) · Messages · You. Feature parity: features move or merge, never disappear.
-- Roxy is a "wingwoman": never AI, assistant or chatbot in user-facing copy. Sister is the quieter companion. Dating is opt-in.
+- Roxy AI is the emotional AI companion (sister to the Roxy app), reached from the omnipresent floating Roxy button, which stays; members can switch her on or off in Settings. User copy may say "Roxy AI". Sister is the quieter companion. Dating is opt-in.
+- Light mode is the default theme. Launch is worldwide: every string goes through localisation, and layouts survive longer translations and right-to-left scripts.
+- Reactions are the regular emoji set (`lib/postReactions.ts` POST_REACTIONS, shared with chat). No flower reaction or flower count anywhere.
+- Discreet mode in Messages is a premium feature.
 - Block/mute/report on every surface; request-first DMs; LIVE = dot + word.
 - Pushes, lock screens and share previews never show message text or a community, channel or event name by default.
 - Every screen has designed loading, empty and error states that say what to do next.

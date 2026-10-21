@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roxy v2 concept 08: one type system, every script (and an RTL feed)</title>
+<link rel="stylesheet" href="roxy-tokens-v2.css">
+<style>
+  @font-face { font-family: "S-He"; font-weight: 400; src: url(assets/NotoSansHebrew_400Regular.ttf); }
+  @font-face { font-family: "S-He"; font-weight: 700; src: url(assets/NotoSansHebrew_700Bold.ttf); }
+  @font-face { font-family: "S-Hi"; font-weight: 400; src: url(assets/NotoSansDevanagari_400Regular.ttf); }
+  @font-face { font-family: "S-Hi"; font-weight: 700; src: url(assets/NotoSansDevanagari_700Bold.ttf); }
+  @font-face { font-family: "S-Th"; font-weight: 400; src: url(assets/NotoSansThai_400Regular.ttf); }
+  @font-face { font-family: "S-Th"; font-weight: 700; src: url(assets/NotoSansThai_700Bold.ttf); }
+  @font-face { font-family: "S-JP"; font-weight: 400; src: url(assets/NotoSansJP-400-specimen-subset.woff2); }
+  @font-face { font-family: "S-JP"; font-weight: 800; src: url(assets/NotoSansJP-800-specimen-subset.woff2); }
+  @font-face { font-family: "S-SC"; font-weight: 400; src: url(assets/NotoSansSC-400-specimen-subset.woff2); }
+  @font-face { font-family: "S-SC"; font-weight: 800; src: url(assets/NotoSansSC-800-specimen-subset.woff2); }
+  @font-face { font-family: "S-KR"; font-weight: 400; src: url(assets/NotoSansKR-400-specimen-subset.woff2); }
+  @font-face { font-family: "S-KR"; font-weight: 800; src: url(assets/NotoSansKR-800-specimen-subset.woff2); }
+  html, body { width: 1266px; height: 968px; overflow: hidden; background: #E9E4E2; }
+  .board { display: grid; grid-template-columns: 812px 390px; gap: 16px; padding: 24px; }
+  .sheet2 { background: var(--surface); border-radius: var(--r-md); padding: 6px 18px 4px; height: 862px; }
+  .r { display: grid; grid-template-columns: 150px 1fr; gap: 14px; padding: 8px 0; align-items: center; }
+  .r + .r { box-shadow: inset 0 1px 0 var(--line); } /* taste-skill-ignore: rule between specimen rows */
+  .lab b { display: block; font: 600 13px/17px var(--font-text); }
+  .lab span { display: block; font: 400 11.5px/15px var(--font-text); color: var(--ink2); }
+  .d { font: 800 26px/30px var(--font-display); letter-spacing: -0.3px; }
+  .t { font: 400 15px/22px var(--font-text); color: var(--ink); margin-top: 2px; }
+  .ar .d { font-family: "Roxy Arabic"; font-weight: 700; letter-spacing: 0; font-size: 26px; line-height: 40px; }
+  .ar .t { font-family: "Roxy Arabic"; font-size: 16px; line-height: 26px; }
+  .he .d { font-family: "S-He"; font-weight: 700; letter-spacing: 0; }
+  .he .t { font-family: "S-He"; }
+  .hi .d { font-family: "S-Hi"; font-weight: 700; letter-spacing: 0; line-height: 38px; }
+  .hi .t { font-family: "S-Hi"; line-height: 26px; }
+  .th .d { font-family: "S-Th"; font-weight: 700; letter-spacing: 0; line-height: 38px; }
+  .th .t { font-family: "S-Th"; line-height: 26px; }
+  .ja .d { font-family: "S-JP"; font-weight: 800; letter-spacing: 0; font-size: 24px; line-height: 32px; }
+  .ja .t { font-family: "S-JP"; line-height: 24px; }
+  .zh .d { font-family: "S-SC"; font-weight: 800; letter-spacing: 0; font-size: 24px; line-height: 32px; }
+  .zh .t { font-family: "S-SC"; line-height: 24px; }
+  .ko .d { font-family: "S-KR"; font-weight: 800; letter-spacing: 0; font-size: 24px; line-height: 32px; }
+  .ko .t { font-family: "S-KR"; line-height: 24px; }
+  [dir=rtl] { text-align: right; }
+
+  /* RTL feed */
+  .feed .media { position: absolute; inset: 0 0 84px 0; background: url(assets/v2-seoul-skyline-night.jpg) center 40% / cover no-repeat; }
+  .feed .status { color: #FFFFFF; direction: ltr; }
+  .feed .top { position: absolute; top: 52px; left: 14px; right: 16px; height: 48px; display: flex; flex-direction: row; align-items: center; gap: 16px; color: #FFFFFF; z-index: 5; text-shadow: 0 1px 2px rgba(0,0,0,.45); font-family: "Roxy Arabic"; } /* taste-skill-ignore: legibility shadow on media chrome */
+  .feed .seg { font: 400 15px/24px "Roxy Arabic"; opacity: .86; }
+  .feed .seg.on { font-weight: 700; opacity: 1; position: relative; }
+  .feed .seg.on::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 22px; height: 3px; margin-left: -11px; border-radius: 2px; background: #FFFFFF; }
+  .feed .top .left { margin-right: auto; display: flex; align-items: center; gap: 0; }
+  .feed .hit { width: 48px; height: 48px; display: grid; place-items: center; }
+  .feed .live { display: flex; align-items: center; gap: 6px; font: 600 14px/20px "Roxy Arabic"; }
+  .feed .live i { width: 8px; height: 8px; border-radius: 50%; background: #FF5A2E; }
+  .feed .scrimfade { position: absolute; left: 0; right: 0; bottom: 84px; height: 300px; background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,.62) 34%, rgba(0,0,0,.88)); } /* taste-skill-ignore: neutral media scrim */
+  .feed .rail { position: absolute; left: 12px; bottom: 172px; width: 64px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: #FFFFFF; z-index: 6; }
+  .feed .ctl { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .feed .ctl .g { width: 48px; height: 48px; display: grid; place-items: center; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.55)); } /* taste-skill-ignore: legibility outline on media chrome */
+  .feed .ctl .g svg { width: 32px; height: 32px; stroke-width: 1.9; }
+  .feed .ctl .n { font: 600 13px/18px "Roxy Arabic"; text-shadow: 0 1px 2px rgba(0,0,0,.6); } /* taste-skill-ignore: legibility */
+  .feed .who { position: absolute; right: 16px; left: 86px; bottom: 100px; color: #FFFFFF; z-index: 6; direction: rtl; text-align: right; font-family: "Roxy Arabic"; }
+  .feed .who .row { display: flex; align-items: center; gap: 10px; }
+  .feed .who .name { font: 700 15px/22px "Roxy Arabic"; }
+  .feed .who .in { font: 400 13px/20px "Roxy Arabic"; color: #E3DCDF; display: flex; align-items: center; gap: 6px; }
+  .feed .who .in .cr { width: 16px; height: 16px; border-radius: 5px; background: var(--crest-sky); }
+  .feed .who p { margin-top: 8px; font: 400 16px/26px "Roxy Arabic"; }
+  .feed .fab { left: 16px; right: auto; bottom: 100px; }
+  .feed nav.nav { direction: rtl; }
+  .feed nav.nav .slot { font: 400 12px/18px "Roxy Arabic"; }
+  .feed nav.nav .slot.on { font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="board">
+  <div>
+    <h1 class="board-label">One type system, every launch script</h1>
+    <div class="board-sub" style="height:36px">Geologica 800 + Commissioner cover Latin, Vietnamese, Cyrillic and Greek natively. Other scripts switch to their Noto family with taller leading and no negative tracking. Lines are sample copy for type only.</div>
+    <div class="sheet2">
+      <div class="r"><div class="lab"><b>English</b><span>Geologica 800 · 26/30<br>Commissioner 15/22</span></div><div><div class="d">You’re in, Amara.</div><div class="t">Saturday walk starts at ten. Who’s in?</div></div></div>
+      <div class="r"><div class="lab"><b>Tiếng Việt</b><span>same families<br>leading +7%: 15/24</span></div><div><div class="d" style="line-height:34px">Chào mừng, Linh.</div><div class="t" style="line-height:24px">Đi dạo thứ Bảy lúc mười giờ. Ai đi nào?</div></div></div>
+      <div class="r"><div class="lab"><b>Русский</b><span>same families<br>base leading</span></div><div><div class="d">Ты с нами, Аня.</div><div class="t">В субботу гуляем в десять. Кто с нами?</div></div></div>
+      <div class="r"><div class="lab"><b>Ελληνικά</b><span>same families<br>base leading</span></div><div><div class="d">Καλώς ήρθες, Ελένη.</div><div class="t">Βόλτα το Σάββατο στις δέκα. Ποια έρχεται;</div></div></div>
+      <div class="r ar"><div class="lab"><b>العربية · Arabic</b><span>Noto Sans Arabic 700/400<br>16/26, tracking 0, RTL</span></div><div dir="rtl"><div class="d">أهلاً بكِ يا مريم.</div><div class="t">نزهة السبت تبدأ في العاشرة. من ستأتي؟</div></div></div>
+      <div class="r he"><div class="lab"><b>עברית · Hebrew</b><span>Noto Sans Hebrew 700/400<br>base leading, RTL</span></div><div dir="rtl"><div class="d">ברוכה הבאה, נועה.</div><div class="t">הטיול בשבת מתחיל בעשר. מי מצטרפת?</div></div></div>
+      <div class="r hi"><div class="lab"><b>हिन्दी · Hindi</b><span>Noto Sans Devanagari<br>15/26, display 26/38</span></div><div><div class="d">स्वागत है, अनन्या।</div><div class="t">शनिवार की सैर दस बजे शुरू होगी। कौन आ रही है?</div></div></div>
+      <div class="r th"><div class="lab"><b>ไทย · Thai</b><span>Noto Sans Thai (loopless)<br>15/26, display 26/38</span></div><div><div class="d">ยินดีต้อนรับ ปราง</div><div class="t">เดินเล่นวันเสาร์เริ่มสิบโมง ใครมาบ้าง</div></div></div>
+      <div class="r ja"><div class="lab"><b>日本語 · Japanese</b><span>system CJK (Noto/Hiragino)<br>display 24/32, 15/24</span></div><div><div class="d">ようこそ、ハルカ。</div><div class="t">土曜日の散歩は10時から。誰か来る？</div></div></div>
+      <div class="r ko"><div class="lab"><b>한국어 · Korean</b><span>system CJK (Noto/Apple SD)<br>display 24/32, 15/24</span></div><div><div class="d">환영해요, 서연.</div><div class="t">토요일 산책은 10시에 시작해요. 누가 올래요?</div></div></div>
+      <div class="r zh"><div class="lab"><b>简体中文 · Chinese</b><span>system CJK (Noto/PingFang)<br>display 24/32, 15/24</span></div><div><div class="d">欢迎你，小雨。</div><div class="t">周六散步十点开始，谁来？</div></div></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="board-label">Arabic: the chrome mirrors, the photo does not</div>
+    <div class="board-sub" style="height:36px">Rail and Roxy move to the left edge, captions align right, nav order flips. Media, the vertical pager and digits’ direction stay.</div>
+    <div class="phone feed stage" dir="rtl">
+      <div class="media" role="img" aria-label="Seoul skyline at night, seen from a hill"></div>
+      <div class="scrimfade"></div>
+      <div class="status"><span>٢٢:١٠</span><span class="sys"></span></div>
+      <div class="top"><span class="seg on">لكِ</span><span class="seg">المتابَعات</span><span class="seg">المجتمعات</span>
+        <div class="left"><span class="hit"><svg data-i="search"></svg></span><span class="live"><i></i>٨ مباشر</span></div></div>
+      <div class="rail">
+        <div class="ctl"><span class="g"><svg data-i="reactAdd"></svg></span><span class="n num">١٬٢٠٥</span></div>
+        <div class="ctl"><span class="g"><svg data-i="comment"></svg></span><span class="n num">٤٨</span></div>
+        <div class="ctl"><span class="g"><svg data-i="save"></svg></span><span class="n">حفظ</span></div>
+        <div class="ctl"><span class="g"><svg data-i="share"></svg></span><span class="n">مشاركة</span></div>
+        <div class="ctl"><span class="g"><svg data-i="more"></svg></span></div>
+      </div>
+      <div class="who">
+        <div class="row"><span class="av" style="width:36px;height:36px;background:var(--crest-butter);font-family:'Roxy Arabic'">م</span>
+          <div><div class="name">مريم ك. <span style="font-weight:400;color:#E3DCDF">· منذ ساعتين</span></div>
+          <div class="in"><span class="cr"></span>في نادي كتب الخميس</div></div></div>
+        <p>سيول في الليل. انتهت رحلتنا، وقلبي ما زال هناك.</p>
+      </div>
+      <span class="fab" data-o="open"></span>
+      <nav class="nav" data-on="feed" data-dot="messages" data-labels="الرئيسية|اكتشفي|إنشاء|الرسائل|أنتِ"></nav>
+    </div>
+  </div>
+</div>
+<script src="roxy-concepts-v2.js"></script>
+</body>
+</html>

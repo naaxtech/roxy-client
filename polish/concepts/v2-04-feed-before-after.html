@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roxy v2 concept 04: Feed, v0 vs proposed (double-tap burst, long-press picker)</title>
+<link rel="stylesheet" href="roxy-tokens-v2.css">
+<style>
+  html, body { width: 1266px; height: 968px; overflow: hidden; background: #E9E4E2; }
+  .board { display: grid; grid-template-columns: 390px 390px 390px; gap: 24px; padding: 24px; }
+  .col img.shot { display: block; width: 390px; height: 844px; }
+
+  .feed .media { position: absolute; inset: 0 0 84px 0; background: url(assets/v2-lisbon-elevator-tram.jpg) center 30% / cover no-repeat; }
+  .feed .status { color: #FFFFFF; }
+  .feed .top { position: absolute; top: 52px; left: 16px; right: 4px; height: 48px; display: flex; align-items: center; gap: 14px; white-space: nowrap; color: #FFFFFF; z-index: 5; text-shadow: 0 1px 2px rgba(0,0,0,.45); } /* taste-skill-ignore: legibility shadow on media chrome */
+  .feed .seg { font: 500 15px/20px var(--font-text); color: #FFFFFF; opacity: .86; }
+  .feed .seg.on { font-weight: 600; opacity: 1; position: relative; }
+  .feed .seg.on::after { content: ""; position: absolute; left: 50%; bottom: -8px; width: 24px; height: 3px; margin-left: -12px; border-radius: 2px; background: #FFFFFF; }
+  .feed .top .right { margin-left: auto; display: flex; align-items: center; }
+  .feed .live { display: flex; align-items: center; gap: 6px; font: 600 13px/16px var(--font-text); margin-right: 4px; }
+  .feed .live i { width: 8px; height: 8px; border-radius: 50%; background: #FF5A2E; }
+  .feed .hit { width: 48px; height: 48px; display: grid; place-items: center; }
+  .feed .scrimfade { position: absolute; left: 0; right: 0; bottom: 84px; height: 300px; background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,.62) 34%, rgba(0,0,0,.88)); } /* taste-skill-ignore: neutral media scrim (MEDIA_SCRIM_*) */
+
+  /* rail: sits ABOVE the FAB lane, inside RAIL_GUTTER (78) */
+  .feed .rail { position: absolute; right: 12px; bottom: 172px; width: 64px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: #FFFFFF; z-index: 6; }
+  .feed .ctl { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .feed .ctl .g { width: 48px; height: 48px; display: grid; place-items: center; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.55)); } /* taste-skill-ignore: 1px legibility outline on media chrome */
+  .feed .ctl .g svg { width: 32px; height: 32px; stroke-width: 1.9; }
+  .feed .ctl .n { font: 600 12px/16px var(--font-text); text-shadow: 0 1px 2px rgba(0,0,0,.6); } /* taste-skill-ignore: legibility */
+  .feed .mine { width: 48px; height: 48px; border-radius: 50%; background: #5A1236; display: grid; place-items: center; font-size: 26px; line-height: 1; }
+  .feed .mine.squish { transform: scale(1.12); box-shadow: 0 0 0 3px rgba(255,217,231,.55); } /* taste-skill-ignore: a 3dp ring on the pressed reaction (state), not a shadow */
+
+  .feed .who { position: absolute; left: 16px; right: 86px; bottom: 102px; color: #FFFFFF; z-index: 6; }
+  .feed .who .row { display: flex; align-items: center; gap: 10px; }
+  .feed .who .name { font: 600 15px/20px var(--font-text); }
+  .feed .who .in { font: 500 13px/18px var(--font-text); color: #E3DCDF; display: flex; align-items: center; gap: 6px; }
+  .feed .who .in .cr { width: 16px; height: 16px; border-radius: 5px; background: var(--crest-tangerine); }
+  .feed .who p { margin-top: 10px; font: 400 15px/22px var(--font-text); }
+
+  .feed .fab { right: 16px; bottom: 100px; }
+  .feed .fab.mini { right: -20px; bottom: 108px; }
+  .feed .lane { position: absolute; right: 0; bottom: 84px; width: 88px; height: 88px; outline: 1.5px dashed rgba(255,217,231,.55); outline-offset: -1px; z-index: 5; } /* taste-skill-ignore: board annotation of the FAB lane */
+
+  /* burst at the thumb */
+  .burst { position: absolute; left: 132px; top: 300px; width: 128px; height: 128px; z-index: 7; }
+  .burst .e { position: absolute; left: 24px; top: 20px; font: 400 80px/1 var(--font-emoji); transform: rotate(-8deg); filter: drop-shadow(0 6px 14px rgba(0,0,0,.35)); } /* taste-skill-ignore: emoji lift over media for the burst frame */
+  .burst .ring { position: absolute; inset: -14px; border-radius: 50%; border: 3px solid rgba(255,255,255,.75); }
+  .burst i { position: absolute; width: 10px; height: 10px; border-radius: 50%; }
+
+  /* long-press picker */
+  .dim { position: absolute; inset: 0; background: rgba(0,0,0,.34); z-index: 6; }
+  .picker { position: absolute; right: 74px; z-index: 8; height: 64px; padding: 0 10px; border-radius: var(--r-full); background: var(--surface); box-shadow: var(--float); display: flex; align-items: center; gap: 2px; } /* taste-skill-ignore: the picker floats over media */
+  .picker span { width: 44px; height: 44px; display: grid; place-items: center; font: 400 30px/1 var(--font-emoji); }
+  .picker span.hover { width: 60px; height: 60px; margin-top: -26px; font-size: 44px; }
+  .picker .tip { position: absolute; top: -46px; left: 78px; background: var(--inverse); color: var(--on-inverse); font: 600 12px/16px var(--font-text); padding: 4px 10px; border-radius: var(--r-full); white-space: nowrap; }
+  .feed .rail.raised { z-index: 9; }
+  .anno { position: absolute; left: 16px; top: 112px; z-index: 9; background: var(--surface); color: var(--ink); border-radius: var(--r-md); padding: 10px 14px; width: 250px; font: 500 13px/18px var(--font-text); box-shadow: var(--float); } /* taste-skill-ignore: board annotation, not app UI */
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="col">
+    <h1 class="board-label">v0, live build (20 Oct 2026)</h1>
+    <div class="board-sub">roxy.expo.app, For you after sign-in. A checklist card under twenty pieces of chrome; the FAB sits on the rail.</div>
+    <img class="shot" src="assets/v2-v0-feed-1-foryou.png" alt="v0 Feed">
+  </div>
+
+  <div class="col">
+    <div class="board-label">Proposed: double-tap, 180 ms into the burst</div>
+    <div class="board-sub">The photo is the screen. A heart pops where the thumb was; the rail button squishes and shows her reaction. Roxy sits in her own lane under the rail.</div>
+    <div class="phone feed stage">
+      <div class="media" role="img" aria-label="An old yellow elevator tram climbing a Lisbon street at dusk"></div>
+      <div class="scrimfade"></div>
+      <div class="status"><span>20:31</span><span class="sys"></span></div>
+      <div class="top"><span class="seg on">For you</span><span class="seg">Following</span><span class="seg">Communities</span>
+        <div class="right"><span class="live"><i></i>8 live</span><span class="hit"><svg data-i="search"></svg></span></div></div>
+
+      <div class="burst" aria-hidden="true">
+        <div class="ring"></div>
+        <span class="e">❤️</span> <!-- taste-skill-ignore: the reaction itself is member content (POST_REACTIONS), not chrome -->
+        <i style="left:-6px;top:30px;background:#FFD9E7"></i><i style="left:118px;top:22px;background:#F2C94C"></i>
+        <i style="left:4px;top:110px;background:#FF7A45"></i><i style="left:120px;top:104px;background:#FFD9E7"></i>
+        <i style="left:58px;top:-14px;background:#F2C94C;width:8px;height:8px"></i><i style="left:62px;top:136px;background:#8FB8DE;width:8px;height:8px"></i>
+      </div>
+
+      <div class="rail">
+        <div class="ctl"><span class="mine squish"><span class="emoji">❤️</span></span><span class="n num">1,205</span></div> <!-- taste-skill-ignore: her reaction on the post (content) -->
+        <div class="ctl"><span class="g"><svg data-i="comment"></svg></span><span class="n num">48</span></div>
+        <div class="ctl"><span class="g"><svg data-i="save"></svg></span><span class="n">Save</span></div>
+        <div class="ctl"><span class="g"><svg data-i="share"></svg></span><span class="n">Share</span></div>
+        <div class="ctl"><span class="g"><svg data-i="more"></svg></span></div>
+      </div>
+
+      <div class="who">
+        <div class="row"><span class="av" style="width:36px;height:36px;background:var(--crest-rose)">I</span>
+          <div><div class="name">Inês R. <span style="font-weight:500;color:#E3DCDF">· 2 h</span></div>
+          <div class="in"><span class="cr"></span>in Lisboa Sapphic Walks</div></div></div>
+        <p>Took the long way home past Bica. Saturday walk starts here at ten, who’s in?</p>
+      </div>
+      <span class="fab" data-o="open"></span>
+      <nav class="nav" data-on="feed" data-dot="messages"></nav>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="board-label">Proposed: long-press the reaction button</div>
+    <div class="board-sub">The six reactions from chat spring out in a row; slide and let go to pick. Roxy tucks into the edge while the picker is open.</div>
+    <div class="phone feed stage">
+      <div class="media" role="img" aria-label="The same Lisbon tram post"></div>
+      <div class="scrimfade"></div>
+      <div class="status"><span>20:31</span><span class="sys"></span></div>
+      <div class="top"><span class="seg on">For you</span><span class="seg">Following</span><span class="seg">Communities</span>
+        <div class="right"><span class="live"><i></i>8 live</span><span class="hit"><svg data-i="search"></svg></span></div></div>
+      <div class="dim"></div>
+      <div class="rail raised">
+        <div class="ctl"><span class="g"><svg data-i="reactAdd"></svg></span><span class="n num">1,204</span></div>
+        <div class="ctl" style="opacity:.0"><span class="g"><svg data-i="comment"></svg></span><span class="n">48</span></div>
+        <div class="ctl" style="opacity:.0"><span class="g"><svg data-i="save"></svg></span><span class="n">Save</span></div>
+        <div class="ctl" style="opacity:.0"><span class="g"><svg data-i="share"></svg></span><span class="n">Share</span></div>
+        <div class="ctl" style="opacity:.0"><span class="g"><svg data-i="more"></svg></span></div>
+      </div>
+      <div class="picker" style="bottom:470px">
+        <span>❤️</span><span class="hover">😂</span><span>😮</span><span>😢</span><span>😡</span><span>💜</span> <!-- taste-skill-ignore: POST_REACTIONS, the content reaction set shared with chat -->
+      </div>
+      <div class="who" style="opacity:.55">
+        <div class="row"><span class="av" style="width:36px;height:36px;background:var(--crest-rose)">I</span>
+          <div><div class="name">Inês R. <span style="font-weight:500;color:#E3DCDF">· 2 h</span></div>
+          <div class="in"><span class="cr"></span>in Lisboa Sapphic Walks</div></div></div>
+        <p>Took the long way home past Bica. Saturday walk starts here at ten, who’s in?</p>
+      </div>
+      <span class="fab mini" data-bleed data-o="rest" data-size="40"></span>
+      <nav class="nav" data-on="feed" data-dot="messages"></nav>
+    </div>
+  </div>
+</div>
+<script src="roxy-concepts-v2.js"></script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roxy v2 concept 05: the Roxy AI button that never sits on content, and the Roxy AI chat</title>
+<link rel="stylesheet" href="roxy-tokens-v2.css">
+<style>
+  html, body { width: 1266px; height: 968px; overflow: hidden; background: #E9E4E2; }
+  .board { display: grid; grid-template-columns: 390px 390px 390px; gap: 24px; padding: 24px; }
+
+  /* Discover */
+  .hdr { position: absolute; top: 52px; left: 16px; right: 4px; height: 52px; display: flex; align-items: center; justify-content: space-between; }
+  .iconbtn { width: 48px; height: 48px; display: grid; place-items: center; color: var(--ink); }
+  .search { position: absolute; top: 110px; left: 16px; right: 16px; height: 52px; border-radius: var(--r-full); background: var(--raised); display: flex; align-items: center; gap: 10px; padding: 0 18px; color: var(--ink2); }
+  .chips { position: absolute; top: 176px; left: 16px; display: flex; gap: 8px; white-space: nowrap; }
+  .sec { position: absolute; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: baseline; }
+  .sec .see { color: var(--pink); }
+  .rail { position: absolute; left: 16px; display: flex; gap: 12px; }
+  .poster { width: 137px; height: 184px; border-radius: var(--r-md); padding: 12px; display: flex; flex-direction: column; justify-content: space-between; color: var(--on-brand-pink); flex: none; }
+  .poster b { font: 800 20px/22px var(--font-display); letter-spacing: -0.3px; }
+  .poster span { font: 600 12px/16px var(--font-text); }
+  .rows { position: absolute; left: 16px; right: 16px; display: grid; gap: 4px; }
+  .row { display: flex; align-items: center; gap: 12px; height: 72px; }
+  .row .crest { width: 48px; height: 48px; border-radius: 14px; flex: none; }
+  .row .txt { flex: 1; min-width: 0; }
+  .row .txt .t-meta { color: var(--ink2); }
+  .row .join { height: 40px; padding: 0 16px; border-radius: var(--r-full); background: var(--pink-container); color: var(--on-pink-container); font: 600 14px/18px var(--font-text); display: grid; place-items: center; }
+  .cover { width: 104px; height: 156px; border-radius: var(--r-sm); background-size: cover; background-position: center; flex: none; }
+  .fab { bottom: 100px; }
+  .fab.mini { right: -20px; bottom: 108px; }
+  .lane { position: absolute; right: 0; bottom: 84px; width: 88px; height: 88px; border-radius: 16px 0 0 0; outline: 1.5px dashed #8C8186; outline-offset: -2px; z-index: 19; } /* taste-skill-ignore: board annotation of the FAB lane */
+  .lane-tag { position: absolute; right: 92px; bottom: 140px; z-index: 19; background: var(--inverse); color: var(--on-inverse); font: 600 12px/16px var(--font-text); padding: 4px 10px; border-radius: var(--r-full); white-space: nowrap; } /* taste-skill-ignore: board annotation */
+
+  /* Roxy AI chat */
+  .chat-hdr { position: absolute; top: 47px; left: 4px; right: 4px; height: 64px; display: flex; align-items: center; gap: 8px; }
+  .chat-hdr .who { flex: 1; }
+  .chat-hdr .who .t-meta { color: var(--ink2); }
+  .msgs { position: absolute; top: 124px; left: 16px; right: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .day { align-self: center; color: var(--ink2); margin-bottom: 4px; }
+  .b { max-width: 300px; padding: 12px 16px; font: 400 15px/22px var(--font-text); }
+  .b.me { align-self: flex-end; background: var(--pink-container); color: var(--on-pink-container); border-radius: 20px 20px 6px 20px; }
+  .b.rx { align-self: flex-start; background: var(--surface); color: var(--ink); border-radius: 20px 20px 20px 6px; }
+  .rxrow { display: flex; gap: 8px; align-items: flex-end; }
+  .qa { display: flex; gap: 8px; flex-wrap: wrap; margin-left: 40px; }
+  .qa .chip { height: 40px; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); } /* taste-skill-ignore: outlined suggestion chips */
+  .think { display: flex; align-items: center; gap: 10px; color: var(--ink2); margin-left: 40px; }
+  .morph { width: 28px; height: 28px; position: relative; }
+  .morph i { position: absolute; inset: 0; background: var(--pink); }
+  .composer { position: absolute; left: 12px; right: 12px; bottom: 44px; min-height: 56px; border-radius: 28px; background: var(--surface); display: flex; align-items: center; padding: 6px 6px 6px 20px; box-shadow: inset 0 0 0 1.5px var(--line); } /* taste-skill-ignore: input outline */
+  .composer .txt { flex: 1; font: 400 15px/22px var(--font-text); color: var(--ink); }
+  .composer .send { width: 44px; height: 44px; border-radius: 50%; background: var(--pink); color: var(--on-pink); display: grid; place-items: center; }
+  .composer .send svg { width: 22px; height: 22px; }
+  .fine { position: absolute; left: 16px; right: 16px; bottom: 16px; text-align: center; color: var(--ink2); }
+</style>
+</head>
+<body>
+<div class="board">
+
+  <div class="col">
+    <div class="board-label">Discover at rest: the FAB has its own lane</div>
+    <div class="board-sub">Lists end 88 dp higher, so at rest nothing readable or tappable sits under Roxy. Rails show two full cards and a peek.</div>
+    <div class="phone">
+      <div class="status"><span>21:12</span><span class="sys"></span></div>
+      <div class="hdr"><h1 class="t-headline">Discover</h1><span class="iconbtn"><svg data-i="bell"></svg></span></div>
+      <div class="search"><svg data-i="search"></svg><span class="t-body">Search people, communities, events</span></div>
+      <div class="chips"><span class="chip on">For you</span><span class="chip">Events</span><span class="chip">Communities</span><span class="chip">Archive</span></div>
+      <div class="sec" style="top:232px"><h2 class="t-title">This week</h2><span class="t-label see">See all</span></div>
+      <div class="rail" data-bleed style="top:268px">
+        <div class="poster" style="background:var(--crest-sky)"><span>Sat 25 Oct</span><b>Boulders &amp; pierogi</b><span>Kraków Queer Climbers</span></div>
+        <div class="poster" style="background:var(--crest-tangerine)"><span>Sun 26 Oct</span><b>Book swap, chapter 9</b><span>Lagos Sapphic Readers</span></div>
+        <div class="poster" style="background:var(--crest-butter)"><span>Fri 31 Oct</span><b>Karaoke</b><span>Sáficas São Paulo</span></div>
+      </div>
+      <div class="sec" style="top:476px"><h2 class="t-title">Communities for you</h2></div>
+      <div class="rows" style="top:508px">
+        <div class="row"><span class="crest" style="background:var(--crest-sage)"></span><div class="txt"><div class="t-label">Late Bloomers</div><div class="t-meta num">2,310 members · 61 here now</div></div><span class="join">Join</span></div>
+        <div class="row"><span class="crest" style="background:var(--crest-rose)"></span><div class="txt"><div class="t-label">Queer Parents Toronto</div><div class="t-meta num">880 members · 12 here now</div></div><span class="join">Join</span></div>
+      </div>
+      <span class="lane"></span><span class="lane-tag">Roxy’s lane, 88 × 88</span>
+      <span class="fab" data-o="open"></span>
+      <nav class="nav" data-on="discover" data-dot="messages"></nav>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="board-label">Discover while scrolling: Roxy tucks in</div>
+    <div class="board-sub">Scrolling down, Roxy shrinks to 40 dp, closes her eyes and peeks from the edge, over the margin only. She comes back on scroll up, at the top or end of the list, or when tapped.</div>
+    <div class="phone">
+      <div class="status"><span>21:12</span><span class="sys"></span></div>
+      <div class="sec" style="top:60px"><h2 class="t-title">Communities for you</h2><span class="t-label see">See all</span></div>
+      <div class="rows" style="top:96px">
+        <div class="row"><span class="crest" style="background:var(--crest-sage)"></span><div class="txt"><div class="t-label">Late Bloomers</div><div class="t-meta num">2,310 members · 61 here now</div></div><span class="join">Join</span></div>
+        <div class="row"><span class="crest" style="background:var(--crest-rose)"></span><div class="txt"><div class="t-label">Queer Parents Toronto</div><div class="t-meta num">880 members · 12 here now</div></div><span class="join">Join</span></div>
+        <div class="row"><span class="crest" style="background:var(--crest-sky)"></span><div class="txt"><div class="t-label">Mumbai Sapphic Supper Club</div><div class="t-meta num">1,045 members · 33 here now</div></div><span class="join">Join</span></div>
+      </div>
+      <div class="sec" style="top:340px"><h2 class="t-title">From the Archive</h2><span class="t-label see">See all</span></div>
+      <div class="rail" data-bleed style="top:378px">
+        <div><div class="cover" style="background-image:url(assets/v2-cover-carmilla-friston.jpg)"></div><div class="t-label" style="margin-top:8px">Carmilla</div><div class="t-meta" style="color:var(--ink2)">Book · 1872</div></div>
+        <div><div class="cover" style="background-image:url(assets/v2-cover-sappho-pompeii.jpg)"></div><div class="t-label" style="margin-top:8px">Sappho</div><div class="t-meta" style="color:var(--ink2)">Poems · c. 600 BCE</div></div>
+        <div><div class="cover" style="background:var(--crest-tangerine);display:flex;align-items:flex-end;padding:10px"><b style="font:800 18px/20px var(--font-display);color:var(--on-brand-pink)">Rafiki</b></div><div class="t-label" style="margin-top:8px">Rafiki</div><div class="t-meta" style="color:var(--ink2)">Film · 2018</div></div>
+      </div>
+      <div class="sec" style="top:620px"><h2 class="t-title">Live now</h2></div>
+      <div class="rows" style="top:652px">
+        <div class="row" style="height:64px"><span class="crest" style="background:var(--crest-butter)"></span><div class="txt"><div class="t-label">Queer Gamers</div><div class="t-meta"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--live);margin-right:6px"></span>LIVE · 14 listening</div></div></div>
+      </div>
+      <span class="fab mini" data-bleed data-o="rest" data-size="40"></span>
+      <nav class="nav" data-on="discover" data-dot="messages"></nav>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="board-label">Roxy AI, full screen (drag the sheet up)</div>
+    <div class="board-sub">Her own chat, not a DM. Replies stream in; while she thinks, her O morphs through Roxy’s shapes instead of a spinner.</div>
+    <div class="phone">
+      <div class="status"><span>21:15</span><span class="sys"></span></div>
+      <div class="chat-hdr">
+        <span class="iconbtn"><svg data-i="back"></svg></span>
+        <span data-o="open" data-size="40"></span>
+        <div class="who"><div class="t-title">Roxy AI</div><div class="t-meta">Only you see this chat</div></div>
+        <span class="iconbtn"><svg data-i="more"></svg></span>
+      </div>
+      <div class="msgs">
+        <div class="day t-meta">Today 21:13</div>
+        <div class="b me">There’s a book swap on Sunday but I don’t know anyone there.</div>
+        <div class="rxrow"><span data-o="happy" data-size="32"></span><div class="b rx">That’s a brave thing to go to. Newcomers at Lagos Sapphic Readers usually arrive in the first fifteen minutes, when it’s quieter. Want me to draft a hello for the event chat?</div></div>
+        <div class="qa"><span class="chip">Yes, draft it</span><span class="chip">What should I bring?</span></div>
+        <div class="b me">Yes please, short and not cringe</div>
+        <div class="think t-meta"><span class="morph" style="transform:scale(1.14,.9) rotate(-6deg)" data-o="think" data-size="28"></span>Roxy AI is writing</div>
+      </div>
+      <div class="composer"><span class="txt">Can you make it funnier?</span><span class="send"><svg data-i="send"></svg></span></div>
+      <p class="fine t-meta">Roxy AI can be wrong. Keep passwords and addresses to yourself.</p>
+    </div>
+  </div>
+</div>
+<script src="roxy-concepts-v2.js"></script>
+</body>
+</html>

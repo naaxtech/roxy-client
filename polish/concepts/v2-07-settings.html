@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roxy v2 concept 07: Settings (Roxy AI switch, language, theme)</title>
+<link rel="stylesheet" href="roxy-tokens-v2.css">
+<style>
+  html, body { width: 1266px; height: 968px; overflow: hidden; background: #E9E4E2; }
+  .board { display: grid; grid-template-columns: 390px 390px 390px; gap: 24px; padding: 24px; }
+  .bar { position: absolute; top: 47px; left: 4px; right: 4px; height: 56px; display: flex; align-items: center; gap: 4px; }
+  .iconbtn { width: 48px; height: 48px; display: grid; place-items: center; color: var(--ink); flex: none; }
+  .body { position: absolute; top: 104px; left: 16px; right: 16px; }
+  .grp { margin-top: 18px; }
+  .grp h2 { font: 600 13px/18px var(--font-text); color: var(--ink2); margin: 0 4px 8px; }
+  .card { background: var(--surface); border-radius: var(--r-md); overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 16px; }
+  .row + .row { box-shadow: inset 0 1px 0 var(--line); } /* taste-skill-ignore: list rule inside a settings card (app-screen rule) */
+  .row .txt { flex: 1; min-width: 0; }
+  .row .txt .t-meta { color: var(--ink2); margin-top: 2px; }
+  .row .val { color: var(--ink2); font: 500 14px/20px var(--font-text); display: flex; align-items: center; gap: 2px; white-space: nowrap; }
+  .row .val svg { width: 18px; height: 18px; }
+  .row .ic { width: 24px; color: var(--ink2); flex: none; }
+  .seg { display: flex; gap: 2px; padding: 0 16px 14px; }
+  .seg span { flex: 1; height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--raised); font: 500 14px/18px var(--font-text); color: var(--ink); }
+  .seg span:first-child { border-radius: var(--r-full) 8px 8px var(--r-full); }
+  .seg span:last-child { border-radius: 8px var(--r-full) var(--r-full) 8px; }
+  .seg span:nth-child(2) { border-radius: 8px; }
+  .seg span.on { background: var(--pink); color: var(--on-pink); font-weight: 600; border-radius: var(--r-full); }
+  .seg span svg { width: 18px; height: 18px; }
+  .ptag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--r-full); background: var(--premium); color: var(--on-premium); font: 600 11.5px/16px var(--font-text); margin-left: 6px; vertical-align: 1px; }
+  .snack { position: absolute; left: 12px; right: 12px; bottom: 100px; min-height: 56px; border-radius: var(--r-md); background: var(--inverse); color: var(--on-inverse); display: flex; align-items: center; padding: 8px 8px 8px 16px; gap: 8px; box-shadow: var(--float); z-index: 20; } /* taste-skill-ignore: a snackbar floats */
+  .snack .t { flex: 1; font: 500 14px/20px var(--font-text); }
+  .snack .undo { color: var(--inverse-pink); font: 600 15px/20px var(--font-text); height: 44px; padding: 0 12px; display: grid; place-items: center; }
+
+  /* language picker */
+  .lsearch { position: absolute; top: 108px; left: 16px; right: 16px; height: 48px; border-radius: var(--r-full); background: var(--raised); display: flex; align-items: center; gap: 10px; padding: 0 16px; color: var(--ink2); }
+  .lang { position: absolute; left: 0; right: 0; }
+  .lang h2 { font: 600 13px/18px var(--font-text); color: var(--ink2); padding: 14px 20px 4px; }
+  .lrow { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 6px 20px; }
+  .lrow .txt { flex: 1; }
+  .lrow .en { font: 400 13px/18px var(--font-text); color: var(--ink2); }
+  .lrow .endo { font: 500 16px/22px var(--font-text); color: var(--ink); }
+  .radio { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--control); flex: none; } /* taste-skill-ignore: radio outline */
+  .radio.on { box-shadow: inset 0 0 0 7px var(--pink); } /* taste-skill-ignore: radio dot drawn as inset ring */
+  .lrow.on { background: var(--pink-container); }
+  .lrow.on .endo { color: var(--on-pink-container); font-weight: 600; }
+  .lrow.on .en { color: var(--on-pink-container); }
+  .ar { font-family: "Roxy Arabic"; font-weight: 600; font-size: 17px; line-height: 28px; }
+  .he { font-family: "Roxy Hebrew"; line-height: 26px; }
+  .hi { font-family: "Roxy Devanagari"; line-height: 28px; }
+  .th { font-family: "Roxy Thai"; line-height: 28px; }
+  .ja { font-family: "Roxy JP"; line-height: 25px; }
+  .zh { font-family: "Roxy SC"; line-height: 25px; }
+  .zt { font-family: "Roxy TC"; line-height: 25px; }
+  .ko { font-family: "Roxy KR"; line-height: 25px; }
+  .rtl { font: 600 11.5px/16px var(--font-text); color: var(--ink2); background: var(--raised); border-radius: var(--r-full); padding: 2px 8px; margin-left: 6px; }
+</style>
+</head>
+<body>
+<div class="board">
+
+  <!-- 1. Settings with Roxy AI on -->
+  <div class="col">
+    <div class="board-label">Settings: Roxy AI, language and theme at the top</div>
+    <div class="board-sub">The three choices people come here for, before privacy and account. Theme is a connected button group; the pressed segment morphs to a full pill.</div>
+    <div class="phone">
+      <div class="status"><span>09:20</span><span class="sys"></span></div>
+      <div class="bar"><span class="iconbtn"><svg data-i="back"></svg></span><h1 class="t-title">Settings</h1></div>
+      <div class="body" style="top:96px">
+        <div class="grp">
+          <div class="card">
+            <div class="row" style="min-height:76px"><span data-o="open" data-size="44"></span><div class="txt"><div class="t-label">Roxy AI</div><div class="t-meta">Your companion, one tap away on Feed, Discover and You</div></div><span class="switch"></span></div>
+            <div class="row"><svg class="ic" data-i="globe"></svg><div class="txt"><div class="t-label">Language</div></div><span class="val">English (UK)<svg data-i="fwd"></svg></span></div>
+            <div class="row" style="min-height:52px;padding-bottom:6px"><svg class="ic" data-i="sun"></svg><div class="txt"><div class="t-label">Theme</div></div></div>
+            <div class="seg" role="radiogroup"><span class="on"><svg data-i="check" style="stroke-width:2.6"></svg>Light</span><span>Dark</span><span>Match phone</span></div>
+          </div>
+        </div>
+        <div class="grp">
+          <h2>Privacy and safety</h2>
+          <div class="card">
+            <div class="row"><svg class="ic" data-i="eyeoff"></svg><div class="txt"><div class="t-label">Discreet mode<span class="ptag">Premium</span></div><div class="t-meta">Hide names and previews in Messages</div></div><svg data-i="fwd" style="width:18px;height:18px;color:var(--ink2)"></svg></div>
+            <div class="row"><svg class="ic" data-i="messages"></svg><div class="txt"><div class="t-label">Who can message me</div><div class="t-meta">Anyone, as a request first</div></div><svg data-i="fwd" style="width:18px;height:18px;color:var(--ink2)"></svg></div>
+            <div class="row"><svg class="ic" data-i="bell"></svg><div class="txt"><div class="t-label">Notifications</div><div class="t-meta">Lock-screen previews off</div></div><svg data-i="fwd" style="width:18px;height:18px;color:var(--ink2)"></svg></div>
+          </div>
+        </div>
+        <div class="grp">
+          <div class="card">
+            <div class="row"><svg class="ic" data-i="star"></svg><div class="txt"><div class="t-label">Roxy Premium</div><div class="t-meta">See what’s included</div></div><svg data-i="fwd" style="width:18px;height:18px;color:var(--ink2)"></svg></div>
+          </div>
+        </div>
+        <div class="grp">
+          <h2>Account</h2>
+          <div class="card">
+            <div class="row"><svg class="ic" data-i="you"></svg><div class="txt"><div class="t-label">Account and data</div><div class="t-meta">Export your data, delete your account, sign out</div></div><svg data-i="fwd" style="width:18px;height:18px;color:var(--ink2)"></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Roxy AI switched off -->
+  <div class="col">
+    <div class="board-label">Roxy AI switched off</div>
+    <div class="board-sub">The button leaves Feed, Discover and You at once and its lane closes. Her chat is kept until she deletes it. Undo for 6 seconds; no confirm, no guilt.</div>
+    <div class="phone">
+      <div class="status"><span>09:21</span><span class="sys"></span></div>
+      <div class="bar"><span class="iconbtn"><svg data-i="back"></svg></span><h1 class="t-title">Settings</h1></div>
+      <div class="body" style="top:96px">
+        <div class="grp">
+          <div class="card">
+            <div class="row" style="min-height:76px"><span data-o="rest" data-size="44" data-ring="#8C8186"></span><div class="txt"><div class="t-label">Roxy AI</div><div class="t-meta">Off. Turn her on any time.</div></div><span class="switch off"></span></div>
+            <div class="row"><svg class="ic" data-i="messages"></svg><div class="txt"><div class="t-label">Your chat with Roxy AI</div><div class="t-meta">Kept on your account. Only you can see it.</div></div><svg data-i="fwd" style="width:18px;height:18px;color:var(--ink2)"></svg></div>
+            <div class="row"><span class="ic"></span><div class="txt"><div class="t-label" style="color:var(--danger-ink)">Delete my Roxy AI chat</div></div></div>
+            <div class="row"><svg class="ic" data-i="globe"></svg><div class="txt"><div class="t-label">Language</div></div><span class="val">English (UK)<svg data-i="fwd"></svg></span></div>
+            <div class="row" style="min-height:52px;padding-bottom:6px"><svg class="ic" data-i="sun"></svg><div class="txt"><div class="t-label">Theme</div></div></div>
+            <div class="seg"><span class="on"><svg data-i="check" style="stroke-width:2.6"></svg>Light</span><span>Dark</span><span>Match phone</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="snack"><span class="t">Roxy AI is off. The round button is gone from your screens.</span><span class="undo">Undo</span></div>
+    </div>
+  </div>
+
+  <!-- 3. Language picker -->
+  <div class="col">
+    <div class="board-label">Language</div>
+    <div class="board-sub">Each language in its own script, with its English name. Phone languages first. Right-to-left languages say so, because picking one restarts Roxy.</div>
+    <div class="phone">
+      <div class="status"><span>09:22</span><span class="sys"></span></div>
+      <div class="bar"><span class="iconbtn"><svg data-i="back"></svg></span><h1 class="t-title">Language</h1></div>
+      <div class="lsearch"><svg data-i="search"></svg><span class="t-body">Search languages</span></div>
+      <div class="lang" style="top:164px">
+        <h2>From your phone</h2>
+        <div class="lrow on"><div class="txt"><div class="endo">English (UK)</div><div class="en">Roxy’s first language</div></div><span class="radio on"></span></div>
+        <div class="lrow"><div class="txt"><div class="endo">Yorùbá</div><div class="en">Yoruba</div></div><span class="radio"></span></div>
+        <h2>All languages</h2>
+        <div class="lrow"><div class="txt"><div class="endo ar" dir="rtl" style="text-align:left">العربية</div><div class="en">Arabic<span class="rtl">Right to left</span></div></div><span class="radio"></span></div>
+        <div class="lrow"><div class="txt"><div class="endo">Español</div><div class="en">Spanish</div></div><span class="radio"></span></div>
+        <div class="lrow"><div class="txt"><div class="endo he" dir="rtl" style="text-align:left">עברית</div><div class="en">Hebrew<span class="rtl">Right to left</span></div></div><span class="radio"></span></div>
+        <div class="lrow"><div class="txt"><div class="endo hi">हिन्दी</div><div class="en">Hindi</div></div><span class="radio"></span></div>
+        <div class="lrow"><div class="txt"><div class="endo ja">日本語</div><div class="en">Japanese</div></div><span class="radio"></span></div>
+        <div class="lrow"><div class="txt"><div class="endo ko">한국어</div><div class="en">Korean</div></div><span class="radio"></span></div>
+        <div class="lrow"><div class="txt"><div class="endo">Русский</div><div class="en">Russian</div></div><span class="radio"></span></div>
+        <div class="lrow"><div class="txt"><div class="endo th">ไทย</div><div class="en">Thai</div></div><span class="radio"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="roxy-concepts-v2.js"></script>
+</body>
+</html>

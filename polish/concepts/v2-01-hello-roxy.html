@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roxy v2 concept 01: Hello, Roxy (the FAB becomes Roxy AI)</title>
+<link rel="stylesheet" href="roxy-tokens-v2.css">
+<style>
+  html, body { width: 390px; height: 844px; overflow: hidden; }
+  .hdr { position: absolute; top: 56px; left: 16px; right: 16px; display: flex; align-items: center; justify-content: space-between; }
+  .iconbtn { width: 48px; height: 48px; display: grid; place-items: center; margin-right: -12px; color: var(--ink); }
+  .search { position: absolute; top: 112px; left: 16px; right: 16px; height: 52px; border-radius: var(--r-full); background: var(--raised); display: flex; align-items: center; gap: 10px; padding: 0 18px; color: var(--ink2); }
+  .chips { position: absolute; top: 180px; left: 16px; display: flex; gap: 8px; white-space: nowrap; }
+  .sec { position: absolute; top: 236px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: baseline; }
+  .rail { position: absolute; top: 276px; left: 16px; display: flex; gap: 12px; }
+  .poster { width: 150px; height: 200px; border-radius: var(--r-md); padding: 14px; display: flex; flex-direction: column; justify-content: space-between; color: var(--on-brand-pink); }
+  .poster b { font: 800 22px/24px var(--font-display); letter-spacing: -0.3px; }
+  .poster span { font: 600 12px/16px var(--font-text); }
+
+  .sheet { height: 500px; padding: 0 20px; }
+  .o-big { position: absolute; top: -40px; left: 20px; width: 80px; height: 80px; border-radius: 50%; box-shadow: 0 0 0 6px var(--surface); } /* taste-skill-ignore: a 6dp surface ring that cuts the mark out of the sheet edge, not a shadow */
+  .rx-head { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding-left: 100px; margin-right: -4px; }
+  .rx-head .who { flex: 1; }
+  .rx-head .who .t-meta { color: var(--ink2); }
+  .greet { margin-top: 26px; }
+  .greet p { margin-top: 12px; color: var(--ink); }
+  .sugg { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .sugg .chip { height: 44px; padding: 0 16px; font-size: 15px; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); } /* taste-skill-ignore: outlined suggestion chips, 1.5px control border */
+  .sugg .chip.pressed { background: var(--pink-container); color: var(--on-pink-container); box-shadow: none; border-radius: var(--r-press); } /* taste-skill-ignore: resets the outline */
+  .composer { position: absolute; left: 16px; right: 16px; bottom: 54px; height: 56px; border-radius: var(--r-full); background: var(--raised); display: flex; align-items: center; padding: 0 6px 0 20px; color: var(--ink2); }
+  .composer .send { margin-left: auto; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--ink3); }
+  .fine { position: absolute; left: 20px; right: 20px; bottom: 20px; color: var(--ink2); text-align: center; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status"><span>21:14</span><span class="sys"></span></div>
+  <div class="hdr"><h1 class="t-headline">Discover</h1><span class="iconbtn"><svg data-i="bell"></svg></span></div>
+  <div class="search"><svg data-i="search"></svg><span class="t-body">Search people, communities, events</span></div>
+  <div class="chips"><span class="chip on">For you</span><span class="chip">Events</span><span class="chip">Communities</span><span class="chip">Archive</span></div>
+  <div class="sec"><h2 class="t-title">This week</h2><span class="t-label" style="color:var(--pink)">See all</span></div>
+  <div class="rail" data-bleed>
+    <div class="poster" style="background:var(--crest-sky)"><span>Sat 25 Oct</span><b>Boulders &amp; pierogi</b><span>Kraków Queer Climbers</span></div>
+    <div class="poster" style="background:var(--crest-tangerine)"><span>Sun 26 Oct</span><b>Book swap, chapter 9</b><span>Lagos Sapphic Readers</span></div>
+    <div class="poster" style="background:var(--crest-butter)"><span>Fri</span><b>Karaoke</b><span>São Paulo</span></div>
+  </div>
+
+  <div class="scrim"></div>
+  <section class="sheet" aria-label="Roxy AI">
+    <span class="o-big" data-o="happy" data-size="80"></span>
+    <div class="grabber"></div>
+    <div class="rx-head">
+      <div class="who"><div class="t-title">Roxy AI</div><div class="t-meta">Only you see this chat.</div></div>
+      <span class="iconbtn"><svg data-i="close"></svg></span>
+    </div>
+    <div class="greet">
+      <h2 class="t-headline">Evening, Amara.<br>How are you, really?</h2>
+      <p class="t-body">I’m here for the big stuff and the small stuff. Pick one or just start typing.</p>
+    </div>
+    <div class="sugg">
+      <span class="chip pressed">I’m nervous about an event</span>
+      <span class="chip">Help me write my intro</span>
+      <span class="chip">I just want to talk</span>
+    </div>
+    <div class="composer"><span class="t-body">Message Roxy AI</span><span class="send"><svg data-i="send"></svg></span></div>
+    <p class="fine t-meta">Roxy AI is an AI and can get things wrong.</p>
+  </section>
+</div>
+<script src="roxy-concepts-v2.js"></script>
+</body>
+</html>
