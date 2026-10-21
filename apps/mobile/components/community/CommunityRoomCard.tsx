@@ -114,7 +114,9 @@ export function CommunityRoomCard({
             style={styles.coverImg}
           />
         )}
-        <View style={styles.veil} />
+        {/* The veil is a media scrim: it only sits over a photo. A flat identity
+            fill needs none (v2), and under one it read as mud. */}
+        {banner_url ? <View style={styles.veil} testID="room-cover-veil" /> : null}
         <View style={styles.coverTop}>
           {isLive ? (
             <View style={[styles.pill, styles.pillLive]}>

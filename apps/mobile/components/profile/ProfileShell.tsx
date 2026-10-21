@@ -14,7 +14,6 @@ import {
   LIVE_GRADIENT,
   inkOnGradient,
   type ThemeColors,
-  flatFill,
   pinkFill,
 } from '../../lib/theme';
 import { initialsOf } from '../ui/Avatar';
@@ -347,12 +346,12 @@ export function ProfileShell({
           testID={id}
         >
           <LinearGradient
-            colors={flatFill(colors.pinkContainer)}
-            // v2: one flat pinkContainer field (was the pink -> violet 120deg ramp).
+            colors={pinkFill(colors)}
+            // v2: the flat pink action fill (was the pink -> violet 120deg ramp).
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
             style={s.selfEditBtn}
           >
-            <Text style={s.selfEditLabel}>{action.label}</Text>
+            <Text style={[s.selfEditLabel, { color: colors.onPink }]}>{action.label}</Text>
           </LinearGradient>
         </TouchableOpacity>
       );
@@ -466,7 +465,7 @@ export function ProfileShell({
               accessibilityLabel="Back"
               testID="profile-back"
             >
-              <Ionicons name="chevron-back" size={20} color={ON_COLOR} />
+              <Ionicons name="chevron-back" size={20} color={colors.ink} />
             </TouchableOpacity>
           ) : null}
           {headerActions.length > 0 ? (
@@ -481,7 +480,7 @@ export function ProfileShell({
                   accessibilityLabel={action.label}
                   testID={action.testID}
                 >
-                  <Ionicons name={action.icon} size={19} color={ON_COLOR} />
+                  <Ionicons name={action.icon} size={19} color={colors.ink} />
                   {action.badge ? <View style={s.coverBtnDot} /> : null}
                 </TouchableOpacity>
               ))}
