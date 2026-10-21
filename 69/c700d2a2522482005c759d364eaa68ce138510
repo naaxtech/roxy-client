@@ -1,0 +1,30 @@
+apps/mobile/__tests__/screens/ArchiveComposers.test.tsx
+  h_0549c11fec2ab0 68,73-75
+apps/mobile/__tests__/screens/ArchiveEntry.test.tsx
+  h_0549c11fec2ab0 221-279
+apps/mobile/__tests__/screens/ArchiveSuggestEdit.test.tsx
+  h_0549c11fec2ab0 1-85
+apps/mobile/app/archive/[slug]/edit.tsx
+  h_0549c11fec2ab0 14-22,24-32,36,39,44,50,54-55,62,66,69,71,76,82-86,89,93,98-99,107,114,122-132,137
+apps/mobile/app/archive/[slug]/index.tsx
+  h_0549c11fec2ab0 67-71,83-88,166-173,212,220-221,226-234,236,369-377,423-435,441-442,450,453-458,552,563,574-577,632-635,675,686,710,713,715,718-721,723,742
+apps/mobile/app/archive/index.tsx
+  h_0549c11fec2ab0 69-71,73,75-78,81
+apps/mobile/app/archive/new.tsx
+  h_0549c11fec2ab0 55,62,70
+apps/mobile/components/archive/ArchiveActionsSheet.tsx
+  h_0549c11fec2ab0 34-38,49,197-199
+apps/mobile/components/archive/ComposerField.tsx
+  h_0549c11fec2ab0 2,16-18,22-25,27,33,40-41,54,64-66,191-196,198-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "69c700d2a2522482005c759d364eaa68ce138510",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
