@@ -1,0 +1,16 @@
+apps/mobile/__tests__/store/themeStore.test.ts
+  h_0549c11fec2ab0 2,94-176
+apps/mobile/store/themeStore.ts
+  h_0549c11fec2ab0 2,18,25-30,35-55,57,59-61,67,69-72,74-77,95-98,106-110,112,115-116,119-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "22552e2e7011237a9aa39c97f08cff6b75b141df",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
