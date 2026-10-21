@@ -64,17 +64,27 @@ describe('MediaTypeChips', () => {
     expect(on.props.accessibilityState.checked).toBe(true);
   });
 
-  it('fills the selected PILL with the theme primary, in both themes', () => {
-    // The fill is on the pill, not on the touch target: the target is a 44pt
-    // box with no paint, so a 44pt slab of primary is exactly what this row
-    // must not render.
+  it('fills the selected PILL with pinkContainer and its ink, in both themes (v2 selection)', () => {
+    // The fill is on the pill, not on the touch target. v2 › Motion ›
+    // Selection: a full flat fill in pinkContainer with the emphasized label,
+    // never the full action pink on a chip.
     const dark = render(<MediaTypeChips value="tv" onChange={jest.fn()} testID="t" />);
-    expect(flat(dark.getByTestId('t-tv-pill')).backgroundColor).toBe(THEMES.dark.primary);
+    expect(flat(dark.getByTestId('t-tv-pill')).backgroundColor).toBe(THEMES.dark.pinkContainer);
+    expect(flat(dark.getByText('Series')).color).toBe(THEMES.dark.onPinkContainer);
     dark.unmount();
 
     useThemeStore.setState({ theme: 'light' });
     const light = render(<MediaTypeChips value="tv" onChange={jest.fn()} testID="t" />);
-    expect(flat(light.getByTestId('t-tv-pill')).backgroundColor).toBe(THEMES.light.primary);
+    expect(flat(light.getByTestId('t-tv-pill')).backgroundColor).toBe(THEMES.light.pinkContainer);
+    expect(flat(light.getByText('Series')).color).toBe(THEMES.light.onPinkContainer);
+  });
+
+  it('carries no emoji or glyphs: words and counts only (v2 › Bans: emoji in UI chrome)', () => {
+    const v = render(
+      <MediaTypeChips value={null} onChange={jest.fn()} counts={{ film: 12, tv: 10, book: 11, comic: 6, music: 6 }} />,
+    );
+    ['✦', '🎬', '📺', '📖', '💥', '♫'].forEach((g) => expect(v.queryByText(g)).toBeNull());
+    expect(v.getByText('45')).toBeTruthy();
   });
 
   it('keeps a full touch target while the pill stays visually light', () => {
@@ -113,9 +123,10 @@ describe('MediaTypeChips', () => {
 });
 
 describe('SortChips', () => {
-  it('offers the prototype three under a SORT label', () => {
+  it('offers the prototype three under a sentence-case label (no tracked caps)', () => {
     const v = render(<SortChips value="top" onChange={jest.fn()} />);
-    expect(v.getByText('SORT')).toBeTruthy();
+    expect(v.getByText('Sort by')).toBeTruthy();
+    expect(v.queryByText('SORT')).toBeNull();
     ['Top rated', 'Most voted', 'Newest'].forEach((l) => expect(v.getByText(l)).toBeTruthy());
   });
 
@@ -128,11 +139,12 @@ describe('SortChips', () => {
     expect(onChange).toHaveBeenCalledWith('newest');
   });
 
-  it('tints the selected chip rather than filling it, so it never outranks the type row', () => {
+  it('marks the selected sort quietly (raised, emphasized) so it never outranks the type row', () => {
     const v = render(<SortChips value="voted" onChange={jest.fn()} testID="s" />);
     const on = flat(v.getByTestId('s-voted'));
     expect(on.backgroundColor).not.toBe(THEMES.dark.primary);
-    expect(String(on.backgroundColor)).toContain('rgba');
+    expect(on.backgroundColor).not.toBe(THEMES.dark.pinkContainer);
+    expect(on.backgroundColor).toBe(THEMES.dark.raised);
   });
 
   it('announces its selection', () => {

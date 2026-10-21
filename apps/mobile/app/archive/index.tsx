@@ -11,6 +11,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII } from '../../lib/theme';
+import { COVER_ASPECT, COVER_WIDTH } from '../../components/archive/archiveTokens';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { Analytics } from '../../lib/analytics';
 import { archiveDetailPath } from '../../lib/contentNavigation';
@@ -63,7 +64,7 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
   const takeFlash = useArchiveStore((s) => s.takeFlash);
 
   const [lockedOpen, setLockedOpen] = useState(false);
-  // "Sent to the mods ✿" — left by a composer on its way back (ARC-09).
+  // "Sent to the Archive team…" — left by a composer on its way back (ARC-09).
   const [toast, setToast] = useState<string | null>(null);
   useEffect(() => {
     const message = takeFlash?.() ?? null;
@@ -145,42 +146,61 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
     backBtn: { minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
     title: { ...TYPE.headline, color: colors.textPrimary },
     searchRow: { width: '100%', paddingHorizontal: 16 },
+    // v2: a pill search field on `raised`, no outline (direction › Discover).
     searchWrap: {
       flexDirection: 'row', alignItems: 'center', alignSelf: 'center',
-      width: '100%', gap: 8, paddingHorizontal: 12,
+      width: '100%', gap: 8, paddingHorizontal: 16,
       minHeight: MIN_TOUCH_TARGET,
-      borderRadius: RADII.md,
+      borderRadius: RADII.pill,
       backgroundColor: colors.surfaceLight,
-      borderWidth: 1, borderColor: colors.lineStrong,
     },
     search: {
       flex: 1, ...TYPE.body, color: colors.textPrimary,
       backgroundColor: colors.surfaceLight, paddingVertical: 8,
     },
     bannerWrap: { paddingHorizontal: 16, paddingTop: 8 },
-    list: { padding: 16, gap: 10 },
+    // Rows are separated by space, not bordered cards (v2 › Archive).
+    list: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 24 },
+    skeletonRow: { flexDirection: 'row', gap: 16 },
+    skeletonCover: {
+      width: COVER_WIDTH.row, height: COVER_WIDTH.row * COVER_ASPECT,
+      borderRadius: RADII.sm, backgroundColor: colors.raised,
+    },
+    skeletonText: { flex: 1, gap: 8, paddingTop: 4 },
+    skeletonLine: { height: 16, borderRadius: RADII.sm, backgroundColor: colors.raised },
     state: { padding: 24, gap: 10, alignItems: 'flex-start' },
     stateText: { ...TYPE.body, color: colors.textSecondary },
     action: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
-    actionText: { ...TYPE.body, color: colors.primaryInk, fontWeight: '700' },
+    actionText: { ...TYPE.label, color: colors.pinkInk },
     sheet: {
       margin: 16, padding: 14, gap: 10,
       borderRadius: RADII.md,
       backgroundColor: colors.surface,
       borderWidth: 1, borderColor: colors.line,
     },
+    // A snackbar-toned line: `inverse` with `onInverse` (v2 › Color).
     toast: {
-      marginHorizontal: 16, marginTop: 8, padding: 12, borderRadius: RADII.md,
-      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary,
+      marginHorizontal: 16, marginTop: 8, paddingHorizontal: 16, paddingVertical: 12,
+      borderRadius: RADII.md, backgroundColor: colors.inverse,
     },
-    toastText: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '700' },
+    toastText: { ...TYPE.body, color: colors.onInverse },
   });
 
   const body = () => {
     if (loading && entries.length === 0) {
+      // Skeleton rows at their final layout, not a spinner (v2 › Bans).
       return (
-        <View style={s.state} testID="archive-loading">
-          <ActivityIndicator color={colors.primary} />
+        <View style={s.list} testID="archive-loading" accessibilityLabel="Loading the Archive">
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={s.skeletonRow} testID="archive-skeleton-row">
+              <View style={s.skeletonCover} />
+              <View style={s.skeletonText}>
+                <View style={[s.skeletonLine, { width: '80%' }]} />
+                <View style={[s.skeletonLine, { width: '50%' }]} />
+                <View style={[s.skeletonLine, { width: '65%' }]} />
+              </View>
+            </View>
+          ))}
         </View>
       );
     }
@@ -219,7 +239,7 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
             accessibilityLabel="Suggest a new entry"
           >
             <Text style={s.actionText}>
-              {membership.canEdit ? 'Suggest an entry →' : '🔒 Suggest an entry'}
+              {membership.canEdit ? 'Suggest an entry' : 'Suggest an entry once you’re approved'}
             </Text>
           </Pressable>
         </View>
@@ -263,7 +283,7 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
             accessibilityLabel="Back"
             testID="archive-back"
           >
-            <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </Pressable>
         )}
         <Text style={[s.title, { flex: 1 }]}>The WLW Archive</Text>
@@ -272,7 +292,7 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
 
       <View style={s.searchRow}>
         <View style={s.searchWrap} testID="archive-search-wrap">
-        <Ionicons name="search" size={16} color={colors.textSecondary} />
+        <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
         <TextInput
           style={s.search}
           value={filters.query}

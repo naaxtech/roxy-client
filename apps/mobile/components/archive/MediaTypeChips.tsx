@@ -1,11 +1,12 @@
-import { ScrollView, View, Text, Pressable, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, StyleSheet } from 'react-native';
+import { PressableScale } from '../ui/PressableScale';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { TYPE } from '../../lib/typography';
-import { RADII, inkOn } from '../../lib/theme';
+import { TABULAR, TYPE, emphasized } from '../../lib/typography';
+import { RADII } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
 import {
-  ARCHIVE_TYPE_FILTERS, archiveTypeLabel, archiveTypeIcon, filterCount,
+  ARCHIVE_TYPE_FILTERS, archiveTypeLabel, filterCount,
   type TypeCounts,
 } from '../../lib/archiveTypes';
 import type { ArchiveMediaType } from '../../lib/archive';
@@ -66,18 +67,17 @@ export function MediaTypeChips({ value, onChange, counts, testID = 'archive-type
       height: PILL_HEIGHT,
       paddingHorizontal: 12,
       borderRadius: RADII.pill,
-      borderWidth: 1,
-      borderColor: colors.line,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.raised,
     },
-    pillOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-    icon: { ...TYPE.micro },
-    label: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '700' },
-    labelOn: { color: inkOn(colors.primary) },
-    // The count sits quieter than the label — it is a fact about the category,
-    // not the name of it.
-    count: { ...TYPE.micro, color: colors.textMuted, fontWeight: '700' },
-    countOn: { color: inkOn(colors.primary), opacity: 0.75 },
+    // v2 › Selection: a full flat fill in pinkContainer with the emphasized
+    // label. No outline, no full action pink on a chip.
+    pillOn: { backgroundColor: colors.pinkContainer },
+    label: { ...TYPE.label, color: colors.ink2 },
+    labelOn: { ...emphasized('label'), color: colors.onPinkContainer },
+    // The count sits beside the label in the same ink, regular weight — a fact
+    // about the category, not the name of it.
+    count: { ...TYPE.label, ...TABULAR, fontFamily: TYPE.body.fontFamily, color: colors.ink2 },
+    countOn: { color: colors.onPinkContainer },
     empty: { opacity: 0.45 },
   });
 
@@ -98,7 +98,7 @@ export function MediaTypeChips({ value, onChange, counts, testID = 'archive-type
         const isEmpty = n === 0;
 
         return (
-          <Pressable key={filter.key} onPress={() => onChange(filter.value)} accessible={false}>
+          <PressableScale key={filter.key} onPress={() => onChange(filter.value)} accessible={false}>
             {/* a11y identity and the testID live on this View, not the
                 Pressable: RN's Pressable drops unknown props so `aria-*` never
                 reaches the node, and accessibilityState alone renders nothing
@@ -113,14 +113,14 @@ export function MediaTypeChips({ value, onChange, counts, testID = 'archive-type
               {...a11yState({ checked: selected })}
             >
               <View style={[s.pill, selected && s.pillOn]} testID={`${testID}-${filter.key}-pill`}>
-                <Text style={s.icon}>{archiveTypeIcon(filter.value)}</Text>
+                {/* v2: no emoji or glyph in chrome — the word and the count. */}
                 <Text style={[s.label, selected && s.labelOn]}>{label}</Text>
                 {n !== null ? (
                   <Text style={[s.count, selected && s.countOn]}>{n}</Text>
                 ) : null}
               </View>
             </View>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </ScrollView>
