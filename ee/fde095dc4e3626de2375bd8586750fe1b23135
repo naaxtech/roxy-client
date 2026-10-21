@@ -1,0 +1,16 @@
+apps/mobile/__tests__/screens/WelcomeIn.test.tsx
+  h_0549c11fec2ab0 40-41,49-51,64-67,73-74,80-124
+apps/mobile/app/(auth)/welcome-in.tsx
+  h_0549c11fec2ab0 1-2,4,11,13-15,20-21,23-24,29-36,38-41,43-50,54-74,82-86,88-89,92-100,107,112-115,117-181,186,190-191,197-304,308-347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eefde095dc4e3626de2375bd8586750fe1b23135",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
