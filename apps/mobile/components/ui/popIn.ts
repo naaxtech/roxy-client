@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { POP_FROM, SNAP_SPRING, popInStyle } from '../../lib/motion';
+import { POP_FROM, animatedSpring, popInStyle } from '../../lib/motion';
 
 /**
  * Snappy pop-in for modal content: fast spring scale with at most one
@@ -19,7 +19,7 @@ export function usePopIn(visible: boolean) {
       return;
     }
     scale.setValue(POP_FROM);
-    Animated.spring(scale, { toValue: 1, ...SNAP_SPRING }).start();
+    Animated.spring(scale, { toValue: 1, ...animatedSpring('spatial') }).start();
   }, [visible, reducedMotion, scale]);
 
   return popInStyle(scale);

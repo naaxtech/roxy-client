@@ -22,7 +22,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore } from '../../store/gateStore';
 import { showAlert } from '../../lib/confirm';
 import { BRAND_GRADIENT } from '../../lib/theme';
-import { POP_FROM, SNAP_SPRING } from '../../lib/motion';
+import { POP_FROM, animatedSpring } from '../../lib/motion';
 import { enabledOAuthProviders } from '../../lib/authProviders';
 import { MIN_PASSWORD_LENGTH } from '../../lib/passwordPolicy';
 import { captchaRequired, captchaSiteKey } from '../../lib/captcha';
@@ -64,7 +64,7 @@ export default function WelcomeScreen() {
 
   const heroAnim = useRef(new Animated.Value(POP_FROM)).current;
   useEffect(() => {
-    Animated.spring(heroAnim, { toValue: 1, ...SNAP_SPRING }).start();
+    Animated.spring(heroAnim, { toValue: 1, ...animatedSpring('spatial') }).start();
   }, [heroAnim]);
 
   const handleSubmit = async () => {

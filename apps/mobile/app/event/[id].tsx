@@ -15,7 +15,7 @@ import { TicketCard } from '../../components/TicketCard';
 import { TicketConfirmation } from '../../components/TicketConfirmation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatDuration, openCalendar, eventStage, eventCta, eventSafetyLine } from '../../lib/eventUtils';
-import { SNAP_SPRING } from '../../lib/motion';
+import { animatedSpring } from '../../lib/motion';
 import { purchaseTicket, subscribeToTicket } from '../../lib/stripe';
 import { toggleUserFavorite } from '../../components/profile/ProfileFavorites';
 import { EventModeBadge } from '../../components/events/EventModeBadge';
@@ -138,7 +138,7 @@ export default function EventDetailScreen() {
   const animateTicketIn = (code: string) => {
     setTicketCode(code);
     ticketAnim.setValue(0.72);
-    Animated.spring(ticketAnim, { toValue: 1, ...SNAP_SPRING }).start();
+    Animated.spring(ticketAnim, { toValue: 1, ...animatedSpring('spatial') }).start();
   };
 
   const handleRsvp = async () => {

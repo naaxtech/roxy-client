@@ -13,7 +13,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore, CODE_MESSAGES, REDEEM_MESSAGES } from '../../store/gateStore';
 import { normaliseInviteCode, INVITE_CODE_LENGTH } from '../../lib/inviteCode';
 import { BRAND_GRADIENT } from '../../lib/theme';
-import { POP_FROM, SNAP_SPRING } from '../../lib/motion';
+import { POP_FROM, animatedSpring } from '../../lib/motion';
 
 /** G-17. The landing site's /request page takes introductions. */
 export const NO_CODE_COPY = 'No code? Ask a member, or request an introduction at roxyhq.com/request';
@@ -36,7 +36,7 @@ export default function CodeGateScreen() {
 
   const heroAnim = useRef(new Animated.Value(POP_FROM)).current;
   useEffect(() => {
-    Animated.spring(heroAnim, { toValue: 1, ...SNAP_SPRING }).start();
+    Animated.spring(heroAnim, { toValue: 1, ...animatedSpring('spatial') }).start();
   }, [heroAnim]);
 
   const compact = height < 760;
