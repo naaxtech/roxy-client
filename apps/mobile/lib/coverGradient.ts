@@ -1,4 +1,4 @@
-import { avatarGradient } from './avatars';
+import { flatFill, identityFor } from './theme';
 
 /**
  * The Archive's cover art.
@@ -47,5 +47,8 @@ export function coverGradientFor(
   css: string | null | undefined,
   slug: string
 ): string[] {
-  return parseCoverGradient(css) ?? [...avatarGradient(slug)];
+  // A stored cover is the entry's art (content, set by a mod), so it stays.
+  // v2 (tokens › identity: "also fallback archive covers"): the fallback is
+  // the entry's flat identity fill, no longer a two-tone avatar ramp.
+  return parseCoverGradient(css) ?? [...flatFill(identityFor(slug))];
 }

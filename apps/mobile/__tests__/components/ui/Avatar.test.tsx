@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { Avatar, initialsOf } from '../../../components/ui/Avatar';
 import { AVATAR_GRADS } from '../../../lib/avatars';
-import { BRAND_GRADIENT, LIVE_GRADIENT, THEMES, worstContrast, inkOnGradient } from '../../../lib/theme';
+import { BRAND_GRADIENT, LIVE_GRADIENT, IDENTITY, THEMES, worstContrast, inkOnGradient } from '../../../lib/theme';
 
 describe('Avatar (delight: initials gradient from theme tokens)', () => {
   it('a photo renders the photo', () => {
@@ -38,7 +38,8 @@ describe('Avatar (delight: initials gradient from theme tokens)', () => {
 
   it('every gradient stop is a theme token, and its ink clears 3:1 (large text)', () => {
     const tokens = new Set<string>([
-      ...BRAND_GRADIENT, ...LIVE_GRADIENT,
+      // v2: avatars are identity fills, so the identity palette is a token set.
+      ...BRAND_GRADIENT, ...LIVE_GRADIENT, ...IDENTITY,
       ...Object.values(THEMES.dark), ...Object.values(THEMES.light),
     ].map((c) => c.toUpperCase()));
     for (const pair of AVATAR_GRADS) {

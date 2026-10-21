@@ -59,7 +59,9 @@ describe('textCardScale', () => {
 });
 
 describe('TEXT_CARD_GRADIENT', () => {
-  it('is the plum ramp from p3, not the brand orange', () => {
-    expect(TEXT_CARD_GRADIENT).toEqual(['#2A1B6E', '#6D28A8', '#B02478']);
+  // v2 (2026-10-21): the plum ramp was violet and a gradient; the text card is
+  // the flat fieldInk field now (flatSurfaces.test.ts holds the ink pair).
+  it('is the flat fieldInk field, not the plum ramp (v2)', () => {
+    expect(TEXT_CARD_GRADIENT).toEqual(['#151113', '#151113']);
   });
 });

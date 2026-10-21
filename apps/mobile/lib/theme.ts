@@ -479,3 +479,26 @@ export function floatElevation(colors: ThemeColors) {
 export function popElevation(colors: ThemeColors) {
   return colors.ground === THEMES.dark.ground ? ELEVATION.pop.dark : ELEVATION.pop.light;
 }
+
+/**
+ * v2: the brand gradient survives only on the wordmark and the app icon. A
+ * surface that used a ramp takes one flat colour; returned as two equal stops
+ * so an existing LinearGradient call site renders flat with no layout change.
+ */
+export function flatFill(color: string): readonly [string, string] {
+  return [color, color];
+}
+
+/** The flat `pink` fill that replaces BRAND_GRADIENT on action surfaces. Ink: `onPink`. */
+export function pinkFill(colors: ThemeColors): readonly [string, string] {
+  return flatFill(colors.pink);
+}
+
+/**
+ * Backdrops and veils: the stage's warm-neutral black at an alpha. Replaces
+ * v0's violet-black literals (rgba(8,3,18,…), rgba(13,5,32,…),
+ * rgba(26,10,46,…), rgba(20,8,42,…)).
+ */
+export function scrim(alpha: number): string {
+  return `rgba(11, 10, 10, ${alpha})`;
+}

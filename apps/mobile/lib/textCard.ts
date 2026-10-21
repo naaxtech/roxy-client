@@ -1,5 +1,6 @@
 import type { TextStyle } from 'react-native';
 import { FONTS } from './typography';
+import { FIELD } from '../components/feed/feedChromeTokens';
 
 /**
  * Claude Design text card (`Roxy App.dc.html` 97–103, p3).
@@ -7,8 +8,13 @@ import { FONTS } from './typography';
  * The words are a composition, not a caption: kick pill, Outfit headline,
  * quieter subtitle, flower, on the plum ramp — not the brand orange.
  */
-export const TEXT_CARD_GRADIENT = ['#2A1B6E', '#6D28A8', '#B02478'] as const;
-export const TEXT_CARD_INK = '#FFF8FB';
+//
+// v2 (direction › Bans; tokens › fieldInk/fieldPaper): the plum ramp
+// (#2A1B6E -> #6D28A8 -> #B02478, violet) is retired 2026-10-21. A text card
+// is the flat `fieldInk` field with `fieldPaper` words (16.63:1). Two equal
+// stops keep the LinearGradient call sites unchanged.
+export const TEXT_CARD_GRADIENT = [FIELD.ink, FIELD.ink] as const;
+export const TEXT_CARD_INK = FIELD.paper;
 
 /**
  * The ghost card shown before she has typed anything.
