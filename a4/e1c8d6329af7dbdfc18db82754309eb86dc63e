@@ -1,0 +1,276 @@
+apps/mobile/__tests__/components/ui/PressableScale.test.tsx
+  h_0549c11fec2ab0 1-206
+apps/mobile/app/(auth)/application.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/app/(auth)/code.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/app/(auth)/onboarding/step1-identity.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/app/(auth)/onboarding/step2-interests.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/app/(auth)/onboarding/step3-photo.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/app/(auth)/onboarding/step4-status.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/app/(auth)/pending.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/app/(auth)/reset-password.tsx
+  h_0549c11fec2ab0 12
+apps/mobile/app/(auth)/welcome-in.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/app/(auth)/welcome.tsx
+  h_0549c11fec2ab0 14
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/app/(tabs)/discover/community/members/[communityId].tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/app/(tabs)/discover/community/post/[postId].tsx
+  h_0549c11fec2ab0 4,7
+apps/mobile/app/(tabs)/discover/games/[gameId].tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/app/(tabs)/discover/index.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/app/(tabs)/discover/post/[postId].tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/app/(tabs)/discover/video/[postId].tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/app/(tabs)/feed/index.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/app/(tabs)/you/[userId].tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/app/(tabs)/you/blocked.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/app/(tabs)/you/delete-account.tsx
+  h_0549c11fec2ab0 10
+apps/mobile/app/(tabs)/you/edit.tsx
+  h_0549c11fec2ab0 4,7
+apps/mobile/app/(tabs)/you/feedback.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/app/(tabs)/you/index.tsx
+  h_0549c11fec2ab0 3-4
+apps/mobile/app/(tabs)/you/notification-settings.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/app/badges.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/app/business/[id].tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/app/chat/[id].tsx
+  h_0549c11fec2ab0 3,7
+apps/mobile/app/chat/info/[id].tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/app/communities.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/app/community-room-session.tsx
+  h_0549c11fec2ab0 10,13
+apps/mobile/app/community/create-event.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/app/event/[id].tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/app/notifications.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/app/people.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/app/product/[id].tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/app/qotd/[id].tsx
+  h_0549c11fec2ab0 4,6
+apps/mobile/app/search.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/app/sister-button.tsx
+  h_0549c11fec2ab0 12
+apps/mobile/app/speed-dating/index.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/app/speed-dating/result.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/app/speed-dating/session.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/app/speed-dating/waiting-room.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/app/support.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/app/tickets.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/CommunityContextSwitcher.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/components/ErrorBoundary.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/TicketCard.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/TicketConfirmation.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/account/FirstStepsCard.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/account/PendingStatusHost.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/archive/PendingBanner.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/build/BusinessPhotoGallery.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/build/CartDrawer.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/build/CheckoutSheet.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/build/FeatureVoteCard.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/build/OrderConfirmationSheet.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/build/OrderDetailSheet.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/channels/ChannelBar.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/chat/ActionTray.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/chat/ComposerBanners.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/chat/GifPicker.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/chat/MessageActionSheet.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/chat/MessageRow.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/chat/MessageStatus.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/chat/ReactionBar.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/community/CommunitiesBrowser.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/community/CommunityRoomCard.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/dev/DevPanel.tsx
+  h_0549c11fec2ab0 5,7
+apps/mobile/components/discover/DiscoverCards.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/discover/Rail.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/donations/DonateModal.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/events/EventsCalendar.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/features/ComingSoon.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/feed/CommentActionsSheet.tsx
+  h_0549c11fec2ab0 5,7
+apps/mobile/components/feed/CommentSheet.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/components/feed/CommentThread.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/feed/CommunityCrest.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/feed/DailyPromptCell.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/feed/FeedInterestCard.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/feed/FeedSafetySheet.tsx
+  h_0549c11fec2ab0 5,7
+apps/mobile/components/feed/FeedSegments.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/feed/MiniWinsSheet.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/feed/NewPostsBanner.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/feed/NowRail.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/feed/PhotoCell.tsx
+  h_0549c11fec2ab0 4,6
+apps/mobile/components/feed/PollCell.tsx
+  h_0549c11fec2ab0 3-4
+apps/mobile/components/feed/PostMediaCarousel.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/feed/PrivacyGateSheet.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/feed/ReelCell.tsx
+  h_0549c11fec2ab0 3-4
+apps/mobile/components/feed/ReelsFeed.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/feed/ResourceCell.tsx
+  h_0549c11fec2ab0 3-4
+apps/mobile/components/feed/RoxyLinkCard.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/feed/RoxyLinkPicker.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/components/feed/ShopItemPicker.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/components/feed/ShoppableProductCard.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/feed/StaticPostCard.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/feed/StreakChip.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/feed/TextCell.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/feed/VideoPostCard.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/grow/AnswerSheet.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/grow/MiniWinsCard.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/grow/QuestionOfTheDayCard.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/messages/MessagesInbox.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/messages/OfficialChatInbox.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/messages/PinnedPersonaRow.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/messages/RequestsSheet.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/nav/CreateSheet.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/profile/AvatarPickerSheet.tsx
+  h_0549c11fec2ab0 3,6
+apps/mobile/components/profile/BadgeRow.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/profile/InlineReplies.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/profile/ProfileCard.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/profile/ProfileFavorites.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/profile/ProfilePhotoGrid.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/profile/ProfilePostsGrid.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/profile/ProfileShell.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/profile/ProfileThoughts.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/profile/ReactionRow.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/profile/SavedPosts.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/profile/SelfControls.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/profile/ThoughtRow.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/profile/YouMoreMenu.tsx
+  h_0549c11fec2ab0 3,5
+apps/mobile/components/rooms/ConsentStrip.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/settings/ViewAsBanner.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/settings/ViewAsPicker.tsx
+  h_0549c11fec2ab0 2-3
+apps/mobile/components/ui/ChipSelector.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/ui/EmptyState.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/ui/PressableScale.tsx
+  h_0549c11fec2ab0 1-231
+apps/mobile/components/ui/SectionHeader.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/components/ui/ThemeToggle.tsx
+  h_0549c11fec2ab0 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a4e1c8d6329af7dbdfc18db82754309eb86dc63e",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
