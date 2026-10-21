@@ -1,0 +1,21 @@
+apps/mobile/__tests__/store/themeStore.test.ts
+  s_37deb30b6489aa::t_a22846039cdfa3 2,18-24,27,30-31,34-40,43,47,50,55-57,59,62,64-78,81-92
+apps/mobile/store/themeStore.ts
+  s_37deb30b6489aa::t_86fc85473e5da0 6-11,14-26,34,39,51-64,66-67,70-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2043706080f3d3a4f156369e9b84ad435b0f8b16",
+  "prompts": {},
+  "sessions": {
+    "s_37deb30b6489aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "791c066c-b99f-499a-832d-4bb799f2daf9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
