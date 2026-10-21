@@ -1,7 +1,8 @@
 import React from 'react';
 import {
-  View, Text, TouchableOpacity, ActivityIndicator, StyleSheet,
+  View, Text, ActivityIndicator, StyleSheet,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface ActionTrayProps {

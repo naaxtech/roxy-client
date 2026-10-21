@@ -1,7 +1,8 @@
 import { memo, useMemo, useRef } from 'react';
 import {
-  View, Text, Image, Pressable, TouchableOpacity, StyleSheet, Animated, PanResponder,
+  View, Text, Image, Pressable, StyleSheet, Animated, PanResponder,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';

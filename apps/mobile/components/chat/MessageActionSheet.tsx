@@ -1,4 +1,5 @@
-import { Modal, View, Text, TouchableOpacity, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { Modal, View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import type { ChatMessage } from '../../hooks/useRealtime';

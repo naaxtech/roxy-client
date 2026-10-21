@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform,
   ActivityIndicator, Modal, FlatList, Keyboard, Pressable,
   type ListRenderItem, type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
+import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';

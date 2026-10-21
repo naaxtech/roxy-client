@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Modal, View, Text, TextInput, TouchableOpacity,
-  FlatList, Image, ActivityIndicator, StyleSheet, Animated,
+  Modal, View, Text, TextInput, FlatList, Image, ActivityIndicator, StyleSheet, Animated,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { usePopIn } from '../ui/popIn';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';

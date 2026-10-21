@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
+  View, Text, StyleSheet, ActivityIndicator,
   ScrollView, Share, NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
+import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';

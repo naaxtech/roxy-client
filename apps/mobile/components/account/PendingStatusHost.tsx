@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Animated, Modal, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
+import { Animated, Modal, Text, StyleSheet, Pressable } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { usePopIn } from '../ui/popIn';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';

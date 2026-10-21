@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import {
-  View, ScrollView, TouchableOpacity, StyleSheet, Platform,
+  View, ScrollView, StyleSheet, Platform,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { getPostImageUrl } from '../../lib/media';

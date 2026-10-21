@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { View, Text, Pressable, TouchableOpacity, Share, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Share, StyleSheet } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import {
-  Modal, View, Text, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Animated,
+  Modal, View, Text, TextInput, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Animated,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { usePopIn } from '../ui/popIn';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import {
-  View, ScrollView, Image, TouchableOpacity,
-  Modal, StyleSheet, TouchableWithoutFeedback, useWindowDimensions,
+  View, ScrollView, Image, Modal, StyleSheet, TouchableWithoutFeedback, useWindowDimensions,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { BusinessPhoto } from '../../types';
 import { useThemeColors } from '../../hooks/useThemeColors';
 

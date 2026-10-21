@@ -7,9 +7,10 @@
 // and one file; do not re-add a nested copy.
 import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
+  View, Text, StyleSheet, ActivityIndicator,
   StatusBar, FlatList, ScrollView,
 } from 'react-native';
+import { TouchableOpacity } from '../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';

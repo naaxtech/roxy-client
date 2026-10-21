@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, Modal, Pressable, StyleSheet, Animated, ActivityIndicator, Linking,
+  View, Text, Modal, Pressable, StyleSheet, Animated, ActivityIndicator, Linking,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { usePopIn } from '../ui/popIn';

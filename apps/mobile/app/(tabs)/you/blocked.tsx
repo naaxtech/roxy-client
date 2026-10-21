@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { fetchMutedProfiles } from '../../../lib/mutedProfiles';
 import { logError } from '../../../lib/errorLogger';
 import { Avatar } from '../../../components/ui/Avatar';

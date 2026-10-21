@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
-  Modal, View, Text, TouchableOpacity, StyleSheet, Pressable, ScrollView, ActivityIndicator,
+  Modal, View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useFriendStore, type FriendshipRow } from '../../store/friendStore';

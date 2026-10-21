@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { useRouter } from 'expo-router';
 import { startOfDay, startOfWeek } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';

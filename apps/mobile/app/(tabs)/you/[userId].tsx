@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Animated, Modal, Pressable, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import * as Linking from 'expo-linking';
 import { compactCount, fetchFollowCounts, type FollowCounts } from '../../../lib/followCounts';
 import { ProfileExtras } from '../../../components/profile/ProfileExtras';

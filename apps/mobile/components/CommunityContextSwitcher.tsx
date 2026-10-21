@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Modal, TextInput, FlatList,
+  View, Text, StyleSheet, Modal, TextInput, FlatList,
   Animated,
 } from 'react-native';
+import { TouchableOpacity } from './ui/PressableScale';
 import { useCommunityFilterStore } from '../store/communityFilterStore';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../hooks/useAppWidth';

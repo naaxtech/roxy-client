@@ -2,8 +2,9 @@ import { useCallback, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import {
   AccessibilityInfo, ActivityIndicator, Modal, ScrollView, StyleSheet,
-  Text, TextInput, TouchableOpacity, View,
+  Text, TextInput, View,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';

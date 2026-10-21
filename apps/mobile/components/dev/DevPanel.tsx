@@ -2,8 +2,9 @@
 // This file is only included in __DEV__ builds
 import { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Switch
+  View, Text, StyleSheet, Modal, ScrollView, Switch
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { callEdgeFunction } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 

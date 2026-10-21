@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity } from './ui/PressableScale';
 import QRCode from 'react-native-qrcode-svg';
 import { useThemeColors } from '../hooks/useThemeColors';
 

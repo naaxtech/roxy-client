@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { recordDailyCheckin } from '../../lib/streaks';
 import { useAuthStore } from '../../store/authStore';

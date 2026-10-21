@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList,
-  TouchableOpacity, RefreshControl, Image, ActivityIndicator,
+  RefreshControl, Image, ActivityIndicator,
 } from 'react-native';
+import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { format } from 'date-fns';

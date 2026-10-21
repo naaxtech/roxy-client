@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';

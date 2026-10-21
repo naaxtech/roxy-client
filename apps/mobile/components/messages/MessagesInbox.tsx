@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { SectionList, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { SectionList, View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';

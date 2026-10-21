@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, TextInput,
+  View, Text, TextInput,
   ScrollView, StyleSheet, ActivityIndicator, FlatList,
 } from 'react-native';
+import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, usePathname } from 'expo-router';
 import { useAuthStore } from '../../../store/authStore';

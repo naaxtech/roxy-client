@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator,
+  View, Text, StyleSheet, TextInput, ScrollView, ActivityIndicator,
 } from 'react-native';
+import { TouchableOpacity } from '../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';

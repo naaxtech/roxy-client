@@ -1,10 +1,10 @@
 // apps/mobile/app/(tabs)/discover/community/post/[postId].tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  TextInput, ActivityIndicator, KeyboardAvoidingView,
+  View, Text, StyleSheet, TextInput, ActivityIndicator, KeyboardAvoidingView,
   Platform, FlatList,
 } from 'react-native';
+import { TouchableOpacity } from '../../../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';

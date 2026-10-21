@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, Modal, ScrollView,
+  View, Text, Modal, ScrollView,
   ActivityIndicator, StyleSheet, Animated,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { usePopIn } from '../ui/popIn';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';

@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
+  View, Text, FlatList, StyleSheet,
   StatusBar, Share, PanResponder, useWindowDimensions,
 } from 'react-native';
+import { TouchableOpacity } from '../../../../components/ui/PressableScale';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useFeedStore } from '../../../../store/feedStore';

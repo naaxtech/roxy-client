@@ -1,4 +1,5 @@
-import { Modal, View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
+import { Modal, View, Text, StyleSheet, Pressable } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { MiniWinsCard } from '../grow/MiniWinsCard';
 import { useThemeColors } from '../../hooks/useThemeColors';

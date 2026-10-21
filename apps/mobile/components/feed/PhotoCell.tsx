@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
 import type { ReactElement } from 'react';
 import {
-  ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View,
+  ActivityIndicator, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';

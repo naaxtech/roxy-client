@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Image, TouchableOpacity, StyleSheet, Text, ActivityIndicator,
+  View, Image, StyleSheet, Text, ActivityIndicator,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';

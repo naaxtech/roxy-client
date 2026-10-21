@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, TextInput, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, Modal, StyleSheet, ScrollView, TextInput, ActivityIndicator, Animated } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { useStripe } from '@stripe/stripe-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMarketplaceStore } from '../../store/marketplaceStore';

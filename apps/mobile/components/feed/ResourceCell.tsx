@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { ComponentProps, ReactElement } from 'react';
-import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { logError } from '../../lib/errorLogger';

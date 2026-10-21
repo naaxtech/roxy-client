@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  Animated, Image, ActivityIndicator,
+  View, Text, StyleSheet, Animated, Image, ActivityIndicator,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';

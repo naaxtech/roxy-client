@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { TEXT_CARD_READ_MORE } from '../../lib/textCard';
 import { FeedCellChrome } from './FeedCellChrome';

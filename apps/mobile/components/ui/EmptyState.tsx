@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity } from './PressableScale';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 type Props = {

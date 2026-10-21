@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, ScrollView, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Share,
+  View, Text, ScrollView, TextInput, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Share,
 } from 'react-native';
+import { TouchableOpacity } from '../../../../components/ui/PressableScale';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, Switch, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Platform,
+  View, Text, Switch, ScrollView, StyleSheet, ActivityIndicator, Platform,
 } from 'react-native';
+import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';

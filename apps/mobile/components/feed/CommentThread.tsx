@@ -1,7 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, View, Text, TouchableOpacity, StyleSheet, Image,
+  ActivityIndicator, Animated, View, Text, StyleSheet, Image,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';

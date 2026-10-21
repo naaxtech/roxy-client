@@ -1,6 +1,7 @@
 // apps/mobile/app/(tabs)/you/index.tsx
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, ActivityIndicator, View, Text } from 'react-native';
+import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';

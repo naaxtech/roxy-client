@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
+  View, Text, StyleSheet,
   Modal, ScrollView, ActivityIndicator, Animated,
 } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { PRESET_AVATARS, PRESET_COLORS } from '../../lib/avatars';

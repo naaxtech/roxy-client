@@ -1,4 +1,5 @@
-import { Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
+import { TouchableOpacity } from '../ui/PressableScale';
 import { useRouter } from 'expo-router';
 import { useAccess } from '../../hooks/useAccess';
 import { useViewAsStore } from '../../store/viewAsStore';
