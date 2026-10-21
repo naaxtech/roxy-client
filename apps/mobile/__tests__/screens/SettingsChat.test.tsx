@@ -43,6 +43,11 @@ jest.mock('../../store/safetyStore', () => ({
 const chat = jest.requireMock('../../lib/chat');
 const { showAlert } = jest.requireMock('../../lib/confirm');
 
+// v2 (2026-10-21): Settings uses the shared M3 `components/ui/Switch`, which
+// carries its state as `accessibilityState.checked` (aria-checked on the web)
+// instead of RN Switch's `value` prop, and row values drop the "›" glyph for a
+// chevron icon. The assertions read those; what they assert is unchanged.
+
 beforeEach(() => {
   jest.clearAllMocks();
   useChatSettingsStore.getState().reset();
@@ -55,13 +60,13 @@ it('shows the read-receipt switch with the two-way copy, on by default', async (
   expect(view.getByText('Read receipts')).toBeTruthy();
   expect(view.getByText("If you turn these off, you won't see others' either.")).toBeTruthy();
   await waitFor(() => expect(chat.fetchChatSettings).toHaveBeenCalled());
-  expect(sw.props.value).toBe(true);
+  expect(sw.props.accessibilityState.checked).toBe(true);
 });
 
 it('reflects a saved "off"', async () => {
   chat.fetchChatSettings.mockResolvedValue({ read_receipts: false, group_add_permission: 'friends' });
   const view = render(<SettingsScreen />);
-  await waitFor(() => expect(view.getByTestId('settings-read-receipts').props.value).toBe(false));
+  await waitFor(() => expect(view.getByTestId('settings-read-receipts').props.accessibilityState.checked).toBe(false));
 });
 
 it('turning it off calls set_chat_settings', async () => {
@@ -70,7 +75,7 @@ it('turning it off calls set_chat_settings', async () => {
   await waitFor(() => expect(chat.fetchChatSettings).toHaveBeenCalled());
   await act(async () => { fireEvent(view.getByTestId('settings-read-receipts'), 'valueChange', false); });
   expect(chat.setChatSettings).toHaveBeenCalledWith({ readReceipts: false });
-  expect(view.getByTestId('settings-read-receipts').props.value).toBe(false);
+  expect(view.getByTestId('settings-read-receipts').props.accessibilityState.checked).toBe(false);
 });
 
 it('a refused save says so and the switch goes back', async () => {
@@ -79,15 +84,15 @@ it('a refused save says so and the switch goes back', async () => {
   await waitFor(() => expect(chat.fetchChatSettings).toHaveBeenCalled());
   await act(async () => { fireEvent(view.getByTestId('settings-read-receipts'), 'valueChange', false); });
   expect(showAlert).toHaveBeenCalledWith('Not saved', expect.stringMatching(/read receipts/i));
-  expect(view.getByTestId('settings-read-receipts').props.value).toBe(true);
+  expect(view.getByTestId('settings-read-receipts').props.accessibilityState.checked).toBe(true);
 });
 
 it('group adds: friends ↔ nobody', async () => {
   chat.setChatSettings.mockResolvedValue({ read_receipts: true, group_add_permission: 'nobody' });
   const view = render(<SettingsScreen />);
   await waitFor(() => expect(chat.fetchChatSettings).toHaveBeenCalled());
-  expect(view.getByText('Friends ›')).toBeTruthy();
+  expect(view.getByText('Friends')).toBeTruthy();
   await act(async () => { fireEvent.press(view.getByTestId('settings-group-adds')); });
   expect(chat.setChatSettings).toHaveBeenCalledWith({ groupAddPermission: 'nobody' });
-  expect(view.getByText('Nobody ›')).toBeTruthy();
+  expect(view.getByText('Nobody')).toBeTruthy();
 });
