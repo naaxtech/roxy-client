@@ -1,0 +1,118 @@
+apps/mobile/__tests__/components/grow/QuestionOfTheDayCard.contrast.test.tsx
+  h_0549c11fec2ab0 20,22,33-34,36,96-98,108,111-113,122-124
+apps/mobile/__tests__/lib/noViolet.test.ts
+  h_0549c11fec2ab0 1-85
+apps/mobile/app/(auth)/application.tsx
+  h_0549c11fec2ab0 19,168,440
+apps/mobile/app/(auth)/pending.tsx
+  h_0549c11fec2ab0 20,34-35,276
+apps/mobile/app/(auth)/reset-password.tsx
+  h_0549c11fec2ab0 28,414,445,533,551
+apps/mobile/app/(auth)/welcome-in.tsx
+  h_0549c11fec2ab0 19,104,112,147,159
+apps/mobile/app/(tabs)/discover/community/[id].tsx
+  h_0549c11fec2ab0 34,597
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  h_0549c11fec2ab0 35,109-111,460,475
+apps/mobile/app/(tabs)/discover/post/[postId].tsx
+  h_0549c11fec2ab0 26,28-29,189
+apps/mobile/app/(tabs)/you/[userId].tsx
+  h_0549c11fec2ab0 32,782
+apps/mobile/app/chat/[id].tsx
+  h_0549c11fec2ab0 29,866-867,1039
+apps/mobile/app/chat/info/[id].tsx
+  h_0549c11fec2ab0 31,568
+apps/mobile/app/community-room-session.tsx
+  h_0549c11fec2ab0 31,35-36,240,321
+apps/mobile/app/event/[id].tsx
+  h_0549c11fec2ab0 23,363
+apps/mobile/app/product/[id].tsx
+  h_0549c11fec2ab0 23,475
+apps/mobile/app/sister-button.tsx
+  h_0549c11fec2ab0 21,98,148,249,342,360,387,484-485
+apps/mobile/app/speed-dating/index.tsx
+  h_0549c11fec2ab0 14,145,187
+apps/mobile/app/speed-dating/session.tsx
+  h_0549c11fec2ab0 18,61,176
+apps/mobile/app/support.tsx
+  h_0549c11fec2ab0 16,363
+apps/mobile/components/archive/ArchiveRail.tsx
+  h_0549c11fec2ab0 10,87,183
+apps/mobile/components/archive/EntryHero.tsx
+  h_0549c11fec2ab0 5,92
+apps/mobile/components/build/OrderConfirmationSheet.tsx
+  h_0549c11fec2ab0 8,45
+apps/mobile/components/channels/ChannelMessage.tsx
+  h_0549c11fec2ab0 11,65
+apps/mobile/components/chat/MessageActionSheet.tsx
+  h_0549c11fec2ab0 9,147
+apps/mobile/components/chat/MessageRow.tsx
+  h_0549c11fec2ab0 14,116,125,277,318
+apps/mobile/components/community/CommunitiesBrowser.tsx
+  h_0549c11fec2ab0 12,21-22,80
+apps/mobile/components/community/CommunityRoomCard.tsx
+  h_0549c11fec2ab0 9,70,79
+apps/mobile/components/donations/DonateModal.tsx
+  h_0549c11fec2ab0 12,63,174
+apps/mobile/components/feed/CommunityCrest.tsx
+  h_0549c11fec2ab0 8,146
+apps/mobile/components/feed/DailyPromptCell.tsx
+  h_0549c11fec2ab0 7,77
+apps/mobile/components/feed/FeedCellChrome.tsx
+  h_0549c11fec2ab0 602
+apps/mobile/components/feed/MiniWinsSheet.tsx
+  h_0549c11fec2ab0 7,34
+apps/mobile/components/feed/PollCell.tsx
+  h_0549c11fec2ab0 7,11,97,152
+apps/mobile/components/feed/ResourceCell.tsx
+  h_0549c11fec2ab0 8,15,102,136
+apps/mobile/components/feed/ShoppableProductCard.tsx
+  h_0549c11fec2ab0 11,76
+apps/mobile/components/feed/TextCell.tsx
+  h_0549c11fec2ab0 12,77
+apps/mobile/components/gamification/BadgeCelebration.tsx
+  h_0549c11fec2ab0 6,65
+apps/mobile/components/gamification/Confetti.tsx
+  h_0549c11fec2ab0 4,14-15
+apps/mobile/components/grow/MiniWinsCard.tsx
+  h_0549c11fec2ab0 10,65,69,73,84,108,113,122
+apps/mobile/components/grow/QuestionOfTheDayCard.tsx
+  h_0549c11fec2ab0 10,25-28,191,196
+apps/mobile/components/messages/MessagesInbox.tsx
+  h_0549c11fec2ab0 10,280,290
+apps/mobile/components/messages/PinnedPersonaRow.tsx
+  h_0549c11fec2ab0 7,60-61,80,92,98
+apps/mobile/components/messages/RequestsSheet.tsx
+  h_0549c11fec2ab0 23,394
+apps/mobile/components/nav/CreateSheet.tsx
+  h_0549c11fec2ab0 12,169,201
+apps/mobile/components/profile/ProfileCard.tsx
+  h_0549c11fec2ab0 14,254,306
+apps/mobile/components/profile/ProfilePostsGrid.tsx
+  h_0549c11fec2ab0 9,200
+apps/mobile/components/profile/ProfileShell.tsx
+  h_0549c11fec2ab0 13-18,350-351,505,556
+apps/mobile/components/profile/ThoughtRow.tsx
+  h_0549c11fec2ab0 14,88
+apps/mobile/components/rooms/ConsentStrip.tsx
+  h_0549c11fec2ab0 3,102
+apps/mobile/components/safety/ReportSheet.tsx
+  h_0549c11fec2ab0 6,72
+apps/mobile/components/ui/WebAppFrame.tsx
+  h_0549c11fec2ab0 6,47
+apps/mobile/lib/constants.ts
+  h_0549c11fec2ab0 1-2,19-26,28-41
+apps/mobile/lib/theme.ts
+  h_0549c11fec2ab0 21,350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "81f024e20525c24fd7cd6f6ccd3d90e76c491bfe",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
