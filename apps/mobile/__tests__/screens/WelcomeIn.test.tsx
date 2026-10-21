@@ -37,7 +37,8 @@ const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace, push: mockPush }),
 }));
-jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => false }));
+let mockReduced = false;
+jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => mockReduced }));
 jest.mock('../../hooks/useAccess', () => ({
   useAccess: () => ({ can: () => true, canCommunity: () => true, loading: false }),
 }));
@@ -45,7 +46,9 @@ const mockAuth = { user: { id: 'u-new' } };
 jest.mock('../../store/authStore', () => ({
   useAuthStore: (sel: (s: typeof mockAuth) => unknown) => sel(mockAuth),
 }));
-const mockProfile = { profile: { id: 'u-new', display_name: 'Sam', vetting_status: 'approved' } };
+const mockProfile = {
+  profile: { id: 'u-new', display_name: 'Sam Okafor', vetting_status: 'approved', admitted_at: '2026-10-21T10:00:00Z' },
+};
 jest.mock('../../store/profileStore', () => ({
   useProfileStore: (sel: (s: typeof mockProfile) => unknown) => sel(mockProfile),
 }));
@@ -58,21 +61,67 @@ jest.mock('../../lib/welcomeIn', () => {
   return { ...actual, fetchAdmissionCommunity: (...a: unknown[]) => mockFetchCommunity(...a) };
 });
 
-import WelcomeInScreen from '../../app/(auth)/welcome-in';
+import { StyleSheet } from 'react-native';
+import WelcomeInScreen, { CARD_EDGE, CARD_TILT } from '../../app/(auth)/welcome-in';
+import { THEMES } from '../../lib/theme';
+import { useThemeStore } from '../../store/themeStore';
 import { FirstStepsCard } from '../../components/account/FirstStepsCard';
 import { welcomeSeenKey, firstStepsKey } from '../../lib/welcomeIn';
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  mockReduced = false;
+  useThemeStore.setState({ theme: 'light' });
   await AsyncStorage.clear();
   mockFetchCommunity.mockResolvedValue({ id: 'c1', name: 'Dykes of Leeds', slug: 'dol' });
 });
 
 describe("WelcomeInScreen — You're in", () => {
-  it('greets her warmly by name and names the community that said yes', async () => {
-    const { getByText, findByText } = render(<WelcomeInScreen />);
-    expect(getByText(/You're in, Sam/)).toBeTruthy();
-    expect(await findByText(/Dykes of Leeds read your application and said yes/)).toBeTruthy();
+  it('greets her by first name and puts the community that vouched for her on the card', async () => {
+    // v2 (board v2-02): "You're in, <first name>." and the card's vouching
+    // line replace v0's sentence about the application.
+    const { getByText, findByText, getByTestId } = render(<WelcomeInScreen />);
+    expect(getByText("You're in, Sam.")).toBeTruthy();
+    expect(getByText('Your card is ready. Show it to the friend who sent you the code.')).toBeTruthy();
+    expect(await findByText('Dykes of Leeds')).toBeTruthy();
+    expect(getByText('vouched for you')).toBeTruthy();
+    expect(getByTestId('membership-card').props.accessibilityLabel).toContain('Dykes of Leeds vouched for you.');
+  });
+
+  it('puts her name and the day she became a member on the card', async () => {
+    const { getByText } = render(<WelcomeInScreen />);
+    expect(getByText('Sam Okafor')).toBeTruthy();
+    expect(getByText('Member since 21 October 2026')).toBeTruthy();
+  });
+
+  it('floods the screen brandPink', () => {
+    const { getByTestId } = render(<WelcomeInScreen />);
+    expect(StyleSheet.flatten(getByTestId('welcome-in-flood').props.style).backgroundColor)
+      .toBe(THEMES.light.brandPink);
+  });
+
+  it('settles the card at -3° on a hard 6 dp edge (Reduce Motion: the end state, still)', () => {
+    mockReduced = true;
+    const { getByTestId } = render(<WelcomeInScreen />);
+    const card = StyleSheet.flatten(getByTestId('membership-card').props.style);
+    expect(card.transform).toEqual(expect.arrayContaining([{ rotate: CARD_TILT }]));
+    expect(CARD_TILT).toBe('-3deg');
+    const edge = StyleSheet.flatten(getByTestId('membership-card-edge').props.style);
+    expect(edge.top).toBe(CARD_EDGE);
+    expect(CARD_EDGE).toBe(6);
+    expect(edge.backgroundColor).toBe(THEMES.light.pinkLip);
+  });
+
+  it('"Come in" goes straight into Roxy', async () => {
+    const { getByRole } = render(<WelcomeInScreen />);
+    await act(async () => { fireEvent.press(getByRole('button', { name: 'Come in' })); });
+    expect(mockReplace).toHaveBeenCalledWith('/(tabs)/feed');
+  });
+
+  it('has no confetti emoji and no dead share button', () => {
+    const { queryByText } = render(<WelcomeInScreen />);
+    expect(queryByText('💜')).toBeNull();
+    expect(queryByText(/Share your card/)).toBeNull();
   });
 
   it('celebrates with a success haptic on a phone', async () => {
