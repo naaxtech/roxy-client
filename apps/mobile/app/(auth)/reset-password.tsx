@@ -25,7 +25,7 @@ import {
   isRecoverySessionGone,
 } from '../../lib/passwordReset';
 import { logError } from '../../lib/errorLogger';
-import { BRAND_GRADIENT } from '../../lib/theme';
+import { pinkFill } from '../../lib/theme';
 // Same rule as sign-up (10): a reset used to accept 6, so the weakest rule won.
 import { MIN_PASSWORD_LENGTH, passwordTooShortMessage } from '../../lib/passwordPolicy';
 
@@ -411,7 +411,7 @@ export default function ResetPasswordScreen() {
             accessibilityLabel="Back to sign in to request a new reset link"
           >
             <LinearGradient
-              colors={BRAND_GRADIENT}
+              colors={pinkFill(colors)}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.btn}
@@ -442,7 +442,7 @@ export default function ResetPasswordScreen() {
             accessibilityLabel="Continue into Roxy"
           >
             <LinearGradient
-              colors={BRAND_GRADIENT}
+              colors={pinkFill(colors)}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.btn}
@@ -530,7 +530,7 @@ export default function ResetPasswordScreen() {
           accessibilityLabel="Save new password"
         >
           <LinearGradient
-            colors={BRAND_GRADIENT}
+            colors={pinkFill(colors)}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={[styles.btn, busy && styles.btnDisabled]}
@@ -548,7 +548,7 @@ export default function ResetPasswordScreen() {
 
   return (
     <LinearGradient
-      colors={BRAND_GRADIENT}
+      colors={pinkFill(colors)}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.container}

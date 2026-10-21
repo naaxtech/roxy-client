@@ -11,6 +11,7 @@ import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { avatarGradient, isPresetAvatar, presetColor, presetEmoji } from '../../lib/avatars';
 import { ReactionRow } from './ReactionRow';
 import type { PostType } from '../../types';
+import { BRAND_INK } from '../../lib/theme';
 
 export type ThoughtAuthor = {
   id: string;
@@ -84,7 +85,7 @@ export function ThoughtRow({
       width: AVATAR, height: AVATAR, borderRadius: 99,
       alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
     },
-    initial: { ...TYPE.caption, color: '#FFF8FB', fontWeight: '800' },
+    initial: { ...TYPE.caption, color: BRAND_INK, fontWeight: '800' },
     emoji: { fontSize: 19 },
     body: { flex: 1, minWidth: 0 },
     head: { flexDirection: 'row', alignItems: 'center', gap: 5 },

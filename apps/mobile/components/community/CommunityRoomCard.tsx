@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { avatarGradient } from '../../lib/avatars';
+import { scrim } from '../../lib/theme';
 
 interface CommunityRoomCardProps {
   id: string;
@@ -66,7 +67,7 @@ export function CommunityRoomCard({
     coverImg: { ...StyleSheet.absoluteFillObject },
     veil: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(26,10,46,0.28)',
+      backgroundColor: scrim(0.28),
     },
     coverTop: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -75,7 +76,7 @@ export function CommunityRoomCard({
     pill: {
       flexDirection: 'row', alignItems: 'center', gap: 5,
       borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4,
-      backgroundColor: 'rgba(26,10,46,0.55)',
+      backgroundColor: scrim(0.55),
     },
     pillLive: { backgroundColor: '#E5484D' },
     pillText: { color: '#fff', fontSize: 11, fontWeight: '800' },

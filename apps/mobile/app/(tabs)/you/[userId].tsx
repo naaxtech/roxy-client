@@ -29,7 +29,7 @@ import { useFollowStore } from '../../../store/followStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { TYPE } from '../../../lib/typography';
-import { RADII, inkOn } from '../../../lib/theme';
+import { RADII, inkOn, scrim } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { confirmAction, showAlert } from '../../../lib/confirm';
 import { openDirectChat } from '../../../lib/directMessages';
@@ -779,7 +779,7 @@ function hostedStyles(colors: ReturnType<typeof useThemeColors>) {
       borderRadius: RADII.md,
     },
     onlineText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '600', flex: 1 },
-    scrim: { flex: 1, backgroundColor: 'rgba(8,3,18,0.5)', justifyContent: 'flex-end' },
+    scrim: { flex: 1, backgroundColor: scrim(0.5), justifyContent: 'flex-end' },
     sheet: {
       backgroundColor: colors.background,
       borderTopLeftRadius: RADII.sheet,

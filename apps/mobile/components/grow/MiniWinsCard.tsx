@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { pinkFill, flatFill, inkOn } from '../../lib/theme';
 
 interface Props {
   userId: string;
@@ -61,15 +62,15 @@ export function MiniWinsCard({ userId }: Props) {
 
   const quests: QuestRow[] = [
     {
-      key: 'react', icon: 'flower', grad: ['#FF2F71', '#E81C8E'], label: 'React to 3 posts',
+      key: 'react', icon: 'flower', grad: pinkFill(colors), label: 'React to 3 posts',
       current: Math.min(counts.reactions, 3), target: 3, route: '/(tabs)/feed',
     },
     {
-      key: 'join', icon: 'people', grad: ['#8E7CF7', '#C86DD7'], label: 'Join 1 community',
+      key: 'join', icon: 'people', grad: pinkFill(colors), label: 'Join 1 community',
       current: Math.min(counts.communityJoins, 1), target: 1, route: '/(tabs)/discover',
     },
     {
-      key: 'attend', icon: 'calendar', grad: ['#FF6A2E', '#FF2F71'], label: 'Attend 1 event this week',
+      key: 'attend', icon: 'calendar', grad: pinkFill(colors), label: 'Attend 1 event this week',
       current: Math.min(counts.eventsGoing, 1), target: 1, route: '/(tabs)/discover',
     },
   ];
@@ -80,7 +81,7 @@ export function MiniWinsCard({ userId }: Props) {
   return (
     <View style={s.card}>
       <View style={s.header}>
-        <LinearGradient colors={['#FF6A2E', '#E81C8E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.headerPlate}>
+        <LinearGradient colors={pinkFill(colors)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.headerPlate}>
           <Ionicons name="flash" size={16} color="#fff" />
         </LinearGradient>
         <View style={{ flex: 1 }}>
@@ -104,12 +105,12 @@ export function MiniWinsCard({ userId }: Props) {
             activeOpacity={0.75}
           >
             <LinearGradient
-              colors={done ? ['#2BB673', '#1E9E62'] : q.grad}
+              colors={done ? flatFill(colors.success) : q.grad}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={s.iconPlate}
             >
-              <Ionicons name={done ? 'checkmark' : q.icon} size={16} color="#fff" />
+              <Ionicons name={done ? 'checkmark' : q.icon} size={16} color={inkOn(done ? colors.success : colors.pink)} />
             </LinearGradient>
             <View style={{ flex: 1 }}>
               <View style={s.rowHeader}>
@@ -118,7 +119,7 @@ export function MiniWinsCard({ userId }: Props) {
               </View>
               <View style={s.track}>
                 <LinearGradient
-                  colors={done ? ['#2BB673', '#1E9E62'] : q.grad}
+                  colors={done ? flatFill(colors.success) : q.grad}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={[s.fill, { width: `${Math.max((q.current / q.target) * 100, 4)}%` as any }]}

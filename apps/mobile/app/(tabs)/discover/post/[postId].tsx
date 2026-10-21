@@ -23,11 +23,10 @@ import { showAlert } from '../../../../lib/confirm';
 import { PostMediaCarousel } from '../../../../components/feed/PostMediaCarousel';
 import { CommentThread } from '../../../../components/feed/CommentThread';
 import type { Comment, Post } from '../../../../types';
+import { BRAND_INK, IDENTITY } from '../../../../lib/theme';
 
-const DETAIL_GRADS: [string, string][] = [
-  ['#FF6A2E', '#E81C8E'], ['#8B5CF6', '#E879A6'], ['#FF2F71', '#8B5CF6'],
-  ['#C4476A', '#8B5CF6'], ['#FF8A3D', '#FF2F71'],
-];
+// v2: one flat identity fill per author (the v0 pairs carried violet #8B5CF6).
+const DETAIL_GRADS: [string, string][] = IDENTITY.map((c) => [c, c]);
 function detailGrad(name: string): [string, string] {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
@@ -187,7 +186,7 @@ export default function PostDetailScreen() {
     errorText: { color: colors.textSecondary, fontSize: 15, textAlign: 'center' },
     authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
     authorAva: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-    authorAvaText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+    authorAvaText: { color: BRAND_INK, fontWeight: '800', fontSize: 14 },
     authorName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
     authorTime: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
   });

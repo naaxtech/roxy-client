@@ -20,7 +20,7 @@ import { CheckoutSheet } from '../../components/build/CheckoutSheet';
 import { OrderConfirmationSheet } from '../../components/build/OrderConfirmationSheet';
 import type { Business } from '../../types';
 import type { ProductWithVariants, ProductVariant } from '../../types/marketplace';
-import { BRAND_GRADIENT } from '../../lib/theme';
+import { pinkFill } from '../../lib/theme';
 
 
 export default function ProductDetailScreen() {
@@ -472,7 +472,7 @@ export default function ProductDetailScreen() {
               />
             ) : (
               <LinearGradient
-                colors={BRAND_GRADIENT}
+                colors={pinkFill(colors)}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.sellerLogoPlate}

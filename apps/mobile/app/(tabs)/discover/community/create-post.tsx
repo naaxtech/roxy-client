@@ -32,6 +32,7 @@ import {
 import { TextCardFace } from '../../../../components/feed/TextCardFace';
 import type { PostType } from '../../../../types';
 import { TYPE } from '../../../../lib/typography';
+import { pinkFill } from '../../../../lib/theme';
 
 const MAX_PHOTOS = 10;
 const MAX_VIDEO_SECONDS = 180;
@@ -105,9 +106,9 @@ export default function CreatePostScreen() {
     : null;
 
   const TYPE_OPTIONS: { type: PostType; icon: keyof typeof Ionicons.glyphMap; grad: readonly [string, string]; label: string; sub: string }[] = [
-    { type: 'standard', icon: 'create', grad: ['#8E7CF7', '#C86DD7'], label: 'Text card', sub: 'A headline, a quieter line, on the plum ramp' },
-    { type: 'photo', icon: 'images', grad: ['#FF6A2E', '#E81C8E'], label: 'Photo', sub: 'Capture or upload — up to 10' },
-    { type: 'video', icon: 'videocam', grad: ['#FF2F71', '#E81C8E'], label: 'Video', sub: 'Capture or upload — 3 min max' },
+    { type: 'standard', icon: 'create', grad: pinkFill(colors), label: 'Text card', sub: 'A headline, a quieter line, on the plum ramp' },
+    { type: 'photo', icon: 'images', grad: pinkFill(colors), label: 'Photo', sub: 'Capture or upload — up to 10' },
+    { type: 'video', icon: 'videocam', grad: pinkFill(colors), label: 'Video', sub: 'Capture or upload — 3 min max' },
   ];
 
   const handleSelectType = (type: PostType) => {
@@ -456,7 +457,7 @@ export default function CreatePostScreen() {
             accessibilityRole="button"
             accessibilityLabel={kind === 'video' ? 'Record a video' : 'Take a photo'}
           >
-            <LinearGradient colors={['#FF6A2E', '#E81C8E']} style={styles.typeIconPlate}>
+            <LinearGradient colors={pinkFill(colors)} style={styles.typeIconPlate}>
               <Ionicons name={kind === 'video' ? 'videocam' : 'camera'} size={20} color="#fff" />
             </LinearGradient>
             <View style={styles.typeInfo}>
@@ -471,7 +472,7 @@ export default function CreatePostScreen() {
             accessibilityRole="button"
             accessibilityLabel={kind === 'video' ? 'Upload a video' : 'Upload photos'}
           >
-            <LinearGradient colors={['#8E7CF7', '#C86DD7']} style={styles.typeIconPlate}>
+            <LinearGradient colors={pinkFill(colors)} style={styles.typeIconPlate}>
               <Ionicons name="images" size={20} color="#fff" />
             </LinearGradient>
             <View style={styles.typeInfo}>

@@ -15,7 +15,7 @@ import { confirmAction, showAlert } from '../../lib/confirm';
 import { Analytics } from '../../lib/analytics';
 import { ConsentStrip } from '../../components/rooms/ConsentStrip';
 import { TYPE } from '../../lib/typography';
-import { RADII, THEMES, inkOn } from '../../lib/theme';
+import { RADII, THEMES, inkOn, scrim } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { SpeedDateSession as SpeedDateSessionData } from '../../types';
 
@@ -58,7 +58,7 @@ function TimerBar({ elapsed, total }: { elapsed: number; total: number }) {
 function VideoPlaceholder({ label }: { label: string }) {
   const colors = useThemeColors();
   const vidStyles = StyleSheet.create({
-    placeholder: { flex: 1, backgroundColor: '#0d0520', alignItems: 'center', justifyContent: 'center', gap: 8 },
+    placeholder: { flex: 1, backgroundColor: THEMES.dark.stage, alignItems: 'center', justifyContent: 'center', gap: 8 },
     icon: { fontSize: 48 },
     label: { color: colors.textMuted, fontSize: 14 },
   });
@@ -173,7 +173,7 @@ export default function SpeedDateSession() {
     pass: {
       flex: 1, minHeight: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center',
       borderRadius: RADII.lg,
-      backgroundColor: 'rgba(13,5,32,0.45)',
+      backgroundColor: scrim(0.45),
       borderWidth: 1, borderColor: 'rgba(255,249,251,0.35)',
     },
     passActive: { borderColor: THEMES.dark.textPrimary },

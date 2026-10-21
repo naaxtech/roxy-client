@@ -6,7 +6,7 @@ import type { ChatMessage } from '../../hooks/useRealtime';
 import { canStillEdit } from '../../lib/chat';
 import { haptic } from '../../lib/haptics';
 import { TYPE } from '../../lib/typography';
-import { RADII, type ThemeColors } from '../../lib/theme';
+import { RADII, type ThemeColors, scrim } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 
@@ -144,7 +144,7 @@ export function MessageActionSheet({
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: 'rgba(8,3,18,0.55)' },
+  scrim: { flex: 1, backgroundColor: scrim(0.55) },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet,

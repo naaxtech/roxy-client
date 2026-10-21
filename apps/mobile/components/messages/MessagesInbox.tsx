@@ -7,7 +7,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { avatarGradient } from '../../lib/avatars';
 import { channelCountLabel, type InboxCommunity } from '../../lib/inboxCommunities';
 import { TYPE } from '../../lib/typography';
-import { RADII, inkOn, type ThemeColors } from '../../lib/theme';
+import { RADII, inkOn, type ThemeColors, BRAND_INK } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
 /**
@@ -277,7 +277,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     width: 44, height: 44, borderRadius: 15,
     alignItems: 'center', justifyContent: 'center',
   },
-  avaText: { color: inkOn(colors.secondary), fontWeight: '800', fontSize: 16 },
+  avaText: { color: BRAND_INK, fontWeight: '800', fontSize: 16 },
   emoji: { fontSize: 22 },
   stack: { width: 44, height: 44 },
   stackAva: {
@@ -287,7 +287,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   stackBack: { top: 0, left: 0 },
   stackFront: { bottom: 0, right: 0 },
-  stackText: { color: inkOn(colors.secondary), fontWeight: '800', fontSize: 12 },
+  stackText: { color: BRAND_INK, fontWeight: '800', fontSize: 12 },
   nameWrap: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
   onlineDot: {
     position: 'absolute', bottom: 1, right: 1,

@@ -3,6 +3,7 @@ import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
+import { flatFill } from '../../lib/theme';
 
 // Static CSS for subtle overlay scrollbars. Injected at runtime because the
 // app exports in "single" (SPA) web output, where app/+html.tsx is ignored.
@@ -43,7 +44,7 @@ export function WebAppFrame({ children }: { children: React.ReactNode }) {
   return (
     <View style={[styles.backdrop, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={['rgba(255,106,46,0.16)', 'rgba(232,28,142,0.10)', 'rgba(122,28,232,0.16)']}
+        colors={flatFill(colors.background)}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}

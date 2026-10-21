@@ -17,11 +17,10 @@ import { useAccess } from '../../hooks/useAccess';
 import { useVettingStatusSync } from '../../hooks/useVettingStatusSync';
 import { useViewAsStore } from '../../store/viewAsStore';
 import { showAlert } from '../../lib/confirm';
-import { BRAND_GRADIENT, inkOn, inkOnGradient } from '../../lib/theme';
+import { inkOn, pinkFill } from '../../lib/theme';
 import { a11yState } from '../../lib/a11yState';
 
 const MIN_APPEAL = APPEAL_MIN;
-const heroInk = inkOnGradient(BRAND_GRADIENT);
 
 /**
  * Where an applicant waits, and where a rejected applicant gets a way back.
@@ -32,6 +31,8 @@ const heroInk = inkOnGradient(BRAND_GRADIENT);
  */
 export default function PendingScreen() {
   const colors = useThemeColors();
+  // v2: the hero sits on the flat pink fill, so its ink is onPink.
+  const heroInk = colors.onPink;
   const router = useRouter();
   const { signOut } = useAuth();
   const { isPreviewing, kind } = useAccess();
@@ -272,7 +273,7 @@ export default function PendingScreen() {
       >
         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <LinearGradient
-            colors={BRAND_GRADIENT}
+            colors={pinkFill(colors)}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={s.hero}

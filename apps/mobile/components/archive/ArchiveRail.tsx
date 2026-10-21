@@ -7,6 +7,7 @@ import { scoreFromEntry, type ArchiveEntry } from '../../lib/archive';
 import { ScorePill } from './ScorePill';
 import { coverGradientFor } from '../../lib/coverGradient';
 import { archiveTypeLabel } from '../../lib/archiveTypes';
+import { scrim } from '../../lib/theme';
 
 interface Props {
   entries: ArchiveEntry[];
@@ -83,7 +84,7 @@ export function ArchiveRail({
     posterScrim: { ...StyleSheet.absoluteFillObject },
     typeChip: {
       alignSelf: 'flex-start',
-      backgroundColor: 'rgba(13,5,32,0.6)',
+      backgroundColor: scrim(0.6),
       borderRadius: 5,
       paddingHorizontal: 6,
       paddingVertical: 3,
@@ -179,7 +180,7 @@ export function ArchiveRail({
                     testID={`${testID}-art-${entry.slug}`}
                   />
                   <LinearGradient
-                    colors={['transparent', 'rgba(13,5,32,0.72)']}
+                    colors={['transparent', scrim(0.72)]}
                     locations={[0.45, 1]}
                     style={s.posterScrim}
                   />

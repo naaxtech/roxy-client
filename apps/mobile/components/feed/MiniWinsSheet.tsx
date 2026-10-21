@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { MiniWinsCard } from '../grow/MiniWinsCard';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
-import { RADII } from '../../lib/theme';
+import { RADII, scrim } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
 interface Props {
@@ -31,7 +31,7 @@ export function MiniWinsSheet({ visible, userId, onClose }: Props) {
   if (!userId) return null;
 
   const s = StyleSheet.create({
-    scrim: { flex: 1, backgroundColor: 'rgba(8,3,18,0.66)', justifyContent: 'flex-end' },
+    scrim: { flex: 1, backgroundColor: scrim(0.66), justifyContent: 'flex-end' },
     sheet: {
       backgroundColor: colors.surface,
       borderTopLeftRadius: RADII.sheet,

@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { avatarGradient } from '../../lib/avatars';
-import { CHROME_SHADOW } from './feedChromeTokens';
+import { BRAND_INK } from '../../lib/theme';
 
 /** Already past `MIN_TOUCH_TARGET`, which is why the crest needed no hit box. */
 const SIZE = 50;
@@ -143,5 +143,5 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   image: { width: '100%', height: '100%' },
-  monogram: { color: '#fff', fontWeight: '800', fontSize: 20, ...CHROME_SHADOW },
+  monogram: { color: BRAND_INK, fontWeight: '800', fontSize: 20 },
 });

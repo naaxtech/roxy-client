@@ -20,7 +20,7 @@ import { purchaseTicket, subscribeToTicket } from '../../lib/stripe';
 import { toggleUserFavorite } from '../../components/profile/ProfileFavorites';
 import { EventModeBadge } from '../../components/events/EventModeBadge';
 import { TYPE } from '../../lib/typography';
-import { RADII, inkOn } from '../../lib/theme';
+import { RADII, inkOn, flatFill } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
 type EventDetail = {
@@ -360,7 +360,7 @@ export default function EventDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <LinearGradient
-          colors={isOnline ? [colors.backgroundAlt, colors.secondary] : [colors.backgroundAlt, colors.primary]}
+          colors={flatFill(colors.raised)}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}

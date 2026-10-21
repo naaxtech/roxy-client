@@ -16,7 +16,7 @@ import {
   type SubmitFailure,
 } from '../../store/gateStore';
 import { showAlert } from '../../lib/confirm';
-import { BRAND_GRADIENT, inkOn, inkOnGradient } from '../../lib/theme';
+import { inkOn, pinkFill } from '../../lib/theme';
 import { a11yState } from '../../lib/a11yState';
 
 /** Both are awarded together by the KYC webhook, so they share one row in the UI. */
@@ -165,7 +165,7 @@ export default function ApplicationScreen() {
   }, [startVerification, grantVerificationConsent]);
 
   const roxyInk = inkOn(colors.roxy);
-  const gradientInk = inkOnGradient(BRAND_GRADIENT);
+  const gradientInk = colors.onPink;
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -437,7 +437,7 @@ export default function ApplicationScreen() {
                   testID="send-for-review"
                 >
                   <LinearGradient
-                    colors={BRAND_GRADIENT}
+                    colors={pinkFill(colors)}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={[s.cta, submitDisabled && { opacity: 0.5 }]}

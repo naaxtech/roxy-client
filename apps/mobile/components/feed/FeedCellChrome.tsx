@@ -599,7 +599,7 @@ const s = StyleSheet.create({
     width: 20, height: 20, borderRadius: 10,
     backgroundColor: '#FF2F71',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(26,10,46,0.9)',
+    borderWidth: 1.5, borderColor: 'rgba(11,10,10,0.9)',
   },
   /**
    * Each control carries its own plate.

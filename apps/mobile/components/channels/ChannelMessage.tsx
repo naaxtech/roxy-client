@@ -8,7 +8,7 @@ import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { avatarGradient, isPresetAvatar, presetColor, presetEmoji } from '../../lib/avatars';
 import { authorName, type ChannelMessage as Message } from '../../lib/channels';
 import { parseMessageCard } from '../../lib/messageCard';
-import { RADII } from '../../lib/theme';
+import { RADII, BRAND_INK } from '../../lib/theme';
 
 interface Props {
   message: Message;
@@ -62,7 +62,7 @@ export function ChannelMessage({ message, onPressAuthor, onLongPress, onOpenCard
       justifyContent: 'center',
       overflow: 'hidden',
     },
-    initial: { ...TYPE.caption, color: '#FFF8FB', fontWeight: '800' },
+    initial: { ...TYPE.caption, color: BRAND_INK, fontWeight: '800' },
     emoji: { fontSize: 17 },
     body: { flex: 1, minWidth: 0 },
     head: { flexDirection: 'row', alignItems: 'baseline', gap: 7 },

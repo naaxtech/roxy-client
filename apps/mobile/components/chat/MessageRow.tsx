@@ -11,7 +11,7 @@ import type { ChatMessage } from '../../hooks/useRealtime';
 import type { GroupedMessage } from '../../lib/chatThread';
 import { replyQuote } from '../../lib/chatThread';
 import { avatarGradient } from '../../lib/avatars';
-import { BRAND_GRADIENT, inkOn, type ThemeColors } from '../../lib/theme';
+import { inkOn, type ThemeColors, BRAND_INK, pinkFill } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { haptic } from '../../lib/haptics';
 import { MessageStatus } from './MessageStatus';
@@ -113,7 +113,7 @@ function MessageRowImpl({
         {timeSep}
         <Pressable onLongPress={() => onLongPress(m)} delayLongPress={350} testID={`message-${m.id}`}>
           <View style={[s.roxy, highlighted && s.highlight]}>
-            <LinearGradient colors={BRAND_GRADIENT} style={s.roxyBar} />
+            <LinearGradient colors={pinkFill(colors)} style={s.roxyBar} />
             <Text style={s.roxyLabel}>✨ Roxy suggests</Text>
             <Text style={s.roxyText}>{m.content}</Text>
             <TouchableOpacity
@@ -122,7 +122,7 @@ function MessageRowImpl({
               accessibilityRole="button"
               accessibilityLabel="Use Roxy's suggestion"
             >
-              <LinearGradient colors={BRAND_GRADIENT} style={s.roxyUseFill}>
+              <LinearGradient colors={pinkFill(colors)} style={s.roxyUseFill}>
                 <Text style={s.roxyUseText}>Use this</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -274,7 +274,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   rowOther: { justifyContent: 'flex-start' },
   avaSlot: { width: AVA + AVA_GAP },
   ava: { width: AVA, height: AVA, borderRadius: AVA / 2, alignItems: 'center', justifyContent: 'center' },
-  avaText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  avaText: { color: BRAND_INK, fontWeight: '800', fontSize: 12 },
   col: { maxWidth: '78%' },
   colOwn: { alignItems: 'flex-end' },
   colOther: { alignItems: 'flex-start' },
@@ -315,5 +315,5 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   roxyText: { ...TYPE.body, color: colors.textPrimary, fontStyle: 'italic' },
   roxyUse: { alignSelf: 'flex-start', marginTop: 10, borderRadius: 12, overflow: 'hidden' },
   roxyUseFill: { paddingHorizontal: 16, paddingVertical: 8 },
-  roxyUseText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  roxyUseText: { color: colors.onPink, fontWeight: '700', fontSize: 13 },
 });

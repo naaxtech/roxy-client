@@ -18,7 +18,7 @@ import { useAuthStore } from '../store/authStore';
 import { callEdgeFunction } from '../lib/supabase';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { showAlert } from '../lib/confirm';
-import { inkOn } from '../lib/theme';
+import { inkOn, flatFill } from '../lib/theme';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -95,7 +95,7 @@ export default function SisterButtonScreen() {
     emptyPlate: {
       width: 64, height: 64, borderRadius: 22,
       alignItems: 'center', justifyContent: 'center',
-      shadowColor: '#8E7CF7', shadowOffset: { width: 0, height: 8 },
+      shadowColor: colors.sister, shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.4, shadowRadius: 20, elevation: 8,
     },
     chipsWrap: {
@@ -145,7 +145,7 @@ export default function SisterButtonScreen() {
       borderBottomLeftRadius: 6,
     },
     messageText: { fontSize: 13.5, lineHeight: 22 },
-    messageTextUser: { color: inkOn('#8E7CF7') },
+    messageTextUser: { color: inkOn(colors.sister) },
     messageTextAssistant: { color: colors.textPrimary },
 
     thinkingWrap: {
@@ -246,7 +246,7 @@ export default function SisterButtonScreen() {
       opacity: 0.4,
     },
     sendButtonText: {
-      color: inkOn('#8E7CF7'),
+      color: inkOn(colors.sister),
       fontWeight: '700',
       fontSize: 15,
     },
@@ -339,7 +339,7 @@ export default function SisterButtonScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
             <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <LinearGradient colors={['#8E7CF7', '#C86DD7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerPlate}>
+          <LinearGradient colors={flatFill(colors.sister)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerPlate}>
             <Ionicons name="moon" size={18} color="#fff" />
           </LinearGradient>
           <View style={styles.headerCenter}>
@@ -357,7 +357,7 @@ export default function SisterButtonScreen() {
         >
           {messages.length === 0 && (
             <View style={styles.emptyState}>
-              <LinearGradient colors={['#8E7CF7', '#C86DD7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.emptyPlate}>
+              <LinearGradient colors={flatFill(colors.sister)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.emptyPlate}>
                 <Ionicons name="moon" size={30} color="#fff" />
               </LinearGradient>
               <Text style={styles.emptyTitle}>Hi, I'm Sister</Text>
@@ -384,7 +384,7 @@ export default function SisterButtonScreen() {
             >
               {msg.role === 'user' ? (
                 <LinearGradient
-                  colors={['#8E7CF7', '#C86DD7']}
+                  colors={flatFill(colors.sister)}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[styles.messageBubble, styles.bubbleUser]}
@@ -481,8 +481,8 @@ export default function SisterButtonScreen() {
             activeOpacity={0.75}
             accessibilityLabel="Send message"
           >
-            <LinearGradient colors={['#8E7CF7', '#C86DD7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.sendButtonInner}>
-              <Ionicons name="send" size={16} color={inkOn('#8E7CF7')} />
+            <LinearGradient colors={flatFill(colors.sister)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.sendButtonInner}>
+              <Ionicons name="send" size={16} color={inkOn(colors.sister)} />
             </LinearGradient>
           </TouchableOpacity>
         </View>

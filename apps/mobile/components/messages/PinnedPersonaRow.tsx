@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
-import { RADII, BRAND_GRADIENT, type ThemeColors } from '../../lib/theme';
+import { RADII, type ThemeColors, flatFill, pinkFill, inkOn } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
 export type Persona = 'roxy' | 'sister';
@@ -57,7 +57,8 @@ const COPY: Record<Persona, {
   },
 };
 
-const SISTER_PLATE = ['#4B54A8', '#8E9BFF'] as const;
+// v2: the Sister plate is the flat `sister` role (the indigo ramp
+// #4B54A8 -> #8E9BFF was retired 2026-10-21).
 
 export function PinnedPersonaRow({ persona, onPress }: Props) {
   const colors = useThemeColors();
@@ -76,7 +77,7 @@ export function PinnedPersonaRow({ persona, onPress }: Props) {
     >
       {isRoxy ? (
         <LinearGradient
-          colors={BRAND_GRADIENT}
+          colors={pinkFill(colors)}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={s.ring}
@@ -88,13 +89,13 @@ export function PinnedPersonaRow({ persona, onPress }: Props) {
         </LinearGradient>
       ) : (
         <LinearGradient
-          colors={SISTER_PLATE}
+          colors={flatFill(colors.sister)}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={s.plate}
           testID="persona-sister-plate"
         >
-          <Ionicons name={copy.icon} size={20} color="#F2F4FF" />
+          <Ionicons name={copy.icon} size={20} color={inkOn(colors.sister)} />
         </LinearGradient>
       )}
 

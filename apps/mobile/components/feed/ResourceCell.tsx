@@ -5,14 +5,14 @@ import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { logError } from '../../lib/errorLogger';
-import { THEMES } from '../../lib/theme';
+import { THEMES, pinkFill, flatFill } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { LinkType } from '../../types';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
 import { DoubleTapCatcher, useDoubleTapLike } from './DoubleTapLike';
 import { LikeBurst } from './LikeBurst';
-import { BRAND_GRADIENT, CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
+import { CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
 import { a11yState } from '../../lib/a11yState';
 
 /** See `PollCell` — the feed canvas is always the dark one. */
@@ -99,7 +99,7 @@ export function ResourceCell({
   return (
     <View testID="resource-cell" style={[s.page, { width, height }]}>
       <LinearGradient
-        colors={[DARK.surface, DARK.background]}
+        colors={flatFill(DARK.surface)}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -133,7 +133,7 @@ export function ResourceCell({
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={BRAND_GRADIENT}
+              colors={pinkFill(DARK)}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={s.cta}
