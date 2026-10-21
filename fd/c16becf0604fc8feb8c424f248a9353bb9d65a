@@ -1,0 +1,26 @@
+apps/mobile/__tests__/lib/noViolet.test.ts
+  h_0549c11fec2ab0 18-23
+apps/mobile/__tests__/screens/RoxyChat.test.tsx
+  h_0549c11fec2ab0 1-223
+apps/mobile/app/roxy-chat.tsx
+  h_0549c11fec2ab0 3,5,9-10,13-69,73-84,86-87,94-105,108-110,113-120,123-131,133-141,143-146,149-151,153-154,156,158,160-163,165-173,178-179,181,183-193,196-198,201-208,211-221,223-237,240-243,245-276,279-309,313-393
+apps/mobile/components/roxy/HelloRoxySheet.tsx
+  h_0549c11fec2ab0 15,17,228
+apps/mobile/components/roxy/RoxyBubble.tsx
+  h_0549c11fec2ab0 1-108
+apps/mobile/components/roxy/RoxyChip.tsx
+  h_0549c11fec2ab0 1-44
+apps/mobile/lib/roxyFab.ts
+  h_0549c11fec2ab0 140-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fdc16becf0604fc8feb8c424f248a9353bb9d65a",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
