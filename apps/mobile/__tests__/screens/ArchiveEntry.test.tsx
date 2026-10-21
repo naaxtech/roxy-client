@@ -218,3 +218,62 @@ describe('the Archive entry screen', () => {
     expect(queryByTestId('archive-entry-ring')).toBeNull();
   });
 });
+
+describe('v2: covers and suggest-edit entry points (design direction › Archive)', () => {
+  it('"Add a cover" under a missing cover opens Suggest an edit with the cover field focused', async () => {
+    const { getByText } = render(<ArchiveEntryScreen />);
+    await waitFor(() => expect(getByText('Add a cover')).toBeTruthy());
+    fireEvent.press(getByText('Add a cover'));
+    expect(mockPush).toHaveBeenCalledWith('/archive/carol/edit?focus=cover');
+  });
+
+  it('a pending member gets the unlock explanation instead of the editor', async () => {
+    mockStatus = 'pending';
+    const { getByText, getByTestId } = render(<ArchiveEntryScreen />);
+    await waitFor(() => expect(getByText('Add a cover')).toBeTruthy());
+    fireEvent.press(getByText('Add a cover'));
+    expect(getByTestId('archive-locked-sheet')).toBeTruthy();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('no "Add a cover" once the entry has an uploaded cover', async () => {
+    mockFetchEntry.mockResolvedValue({ ...entry, cover_url: 'https://example.test/carol.jpg' });
+    const { queryByText, getByText } = render(<ArchiveEntryScreen />);
+    await waitFor(() => expect(getByText('Carol')).toBeTruthy());
+    expect(queryByText('Add a cover')).toBeNull();
+  });
+
+  it('every entry ends with "Something wrong or missing? Suggest an edit"', async () => {
+    const { getByTestId } = render(<ArchiveEntryScreen />);
+    await waitFor(() => expect(getByTestId('archive-suggest-edit')).toBeTruthy());
+    expect(getByTestId('archive-suggest-edit')).toHaveTextContent(/Something wrong or missing\? Suggest an edit/);
+    fireEvent.press(getByTestId('archive-suggest-edit'));
+    expect(mockPush).toHaveBeenCalledWith('/archive/carol/edit');
+  });
+
+  it('the entry’s more menu offers Suggest an edit too', async () => {
+    const { getByTestId } = render(<ArchiveEntryScreen />);
+    await waitFor(() => expect(getByTestId('archive-entry-more')).toBeTruthy());
+    fireEvent.press(getByTestId('archive-entry-more'));
+    fireEvent.press(getByTestId('archive-entry-suggest-edit'));
+    expect(mockPush).toHaveBeenCalledWith('/archive/carol/edit');
+  });
+
+  it('after an edit is sent, the entry says so in the direction’s words', async () => {
+    const { getByTestId, getByText } = render(<ArchiveEntryScreen />);
+    await waitFor(() => expect(getByText('Carol')).toBeTruthy());
+    const { act } = jest.requireActual('@testing-library/react-native');
+    act(() => { useArchiveStore.getState().setFlash('Sent to the Archive team. It shows here once it’s approved.'); });
+    await waitFor(() => expect(getByTestId('archive-entry-sent')).toHaveTextContent('Sent to the Archive team. It shows here once it’s approved.'));
+    expect(useArchiveStore.getState().flash).toBeNull();
+  });
+
+  it('carries no emoji or decorative glyphs in its controls', async () => {
+    mockStatus = 'pending';
+    const { getByTestId, queryByText } = render(<ArchiveEntryScreen />);
+    await waitFor(() => expect(getByTestId('archive-watch')).toBeTruthy());
+    for (const glyph of [/🔒/, /✎/, /👍/, /👎/, /☆/, /★/, /^\+ /, /✓/]) {
+      expect(queryByText(glyph)).toBeNull();
+    }
+  });
+});

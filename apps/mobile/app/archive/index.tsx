@@ -66,13 +66,19 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
   const [lockedOpen, setLockedOpen] = useState(false);
   // "Sent to the Archive team…" — left by a composer on its way back (ARC-09).
   const [toast, setToast] = useState<string | null>(null);
+  // Subscribed, not read once on mount: this screen stays mounted under a
+  // composer, so a flash set on the composer's way back must still land here.
+  const flash = useArchiveStore((s) => s.flash);
   useEffect(() => {
+    if (!flash) return;
     const message = takeFlash?.() ?? null;
-    if (!message) return undefined;
-    setToast(message);
+    if (message) setToast(message);
+  }, [flash, takeFlash]);
+  useEffect(() => {
+    if (!toast) return undefined;
     const t = setTimeout(() => setToast(null), 5000);
     return () => clearTimeout(t);
-  }, [takeFlash]);
+  }, [toast]);
 
   // Counts come from their OWN query, not from `entries`. The list is already
   // narrowed by her search and her type — counting it would make every chip

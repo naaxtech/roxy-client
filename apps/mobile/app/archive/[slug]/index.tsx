@@ -64,6 +64,11 @@ export default function ArchiveEntryScreen() {
   const agreeNote = useArchiveStore((s) => s.agreeNote);
   const unagreeNote = useArchiveStore((s) => s.unagreeNote);
   const hydrateMine = useArchiveStore((s) => s.hydrateMine);
+  // A composer leaves a line behind on its way back ("Sent to the Archive
+  // team…"). This screen stays mounted under the editor, so it subscribes to
+  // the flash and takes it the moment it is set.
+  const flash = useArchiveStore((s) => s.flash);
+  const takeFlash = useArchiveStore((s) => s.takeFlash);
   const blockedIds = useSafetyStore((s) => s.blockedUserIds);
   const mutedIds = useSafetyStore((s) => s.mutedUserIds);
 
@@ -75,6 +80,12 @@ export default function ArchiveEntryScreen() {
   // and error, and a hook declared after those runs in a different order on
   // each of them.
   const [actionError, setActionError] = useState<string | null>(null);
+  const [sentNote, setSentNote] = useState<string | null>(null);
+  useEffect(() => {
+    if (!flash) return;
+    const message = takeFlash?.() ?? null;
+    if (message) setSentNote(message);
+  }, [flash, takeFlash]);
   const [firstVoteOpen, setFirstVoteOpen] = useState(false);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewAck, setReviewAck] = useState(false);
@@ -152,7 +163,14 @@ export default function ArchiveEntryScreen() {
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 8, paddingVertical: 4 },
+    headerBtn: { minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center' },
+    sent: {
+      marginHorizontal: 16, paddingHorizontal: 16, paddingVertical: 12,
+      borderRadius: RADII.md, backgroundColor: colors.inverse,
+    },
+    sentText: { ...TYPE.body, color: colors.onInverse },
+    lockRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     backBtn: { minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
     content: { gap: 16, paddingBottom: 48 },
     section: { paddingHorizontal: 16, gap: 8 },
@@ -185,14 +203,13 @@ export default function ArchiveEntryScreen() {
     },
     helpfulOn: { borderColor: colors.primary },
     helpfulOnText: { color: colors.primaryInk, fontWeight: '800' },
-    entryMore: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, minHeight: 32 },
     actionRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
     action: {
       minHeight: MIN_TOUCH_TARGET, justifyContent: 'center', paddingHorizontal: 14,
       borderRadius: RADII.pill, borderWidth: 1, borderColor: colors.line,
       backgroundColor: colors.surfaceLight,
     },
-    actionText: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '700' },
+    actionText: { ...TYPE.label, color: colors.textPrimary },
     state: { padding: 24, gap: 10, alignItems: 'flex-start' },
     stateText: { ...TYPE.body, color: colors.textSecondary },
     link: { ...TYPE.body, color: colors.primaryInk, fontWeight: '700' },
@@ -200,26 +217,23 @@ export default function ArchiveEntryScreen() {
       margin: 16, padding: 14, gap: 10, borderRadius: RADII.md,
       backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
     },
-    edit: {
-      gap: 4, padding: 12, borderRadius: RADII.md, marginHorizontal: 16,
-      borderWidth: 1, borderColor: colors.line,
-    },
+    edit: { gap: 4, paddingHorizontal: 16, paddingVertical: 8, minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
+    editText: { ...TYPE.label, color: colors.pinkInk },
     lastEdit: { ...TYPE.micro, color: colors.textMuted, paddingHorizontal: 16 },
     voteWrap: { paddingHorizontal: 16 },
   });
 
-  const back = (
-    <View style={s.header}>
-      <Pressable
-        onPress={() => (router.canGoBack() ? router.back() : router.replace('/archive' as never))}
-        style={s.backBtn}
-        accessibilityRole="button"
-        accessibilityLabel="Back"
-      >
-        <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
-      </Pressable>
-    </View>
+  const backButton = (
+    <Pressable
+      onPress={() => (router.canGoBack() ? router.back() : router.replace('/archive' as never))}
+      style={s.headerBtn}
+      accessibilityRole="button"
+      accessibilityLabel="Back"
+    >
+      <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+    </Pressable>
   );
+  const back = <View style={s.header}>{backButton}</View>;
 
   if (status === 'loading') {
     return (
@@ -352,6 +366,15 @@ export default function ArchiveEntryScreen() {
     then();
   };
 
+  // Suggest an edit (M158). "Add a cover" opens the same editor with the
+  // cover field focused (design direction v2 › Archive).
+  const suggestEdit = (focus?: 'cover') => requireApproved(() => router.push(
+    (focus ? `/archive/${entry.slug}/edit?focus=${focus}` : `/archive/${entry.slug}/edit`) as never,
+  ));
+  const lockIcon = (
+    <Ionicons name="lock-closed-outline" size={16} color={colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
+  );
+
   const toggleHelpful = async (reviewId: string) => {
     const on = !myHelpful.has(reviewId);
     tapLight();
@@ -397,15 +420,26 @@ export default function ArchiveEntryScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      {back}
+      <View style={s.header}>
+        {backButton}
+        {/* The entry's more menu: Suggest an edit, and the two reports. */}
+        <Pressable
+          onPress={() => setActionTarget({ kind: 'entry', id: entry.id, reporterId: userId ?? '' })}
+          style={s.headerBtn}
+          testID="archive-entry-more"
+          accessibilityRole="button"
+          accessibilityLabel="More: suggest an edit or report this entry"
+        >
+          <Ionicons name="ellipsis-horizontal" size={24} color={colors.textPrimary} />
+        </Pressable>
+      </View>
       <ScrollView
         contentContainerStyle={s.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={colors.primary} colors={[colors.primary]} />}
         testID="archive-entry-scroll"
       >
-        {/* The design leads with colour: a 196px banner and a poster across
-            its lower edge. The page had neither, and a bare ring on a flat
-            background read as a settings row rather than a catalogue entry. */}
+        {/* v2: the cover leads (uploaded, or the designed type cover with
+            "Add a cover" under it), then title, type and year. */}
         <EntryHero
           entryId={entry.id}
           slug={entry.slug}
@@ -413,19 +447,15 @@ export default function ArchiveEntryScreen() {
           mediaType={entry.media_type}
           meta={meta}
           coverUrl={entry.cover_url}
+          onAddCover={() => suggestEdit('cover')}
           testID="archive-entry-hero"
         />
-        <Pressable
-          onPress={() => setActionTarget({ kind: 'entry', id: entry.id, reporterId: userId ?? '' })}
-          style={s.entryMore}
-          testID="archive-entry-more"
-          accessibilityRole="button"
-          accessibilityLabel="Report this entry"
-          hitSlop={8}
-        >
-          <Ionicons name="flag-outline" size={16} color={colors.textMuted} />
-          <Text style={s.hint}>Something wrong or a spoiler here? Report it</Text>
-        </Pressable>
+
+        {sentNote ? (
+          <View style={s.sent} testID="archive-entry-sent" accessibilityRole="alert" accessibilityLiveRegion="polite">
+            <Text style={s.sentText}>{sentNote}</Text>
+          </View>
+        ) : null}
 
         {/* A ring exists to hold a percentage. With no rating it is an empty
             circle with the word "Unreviewed" spilling out of it — so an unrated
@@ -519,7 +549,7 @@ export default function ArchiveEntryScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={watched ? 'Remove from your watchlist' : 'Add to your watchlist'}
               >
-                <Text style={s.actionText}>{watched ? '✓ On your list' : '+ Watchlist'}</Text>
+                <Text style={s.actionText}>{watched ? 'On your list' : 'Add to watchlist'}</Text>
               </Pressable>
 
               {shelfIds ? (
@@ -530,7 +560,7 @@ export default function ArchiveEntryScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={onShelf ? 'Take off your top four' : 'Add to your top four on your profile'}
                 >
-                  <Text style={s.actionText}>{onShelf ? '★ In your top four' : '☆ Top four'}</Text>
+                  <Text style={s.actionText}>{onShelf ? 'In your top four' : 'Add to top four'}</Text>
                 </Pressable>
               ) : null}
 
@@ -541,9 +571,10 @@ export default function ArchiveEntryScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={membership.canReview ? 'Write a review' : 'Writing a review is locked while your membership is pending'}
               >
-                <Text style={s.actionText}>
-                  {membership.canReview ? '✎ Write a review' : '🔒 Write a review'}
-                </Text>
+                <View style={s.lockRow}>
+                  {membership.canReview ? null : lockIcon}
+                  <Text style={s.actionText}>Write a review</Text>
+                </View>
               </Pressable>
             </View>
           }
@@ -598,7 +629,10 @@ export default function ArchiveEntryScreen() {
             accessibilityRole="button"
             accessibilityLabel={membership.canEdit ? 'Add a content note' : 'Adding a content note is locked while your membership is pending'}
           >
-            <Text style={s.actionText}>{membership.canEdit ? '+ Add a note' : '🔒 Add a note'}</Text>
+            <View style={s.lockRow}>
+              {membership.canEdit ? null : lockIcon}
+              <Text style={s.actionText}>Add a note</Text>
+            </View>
           </Pressable>
         </View>
 
@@ -638,7 +672,7 @@ export default function ArchiveEntryScreen() {
                   <Text style={s.reviewBody}>{review.body}</Text>
                   <View style={s.reviewFoot}>
                     <Text style={s.reviewMeta}>
-                      {review.is_recommend ? '👍 recommends' : '👎 does not'}
+                      {review.is_recommend ? 'Recommends it' : 'Doesn’t recommend it'}
                       {helpful > 0 ? ` · ${helpful} found this helpful` : ''}
                     </Text>
                     {isMine ? null : (
@@ -649,7 +683,7 @@ export default function ArchiveEntryScreen() {
                         accessibilityLabel={marked ? 'Remove your helpful mark' : 'Mark this review helpful'}
                         style={[s.helpful, marked && s.helpfulOn]}
                       >
-                        <Text style={[s.reviewMeta, marked && s.helpfulOnText]}>{marked ? '✓ Helpful' : 'Helpful?'}</Text>
+                        <Text style={[s.reviewMeta, marked && s.helpfulOnText]}>{marked ? 'Helpful' : 'Helpful?'}</Text>
                       </Pressable>
                     )}
                   </View>
@@ -673,18 +707,20 @@ export default function ArchiveEntryScreen() {
           )}
         </View>
 
+        {/* Every entry ends with this line (design direction v2 › Archive). */}
         <Pressable
           style={s.edit}
-          onPress={() => requireApproved(() => router.push(`/archive/${entry.slug}/edit` as never))}
+          onPress={() => suggestEdit()}
           accessibilityRole="button"
-          accessibilityLabel={membership.canEdit ? 'Suggest an edit' : 'Suggesting an edit is locked while your membership is pending'}
+          accessibilityLabel={membership.canEdit ? 'Something wrong or missing? Suggest an edit' : 'Suggesting an edit is locked while your membership is pending'}
           testID="archive-suggest-edit"
         >
-          <Text style={s.actionText}>
-            {membership.canEdit ? 'Something wrong? Suggest an edit' : '🔒 Suggest an edit'}
-          </Text>
+          <View style={s.lockRow}>
+            {membership.canEdit ? null : lockIcon}
+            <Text style={s.editText}>Something wrong or missing? Suggest an edit</Text>
+          </View>
           <Text style={s.hint}>
-            The Archive is member-maintained. Edits are published by a mod, credited to you.
+            The Archive is kept by members. The Archive team checks each edit and credits it to you.
           </Text>
         </Pressable>
 
@@ -703,6 +739,7 @@ export default function ArchiveEntryScreen() {
         onReviewDeleted={(id) => setDetail((d) => ({ ...d, reviews: d.reviews.filter((r) => r.id !== id) }))}
         onEditReview={() => router.push(`/archive/${entry.slug}/review` as never)}
         onNoteFlagged={(id) => setFlaggedNotes((cur) => new Set(cur).add(id))}
+        onSuggestEdit={() => suggestEdit()}
       />
 
       {lockedOpen ? (

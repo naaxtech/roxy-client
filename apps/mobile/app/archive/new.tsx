@@ -52,14 +52,14 @@ export default function AddArchiveEntryScreen() {
     if (res.error) { setError(res.error); return; }
     Analytics.archiveEntrySubmitted();
     // The loop used to end in silence: back to the list, nothing said (ARC-09).
-    setFlash(`Sent to the mods ✿ “${title.trim()}” will be credited to you — you’ll get a notification when it’s decided.`);
+    setFlash(`Sent to the Archive team. “${title.trim()}” shows here once it’s approved, credited to you.`);
     close();
   };
 
   return (
     <ComposerShell
       title="Suggest a new entry"
-      intro="Add something the Archive is missing. A mod checks it, then it’s live for everyone — credited to you."
+      intro="Add something the Archive is missing. The Archive team checks it, then it’s live for everyone, credited to you."
       footNote="Queued for review · most entries are published within a day."
       locked={!membership.canEdit}
       onClose={close}
@@ -67,7 +67,7 @@ export default function AddArchiveEntryScreen() {
       testID="archive-add-entry"
       footer={
         <ComposerSubmit
-          label="Send to mods"
+          label="Send to the Archive team"
           onPress={() => void send()}
           disabled={title.trim().length === 0}
           busy={busy}
