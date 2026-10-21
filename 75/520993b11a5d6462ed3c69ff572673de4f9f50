@@ -1,0 +1,25 @@
+apps/mobile/__tests__/components/archive/chips.test.tsx
+  s_37deb30b6489aa::t_a52ee3b24d12ce 67-70,72-73,78-87,126,128-129,142,146-147
+apps/mobile/app/archive/index.tsx
+  s_37deb30b6489aa::t_e16ed34ab3ccc2 14,67,149,152,154,162-170,174,181,183-184,186,191,193-203,242,286,295
+apps/mobile/components/archive/MediaTypeChips.tsx
+  s_37deb30b6489aa::t_beb87d274c0f79 1-2,4-5,9,70,72-80,101,116,123
+apps/mobile/components/archive/SortChips.tsx
+  s_37deb30b6489aa::t_823e600fecc17a 1-2,4,28-32,40-46,54-58,62-66,71,75,94,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "75520993b11a5d6462ed3c69ff572673de4f9f50",
+  "prompts": {},
+  "sessions": {
+    "s_37deb30b6489aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "791c066c-b99f-499a-832d-4bb799f2daf9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
