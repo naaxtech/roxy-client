@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import type { ReactElement } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import Reanimated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
 import type { AccessibilityActionEvent } from 'react-native';
 import {
   POST_REACTIONS, REACTION_NAMES, formatReactionCount, type PostReaction,
 } from '../../lib/postReactions';
-import { animatedSpring, runSpring } from '../../lib/motion';
+import { PRESS, headStart, springTo } from '../../lib/motion';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
@@ -43,6 +44,10 @@ const ACTIONS = [
  * changes the button squishes 0.85 → 1.12 → 1 (`fastSpatial`); under Reduce
  * Motion it simply changes.
  *
+ * Wave 3 (F1): the press dip and the squish are reanimated shared values set
+ * from the responder grant, so the dip shows on the next frame (one-frame
+ * head start) with no React render, and runs on the UI thread on native.
+ *
  * Every emoji is also a custom accessibility action, so a screen reader user
  * reacts with any of the six without the slide.
  */
@@ -54,17 +59,30 @@ export function ReactionButton({
     ? `Your reaction: ${REACTION_NAMES[reaction]}. Tap to remove it. ${count} reactions`
     : `React to ${noun}, ${count} reactions`;
 
-  const squish = useRef(new Animated.Value(1)).current;
-  const press = useRef(new Animated.Value(1)).current;
+  const squish = useSharedValue(1);
+  const press = useSharedValue(1);
   const firstPulse = useRef(picker.pulse);
   useEffect(() => {
     if (picker.pulse === firstPulse.current || reducedMotion) return;
-    squish.setValue(0.85);
-    Animated.sequence([
-      Animated.spring(squish, { toValue: 1.12, ...animatedSpring('fastSpatial') }),
-      Animated.spring(squish, { toValue: 1, ...animatedSpring('fastSpatial') }),
-    ]).start();
+    squish.value = 0.85;
+    squish.value = withSequence(
+      withSpring(1.12, springTo('fastSpatial')),
+      withSpring(1, springTo('fastSpatial')),
+    );
   }, [picker.pulse, reducedMotion, squish]);
+
+  const pressTo = (to: number) => {
+    if (reducedMotion) {
+      press.value = to;
+    } else if (to < 1 && press.value >= 0.999) {
+      const { start, config } = headStart(1, to);
+      press.value = start;
+      press.value = withSpring(to, config);
+    } else {
+      press.value = withSpring(to, springTo('fastSpatial'));
+    }
+  };
+  const faceStyle = useAnimatedStyle(() => ({ transform: [{ scale: squish.value * press.value }] }));
 
   const onAccessibilityAction = (e: AccessibilityActionEvent) => {
     const name = e.nativeEvent.actionName;
@@ -89,19 +107,19 @@ export function ReactionButton({
       {...a11yState({ selected: reaction !== null })}
       {...responder}
       onResponderGrant={(e) => {
-        runSpring(press, 0.96, 'fastSpatial', reducedMotion);
+        pressTo(PRESS.scale);
         responder.onResponderGrant(e);
       }}
       onResponderRelease={(e) => {
-        runSpring(press, 1, 'fastSpatial', reducedMotion);
+        pressTo(1);
         responder.onResponderRelease(e);
       }}
       onResponderTerminate={() => {
-        runSpring(press, 1, 'fastSpatial', reducedMotion);
+        pressTo(1);
         responder.onResponderTerminate();
       }}
     >
-      <Animated.View style={{ transform: [{ scale: Animated.multiply(squish, press) }] }}>
+      <Reanimated.View testID={`${testID}-face`} style={faceStyle}>
         {reaction ? (
           <View testID={`${testID}-disc`} style={s.disc}>
             <Text testID={`${testID}-emoji`} style={s.emoji} allowFontScaling={false}>{reaction}</Text>
@@ -111,7 +129,7 @@ export function ReactionButton({
             <OutlinedIcon name="happy-outline" size={RAIL_GLYPH} testID={`${testID}-glyph`} />
           </View>
         )}
-      </Animated.View>
+      </Reanimated.View>
       <OutlinedText testID={`${testID}-count`} style={s.count}>{count}</OutlinedText>
     </View>
   );
