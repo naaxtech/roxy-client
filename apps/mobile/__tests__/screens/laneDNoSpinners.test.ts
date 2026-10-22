@@ -53,6 +53,20 @@ const FILES = [
   'components/grow/QuestionOfTheDayCard.tsx',
 ];
 
+/** Lists that offer pull-to-refresh do it through C0's RoxyRefresh (web pull + tinted native control). */
+const REFRESH = [
+  'components/messages/MessagesInbox.tsx',
+  'components/profile/ProfileShell.tsx',
+  'app/tickets.tsx',
+  'app/qotd/[id].tsx',
+];
+
+it.each(REFRESH)('%s pulls to refresh through RoxyRefresh, not a bare RefreshControl', (rel) => {
+  const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  expect(src).toMatch(/<RoxyRefresh\b/);
+  expect(src).not.toMatch(/<RefreshControl\b/);
+});
+
 it.each(FILES)('%s draws no ActivityIndicator (F11)', (rel) => {
   const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
   expect(src).not.toMatch(/<ActivityIndicator\b/);

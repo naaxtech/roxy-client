@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, RefreshControl, Image,
+  View, Text, StyleSheet, FlatList, Image,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { AnswerSheet } from '../../components/grow/AnswerSheet';
-import { RoxyLoading } from '../../components/feedback';
+import { RoxyLoading, RoxyRefresh } from '../../components/feedback';
 
 interface Answer {
   id: string;
@@ -120,6 +120,8 @@ export default function QotdAnswersScreen() {
         <Text style={styles.headerTitle}>Answers</Text>
       </View>
 
+      <RoxyRefresh refreshing={refreshing} onRefresh={() => void load(true)} testID="qotd-refresh">
+        {(refreshControl) => (
       <FlatList
         data={answers}
         keyExtractor={(a) => a.id}
@@ -130,13 +132,7 @@ export default function QotdAnswersScreen() {
           </View>
         ) : null}
         ListEmptyComponent={<Text style={styles.emptyText}>No answers yet — be the first!</Text>}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => void load(true)}
-            tintColor={colors.roxy}
-          />
-        }
+        refreshControl={refreshControl}
         renderItem={({ item }) => (
           <View style={styles.answerRow}>
             <View style={styles.avatar}>
@@ -158,6 +154,8 @@ export default function QotdAnswersScreen() {
           </View>
         )}
       />
+        )}
+      </RoxyRefresh>
 
       {!userAnswered && user && question && (
         <TouchableOpacity style={styles.fab} onPress={() => setShowSheet(true)} activeOpacity={0.85}>

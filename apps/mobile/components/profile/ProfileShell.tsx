@@ -1,6 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, RefreshControl,
+  View, Text, ScrollView, StyleSheet,
   type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { RoxyRefresh } from '../feedback';
 import { isPresetAvatar, presetEmoji, presetColor } from '../../lib/avatars';
 import { TYPE, FONTS } from '../../lib/typography';
 import {
@@ -461,7 +462,7 @@ export function ProfileShell({
     );
   };
 
-  return (
+  const body = (refreshControl: ReactElement | undefined) => (
     <ScrollView
       style={s.scroll}
       contentContainerStyle={[s.scrollContent, contentBottomInset ? { paddingBottom: s.scrollContent.paddingBottom + contentBottomInset } : null]}
@@ -469,9 +470,7 @@ export function ProfileShell({
       onScroll={onScroll}
       scrollEventThrottle={scrollEventThrottle}
       testID={testID}
-      refreshControl={onRefresh ? (
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.roxy} colors={[colors.roxy]} />
-      ) : undefined}
+      refreshControl={refreshControl}
     >
       <View style={s.headerBlock} testID="profile-header">
         <View style={[s.coverWrap, { height: bandHeight }, !hasCover && s.coverFlat]} testID="profile-cover">
@@ -701,6 +700,12 @@ export function ProfileShell({
       </View>
     </ScrollView>
   );
+
+  // Pull-to-refresh is Roxy's (motion spec 3.1 row 7): the web pull with the faceless O, the
+  // tinted system control on native. Only offered when the screen passes onRefresh.
+  return onRefresh ? (
+    <RoxyRefresh refreshing={refreshing} onRefresh={onRefresh} testID="profile-refresh">{body}</RoxyRefresh>
+  ) : body(undefined);
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({

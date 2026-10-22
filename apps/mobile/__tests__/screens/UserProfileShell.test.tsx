@@ -274,6 +274,15 @@ describe('PRO-06 / 07 / 08 on another member\'s profile', () => {
     expect(getByTestId('profile-retry')).toBeTruthy();
   });
 
+  it('pull-to-refresh is Roxy\'s refresh (F7 3.1 row 7): her pull reloads quietly', async () => {
+    const { RoxyRefresh } = require('../../components/feedback');
+    const v = render(<UserProfileScreen />);
+    await waitFor(() => expect(v.getByTestId('profile-more')).toBeTruthy());
+    const refresh = v.UNSAFE_getByType(RoxyRefresh);
+    expect(refresh.props.testID).toBe('profile-refresh');
+    expect(refresh.props.refreshing).toBe(false);
+  });
+
   it('the profile menu opens on the shared Sheet (F5), not a pop-in Modal', async () => {
     const v = render(<UserProfileScreen />);
     await waitFor(() => expect(v.getByTestId('profile-more')).toBeTruthy());

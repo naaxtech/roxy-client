@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import type { ComponentProps } from 'react';
 import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import { YouMoreMenu } from '../../components/profile/YouMoreMenu';
@@ -37,6 +38,12 @@ const open = (over: Partial<ComponentProps<typeof YouMoreMenu>> = {}) => {
 };
 
 describe('You More menu — destinations live here, not on the profile', () => {
+  it('opens on the shared Sheet (F5), not a full-screen system slide', () => {
+    const { view } = open();
+    expect(view.getByTestId('you-more-menu')).toBeTruthy();
+    expect(view.getByTestId('you-more-menu-scrim', { includeHiddenElements: true })).toBeTruthy();
+  });
+
   it('groups the extra doors so the You tab can stay a profile', async () => {
     const { view } = open();
     expect(view.getByTestId('you-more-menu')).toBeTruthy();

@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import React, { Profiler } from 'react';
 import { act, render, waitFor } from '@testing-library/react-native';
 

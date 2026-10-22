@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { render, waitFor } from '@testing-library/react-native';
