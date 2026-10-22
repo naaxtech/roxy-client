@@ -1,0 +1,52 @@
+apps/mobile/__tests__/components/feed/feedPrefetch.test.ts
+  h_0549c11fec2ab0 1-50
+apps/mobile/__tests__/components/feed/feedRenderCount.test.tsx
+  h_0549c11fec2ab0 66,68,72-77,149-172
+apps/mobile/__tests__/lib/imageLoading.test.ts
+  h_0549c11fec2ab0 1-86
+apps/mobile/__tests__/lib/imageLoadingAdoption.test.ts
+  h_0549c11fec2ab0 1-82
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  h_0549c11fec2ab0 8,528
+apps/mobile/app/search.tsx
+  h_0549c11fec2ab0 9,261
+apps/mobile/components/archive/ArchiveCover.tsx
+  h_0549c11fec2ab0 4,68-69
+apps/mobile/components/discover/Crest.tsx
+  h_0549c11fec2ab0 2,46-47
+apps/mobile/components/discover/V2Cards.tsx
+  h_0549c11fec2ab0 3,256-257
+apps/mobile/components/feed/CommentThread.tsx
+  h_0549c11fec2ab0 3,5-6,117-118,121
+apps/mobile/components/feed/CommunityCrest.tsx
+  h_0549c11fec2ab0 6,83-84
+apps/mobile/components/feed/FeedCellChrome.tsx
+  h_0549c11fec2ab0 6,214-215
+apps/mobile/components/feed/FeedVideoPlayer.tsx
+  h_0549c11fec2ab0 5,167-168
+apps/mobile/components/feed/PhotoCell.tsx
+  h_0549c11fec2ab0 9,93-94
+apps/mobile/components/feed/PostMediaCarousel.tsx
+  h_0549c11fec2ab0 7,80-81
+apps/mobile/components/feed/ReelsFeed.tsx
+  h_0549c11fec2ab0 19-20,450-456,458-462,468,592-602
+apps/mobile/components/feed/ShoppableProductCard.tsx
+  h_0549c11fec2ab0 5,99
+apps/mobile/components/feed/VideoPostCard.tsx
+  h_0549c11fec2ab0 5,92-93
+apps/mobile/components/feed/feedPrefetch.ts
+  h_0549c11fec2ab0 1-41
+apps/mobile/lib/imageLoading.ts
+  h_0549c11fec2ab0 1-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0379352ec481a0cbae3d7c22e5e5dcf257efb721",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
