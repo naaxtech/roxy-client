@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/nav/FloatingTabBar.test.tsx
+  h_0549c11fec2ab0 79-80,496,498,506-537,540,544-546
+apps/mobile/components/nav/FloatingTabBar.tsx
+  h_0549c11fec2ab0 8,20,22-23,224-227,229-230,238-251,253-255,263-264,274-278,487-490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ff378012436c0e52219c0d46a044f1f424f93d1d",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
