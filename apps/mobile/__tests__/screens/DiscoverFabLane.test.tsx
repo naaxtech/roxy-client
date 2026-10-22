@@ -49,7 +49,7 @@ jest.mock('../../components/discover/useDiscoverData', () => ({
 jest.mock('../../components/grow/QuestionOfTheDayCard', () => ({ QuestionOfTheDayCard: () => null }));
 
 import DiscoverScreen from '../../app/(tabs)/discover/index';
-import { onListScroll, LIST_SCROLL_THROTTLE } from '../../lib/roxyFab';
+import { onListScroll, onListContentSizeChange, LIST_SCROLL_THROTTLE } from '../../lib/roxyFab';
 import { FAB_LANE } from '../../components/nav/navTokens';
 
 describe('Discover — Roxy AI lane hookups', () => {
@@ -59,6 +59,9 @@ describe('Discover — Roxy AI lane hookups', () => {
     const roots = v.UNSAFE_getAllByType(ScrollView).filter((n) => n.props.onScroll === onListScroll);
     expect(roots).toHaveLength(1);
     expect(roots[0].props.scrollEventThrottle).toBe(LIST_SCROLL_THROTTLE);
+    // Rails that land after she came out at the end grow the list under her
+    // with no scroll event: the size change re-judges her lane (Wave 3 lane rule).
+    expect(roots[0].props.onContentSizeChange).toBe(onListContentSizeChange);
     const content = StyleSheet.flatten(roots[0].props.contentContainerStyle) as { paddingBottom?: number };
     expect(content.paddingBottom).toBeGreaterThanOrEqual(FAB_LANE);
   });

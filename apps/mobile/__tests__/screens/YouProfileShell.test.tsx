@@ -177,7 +177,7 @@ describe('You on the unified shell', () => {
    * can always scroll clear of her lane. The root list is ProfileShell's.
    */
   it('hooks the root list to the Roxy AI tuck and ends it a lane higher', async () => {
-    const { onListScroll, LIST_SCROLL_THROTTLE } = jest.requireActual('../../lib/roxyFab') as
+    const { onListScroll, onListContentSizeChange, LIST_SCROLL_THROTTLE } = jest.requireActual('../../lib/roxyFab') as
       typeof import('../../lib/roxyFab');
     const { FAB_LANE } = jest.requireActual('../../components/nav/navTokens') as
       typeof import('../../components/nav/navTokens');
@@ -185,6 +185,8 @@ describe('You on the unified shell', () => {
     await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
     const root = getByTestId('profile-shell');
     expect(root.props.onScroll).toBe(onListScroll);
+    // Content that lands after she came out at the end re-judges her lane (Wave 3).
+    expect(root.props.onContentSizeChange).toBe(onListContentSizeChange);
     expect(root.props.scrollEventThrottle).toBe(LIST_SCROLL_THROTTLE);
     const content = StyleSheet.flatten(root.props.contentContainerStyle) as { paddingBottom?: number };
     expect(Number(content.paddingBottom)).toBeGreaterThanOrEqual(FAB_LANE);

@@ -69,7 +69,7 @@ jest.mock('../../store/safetyStore', () => ({
 }));
 
 import SettingsScreen from '../../app/(tabs)/you/settings';
-import { useRoxyFab, onListScroll, ROXY_OFF_COPY } from '../../lib/roxyFab';
+import { useRoxyFab, onListScroll, onListContentSizeChange, ROXY_OFF_COPY } from '../../lib/roxyFab';
 import { useThemeStore } from '../../store/themeStore';
 import { useRoxyChatStore } from '../../store/roxyChatStore';
 import { FAB_LANE } from '../../components/nav/navTokens';
@@ -198,6 +198,8 @@ describe('Settings — every row stays', () => {
     const v = render(<SettingsScreen />);
     const list = v.getByTestId('settings-scroll');
     expect(list.props.onScroll).toBe(onListScroll);
+    // Rows that grow after she came out at the end re-judge her lane (Wave 3).
+    expect(list.props.onContentSizeChange).toBe(onListContentSizeChange);
     const content = StyleSheet.flatten(list.props.contentContainerStyle) as { paddingBottom?: number };
     expect(content.paddingBottom).toBeGreaterThanOrEqual(FAB_LANE);
   });

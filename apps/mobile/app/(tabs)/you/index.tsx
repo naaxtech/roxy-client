@@ -42,7 +42,7 @@ import { useAccess } from '../../../hooks/useAccess';
 import { AccountStatusTag } from '../../../components/account/AccountStatusTag';
 import { TYPE } from '../../../lib/typography';
 import { isProfileTab } from '../../../components/profile/profileVariant';
-import { onListScroll, LIST_SCROLL_THROTTLE } from '../../../lib/roxyFab';
+import { onListScroll, onListContentSizeChange, LIST_SCROLL_THROTTLE } from '../../../lib/roxyFab';
 import { Skeleton, SkeletonGroup } from '../../../components/feedback';
 
 
@@ -530,6 +530,9 @@ export default function ProfileScreen() {
         // (100) already ends the list more than FAB_LANE (88) higher, so no
         // `contentBottomInset` is added on top of it.
         onScroll={onListScroll}
+        // Content that lands after she came out at the end (posts, badges)
+        // re-judges her lane (lib/roxyFab, Wave 3 lane rule).
+        onContentSizeChange={onListContentSizeChange}
         scrollEventThrottle={LIST_SCROLL_THROTTLE}
         // No `stats`. Posts / Badges / Orders was three numbers about the
         // account rather than anything a woman comes to her own profile to do,

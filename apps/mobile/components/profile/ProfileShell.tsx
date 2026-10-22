@@ -168,6 +168,8 @@ export interface ProfileShellProps {
    * (`contentBottomInset` = `FAB_LANE`) attach through these props.
    */
   onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  /** The root list's content size changes (the Roxy AI lane: `onListContentSizeChange`). */
+  onContentSizeChange?: (width: number, height: number) => void;
   scrollEventThrottle?: number;
   /** Extra space under the last item (the Roxy AI lane). */
   contentBottomInset?: number;
@@ -251,6 +253,7 @@ export function ProfileShell({
   onRefresh,
   emptyMessage,
   onScroll,
+  onContentSizeChange,
   scrollEventThrottle,
   contentBottomInset = 0,
   testID = 'profile-shell',
@@ -468,6 +471,7 @@ export function ProfileShell({
       contentContainerStyle={[s.scrollContent, contentBottomInset ? { paddingBottom: s.scrollContent.paddingBottom + contentBottomInset } : null]}
       showsVerticalScrollIndicator={false}
       onScroll={onScroll}
+      onContentSizeChange={onContentSizeChange}
       scrollEventThrottle={scrollEventThrottle}
       testID={testID}
       refreshControl={refreshControl}

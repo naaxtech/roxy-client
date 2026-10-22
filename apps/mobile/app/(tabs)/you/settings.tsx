@@ -31,7 +31,7 @@ import { useThemeStore, type ThemeChoice } from '../../../store/themeStore';
 import { useRoxyChatStore } from '../../../store/roxyChatStore';
 import { logError } from '../../../lib/errorLogger';
 import { haptic } from '../../../lib/haptics';
-import { useRoxyFab, onListScroll, LIST_SCROLL_THROTTLE, ROXY_OFF_COPY } from '../../../lib/roxyFab';
+import { useRoxyFab, onListScroll, onListContentSizeChange, LIST_SCROLL_THROTTLE, ROXY_OFF_COPY } from '../../../lib/roxyFab';
 import { FAB_LANE } from '../../../components/nav/navTokens';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { Switch } from '../../../components/ui/Switch';
@@ -182,6 +182,8 @@ export default function SettingsScreen() {
         testID="settings-scroll"
         contentContainerStyle={s.scroll}
         onScroll={onListScroll}
+        // Rows that grow after she came out at the end re-judge her lane.
+        onContentSizeChange={onListContentSizeChange}
         scrollEventThrottle={LIST_SCROLL_THROTTLE}
       >
         {/* The first group: Roxy AI and Theme. */}

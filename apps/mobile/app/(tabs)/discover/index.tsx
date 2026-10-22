@@ -13,7 +13,7 @@ import { useBuildStore } from '../../../store/buildStore';
 import { TYPE } from '../../../lib/typography';
 import { RADII, SPACE, MARGIN, type ThemeColors } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
-import { onListScroll, LIST_SCROLL_THROTTLE } from '../../../lib/roxyFab';
+import { onListScroll, onListContentSizeChange, LIST_SCROLL_THROTTLE } from '../../../lib/roxyFab';
 import { FAB_LANE } from '../../../components/nav/navTokens';
 import { formatMoney } from '../../../lib/currency';
 import { isPlayableGameUrl } from '../../../lib/gameUrl';
@@ -287,6 +287,10 @@ function DiscoverScreen() {
         // Roxy AI's lane (roxy-ai lane props): she tucks while this scrolls
         // down, and the list ends FAB_LANE higher so nothing parks under her.
         onScroll={onListScroll}
+        // Rails that land after she came out at the end (Top 10, events on a
+        // slow network) grow the list under her with no scroll event: the
+        // size change re-judges her lane (lib/roxyFab, Wave 3 lane rule).
+        onContentSizeChange={onListContentSizeChange}
         scrollEventThrottle={LIST_SCROLL_THROTTLE}
       >
         {railVisible(chip, 'events') ? (
