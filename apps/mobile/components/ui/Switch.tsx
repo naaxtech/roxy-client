@@ -10,6 +10,7 @@ import { fadeConfig, headStart, springTo } from '../../lib/motion';
 import { tapLight } from '../../lib/haptics';
 import { a11yState } from '../../lib/a11yState';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
+import { noPressDelay } from './noPressDelay';
 
 /**
  * The M3 switch, Roxy's one switch (design direction v2 › Settings).
@@ -132,6 +133,7 @@ export function Switch({
       onPress={toggle}
       onPressIn={() => pressTo(1)}
       onPressOut={() => pressTo(0)}
+      {...noPressDelay()}
       disabled={disabled}
       accessibilityRole="switch"
       accessibilityLabel={accessibilityLabel}

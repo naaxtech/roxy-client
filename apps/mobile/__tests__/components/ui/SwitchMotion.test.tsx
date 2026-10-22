@@ -9,7 +9,7 @@
  * what the UI thread would paint.
  */
 import React, { Profiler } from 'react';
-import { I18nManager, processColor } from 'react-native';
+import { I18nManager, Platform, processColor } from 'react-native';
 import { render, fireEvent, act, configure } from '@testing-library/react-native';
 import { getAnimatedStyle, setUpTests } from 'react-native-reanimated';
 
@@ -138,6 +138,19 @@ describe('Switch on the UI thread', () => {
     frames(16);
     const rest = SWITCH.thumbOn / SWITCH.thumbPressed;
     expect(part(painted(view, 'sw-thumb'), 'scale')).toBeGreaterThanOrEqual(rest + (1 - rest) * h.x - 1e-6);
+  });
+
+  // Measured on web (lane C press probe, 390x844): 113-135 ms to the first
+  // visible change, RN-web's 50 ms press delay plus its touch path.
+  it('answers on web with no press delay', () => {
+    const was = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+    try {
+      const view = render(<Switch testID="sw" value />);
+      expect(view.getByTestId('sw').props.delayPressIn).toBe(0);
+    } finally {
+      Object.defineProperty(Platform, 'OS', { value: was, configurable: true });
+    }
   });
 
   it('a disabled switch does not grow on press-in', () => {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { render, act, configure, fireEvent } from '@testing-library/react-native';
 import { setUpTests, getAnimatedStyle } from 'react-native-reanimated';
 
@@ -152,6 +153,19 @@ describe('RoxyCompanionButton — the tuck on the UI thread', () => {
 
   // F2: every pressable answers on press-in. The tucked hit area is an
   // invisible target over the O, so the O itself dips while it is held.
+  // Measured on web (lane C press probe): 130-177 ms to the dip.
+  it('the tucked target answers on web with no press delay', () => {
+    useRoxyFab.setState({ tucked: true });
+    const was = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+    try {
+      const view = render(<RoxyCompanionButton />);
+      expect(view.getByTestId('fab-tucked').props.delayPressIn).toBe(0);
+    } finally {
+      Object.defineProperty(Platform, 'OS', { value: was, configurable: true });
+    }
+  });
+
   it('the tucked O dips on press-in and springs back on release', () => {
     useRoxyFab.setState({ tucked: true });
     const { getByTestId } = render(<RoxyCompanionButton />);

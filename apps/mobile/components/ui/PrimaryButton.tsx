@@ -1,5 +1,4 @@
 import {
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -13,6 +12,7 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { LIP, RADII } from '../../lib/theme';
 import { PRESS, headStart, springTo } from '../../lib/motion';
 import { LoadingO, useWaitVisible } from '../feedback/RoxyLoading';
+import { noPressDelay } from './noPressDelay';
 import { TYPE } from '../../lib/typography';
 
 /** Face height (direction › Spacing: buttons 52). */
@@ -54,10 +54,6 @@ type Props = {
  * the button inert until it goes, so a quick save never flashes a loader.
  */
 
-/** RN-web reads `delayPressIn` (default 50 ms); native Pressable has no delay. */
-function noPressDelay(): Record<string, number> {
-  return Platform.OS === 'web' ? { delayPressIn: 0 } : {};
-}
 export function PrimaryButton({
   label,
   onPress,

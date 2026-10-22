@@ -17,6 +17,7 @@ import {
   FAB_LANE, FAB_MARGIN, FAB_SIZE, FAB_TUCKED, FAB_TUCKED_HIT, NAV_HEIGHT, NAV_MIN_BOTTOM,
 } from '../nav/navTokens';
 import { PressableScale } from './PressableScale';
+import { noPressDelay } from './noPressDelay';
 import { RoxyO } from '../roxy/RoxyO';
 import { HelloRoxySheet, type HelloRoxyOrigin } from '../roxy/HelloRoxySheet';
 import { firstNameOf } from '../roxy/roxyConversation';
@@ -204,6 +205,7 @@ export function RoxyCompanionButton({ visible = true, onStage = false }: Props) 
             testID="fab-tucked"
             onPress={openRoxy}
             onPressIn={() => pressTo(PRESS.scale)}
+            {...noPressDelay()}
             onPressOut={() => pressTo(1)}
             accessibilityRole="button"
             accessibilityLabel="Roxy AI"
