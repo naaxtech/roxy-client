@@ -1,8 +1,7 @@
 // apps/mobile/app/(tabs)/you/edit.tsx
 import { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TextInput,
-  ScrollView, ActivityIndicator,
+  View, Text, StyleSheet, TextInput, ScrollView,
 } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +26,8 @@ import { ProfilePhotoGrid } from '../../../components/profile/ProfilePhotoGrid';
 import { ProfileFavorites } from '../../../components/profile/ProfileFavorites';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import type { UserBadgeProgress, Badge } from '../../../types';
+import { RoxyLoading, Skeleton, SkeletonGroup } from '../../../components/feedback';
+import { BusySwap } from '../../../components/messages/LoadingShapes';
 
 type EarnedBadge = UserBadgeProgress & { badges: Badge | null };
 
@@ -133,7 +134,12 @@ export default function EditProfileScreen() {
   if (!user || !profile) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={colors.roxy} />
+        {/* F8: the editor's shape while her profile loads; F11: no spinner. */}
+        <SkeletonGroup testID="edit-loading" accessibilityLabel="Loading your profile" style={{ alignItems: 'center', padding: 24, gap: 14 }}>
+          <Skeleton circle={90} />
+          <Skeleton width="100%" height={48} radius={12} />
+          <Skeleton width="100%" height={96} radius={12} />
+        </SkeletonGroup>
       </SafeAreaView>
     );
   }
@@ -246,7 +252,7 @@ export default function EditProfileScreen() {
         >
           {avatarUploading ? (
             <View style={styles.avatarCircle}>
-              <ActivityIndicator color={colors.textPrimary} />
+              <RoxyLoading active size="busy" accessibilityLabel="Uploading your photo" testID="edit-avatar-uploading" />
             </View>
           ) : (
             <Avatar uri={profile.avatar_url} name={profile.display_name} size={90} testID="edit-avatar-face" />
@@ -315,7 +321,7 @@ export default function EditProfileScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Save display name"
               >
-                {nameSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.tagAddText}>Save</Text>}
+                <BusySwap busy={nameSaving} onFill label="Saving"><Text style={styles.tagAddText}>Save</Text></BusySwap>
               </TouchableOpacity>
             ) : null}
           </View>

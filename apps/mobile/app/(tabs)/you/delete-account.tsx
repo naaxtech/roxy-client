@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ActivityIndicator,
-  ScrollView,
+  View, Text, TextInput, StyleSheet, ScrollView,
 } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +13,7 @@ import { logError } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
 import { a11yState } from '../../../lib/a11yState';
 import { exportUserData, describeExportResult } from '../../../lib/dataExport';
+import { BusySwap } from '../../../components/messages/LoadingShapes';
 
 /**
  * What deleting does, in the order it happens. Only what the server actually
@@ -225,9 +221,9 @@ export default function DeleteAccountScreen() {
             accessibilityLabel="Download my data"
             {...a11yState({ disabled: exporting || loading, busy: exporting })}
           >
-            {exporting
-              ? <ActivityIndicator color={colors.roxy} />
-              : <Text style={styles.exportButtonText}>Download my data</Text>}
+            <BusySwap busy={exporting} label="Preparing your file">
+              <Text style={styles.exportButtonText}>Download my data</Text>
+            </BusySwap>
           </TouchableOpacity>
         </View>
 
@@ -264,11 +260,9 @@ export default function DeleteAccountScreen() {
           accessibilityLabel="Delete my account"
           {...a11yState({ disabled: !confirmed || loading, busy: loading })}
         >
-          {loading ? (
-            <ActivityIndicator color={inkOn(colors.error)} />
-          ) : (
+          <BusySwap busy={loading} onFill label="Deleting">
             <Text style={styles.deleteButtonText}>Delete my account</Text>
-          )}
+          </BusySwap>
         </TouchableOpacity>
 
         <Text style={styles.gentle}>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { fetchMutedProfiles } from '../../../lib/mutedProfiles';
 import { logError } from '../../../lib/errorLogger';
@@ -13,6 +13,7 @@ import { TYPE } from '../../../lib/typography';
 import { RADII } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { confirmAction, showAlert } from '../../../lib/confirm';
+import { BusySwap, RowsSkeleton } from '../../../components/messages/LoadingShapes';
 
 /**
  * Who she has blocked, and the way back.
@@ -128,9 +129,7 @@ export default function BlockedScreen() {
   const renderBody = () => {
     if (loading && blockedProfiles.length === 0) {
       return (
-        <View style={s.state} testID="blocked-loading">
-          <ActivityIndicator color={colors.roxy} />
-        </View>
+        <RowsSkeleton testID="blocked-loading" label="Loading who you blocked" rows={3} />
       );
     }
 
@@ -184,9 +183,9 @@ export default function BlockedScreen() {
                 accessibilityLabel={`Unblock ${name}`}
                 testID={`blocked-unblock-${item.id}`}
               >
-                {busy
-                  ? <ActivityIndicator color={colors.roxy} />
-                  : <Text style={s.unblockText}>Unblock</Text>}
+                <BusySwap busy={busy} label="Unblocking">
+                  <Text style={s.unblockText}>Unblock</Text>
+                </BusySwap>
               </TouchableOpacity>
             </View>
             </View>
@@ -198,7 +197,7 @@ export default function BlockedScreen() {
 
   const renderMuted = () => {
     if (muted === null) {
-      return <View style={s.state}><ActivityIndicator color={colors.roxy} /></View>;
+      return <RowsSkeleton testID="muted-loading" label="Loading who you muted" rows={2} />;
     }
     if (muted.length === 0) {
       return (
@@ -231,7 +230,7 @@ export default function BlockedScreen() {
                   accessibilityLabel={`Unmute ${name}`}
                   testID={`muted-unmute-${item.id}`}
                 >
-                  {busy ? <ActivityIndicator color={colors.roxy} /> : <Text style={s.unblockText}>Unmute</Text>}
+                  <BusySwap busy={busy} label="Unmuting"><Text style={s.unblockText}>Unmute</Text></BusySwap>
                 </TouchableOpacity>
               </View>
             </View>
