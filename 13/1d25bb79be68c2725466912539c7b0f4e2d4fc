@@ -1,0 +1,28 @@
+apps/mobile/__tests__/components/profile/ProfileShell.test.tsx
+  h_0549c11fec2ab0 83,87-88,93
+apps/mobile/__tests__/components/profile/youV2.test.tsx
+  h_0549c11fec2ab0 1-161
+apps/mobile/__tests__/components/v2VisualRegressions.test.tsx
+  h_0549c11fec2ab0 14,70-72,75-78
+apps/mobile/__tests__/screens/YouProfileShell.test.tsx
+  h_0549c11fec2ab0 126-135,147-151,153-154
+apps/mobile/app/(tabs)/you/index.tsx
+  h_0549c11fec2ab0 26-27,44,65-69,526-529,563-574
+apps/mobile/components/profile/ProfileShell.tsx
+  h_0549c11fec2ab0 3-4,11-12,15-18,22-23,163-172,193-197,203-206,252-254,273-277,303-305,326-327,329-330,339,353-354,358,361,364,369-380,399-402,466,468-469,476,478-484,487,493,501,507,515,610,615,619-623,706,712,717,720,727-730,732-734,738,761,764,767-769,776,783-784,794,796,798,811-813,815,817-819,821-823,828-830,832-833,835-838,840-841,843,845-846,848,850-851,853,855-857,859-861,877,881,883,886-890,893-894,896,898,900-902
+apps/mobile/components/profile/SelfControls.tsx
+  h_0549c11fec2ab0 1-2,6,8-9,13,21-27,29,31-35,38-42,68,77,86,90-105,118,122-123,125,131-132,135,142-157,160,164,168,170-195,202-205,207-209,211-212,214-215,217-220,222-225
+apps/mobile/components/profile/YouRows.tsx
+  h_0549c11fec2ab0 1-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "131d25bb79be68c2725466912539c7b0f4e2d4fc",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
