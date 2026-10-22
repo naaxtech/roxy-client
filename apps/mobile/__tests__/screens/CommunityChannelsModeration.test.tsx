@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import CommunityChannelsScreen from '../../app/(tabs)/discover/community/channels/[communityId]';
+// eslint-disable-next-line import/first
+import { clearChannelCache } from '../../components/channels/channelCache';
 import type { ChannelMessage } from '../../lib/channels';
 
 /**
@@ -72,6 +74,7 @@ const membership = jest.requireMock('../../lib/communityMembership');
 const { confirmAction, showAlert } = jest.requireMock('../../lib/confirm');
 
 beforeEach(() => {
+  clearChannelCache();
   jest.clearAllMocks();
   mockIsMod.value = true;
 });

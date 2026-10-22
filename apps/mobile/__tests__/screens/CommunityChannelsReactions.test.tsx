@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import CommunityChannelsScreen from '../../app/(tabs)/discover/community/channels/[communityId]';
+// eslint-disable-next-line import/first
+import { clearChannelCache } from '../../components/channels/channelCache';
 import type { ChannelMessage } from '../../lib/channels';
 
 /**
@@ -102,6 +104,7 @@ jest.mock('../../lib/channels', () => {
 });
 
 beforeEach(() => {
+  clearChannelCache();
   jest.clearAllMocks();
   mockReactionsArgs.length = 0;
   mockTypingArgs.length = 0;

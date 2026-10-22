@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';
 import CommunityChannelsScreen from '../../app/(tabs)/discover/community/channels/[communityId]';
+// eslint-disable-next-line import/first
+import { clearChannelCache } from '../../components/channels/channelCache';
 import type { Channel, ChannelMessage } from '../../lib/channels';
 
 /**
@@ -165,6 +167,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  clearChannelCache();
   (globalThis as unknown as { __pending: Pending[] }).__pending = [];
   mockPush.mockClear();
   mockSend.mockReset();
@@ -237,6 +240,62 @@ describe('switching channels', () => {
     await release(rants.id, []);
 
     expect(v.getByTestId('channel-composer-input').props.value).toBe('');
+  });
+});
+
+describe('a second visit (F7: no loader where data is known)', () => {
+  it('reopening the community paints its channels and messages in the first frame, then refreshes quietly', async () => {
+    const first = render(<CommunityChannelsScreen />);
+    await release(general.id, [msg('m1', general.id, 'said before')]);
+    await waitFor(() => expect(first.getByText('said before')).toBeTruthy());
+    first.unmount();
+
+    // react-test-renderer outside act on purpose: React 18 legacy root commits
+    // synchronously and leaves passive effects pending, so this is the frame
+    // she sees before any effect (or fetch) runs.
+    const TestRenderer = require('react-test-renderer');
+    const tree = TestRenderer.create(<CommunityChannelsScreen />);
+    const byId = (id: string) => tree.root.findAll((n: { props: Record<string, unknown> }) => n.props.testID === id).length;
+    const byText = (t: string) => tree.root.findAll((n: { props: Record<string, unknown> }) => n.props.children === t).length;
+    expect(byId('channels-loading')).toBe(0);
+    expect(byId('channel-messages-loading')).toBe(0);
+    expect(byText('said before')).toBeGreaterThan(0);
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('the quiet refresh replaces remembered rows with what the server holds now', async () => {
+    const first = render(<CommunityChannelsScreen />);
+    await release(general.id, [msg('m1', general.id, 'said before')]);
+    await waitFor(() => expect(first.getByText('said before')).toBeTruthy());
+    first.unmount();
+
+    const v = render(<CommunityChannelsScreen />);
+    expect(v.getByText('said before')).toBeTruthy();
+    expect(v.queryByTestId('channel-messages-loading')).toBeNull();
+    await release(general.id, [msg('m1', general.id, 'said before'), msg('m2', general.id, 'said since')]);
+    await waitFor(() => expect(v.getByText('said since')).toBeTruthy());
+  });
+
+  it('a message she sends before the quiet refresh lands stays on screen', async () => {
+    const first = render(<CommunityChannelsScreen />);
+    await release(general.id, [msg('m1', general.id, 'said before')]);
+    await waitFor(() => expect(first.getByText('said before')).toBeTruthy());
+    first.unmount();
+
+    const v = render(<CommunityChannelsScreen />);
+    mockSend.mockImplementation(() => new Promise(() => {}));
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'typed on the way in');
+    await act(async () => { fireEvent.press(v.getByTestId('channel-composer-send')); });
+    expect(v.getByText('typed on the way in')).toBeTruthy();
+    await release(general.id, [msg('m1', general.id, 'said before')]);
+    expect(v.getByText('typed on the way in')).toBeTruthy();
+  });
+
+  it('a channel never opened in this session still shows its loader the first time', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    await act(async () => { fireEvent.press(v.getByTestId('channel-bar-rants')); });
+    expect(v.getByTestId('channel-messages-loading')).toBeTruthy();
   });
 });
 

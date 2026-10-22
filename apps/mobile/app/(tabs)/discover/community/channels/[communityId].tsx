@@ -21,6 +21,9 @@ import {
 } from '../../../../../components/channels/pendingMessages';
 import { Snackbar } from '../../../../../components/ui/Snackbar';
 import {
+  readChannelPage, readCommunitySnapshot, writeChannelPage, writeCommunitySnapshot,
+} from '../../../../../components/channels/channelCache';
+import {
   fetchChannels, fetchChannelMessages, fetchChannelMessage, sendChannelMessage, deleteChannelMessage,
   fetchOlderChannelMessages, prependOlder, MESSAGE_PAGE,
   initialChannel, fetchMyChannelRole, writeFailureMessage, authorName, fetchLiveStage,
@@ -67,18 +70,26 @@ export default function CommunityChannelsScreen() {
   const user = useMemo(() => (userId ? { id: userId } : null), [userId]);
   const { canCommunity } = useAccess();
 
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [communitySlug, setCommunitySlug] = useState<string | null>(null);
-  const [active, setActive] = useState<Channel | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [communityName, setCommunityName] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  // F7: a community opened earlier in this session paints from memory in the
+  // first frame (channels, name, the default channel's newest page) and
+  // refreshes quietly; only a first visit shows the loader.
+  const [remembered] = useState(() => {
+    const snap = readCommunitySnapshot(userId ?? '', communityId ?? '');
+    const first = snap ? initialChannel(snap.channels) : null;
+    return { snap, first, page: first ? readChannelPage(userId ?? '', first.id) : null };
+  });
+  const [channels, setChannels] = useState<Channel[]>(() => remembered.snap?.channels ?? []);
+  const [communitySlug, setCommunitySlug] = useState<string | null>(() => remembered.snap?.communitySlug ?? null);
+  const [active, setActive] = useState<Channel | null>(() => remembered.first);
+  const [messages, setMessages] = useState<Message[]>(() => remembered.page ?? []);
+  const [communityName, setCommunityName] = useState<string>(() => remembered.snap?.communityName ?? '');
+  const [loading, setLoading] = useState(() => remembered.snap === null);
   const [loadingMessages, setLoadingMessages] = useState(false);
   // Two independent loaders get two error slots. One shared slot let a
   // successful channel-list refresh silently clear a message-load failure.
   const [error, setError] = useState<string | null>(null);
   const [messageError, setMessageError] = useState<string | null>(null);
-  const [isModerator, setIsModerator] = useState(false);
+  const [isModerator, setIsModerator] = useState(() => remembered.snap?.isModerator ?? false);
   const [menuFor, setMenuFor] = useState<Message | null>(null);
   const [stage, setStage] = useState<LiveStage | null>(null);
   const [notifyEnabled, setNotifyEnabled] = useState(false);
@@ -156,15 +167,23 @@ export default function CommunityChannelsScreen() {
         supabase.from('communities').select('name, slug').eq('id', communityId).maybeSingle(),
       ]);
       setChannels(rows);
-      setActive(initialChannel(rows));
-      setCommunityName(community.data?.name ?? '');
-      setCommunitySlug(community.data?.slug ?? null);
+      // A refresh keeps the channel she is on when it still exists (a
+      // remembered first frame may already have her in one).
+      setActive((prev) => (prev && rows.find((r) => r.id === prev.id)) ?? initialChannel(rows));
+      const name = community.data?.name ?? '';
+      const slug = community.data?.slug ?? null;
+      setCommunityName(name);
+      setCommunitySlug(slug);
       setError(null);
       // A hint for what to DRAW, never the gate. The gate is the policy, and a
       // client that decided this for itself would be the copy that drifts.
+      let mod = false;
       if (user?.id) {
-        const { isModerator: mod } = await fetchMyChannelRole(communityId, user.id);
+        mod = (await fetchMyChannelRole(communityId, user.id)).isModerator;
         setIsModerator(mod);
+      }
+      if (user?.id) {
+        writeCommunitySnapshot(user.id, communityId, { channels: rows, communityName: name, communitySlug: slug, isModerator: mod });
       }
       setStage(await fetchLiveStage(communityId));
     } catch (e) {
@@ -211,35 +230,48 @@ export default function CommunityChannelsScreen() {
       // these rows now puts one channel's messages under another's name, and a
       // reply typed against them posts to the room she is not looking at.
       if (shownChannelId.current !== channelId) return;
-      setMessages(rows);
+      if (me) writeChannelPage(me, channelId, rows, MESSAGE_PAGE);
+      setMessages((prev) => {
+        // Her own sends still in flight stay on screen across the refresh.
+        const inFlight = prev.filter((m) => isPending(m) && m.channel_id === channelId);
+        return inFlight.length ? [...rows, ...inFlight] : rows;
+      });
       setHasOlder(rows.length >= MESSAGE_PAGE);
       setOlderError(false);
       setMessageError(null);
     } catch (e) {
       logError(e, 'community_channel_messages_failed');
-      if (shownChannelId.current === channelId) setMessageError('Could not load this channel.');
+      // With remembered rows on screen a failed refresh stays quiet.
+      if (shownChannelId.current === channelId && !(me && readChannelPage(me, channelId))) {
+        setMessageError('Could not load this channel.');
+      }
     } finally {
       if (shownChannelId.current === channelId) setLoadingMessages(false);
     }
-  }, []);
+  }, [me]);
 
+  const activeId = active?.id ?? null;
   useEffect(() => {
-    if (!active) return;
+    if (!activeId) return;
     // Cleared BEFORE the fetch, never after it returns. Leaving the previous
     // channel's messages up under the new channel's name is not a race — it
     // happened on every switch, for the whole length of the fetch.
-    shownChannelId.current = active.id;
+    shownChannelId.current = activeId;
     atBottom.current = true;
-    setMessages([]);
+    // Her own memory of THIS channel (F7), or nothing: never the previous
+    // channel's rows.
+    const page = me ? readChannelPage(me, activeId) : null;
+    setMessages(page ?? []);
     setSendFailure(null);
     setMessageError(null);
-    setHasOlder(false);
+    setHasOlder(page ? page.length >= MESSAGE_PAGE : false);
     setOlderError(false);
-    void loadMessages(active.id);
+    void loadMessages(activeId);
     // Opening the channel is reading it. Clear its unread cursor so the inbox
     // badge does not count messages she has already seen.
-    void markChannelRead(active.id);
-  }, [active, loadMessages]);
+    void markChannelRead(activeId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `me` is read once per channel open; the id is the trigger.
+  }, [activeId, loadMessages]);
 
   // The page before the oldest loaded row, put ABOVE what she is reading.
   // The cursor is the oldest row she has loaded, including any she has hidden

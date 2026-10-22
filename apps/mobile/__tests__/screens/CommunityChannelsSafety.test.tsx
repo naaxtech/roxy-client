@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import CommunityChannelsScreen from '../../app/(tabs)/discover/community/channels/[communityId]';
+// eslint-disable-next-line import/first
+import { clearChannelCache } from '../../components/channels/channelCache';
 import type { ChannelMessage } from '../../lib/channels';
 
 /**
@@ -107,6 +109,7 @@ jest.mock('../../lib/channels', () => {
 const { showAlert } = jest.requireMock('../../lib/confirm');
 
 beforeEach(() => {
+  clearChannelCache();
   jest.clearAllMocks();
   // clearAllMocks keeps queued *Once values; a test that fails early must not
   // hand its leftovers to the next one.
