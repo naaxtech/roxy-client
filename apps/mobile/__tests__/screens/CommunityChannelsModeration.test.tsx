@@ -15,10 +15,18 @@ jest.mock('expo-router', () => ({
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn(), hashUserId: (s: string) => s }));
 jest.mock('../../lib/confirm', () => ({ showAlert: jest.fn(), confirmAction: jest.fn().mockResolvedValue(true) }));
-jest.mock('../../store/authStore', () => ({ useAuthStore: () => ({ user: { id: 'me' } }) }));
+jest.mock('../../store/authStore', () => ({
+  useAuthStore: (sel?: (s: object) => unknown) => {
+    const state = { user: { id: 'me' } };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
+}));
 jest.mock('../../hooks/useAccess', () => ({ useAccess: () => ({ canCommunity: () => true }) }));
 jest.mock('../../store/safetyStore', () => ({
-  useSafetyStore: () => ({ blockedUserIds: [], mutedUserIds: [], blockUser: jest.fn(), openReportModal: jest.fn() }),
+  useSafetyStore: (sel?: (s: object) => unknown) => {
+    const state = { blockedUserIds: [], mutedUserIds: [], blockUser: jest.fn(), openReportModal: jest.fn() };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
 }));
 jest.mock('../../lib/supabase', () => ({
   supabase: {

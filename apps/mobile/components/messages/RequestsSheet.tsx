@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Modal, View, Text, StyleSheet, Pressable, ScrollView,
 } from 'react-native';
@@ -48,7 +48,8 @@ type Segment = 'messages' | 'friends';
  */
 export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
   const colors = useThemeColors();
-  const s = styles(colors);
+  // Built once per theme, not on every render (jank audit #8).
+  const s = useMemo(() => styles(colors), [colors]);
 
   const pendingReceived = useFriendStore((st) => st.pendingReceived);
   const acceptRequest = useFriendStore((st) => st.acceptRequest);
@@ -57,19 +58,19 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
   const refresh = useConnectStore((st) => st.refresh);
   const blockUser = useSafetyStore((st) => st.blockUser);
   const openReportModal = useSafetyStore((st) => st.openReportModal);
-  const { user } = useAuthStore();
+  const userId = useAuthStore((st) => st.user?.id ?? null);
   const fetchJoined = useCommunityStore((st) => st.fetchJoined);
 
   // CHAT-09: invites to private communities wait here with friend requests.
   const [invites, setInvites] = useState<CommunityInvite[]>([]);
   useEffect(() => {
-    if (!visible || !user?.id) return undefined;
+    if (!visible || !userId) return undefined;
     let cancelled = false;
-    fetchMyCommunityInvites(user.id)
+    fetchMyCommunityInvites(userId)
       .then((rows) => { if (!cancelled) setInvites(rows); })
       .catch((e) => logError(e, 'RequestsSheet.invites'));
     return () => { cancelled = true; };
-  }, [visible, user?.id]);
+  }, [visible, userId]);
   const friendCount = pendingReceived.length + invites.length;
 
   const [segment, setSegment] = useState<Segment>(
@@ -99,7 +100,7 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
       await respondCommunityInvite(inv.community_id, accept);
       setInvites((prev) => prev.filter((x) => x.community_id !== inv.community_id));
       // No haptic: answering a request is not on the haptic map (motion spec §3.3).
-      if (accept && user?.id) await fetchJoined(user.id);
+      if (accept && userId) await fetchJoined(userId);
     } catch (e) {
       setFailure({
         message: e instanceof Error && e.message ? e.message : 'Could not answer that just now.',

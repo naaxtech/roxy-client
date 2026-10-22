@@ -61,7 +61,9 @@ export default function CommunityChannelsScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { communityId } = useLocalSearchParams<{ communityId: string }>();
-  const { user } = useAuthStore();
+  // Selectors, not whole stores (jank audit #9). Only the id is read.
+  const userId = useAuthStore((st) => st.user?.id ?? null);
+  const user = useMemo(() => (userId ? { id: userId } : null), [userId]);
   const { canCommunity } = useAccess();
 
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -98,7 +100,10 @@ export default function CommunityChannelsScreen() {
   // yesterday down to the newest message every time anyone posts is hostile.
   const atBottom = useRef(true);
 
-  const { blockUser, openReportModal, blockedUserIds, mutedUserIds } = useSafetyStore();
+  const blockUser = useSafetyStore((st) => st.blockUser);
+  const openReportModal = useSafetyStore((st) => st.openReportModal);
+  const blockedUserIds = useSafetyStore((st) => st.blockedUserIds);
+  const mutedUserIds = useSafetyStore((st) => st.mutedUserIds);
   // CHAT-10: block and mute reach channels. RLS (migration 132) already hides
   // block-paired senders both ways; this hides her at once after she taps
   // Block, before any refetch, and keeps muted senders out of her view.
@@ -429,7 +434,8 @@ export default function CommunityChannelsScreen() {
     return actions;
   }, [user?.id, isModerator, removeMessage, openReportModal, blockUser, roles, communityId]);
 
-  const s = StyleSheet.create({
+  // Built once per theme, not on every render (jank audit #8).
+  const s = useMemo(() => StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
     header: {
       flexDirection: 'row',
@@ -472,7 +478,7 @@ export default function CommunityChannelsScreen() {
     startOf: { ...TYPE.micro, color: colors.textMuted, textAlign: 'center', paddingVertical: 8 },
     snackAnchor: { height: 0, zIndex: 1 },
     flex: { flex: 1 },
-  });
+  }), [colors]);
 
   if (!loading && communitySlug && !canCommunity(communitySlug)) {
     return (

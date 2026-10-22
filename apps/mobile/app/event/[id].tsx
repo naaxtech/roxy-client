@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Animated, Linking, Platform, Share,
 } from 'react-native';
@@ -102,7 +102,9 @@ export default function EventDetailScreen() {
   const reduced = useReducedMotion();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { user } = useAuthStore();
+  // Selectors, not the whole store (jank audit #9). Only the id is read.
+  const userId = useAuthStore((st) => st.user?.id ?? null);
+  const user = useMemo(() => (userId ? { id: userId } : null), [userId]);
 
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -319,7 +321,8 @@ export default function EventDetailScreen() {
     void Share.share({ message: `Come with me? ${url}`, url }).catch(() => { /* dismissed */ });
   };
 
-  const s = StyleSheet.create({
+  // Built once per theme, not on every render (jank audit #8).
+  const s = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.ground },
     topBar: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -368,7 +371,7 @@ export default function EventDetailScreen() {
     skeletonLine: { height: 16, borderRadius: RADII.sm, backgroundColor: colors.raised },
     notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 },
     notFoundText: { ...TYPE.body, color: colors.ink2, textAlign: 'center' },
-  });
+  }), [colors]);
 
   const backButton = (
     <PressableScale

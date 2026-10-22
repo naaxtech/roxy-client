@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl,
   type NativeScrollEvent, type NativeSyntheticEvent,
@@ -255,7 +255,8 @@ export function ProfileShell({
   testID = 'profile-shell',
 }: ProfileShellProps) {
   const colors = useThemeColors();
-  const s = styles(colors);
+  // Built once per theme, not on every render (jank audit #8).
+  const s = useMemo(() => styles(colors), [colors]);
 
   const tabs = visibleTabs(variant, populated);
   const [bioExpanded, setBioExpanded] = useState(false);

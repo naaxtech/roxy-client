@@ -39,7 +39,12 @@ jest.mock('../../../store/safetyStore', () => ({
 }));
 jest.mock('../../../lib/confirm', () => ({ confirmAction: jest.fn().mockResolvedValue(true), showAlert: jest.fn() }));
 // Community invites (CHAT-09) share the Friends tab; none here.
-jest.mock('../../../store/authStore', () => ({ useAuthStore: () => ({ user: { id: 'me' } }) }));
+jest.mock('../../../store/authStore', () => ({
+  useAuthStore: (sel?: (s: object) => unknown) => {
+    const state = { user: { id: 'me' } };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
+}));
 jest.mock('../../../store/communityStore', () => ({
   useCommunityStore: (sel: (s: any) => unknown) => sel({ fetchJoined: jest.fn() }),
 }));

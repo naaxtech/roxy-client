@@ -17,7 +17,12 @@ jest.mock('expo-router', () => ({
 jest.mock('@react-navigation/native', () => ({ useFocusEffect: jest.fn() }));
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('react-native-safe-area-context', () => ({ SafeAreaView: ({ children }: { children: React.ReactNode }) => children }));
-jest.mock('../../store/authStore', () => ({ useAuthStore: () => ({ user: { id: 'u1' } }) }));
+jest.mock('../../store/authStore', () => ({
+  useAuthStore: (sel?: (s: object) => unknown) => {
+    const state = { user: { id: 'u1' } };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
+}));
 jest.mock('../../store/connectStore', () => {
   const state = { threads: [], requests: [], loaded: true, loading: false, refresh: jest.fn() };
   return { useConnectStore: (sel: (s: typeof state) => unknown) => sel(state) };

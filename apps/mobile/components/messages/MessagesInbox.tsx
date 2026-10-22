@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { SectionList, View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
@@ -102,7 +102,8 @@ export function MessagesInbox({
   footer,
 }: Props) {
   const colors = useThemeColors();
-  const s = styles(colors);
+  // Built once per theme, not on every render (jank audit #8).
+  const s = useMemo(() => styles(colors), [colors]);
 
   const sections: InboxSection[] = [
     { key: 'direct', data: chats },

@@ -35,13 +35,19 @@ jest.mock('../../hooks/useTyping', () => ({
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn(), hashUserId: (s: string) => s }));
 
 jest.mock('../../store/authStore', () => ({
-  useAuthStore: () => ({ user: { id: 'me' } }),
+  useAuthStore: (sel?: (s: object) => unknown) => {
+    const state = { user: { id: 'me' } };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
 }));
 
 const mockOpenReport = jest.fn();
 const mockBlock = jest.fn();
 jest.mock('../../store/safetyStore', () => ({
-  useSafetyStore: () => ({ openReportModal: mockOpenReport, blockUser: mockBlock }),
+  useSafetyStore: (sel?: (s: object) => unknown) => {
+    const state = { openReportModal: mockOpenReport, blockUser: mockBlock };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
 }));
 
 jest.mock('../../lib/supabase', () => ({

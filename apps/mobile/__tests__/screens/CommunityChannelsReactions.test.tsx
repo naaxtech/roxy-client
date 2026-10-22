@@ -19,7 +19,12 @@ jest.mock('rn-emoji-keyboard', () => 'EmojiKeyboard');
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn(), hashUserId: (s: string) => s }));
 jest.mock('../../lib/confirm', () => ({ showAlert: jest.fn(), confirmAction: jest.fn() }));
 jest.mock('../../lib/haptics', () => ({ haptic: jest.fn() }));
-jest.mock('../../store/authStore', () => ({ useAuthStore: () => ({ user: { id: 'me' } }) }));
+jest.mock('../../store/authStore', () => ({
+  useAuthStore: (sel?: (s: object) => unknown) => {
+    const state = { user: { id: 'me' } };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
+}));
 jest.mock('../../store/profileStore', () => ({
   useProfileStore: (sel: (s: unknown) => unknown) => sel({ profile: { id: 'me', display_name: 'Jo', username: 'jo' } }),
 }));

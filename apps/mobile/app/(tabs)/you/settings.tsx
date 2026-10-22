@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, ActivityIndicator,
 } from 'react-native';
@@ -73,8 +73,13 @@ const THEME_CHOICES: { key: ThemeChoice; label: string }[] = [
  * preview picker is extra chrome that only core sees.
  */
 export default function SettingsScreen() {
-  const { user } = useAuthStore();
-  const { profile, updateProfile } = useProfileStore();
+  // Selectors, never whole stores (jank audit #9): only the id and email
+  // are read, so a token refresh no longer re-renders Settings.
+  const userId = useAuthStore((st) => st.user?.id ?? null);
+  const userEmail = useAuthStore((st) => st.user?.email ?? null);
+  const user = useMemo(() => (userId ? { id: userId, email: userEmail } : null), [userId, userEmail]);
+  const profile = useProfileStore((st) => st.profile);
+  const updateProfile = useProfileStore((st) => st.updateProfile);
   const { isBeta, isCore } = useAccess();
   const router = useRouter();
   const colors = useThemeColors();
@@ -91,7 +96,8 @@ export default function SettingsScreen() {
   const roxyChatCount = useRoxyChatStore((s) => s.messages.length);
   const themeChoice = useThemeStore((s) => s.choice);
   const setTheme = useThemeStore((s) => s.setTheme);
-  const s = styles(colors);
+  // Built once per theme, not on every render (jank audit #8).
+  const s = useMemo(() => styles(colors), [colors]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (user?.id) void loadChatSettings(); }, [user?.id]);

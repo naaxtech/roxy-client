@@ -1,5 +1,5 @@
 // apps/mobile/app/(tabs)/you/index.tsx
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, ActivityIndicator, View, Text } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -49,11 +49,17 @@ import { onListScroll, LIST_SCROLL_THROTTLE } from '../../../lib/roxyFab';
 const PROFILE_STALL_MS = 8_000;
 
 export default function ProfileScreen() {
-  const { user } = useAuthStore();
-  const { profile } = useProfileStore();
+  // Selectors, never whole stores (jank audit #9): Discover's loadBusinesses,
+  // a token refresh or a cart change used to re-render this hidden tab inside
+  // the network callback. Only `user.id` is read, so `user` is rebuilt from it.
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const user = useMemo(() => (userId ? { id: userId } : null), [userId]);
+  const profile = useProfileStore((s) => s.profile);
   const { isBeta, kind } = useAccess();
-  const { bookmarkedBusinessIds, loadBookmarks } = useBuildStore();
-  const { orders, fetchOrders } = useMarketplaceStore();
+  const bookmarkedBusinessIds = useBuildStore((s) => s.bookmarkedBusinessIds);
+  const loadBookmarks = useBuildStore((s) => s.loadBookmarks);
+  const walletCount = useMarketplaceStore((s) => s.orders.length);
+  const fetchOrders = useMarketplaceStore((s) => s.fetchOrders);
   const router = useRouter();
   const colors = useThemeColors();
   // A post-checkout "View My Orders" link arrives with ?orders=1 so the orders
@@ -227,7 +233,8 @@ export default function ProfileScreen() {
     router.push(`/business/${biz.id}` as any);
   };
 
-  const styles = StyleSheet.create({
+  // Built once per theme, not on every render (jank audit #8).
+  const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     reelsBar: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -296,7 +303,7 @@ export default function ProfileScreen() {
       backgroundColor: colors.surface,
     },
     viewToggleBtnActive: { backgroundColor: colors.roxy },
-  });
+  }), [colors]);
 
   if (!user || !profile) {
     return (
@@ -575,7 +582,7 @@ export default function ProfileScreen() {
               <SelfControls userId={user.id} onOpenDaily={() => setMiniWinsOpen(true)} />
               <YouRows
                 userId={user.id}
-                walletCount={orders.length}
+                walletCount={walletCount}
                 savedCount={(watchlist ?? []).length + savedBusinesses.length}
                 onOpenSaved={() => setShellTab('saved')}
               />
@@ -604,7 +611,7 @@ export default function ProfileScreen() {
         visible={moreOpen}
         onClose={() => setMoreOpen(false)}
         userId={user.id}
-        walletCount={orders.length}
+        walletCount={walletCount}
         savedCount={(watchlist ?? []).length + savedBusinesses.length}
         onOpenSaved={() => setShellTab('saved')}
       />
