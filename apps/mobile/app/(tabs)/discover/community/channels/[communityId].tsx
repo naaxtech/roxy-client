@@ -17,13 +17,17 @@ import { ChannelMessage } from '../../../../../components/channels/ChannelMessag
 import { ChannelComposer } from '../../../../../components/channels/ChannelComposer';
 import { ChannelMessageActions, type ChannelAction } from '../../../../../components/channels/ChannelMessageActions';
 import {
+  absorbEcho, dropPending, isPending, pendingMessage, settlePending,
+} from '../../../../../components/channels/pendingMessages';
+import { Snackbar } from '../../../../../components/ui/Snackbar';
+import {
   fetchChannels, fetchChannelMessages, fetchChannelMessage, sendChannelMessage, deleteChannelMessage,
   fetchOlderChannelMessages, prependOlder, MESSAGE_PAGE,
   initialChannel, fetchMyChannelRole, writeFailureMessage, authorName, fetchLiveStage,
   markChannelRead, setChannelNotifications, fetchChannelNotifications,
   hideSilenced, mergeChannelMessage,
   type LiveStage,
-  type Channel, type ChannelMessage as Message,
+  type Channel, type ChannelAuthor, type ChannelMessage as Message,
 } from '../../../../../lib/channels';
 import { useSafetyStore } from '../../../../../store/safetyStore';
 import { useProfileStore } from '../../../../../store/profileStore';
@@ -107,6 +111,11 @@ export default function CommunityChannelsScreen() {
   // (chan:<id>:reactions / :typing; migration 132 admits members only).
   const me = user?.id ?? '';
   const selfName = useProfileStore((st) => st.profile?.display_name ?? st.profile?.username ?? undefined);
+  const selfAvatar = useProfileStore((st) => st.profile?.avatar_url ?? null);
+  const selfUsername = useProfileStore((st) => st.profile?.username ?? null);
+  // F10: a send that failed. The provisional message is already gone again;
+  // this says why and offers Retry (the composer has her words back).
+  const [sendFailure, setSendFailure] = useState<{ message: string; retry: () => void } | null>(null);
   const messageIds = useMemo(() => visible.map((m) => m.id), [visible]);
   const { reactionsMap, addReaction, removeReaction } = useReactions({
     conversationId: active?.id ?? '', scope: 'channel', messageIds,
@@ -215,6 +224,7 @@ export default function CommunityChannelsScreen() {
     shownChannelId.current = active.id;
     atBottom.current = true;
     setMessages([]);
+    setSendFailure(null);
     setMessageError(null);
     setHasOlder(false);
     setOlderError(false);
@@ -269,7 +279,7 @@ export default function CommunityChannelsScreen() {
       try {
         const row = await fetchChannelMessage(id);
         if (!row || shownChannelId.current !== channelId) return;
-        setMessages((prev) => mergeChannelMessage(prev, row));
+        setMessages((prev) => mergeChannelMessage(absorbEcho(prev, row), row));
       } catch (e) {
         logError(e, 'community_channel_message_fetch_failed');
         // One row failed: fall back to the page rather than lose the message.
@@ -302,16 +312,29 @@ export default function CommunityChannelsScreen() {
   const handleSend = useCallback(async (body: string) => {
     if (!active || !user?.id) return;
     const target = active.id;
-    const saved = await sendChannelMessage(target, user.id, body);
-    // Only if she is still in the channel she sent to. Appending unconditionally
-    // drew a #general message into #rants, where she read it as posted there
-    // until the next refetch quietly took it away again.
-    if (shownChannelId.current !== target) return;
-    // Appended from the RETURNED row, which is the only proof it exists.
-    setMessages((prev) => (prev.some((m) => m.id === saved.id) ? prev : [...prev, saved]));
+    const author: ChannelAuthor = {
+      id: user.id, username: selfUsername, display_name: selfName ?? null, avatar_url: selfAvatar,
+    };
+    // F10: drawn in the same frame as Send, as a provisional row. The
+    // RETURNED row replaces it (the only proof it exists); a refusal takes it
+    // back out and the composer hands the reason to the snackbar.
+    const provisional = pendingMessage(target, user.id, body, author);
+    setSendFailure(null);
+    setMessages((prev) => [...prev, provisional]);
     atBottom.current = true;
     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
-  }, [active, user?.id]);
+    try {
+      const saved = await sendChannelMessage(target, user.id, body);
+      // Only if she is still in the channel she sent to. Appending
+      // unconditionally drew a #general message into #rants, where she read it
+      // as posted there until the next refetch quietly took it away again.
+      if (shownChannelId.current !== target) return;
+      setMessages((prev) => settlePending(prev, provisional.id, saved));
+    } catch (e) {
+      setMessages((prev) => dropPending(prev, provisional.id));
+      throw e;
+    }
+  }, [active, user?.id, selfName, selfUsername, selfAvatar]);
 
   const removeMessage = useCallback(async (message: Message) => {
     try {
@@ -447,6 +470,7 @@ export default function CommunityChannelsScreen() {
     reactHit: { minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center' },
     reactEmoji: { fontSize: 24 },
     startOf: { ...TYPE.micro, color: colors.textMuted, textAlign: 'center', paddingVertical: 8 },
+    snackAnchor: { height: 0, zIndex: 1 },
   });
 
   if (!loading && communitySlug && !canCommunity(communitySlug)) {
@@ -544,7 +568,9 @@ export default function CommunityChannelsScreen() {
           <ChannelMessage
             message={item}
             onPressAuthor={(id) => router.push(`/user/${id}` as never)}
-            onLongPress={(m) => setMenuFor(m)}
+            // A provisional message does not exist yet: nothing to report,
+            // remove or react to until the server has it.
+            onLongPress={isPending(item) ? undefined : (m) => setMenuFor(m)}
             onOpenCard={(path) => router.push(path as never)}
             footer={(reactionsMap[item.id]?.length ?? 0) > 0 ? (
               <ReactionChips
@@ -658,6 +684,18 @@ export default function CommunityChannelsScreen() {
       >
         {body()}
         <TypingIndicator partnerName="" visible={typingNames.length > 0} label={typingLabel(typingNames)} />
+        {/* A zero-height anchor: the snackbar rises from the composer's top
+            edge, never over the words she just got back. */}
+        <View style={s.snackAnchor} pointerEvents="box-none">
+          <Snackbar
+            visible={sendFailure !== null}
+            message={sendFailure?.message ?? ''}
+            actionLabel="Retry"
+            onAction={() => sendFailure?.retry()}
+            onDismiss={() => setSendFailure(null)}
+            testID="channel-send-snackbar"
+          />
+        </View>
         {active ? (
           <ChannelComposer
             // Keyed per channel. Without it an unsent draft — and a failed-send
@@ -665,6 +703,7 @@ export default function CommunityChannelsScreen() {
             key={active.id}
             placeholder={`Message # ${active.slug}`}
             onSend={handleSend}
+            onSendFailed={(message, retry) => setSendFailure({ message, retry })}
             onTyping={sendTyping}
             onStopTyping={stopTyping}
             disabled={!user?.id}

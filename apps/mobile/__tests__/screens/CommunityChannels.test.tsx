@@ -234,6 +234,67 @@ describe('switching channels', () => {
   });
 });
 
+describe('sending is optimistic (F10)', () => {
+  it('her message is in the channel the moment she sends it, before the insert answers', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    mockSend.mockImplementation(() => new Promise(() => undefined));
+
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'on my way');
+    act(() => { fireEvent.press(v.getByTestId('channel-composer-send')); });
+
+    expect(v.getByText('on my way')).toBeTruthy();
+    expect(v.getByTestId('channel-composer-input').props.value).toBe('');
+    expect(mockSend).toHaveBeenCalledWith(general.id, 'me', 'on my way');
+  });
+
+  it('the saved row replaces the provisional one: one copy, the server id', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    let settle: ((m: ChannelMessage) => void) | undefined;
+    mockSend.mockImplementation(() => new Promise((r) => { settle = r; }));
+
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'on my way');
+    act(() => { fireEvent.press(v.getByTestId('channel-composer-send')); });
+    await act(async () => { settle?.({ ...msg('m-saved', general.id, 'on my way'), sender_id: 'me' }); });
+
+    expect(v.getAllByText('on my way')).toHaveLength(1);
+    expect(v.getByTestId('channel-message-m-saved')).toBeTruthy();
+  });
+
+  it('a refused send takes the message back and offers Retry in a snackbar', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    mockSend.mockRejectedValueOnce(Object.assign(new Error('policy text'), { code: '42501' }));
+
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'on my way');
+    await act(async () => { fireEvent.press(v.getByTestId('channel-composer-send')); });
+
+    expect(v.queryByText('on my way')).toBeNull();
+    expect(v.getByTestId('channel-send-snackbar')).toBeTruthy();
+    expect(v.getByText('You do not have permission to do that here.')).toBeTruthy();
+    expect(v.queryByText(/policy text/)).toBeNull();
+    // Her words are back in the box.
+    expect(v.getByTestId('channel-composer-input').props.value).toBe('on my way');
+
+    mockSend.mockImplementation(() => new Promise(() => undefined));
+    act(() => { fireEvent.press(v.getByTestId('channel-send-snackbar-action')); });
+    expect(mockSend).toHaveBeenCalledTimes(2);
+    expect(v.getByText('on my way')).toBeTruthy();
+  });
+
+  it('a provisional message offers no safety menu until it exists', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    mockSend.mockImplementation(() => new Promise(() => undefined));
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'on my way');
+    act(() => { fireEvent.press(v.getByTestId('channel-composer-send')); });
+    const pending = v.getAllByTestId(/^channel-message-pending:/)[0];
+    fireEvent(pending, 'longPress');
+    expect(v.queryByText('Delete my message')).toBeNull();
+  });
+});
+
 describe('the safety menu', () => {
   const hers = { ...msg('m1', general.id, 'her words'), sender_id: 'someone-else' };
 
