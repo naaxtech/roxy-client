@@ -1,0 +1,252 @@
+apps/mobile/__tests__/MessagesNew.test.tsx
+  h_0549c11fec2ab0 90-114
+apps/mobile/__tests__/components/BadgeCelebration.test.tsx
+  h_0549c11fec2ab0 2-3,6-19,25,27-28,30-32,35-37,40,42-44,47,50-51,55-63
+apps/mobile/__tests__/components/ProfileFavorites.test.tsx
+  h_0549c11fec2ab0 38-43
+apps/mobile/__tests__/components/ProfilePhotoGrid.test.tsx
+  h_0549c11fec2ab0 74-79
+apps/mobile/__tests__/components/ReportSheet.test.tsx
+  h_0549c11fec2ab0 1,47-55
+apps/mobile/__tests__/components/YouMoreMenu.test.tsx
+  h_0549c11fec2ab0 1,41-46
+apps/mobile/__tests__/components/channels/ChannelPieces.test.tsx
+  h_0549c11fec2ab0 2,162-164,172-176,188-219
+apps/mobile/__tests__/components/channels/channelCache.test.ts
+  h_0549c11fec2ab0 1-39
+apps/mobile/__tests__/components/channels/pendingMessages.test.ts
+  h_0549c11fec2ab0 1-50
+apps/mobile/__tests__/components/chat/ActionTray.test.tsx
+  h_0549c11fec2ab0 2,53-62,65-72
+apps/mobile/__tests__/components/chat/GifPicker.test.tsx
+  h_0549c11fec2ab0 1,63-76
+apps/mobile/__tests__/components/chat/KeyboardTrackingView.test.tsx
+  h_0549c11fec2ab0 1-113
+apps/mobile/__tests__/components/chat/MessageActionSheet.test.tsx
+  h_0549c11fec2ab0 1,39-47,98-105
+apps/mobile/__tests__/components/chat/MessageRowSwipe.test.tsx
+  h_0549c11fec2ab0 1-142
+apps/mobile/__tests__/components/chat/TypingIndicatorMotion.test.tsx
+  h_0549c11fec2ab0 1-61
+apps/mobile/__tests__/components/chat/threadCache.test.ts
+  h_0549c11fec2ab0 1-56
+apps/mobile/__tests__/components/grow/QuestionOfTheDayCard.test.tsx
+  h_0549c11fec2ab0 2,22-25,56-74
+apps/mobile/__tests__/components/messages/LoadingShapes.test.tsx
+  h_0549c11fec2ab0 1-84
+apps/mobile/__tests__/components/messages/MessagesInbox.test.tsx
+  h_0549c11fec2ab0 3,8,90-91,95-107
+apps/mobile/__tests__/components/messages/OfficialChatInbox.test.tsx
+  h_0549c11fec2ab0 30-37
+apps/mobile/__tests__/components/messages/RequestsSheet.test.tsx
+  h_0549c11fec2ab0 1,8,43-48,77-85,148-196
+apps/mobile/__tests__/components/messages/RequestsSheetInvites.test.tsx
+  h_0549c11fec2ab0 1,27-32
+apps/mobile/__tests__/components/profile/InlineReplies.test.tsx
+  h_0549c11fec2ab0 1-92
+apps/mobile/__tests__/components/profile/ProfilePostsGrid.test.tsx
+  h_0549c11fec2ab0 42-47
+apps/mobile/__tests__/components/profile/ProfileThoughts.test.tsx
+  h_0549c11fec2ab0 90-95
+apps/mobile/__tests__/screens/AuthWelcome.test.tsx
+  h_0549c11fec2ab0 8,29-31,40-58
+apps/mobile/__tests__/screens/BlockedList.test.tsx
+  h_0549c11fec2ab0 53-61
+apps/mobile/__tests__/screens/ChatThread.test.tsx
+  h_0549c11fec2ab0 1,3-4,152-153,175,193-261,364-371
+apps/mobile/__tests__/screens/CommunityChannels.test.tsx
+  h_0549c11fec2ab0 1,3,5-6,41-44,50-53,171,247-391,395-403
+apps/mobile/__tests__/screens/CommunityChannelsModeration.test.tsx
+  h_0549c11fec2ab0 1,5-6,21-26,29-32,78
+apps/mobile/__tests__/screens/CommunityChannelsPaging.test.tsx
+  h_0549c11fec2ab0 1,5-6,24-29,87
+apps/mobile/__tests__/screens/CommunityChannelsReactions.test.tsx
+  h_0549c11fec2ab0 1,5-6,25-30,108,149-160
+apps/mobile/__tests__/screens/CommunityChannelsSafety.test.tsx
+  h_0549c11fec2ab0 1,5-6,25-30,113
+apps/mobile/__tests__/screens/EditProfile.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/EventPoster.test.tsx
+  h_0549c11fec2ab0 47-50,64-65,67-68,77-78,86,90-91,105-168,256,262-335
+apps/mobile/__tests__/screens/GroupInfo.test.tsx
+  h_0549c11fec2ab0 1,148-169,219-226
+apps/mobile/__tests__/screens/MessagesRequestsLink.test.tsx
+  h_0549c11fec2ab0 1,21-26
+apps/mobile/__tests__/screens/MessagesScreenV2.test.tsx
+  h_0549c11fec2ab0 1,3-4,26-30,79-90
+apps/mobile/__tests__/screens/NotificationSettings.test.tsx
+  h_0549c11fec2ab0 44-50
+apps/mobile/__tests__/screens/SettingsChat.test.tsx
+  h_0549c11fec2ab0 3-4,36-42,45-51,71-77
+apps/mobile/__tests__/screens/SpeedDateResult.test.tsx
+  h_0549c11fec2ab0 1,3,20-22,45-69
+apps/mobile/__tests__/screens/SupportFeel.test.tsx
+  h_0549c11fec2ab0 1-57
+apps/mobile/__tests__/screens/UserProfileOptimistic.test.tsx
+  h_0549c11fec2ab0 1-144
+apps/mobile/__tests__/screens/UserProfileShell.test.tsx
+  h_0549c11fec2ab0 1,277-293,312-313,319-321
+apps/mobile/__tests__/screens/YouProfileShell.test.tsx
+  h_0549c11fec2ab0 1,115-123
+apps/mobile/__tests__/screens/YouTabRenders.test.tsx
+  h_0549c11fec2ab0 1-106
+apps/mobile/__tests__/screens/YouTabStalled.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/laneDNoSpinners.test.ts
+  h_0549c11fec2ab0 1-73
+apps/mobile/__tests__/store/authStore.test.ts
+  h_0549c11fec2ab0 3-37
+apps/mobile/__tests__/store/friendStoreOptimistic.test.ts
+  h_0549c11fec2ab0 1-183
+apps/mobile/app/(auth)/application.tsx
+  h_0549c11fec2ab0 3,20-21,233,310-312,385-387,446-448
+apps/mobile/app/(auth)/pending.tsx
+  h_0549c11fec2ab0 3,21-22,174,261-263
+apps/mobile/app/(auth)/reset-password.tsx
+  h_0549c11fec2ab0 3,24-25,386,533,535
+apps/mobile/app/(auth)/welcome.tsx
+  h_0549c11fec2ab0 3,18-19,25,60-62,64-65,326,331,343,348
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  h_0549c11fec2ab0 3,5,19-26,34,42,69-71,74-87,89-91,96,119-122,135-139,150-151,174-180,184,186,189-191,237-243,249-252,256,258,260,264,266-271,273,275,278-280,327,360-368,371-382,477-478,519-521,534-535,543,550,576,583,588,590,615-618,646,655,659-660,678,686,696,709,724-725,728-739,747,754,764,772,774,781
+apps/mobile/app/(tabs)/messages/index.tsx
+  h_0549c11fec2ab0 61-63,73-74,92-93,96,98-100,141-142,152,154,166,170-171,175,177-180,187-188
+apps/mobile/app/(tabs)/messages/new.tsx
+  h_0549c11fec2ab0 3,23,72,217-219,274,293-295
+apps/mobile/app/(tabs)/you/[userId].tsx
+  h_0549c11fec2ab0 2,32,37-38,87-93,125-128,293-300,302-305,312,314-317,384,387,393,399-402,681-682,740-749,808
+apps/mobile/app/(tabs)/you/blocked.tsx
+  h_0549c11fec2ab0 2,16,132,186-188,200,233
+apps/mobile/app/(tabs)/you/delete-account.tsx
+  h_0549c11fec2ab0 3,16,224-226,263,265
+apps/mobile/app/(tabs)/you/edit.tsx
+  h_0549c11fec2ab0 4,29-30,137-142,255,324
+apps/mobile/app/(tabs)/you/feedback.tsx
+  h_0549c11fec2ab0 3,13-14,177-180,260-262,269-272,354-359
+apps/mobile/app/(tabs)/you/index.tsx
+  h_0549c11fec2ab0 2-3,46,53-58,60-63,237-238,307-309,334-340,594,623
+apps/mobile/app/(tabs)/you/notification-settings.tsx
+  h_0549c11fec2ab0 1,3,23,55-56,132-135,244-245
+apps/mobile/app/(tabs)/you/settings.tsx
+  h_0549c11fec2ab0 1,3,41-42,78-84,101-102,110-113,505-507,563-564
+apps/mobile/app/badges.tsx
+  h_0549c11fec2ab0 2,13,170
+apps/mobile/app/business/[id].tsx
+  h_0549c11fec2ab0 3,27,336,382,427
+apps/mobile/app/chat/[id].tsx
+  h_0549c11fec2ab0 3,27,38,41-44,48,90-94,126-132,178-180,191-193,199-201,314,691-693,695-696,710-712,731-734,753-762,890,912-913,925-926,952,1017,1049
+apps/mobile/app/chat/info/[id].tsx
+  h_0549c11fec2ab0 3,33-35,104,132,144,149,154,162,236,265-267,306,424-425,440-442,486,576
+apps/mobile/app/community-room-session.tsx
+  h_0549c11fec2ab0 10,31,577
+apps/mobile/app/community/create-event.tsx
+  h_0549c11fec2ab0 3,18,132-134
+apps/mobile/app/event/[id].tsx
+  h_0549c11fec2ab0 1,9-11,106-115,117-119,121-123,129,154-159,162,166,172-180,188,195-200,243-248,252,260-263,302,304-309,314-336,350-351,400,477,658-666
+apps/mobile/app/product/[id].tsx
+  h_0549c11fec2ab0 3,23,302
+apps/mobile/app/qotd/[id].tsx
+  h_0549c11fec2ab0 3,13,109,123-124,135,157-158
+apps/mobile/app/sister-button.tsx
+  h_0549c11fec2ab0 3,15,399
+apps/mobile/app/speed-dating/index.tsx
+  h_0549c11fec2ab0 3,15,193,198
+apps/mobile/app/speed-dating/result.tsx
+  h_0549c11fec2ab0 3,13-15,48-51,53-54,206,236
+apps/mobile/app/speed-dating/waiting-room.tsx
+  h_0549c11fec2ab0 3,13-14,305-307,324-326,341
+apps/mobile/app/support.tsx
+  h_0549c11fec2ab0 3,15-17,195-198,268-269,304-306,309,364-365
+apps/mobile/app/tickets.tsx
+  h_0549c11fec2ab0 2,12,207,214-215,224,226-227
+apps/mobile/components/build/CheckoutSheet.tsx
+  h_0549c11fec2ab0 2,17,305,307
+apps/mobile/components/build/FeatureVoteCard.tsx
+  h_0549c11fec2ab0 2,6,153,164
+apps/mobile/components/channels/ChannelComposer.tsx
+  h_0549c11fec2ab0 1-3,14-19,33-38,41,46-49,53,55,58-61,63-65,70-78,81-82,118,147,157-158
+apps/mobile/components/channels/ChannelMessage.tsx
+  h_0549c11fec2ab0 2-3,127,136,143,163,175,182
+apps/mobile/components/channels/ChannelMessageActions.tsx
+  h_0549c11fec2ab0 1-4,36,44-46,65,68-94,97-98,100-102
+apps/mobile/components/channels/channelCache.ts
+  h_0549c11fec2ab0 1-78
+apps/mobile/components/channels/pendingMessages.ts
+  h_0549c11fec2ab0 1-72
+apps/mobile/components/chat/ActionTray.tsx
+  h_0549c11fec2ab0 3,7,73-76,85-88
+apps/mobile/components/chat/GifPicker.tsx
+  h_0549c11fec2ab0 3,6,9,75,97,111-112,141-146,178
+apps/mobile/components/chat/KeyboardTrackingView.tsx
+  h_0549c11fec2ab0 1-111
+apps/mobile/components/chat/MessageActionSheet.tsx
+  h_0549c11fec2ab0 1-2,10-11,50-62,64,66-67,101-102,113-114,152,157
+apps/mobile/components/chat/MessageRow.tsx
+  h_0549c11fec2ab0 1,3,5-8,21-22,32-36,39,43-61,88-91,106-108,112-143,206,209-210,212-213,283,291-292
+apps/mobile/components/chat/TypingIndicator.tsx
+  h_0549c11fec2ab0 1-6,8-9,18-32,35-38,41-49,51-61,63-71,73-74,91-93,105-107
+apps/mobile/components/chat/threadCache.ts
+  h_0549c11fec2ab0 1-52
+apps/mobile/components/donations/DonateModal.tsx
+  h_0549c11fec2ab0 3,13,180,182
+apps/mobile/components/events/eventCache.ts
+  h_0549c11fec2ab0 1-42
+apps/mobile/components/gamification/BadgeCelebration.tsx
+  h_0549c11fec2ab0 1-3,13,15-21,23-25,28-33,35-43
+apps/mobile/components/grow/AnswerSheet.tsx
+  h_0549c11fec2ab0 3,10,84,86
+apps/mobile/components/grow/MiniWinsCard.tsx
+  h_0549c11fec2ab0 2,11,59
+apps/mobile/components/grow/QuestionOfTheDayCard.tsx
+  h_0549c11fec2ab0 3,10,13,49,52-57,62-65,138
+apps/mobile/components/messages/LoadingShapes.tsx
+  h_0549c11fec2ab0 1-87
+apps/mobile/components/messages/MessagesInbox.tsx
+  h_0549c11fec2ab0 1,12-14,69-70,109-112,127-128,134,149,281-282
+apps/mobile/components/messages/OfficialChatInbox.tsx
+  h_0549c11fec2ab0 2,22,92
+apps/mobile/components/messages/PinnedPersonaRow.tsx
+  h_0549c11fec2ab0 1,60-61
+apps/mobile/components/messages/RequestsSheet.tsx
+  h_0549c11fec2ab0 1-2,4,22-23,50-51,60,66,68,72,82-92,95-97,101-102,104-107,110,115,117-119,124-127,133-134,146-149,152-153,208-211,220,247-278,285,294-313,318,334-355,363-365,383,388-397,402
+apps/mobile/components/messages/usePullRefresh.ts
+  h_0549c11fec2ab0 1-24
+apps/mobile/components/profile/AvatarPickerSheet.tsx
+  h_0549c11fec2ab0 3,8-9,28,62-63,85-87,102
+apps/mobile/components/profile/InlineReplies.tsx
+  h_0549c11fec2ab0 1,3,6-7,18,30-33,54-62,77-100,102-135,138-141,144-147,192-193,195,200-204,231-241,266,273,282
+apps/mobile/components/profile/ProfileExtras.tsx
+  h_0549c11fec2ab0 2-3,74,85
+apps/mobile/components/profile/ProfileFavorites.tsx
+  h_0549c11fec2ab0 2,8-9,95-104
+apps/mobile/components/profile/ProfileNudge.tsx
+  h_0549c11fec2ab0 2-3,73,82,94,96
+apps/mobile/components/profile/ProfilePhotoGrid.tsx
+  h_0549c11fec2ab0 3,13-14,130-137,166,168
+apps/mobile/components/profile/ProfilePostsGrid.tsx
+  h_0549c11fec2ab0 2,16-17,116-125,183-185,200
+apps/mobile/components/profile/ProfileShell.tsx
+  h_0549c11fec2ab0 1,3,11,259-260,465,473,703-708
+apps/mobile/components/profile/ProfileThoughts.tsx
+  h_0549c11fec2ab0 2,19,157,166-177
+apps/mobile/components/profile/SavedWatchlist.tsx
+  h_0549c11fec2ab0 2-3,76,78,92,113
+apps/mobile/components/profile/YouMoreMenu.tsx
+  h_0549c11fec2ab0 3,6,144-146,188,193
+apps/mobile/components/safety/ReportSheet.tsx
+  h_0549c11fec2ab0 2,6-8,74,94,104-105,115,125,143,147-148,158,160
+apps/mobile/store/authStore.ts
+  h_0549c11fec2ab0 3-16,31-34,36-39
+apps/mobile/store/friendStore.ts
+  h_0549c11fec2ab0 44-45,111-116,118,127-159,163-166,173-183,188-202,208,210,215,217,222,224,228-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0477b057df0494629a08f9e41e970a6056b4dc75",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
