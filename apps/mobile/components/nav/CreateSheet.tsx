@@ -1,19 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  View, Text, StyleSheet, Modal, Pressable, Animated, useWindowDimensions,
-} from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { logError } from '../../lib/errorLogger';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { RADII, SPACE, MARGIN, type ThemeColors, scrim, popElevation } from '../../lib/theme';
+import { RADII, SPACE, MARGIN, type ThemeColors } from '../../lib/theme';
 import { TYPE, emphasized } from '../../lib/typography';
-import { runSpring } from '../../lib/motion';
 import { deriveSellerStatus, canSell, type SellerStatus } from '../../lib/sellerStatus';
 import { isOfficialAccount } from '../../lib/officialGrant';
+import { Sheet } from '../feedback/Sheet';
 import { TAB_MIN_TOUCH } from './navTokens';
 
 /** The direction's icon size for the sheet: 24 dp outlines in `ink2`. */
@@ -56,14 +53,15 @@ function sellLine(seller: SellerStatus): string {
  * membership lookup must never block posting. An official community account
  * keeps a real Event row (feature parity: hosting events from here).
  *
- * The sheet rises on `SPRING.spatial` (Reduce Motion: it is simply there).
+ * The sheet is the shared `Sheet` (motion spec §3.1 row 6, F5): it rises on
+ * `SPRING.spatial`, only the scrim fades, it can be dragged or flung shut,
+ * and every move turns around from where it is (Reduce Motion: it is simply
+ * there). v1 slid a JS-driven panel inside a `Modal` that faded the whole
+ * sheet, surface included.
  */
 export function CreateSheet({ visible, userId, onClose }: Props) {
   const colors = useThemeColors();
   const router = useRouter();
-  const reducedMotion = useReducedMotion();
-  const { height } = useWindowDimensions();
-  const rise = useRef(new Animated.Value(height)).current;
   const [seller, setSeller] = useState<SellerStatus>('none');
   const [official, setOfficial] = useState(false);
 
@@ -90,14 +88,6 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
     if (!visible) return;
     void loadAccess();
   }, [visible, loadAccess]);
-
-  useEffect(() => {
-    if (!visible) {
-      rise.setValue(height);
-      return;
-    }
-    runSpring(rise, 0, 'spatial', reducedMotion);
-  }, [visible, height, reducedMotion, rise]);
 
   const s = styles(colors);
 
@@ -135,14 +125,15 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={s.scrim} onPress={onClose} accessibilityLabel="Dismiss" />
-      <Animated.View
-        style={[s.sheet, popElevation(colors), { transform: [{ translateY: rise }] }]}
-        testID="create-sheet"
-      >
-        <View style={s.grabber} />
-
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      accessibilityLabel="Create"
+      closeLabel="Dismiss"
+      dragFrom="sheet"
+      testID="create-sheet"
+    >
+      <View style={s.body}>
         <View style={s.header}>
           <Text style={s.title} accessibilityRole="header">Make something</Text>
           <TouchableOpacity
@@ -200,8 +191,8 @@ export function CreateSheet({ visible, userId, onClose }: Props) {
             </View>
           ))}
         </View>
-      </Animated.View>
-    </Modal>
+      </View>
+    </Sheet>
   );
 }
 
@@ -212,20 +203,12 @@ interface Props {
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: scrim(0.5) },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: RADII.sheet,
-    borderTopRightRadius: RADII.sheet,
+  // The Sheet owns the surface (colour, top radius, handle, safe-area bottom);
+  // this is only the content's own padding.
+  body: {
     paddingHorizontal: MARGIN,
-    paddingTop: SPACE[1],
     paddingBottom: SPACE[6],
     gap: SPACE[3],
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: SPACE[6], height: SPACE[0], borderRadius: RADII.pill,
-    backgroundColor: colors.control,
   },
   header: { flexDirection: 'row', alignItems: 'center', gap: SPACE[2] },
   title: { ...TYPE.title, color: colors.ink, flex: 1 },

@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { TransitionStack } from '../../components/motion/TransitionStack';
 
 /**
  * The Archive stack.
@@ -9,10 +9,10 @@ import { Stack } from 'expo-router';
  */
 export default function ArchiveLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="new" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="[slug]" />
-    </Stack>
+    <TransitionStack screenOptions={{ headerShown: false }}>
+      <TransitionStack.Screen name="index" />
+      <TransitionStack.Screen name="new" options={{ presentation: 'modal' }} />
+      <TransitionStack.Screen name="[slug]" />
+    </TransitionStack>
   );
 }

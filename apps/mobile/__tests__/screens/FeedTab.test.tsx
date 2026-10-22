@@ -24,15 +24,27 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 
 let mockKind = 'member';
+/** Cold start: no profile yet, so useAccess fails closed (G-21) while `loading`. */
+let mockLoading = false;
+/** What `can('feed')` answers once access is known (a public-tier member: false). */
+let mockCanFeed = true;
 jest.mock('../../hooks/useAccess', () => ({
   useAccess: () => ({
-    kind: mockKind,
-    tier: 'beta',
-    isBeta: true,
-    can: () => true,
-    canCommunity: () => true,
+    loading: mockLoading,
+    kind: mockLoading ? 'pending' : mockKind,
+    tier: mockLoading || !mockCanFeed ? 'public' : 'beta',
+    isBeta: !mockLoading && mockCanFeed,
+    can: () => !mockLoading && mockCanFeed,
+    canCommunity: () => !mockLoading && mockCanFeed,
   }),
 }));
+
+// The public-tier home. Only a marker here: this suite asks WHEN it is home,
+// not what it draws (ArchiveBrowse.test.tsx owns that).
+jest.mock('../../app/archive/index', () => {
+  const { View } = require('react-native');
+  return { __esModule: true, default: () => <View testID="archive-home-mock" /> };
+});
 
 // FirstStepsCard owns its own reads and its dismiss/persist rules (tested in
 // WelcomeIn.test.tsx); here it is only a marker for "mounted or not".
@@ -114,7 +126,43 @@ function lastReelsFeedProps(): Record<string, unknown> {
 beforeEach(() => {
   reelsFeedCalls.length = 0;
   mockKind = 'member';
+  mockLoading = false;
+  mockCanFeed = true;
   useCommunityFilterStore.setState({ selectedCommunityId: null, filterable: false });
+});
+
+/**
+ * Jank audit #6: on a cold start an approved member saw "The WLW Archive ·
+ * Membership pending" for 0.5-3 s before her Feed, because the route read
+ * `can('feed')` (fail-closed while the profile loads) and never `loading`.
+ * Until access is known the Feed shows its own stage skeleton: no claim about
+ * her membership either way, and nothing to re-flow when the profile lands.
+ */
+describe('Feed route on a cold start (access still loading)', () => {
+  it('shows the stage skeleton, never the public Archive shell', () => {
+    mockLoading = true;
+    const { getByTestId, queryByTestId } = render(<FeedScreen />);
+    expect(getByTestId('feed-access-loading')).toBeTruthy();
+    expect(getByTestId('feed-stage-skeleton')).toBeTruthy();
+    expect(queryByTestId('archive-home-mock')).toBeNull();
+    expect(queryByTestId('feed-screen')).toBeNull();
+  });
+
+  it('becomes the Feed for a member once her access is known', () => {
+    mockLoading = true;
+    const { rerender, getByTestId, queryByTestId } = render(<FeedScreen />);
+    mockLoading = false;
+    rerender(<FeedScreen />);
+    expect(getByTestId('feed-screen')).toBeTruthy();
+    expect(queryByTestId('feed-access-loading')).toBeNull();
+  });
+
+  it('still makes the Archive home for a public-tier member once known', () => {
+    mockCanFeed = false;
+    const { getByTestId, queryByTestId } = render(<FeedScreen />);
+    expect(getByTestId('archive-home-mock')).toBeTruthy();
+    expect(queryByTestId('feed-access-loading')).toBeNull();
+  });
 });
 
 /**

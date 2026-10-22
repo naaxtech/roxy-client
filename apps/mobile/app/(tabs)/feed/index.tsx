@@ -7,11 +7,14 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ReelsFeed } from '../../../components/feed/ReelsFeed';
 import { followingAuthorIds } from '../../../lib/feedScope';
-import { FeedSegments, type FeedSegment } from '../../../components/feed/FeedSegments';
+import { type FeedSegment } from '../../../components/feed/FeedSegments';
+import { FeedSegmentTabs } from '../../../components/nav/FeedSegmentTabs';
 import { StreakChip } from '../../../components/feed/StreakChip';
 import { NowRail } from '../../../components/feed/NowRail';
 import { MiniWinsSheet } from '../../../components/feed/MiniWinsSheet';
 import { STAGE, STAGE_BG } from '../../../components/feed/stageColors';
+import { FeedStageSkeleton } from '../../../components/feed/FeedStageSkeleton';
+import { useReducedMotion } from '../../../hooks/useReducedMotion';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
 import { TYPE } from '../../../lib/typography';
 import { RADII } from '../../../lib/theme';
@@ -218,7 +221,7 @@ function FeedScreen() {
           <NowRail open={nowOpen} communityIds={communityIds} onCount={handleNowCount} />
         </View>
 
-        <FeedSegments value={segment} onChange={setSegment} />
+        <FeedSegmentTabs value={segment} onChange={setSegment} />
 
         {/* Her first five minutes (G-11) used to sit here over For You. v2
             (direction: "Three first-run checklists → one nudge at a time, in
@@ -272,7 +275,21 @@ const s = StyleSheet.create({
 });
 
 export default function FeedRoute() {
-  const { can } = useAccess();
+  const { can, loading } = useAccess();
+  // Cold start (jank audit #6): gates fail closed until the profile lands, so
+  // `can('feed')` alone sent an approved member to the public Archive shell
+  // ("Membership pending") for 0.5-3 s. Until access is known, the Feed shows
+  // its own stage skeleton, which says nothing about her membership.
+  if (loading) return <FeedAccessLoading />;
   if (!can('feed')) return <ArchiveBrowseScreen asHome />;
   return <FeedScreen />;
+}
+
+function FeedAccessLoading() {
+  const reducedMotion = useReducedMotion();
+  return (
+    <View style={s.stage} testID="feed-access-loading">
+      <FeedStageSkeleton reducedMotion={reducedMotion} />
+    </View>
+  );
 }

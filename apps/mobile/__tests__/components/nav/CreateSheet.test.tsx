@@ -1,6 +1,9 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { Modal, StyleSheet } from 'react-native';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
+import { State } from 'react-native-gesture-handler';
 
 const mockPush = jest.fn();
 const mockBusinessQuery = jest.fn();
@@ -156,5 +159,44 @@ describe('CreateSheet', () => {
     const post = view.getByTestId('create-kind-post');
     const flat = StyleSheet.flatten(post.props.style) as Record<string, unknown>;
     expect(Number(flat.minHeight)).toBeGreaterThanOrEqual(72);
+  });
+});
+
+/**
+ * Wave 3 (motion spec §3.1 row 6, F5): Create is the shared `Sheet` — it rises
+ * on `SPRING.spatial` and only the scrim fades. v1 wrapped a JS-driven rise in
+ * a `Modal animationType="fade"`, so the whole sheet (surface included) faded
+ * in while it slid, and it could not be dragged shut.
+ */
+describe('CreateSheet on the shared Sheet', () => {
+  it('opens as the shared Sheet: no system fade, a scrim of its own, a grab handle, a name', async () => {
+    const view = render(<CreateSheet visible userId="u1" onClose={jest.fn()} />);
+    await view.findByTestId('create-line-sell');
+    expect(view.UNSAFE_getByType(Modal).props.animationType).toBe('none');
+    expect(view.getByTestId('create-sheet-scrim', { includeHiddenElements: true })).toBeTruthy();
+    expect(view.getByTestId('create-sheet-handle', { includeHiddenElements: true })).toBeTruthy();
+    expect(view.getByTestId('create-sheet').props.accessibilityLabel).toBe('Create');
+  });
+
+  it('a scrim tap closes it', async () => {
+    const onClose = jest.fn();
+    const view = render(<CreateSheet visible userId="u1" onClose={onClose} />);
+    await view.findByTestId('create-line-sell');
+    fireEvent.press(view.getByTestId('create-sheet-scrim-press', { includeHiddenElements: true }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('a downward fling drags it shut', async () => {
+    const onClose = jest.fn();
+    const view = render(<CreateSheet visible userId="u1" onClose={onClose} />);
+    await view.findByTestId('create-line-sell');
+    fireGestureHandler(getByGestureTestId('create-sheet-pan'), [
+      { state: State.BEGAN, translationY: 0 },
+      { state: State.ACTIVE, translationY: 0 },
+      { state: State.ACTIVE, translationY: 40, velocityY: 1500 },
+      { state: State.END, translationY: 40, velocityY: 1500 },
+    ]);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 });

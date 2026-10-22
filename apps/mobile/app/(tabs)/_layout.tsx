@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
-import { View, AppState } from 'react-native';
+import { useCallback, useEffect, useLayoutEffect } from 'react';
+import { View, AppState, StyleSheet } from 'react-native';
 import { Tabs, usePathname, useRouter } from 'expo-router';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { RoxyCompanionButton } from '../../components/ui/RoxyCompanionButton';
 import { useRoxyFab, fabVisible, fabOnStage } from '../../lib/roxyFab';
-import { FloatingTabBar } from '../../components/nav/FloatingTabBar';
+import { FloatingTabBar, type TabBarRoute } from '../../components/nav/FloatingTabBar';
 import { CreateSheet } from '../../components/nav/CreateSheet';
+import { useCreateSheet } from '../../components/nav/createSheetStore';
+import { tabSelection } from '../../components/motion/tabSelection';
+import type { NavSlot } from '../../components/nav/navTokens';
 import { useFriendStore } from '../../store/friendStore';
 import { useConnectStore } from '../../store/connectStore';
 import { useChatSettingsStore } from '../../store/chatSettingsStore';
@@ -44,11 +48,24 @@ import { useLastPushResponse } from '../../hooks/useLastPushResponse';
  */
 const FAB_SUPPRESSED_ON = ['roxy-chat', '/messages', '/chat/', 'sister-button', 'room-session', 'speed-dating'];
 
-export default function TabLayout() {
+/**
+ * The navigator's options, created once. A new object per render made the
+ * navigator treat every render of this layout as an options change (jank
+ * audit #3).
+ */
+const TAB_SCREEN_OPTIONS = { headerShown: false } as const;
+
+/**
+ * The Roxy AI button, as its own leaf.
+ *
+ * It is the one piece of the shell that follows the route (where she is
+ * suppressed, the stage colours on the Feed, untuck on a new screen), so it is
+ * the only one that reads the pathname. In `TabLayout`, `usePathname()`
+ * re-rendered the whole navigator on every route change (jank audit #3).
+ */
+function TabFab({ userId }: { userId: string | undefined }) {
   const pathname = usePathname();
-  const { can, tier } = useAccess();
-  const slots = navSlotsFor(tier);
-  const { user } = useAuthStore();
+  const { can } = useAccess();
   // Roxy AI on/off (Settings), kept per member on this phone.
   const roxyEnabled = useRoxyFab((s) => s.enabled);
   const roxyLoadedFor = useRoxyFab((s) => s.loadedFor);
@@ -57,31 +74,91 @@ export default function TabLayout() {
     allowed: can('roxyCompanion'),
     enabled: roxyEnabled,
     loadedFor: roxyLoadedFor,
-    userId: user?.id,
+    userId,
     suppressedOn: FAB_SUPPRESSED_ON,
   });
-  const [createOpen, setCreateOpen] = useState(false);
-  const pendingCount = useFriendStore((s) => s.pendingCount);
-  const profile = useProfileStore((s) => s.profile);
-  const router = useRouter();
 
   useEffect(() => {
-    if (user?.id) void useRoxyFab.getState().load(user.id);
-  }, [user?.id]);
+    if (userId) void useRoxyFab.getState().load(userId);
+  }, [userId]);
 
   // A new screen starts with her out, not tucked from the last list.
   useEffect(() => {
     useRoxyFab.getState().untuck();
   }, [pathname]);
 
+  return (
+    <View style={layoutStyles.fabLayer} pointerEvents="box-none">
+      <RoxyCompanionButton visible={showFab} onStage={fabOnStage(pathname)} />
+    </View>
+  );
+}
+
+/** The Create sheet, subscribed to its own open state (see `createSheetStore`). */
+function CreateSheetHost({ userId }: { userId: string | undefined }) {
+  const open = useCreateSheet((st) => st.open);
+  const close = useCreateSheet((st) => st.close);
+  // The open state outlives this layout now; a sign-out must not leave it open
+  // for the next session.
+  useEffect(() => () => useCreateSheet.getState().close(), []);
+  return <CreateSheet visible={open} userId={userId ?? null} onClose={close} />;
+}
+
+/**
+ * The bar as the navigator renders it. Reads the Create state itself, so the
+ * key turns and the sheet opens without the navigator re-rendering.
+ */
+function TabBarHost({ slots, state, descriptors, navigation }: BottomTabBarProps & { slots: readonly NavSlot[] }) {
+  const createOpen = useCreateSheet((st) => st.open);
+  const toggleCreate = useCreateSheet((st) => st.toggle);
+  const onTabPress = useCallback((route: TabBarRoute, isFocused: boolean) => {
+    const event = navigation.emit({
+      type: 'tabPress',
+      target: route.key,
+      canPreventDefault: true,
+    });
+    if (!isFocused && !event.defaultPrevented) {
+      navigation.navigate(route.name);
+    }
+  }, [navigation]);
+  // Tell every TabFade which tab this commit shows, before the browser paints
+  // (React Navigation's 'state' event arrives only after the new tab's effects).
+  const selectedKey = state.routes[state.index]?.key ?? null;
+  useLayoutEffect(() => {
+    tabSelection.publish(selectedKey);
+  }, [selectedKey]);
+  useLayoutEffect(() => () => tabSelection.publish(null), []);
+  return (
+    <FloatingTabBar
+      slots={slots}
+      state={state}
+      descriptors={descriptors}
+      onTabPress={onTabPress}
+      onCreatePress={toggleCreate}
+      createOpen={createOpen}
+    />
+  );
+}
+
+export default function TabLayout() {
+  const { tier, loading: accessLoading } = useAccess();
+  const slots = navSlotsFor(tier, { loading: accessLoading });
+  // A selector, not the whole store: an auth tick (token refresh) must not
+  // re-render the navigator.
+  const userId = useAuthStore((st) => st.user?.id);
+  const pendingCount = useFriendStore((st) => st.pendingCount);
+  // Only whether onboarding is done matters here; null = no profile yet.
+  const onboardingDone = useProfileStore((st) => (st.profile ? !!st.profile.onboarding_completed : null));
+  const router = useRouter();
+
   // Secondary guard: if a user somehow reaches tabs without completing onboarding,
   // redirect them back. The root layout is the primary guard; this is the fallback.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (profile !== null && !profile.onboarding_completed) {
+    if (onboardingDone === false) {
       router.replace('/(auth)/onboarding/step1-identity');
     }
-  }, [profile?.onboarding_completed]);
+  }, [onboardingDone]);
 
   // Who she has blocked is session-independent state, so it is loaded once
   // here rather than by whichever screen happens to need it. safetyStore
@@ -97,19 +174,19 @@ export default function TabLayout() {
   // an empty heart and a tap added a phantom +1 before the upsert no-oped.
   const initFeed = useFeedStore((s) => s.init);
   useEffect(() => {
-    if (!user?.id) return;
+    if (!userId) return;
     void loadBlockedUsers();
     void loadMutedUsers();
     void loadHiddenPosts();
-    void initFeed(user.id);
-  }, [user?.id, loadBlockedUsers, loadMutedUsers, loadHiddenPosts, initFeed]);
+    void initFeed(userId);
+  }, [userId, loadBlockedUsers, loadMutedUsers, loadHiddenPosts, initFeed]);
 
   // One device push token per signed-in user, so the server can reach her for
   // messages and friend requests with the app closed.
   useEffect(() => {
-    if (!user?.id) return;
-    void registerPushToken(user.id);
-  }, [user?.id]);
+    if (!userId) return;
+    void registerPushToken(userId);
+  }, [userId]);
 
   // A tapped push opens the screen it points at — including the cold start,
   // where the response is already waiting when this layout mounts. Routed
@@ -130,7 +207,7 @@ export default function TabLayout() {
   const refreshInbox = useConnectStore((s) => s.refresh);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!userId) return;
     void refreshInbox();
     // Read receipts are reciprocal: every tick on screen draws by her setting,
     // so it is loaded with the inbox, not only when Settings opens.
@@ -144,11 +221,11 @@ export default function TabLayout() {
 
     // RLS limits both feeds to rows she may read: messages in her threads and
     // her own membership rows (added to a group, request answered, muted).
-    const channel = freshChannel(`inbox:${user.id}`)
+    const channel = freshChannel(`inbox:${userId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, nudge)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'conversation_members', filter: `user_id=eq.${user.id}` },
+        { event: '*', schema: 'public', table: 'conversation_members', filter: `user_id=eq.${userId}` },
         nudge,
       )
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_channel_messages' }, nudge)
@@ -164,13 +241,20 @@ export default function TabLayout() {
       appSub.remove();
       void supabase.removeChannel(channel);
     };
-  }, [user?.id, refreshInbox]);
+  }, [userId, refreshInbox]);
 
   // The friend-request count lives in friendStore too; refresh the server
   // badge whenever it moves so the two never disagree on screen.
   useEffect(() => {
-    if (user?.id) void refreshInbox();
-  }, [pendingCount, user?.id, refreshInbox]);
+    if (userId) void refreshInbox();
+  }, [pendingCount, userId, refreshInbox]);
+
+  // Stable for the navigator: a new inline function per render rebuilt the bar
+  // and every slot in it (jank audit #3). It changes only with the slot set.
+  const renderTabBar = useCallback(
+    (props: BottomTabBarProps) => <TabBarHost {...props} slots={slots} />,
+    [slots],
+  );
 
   // Four bar slots plus the ＋ action, per `components/nav/navSlots3.ts`.
   //
@@ -180,31 +264,10 @@ export default function TabLayout() {
   // inert — Expo Router logs `No route named "grow" exists in nested children`
   // on every render of the navigator. The declarations went with the folders.
   return (
-    <View style={{ flex: 1 }}>
+    <View style={layoutStyles.fill}>
       <ViewAsBanner />
       <PendingStatusHost />
-      <Tabs
-        screenOptions={{ headerShown: false }}
-        tabBar={(props) => (
-          <FloatingTabBar
-            slots={slots}
-            state={props.state}
-            descriptors={props.descriptors}
-            onTabPress={(route, isFocused) => {
-              const event = props.navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-              if (!isFocused && !event.defaultPrevented) {
-                props.navigation.navigate(route.name);
-              }
-            }}
-            onCreatePress={() => setCreateOpen((open) => !open)}
-            createOpen={createOpen}
-          />
-        )}
-      >
+      <Tabs screenOptions={TAB_SCREEN_OPTIONS} tabBar={renderTabBar}>
         <Tabs.Screen name="feed" options={{ title: 'Feed' }} />
         <Tabs.Screen name="discover" options={{ title: 'Discover' }} />
         <Tabs.Screen
@@ -219,18 +282,14 @@ export default function TabLayout() {
         <Tabs.Screen name="you" options={{ title: 'You' }} />
       </Tabs>
 
-      <View
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-        pointerEvents="box-none"
-      >
-        <RoxyCompanionButton visible={showFab} onStage={fabOnStage(pathname)} />
-      </View>
+      <TabFab userId={userId} />
 
-      <CreateSheet
-        visible={createOpen}
-        userId={user?.id ?? null}
-        onClose={() => setCreateOpen(false)}
-      />
+      <CreateSheetHost userId={userId} />
     </View>
   );
 }
+
+const layoutStyles = StyleSheet.create({
+  fill: { flex: 1 },
+  fabLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+});

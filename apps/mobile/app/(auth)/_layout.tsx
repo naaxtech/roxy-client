@@ -1,5 +1,5 @@
-import { Stack } from 'expo-router';
+import { TransitionStack } from '../../components/motion/TransitionStack';
 
 export default function AuthLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return <TransitionStack screenOptions={{ headerShown: false }} />;
 }

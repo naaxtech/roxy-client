@@ -89,4 +89,16 @@ describe('navSlotsFor', () => {
     expect(navSlotsFor('beta')).toBe(NAV_SLOTS_3);
     expect(navSlotsFor('public')).toBe(NAV_SLOTS_PUBLIC);
   });
+
+  // Jank audit #6: while the profile loads, the tier reads 'public' (fail
+  // closed), so a cold start drew Archive · Chat · You for an approved member,
+  // then swapped in her real bar. Until access is known the bar is its ground
+  // only: no destination is promised that might be taken away a moment later.
+  it('draws no slots while access is still loading, whatever the fail-closed tier says', () => {
+    expect(navSlotsFor('public', { loading: true })).toEqual([]);
+    expect(navSlotsFor('beta', { loading: true })).toEqual([]);
+    expect(navSlotsFor('public', { loading: false })).toBe(NAV_SLOTS_PUBLIC);
+    // One empty array, so the bar's props stay equal across loading renders.
+    expect(navSlotsFor('public', { loading: true })).toBe(navSlotsFor('beta', { loading: true }));
+  });
 });
