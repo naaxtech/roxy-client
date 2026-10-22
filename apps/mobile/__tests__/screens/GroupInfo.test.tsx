@@ -144,6 +144,19 @@ describe('Group info', () => {
     await waitFor(() => expect(chat.renameGroup).toHaveBeenCalledWith('g1', 'Book club', '📚'));
   });
 
+  it('group admin actions never buzz (motion spec §3.3)', async () => {
+    const { haptic } = jest.requireMock('../../lib/haptics') as { haptic: jest.Mock };
+    haptic.mockClear();
+    const view = render(<GroupInfoScreen />);
+    fireEvent.press(view.getByTestId('role-bea'));
+    await waitFor(() => expect(chat.setGroupRole).toHaveBeenCalled());
+    fireEvent.press(view.getByTestId('group-edit'));
+    fireEvent.press(view.getByTestId('group-emoji-📚'));
+    fireEvent.press(view.getByTestId('group-save'));
+    await waitFor(() => expect(chat.renameGroup).toHaveBeenCalled());
+    expect(haptic).not.toHaveBeenCalled();
+  });
+
   it('a refused action is shown in words, not swallowed', async () => {
     chat.renameGroup.mockRejectedValueOnce(new Error('Only the group owner or an admin can rename it.'));
     const view = render(<GroupInfoScreen />);

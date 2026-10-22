@@ -85,6 +85,14 @@ describe('MessageActionSheet', () => {
     expect(h.onClose).toHaveBeenCalledTimes(4);
   });
 
+  it('reacting from the sheet is a committed reaction: one light tap (§3.3)', () => {
+    const { haptic } = jest.requireMock('../../../lib/haptics') as { haptic: jest.Mock };
+    haptic.mockClear();
+    const { view } = renderSheet({ ...base, sender_id: 'ana' });
+    fireEvent.press(view.getByTestId('msg-react-❤️'));
+    expect(haptic.mock.calls).toEqual([['tap']]);
+  });
+
   it('shows a preview of the message it acts on', () => {
     const { view } = renderSheet(base);
     expect(view.getByText('hello there')).toBeTruthy();

@@ -142,6 +142,18 @@ describe('CHAT-17 channel reactions', () => {
     expect(mockAdd).toHaveBeenCalledWith('m1', '💜', 'me');
   });
 
+  it('haptic map (§3.3): long-press menu = one selection tick, a committed reaction = one light tap', async () => {
+    const { haptic } = jest.requireMock('../../lib/haptics') as { haptic: jest.Mock };
+    const view = render(<CommunityChannelsScreen />);
+    await view.findByTestId('channel-message-m1');
+    haptic.mockClear();
+    fireEvent(view.getByTestId('channel-message-m1'), 'longPress');
+    expect(haptic.mock.calls).toEqual([['select']]);
+    haptic.mockClear();
+    await act(async () => { fireEvent.press(view.getByLabelText('React with 💜')); });
+    expect(haptic.mock.calls).toEqual([['tap']]);
+  });
+
   it('a removed message offers no reactions', async () => {
     const view = render(<CommunityChannelsScreen />);
     await view.findByTestId('channel-message-m3');

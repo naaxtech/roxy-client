@@ -23,7 +23,6 @@ import {
 } from '../../../lib/groupInfo';
 import { conversationReportTarget, type ThreadMember } from '../../../lib/chatThread';
 import { routeParam } from '../../../lib/routeParams';
-import { haptic } from '../../../lib/haptics';
 import { logError } from '../../../lib/errorLogger';
 import { confirmAction, showAlert } from '../../../lib/confirm';
 import { avatarGradient } from '../../../lib/avatars';
@@ -127,7 +126,7 @@ function GroupInfo() {
   const saveEdit = async () => {
     const clean = name.trim().slice(0, GROUP_TITLE_MAX) || null;
     const ok = await run('rename', () => renameGroup(conversationId, clean, emoji));
-    if (ok) { haptic('success'); setEditing(false); void refreshInbox(); }
+    if (ok) { setEditing(false); void refreshInbox(); }
   };
 
   const onRemove = async (target: ThreadMember) => {
@@ -139,19 +138,17 @@ function GroupInfo() {
     );
     if (!yes) return;
     const ok = await run(`remove-${target.id}`, () => removeGroupMember(conversationId, target.id));
-    if (ok) haptic('warning');
+    void ok; // No haptic (motion spec §3.3).
   };
 
   const onRole = async (target: ThreadMember) => {
     const next = target.role === 'admin' ? 'member' : 'admin';
-    const ok = await run(`role-${target.id}`, () => setGroupRole(conversationId, target.id, next));
-    if (ok) haptic('select');
+    await run(`role-${target.id}`, () => setGroupRole(conversationId, target.id, next));
   };
 
   const onMutePress = async () => {
     if (muted) {
-      const ok = await run('mute', () => muteConversation(conversationId, null));
-      if (ok) haptic('select');
+      await run('mute', () => muteConversation(conversationId, null));
       return;
     }
     setMuteOpen((v) => !v);
@@ -159,14 +156,13 @@ function GroupInfo() {
 
   const onMuteChoice = async (choice: MuteChoice) => {
     const ok = await run('mute', () => muteConversation(conversationId, muteUntil(choice)));
-    if (ok) { haptic('select'); setMuteOpen(false); }
+    if (ok) setMuteOpen(false);
   };
 
   const togglePick = (id: string) => {
     setPicked((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length >= free) return prev;
-      haptic('select');
       return [...prev, id];
     });
   };
@@ -185,7 +181,6 @@ function GroupInfo() {
         "Some friends don't take group adds, or can't be added to this group right now.",
       );
     } else {
-      haptic('success');
     }
   };
 
@@ -235,7 +230,7 @@ function GroupInfo() {
                 {GROUP_EMOJIS.map((e) => (
                   <TouchableOpacity
                     key={e}
-                    onPress={() => { haptic('select'); setEmoji((cur) => (cur === e ? null : e)); }}
+                    onPress={() => setEmoji((cur) => (cur === e ? null : e))}
                     style={[s.emojiBtn, emoji === e && s.emojiOn]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: emoji === e }}

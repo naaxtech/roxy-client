@@ -132,7 +132,8 @@ export default function CommunityChannelsScreen() {
   const [reactAnyFor, setReactAnyFor] = useState<string | null>(null);
   const toggleReaction = useCallback((messageId: string, emoji: string, own: boolean) => {
     if (!me) return;
-    haptic('select');
+    // A committed reaction: the light tap (§3.3).
+    haptic('tap');
     if (own) void removeReaction(messageId, emoji, me);
     else void addReaction(messageId, emoji, me);
   }, [me, addReaction, removeReaction]);
@@ -578,7 +579,8 @@ export default function CommunityChannelsScreen() {
             onPressAuthor={(id) => router.push(`/user/${id}` as never)}
             // A provisional message does not exist yet: nothing to report,
             // remove or react to until the server has it.
-            onLongPress={isPending(item) ? undefined : (m) => setMenuFor(m)}
+            // A long-press that opens a menu ticks as a selection (§3.3).
+            onLongPress={isPending(item) ? undefined : (m) => { haptic('select'); setMenuFor(m); }}
             onOpenCard={(path) => router.push(path as never)}
             footer={(reactionsMap[item.id]?.length ?? 0) > 0 ? (
               <ReactionChips

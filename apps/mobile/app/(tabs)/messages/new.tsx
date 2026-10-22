@@ -12,7 +12,6 @@ import { useConnectStore } from '../../../store/connectStore';
 import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
 import { openDirectChat } from '../../../lib/directMessages';
 import { createGroup, GROUP_MAX_MEMBERS } from '../../../lib/chat';
-import { haptic } from '../../../lib/haptics';
 import { logError } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
 import { avatarGradient } from '../../../lib/avatars';
@@ -70,7 +69,7 @@ function NewMessageScreen() {
   const atCap = picked.length >= GROUP_MAX_MEMBERS - 1;
 
   const toggle = (id: string) => {
-    haptic('select');
+    // No haptic (motion spec §3.3: only the mapped events buzz).
     setPicked((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length >= GROUP_MAX_MEMBERS - 1) return prev;
@@ -88,7 +87,6 @@ function NewMessageScreen() {
       } else {
         const title = groupName.trim().slice(0, GROUP_TITLE_MAX) || null;
         convId = await createGroup(title, picked, emoji);
-        haptic('success');
         void refreshInbox();
       }
       router.replace(`/chat/${convId}` as never);
@@ -273,7 +271,7 @@ function NewMessageScreen() {
               {GROUP_EMOJIS.map((e) => (
                 <TouchableOpacity
                   key={e}
-                  onPress={() => { haptic('select'); setEmoji((cur) => (cur === e ? null : e)); }}
+                  onPress={() => setEmoji((cur) => (cur === e ? null : e))}
                   style={[s.emojiBtn, emoji === e && s.emojiOn]}
                   accessibilityRole="button"
                   accessibilityState={{ selected: emoji === e }}

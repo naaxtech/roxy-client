@@ -87,6 +87,18 @@ describe('NewMessageScreen', () => {
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/chat/group-1'));
   });
 
+  it('picking friends, an emoji and creating a group never buzz (motion spec §3.3)', async () => {
+    const { haptic } = jest.requireMock('../lib/haptics') as { haptic: jest.Mock };
+    friends.push(friend('u1', 'Sam'), friend('u2', 'Bea'));
+    const view = render(<NewMessageScreen />);
+    fireEvent.press(await view.findByText('Sam'));
+    fireEvent.press(view.getByText('Bea'));
+    fireEvent.press(view.getByTestId('group-emoji-🌈'));
+    fireEvent.press(view.getByTestId('new-message-go'));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/chat/group-1'));
+    expect(haptic).not.toHaveBeenCalled();
+  });
+
   it('tapping a picked friend again unpicks her', async () => {
     friends.push(friend('u1', 'Sam'), friend('u2', 'Bea'));
     const view = render(<NewMessageScreen />);

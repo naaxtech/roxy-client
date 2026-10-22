@@ -100,7 +100,8 @@ export function MessageActionSheet({
               <TouchableOpacity
                 key={e}
                 style={s.react}
-                onPress={close(() => { haptic('select'); onReact(message.id, e); })}
+                // A committed reaction: the light tap (§3.3).
+                onPress={close(() => { haptic('tap'); onReact(message.id, e); })}
                 accessibilityRole="button"
                 accessibilityLabel={`React ${e}`}
                 testID={`msg-react-${e}`}
