@@ -1,0 +1,18 @@
+apps/mobile/__tests__/components/roxy/RoxyO.test.tsx
+  h_0549c11fec2ab0 3,129-130
+apps/mobile/__tests__/components/roxy/RoxyWritingLoop.test.tsx
+  h_0549c11fec2ab0 1-70
+apps/mobile/components/roxy/RoxyWriting.tsx
+  h_0549c11fec2ab0 1-5,11,16-21,27-33,38,41-49,51,54-59,63,65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91c521947e73793d6e7049996b3e35091927b00c",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
