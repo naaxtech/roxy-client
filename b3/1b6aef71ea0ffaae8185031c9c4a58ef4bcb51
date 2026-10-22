@@ -1,0 +1,20 @@
+apps/mobile/__tests__/components/ui/PressableScale.test.tsx
+  h_0549c11fec2ab0 46,113-139
+apps/mobile/__tests__/lib/motionTokens.test.ts
+  h_0549c11fec2ab0 16,107-147
+apps/mobile/components/ui/PressableScale.tsx
+  h_0549c11fec2ab0 18,86-97,159-164,166
+apps/mobile/lib/motion.ts
+  h_0549c11fec2ab0 233-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b31b6aef71ea0ffaae8185031c9c4a58ef4bcb51",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
