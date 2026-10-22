@@ -1,0 +1,18 @@
+apps/mobile/__tests__/components/ui/SwitchMotion.test.tsx
+  h_0549c11fec2ab0 1-150
+apps/mobile/__tests__/components/ui/SwitchSnackbar.test.tsx
+  h_0549c11fec2ab0 2,22-23,76-77,83-84,86,96-98,100-103
+apps/mobile/components/ui/Switch.tsx
+  h_0549c11fec2ab0 1-5,9,23-29,52-55,71-77,80-101,103-114,126-127,135,139,141,162-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dbd9dd7c03a244098aabe00ecd5abcbc56827022",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
