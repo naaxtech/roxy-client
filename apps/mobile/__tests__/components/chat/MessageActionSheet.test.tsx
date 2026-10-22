@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 /**
  * Long-press a message → one sheet: react, reply, copy, edit, unsend, report.
  *
@@ -35,6 +36,15 @@ const renderSheet = (message: any, h = handlers(), me = 'me') =>
   ({ h, view: render(<MessageActionSheet message={message} currentUserId={me} now={NOW} {...h} />) });
 
 describe('MessageActionSheet', () => {
+  it('is the shared Sheet (F5)', () => {
+    // F5: the ONE bottom sheet (spring rise, UI-thread drag, only the scrim fades),
+    // not a system slide/fade Modal.
+    const v = renderSheet(base).view;
+    expect(v.getByTestId('message-action-sheet')).toBeTruthy();
+    expect(v.getByTestId('message-action-sheet-scrim', { includeHiddenElements: true })).toBeTruthy();
+    expect(v.getByTestId('message-action-sheet-scrim-press', { includeHiddenElements: true })).toBeTruthy();
+  });
+
   it('her own fresh text: react, reply, copy, edit, unsend — no report', () => {
     const { view } = renderSheet(base);
     for (const id of ['msg-action-reply', 'msg-action-copy', 'msg-action-edit', 'msg-action-unsend']) {

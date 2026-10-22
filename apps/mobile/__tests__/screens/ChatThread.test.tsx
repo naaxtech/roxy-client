@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { KeyboardAvoidingView } from 'react-native';
 import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';

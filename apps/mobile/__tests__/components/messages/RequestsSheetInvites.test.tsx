@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 /**
  * CHAT-09: a moderator's invite to a private community waits in Requests →
  * Friends, beside friend requests — named, with Join / Not now. Saying no is

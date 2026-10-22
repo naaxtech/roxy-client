@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';
 import CommunityChannelsScreen from '../../app/(tabs)/discover/community/channels/[communityId]';
@@ -377,6 +378,15 @@ describe('sending is optimistic (F10)', () => {
 
 describe('the safety menu', () => {
   const hers = { ...msg('m1', general.id, 'her words'), sender_id: 'someone-else' };
+
+  it('the message menu is the shared Sheet (F5), not a pop-in Modal', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, [hers]);
+    await waitFor(() => expect(v.getByText('her words')).toBeTruthy());
+    await act(async () => { fireEvent(v.getByTestId('channel-message-m1'), 'longPress'); });
+    expect(v.getByTestId('channel-actions')).toBeTruthy();
+    expect(v.getByTestId('channel-actions-scrim', { includeHiddenElements: true })).toBeTruthy();
+  });
 
   it('offers report and block on someone else’s message', async () => {
     // A group message surface without these is one a woman cannot get out of.

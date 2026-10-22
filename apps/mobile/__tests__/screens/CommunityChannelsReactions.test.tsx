@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import CommunityChannelsScreen from '../../app/(tabs)/discover/community/channels/[communityId]';

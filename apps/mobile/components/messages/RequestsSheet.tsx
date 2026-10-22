@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Modal, View, Text, StyleSheet, Pressable, ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Snackbar } from '../ui/Snackbar';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,7 +19,8 @@ import { confirmAction } from '../../lib/confirm';
 import { logError } from '../../lib/errorLogger';
 import { avatarGradient } from '../../lib/avatars';
 import { TYPE } from '../../lib/typography';
-import { RADII, inkOn, type ThemeColors, scrim } from '../../lib/theme';
+import { RADII, inkOn, type ThemeColors } from '../../lib/theme';
+import { Sheet } from '../feedback';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
 interface Props {
@@ -361,10 +360,9 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
   );
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={s.scrim} onPress={onClose} accessibilityLabel="Dismiss" />
-      <View style={s.sheet} testID="requests-sheet">
-        <View style={s.grabber} />
+    // F5: the shared Sheet (spring rise, UI-thread drag with projected
+    // release, only the scrim fades; Reduce Motion: simply there).
+    <Sheet visible={visible} onClose={onClose} accessibilityLabel="Requests" testID="requests-sheet" style={s.sheet}>
         <View style={s.head}>
           <View style={s.headText}>
             <Text style={s.title}>Requests</Text>
@@ -396,22 +394,12 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
           onDismiss={() => setFailure(null)}
           testID="requests-snackbar"
         />
-      </View>
-    </Modal>
+    </Sheet>
   );
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: scrim(0.66) },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet,
-    paddingHorizontal: 18, paddingTop: 10, paddingBottom: 28, gap: 10,
-  },
-  grabber: {
-    alignSelf: 'center', width: 40, height: 4, borderRadius: 2,
-    backgroundColor: colors.line, marginBottom: 8,
-  },
+  sheet: { paddingHorizontal: 18, paddingBottom: 16, gap: 10 },
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   headText: { flex: 1, gap: 2 },
   title: { ...TYPE.headline, color: colors.textPrimary },

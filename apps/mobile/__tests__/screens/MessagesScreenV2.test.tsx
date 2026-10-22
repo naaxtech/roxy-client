@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { Profiler } from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';

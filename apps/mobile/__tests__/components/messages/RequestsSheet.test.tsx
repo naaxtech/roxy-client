@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 /**
  * Requests: message requests (CHAT-02) and friend requests in one sheet, two
  * segments. A stranger's message waits here — preview, "Not a friend" note,
@@ -73,6 +74,15 @@ beforeEach(() => {
 });
 
 describe('RequestsSheet', () => {
+  it('is the shared Sheet (F5)', () => {
+    // F5: the ONE bottom sheet (spring rise, UI-thread drag, only the scrim fades),
+    // not a system slide/fade Modal.
+    const v = render(<RequestsSheet visible onClose={jest.fn()} onOpenChat={jest.fn()} />);
+    expect(v.getByTestId('requests-sheet')).toBeTruthy();
+    expect(v.getByTestId('requests-sheet-scrim', { includeHiddenElements: true })).toBeTruthy();
+    expect(v.getByTestId('requests-sheet-scrim-press', { includeHiddenElements: true })).toBeTruthy();
+  });
+
   it('opens on message requests and shows the preview with a not-a-friend note', () => {
     requests.push(aRequest);
     const view = render(<RequestsSheet visible onClose={jest.fn()} onOpenChat={jest.fn()} />);
