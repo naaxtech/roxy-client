@@ -151,8 +151,13 @@ async function sample(page: Page, act: () => Promise<void>, settleMs = 1400): Pr
   });
 }
 
-/** Optional per-frame screenshots (CDP screencast) for the vision check; not used for timing. */
-async function screencast(cdp: CDPSession, name: string, act: () => Promise<void>, ms = 900) {
+/**
+ * Optional per-frame screenshots (CDP screencast) for the vision check. The
+ * screencast shows what the compositor drew, so it also times compositor
+ * (WAAPI) animations that rAF sampling cannot see while the main thread is
+ * busy. Files are named by ms since the action started (wall clock).
+ */
+async function screencast(cdp: CDPSession, name: string, act: () => Promise<void>, ms = 1500) {
   if (!SHOTS) return;
   const dir = path.join(OUT, 'frames', `${RUN_ID}-${name}`);
   fs.mkdirSync(dir, { recursive: true });
@@ -163,13 +168,15 @@ async function screencast(cdp: CDPSession, name: string, act: () => Promise<void
   };
   cdp.on('Page.screencastFrame', onFrame);
   await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 70, everyNthFrame: 1 });
+  await new Promise((r) => setTimeout(r, 300));
+  const tAct = Date.now() / 1000;
   await act();
   await new Promise((r) => setTimeout(r, ms));
   await cdp.send('Page.stopScreencast');
   cdp.off('Page.screencastFrame', onFrame);
   frames.forEach((fr, i) => {
-    const ms0 = Math.round((fr.ts - frames[0].ts) * 1000);
-    fs.writeFileSync(path.join(dir, `${String(i).padStart(2, '0')}-${ms0}ms.jpg`), Buffer.from(fr.data, 'base64'));
+    const rel = Math.round((fr.ts - tAct) * 1000);
+    fs.writeFileSync(path.join(dir, `${String(i).padStart(3, '0')}-${rel}ms.jpg`), Buffer.from(fr.data, 'base64'));
   });
 }
 
@@ -301,7 +308,10 @@ function sheetOpen({ t0, frames }: { t0: number; frames: Frame[] }) {
     if (Math.abs(after[i - 1].sheet!.top - finalTop) > 0.5) break;
     settled = after[i - 1];
   }
-  const minOp = Math.min(...after.map((f) => f.sheet!.op));
+  // Only frames where the sheet is on screen: RN-web's Modal keeps its first
+  // (still off-screen) frame at opacity 0 while it mounts.
+  const onScreen = after.filter((f) => f.sheet!.top < VH - 2);
+  const minOp = onScreen.length ? Math.min(...onScreen.map((f) => f.sheet!.op)) : 1;
   const from = after[0].t;
   return {
     visibleMs: Math.round(from - t0),
@@ -455,18 +465,47 @@ test('feel: navigation and screen transitions (read-only)', async ({ browser }) 
 
   // Frames for the vision check (separate pass: the screencast costs frames).
   if (SHOTS) {
-    await page.getByTestId('nav-slot-you').tap();
+    const tab = (slot: string) => async () => {
+      await page.getByTestId(`nav-slot-${slot}`).tap();
+      await expect(page).toHaveURL(new RegExp(`/${slot}$`), { timeout: 20_000 });
+    };
+    await page.getByTestId('nav-slot-feed').tap();
+    await expect(page).toHaveURL(/\/feed$/, { timeout: 20_000 });
+    await page.waitForTimeout(1200);
+    await screencast(cdp, 'tab-feed-to-discover', tab('discover'));
+    await screencast(cdp, 'tab-discover-to-feed', tab('feed'));
+    await screencast(cdp, 'tab-feed-to-messages', tab('messages'));
+    await screencast(cdp, 'tab-messages-to-you', tab('you'));
     await expect(page.getByTestId('you-row-settings')).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(800);
-    await screencast(cdp, 'push-settings', () => page.getByTestId('you-row-settings').tap());
-    await screencast(cdp, 'pop-settings', () => page.goBack().then(() => undefined));
+    await screencast(cdp, 'push-settings', async () => {
+      await page.getByTestId('you-row-settings').tap();
+      await expect(page).toHaveURL(/\/settings$/, { timeout: 20_000 });
+    });
+    await screencast(cdp, 'pop-settings', async () => {
+      await page.evaluate(() => history.back());
+      await expect(page).toHaveURL(/\/you$/, { timeout: 20_000 });
+    });
     await page.waitForTimeout(600);
-    await screencast(cdp, 'tab-discover', () => page.getByTestId('nav-slot-discover').tap());
+    await screencast(cdp, 'tab-you-to-discover', tab('discover'));
+    await expect(page.getByTestId('discover-notifications')).toBeVisible({ timeout: 30_000 });
+    await page.waitForTimeout(800);
+    await screencast(cdp, 'push-notifications', async () => {
+      await page.getByTestId('discover-notifications').tap();
+      await expect(page).toHaveURL(/\/notifications$/, { timeout: 20_000 });
+    });
+    await screencast(cdp, 'pop-notifications', async () => {
+      await page.evaluate(() => history.back());
+      await expect(page).toHaveURL(/\/discover$/, { timeout: 20_000 });
+    });
     await page.waitForTimeout(600);
-    await screencast(cdp, 'tab-feed', () => page.getByTestId('nav-slot-feed').tap());
-    await page.waitForTimeout(600);
-    await screencast(cdp, 'create-open', () => page.getByTestId('nav-slot-create').tap());
-    await page.getByTestId('create-sheet').getByLabel('Close').tap();
+    await screencast(cdp, 'create-open', async () => {
+      await page.getByTestId('nav-slot-create').tap();
+      await expect(page.getByTestId('create-sheet')).toBeVisible({ timeout: 15_000 });
+    }, 900);
+    await screencast(cdp, 'create-close', async () => {
+      await page.getByTestId('create-sheet').getByLabel('Close').tap();
+    }, 900);
   }
 
   result.blockedWrites = blocked;
