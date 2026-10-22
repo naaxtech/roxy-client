@@ -1,0 +1,24 @@
+apps/mobile/__tests__/components/RoxyCompanionButtonTuck.test.tsx
+  h_0549c11fec2ab0 2,156-168
+apps/mobile/__tests__/components/ui/SwitchMotion.test.tsx
+  h_0549c11fec2ab0 12,143-155
+apps/mobile/components/ui/PrimaryButton.tsx
+  h_0549c11fec2ab0 15
+apps/mobile/components/ui/RoxyCompanionButton.tsx
+  h_0549c11fec2ab0 20,208
+apps/mobile/components/ui/Switch.tsx
+  h_0549c11fec2ab0 13,136
+apps/mobile/components/ui/noPressDelay.ts
+  h_0549c11fec2ab0 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab9e953278413da4d86ab0113d80b8168112b200",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
