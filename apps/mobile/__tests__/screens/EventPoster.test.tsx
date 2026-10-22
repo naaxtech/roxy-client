@@ -74,6 +74,8 @@ jest.mock('../../lib/supabase', () => {
 });
 
 import EventDetailScreen from '../../app/event/[id]';
+// eslint-disable-next-line import/first
+import { clearEventCache, readEventMemory, writeEventMemory, EVENT_CACHE_MAX } from '../../components/events/eventCache';
 
 const future = new Date(Date.now() + 7 * 86_400_000);
 future.setHours(20, 30, 0, 0);
@@ -81,6 +83,7 @@ const futureEnd = new Date(future.getTime() + 90 * 60_000);
 
 beforeEach(() => {
   jest.clearAllMocks();
+  clearEventCache();
   mockReduced = true;
   Platform.OS = 'ios';
   mockAttendee = null;
@@ -98,6 +101,70 @@ beforeEach(() => {
 const ready = async (r: ReturnType<typeof render>) => {
   await waitFor(() => expect(r.getByTestId('event-poster')).toBeTruthy());
 };
+
+describe('event memory (F7: a second visit shows the poster in the first frame)', () => {
+  const firstFrame = () => {
+    // react-test-renderer outside act on purpose: React 18 legacy root commits
+    // synchronously and leaves passive effects pending, so this is the frame
+    // she sees before any effect (or fetch) runs.
+    const TestRenderer = require('react-test-renderer');
+    const tree = TestRenderer.create(<EventDetailScreen />);
+    const byId = (id: string) => tree.root.findAll((n: { props: Record<string, unknown> }) => n.props.testID === id).length;
+    return { tree, byId };
+  };
+
+  it('reopening an event paints the poster at once, no skeleton', async () => {
+    const first = render(<EventDetailScreen />);
+    await ready(first);
+    first.unmount();
+    const { tree, byId } = firstFrame();
+    expect(byId('event-loading')).toBe(0);
+    expect(byId('event-poster')).toBeGreaterThan(0);
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('her ticket is remembered too: the seal is simply there on a revisit (no jump)', async () => {
+    mockAttendee = { ticket_code: 'CDD-0512-023', status: 'going' };
+    const first = render(<EventDetailScreen />);
+    await ready(first);
+    await waitFor(() => expect(first.getByText('CDD-0512-023')).toBeTruthy());
+    first.unmount();
+    const { tree } = firstFrame();
+    const code = tree.root.findAll((n: { props: Record<string, unknown> }) => n.props.children === 'CDD-0512-023');
+    expect(code.length).toBeGreaterThan(0);
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('a remembered ticket she gave up elsewhere is gone once the refresh answers', async () => {
+    mockAttendee = { ticket_code: 'CDD-0512-023', status: 'going' };
+    const first = render(<EventDetailScreen />);
+    await ready(first);
+    await waitFor(() => expect(first.getByText('CDD-0512-023')).toBeTruthy());
+    first.unmount();
+    mockAttendee = null;
+    const again = render(<EventDetailScreen />);
+    await waitFor(() => expect(again.queryByText('CDD-0512-023')).toBeNull());
+  });
+
+  it('the quiet refresh still lands what changed', async () => {
+    const first = render(<EventDetailScreen />);
+    await ready(first);
+    first.unmount();
+    mockEvent = { ...mockEvent, title: 'Full moon swim (moved)' };
+    const again = render(<EventDetailScreen />);
+    expect(again.getByText('Full moon swim')).toBeTruthy();
+    expect(await again.findByText('Full moon swim (moved)')).toBeTruthy();
+  });
+
+  it('memory belongs to one member and is bounded', () => {
+    writeEventMemory('u1', 'e1', { event: { id: 'e1' }, ticketCode: 'T' });
+    expect(readEventMemory('u2', 'e1')).toBeNull();
+    writeEventMemory('u2', 'e2', { event: { id: 'e2' }, ticketCode: null });
+    expect(readEventMemory('u1', 'e1')).toBeNull();
+    for (let i = 0; i <= EVENT_CACHE_MAX; i += 1) writeEventMemory('u2', `x${i}`, { event: {}, ticketCode: null });
+    expect(readEventMemory('u2', 'e2')).toBeNull();
+  });
+});
 
 describe('event poster (v2)', () => {
   it('is a poster with the title and the club, and keeps the exact place off the page until she is going', async () => {

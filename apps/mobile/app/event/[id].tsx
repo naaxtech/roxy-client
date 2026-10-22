@@ -8,6 +8,7 @@ import { PressableScale } from '../../components/ui/PressableScale';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { Snackbar } from '../../components/ui/Snackbar';
 import { logError } from '../../lib/errorLogger';
+import { readEventMemory, writeEventMemory } from '../../components/events/eventCache';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -106,10 +107,16 @@ export default function EventDetailScreen() {
   const userId = useAuthStore((st) => st.user?.id ?? null);
   const user = useMemo(() => (userId ? { id: userId } : null), [userId]);
 
-  const [event, setEvent] = useState<EventDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  // F7: an event opened earlier in this session paints from memory in the
+  // first frame (poster and her ticket, so the seal never jumps in) and
+  // refreshes quietly; only a first visit shows the skeleton.
+  const [remembered] = useState(() => readEventMemory<EventDetail>(userId ?? '', id ?? ''));
+  const [event, setEvent] = useState<EventDetail | null>(() => remembered?.event ?? null);
+  const [loading, setLoading] = useState(() => remembered === null);
   const [notFound, setNotFound] = useState(false);
-  const [ticketCode, setTicketCode] = useState<string | null>(null);
+  const [ticketCode, setTicketCode] = useState<string | null>(() => remembered?.ticketCode ?? null);
+  const ticketRef = useRef(ticketCode);
+  ticketRef.current = ticketCode;
   const [rsvping, setRsvping] = useState(false);
   // F10: an action the server refused. The screen has already rolled it
   // back; this says so in one sentence and offers Retry.
@@ -119,7 +126,7 @@ export default function EventDetailScreen() {
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const [favorited, setFavorited] = useState(false);
   // 0 = no seal, 1 = stamped on the poster's corner.
-  const seal = useRef(new Animated.Value(0)).current;
+  const seal = useRef(new Animated.Value(remembered?.ticketCode ? 1 : 0)).current;
   const ticketSubscriptionUnsubRef = useRef<(() => void) | null>(null);
   const eventChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -144,20 +151,33 @@ export default function EventDetailScreen() {
       .select('*, price_cents, communities(id, name)')
       .eq('id', id)
       .single();
-    if (error || !data) { setNotFound(true); setLoading(false); return; }
+    if (error || !data) {
+      // With the poster remembered, a failed refresh stays quiet.
+      if (!readEventMemory(user?.id ?? '', id)) setNotFound(true);
+      setLoading(false);
+      return;
+    }
     setEvent(data as EventDetail);
     setLoading(false);
-  }, [id]);
+  }, [id, user?.id]);
 
   const fetchRsvp = useCallback(async () => {
     if (!id || !user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('event_attendees')
       .select('ticket_code, status')
       .eq('event_id', id)
       .eq('user_id', user.id)
       .maybeSingle();
-    if (data?.ticket_code) {
+    if (error) return;
+    if (!data?.ticket_code) {
+      // A remembered ticket she has since given up (another device) is gone;
+      // a ticket she just got on this screen stays (this read may predate it).
+      if (remembered?.ticketCode && ticketRef.current === remembered.ticketCode) {
+        setTicketCode(null);
+        seal.setValue(0);
+      }
+    } else {
       // Already going when she arrives: the seal is simply there. No
       // celebration for something she did yesterday.
       setTicketCode(data.ticket_code);
@@ -165,12 +185,18 @@ export default function EventDetailScreen() {
     }
   // seal is a stable Animated.Value ref — safe to omit
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user]);
+  }, [id, user, remembered]);
 
   useEffect(() => {
     void fetchEvent();
     void fetchRsvp();
   }, [fetchEvent, fetchRsvp]);
+
+  // Keep the memory current (RSVP, give up, refresh) for the next visit.
+  useEffect(() => {
+    if (!event || !userId || !id) return;
+    writeEventMemory(userId, id, { event, ticketCode });
+  }, [event, ticketCode, userId, id]);
 
   // Realtime: update event status when host/staff cancels or event auto-completes
   useEffect(() => {
