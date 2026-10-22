@@ -31,7 +31,9 @@ type Props = {
 
 /**
  * The inner composition Claude Design paints on a text post
- * (`Roxy App.dc.html` 97–103): kick, prompt, sub, flower, plum ramp.
+ * (`Roxy App.dc.html` 97–103): kick, prompt, sub, ramp. The prototype's ✿
+ * mark under the prompt is retired: v2 bans the flower anywhere (direction ›
+ * Bans, Nicole 2026-10-21); its styles stay below, unused, with that note.
  */
 export function TextCardFace({
   content,
@@ -90,15 +92,6 @@ export function TextCardFace({
         </Text>
       ) : null}
 
-      {!compact ? (
-        <Text
-          testID={`${testIDPrefix}-flower`}
-          style={[s.flower, size === 'preview' && s.previewFlower]}
-          importantForAccessibility="no"
-        >
-          ✿
-        </Text>
-      ) : null}
     </LinearGradient>
   );
 }
@@ -164,6 +157,7 @@ const s = StyleSheet.create({
     color: 'rgba(255,249,251,0.75)',
     fontFamily: FONTS.text.medium,
   },
+  /** RETIRED with the ✿ mark (v2 bans the flower); origin `git log -S text-cell-flower`. */
   flower: {
     fontSize: 52,
     lineHeight: 52,

@@ -148,9 +148,12 @@ describe('TextCell canvas', () => {
     expect(ramp.paddingBottom ?? 0).toBeGreaterThanOrEqual(Math.round(800 * 0.26));
   });
 
-  it('marks the card with the prototype flower, left-aligned like Claude Design', () => {
+  // v2 bans the flower anywhere (direction › Bans, Nicole 2026-10-21). Was:
+  // "marks the card with the prototype flower" (a ✿ under the prompt).
+  it('carries no flower mark, and keeps the prompt left-aligned like Claude Design', () => {
     const view = text();
-    expect(view.getByTestId('text-cell-flower').props.children).toBe('✿');
+    expect(view.queryByTestId('text-cell-flower')).toBeNull();
+    expect(view.queryByText(/✿|❀|🌸/)).toBeNull();
     const body = view.getByTestId('text-cell-prompt');
     expect(body.props.style).toEqual(
       expect.arrayContaining([expect.objectContaining({ textAlign: 'left' })]),
