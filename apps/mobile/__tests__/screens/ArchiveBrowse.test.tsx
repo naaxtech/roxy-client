@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import ArchiveBrowseScreen from '../../app/archive/index';
+import { RoxyRefresh } from '../../components/feedback/RoxyRefresh';
 import { useArchiveStore } from '../../store/archiveStore';
 import { useProfileStore } from '../../store/profileStore';
 import { THEMES } from '../../lib/theme';
@@ -95,6 +96,16 @@ describe('ARC-07 / ARC-09: refresh, paging, debounce, confirmation', () => {
     expect(mockRefresh).toHaveBeenCalled();
     list.props.onEndReached();
     expect(mockLoadMore).toHaveBeenCalled();
+  });
+
+  it('pulls to refresh through the shared RoxyRefresh (the faceless pink O), not a bare RefreshControl', () => {
+    const mockRefresh = jest.fn().mockResolvedValue(undefined);
+    seed({ refresh: mockRefresh, loadMore: jest.fn(), hasMore: false, refreshing: true });
+    const v = render(<ArchiveBrowseScreen />);
+    const pull = v.UNSAFE_getByType(RoxyRefresh);
+    expect(pull.props.refreshing).toBe(true);
+    pull.props.onRefresh();
+    expect(mockRefresh).toHaveBeenCalled();
   });
 
   it('typing does not fire a load per keystroke', async () => {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, FlatList, Pressable, ActivityIndicator, StyleSheet, RefreshControl,
+  View, Text, TextInput, FlatList, Pressable, ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +22,8 @@ import { fetchArchiveTypeCounts } from '../../lib/archive';
 import { SortChips } from '../../components/archive/SortChips';
 import { PendingBanner } from '../../components/archive/PendingBanner';
 import { AccountStatusTag } from '../../components/account/AccountStatusTag';
-import type { ArchiveEntry } from '../../lib/archive';
+import type { ArchiveEntry } from '../../lib/archive';
+import { RoxyRefresh } from '../../components/feedback/RoxyRefresh';
 
 /**
  * Browse the WLW Archive.
@@ -252,29 +253,28 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
       );
     }
 
+    // Pull-to-refresh is the shared RoxyRefresh (P1: the faceless pink O; on
+    // web a real touch pull), not a bare RefreshControl that does nothing on web.
     return (
-      <FlatList
-        data={entries}
-        keyExtractor={(e) => e.id}
-        contentContainerStyle={s.list}
-        testID="archive-list"
-        refreshControl={(
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => { void refresh(); }}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
+      <RoxyRefresh refreshing={refreshing} onRefresh={() => { void refresh(); }} testID="archive-refresh">
+        {(refreshControl) => (
+          <FlatList
+            data={entries}
+            keyExtractor={(e) => e.id}
+            contentContainerStyle={s.list}
+            testID="archive-list"
+            refreshControl={refreshControl}
+            onEndReachedThreshold={0.5}
+            onEndReached={() => { void loadMore(); }}
+            ListFooterComponent={loadingMore ? (
+              <ActivityIndicator color={colors.primary} testID="archive-loading-more" style={{ padding: 16 }} />
+            ) : null}
+            renderItem={({ item }) => (
+              <ArchiveRow entry={item} onPress={() => openEntry(item)} testID={`archive-row-${item.slug}`} />
+            )}
           />
         )}
-        onEndReachedThreshold={0.5}
-        onEndReached={() => { void loadMore(); }}
-        ListFooterComponent={loadingMore ? (
-          <ActivityIndicator color={colors.primary} testID="archive-loading-more" style={{ padding: 16 }} />
-        ) : null}
-        renderItem={({ item }) => (
-          <ArchiveRow entry={item} onPress={() => openEntry(item)} testID={`archive-row-${item.slug}`} />
-        )}
-      />
+      </RoxyRefresh>
     );
   };
 
