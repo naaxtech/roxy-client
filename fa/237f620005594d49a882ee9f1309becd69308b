@@ -1,0 +1,24 @@
+apps/mobile/__tests__/components/chat/KeyboardTrackingView.test.tsx
+  h_0549c11fec2ab0 1-113
+apps/mobile/__tests__/screens/ChatThread.test.tsx
+  h_0549c11fec2ab0 2-3,189-197
+apps/mobile/__tests__/screens/CommunityChannels.test.tsx
+  h_0549c11fec2ab0 2,237-244
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  h_0549c11fec2ab0 37,474,682-683,712
+apps/mobile/app/chat/[id].tsx
+  h_0549c11fec2ab0 3,41,47,685-687,876
+apps/mobile/components/chat/KeyboardTrackingView.tsx
+  h_0549c11fec2ab0 1-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa237f620005594d49a882ee9f1309becd69308b",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
