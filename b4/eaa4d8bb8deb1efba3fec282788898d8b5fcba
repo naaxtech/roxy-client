@@ -1,0 +1,14 @@
+apps/mobile/tests/e2e/discover-audit.spec.ts
+  h_0549c11fec2ab0 64-65,84-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4eaa4d8bb8deb1efba3fec282788898d8b5fcba",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
