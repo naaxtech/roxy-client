@@ -10,7 +10,7 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
 import { RADII, floatElevation } from '../../lib/theme';
-import { POP_FROM, SPRING } from '../../lib/motion';
+import { POP_FROM, PRESS, SPRING } from '../../lib/motion';
 import { tapLight } from '../../lib/haptics';
 import { useRoxyFab, fabTuck } from '../../lib/roxyFab';
 import {
@@ -89,6 +89,8 @@ export function RoxyCompanionButton({ visible = true, onStage = false }: Props) 
   const tuck = useSharedValue(verdict);
   /** The verdict the reaction last acted on (it may fire more than once per change). */
   const seen = useSharedValue(verdict);
+  /** 1 at rest, PRESS.scale while the tucked hit area is held (F2: it answers on press-in). */
+  const press = useSharedValue(1);
   const dir = I18nManager.isRTL ? -1 : 1;
 
   useEffect(() => {
@@ -118,9 +120,13 @@ export function RoxyCompanionButton({ visible = true, onStage = false }: Props) 
   const tuckStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: tuck.value * dir * TUCK_TRAVEL },
-      { scale: 1 + tuck.value * (TUCK_SCALE - 1) },
+      { scale: (1 + tuck.value * (TUCK_SCALE - 1)) * press.value },
     ],
   }), [dir]);
+
+  const pressTo = (to: number) => {
+    press.value = reducedMotion ? to : withSpring(to, SPRING.fastSpatial);
+  };
 
   const seatStyle = useAnimatedStyle(() => ({
     opacity: sheetOpen ? 0 : fade.value,
@@ -177,6 +183,8 @@ export function RoxyCompanionButton({ visible = true, onStage = false }: Props) 
           <Pressable
             testID="fab-tucked"
             onPress={openRoxy}
+            onPressIn={() => pressTo(PRESS.scale)}
+            onPressOut={() => pressTo(1)}
             accessibilityRole="button"
             accessibilityLabel="Roxy AI"
             accessibilityHint="Opens your chat with Roxy AI"

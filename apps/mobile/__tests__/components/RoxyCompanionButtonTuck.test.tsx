@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, act, configure } from '@testing-library/react-native';
+import { render, act, configure, fireEvent } from '@testing-library/react-native';
 import { setUpTests, getAnimatedStyle } from 'react-native-reanimated';
 
 configure({ defaultIncludeHiddenElements: true });
@@ -52,6 +52,7 @@ jest.mock('../../store/profileStore', () => ({
 import { RoxyCompanionButton } from '../../components/ui/RoxyCompanionButton';
 import { useRoxyFab, fabTuck } from '../../lib/roxyFab';
 import { FAB_MARGIN, FAB_SIZE, FAB_TUCKED } from '../../components/nav/navTokens';
+import { PRESS } from '../../lib/motion';
 
 const TUCK_TRAVEL = FAB_MARGIN + FAB_SIZE / 2;
 const TUCK_SCALE = FAB_TUCKED / FAB_SIZE;
@@ -131,5 +132,23 @@ describe('RoxyCompanionButton — the tuck on the UI thread', () => {
     expect(early).toBeLessThan(1);
     act(() => { jest.advanceTimersByTime(140); });
     expect((getAnimatedStyle(getByTestId('fab-seat')) as { opacity: number }).opacity).toBeCloseTo(1, 2);
+  });
+
+  // F2: every pressable answers on press-in. The tucked hit area is an
+  // invisible target over the O, so the O itself dips while it is held.
+  it('the tucked O dips on press-in and springs back on release', () => {
+    useRoxyFab.setState({ tucked: true });
+    const { getByTestId } = render(<RoxyCompanionButton />);
+    frame();
+    const rest = pick(transformOf(getByTestId('fab-tuck')), 'scale') ?? 0;
+    expect(rest).toBeCloseTo(TUCK_SCALE, 3);
+    fireEvent(getByTestId('fab-tucked'), 'pressIn');
+    act(() => { jest.advanceTimersByTime(16); });
+    expect(pick(transformOf(getByTestId('fab-tuck')), 'scale')).toBeLessThan(rest);
+    act(() => { jest.advanceTimersByTime(400); });
+    expect(pick(transformOf(getByTestId('fab-tuck')), 'scale')).toBeCloseTo(rest * PRESS.scale, 3);
+    fireEvent(getByTestId('fab-tucked'), 'pressOut');
+    act(() => { jest.advanceTimersByTime(600); });
+    expect(pick(transformOf(getByTestId('fab-tuck')), 'scale')).toBeCloseTo(rest, 3);
   });
 });
