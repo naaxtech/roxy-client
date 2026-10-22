@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
-import { memo } from 'react';
+import { memo, useContext } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +11,7 @@ import { TYPE } from '../../lib/typography';
 import { tapLight } from '../../lib/haptics';
 import { DAILY_PROMPT_KICK, type DailyPrompt } from '../../lib/dailyPrompt';
 import { TEXT_CARD_INK } from '../../lib/textCard';
-import { CHROME_BOTTOM, RAIL_GUTTER } from './feedChromeTokens';
+import { CHROME_BOTTOM, RAIL_GUTTER, STAGE_TOP } from './feedChromeTokens';
 import { STAGE } from './stageColors';
 import { TextCardFace } from './TextCardFace';
 
@@ -39,6 +40,9 @@ export const DailyPromptCell = memo(function DailyPromptCell({
   prompt, width, height, reducedMotion,
 }: Props): ReactElement {
   const router = useRouter();
+  // The header's SafeAreaView adds the status bar; so does the card. Read the
+  // context, not useSafeAreaInsets(): no provider (a test, a preview) means 0.
+  const statusBar = useContext(SafeAreaInsetsContext)?.top ?? 0;
 
   const answer = () => {
     tapLight(reducedMotion);
@@ -47,11 +51,13 @@ export const DailyPromptCell = memo(function DailyPromptCell({
 
   return (
     <View testID="daily-prompt-cell" style={[s.page, { width, height }]}>
+      {/* Below the feed header (STAGE_TOP), the same clearance as every top-anchored cell. */}
       <TextCardFace
         content={`${DAILY_PROMPT_KICK}\n${prompt.question}`}
         size="page"
         testIDPrefix="daily-prompt"
         maxWidth={width - 30 - RAIL_GUTTER}
+        topInset={STAGE_TOP + statusBar}
         bottomInset={Math.round(height * 0.26)}
       />
 

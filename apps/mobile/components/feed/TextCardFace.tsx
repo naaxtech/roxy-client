@@ -27,6 +27,12 @@ type Props = {
    * the bottom of the page on the black stage.
    */
   bottomInset?: number;
+  /**
+   * Room kept clear at the top of a full-page card for the feed header
+   * (`STAGE_TOP` plus the status bar). Padding inside the ramp, like
+   * `bottomInset`, so the card still paints under the header.
+   */
+  topInset?: number;
 };
 
 /**
@@ -42,6 +48,7 @@ export function TextCardFace({
   testIDPrefix = 'text-card',
   maxWidth,
   bottomInset,
+  topInset,
 }: Props): ReactElement {
   const body = content.trim();
   const parsed = parseTextCard(ghost && !body ? TEXT_CARD_EXAMPLE_BODY : body);
@@ -68,6 +75,7 @@ export function TextCardFace({
         compact && s.tile,
         ghost && s.ghost,
         bottomInset != null && { paddingBottom: bottomInset },
+        topInset != null && { paddingTop: topInset },
       ]}
     >
       {parsed.kick && !compact ? (
