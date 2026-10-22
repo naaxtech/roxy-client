@@ -1,0 +1,26 @@
+apps/mobile/__tests__/screens/DiscoverFabLane.test.tsx
+  h_0549c11fec2ab0 52,62-64
+apps/mobile/__tests__/screens/SettingsRoxy.test.tsx
+  h_0549c11fec2ab0 72,201-202
+apps/mobile/__tests__/screens/YouProfileShell.test.tsx
+  h_0549c11fec2ab0 180,188-189
+apps/mobile/app/(tabs)/discover/index.tsx
+  h_0549c11fec2ab0 16,290-293
+apps/mobile/app/(tabs)/you/index.tsx
+  h_0549c11fec2ab0 45,533-535
+apps/mobile/app/(tabs)/you/settings.tsx
+  h_0549c11fec2ab0 34,185-186
+apps/mobile/components/profile/ProfileShell.tsx
+  h_0549c11fec2ab0 171-172,256,474
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb59c13b532af557673cf09fa356630823558df4",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
