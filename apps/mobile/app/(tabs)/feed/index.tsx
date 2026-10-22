@@ -7,7 +7,8 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ReelsFeed } from '../../../components/feed/ReelsFeed';
 import { followingAuthorIds } from '../../../lib/feedScope';
-import { FeedSegments, type FeedSegment } from '../../../components/feed/FeedSegments';
+import { type FeedSegment } from '../../../components/feed/FeedSegments';
+import { FeedSegmentTabs } from '../../../components/nav/FeedSegmentTabs';
 import { StreakChip } from '../../../components/feed/StreakChip';
 import { NowRail } from '../../../components/feed/NowRail';
 import { MiniWinsSheet } from '../../../components/feed/MiniWinsSheet';
@@ -220,7 +221,7 @@ function FeedScreen() {
           <NowRail open={nowOpen} communityIds={communityIds} onCount={handleNowCount} />
         </View>
 
-        <FeedSegments value={segment} onChange={setSegment} />
+        <FeedSegmentTabs value={segment} onChange={setSegment} />
 
         {/* Her first five minutes (G-11) used to sit here over For You. v2
             (direction: "Three first-run checklists → one nudge at a time, in
