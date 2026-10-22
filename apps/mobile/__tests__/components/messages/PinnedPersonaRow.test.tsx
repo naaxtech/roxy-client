@@ -1,11 +1,22 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, configure } from '@testing-library/react-native';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
+jest.mock('react-native-svg', () => ({
+  __esModule: true,
+  default: 'Svg',
+  Circle: 'Circle',
+  Ellipse: 'Ellipse',
+  Path: 'Path',
+  G: 'G',
+}));
+// Her O is decorative inside the labelled row (hidden from assistive tech);
+// its parts are still what these tests inspect.
+configure({ defaultIncludeHiddenElements: true });
 
-import { PinnedPersonaRow } from '../../../components/messages/PinnedPersonaRow';
+import { PinnedPersonaRow, PERSONA_AVATAR } from '../../../components/messages/PinnedPersonaRow';
 import { THEMES } from '../../../lib/theme';
 
 const flat = (node: { props: { style?: unknown } }) =>
@@ -47,24 +58,28 @@ describe('the two pinned rows', () => {
     expect(getByText('Only you see this chat.')).toBeTruthy();
   });
 
-  it('gives them different marks — her pink circle is not Sister’s quiet plate', () => {
+  it('gives them different marks — her Roxy O is not Sister’s quiet plate', () => {
     const roxy = render(<PinnedPersonaRow persona="roxy" onPress={jest.fn()} />);
     const sister = render(<PinnedPersonaRow persona="sister" onPress={jest.fn()} />);
 
-    expect(roxy.queryByTestId('persona-roxy-ring')).not.toBeNull();
+    // Integration (Wave 2): the lane's pink "R" stand-in became Roxy AI's own
+    // mark, the Roxy O (components/roxy/RoxyO), at the row's 48 dp avatar size.
+    // Was: a pink View `persona-roxy-ring` with an "R" initial.
+    expect(roxy.queryByTestId('persona-roxy-o')).not.toBeNull();
     expect(roxy.queryByTestId('persona-sister-plate')).toBeNull();
     expect(sister.queryByTestId('persona-sister-plate')).not.toBeNull();
-    expect(sister.queryByTestId('persona-roxy-ring')).toBeNull();
-    expect(flat(roxy.getByTestId('persona-roxy-ring')).backgroundColor).toBe(THEMES.light.pink);
+    expect(sister.queryByTestId('persona-roxy-o')).toBeNull();
+    expect(flat(roxy.getByTestId('persona-roxy-o')).width).toBe(PERSONA_AVATAR);
+    expect(roxy.getByTestId('persona-roxy-o-ring').props.fill).toBe(THEMES.light.pink);
     expect(flat(sister.getByTestId('persona-sister-plate')).backgroundColor).toBe(THEMES.light.sister);
   });
 
-  it('tells them apart in greyscale: her initial and line vs Sister’s plain disc and line', () => {
+  it('tells them apart in greyscale: her face and line vs Sister’s plain disc and line', () => {
     const roxy = render(<PinnedPersonaRow persona="roxy" onPress={jest.fn()} />);
     const sister = render(<PinnedPersonaRow persona="sister" onPress={jest.fn()} />);
-    // Her mark carries a letter; Sister's disc carries nothing.
-    expect(roxy.getByTestId('persona-roxy-initial').props.children).toBe('R');
-    expect(sister.queryByTestId('persona-roxy-initial')).toBeNull();
+    // Her mark carries a face (the O's face disc); Sister's disc carries nothing.
+    expect(roxy.getByTestId('persona-roxy-o-face')).toBeTruthy();
+    expect(sister.queryByTestId('persona-roxy-o-face')).toBeNull();
     expect(sister.getByText('Just for you. Nothing leaves here.')).toBeTruthy();
   });
 

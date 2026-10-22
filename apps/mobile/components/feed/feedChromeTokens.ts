@@ -1,4 +1,5 @@
 import type { TextStyle } from 'react-native';
+import { FAB_LANE as NAV_FAB_LANE } from '../nav/navTokens';
 
 /**
  * The one legibility problem every full-bleed cell has, and how it is actually
@@ -140,10 +141,10 @@ export const RAIL_OUTLINE = { color: '#0B0A0A', width: 1 } as const;
  * The Roxy AI button's lane (direction › The Roxy AI button): 88 × 88 dp at
  * the bottom end corner of every feed page. The rail's lowest control starts
  * at the lane's top and captions keep an end margin of the same 88.
- * Mirrors `components/nav/navTokens.ts` `FAB_LANE` (lane roxy-ai adds it on
- * its branch); the orchestrator dedupes the two at merge.
+ * One source since the Wave 2 merge: `components/nav/navTokens.ts` `FAB_LANE`
+ * (the feed lane mirrored it as a literal 88 while lane roxy-ai built it).
  */
-export const FAB_LANE = 88;
+export const FAB_LANE = NAV_FAB_LANE;
 
 /** Rail glyphs (direction › Spacing: rail glyphs 32 in 48 targets). */
 export const RAIL_GLYPH = 32;

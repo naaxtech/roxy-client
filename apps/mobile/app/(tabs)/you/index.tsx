@@ -42,6 +42,7 @@ import { useAccess } from '../../../hooks/useAccess';
 import { AccountStatusTag } from '../../../components/account/AccountStatusTag';
 import { TYPE } from '../../../lib/typography';
 import { isProfileTab } from '../../../components/profile/profileVariant';
+import { onListScroll, LIST_SCROLL_THROTTLE } from '../../../lib/roxyFab';
 
 
 /** How long a spinner is a reasonable answer before it becomes a dead end. */
@@ -508,6 +509,12 @@ export default function ProfileScreen() {
       ) : null}
       <ProfileShell
         variant="self"
+        // Roxy AI's lane (roxy-ai lane props, wired at the Wave 2 merge): she
+        // tucks while this list scrolls down. The shell's own content padding
+        // (100) already ends the list more than FAB_LANE (88) higher, so no
+        // `contentBottomInset` is added on top of it.
+        onScroll={onListScroll}
+        scrollEventThrottle={LIST_SCROLL_THROTTLE}
         // No `stats`. Posts / Badges / Orders was three numbers about the
         // account rather than anything a woman comes to her own profile to do,
         // and two of the three are already tabs. Shelved deliberately —

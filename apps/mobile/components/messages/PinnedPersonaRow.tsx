@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
+import { RoxyO } from '../roxy/RoxyO';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII, SPACE, MARGIN, type ThemeColors } from '../../lib/theme';
@@ -69,12 +70,9 @@ export function PinnedPersonaRow({ persona, onPress, unread = false }: Props) {
       style={s.row}
     >
       {isRoxy ? (
-        // Stand-in for the Roxy O: the orchestrator swaps in RoxyCompanionButton's mark (lane roxy-ai) at merge.
-        <View style={[s.avatar, { backgroundColor: colors.pink }]} testID="persona-roxy-ring">
-          <Text style={[s.initial, { color: colors.onPink }]} testID="persona-roxy-initial">
-            R
-          </Text>
-        </View>
+        // Her own mark, the Roxy O (lane roxy-ai), at the row's avatar size.
+        // Decorative here: the row's label already names her.
+        <RoxyO size={PERSONA_AVATAR} testID="persona-roxy-o" />
       ) : (
         <View style={[s.avatar, { backgroundColor: colors.sister }]} testID="persona-sister-plate" />
       )}

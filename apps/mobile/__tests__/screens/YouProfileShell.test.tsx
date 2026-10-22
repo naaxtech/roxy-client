@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { render, waitFor } from '@testing-library/react-native';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
@@ -158,5 +159,24 @@ describe('You on the unified shell', () => {
     const { getByTestId, queryByTestId } = render(<ProfileScreen />);
     await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
     expect(queryByTestId('profile-stats')).toBeNull();
+  });
+
+  /**
+   * Direction v2 › The Roxy AI button: on You, Roxy tucks while the list
+   * scrolls down, and the list ends at least FAB_LANE higher so the last row
+   * can always scroll clear of her lane. The root list is ProfileShell's.
+   */
+  it('hooks the root list to the Roxy AI tuck and ends it a lane higher', async () => {
+    const { onListScroll, LIST_SCROLL_THROTTLE } = jest.requireActual('../../lib/roxyFab') as
+      typeof import('../../lib/roxyFab');
+    const { FAB_LANE } = jest.requireActual('../../components/nav/navTokens') as
+      typeof import('../../components/nav/navTokens');
+    const { getByTestId } = render(<ProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
+    const root = getByTestId('profile-shell');
+    expect(root.props.onScroll).toBe(onListScroll);
+    expect(root.props.scrollEventThrottle).toBe(LIST_SCROLL_THROTTLE);
+    const content = StyleSheet.flatten(root.props.contentContainerStyle) as { paddingBottom?: number };
+    expect(Number(content.paddingBottom)).toBeGreaterThanOrEqual(FAB_LANE);
   });
 });

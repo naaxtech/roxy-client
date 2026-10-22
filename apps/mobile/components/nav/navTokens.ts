@@ -49,7 +49,7 @@ export const UNREAD_DOT = 8;
  * 88 × 88 dp square at the bottom end corner, directly above the bar. At rest
  * nothing readable or tappable sits inside it: lists end `FAB_LANE` higher
  * (bottom padding), the Feed rail starts at its top and captions keep an end
- * margin of `FAB_LANE`. `feedChromeTokens.ts` mirrors the 88; keep them equal.
+ * margin of `FAB_LANE`. `feedChromeTokens.ts` re-exports this value (one source).
  */
 export const FAB_LANE = 88;
 
