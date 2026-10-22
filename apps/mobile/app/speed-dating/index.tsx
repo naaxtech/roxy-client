@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ActivityIndicator,
+  View, Text, StyleSheet,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { showAlert } from '../../lib/confirm';
 import { pinkFill } from '../../lib/theme';
+import { BusySwap } from '../../components/messages/LoadingShapes';
 
 export default function SpeedDatingLobby() {
   const router = useRouter();
@@ -189,14 +190,12 @@ export default function SpeedDatingLobby() {
             end={{ x: 1, y: 0 }}
             style={[styles.joinBtn, joining && { opacity: 0.7 }]}
           >
-            {joining ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
+            <BusySwap busy={joining} onFill>
               <>
                 <Ionicons name="flash" size={18} color="#fff" />
                 <Text style={styles.joinBtnText}>Join Speed Dating</Text>
               </>
-            )}
+            </BusySwap>
           </LinearGradient>
         </TouchableOpacity>
       </View>

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, ScrollView,
-  ActivityIndicator, StyleSheet,
+  View, Text, TextInput, ScrollView, StyleSheet,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { useRouter } from 'expo-router';
@@ -16,6 +15,7 @@ import { canCreateEvent } from '../../lib/createAccess';
 import { TYPE } from '../../lib/typography';
 import { RADII } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
+import { BusySwap } from '../../components/messages/LoadingShapes';
 
 type EventMode = 'online' | 'in_person';
 
@@ -129,9 +129,9 @@ export default function CreateEventScreen() {
         </TouchableOpacity>
         <Text style={s.title}>New Event</Text>
         <TouchableOpacity onPress={() => void publish()} disabled={submitting} style={s.publish}>
-          {submitting
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={s.publishText}>Publish</Text>}
+          <BusySwap busy={submitting} onFill>
+            <Text style={s.publishText}>Publish</Text>
+          </BusySwap>
         </TouchableOpacity>
       </View>
 

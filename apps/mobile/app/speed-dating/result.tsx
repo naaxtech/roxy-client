@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet,
-  ActivityIndicator, Animated,
+  View, Text, StyleSheet, Animated,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +12,7 @@ import { logError } from '../../lib/errorLogger';
 import { Analytics } from '../../lib/analytics';
 import { runSpring } from '../../lib/motion';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { RoxyLoading } from '../../components/feedback';
 
 interface ResolveResult {
   status: 'waiting' | 'matched' | 'no_match';
@@ -203,7 +203,7 @@ export default function SpeedDateResult() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {processing ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.roxy} />
+          <RoxyLoading />
           <Text style={styles.processingText}>Creating your connection…</Text>
         </View>
       ) : error ? (
@@ -233,7 +233,7 @@ export default function SpeedDateResult() {
         </View>
       ) : waitingOnPartner ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.roxy} />
+          <RoxyLoading />
           <Text style={styles.processingText}>
             Waiting to see if it's mutual — we'll let you know either way.
           </Text>

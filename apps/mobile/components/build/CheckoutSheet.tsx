@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Modal, StyleSheet, ScrollView, TextInput, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, Modal, StyleSheet, ScrollView, TextInput, Animated } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useStripe } from '@stripe/stripe-react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,7 @@ import { TYPE } from '../../lib/typography';
 import { RADII } from '../../lib/theme';
 import { newIdempotencyKey, checkoutSignature } from '../../lib/idempotency';
 import type { ProductWithVariants, ShippingAddress, CheckoutLine } from '../../types/marketplace';
+import { BusySwap } from '../../components/messages/LoadingShapes';
 
 
 // Step order and its labels live in lib/checkoutSteps so the announcement
@@ -301,11 +302,9 @@ export function CheckoutSheet({ businessId, businessName, visible, onClose, onSu
           disabled={paymentLoading}
           accessibilityLabel="Pay now"
         >
-          {paymentLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
+          <BusySwap busy={paymentLoading} onFill>
             <Text style={styles.primaryBtnText}>Pay {formatMoney(subtotal, currency)} →</Text>
-          )}
+          </BusySwap>
         </TouchableOpacity>
       </View>
     </View>

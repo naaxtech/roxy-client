@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useRouter } from 'expo-router';
 import { startOfDay, startOfWeek } from 'date-fns';
@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { pinkFill, flatFill, inkOn } from '../../lib/theme';
+import { RoxyLoading } from '../../components/feedback';
 
 interface Props {
   userId: string;
@@ -55,7 +56,7 @@ export function MiniWinsCard({ userId }: Props) {
   if (loading) {
     return (
       <View style={[styles(colors).card, { alignItems: 'center', paddingVertical: 24 }]}>
-        <ActivityIndicator color={colors.roxy} />
+        <RoxyLoading />
       </View>
     );
   }

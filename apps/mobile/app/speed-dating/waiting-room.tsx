@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, ActivityIndicator,
+  View, Text, StyleSheet,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,8 @@ import { confirmAction } from '../../lib/confirm';
 import { logError } from '../../lib/errorLogger';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { BusySwap } from '../../components/messages/LoadingShapes';
+import { RoxyLoading } from '../../components/feedback';
 
 // A queue join that has found nobody in this long is not going to. Sitting on
 // an infinite spinner reads as "the app is broken" -- which is exactly how this
@@ -300,9 +302,9 @@ export default function SpeedDateWaitingRoom() {
               disabled={rejoining}
               accessibilityLabel="Rejoin the speed dating queue"
             >
-              {rejoining
-                ? <ActivityIndicator color={colors.roxy} />
-                : <Text style={styles.retryText}>Rejoin the queue</Text>}
+              <BusySwap busy={rejoining}>
+                <Text style={styles.retryText}>Rejoin the queue</Text>
+              </BusySwap>
             </TouchableOpacity>
           </>
         ) : timedOut ? (
@@ -319,9 +321,9 @@ export default function SpeedDateWaitingRoom() {
               disabled={rejoining}
               accessibilityLabel="Keep waiting for a match"
             >
-              {rejoining
-                ? <ActivityIndicator color={colors.roxy} />
-                : <Text style={styles.retryText}>Keep waiting</Text>}
+              <BusySwap busy={rejoining}>
+                <Text style={styles.retryText}>Keep waiting</Text>
+              </BusySwap>
             </TouchableOpacity>
             <Text style={styles.hint}>
               We're still listening — if someone joins, your call starts automatically.
@@ -336,7 +338,7 @@ export default function SpeedDateWaitingRoom() {
                 : "We're looking for your next great five minutes. Hang tight!"}
             </Text>
 
-            <ActivityIndicator color={colors.roxy} size="large" style={{ marginTop: 32 }} />
+            <RoxyLoading style={{ marginTop: 32 }} />
 
             <Text style={styles.hint}>
               As soon as we find a match, your video call will start automatically.

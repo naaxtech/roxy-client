@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, Animated, Image, ActivityIndicator,
+  View, Text, StyleSheet, Animated, Image,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { pinkFill, THEMES } from '../../lib/theme';
 import { AnswerSheet } from './AnswerSheet';
+import { RoxyLoading } from '../../components/feedback';
 
 // The CTA label sits on the whole brand ramp, so it is measured against the
 // whole brand ramp.
@@ -134,7 +135,7 @@ export function QuestionOfTheDayCard({ communityIds, userId }: Props) {
   if (loading) {
     return (
       <View style={[q.skeleton, { backgroundColor: colors.surface }]}>
-        <ActivityIndicator color={colors.roxy} />
+        <RoxyLoading />
       </View>
     );
   }

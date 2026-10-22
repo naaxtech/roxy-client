@@ -1,13 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  ScrollView,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  View, Text, StyleSheet, TextInput, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { TouchableOpacity } from '../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +12,7 @@ import { callEdgeFunction } from '../lib/supabase';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { showAlert } from '../lib/confirm';
 import { inkOn, flatFill } from '../lib/theme';
+import { RoxyLoading } from '../components/feedback';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -402,7 +396,7 @@ export default function SisterButtonScreen() {
           {loading && (
             <View style={styles.thinkingWrap}>
               <Text style={styles.thinkingText}>Sister is listening…</Text>
-              <ActivityIndicator size="small" color={colors.roxy} style={{ marginLeft: 8 }} />
+              <RoxyLoading style={{ marginLeft: 8 }} />
             </View>
           )}
 

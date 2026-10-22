@@ -38,6 +38,19 @@ const FILES = [
   'components/profile/ProfilePhotoGrid.tsx',
   'components/profile/ProfilePostsGrid.tsx',
   'components/profile/ProfileThoughts.tsx',
+  'app/business/[id].tsx',
+  'app/sister-button.tsx',
+  'app/speed-dating/index.tsx',
+  'app/speed-dating/result.tsx',
+  'app/speed-dating/waiting-room.tsx',
+  'app/community-room-session.tsx',
+  'app/community/create-event.tsx',
+  'components/build/CheckoutSheet.tsx',
+  'components/build/FeatureVoteCard.tsx',
+  'components/donations/DonateModal.tsx',
+  'components/grow/AnswerSheet.tsx',
+  'components/grow/MiniWinsCard.tsx',
+  'components/grow/QuestionOfTheDayCard.tsx',
 ];
 
 it.each(FILES)('%s draws no ActivityIndicator (F11)', (rel) => {
