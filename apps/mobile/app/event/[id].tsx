@@ -6,6 +6,8 @@ import * as Haptics from 'expo-haptics';
 import * as ExpoLinking from 'expo-linking';
 import { PressableScale } from '../../components/ui/PressableScale';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { Snackbar } from '../../components/ui/Snackbar';
+import { logError } from '../../lib/errorLogger';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -107,7 +109,9 @@ export default function EventDetailScreen() {
   const [notFound, setNotFound] = useState(false);
   const [ticketCode, setTicketCode] = useState<string | null>(null);
   const [rsvping, setRsvping] = useState(false);
-  const [rsvpError, setRsvpError] = useState<string | null>(null);
+  // F10: an action the server refused. The screen has already rolled it
+  // back; this says so in one sentence and offers Retry.
+  const [failure, setFailure] = useState<{ message: string; retry: () => void } | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseResult, setPurchaseResult] = useState<{ ticketCode: string | null } | null>(null);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
@@ -208,10 +212,16 @@ export default function EventDetailScreen() {
     });
   };
 
+  /**
+   * RSVP is server-first by design (the ticket code comes back from the
+   * insert), so the button goes pending in the same frame as the tap: the
+   * lip drops and the busy state shows. A refusal rolls back to "I'm going"
+   * with a snackbar and Retry (F10).
+   */
   const handleRsvp = async () => {
     if (!event || !user || rsvping) return;
     setRsvping(true);
-    setRsvpError(null);
+    setFailure(null);
     const { data, error } = await supabase
       .from('event_attendees')
       .insert({ event_id: event.id, user_id: user.id, status: 'going' })
@@ -219,7 +229,10 @@ export default function EventDetailScreen() {
       .single();
     setRsvping(false);
     if (!error && data?.ticket_code) stampSeal(data.ticket_code);
-    else setRsvpError('That didn’t go through. Check your connection and try again.');
+    else {
+      if (error) logError(error, 'event_rsvp_failed');
+      setFailure({ message: 'That didn’t go through.', retry: () => { void handleRsvp(); } });
+    }
   };
 
   const handleBuyTicket = async () => {
@@ -258,15 +271,41 @@ export default function EventDetailScreen() {
     }
   };
 
+  /** Optimistic (F10): the ticket goes at once and comes back if refused. */
   const handleCancel = async () => {
-    if (!event || !user) return;
-    await supabase
+    if (!event || !user || !ticketCode) return;
+    const code = ticketCode;
+    setFailure(null);
+    setTicketCode(null);
+    seal.setValue(0);
+    const { error } = await supabase
       .from('event_attendees')
       .delete()
       .eq('event_id', event.id)
       .eq('user_id', user.id);
-    setTicketCode(null);
-    seal.setValue(0);
+    if (error) {
+      logError(error, 'event_cancel_rsvp_failed');
+      // Still going: the seal is simply back, no second celebration.
+      setTicketCode(code);
+      seal.setValue(1);
+      setFailure({ message: 'Could not give up your spot.', retry: () => { void handleCancel(); } });
+    }
+  };
+
+  /** Optimistic (F10): the bookmark flips at once, back if the write fails. */
+  const toggleSave = async () => {
+    if (!user || !event) return;
+    const next = !favorited;
+    setFailure(null);
+    setFavorited(next);
+    try {
+      const on = await toggleUserFavorite(user.id, 'event', event.id);
+      setFavorited(on);
+    } catch (e) {
+      logError(e, 'event_save_failed');
+      setFavorited(!next);
+      setFailure({ message: next ? 'Could not save this event.' : 'Could not remove this event from saved.', retry: () => { void toggleSave(); } });
+    }
   };
 
   /**
@@ -406,10 +445,7 @@ export default function EventDetailScreen() {
           {user ? (
             <PressableScale
               style={s.iconBtn}
-              onPress={async () => {
-                const on = await toggleUserFavorite(user.id, 'event', event.id);
-                setFavorited(on);
-              }}
+              onPress={() => { void toggleSave(); }}
               accessibilityRole="button"
               accessibilityLabel={favorited ? 'Remove event from saved' : 'Save event'}
               testID="event-save"
@@ -561,7 +597,6 @@ export default function EventDetailScreen() {
             </>
           ) : null}
 
-          {rsvpError ? <Text style={s.error} accessibilityRole="alert">{rsvpError}</Text> : null}
           {purchaseError ? <Text style={s.error} accessibilityRole="alert">{purchaseError}</Text> : null}
 
           {upcoming && going && !event.is_paid ? (
@@ -591,6 +626,15 @@ export default function EventDetailScreen() {
           })}
         </Text>
       </ScrollView>
+
+      <Snackbar
+        visible={failure !== null}
+        message={failure?.message ?? ''}
+        actionLabel="Retry"
+        onAction={() => failure?.retry()}
+        onDismiss={() => setFailure(null)}
+        testID="event-snackbar"
+      />
     </SafeAreaView>
   );
 }
