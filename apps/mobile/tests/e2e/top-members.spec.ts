@@ -21,8 +21,10 @@ test('the chart ranks members and shows their staff tag', async ({ page }) => {
 
   await expect(page.getByText('Top 10 members')).toBeVisible();
 
-  const cards = page.locator('[data-testid^="top10-"]');
-  const count = await cards.count();
+  // v2's photo-first MemberCard also tags its photo and rank
+  // (`top10-<id>-photo|-initials|-preset|-rank`); count the cards themselves.
+  const count = await page.evaluate(() => Array.from(document.querySelectorAll('[data-testid^="top10-"]'))
+    .filter((el) => /^top10-[0-9a-f-]{36}$/.test(el.getAttribute('data-testid') ?? '')).length);
   expect(count, 'the chart is empty').toBeGreaterThan(0);
   expect(count).toBeLessThanOrEqual(10);
 

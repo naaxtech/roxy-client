@@ -54,7 +54,11 @@ test.describe('Restored entry points', () => {
     await signInWithSeedUser(page);
     await gotoTab(page, 'discover');
 
-    await page.getByTestId('discover-chips-comms').click();
+    // v2 (direction › Discover: "See all" only when there is more): For you
+    // shows three community rows and the way past them; the Communities chip
+    // already lists every community, so it carries no link. Was: the link was
+    // clicked under the Communities chip.
+    await page.getByTestId('discover-chips-all').click();
     await page.getByTestId('rail-communities-link').click();
     await expect(page).toHaveURL(/\/communities$/, { timeout: 15_000 });
   });

@@ -34,9 +34,18 @@ test('badges and Edit sit beside the avatar, not below it', async ({ page }) => 
 
   expect(overlaps(avatar!, edit!)).toBeTruthy();
 
-  const badges = await page.getByTestId('profile-badge-chip').boundingBox();
-  if (badges) expect(overlaps(avatar!, badges)).toBeTruthy();
+  // v2 (direction › You) draws no badge chip and no XP pill on her own
+  // profile; check them only where they still exist (count first: a
+  // boundingBox() on a missing node waits for the whole test timeout).
+  const badgeChip = page.getByTestId('profile-badge-chip');
+  if (await badgeChip.count()) {
+    const badges = await badgeChip.boundingBox();
+    if (badges) expect(overlaps(avatar!, badges)).toBeTruthy();
+  }
 
-  const xp = await page.getByTestId('profile-xp').boundingBox();
-  if (xp) expect(overlaps(avatar!, xp)).toBeTruthy();
+  const xpPill = page.getByTestId('profile-xp');
+  if (await xpPill.count()) {
+    const xp = await xpPill.boundingBox();
+    if (xp) expect(overlaps(avatar!, xp)).toBeTruthy();
+  }
 });
