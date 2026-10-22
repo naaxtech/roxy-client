@@ -23,6 +23,8 @@ import { type EarnedBadge } from '../../../components/profile/BadgeRow';
 import { useArchiveStore } from '../../../store/archiveStore';
 import { ProfileThoughts } from '../../../components/profile/ProfileThoughts';
 import { YouMoreMenu } from '../../../components/profile/YouMoreMenu';
+import { SelfControls } from '../../../components/profile/SelfControls';
+import { YouRows } from '../../../components/profile/YouRows';
 import { fetchUnreadNotificationCount } from '../../../lib/notifications';
 import { MiniWinsSheet } from '../../../components/feed/MiniWinsSheet';
 import { logError } from '../../../lib/errorLogger';
@@ -39,11 +41,7 @@ import type { Business, Profile } from '../../../types';
 import { useAccess } from '../../../hooks/useAccess';
 import { AccountStatusTag } from '../../../components/account/AccountStatusTag';
 import { TYPE } from '../../../lib/typography';
-import {
-  badgePreviewFromEarned,
-  isProfileTab,
-  profileXpBar,
-} from '../../../components/profile/profileVariant';
+import { isProfileTab } from '../../../components/profile/profileVariant';
 
 
 /** How long a spinner is a reasonable answer before it becomes a dead end. */
@@ -64,7 +62,11 @@ export default function ProfileScreen() {
     tab?: string;
   }>();
 
-  const [badges, setBadges] = useState<EarnedBadge[]>([]);
+  // Unused on You since Wave 2 (direction v2 › You bans the badge chip on her
+  // own profile; Badges stay one tap away in More › Badges, which loads its own
+  // data on /badges). Kept, not deleted (user rule), for when a badge preview
+  // returns to You; origin: `git log -S badgePreviewFromEarned`.
+  const [_badges, setBadges] = useState<EarnedBadge[]>([]);
   const [savedBusinesses, setSavedBusinesses] = useState<Business[]>([]);
   /**
    * Seeded from `?tab=` so the composer can land her on the tab holding the
@@ -521,20 +523,11 @@ export default function ProfileScreen() {
         statusLabels={profile.dating_looking_for ?? []}
         avatarUrl={profile.avatar_url}
         coverUrl={coverUrl}
-        points={profile.gamification_points}
+        // v2 (direction › You): no XP pill, no level badge, no badge chip on
+        // her own profile. XP lives inside Mini Wins (the card below opens
+        // it); badges stay one tap away in More › Badges. `points`, `xp` and
+        // `badgePreview` are deliberately not passed.
         official={isOfficialAccount(profile)}
-        badgePreview={(() => {
-          const preview = badgePreviewFromEarned(badges);
-          if (!preview) return null;
-          return {
-            ...preview,
-            onPress: () => router.push('/badges' as never),
-          };
-        })()}
-        xp={{
-          ...profileXpBar(profile.gamification_points),
-          onPress: () => setMiniWinsOpen(true),
-        }}
         headerActions={[
           {
             icon: 'notifications-outline',
@@ -567,13 +560,19 @@ export default function ProfileScreen() {
                 bio={profile.bio}
                 onOpen={() => router.push('/(tabs)/you/edit' as never)}
               />
+              {/* v2 (direction › You): "the two switches that matter, Dating
+                  and Ghost, as plain rows with a one-line explanation each",
+                  then Mini Wins as a quiet card, then the places You leads to.
+                  They are back on You because ghost mode must be one tap away
+                  on the day she needs it; Settings keeps its copy too. */}
+              <SelfControls userId={user.id} onOpenDaily={() => setMiniWinsOpen(true)} />
+              <YouRows
+                userId={user.id}
+                walletCount={orders.length}
+                savedCount={(watchlist ?? []).length + savedBusinesses.length}
+                onOpenSaved={() => setShellTab('saved')}
+              />
               <ProfileExtras userId={user.id} onOpenEntry={(slug) => router.push(`/archive/${slug}` as never)} />
-              {/* Dating mode, Ghost mode and the streak used to sit here. All
-                  three are settings, not identity: the first two already
-                  existed in Settings under "Visibility & safety" — the profile
-                  was showing a second copy of the same switches — and the
-                  streak now sits beside them. A profile is for who she is, not
-                  for the switches that govern her account. */}
               {!isBeta ? (
                 <View style={styles.comingSoonCard} testID="you-coming-soon">
                   <Text style={styles.comingSoonTitle}>

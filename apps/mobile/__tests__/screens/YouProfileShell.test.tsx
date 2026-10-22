@@ -123,7 +123,16 @@ describe('You on the unified shell', () => {
     expect(getByTestId('profile-tab-thoughts')).toBeTruthy();
     expect(getByTestId('profile-tab-saved')).toBeTruthy();
     expect(getByText('Edit')).toBeTruthy();
-    expect(getByText('40 XP')).toBeTruthy();
+  });
+
+  it('draws no XP pill, no level badge and no badge chip (v2 bans them on her own profile)', async () => {
+    // Was: '40 XP' visible. XP is reachable inside Mini Wins instead.
+    const { getByTestId, queryByTestId, queryByText } = render(<ProfileScreen />);
+    await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
+    expect(queryByText('40 XP')).toBeNull();
+    expect(queryByTestId('profile-xp')).toBeNull();
+    expect(queryByTestId('profile-level-badge')).toBeNull();
+    expect(queryByTestId('profile-badge-chip')).toBeNull();
   });
 
   it('drops the coming-soon card once she is tagged beta', async () => {
@@ -135,13 +144,14 @@ describe('You on the unified shell', () => {
     expect(queryByTestId('you-coming-soon')).toBeNull();
   });
 
-  it('keeps account switches off the profile entirely', async () => {
-    // Dating mode, Ghost mode and the streak are settings, not identity — and
-    // the first two already existed in Settings under "Visibility & safety",
-    // so the profile was rendering a second copy of the same switches.
-    const { getByTestId, queryByTestId } = render(<ProfileScreen />);
+  it('puts Dating, Ghost and Mini Wins back on You, then the rows she goes to', async () => {
+    // Reversed by design direction v2 › You (2026-10-21): "the two switches
+    // that matter, Dating and Ghost, as plain rows" — ghost mode one tap away.
+    // Was: asserted self-controls absent.
+    const { getByTestId } = render(<ProfileScreen />);
     await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
-    expect(queryByTestId('self-controls')).toBeNull();
+    expect(getByTestId('self-controls')).toBeTruthy();
+    expect(getByTestId('you-rows')).toBeTruthy();
   });
 
   it('shows no stat card — Posts / Badges / Orders was shelved', async () => {
