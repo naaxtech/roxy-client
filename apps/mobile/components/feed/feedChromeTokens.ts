@@ -188,28 +188,47 @@ export const FIELD = {
 } as const;
 
 /**
- * Alpha of the plate behind each rail control. See note 2 above — this number
- * is set by the liked heart, not by taste.
+ * RETIRED in v2 (direction › the always-dark feed stage: the rail has no
+ * plates; glyphs carry a drawn outline, `RAIL_OUTLINE`). Origin: the 3.0
+ * feed-chrome contrast slice (`git log -S RAIL_BACKING_ALPHA`), where the
+ * liked heart #E81C8E set the alpha. Unused since Wave 2 feed (2026-10-21);
+ * kept exported for any surface that still needs a dark plate over unknown
+ * media (e.g. a control that floats outside the scrim and cannot be outlined).
  */
 export const RAIL_BACKING_ALPHA = 0.82;
 
-/** The plate itself. */
+/** RETIRED with `RAIL_BACKING_ALPHA` (see above). */
 export const RAIL_BACKING = `rgba(0,0,0,${RAIL_BACKING_ALPHA})`;
 
 /**
- * How much of the page's right edge the rail owns.
- *
- * Body content is padded clear of it rather than sliding under it, because a
- * caption that runs behind the like button is unreadable however good the scrim
- * is. 44dp of control plus the 12dp inset plus breathing room.
+ * How much of the page's end edge the rail owns, and so the end margin every
+ * full-width piece of stage content keeps (captions, cards, the poll and
+ * resource bodies). v2: the Roxy AI lane's 88 (was 78 for the v0 rail).
  */
-export const RAIL_GUTTER = 78;
+export const RAIL_GUTTER = FAB_LANE;
 
-/** Below the bottom of the rail, above the safe-area inset. */
-export const CHROME_BOTTOM = 34;
+/** Below the identity block, above the page bottom (v2: 24, was 34). */
+export const CHROME_BOTTOM = 24;
 
-/** The community crest's diameter. Shared so the scrim can guarantee it cover. */
+/**
+ * v0's rotating community disc at the rail's foot. RETIRED with
+ * `CommunityCrest` in v2: the community's crest is a small still squircle
+ * beside "in <community>" (`INLINE_CREST`). Kept for the scrim floor maths.
+ */
 export const CREST_SIZE = 50;
+
+/** The author's face at the bottom start (board v2-04), in a 48 dp target. */
+export const AVATAR_SIZE = 32;
+
+/** The community crest beside "in <community>": a squircle at 28% radius. */
+export const INLINE_CREST = 16;
+
+/**
+ * Secondary ink on the scrim ("· 2 h", "in Lisboa Sapphic Walks", "more").
+ * Measured in the direction: #E3DCDF on the scrim's top over a white frame
+ * (#616161) is 4.59:1.
+ */
+export const FEED_META = '#E3DCDF';
 
 /**
  * The caption's line budgets — and why an expanded caption still has one.
@@ -238,8 +257,8 @@ export const CREST_SIZE = 50;
  */
 export const CAPTION_LINE_CHARS = 40;
 
-/** `s.caption`'s leading, exported so the dp maths above is checkable. */
-export const CAPTION_LINE_HEIGHT = 20;
+/** `s.caption`'s leading (`TYPE.body` 15/22), exported so the dp maths above is checkable. */
+export const CAPTION_LINE_HEIGHT = 22;
 
 /** Collapsed. Two, not TikTok's four: the community row needs the space. */
 export const CAPTION_COLLAPSED_LINES = 2;

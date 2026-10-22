@@ -10,8 +10,8 @@ import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
 import { CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
 import { pollShare, pollVoteTotal } from './poll';
-import { DoubleTapCatcher, useDoubleTapLike } from './DoubleTapLike';
-import { LikeBurst } from './LikeBurst';
+import { DoubleTapReact, useDoubleTapReact } from '../reactions/DoubleTapReact';
+import { ReactionBurst } from '../reactions/ReactionBurst';
 import { tapLight } from '../../lib/haptics';
 import type { ParsedPoll } from './poll';
 import { a11yState } from '../../lib/a11yState';
@@ -49,10 +49,10 @@ function votesLabel(n: number): string {
  * the community thinks.
  */
 export function PollCell({
-  post, poll, width, height, onOpenPost, onVote, onDoubleTapLike, ...chrome
+  post, poll, width, height, onOpenPost, onVote, ...chrome
 }: PollCellProps): ReactElement {
-  const { burstRef, onDoubleTap } = useDoubleTapLike({
-    liked: chrome.liked, onLike: chrome.onLike, onDoubleTapLike,
+  const { burstRef, onDoubleTap } = useDoubleTapReact({
+    reaction: chrome.reaction, onReact: chrome.onReact,
     reducedMotion: chrome.reducedMotion,
   });
   const [votedKey, setVotedKey] = useState<string | null>(null);
@@ -103,7 +103,7 @@ export function PollCell({
 
       {/* Under the composition, which is box-none: a double tap anywhere but
           an option likes the poll; an option keeps its own touch. */}
-      <DoubleTapCatcher onDoubleTap={onDoubleTap} />
+      <DoubleTapReact onDoubleTap={onDoubleTap} />
 
       <View
         style={[s.composition, { paddingBottom: Math.round(height * 0.24) }]}
@@ -204,7 +204,7 @@ export function PollCell({
         </TouchableOpacity>
       </View>
 
-      <LikeBurst ref={burstRef} reducedMotion={chrome.reducedMotion} />
+      <ReactionBurst ref={burstRef} reducedMotion={chrome.reducedMotion} />
 
       <FeedCellChrome post={post} showCaption={false} onOpenPost={onOpenPost} {...chrome} />
     </View>

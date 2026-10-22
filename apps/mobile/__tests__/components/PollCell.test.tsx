@@ -68,11 +68,11 @@ function poll(o: PollOptions = {}) {
       poll={POLL}
       width={400}
       height={800}
-      liked={false}
+      reaction={null}
       saved={false}
-      likeCount={3}
+      reactionTotal={3}
       reducedMotion={false}
-      onLike={noop}
+      onReact={noop}
       onSave={noop}
       onOpenComments={noop}
       onOpenAuthor={noop}
@@ -115,7 +115,7 @@ describe('PollCell before a vote', () => {
     const view = poll();
 
     expect(view.queryByTestId('feed-rail')).not.toBeNull();
-    expect(view.queryByTestId('community-crest')).not.toBeNull();
+    expect(view.queryByTestId('feed-cell-crest')).not.toBeNull();
     expect(view.queryByTestId('rail-play')).toBeNull();
   });
 });

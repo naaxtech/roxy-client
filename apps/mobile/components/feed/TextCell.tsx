@@ -7,17 +7,17 @@ import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
 import { RAIL_GUTTER } from './feedChromeTokens';
 import { TextCardFace } from './TextCardFace';
-import { DoubleTapCatcher, useDoubleTapLike } from './DoubleTapLike';
-import { LikeBurst } from './LikeBurst';
+import { DoubleTapReact, useDoubleTapReact } from '../reactions/DoubleTapReact';
+import { ReactionBurst } from '../reactions/ReactionBurst';
 import { THEMES } from '../../lib/theme';
 
 /** A text post: Claude Design's p3 card, full-bleed on the plum ramp. */
 export function TextCell({
-  post, width, height, onOpenPost, onDoubleTapLike, ...chrome
+  post, width, height, onOpenPost, ...chrome
 }: FeedBodyCellProps): ReactElement {
   const body = post.content.trim();
-  const { burstRef, onDoubleTap } = useDoubleTapLike({
-    liked: chrome.liked, onLike: chrome.onLike, onDoubleTapLike,
+  const { burstRef, onDoubleTap } = useDoubleTapReact({
+    reaction: chrome.reaction, onReact: chrome.onReact,
     reducedMotion: chrome.reducedMotion,
   });
   const overflow = body.length > TEXT_CARD_READ_MORE;
@@ -46,8 +46,8 @@ export function TextCell({
       )}
 
       {/* Over the words, under "Read more" and the rail. */}
-      <DoubleTapCatcher onDoubleTap={onDoubleTap} />
-      <LikeBurst ref={burstRef} reducedMotion={chrome.reducedMotion} />
+      <DoubleTapReact onDoubleTap={onDoubleTap} />
+      <ReactionBurst ref={burstRef} reducedMotion={chrome.reducedMotion} />
 
       {overflow ? (
         <TouchableOpacity

@@ -2,15 +2,20 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
-import { Ionicons } from '@expo/vector-icons';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { FeedVideoPlayer } from './FeedVideoPlayer';
 import { FeedCellChrome } from './FeedCellChrome';
-import { DoubleTapCatcher, useDoubleTapLike } from './DoubleTapLike';
-import { LikeBurst } from './LikeBurst';
+import { DoubleTapReact, useDoubleTapReact } from '../reactions/DoubleTapReact';
+import { ReactionBurst } from '../reactions/ReactionBurst';
+import { OutlinedIcon } from './RailGlyph';
 import type { FeedCellChromeProps } from './FeedCellChrome';
-import { CHROME_SHADOW, RAIL_BACKING } from './feedChromeTokens';
+import { RAIL_GAP } from './feedChromeTokens';
 import { a11yState } from '../../lib/a11yState';
+
+/** The mute / play glyphs: a step under the rail's 32 dp, they are secondary. */
+const CONTROL_GLYPH = 24;
+/** The paused-video glyph in the middle of the frame. */
+const PAUSED_GLYPH = 64;
 
 export interface ReelCellProps
   extends Omit<FeedCellChromeProps, 'playbackControl' | 'showCaption' | 'active'> {
@@ -43,23 +48,21 @@ export interface ReelCellProps
    * behind Messages or a pushed profile (FEED-03). Defaults to true.
    */
   playbackAllowed?: boolean;
-  /** Idempotent "make it liked" for the double tap. See `useDoubleTapLike`. */
-  onDoubleTapLike?: () => void;
 }
 
 /**
  * The video cell.
  *
  * Owns the video surface and nothing else a viewer would recognise as chrome:
- * the rail, the crest, the scrim and the identity block are `FeedCellChrome`,
+ * the rail, the scrim and the identity block are `FeedCellChrome`,
  * shared with every other kind of cell, so a video and a poll are furnished
  * identically and the feed reads as one system. What is left here is the part
  * that is genuinely about video — the player, the tap-to-pause gesture, the
- * double-tap like, the mute toggle and the transport control.
+ * double-tap reaction, the mute toggle and the transport control.
  */
 export function ReelCell({
   post, index, activeIndex, activeItemId, width, height,
-  muted, reducedMotion, liked, onToggleMute, onLike, playbackAllowed = true, onDoubleTapLike,
+  muted, reducedMotion, onToggleMute, playbackAllowed = true,
   ...chrome
 }: ReelCellProps): ReactElement {
   const isActive = post.id === activeItemId;
@@ -83,10 +86,11 @@ export function ReelCell({
     if (!isActive) setPlayOverride(null);
   }, [isActive]);
 
-  // Double tap likes (never unlikes), blooms the ✿ and ticks a haptic — the
-  // same hook every other cell type uses, so the gesture means one thing.
-  const { burstRef, onDoubleTap } = useDoubleTapLike({
-    liked, onLike, onDoubleTapLike, reducedMotion,
+  // Double tap = ❤️ (never takes a reaction back) with the burst and a light
+  // haptic — the same hook every other cell type uses, so the gesture means
+  // one thing.
+  const { burstRef, onDoubleTap } = useDoubleTapReact({
+    reaction: chrome.reaction, onReact: chrome.onReact, reducedMotion,
   });
 
   const togglePlay = useCallback(() => {
@@ -102,15 +106,27 @@ export function ReelCell({
    * cell type would move the other four's icons under a viewer's thumb.
    */
   const transport = isVideo ? (
-    <TouchableOpacity
-      testID="reel-transport"
-      style={s.transportBtn}
-      onPress={togglePlay}
-      accessibilityRole="button"
-      accessibilityLabel={playing ? 'Pause video' : 'Play video'}
-    >
-      <Ionicons name={playing ? 'pause' : 'play'} size={22} color="#fff" style={CHROME_SHADOW} />
-    </TouchableOpacity>
+    <View style={s.controls} pointerEvents="box-none">
+      <TouchableOpacity
+        testID="reel-mute"
+        style={s.controlBtn}
+        onPress={onToggleMute}
+        accessibilityRole="button"
+        accessibilityLabel={muted ? 'Unmute video' : 'Mute video'}
+        {...a11yState({ selected: !muted })}
+      >
+        <OutlinedIcon name={muted ? 'volume-mute' : 'volume-high'} size={CONTROL_GLYPH} />
+      </TouchableOpacity>
+      <TouchableOpacity
+        testID="reel-transport"
+        style={s.controlBtn}
+        onPress={togglePlay}
+        accessibilityRole="button"
+        accessibilityLabel={playing ? 'Pause video' : 'Play video'}
+      >
+        <OutlinedIcon name={playing ? 'pause' : 'play'} size={CONTROL_GLYPH} />
+      </TouchableOpacity>
+    </View>
   ) : undefined;
 
   return (
@@ -128,9 +144,9 @@ export function ReelCell({
 
       {/* Transparent catcher: sits over the video and under every control, so
           the rail buttons keep their own touches. A single tap pauses. */}
-      <DoubleTapCatcher onDoubleTap={onDoubleTap} onSingleTap={togglePlay} />
+      <DoubleTapReact onDoubleTap={onDoubleTap} onSingleTap={togglePlay} />
 
-      <LikeBurst ref={burstRef} reducedMotion={reducedMotion} />
+      <ReactionBurst ref={burstRef} reducedMotion={reducedMotion} />
 
       {isVideo && isActive && !playing ? (
         <View
@@ -139,28 +155,13 @@ export function ReelCell({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <Ionicons name="play" size={64} color="rgba(255,255,255,0.85)" />
+          <OutlinedIcon name="play" size={PAUSED_GLYPH} />
         </View>
-      ) : null}
-
-      {isVideo ? (
-        <TouchableOpacity
-          testID="reel-mute"
-          style={s.muteBtn}
-          onPress={onToggleMute}
-          accessibilityRole="button"
-          accessibilityLabel={muted ? 'Unmute video' : 'Mute video'}
-          {...a11yState({ selected: !muted })}
-        >
-          <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={18} color="#fff" />
-        </TouchableOpacity>
       ) : null}
 
       <FeedCellChrome
         post={post}
-        liked={liked}
         reducedMotion={reducedMotion}
-        onLike={onLike}
         active={isActive}
         playbackControl={transport}
         {...chrome}
@@ -178,22 +179,14 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Both sit over media the app has never seen and neither is inside the
-  // bottom scrim, so both carry the rail's plate rather than a lighter one of
-  // their own: at 0.4 a white glyph over a white frame is 2.85:1, under the 3:1
-  // that SC 1.4.11 asks of a control.
-  // Both were sized to their glyph (40 and 38) and then given 8dp of hitSlop,
-  // which extends nothing a platform can measure. They are 48 now, which is what
-  // ATF's TouchTargetSizeCheck asks of a control. src: lib/touchTargets.ts
-  transportBtn: {
-    width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, borderRadius: MIN_TOUCH_TARGET / 2,
+  // v2: the mute and play controls sit in the rail column, above the rail,
+  // plate-less like every rail glyph (drawn 1 dp outline, `RailGlyph`). The
+  // mute used to float at top 16 / end 14, under the Feed header's search
+  // button, where the header (drawn over the pager) took its taps.
+  // 48 dp targets (ATF TouchTargetSizeCheck; lib/touchTargets.ts).
+  controls: { gap: RAIL_GAP, alignItems: 'center' },
+  controlBtn: {
+    width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: RAIL_BACKING,
-  },
-  muteBtn: {
-    position: 'absolute', top: 16, right: 14,
-    width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, borderRadius: MIN_TOUCH_TARGET / 2,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: RAIL_BACKING,
   },
 });

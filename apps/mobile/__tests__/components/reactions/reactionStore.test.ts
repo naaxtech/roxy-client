@@ -169,6 +169,17 @@ describe('hydrate', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
+  it('asks about each post once, however often the feed re-renders', async () => {
+    mockFetch.mockResolvedValue({ status: 'ok', mine: {} });
+
+    await act(async () => { await state().hydrate('me', ['p1', 'p2']); });
+    await act(async () => { await state().hydrate('me', ['p1', 'p2', 'p3']); });
+    await act(async () => { await state().hydrate('me', ['p1']); });
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenLastCalledWith('me', ['p3']);
+  });
+
   it('forgets one member\'s reactions when another signs in', async () => {
     mockFetch.mockResolvedValueOnce({ status: 'ok', mine: { p1: '😂' } });
     await act(async () => { await state().hydrate('me', ['p1']); });

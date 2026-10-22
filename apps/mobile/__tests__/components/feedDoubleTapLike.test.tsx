@@ -1,17 +1,20 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 import { FeedCell } from '../../components/feed/FeedCell';
 import type { ReelRow } from '../../lib/reels';
 import type { PostType } from '../../types';
+import type { PostReaction } from '../../lib/postReactions';
 
 /**
- * Double-tap ✿ on EVERY cell type (FEED-07, FEED-09).
+ * Double-tap ❤️ on EVERY cell type (FEED-07, FEED-09; v2 › Reactions).
  *
- * The like moment used to live on video only; a photo, a text card, a poll or
- * a resource could be liked only from the rail. Each case below renders the
- * real router and the real cell, fires the double tap the cell's own catcher
- * registered, and checks the three halves of the moment: the like (through
- * the idempotent store action), the ✿ bloom and the haptic tick.
+ * v2 (Wave 2 feed): the v0 like + ✿ bloom became the reaction double tap:
+ * a double tap gives ❤️ when she has no reaction, never takes one back, and
+ * replays a smaller burst (adding nothing) when she already has one. The
+ * haptic now STAYS under Reduce Motion (direction › Motion: "Haptics stay");
+ * only the burst goes. The rail heart test became the reaction button tap.
+ * Each case renders the real router and the real cell and fires the double
+ * tap the cell's own catcher registered.
  */
 
 jest.mock('../../components/feed/FeedVideoPlayer', () => {
@@ -26,9 +29,8 @@ jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 jest.mock('expo-linking', () => ({ createURL: (path: string) => `roxy:/${path}`, openURL: jest.fn() }));
 
 /** The gesture a catcher registered, exposed on its view so a test can fire it. */
-jest.mock('../../lib/feedMediaTaps', () => ({
-  FEED_TAP_SLOP: 12,
-  feedMediaTaps: (onDoubleTap: () => void, onSingleTap?: () => void) => ({ onDoubleTap, onSingleTap }),
+jest.mock('../../components/reactions/reactionTaps', () => ({
+  reactionTaps: (onDoubleTap: unknown, onSingleTap?: unknown) => ({ onDoubleTap, onSingleTap }),
 }));
 jest.mock('react-native-gesture-handler', () => {
   const ReactLocal = require('react');
@@ -38,38 +40,25 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
-jest.mock('react-native-reanimated', () => {
-  const { View } = require('react-native');
-  return {
-    __esModule: true,
-    default: { View },
-    useSharedValue: (initial: number) => ({ value: initial }),
-    useAnimatedStyle: (factory: () => Record<string, unknown>) => factory(),
-    withTiming: (value: number) => value,
-    withSpring: (value: number) => value,
-    withDelay: (_delay: number, value: number) => value,
-    withSequence: (...values: number[]) => values[values.length - 1],
-  };
-});
-
-const mockBursts: string[] = [];
-jest.mock('../../components/feed/LikeBurst', () => {
+const mockBursts: { small: boolean }[] = [];
+jest.mock('../../components/reactions/ReactionBurst', () => {
   const ReactLocal = require('react');
   const { View } = require('react-native');
-  const LikeBurst = ReactLocal.forwardRef(
-    (props: { reducedMotion: boolean }, ref: unknown) => {
+  const ReactionBurst = ReactLocal.forwardRef(
+    (_props: { reducedMotion: boolean }, ref: unknown) => {
       ReactLocal.useImperativeHandle(ref, () => ({
-        play: () => { if (!props.reducedMotion) mockBursts.push('bloom'); },
+        play: (_at: unknown, opts?: { small?: boolean }) => { mockBursts.push({ small: opts?.small ?? false }); },
       }));
-      return ReactLocal.createElement(View, { testID: 'like-burst' });
+      return ReactLocal.createElement(View, { testID: 'reaction-burst' });
     },
   );
-  return { LikeBurst };
+  return { ReactionBurst, BURST: { heart: 80, smallHeart: 56 } };
 });
 
 const mockImpact = jest.fn(() => Promise.resolve());
 jest.mock('expo-haptics', () => ({
   impactAsync: (...args: unknown[]) => mockImpact(...(args as [])),
+  selectionAsync: jest.fn(() => Promise.resolve()),
   notificationAsync: jest.fn(() => Promise.resolve()),
   ImpactFeedbackStyle: { Light: 'light' },
   NotificationFeedbackType: { Success: 'success' },
@@ -103,7 +92,7 @@ const noop = (): void => undefined;
 
 function renderCell(
   post: ReelRow,
-  o: { liked?: boolean; reducedMotion?: boolean; onLike?: () => void; onDoubleTapLike?: () => void } = {},
+  o: { reaction?: PostReaction | null; reducedMotion?: boolean; onReact?: (e: PostReaction | null) => void } = {},
 ) {
   return render(
     <FeedCell
@@ -114,13 +103,12 @@ function renderCell(
       width={400}
       height={800}
       muted
-      liked={o.liked ?? false}
+      reaction={o.reaction ?? null}
       saved={false}
-      likeCount={3}
+      reactionTotal={3}
       reducedMotion={o.reducedMotion ?? false}
       onToggleMute={noop}
-      onLike={o.onLike ?? noop}
-      onDoubleTapLike={o.onDoubleTapLike}
+      onReact={o.onReact ?? noop}
       onSave={noop}
       onOpenComments={noop}
       onOpenAuthor={noop}
@@ -133,8 +121,8 @@ function renderCell(
 
 function doubleTap(view: ReturnType<typeof render>): void {
   const catcher = view.getByTestId('feed-media-taps');
-  const gesture = catcher.props.gesture as { onDoubleTap: () => void };
-  gesture.onDoubleTap();
+  const gesture = catcher.props.gesture as { onDoubleTap: (p: { x: number; y: number }) => void };
+  act(() => gesture.onDoubleTap({ x: 200, y: 400 }));
 }
 
 beforeEach(() => {
@@ -142,70 +130,74 @@ beforeEach(() => {
   mockImpact.mockClear();
 });
 
-describe.each(CASES)('double-tap ✿ on a $name cell', ({ post }) => {
-  it('likes through the idempotent store action, blooms and ticks', () => {
-    const onDoubleTapLike = jest.fn();
-    const onLike = jest.fn();
-    const view = renderCell(post, { onDoubleTapLike, onLike });
+describe.each(CASES)('double-tap ❤️ on a $name cell', ({ post }) => {
+  it('gives a heart, bursts and ticks', () => {
+    const onReact = jest.fn();
+    const view = renderCell(post, { onReact });
 
     doubleTap(view);
 
-    expect(onDoubleTapLike).toHaveBeenCalledTimes(1);
-    // The rail's toggle is never used for a double tap: it would unlike.
-    expect(onLike).not.toHaveBeenCalled();
-    expect(mockBursts).toEqual(['bloom']);
+    expect(onReact).toHaveBeenCalledTimes(1);
+    expect(onReact).toHaveBeenCalledWith('❤️');
+    expect(mockBursts).toEqual([{ small: false }]);
     expect(mockImpact).toHaveBeenCalledTimes(1);
   });
 
-  it('never unlikes a liked post without the store action, but still blooms', () => {
-    const onLike = jest.fn();
-    const view = renderCell(post, { liked: true, onLike });
+  it('never takes her reaction back or replaces it; a smaller burst answers', () => {
+    const onReact = jest.fn();
+    const view = renderCell(post, { reaction: '😂', onReact });
 
     doubleTap(view);
 
-    expect(onLike).not.toHaveBeenCalled();
-    expect(mockBursts).toEqual(['bloom']);
+    expect(onReact).not.toHaveBeenCalled();
+    expect(mockBursts).toEqual([{ small: true }]);
   });
 
-  it('stays still with Reduce Motion on, and the like still lands', () => {
-    const onDoubleTapLike = jest.fn();
-    const view = renderCell(post, { onDoubleTapLike, reducedMotion: true });
+  it('drops the burst with Reduce Motion on; the heart and the haptic still land', () => {
+    const onReact = jest.fn();
+    const view = renderCell(post, { onReact, reducedMotion: true });
 
     doubleTap(view);
 
-    expect(onDoubleTapLike).toHaveBeenCalledTimes(1);
+    expect(onReact).toHaveBeenCalledWith('❤️');
     expect(mockBursts).toEqual([]);
-    expect(mockImpact).not.toHaveBeenCalled();
+    expect(mockImpact).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('the rail like', () => {
-  it('ticks on a like and stays quiet on the take-back', () => {
-    const onLike = jest.fn();
+describe('the rail reaction button', () => {
+  it('ticks on a heart and stays quiet on the take-back', () => {
+    const onReact = jest.fn();
     const post = makePost('p-text', 'standard');
-    const view = renderCell(post, { onLike });
-    fireEvent.press(view.getByTestId('rail-like'));
-    expect(onLike).toHaveBeenCalledTimes(1);
+    const view = renderCell(post, { onReact });
+    const tap = (v: ReturnType<typeof render>) => {
+      const button = v.getByTestId('rail-react');
+      act(() => {
+        button.props.onResponderGrant({ nativeEvent: { pageX: 0, pageY: 0, locationX: 24, locationY: 24 } });
+        button.props.onResponderRelease({ nativeEvent: { pageX: 0, pageY: 0, locationX: 24, locationY: 24 } });
+      });
+    };
+
+    tap(view);
+    expect(onReact).toHaveBeenLastCalledWith('❤️');
     expect(mockImpact).toHaveBeenCalledTimes(1);
 
     mockImpact.mockClear();
-    const liked = renderCell(makePost('p-2', 'standard'), { onLike, liked: true });
-    fireEvent.press(liked.getByTestId('rail-like'));
-    expect(onLike).toHaveBeenCalledTimes(2);
+    const reacted = renderCell(makePost('p-2', 'standard'), { onReact, reaction: '❤️' });
+    tap(reacted);
+    expect(onReact).toHaveBeenLastCalledWith(null);
     expect(mockImpact).not.toHaveBeenCalled();
   });
 });
 
 describe('a single tap', () => {
-  it('does not like a photo', () => {
-    const onLike = jest.fn();
-    const onDoubleTapLike = jest.fn();
-    const view = renderCell(CASES[1].post, { onLike, onDoubleTapLike });
+  it('does not react to a photo', () => {
+    const onReact = jest.fn();
+    const view = renderCell(CASES[1].post, { onReact });
 
     const gesture = view.getByTestId('feed-media-taps').props.gesture as { onSingleTap?: () => void };
     gesture.onSingleTap?.();
 
-    expect(onLike).not.toHaveBeenCalled();
-    expect(onDoubleTapLike).not.toHaveBeenCalled();
+    expect(onReact).not.toHaveBeenCalled();
   });
 });

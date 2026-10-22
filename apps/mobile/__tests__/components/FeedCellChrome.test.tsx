@@ -1,12 +1,25 @@
 import React from 'react';
 import { AccessibilityInfo, Share, StyleSheet, Text } from 'react-native';
-import { fireEvent, render, within } from '@testing-library/react-native';
+import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { FeedCellChrome } from '../../components/feed/FeedCellChrome';
 import {
   CAPTION_COLLAPSED_LINES, CAPTION_EXPANDED_CAP, CAPTION_EXPANDED_LINES,
-  MEDIA_SCRIM_FADE, MEDIA_SCRIM_MIN_BODY, RAIL_BACKING,
+  FAB_LANE, MEDIA_SCRIM_FADE, MEDIA_SCRIM_MIN_BODY, RAIL_END, RAIL_OUTLINE,
 } from '../../components/feed/feedChromeTokens';
+import { PICKER } from '../../components/reactions/reactionGeometry';
+import { identityFor } from '../../lib/theme';
 import type { ReelRow } from '../../lib/reels';
+
+/*
+ * v2 (Wave 2 feed): the rail is five plate-less glyphs (reaction, comment,
+ * save, share, more) starting above the Roxy AI lane; the author's avatar,
+ * name, age, follow and the community (with a still crest) moved to the
+ * bottom start; the heart-like became the reaction button. Assertions that
+ * pinned v0's rail (avatar/like slots, rotating crest, RAIL_BACKING plates)
+ * were rewritten to the v2 contract; every behaviour they protected (safety
+ * action, labels, share privacy, caption bounds, scrim, announcements) is
+ * still asserted below.
+ */
 
 jest.mock('expo-linear-gradient', () => {
   const { View } = require('react-native');
@@ -14,6 +27,7 @@ jest.mock('expo-linear-gradient', () => {
 });
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 jest.mock('expo-linking', () => ({ createURL: (path: string) => `roxy:/${path}` }));
+jest.mock('../../lib/haptics', () => ({ haptic: jest.fn(), tapLight: jest.fn() }));
 
 const BASE: ReelRow = {
   id: 'p1',
@@ -40,7 +54,7 @@ const BASE: ReelRow = {
   link_type: null,
   link_entity_id: null,
   link_community_id: null,
-  created_at: '2026-08-01T00:00:00Z',
+  created_at: new Date(Date.now() - 2 * 3_600_000).toISOString(),
   updated_at: '2026-08-01T00:00:00Z',
   profiles: { display_name: 'Mara', avatar_url: null },
   communities: { name: 'The Sapphic Club' },
@@ -58,11 +72,11 @@ function chrome(overrides: Partial<ChromeProps> = {}) {
   return render(
     <FeedCellChrome
       post={BASE}
-      liked={false}
+      reaction={null}
+      reactionTotal={12}
       saved={false}
-      likeCount={12}
       reducedMotion={false}
-      onLike={noop}
+      onReact={noop}
       onSave={noop}
       onOpenComments={noop}
       onOpenAuthor={noop}
@@ -88,23 +102,24 @@ interface Node {
 /**
  * The rail's controls in the order they are drawn. Host nodes only — a
  * `TouchableOpacity` carries the same testID on both its composite and its host
- * view, and counting it twice would make the order unreadable.
+ * view, and counting it twice would make the order unreadable. Ids with a
+ * suffix (`rail-react-count`) are parts of a control, not controls.
  */
 function railOrder(view: ReturnType<typeof chrome>): string[] {
   const rail = view.getByTestId('feed-rail') as unknown as Node;
   return rail
     .findAll((n) => typeof n.type === 'string'
       && typeof n.props.testID === 'string'
-      && n.props.testID.startsWith('rail-'))
+      && /^rail-[a-z]+$/.test(n.props.testID))
     .map((n) => String(n.props.testID));
 }
 
-describe('FeedCellChrome right rail', () => {
-  it('draws the rail in TikTok order, with the way out last', () => {
+describe('FeedCellChrome right rail (v2: five glyphs, no plates)', () => {
+  it('draws reaction, comment, save, share and the way out, top to bottom', () => {
     const view = chrome();
 
     expect(railOrder(view)).toEqual([
-      'rail-avatar', 'rail-like', 'rail-comment', 'rail-save', 'rail-share', 'rail-more',
+      'rail-react', 'rail-comment', 'rail-save', 'rail-share', 'rail-more',
     ]);
   });
 
@@ -122,64 +137,64 @@ describe('FeedCellChrome right rail', () => {
     expect(onOpenSafety).toHaveBeenCalledTimes(1);
   });
 
-  it('hangs the follow affordance off the avatar when a follow graph is wired', () => {
-    const onFollowAuthor = jest.fn();
-    const view = chrome({ onFollowAuthor, following: false });
-
-    expect(railOrder(view)).toEqual([
-      'rail-avatar', 'rail-follow', 'rail-like', 'rail-comment', 'rail-save',
-      'rail-share', 'rail-more',
-    ]);
-    fireEvent.press(view.getByTestId('rail-follow'));
-    expect(onFollowAuthor).toHaveBeenCalledTimes(1);
-  });
-
-  it('hides the follow affordance rather than offering an action nothing handles', () => {
-    const view = chrome();
-
-    expect(view.queryByTestId('rail-follow')).toBeNull();
-  });
-
   it('announces every icon-only control, and says what kind of post it acts on', () => {
     const view = chrome({ post: makePost({ post_type: 'poll' }) });
 
-    expect(view.getByTestId('rail-avatar').props.accessibilityLabel)
-      .toBe("Open Mara's profile");
-    expect(view.getByTestId('rail-like').props.accessibilityLabel)
-      .toBe('Like poll, 12 likes');
+    expect(view.getByTestId('rail-react').props.accessibilityLabel)
+      .toBe('React to poll, 12 reactions');
     expect(view.getByTestId('rail-comment').props.accessibilityLabel)
       .toBe('Comment, 4 comments');
     expect(view.getByTestId('rail-save').props.accessibilityLabel).toBe('Save poll');
     expect(view.getByTestId('rail-share').props.accessibilityLabel).toBe('Share poll');
   });
 
-  it('flips the like and save labels and their selected state once they are on', () => {
-    const view = chrome({ liked: true, saved: true });
+  it('shows her reaction on the button and flips save once they are on', () => {
+    const view = chrome({ reaction: '😂', saved: true });
 
-    expect(view.getByTestId('rail-like').props.accessibilityLabel)
-      .toBe('Unlike video, 12 likes');
-    expect(view.getByTestId('rail-like').props.accessibilityState.selected).toBe(true);
+    expect(view.getByTestId('rail-react-emoji').props.children).toBe('😂');
+    expect(view.getByTestId('rail-react').props.accessibilityState.selected).toBe(true);
     expect(view.getByTestId('rail-save').props.accessibilityLabel)
       .toBe('Remove video from saved');
     expect(view.getByTestId('rail-save').props.accessibilityState.selected).toBe(true);
+    expect(view.getByTestId('rail-save-label').props.children).toBe('Saved');
   });
 
-  it('routes each rail tap to its handler', () => {
-    const onLike = jest.fn();
+  it('writes counts the way her language does, and labels save and share in words', () => {
+    const view = chrome({ reactionTotal: 1205, post: makePost({ comment_count: 48 }) });
+
+    expect(view.getByTestId('rail-react-count').props.children).toBe('1,205');
+    expect(view.getByTestId('rail-comment-count').props.children).toBe('48');
+    expect(view.getByTestId('rail-save-label').props.children).toBe('Save');
+    expect(view.getByTestId('rail-share-label').props.children).toBe('Share');
+  });
+
+  it('routes each rail tap to its handler; a tap on the reaction button gives a heart', () => {
+    const onReact = jest.fn();
     const onSave = jest.fn();
     const onOpenComments = jest.fn();
-    const onOpenAuthor = jest.fn();
-    const view = chrome({ onLike, onSave, onOpenComments, onOpenAuthor });
+    const view = chrome({ onReact, onSave, onOpenComments });
 
-    fireEvent.press(view.getByTestId('rail-like'));
+    fireEvent(view.getByTestId('rail-react'), 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
     fireEvent.press(view.getByTestId('rail-save'));
     fireEvent.press(view.getByTestId('rail-comment'));
-    fireEvent.press(view.getByTestId('rail-avatar'));
 
-    expect(onLike).toHaveBeenCalledTimes(1);
+    expect(onReact).toHaveBeenCalledWith('❤️');
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onOpenComments).toHaveBeenCalledTimes(1);
-    expect(onOpenAuthor).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the six-emoji picker over the post on a long press', () => {
+    jest.useFakeTimers();
+    const onPickerOpenChange = jest.fn();
+    const view = chrome({ onPickerOpenChange });
+    const button = view.getByTestId('rail-react');
+
+    fireEvent(button, 'responderGrant', { nativeEvent: { pageX: 0, pageY: 0, locationX: 24, locationY: 24 } });
+    act(() => { jest.advanceTimersByTime(PICKER.longPressMs); });
+
+    expect(view.queryByTestId('reaction-picker')).not.toBeNull();
+    expect(onPickerOpenChange).toHaveBeenCalledWith(true);
+    jest.useRealTimers();
   });
 
   it('shares a deep link to this post, not a bare sentence', async () => {
@@ -195,6 +210,10 @@ describe('FeedCellChrome right rail', () => {
       url: 'roxy://community/post/p1',
       message: expect.stringContaining('roxy://community/post/p1'),
     }));
+    // Never the author's name or the community's: a share preview can out someone.
+    const payload = spy.mock.calls[0][0] as { message: string };
+    expect(payload.message).not.toContain('Mara');
+    expect(payload.message).not.toContain('The Sapphic Club');
     spy.mockRestore();
   });
 
@@ -212,69 +231,91 @@ describe('FeedCellChrome right rail', () => {
   });
 });
 
-describe('FeedCellChrome community crest', () => {
-  it('gives the community the sound-disc slot', () => {
+describe('FeedCellChrome and the Roxy AI lane', () => {
+  it('starts the rail above the 88 dp lane, on the button\'s centre line', () => {
+    // Direction › The Roxy AI button: the rail's lowest control starts at the
+    // lane's top; at rest nothing readable or tappable sits in the lane.
+    const view = chrome();
+    const column = StyleSheet.flatten(view.getByTestId('feed-rail-column').props.style);
+
+    expect(column.bottom).toBe(FAB_LANE);
+    expect(column.right).toBe(RAIL_END);
+  });
+
+  it('keeps captions an end margin of 88 clear of the lane', () => {
+    const view = chrome();
+    const identity = StyleSheet.flatten(view.getByTestId('feed-cell-identity').props.style);
+
+    expect(identity.paddingRight).toBe(FAB_LANE);
+  });
+});
+
+describe('FeedCellChrome author and community (bottom start)', () => {
+  it('names the author with the post\'s age, and opens her profile from the avatar or the name', () => {
+    const onOpenAuthor = jest.fn();
+    const view = chrome({ onOpenAuthor });
+
+    expect(view.getByTestId('feed-cell-handle').props.children).toBe('Mara');
+    expect(view.getByTestId('feed-cell-age').props.children).toBe('· 2 h');
+    expect(view.getByTestId('feed-cell-avatar').props.accessibilityLabel).toBe("Open Mara's profile");
+    fireEvent.press(view.getByTestId('feed-cell-avatar'));
+    fireEvent.press(view.getByTestId('feed-cell-handle-hit'));
+    expect(onOpenAuthor).toHaveBeenCalledTimes(2);
+  });
+
+  it('offers follow beside her name when a follow graph is wired, and only then', () => {
+    const onFollowAuthor = jest.fn();
+    const view = chrome({ onFollowAuthor, following: false });
+
+    const follow = view.getByTestId('feed-cell-follow');
+    expect(follow.props.accessibilityLabel).toBe('Follow Mara');
+    fireEvent.press(follow);
+    expect(onFollowAuthor).toHaveBeenCalledTimes(1);
+
+    expect(chrome().queryByTestId('feed-cell-follow')).toBeNull();
+    expect(chrome({ onFollowAuthor, following: true }).getByTestId('feed-cell-follow').props.accessibilityLabel)
+      .toBe('Unfollow Mara');
+  });
+
+  it('draws the community\'s crest beside "in <community>", in its identity colour, still', () => {
     const view = chrome();
 
-    expect(view.getByTestId('community-crest').props.accessibilityLabel)
-      .toBe('Open The Sapphic Club');
+    const crest = StyleSheet.flatten(view.getByTestId('feed-cell-crest').props.style);
+    expect(crest.backgroundColor).toBe(identityFor('c1'));
+    expect(view.getByTestId('feed-cell-community').props.children).toBe('in The Sapphic Club');
   });
 
   it('opens the community the post was made in', () => {
     const onOpenCommunity = jest.fn();
     const view = chrome({ onOpenCommunity });
 
-    fireEvent.press(view.getByTestId('community-crest'));
+    fireEvent.press(view.getByTestId('feed-cell-community-hit'));
 
     expect(onOpenCommunity).toHaveBeenCalledTimes(1);
+    expect(view.getByTestId('feed-cell-community-hit').props.accessibilityLabel)
+      .toBe('Open The Sapphic Club');
   });
 
-  it('passes reduced motion down so the crest stops spinning', () => {
-    const view = chrome({ active: true, reducedMotion: true });
-
-    expect(view.queryByTestId('community-crest-static')).not.toBeNull();
-    expect(view.queryByTestId('community-crest-spinning')).toBeNull();
-  });
-
-  it('only turns the crest on the cell the viewer is actually on', () => {
-    const inactive = chrome();
-    expect(inactive.queryByTestId('community-crest-spinning')).toBeNull();
-
-    const view = chrome({ active: true });
-    expect(view.queryByTestId('community-crest-spinning')).not.toBeNull();
-    view.unmount();
-  });
-
-  it('draws no crest on a post that belongs to no community', () => {
-    // Since migration 118 every post lives on its author's wall, so the crest
-    // fell back to a "Roxy" disc that opened the AUTHOR (the avatar's job) and
-    // sat under the Roxy FAB on every page — the one thing the bottom-right
-    // corner must not hold twice. Claude Design's rail has no disc at all.
+  it('draws no community line on a post that belongs to no community', () => {
+    // Since migration 118 every post lives on its author's wall: a fallback
+    // "Roxy" crest opened the author (the avatar's job) and sat under the FAB.
     const view = chrome({ post: makePost({ communities: null }) });
 
-    expect(view.queryByTestId('community-crest')).toBeNull();
+    expect(view.queryByTestId('feed-cell-crest')).toBeNull();
+    expect(view.queryByTestId('feed-cell-community')).toBeNull();
     expect(view.queryByLabelText('Open Roxy')).toBeNull();
   });
 
-  it('keeps a community crest out of the Roxy FAB corner', () => {
-    // The FAB floats at right 20 / bottom 90 (56dp) over every feed page — see
-    // components/ui/RoxyCompanionButton. A crest at bottom 34 sat fully under
-    // it and could never be tapped (fab-occlusion e2e). It now heads the rail
-    // column, directly under the author it belongs with, well above the FAB.
+  it('keeps the community out of the rail and the lane', () => {
     const view = chrome();
     const column = view.getByTestId('feed-rail-column');
 
-    // Inside the rail column (a flex child under the rail), not an absolutely
-    // positioned corner disc.
-    expect(within(column).queryByTestId('community-crest')).not.toBeNull();
-    const crestBox = StyleSheet.flatten(
-      view.getByTestId('community-crest-slot').props.style,
-    ) as { position?: string; bottom?: number };
-    expect(crestBox.position).not.toBe('absolute');
+    expect(within(column).queryByTestId('feed-cell-crest')).toBeNull();
+    expect(within(view.getByTestId('feed-cell-identity')).queryByTestId('feed-cell-crest')).not.toBeNull();
   });
 });
 
-describe('FeedCellChrome identity block', () => {
+describe('FeedCellChrome caption', () => {
   it('caps the caption at two lines, leaving room for the community line', () => {
     const view = chrome();
 
@@ -290,9 +331,7 @@ describe('FeedCellChrome identity block', () => {
 
   it('bounds the expanded caption instead of letting it outgrow the page', () => {
     // `numberOfLines={undefined}` over uncapped `post.content` is unbounded. A
-    // 600-character caption is ~15 lines ≈ 300dp, and Connect's page is ~320dp:
-    // the band covered the whole frame, the text ran off the top, and the only
-    // escape was to swipe away and come back.
+    // 600-character caption is ~15 lines ≈ 300dp, and Connect's page is ~320dp.
     const view = chrome({ post: makePost({ content: 'x'.repeat(200) }) });
 
     fireEvent.press(view.getByTestId('feed-cell-more'));
@@ -318,9 +357,6 @@ describe('FeedCellChrome identity block', () => {
   });
 
   it('hands a caption too long for the band to the detail surface, never expanding it', () => {
-    // The alternative to a silent truncation. `TextCell` already makes this
-    // trade at `READ_MORE_CAP`; the chrome makes the same one so the rest of
-    // the words are always reachable rather than clipped without a word.
     const onOpenPost = jest.fn();
     const view = chrome({
       post: makePost({ content: 'x'.repeat(CAPTION_EXPANDED_CAP + 1) }),
@@ -333,13 +369,6 @@ describe('FeedCellChrome identity block', () => {
     expect(onOpenPost).toHaveBeenCalledTimes(1);
     expect(view.getByTestId('feed-cell-caption').props.numberOfLines)
       .toBe(CAPTION_COLLAPSED_LINES);
-  });
-
-  it('names the community under the caption', () => {
-    const view = chrome();
-
-    expect(view.getByTestId('feed-cell-community').props.children)
-      .toContain('The Sapphic Club');
   });
 
   it('renders an @handle only when there is a real one, never one invented from a name', () => {
@@ -361,7 +390,7 @@ describe('FeedCellChrome identity block', () => {
     });
 
     expect(view.queryByTestId('feed-cell-caption')).toBeNull();
-    expect(view.getByTestId('rail-avatar').props.accessibilityLabel)
+    expect(view.getByTestId('feed-cell-avatar').props.accessibilityLabel)
       .toBe("Open the author's profile");
   });
 });
@@ -409,8 +438,7 @@ describe('FeedCellChrome legibility', () => {
 
     // The defect: `locations={[0.35, 0.62, 1]}` on an absoluteFill gradient
     // means the alpha under the text is a function of page height, while the
-    // text itself is placed in fixed dp. Over a white photo that put the handle
-    // at 1.86:1 on Connect's 320dp page and 4.63:1 at 620dp.
+    // text itself is placed in fixed dp.
     const scrim = StyleSheet.flatten(view.getByTestId('feed-cell-scrim').props.style);
     expect(scrim.bottom).toBe(0);
     expect(scrim.top).toBeUndefined();
@@ -423,9 +451,6 @@ describe('FeedCellChrome legibility', () => {
   it('sizes the dark band by the chrome it backs, so a long caption grows it', () => {
     const view = chrome();
 
-    // The identity block is the band's CONTENT. That is what makes the
-    // guarantee hold for an expanded caption as well as a two-line one: the
-    // backing cannot be outgrown by the thing it backs.
     const body = view.getByTestId('feed-cell-scrim-body') as unknown as Node;
     const inside = body.findAll((n) => n.props.testID === 'feed-cell-identity');
     expect(inside.length).toBeGreaterThan(0);
@@ -442,22 +467,20 @@ describe('FeedCellChrome legibility', () => {
     expect(body.findAll((n) => n.props.testID === 'prompt').length).toBeGreaterThan(0);
   });
 
-  it('backs every rail control rather than trusting a shadow', () => {
-    const view = chrome();
+  it('draws no plate behind any rail control (v2), and outlines every count instead', () => {
+    // Direction v2: the post is the screen; the rail is white glyphs with a
+    // drawn 1 dp dark outline. The outline is scored in feedChromeContrast.test.
+    const view = chrome({ reactionTotal: 7 });
 
-    // WCAG defines no method for scoring a text shadow, so `CHROME_SHADOW` is
-    // never the defence. The rail sits ~358dp above the bottom — far outside
-    // any scrim that would not veil the whole frame — so each control carries
-    // its own plate. The ratios are checked in feedChromeContrast.test.ts.
-    for (const id of ['rail-like', 'rail-comment', 'rail-save', 'rail-share', 'rail-more']) {
-      expect(StyleSheet.flatten(view.getByTestId(id).props.style).backgroundColor)
-        .toBe(RAIL_BACKING);
+    for (const id of ['rail-react', 'rail-comment', 'rail-save', 'rail-share', 'rail-more']) {
+      expect(StyleSheet.flatten(view.getByTestId(id).props.style).backgroundColor).toBeUndefined();
     }
-    expect(StyleSheet.flatten(view.getByTestId('rail-avatar').props.style).backgroundColor)
-      .toBe(RAIL_BACKING);
+    const outlineCopies = view.getAllByText('7', { includeHiddenElements: true })
+      .filter((n) => StyleSheet.flatten(n.props.style).color === RAIL_OUTLINE.color);
+    expect(outlineCopies).toHaveLength(4);
   });
 
-  it('keeps the shadow as well, as help rather than as proof', () => {
+  it('keeps the caption shadow as well, as help rather than as proof', () => {
     const view = chrome();
 
     const caption = view.getByTestId('feed-cell-caption');

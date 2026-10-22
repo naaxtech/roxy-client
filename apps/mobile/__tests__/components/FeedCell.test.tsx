@@ -116,12 +116,12 @@ function cell(post: ReelRow, activeItemId: string | null = post.id) {
       width={400}
       height={800}
       muted
-      liked={false}
+      reaction={null}
       saved={false}
-      likeCount={3}
+      reactionTotal={3}
       reducedMotion={false}
       onToggleMute={noop}
-      onLike={noop}
+      onReact={noop}
       onSave={noop}
       onOpenComments={noop}
       onOpenAuthor={noop}
@@ -322,7 +322,7 @@ describe('FeedCell shared chrome', () => {
       }));
 
       expect(view.queryByTestId('feed-rail')).not.toBeNull();
-      expect(view.queryByTestId('community-crest')).not.toBeNull();
+      expect(view.queryByTestId('feed-cell-crest')).not.toBeNull();
     }
   });
 });

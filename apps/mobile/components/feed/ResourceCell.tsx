@@ -10,8 +10,8 @@ import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { LinkType } from '../../types';
 import { FeedCellChrome } from './FeedCellChrome';
 import type { FeedBodyCellProps } from './FeedCellChrome';
-import { DoubleTapCatcher, useDoubleTapLike } from './DoubleTapLike';
-import { LikeBurst } from './LikeBurst';
+import { DoubleTapReact, useDoubleTapReact } from '../reactions/DoubleTapReact';
+import { ReactionBurst } from '../reactions/ReactionBurst';
 import { CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
 import { a11yState } from '../../lib/a11yState';
 
@@ -57,10 +57,10 @@ function hostOf(url: string): string {
  * Roxy and hands off to the caller, which owns routing.
  */
 export function ResourceCell({
-  post, width, height, onOpenPost, onDoubleTapLike, ...chrome
+  post, width, height, onOpenPost, ...chrome
 }: FeedBodyCellProps): ReactElement {
-  const { burstRef, onDoubleTap } = useDoubleTapLike({
-    liked: chrome.liked, onLike: chrome.onLike, onDoubleTapLike,
+  const { burstRef, onDoubleTap } = useDoubleTapReact({
+    reaction: chrome.reaction, onReact: chrome.onReact,
     reducedMotion: chrome.reducedMotion,
   });
   const [busy, setBusy] = useState(false);
@@ -108,7 +108,7 @@ export function ResourceCell({
 
       {/* Under the composition and the card, both box-none: a double tap on
           the card likes the post, the open button keeps its own touch. */}
-      <DoubleTapCatcher onDoubleTap={onDoubleTap} />
+      <DoubleTapReact onDoubleTap={onDoubleTap} />
 
       <View
         style={[s.composition, { paddingBottom: Math.round(height * 0.24) }]}
@@ -157,7 +157,7 @@ export function ResourceCell({
         </View>
       </View>
 
-      <LikeBurst ref={burstRef} reducedMotion={chrome.reducedMotion} />
+      <ReactionBurst ref={burstRef} reducedMotion={chrome.reducedMotion} />
 
       <FeedCellChrome post={post} showCaption={false} onOpenPost={onOpenPost} {...chrome} />
     </View>

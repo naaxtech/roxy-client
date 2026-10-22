@@ -127,12 +127,12 @@ function cellElement(post: ReelRow, onVote?: () => Promise<boolean>): React.Reac
       width={WIDTH}
       height={800}
       muted
-      liked={false}
+      reaction={null}
       saved={false}
-      likeCount={3}
+      reactionTotal={3}
       reducedMotion={false}
       onToggleMute={noop}
-      onLike={noop}
+      onReact={noop}
       onSave={noop}
       onOpenComments={noop}
       onOpenAuthor={noop}

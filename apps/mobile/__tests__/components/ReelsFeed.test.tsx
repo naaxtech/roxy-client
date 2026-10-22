@@ -173,6 +173,17 @@ jest.mock('../../store/feedStore', () => {
   return { useFeedStore };
 });
 
+/** Her reactions (v2): the real selectors over a hand-held state. */
+jest.mock('../../components/reactions/reactionStore', () => {
+  const actual = jest.requireActual('../../components/reactions/reactionStore');
+  const state = {
+    mine: {}, deltas: {}, react: jest.fn(() => Promise.resolve()), hydrate: jest.fn(() => Promise.resolve()),
+  };
+  const useReactionStore = (selector: (s: typeof state) => unknown): unknown => selector(state);
+  useReactionStore.getState = (): typeof state => state;
+  return { ...actual, useReactionStore };
+});
+
 /** Focus + foreground, as `usePlaybackAllowed` reports it. Flipped per test. */
 const mockPlayback = { allowed: true };
 jest.mock('../../hooks/usePlaybackAllowed', () => ({
@@ -220,7 +231,22 @@ interface CapturedListProps {
   onScroll: (event: unknown) => void;
 }
 
+/**
+ * The posts the list was handed. v2 (Wave 2 feed) appends the "You're caught
+ * up" page when there is nothing more to load; it is not a post, so the post
+ * assertions below read past it. `ReelsFeed caught-up page` asserts it.
+ */
 function captured(): CapturedListProps[] {
+  const { __captured } = jest.requireMock('@shopify/flash-list') as {
+    __captured: Record<string, unknown>[];
+  };
+  return (__captured as unknown as CapturedListProps[]).map((p) => ({
+    ...p, data: p.data.filter((r) => r.id !== '__caught_up__'),
+  }));
+}
+
+/** Exactly what the list was handed, the caught-up page included. */
+function capturedRaw(): CapturedListProps[] {
   const { __captured } = jest.requireMock('@shopify/flash-list') as {
     __captured: Record<string, unknown>[];
   };
@@ -587,23 +613,46 @@ describe('ReelsFeed playback (FEED-03)', () => {
   });
 });
 
-describe('ReelsFeed likes (one source of truth)', () => {
-  it('double tap goes to the idempotent likePost, the rail to toggleLike', async () => {
-    const store = (jest.requireMock('../../store/feedStore') as {
-      useFeedStore: { getState: () => { likePost: jest.Mock; toggleLike: jest.Mock } };
-    }).useFeedStore.getState();
-    store.likePost.mockClear();
-    store.toggleLike.mockClear();
+describe('ReelsFeed reactions (one source of truth)', () => {
+  // v2 (Wave 2 feed): the v0 like (toggleLike / likePost) became her reaction,
+  // through components/reactions/reactionStore. Her v0 like is passed along as
+  // `legacyLiked` so the store can read it as her ❤️ and fold it in.
+  it('sends every reaction, from the rail, the picker or the double tap, to the reaction store', async () => {
+    const reactions = (jest.requireMock('../../components/reactions/reactionStore') as {
+      useReactionStore: { getState: () => { react: jest.Mock; hydrate: jest.Mock } };
+    }).useReactionStore.getState();
+    reactions.react.mockClear();
+    const { useAuthStore } = jest.requireActual('../../store/authStore') as {
+      useAuthStore: { setState: (s: Record<string, unknown>) => void; getState: () => Record<string, unknown> };
+    };
+    const signedOut = useAuthStore.getState().user;
+    useAuthStore.setState({ user: { id: 'me' } });
     const list = await mountFeed();
 
     const cell = list.renderItem({ item: list.data[1], index: 1 }) as unknown as
-      React.ReactElement<{ onDoubleTapLike: () => void; onLike: () => void }>;
-    cell.props.onDoubleTapLike();
-    expect(store.likePost).toHaveBeenCalledWith(PHOTO_ID);
-    expect(store.toggleLike).not.toHaveBeenCalled();
+      React.ReactElement<{ onReact: (e: string | null) => void; reaction: string | null }>;
+    expect(cell.props.reaction).toBeNull();
+    cell.props.onReact('😂');
+    expect(reactions.react).toHaveBeenCalledWith(PHOTO_ID, '😂', { legacyLiked: false });
+    cell.props.onReact(null);
+    expect(reactions.react).toHaveBeenLastCalledWith(PHOTO_ID, null, { legacyLiked: false });
+    // Her reactions are learned for the posts the list holds.
+    await waitFor(() => expect(reactions.hydrate).toHaveBeenCalledWith('me', expect.arrayContaining([PHOTO_ID])));
+    useAuthStore.setState({ user: signedOut });
+  });
+});
 
-    cell.props.onLike();
-    expect(store.toggleLike).toHaveBeenCalledWith(PHOTO_ID);
+describe('ReelsFeed caught-up page', () => {
+  it('ends the feed with "You\'re caught up" once there is nothing more to load', async () => {
+    await mountFeed();
+
+    const raw = capturedRaw()[capturedRaw().length - 1];
+    const last = raw.data[raw.data.length - 1];
+    expect(last.id).toBe('__caught_up__');
+    const page = raw.renderItem({ item: last, index: raw.data.length - 1 });
+    const view = render(page as React.ReactElement);
+    expect(view.getByText("You're caught up.")).toBeTruthy();
+    expect(view.getByText('Your communities are talking in Messages.')).toBeTruthy();
   });
 });
 
