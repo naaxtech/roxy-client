@@ -1,0 +1,52 @@
+apps/mobile/__tests__/MessagesNew.test.tsx
+  h_0549c11fec2ab0 102-114
+apps/mobile/__tests__/components/chat/ActionTray.test.tsx
+  h_0549c11fec2ab0 2,53-62,65-72
+apps/mobile/__tests__/components/chat/GifPicker.test.tsx
+  h_0549c11fec2ab0 62-68
+apps/mobile/__tests__/components/messages/LoadingShapes.test.tsx
+  h_0549c11fec2ab0 1-84
+apps/mobile/__tests__/components/messages/MessagesInbox.test.tsx
+  h_0549c11fec2ab0 3,8,90-91,95-107
+apps/mobile/__tests__/components/messages/OfficialChatInbox.test.tsx
+  h_0549c11fec2ab0 30-37
+apps/mobile/__tests__/screens/ChatThread.test.tsx
+  h_0549c11fec2ab0 221-226
+apps/mobile/__tests__/screens/CommunityChannels.test.tsx
+  h_0549c11fec2ab0 298-305
+apps/mobile/__tests__/screens/GroupInfo.test.tsx
+  h_0549c11fec2ab0 160-168
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  h_0549c11fec2ab0 3,23,529-530,585,650,654
+apps/mobile/app/(tabs)/messages/index.tsx
+  h_0549c11fec2ab0 92-93
+apps/mobile/app/(tabs)/messages/new.tsx
+  h_0549c11fec2ab0 3,23,217-219,293-295
+apps/mobile/app/chat/[id].tsx
+  h_0549c11fec2ab0 3,43-44,94,701-702,716-718,737-740,764,1021
+apps/mobile/app/chat/info/[id].tsx
+  h_0549c11fec2ab0 3,33-34,103,264-266,305,440-442
+apps/mobile/components/chat/ActionTray.tsx
+  h_0549c11fec2ab0 3,7,73-76,85-88
+apps/mobile/components/chat/GifPicker.tsx
+  h_0549c11fec2ab0 3,7,106,151-156
+apps/mobile/components/messages/LoadingShapes.tsx
+  h_0549c11fec2ab0 1-87
+apps/mobile/components/messages/MessagesInbox.tsx
+  h_0549c11fec2ab0 12-14,69-70,111-112,127-128,134,149,281-282
+apps/mobile/components/messages/OfficialChatInbox.tsx
+  h_0549c11fec2ab0 2,22,92
+apps/mobile/components/messages/usePullRefresh.ts
+  h_0549c11fec2ab0 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b4e2273a0b01093fd0940ea329b1da8e1480420",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
