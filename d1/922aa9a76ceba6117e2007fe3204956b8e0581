@@ -1,0 +1,20 @@
+apps/mobile/__tests__/components/feedback/RoxyLoading.test.tsx
+  h_0549c11fec2ab0 1-147
+apps/mobile/__tests__/components/feedback/Skeleton.test.tsx
+  h_0549c11fec2ab0 1-138
+apps/mobile/components/feedback/RoxyLoading.tsx
+  h_0549c11fec2ab0 1-218
+apps/mobile/components/feedback/Skeleton.tsx
+  h_0549c11fec2ab0 1-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d1922aa9a76ceba6117e2007fe3204956b8e0581",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
