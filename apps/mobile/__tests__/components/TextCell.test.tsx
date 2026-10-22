@@ -57,11 +57,11 @@ function text(post: ReelRow = BASE, onOpenPost: () => void = noop) {
       post={post}
       width={WIDTH}
       height={800}
-      liked={false}
+      reaction={null}
       saved={false}
-      likeCount={3}
+      reactionTotal={3}
       reducedMotion={false}
-      onLike={noop}
+      onReact={noop}
       onSave={noop}
       onOpenComments={noop}
       onOpenAuthor={noop}
@@ -200,7 +200,7 @@ describe('TextCell chrome', () => {
     const view = text();
 
     expect(view.queryByTestId('feed-rail')).not.toBeNull();
-    expect(view.queryByTestId('community-crest')).not.toBeNull();
+    expect(view.queryByTestId('feed-cell-crest')).not.toBeNull();
   });
 
   it('never renders a play control', () => {

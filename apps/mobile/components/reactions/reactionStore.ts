@@ -38,6 +38,8 @@ interface ReactionStore {
   mine: Record<string, PostReaction | null>;
   /** Signed, per post, per emoji: what this session changed. */
   deltas: Record<string, Record<string, number>>;
+  /** Posts already asked about this session (no row = no reaction yet). */
+  asked: Record<string, true>;
   hydrate: (userId: string, postIds: string[]) => Promise<void>;
   react: (postId: string, next: PostReaction | null, deps: ReactionDeps) => Promise<void>;
   reset: () => void;
@@ -90,21 +92,33 @@ async function legacyReact(
   else if (next) await reactToPost(postId, next);
 }
 
-const EMPTY = { supported: null, userId: null, mine: {}, deltas: {} } as const;
+const EMPTY = { supported: null, userId: null, mine: {}, deltas: {}, asked: {} } as const;
 
 export const useReactionStore = create<ReactionStore>((set, get) => ({
   ...EMPTY,
 
   hydrate: async (userId, postIds) => {
     if (get().userId !== userId) set({ ...EMPTY, userId });
-    if (get().supported === false || postIds.length === 0) return;
-    const result = await fetchMyReactions(userId, postIds);
+    if (get().supported === false) return;
+    const asked = get().asked;
+    const fresh = postIds.filter((id) => !asked[id]);
+    if (fresh.length === 0) return;
+    set((s) => ({ asked: { ...s.asked, ...Object.fromEntries(fresh.map((id) => [id, true as const])) } }));
+    const result = await fetchMyReactions(userId, fresh);
     if (get().userId !== userId) return;
     if (result.status === 'unsupported') {
       set({ supported: false });
       return;
     }
-    if (result.status === 'error') return;
+    if (result.status === 'error') {
+      // Ask again next time: nothing was learned.
+      set((s) => {
+        const next = { ...s.asked };
+        for (const id of fresh) delete next[id];
+        return { asked: next };
+      });
+      return;
+    }
     set((s) => ({ supported: true, mine: { ...result.mine, ...s.mine } }));
   },
 

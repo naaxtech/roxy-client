@@ -54,11 +54,11 @@ function photo(post: ReelRow = BASE) {
       post={post}
       width={WIDTH}
       height={800}
-      liked={false}
+      reaction={null}
       saved={false}
-      likeCount={3}
+      reactionTotal={3}
       reducedMotion={false}
-      onLike={noop}
+      onReact={noop}
       onSave={noop}
       onOpenComments={noop}
       onOpenAuthor={noop}
@@ -101,7 +101,7 @@ describe('PhotoCell', () => {
     const view = photo();
 
     expect(view.queryByTestId('feed-rail')).not.toBeNull();
-    expect(view.queryByTestId('community-crest')).not.toBeNull();
+    expect(view.queryByTestId('feed-cell-crest')).not.toBeNull();
     expect(view.queryByTestId('feed-cell-caption')).not.toBeNull();
   });
 

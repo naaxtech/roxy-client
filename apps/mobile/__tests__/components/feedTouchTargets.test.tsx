@@ -112,14 +112,14 @@ function cell(overrides: Partial<ReelRow> = {}, withFollow = false) {
       width={390}
       height={320}
       muted
-      liked={false}
+      reaction={null}
       saved={false}
-      likeCount={12}
+      reactionTotal={12}
       // The crest's rotation is a timer, and this file is about geometry: a
       // spinning disc would only add unwrapped Animated updates to every case.
       reducedMotion
       onToggleMute={noop}
-      onLike={noop}
+      onReact={noop}
       onSave={noop}
       onOpenComments={noop}
       onOpenAuthor={noop}
@@ -162,14 +162,18 @@ function box(view: { getByTestId: (id: string) => { props: { style?: unknown } }
  * Controls that are not words in a sentence, so ATF's 48dp applies to them
  * whole. Every one of these carries an icon and a plate of its own.
  */
+// v2 (Wave 2 feed, board v2-04): the avatar left the rail for the bottom-start
+// identity block (`feed-cell-avatar`), the heart became her reaction button
+// (`rail-react`), and v0's rotating rail crest retired: the community's crest
+// now sits inside the inline "in <community>" link, held to 24 dp in INLINE.
+// Was: 'rail-avatar', 'rail-like', 'community-crest'.
 const STANDALONE: Record<string, PostType> = {
-  'rail-avatar': 'standard',
-  'rail-like': 'standard',
+  'feed-cell-avatar': 'standard',
+  'rail-react': 'standard',
   'rail-comment': 'standard',
   'rail-save': 'standard',
   'rail-share': 'standard',
   'rail-more': 'standard',
-  'community-crest': 'standard',
   'reel-mute': 'video',
   'reel-transport': 'video',
   'text-cell-more': 'standard',
@@ -232,7 +236,8 @@ describe('feed touch targets are measured, never padded by hitSlop', () => {
   it('measures the follow badge at the 48dp floor, not a 20dp plate plus hitSlop', () => {
     const view = cell(FIXTURES.video, true);
 
-    const { height, width } = box(view as never, 'rail-follow');
+    // v2: Follow sits beside her name in the identity block (was 'rail-follow').
+    const { height, width } = box(view as never, 'feed-cell-follow');
     expect(height).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
     expect(width).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
   });
