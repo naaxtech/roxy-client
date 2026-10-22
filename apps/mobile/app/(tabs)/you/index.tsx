@@ -1,6 +1,6 @@
 // apps/mobile/app/(tabs)/you/index.tsx
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, ActivityIndicator, View, Text } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +43,7 @@ import { AccountStatusTag } from '../../../components/account/AccountStatusTag';
 import { TYPE } from '../../../lib/typography';
 import { isProfileTab } from '../../../components/profile/profileVariant';
 import { onListScroll, LIST_SCROLL_THROTTLE } from '../../../lib/roxyFab';
+import { Skeleton, SkeletonGroup } from '../../../components/feedback';
 
 
 /** How long a spinner is a reasonable answer before it becomes a dead end. */
@@ -303,6 +304,8 @@ export default function ProfileScreen() {
       backgroundColor: colors.surface,
     },
     viewToggleBtnActive: { backgroundColor: colors.roxy },
+    skeleton: { alignItems: 'center', paddingTop: 40, paddingHorizontal: 24 },
+    skeletonGap: { marginTop: 12 },
   }), [colors]);
 
   if (!user || !profile) {
@@ -328,7 +331,13 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
+          // F8: her profile header's shape while it loads; F11: no spinner.
+          <SkeletonGroup testID="you-loading" accessibilityLabel="Loading your profile" style={styles.skeleton}>
+            <Skeleton circle={88} />
+            <Skeleton width="45%" height={22} style={styles.skeletonGap} />
+            <Skeleton width="30%" height={14} style={styles.skeletonGap} />
+            <Skeleton width="80%" height={14} style={styles.skeletonGap} />
+          </SkeletonGroup>
         )}
       </SafeAreaView>
     );

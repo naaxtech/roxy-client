@@ -1,5 +1,7 @@
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import SettingsScreen from '../../app/(tabs)/you/settings';
+let mockSettingsProfile: unknown = { id: 'me', dm_permission: 'everyone' };
+afterEach(() => { mockSettingsProfile = { id: 'me', dm_permission: 'everyone' }; });
 import { useChatSettingsStore } from '../../store/chatSettingsStore';
 
 /**
@@ -42,7 +44,7 @@ jest.mock('../../store/authStore', () => ({
 jest.mock('../../store/profileStore', () => ({
   useProfileStore: Object.assign(
     (sel?: (s: object) => unknown) => {
-      const state = { profile: { id: 'me', dm_permission: 'everyone' }, updateProfile: jest.fn() };
+      const state = { profile: mockSettingsProfile, updateProfile: jest.fn() };
       return typeof sel === 'function' ? sel(state) : state;
     },
     { getState: () => ({ setProfile: jest.fn() }) },
@@ -64,6 +66,13 @@ beforeEach(() => {
   jest.clearAllMocks();
   useChatSettingsStore.getState().reset();
   chat.fetchChatSettings.mockResolvedValue({ read_receipts: true, group_add_permission: 'friends' });
+});
+
+it('while her profile loads: settings-row skeleton (F8), never a spinner (F11)', () => {
+  mockSettingsProfile = null;
+  const v = render(<SettingsScreen />);
+  expect(v.getByTestId('settings-loading').props.accessibilityRole).toBe('progressbar');
+  expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
 });
 
 it('shows the read-receipt switch with the two-way copy, on by default', async () => {

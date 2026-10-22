@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -13,6 +13,8 @@ import { contentDetailPath } from '../../lib/contentNavigation';
 import { logError } from '../../lib/errorLogger';
 import { isMediaPost } from '../../lib/postKind';
 import type { PostType } from '../../types';
+import { Skeleton, SkeletonGroup } from '../feedback';
+import { BusySwap } from '../messages/LoadingShapes';
 
 type GridPost = {
   id: string;
@@ -111,7 +113,16 @@ export function ProfilePostsGrid({ userId, communityId, onVideoPress }: Props) {
   };
 
   if (loading) {
-    return <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />;
+    // F8: 9:16 tiles at their final size; F11: no spinner.
+    return (
+      <SkeletonGroup testID="profile-posts-loading" accessibilityLabel="Loading posts" style={s.wrap}>
+        <View style={s.grid}>
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} width="31.5%" radius={10} style={s.skeletonTile} />
+          ))}
+        </View>
+      </SkeletonGroup>
+    );
   }
 
   if (posts.length === 0) {
@@ -169,9 +180,9 @@ export function ProfilePostsGrid({ userId, communityId, onVideoPress }: Props) {
           accessibilityRole="button"
           accessibilityLabel="Show older posts"
         >
-          {loadingMore
-            ? <ActivityIndicator color={colors.primary} />
-            : <Text style={s.moreText}>Show older posts</Text>}
+          <BusySwap busy={loadingMore} label="Loading older posts">
+            <Text style={s.moreText}>Show older posts</Text>
+          </BusySwap>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -186,6 +197,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   moreText: { color: colors.primaryInk, fontWeight: '700', fontSize: 14 },
   wrap: { marginTop: 12, paddingHorizontal: 12, width: '100%' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  skeletonTile: { aspectRatio: 9 / 16 },
   tile: {
     width: '31.5%',
     aspectRatio: 9 / 16,

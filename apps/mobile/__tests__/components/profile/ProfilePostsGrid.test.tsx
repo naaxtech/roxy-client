@@ -39,6 +39,12 @@ describe('ProfilePostsGrid', () => {
   });
 
   // PRO-08: the wall stopped at 60 rows with no way to see older posts.
+  it('first load: 9:16 tile skeleton (F8), never a spinner (F11)', () => {
+    const v = render(<ProfilePostsGrid userId="u1" />);
+    expect(v.getByTestId('profile-posts-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
   it('offers older posts when the first page is full, and appends them', async () => {
     const photo = (i: number) => ({ id: `p${i}`, content: null, post_type: 'photo', media_urls: [`https://x/${i}.jpg`], video_thumbnail_url: null });
     mockOrder.mockResolvedValue({ data: Array.from({ length: 60 }, (_, i) => photo(i)), error: null });

@@ -111,6 +111,15 @@ beforeEach(() => {
   });
 });
 
+describe('You while her profile loads (F8, F11)', () => {
+  it('shows her profile header\'s shape, never a spinner', () => {
+    useProfileStore.setState({ profile: null });
+    const v = render(<ProfileScreen />);
+    expect(v.getByTestId('you-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+});
+
 describe('You on the unified shell', () => {
   it('draws the self variant instead of ProfileCard', async () => {
     const { getByTestId, getByText } = render(<ProfileScreen />);

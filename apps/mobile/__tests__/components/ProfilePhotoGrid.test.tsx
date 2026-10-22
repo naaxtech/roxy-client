@@ -71,6 +71,12 @@ describe('ProfilePhotoGrid', () => {
   // alignItems:'center' content container this grid hugged its content instead
   // of filling the row, so its fixed-width wrapping slots could not compute
   // how many fit per row.
+  it('first load: photo-slot skeleton (F8), never a spinner (F11)', () => {
+    const v = render(<ProfilePhotoGrid userId="u1" editable />);
+    expect(v.getByTestId('profile-photos-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
   it('declares a full width so a centering parent cannot collapse the grid', async () => {
     const { getByTestId } = render(<ProfilePhotoGrid userId="u1" editable />);
     await waitFor(() => expect(getByTestId('profile-photo-grid')).toBeTruthy());

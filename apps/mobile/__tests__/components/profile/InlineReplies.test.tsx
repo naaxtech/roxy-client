@@ -40,6 +40,12 @@ const ready = async () => {
   return { v, onCountChange };
 };
 
+  it('first load: reply-row skeleton (F8), never a spinner (F11)', () => {
+    const v = render(<InlineReplies postId="p1" currentUserId="me" testID="ir" />);
+    expect(v.getByTestId('ir-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
 describe('InlineReplies is optimistic (F10)', () => {
   it('her reply shows in the thread in the same frame, before the write answers', async () => {
     mockSubmit.mockImplementation(() => new Promise(() => undefined));

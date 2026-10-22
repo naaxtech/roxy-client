@@ -35,6 +35,12 @@ describe('ProfileFavorites', () => {
   // explicit width the row collapsed and stretched on the edit screen while
   // rendering correctly on profile/index.tsx. Declaring the width here is what
   // makes the component safe to drop into any parent.
+  it('first load: chip skeleton (F8), never a spinner (F11)', () => {
+    const v = render(<ProfileFavorites userId="u1" editable />);
+    expect(v.getByTestId('profile-favorites-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
   it('declares a full width so a centering parent cannot collapse it', async () => {
     const { getByTestId } = render(<ProfileFavorites userId="u1" editable />);
     await waitFor(() => expect(getByTestId('profile-favorites')).toBeTruthy());

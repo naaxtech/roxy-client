@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import {
-  View, Text, StyleSheet,
-  Modal, ScrollView, ActivityIndicator, Animated,
+  View, Text, StyleSheet, Modal, ScrollView, Animated,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { PRESET_AVATARS, PRESET_COLORS } from '../../lib/avatars';
 import { usePopIn } from '../ui/popIn';
+import { BusySwap } from '../messages/LoadingShapes';
 
 type Tab = 'photo' | 'avatar';
 
@@ -94,10 +94,9 @@ export function AvatarPickerSheet({
             onPress={() => { onUploadPhoto(); onClose(); }}
             disabled={uploading}
           >
-            {uploading
-              ? <ActivityIndicator color={colors.roxy} />
-              : <Text style={styles.uploadBtnText}>Choose from Library</Text>
-            }
+            <BusySwap busy={uploading} label="Uploading">
+              <Text style={styles.uploadBtnText}>Choose from Library</Text>
+            </BusySwap>
           </TouchableOpacity>
         ) : (
           <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>

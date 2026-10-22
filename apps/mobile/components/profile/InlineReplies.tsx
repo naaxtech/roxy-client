@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, ActivityIndicator, StyleSheet, Image,
+  View, Text, TextInput, StyleSheet, Image,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Snackbar } from '../ui/Snackbar';
@@ -15,6 +15,7 @@ import { GifPicker } from '../chat/GifPicker';
 import { Analytics } from '../../lib/analytics';
 import { relativeWhen } from './ThoughtRow';
 import type { Comment } from '../../types';
+import { Skeleton, SkeletonGroup } from '../feedback';
 
 interface Props {
   postId: string;
@@ -196,7 +197,11 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
   return (
     <View style={s.wrap} testID={testID}>
       {loading ? (
-        <ActivityIndicator color={colors.primary} testID={`${testID}-loading`} />
+        // F8: two reply lines at their final size; F11: no spinner.
+        <SkeletonGroup testID={`${testID}-loading`} accessibilityLabel="Loading replies" style={s.row}>
+          <Skeleton width="30%" height={12} />
+          <Skeleton width="80%" height={14} />
+        </SkeletonGroup>
       ) : null}
 
       {!loading && comments.length === 0 ? (

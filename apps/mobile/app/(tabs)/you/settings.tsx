@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, ActivityIndicator,
+  View, Text, ScrollView, StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +38,8 @@ import { Switch } from '../../../components/ui/Switch';
 import { Snackbar } from '../../../components/ui/Snackbar';
 import { RoxyO } from '../../../components/roxy/RoxyO';
 import { clearRoxyChat } from '../../../components/roxy/roxyConversation';
+import { Skeleton, SkeletonGroup } from '../../../components/feedback';
+import { BusySwap } from '../../../components/messages/LoadingShapes';
 
 /** Her O on the Roxy AI row (board v2-07). */
 const ROW_O = 44;
@@ -105,7 +107,10 @@ export default function SettingsScreen() {
   if (!user || !profile) {
     return (
       <SafeAreaView style={s.container}>
-        <ActivityIndicator color={colors.primary} />
+        {/* F8: settings rows at their final height; F11: no spinner. */}
+        <SkeletonGroup testID="settings-loading" accessibilityLabel="Loading settings" style={s.skeleton}>
+          {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} height={52} radius={12} style={s.skeletonRow} />)}
+        </SkeletonGroup>
       </SafeAreaView>
     );
   }
@@ -497,9 +502,9 @@ export default function SettingsScreen() {
                 </Text>
                 {exportError ? <Text style={s.rowError}>{exportError}</Text> : null}
               </View>
-              {exporting
-                ? <ActivityIndicator size="small" color={colors.primary} />
-                : <Chevron />}
+              <BusySwap busy={exporting} label="Preparing your file">
+                <Chevron />
+              </BusySwap>
             </TouchableOpacity>
             <View style={s.divider} />
             <TouchableOpacity
@@ -555,6 +560,8 @@ export default function SettingsScreen() {
  */
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
+  skeleton: { padding: 16, gap: 8 },
+  skeletonRow: { width: '100%' },
   container: { flex: 1, backgroundColor: colors.ground },
   topBar: {
     flexDirection: 'row',
