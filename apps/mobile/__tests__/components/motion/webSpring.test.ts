@@ -8,7 +8,7 @@
  */
 import { SPRING } from '../../../lib/motion';
 import {
-  springProgress, springSettleMs, springEasing, startWebSpring,
+  springProgress, springSettleMs, springEasing, startWebSpring, startWebFade, currentWebStyle,
 } from '../../../components/motion/webSpring';
 
 describe('springProgress (0 → 1 from rest, the SPRING token physics)', () => {
@@ -82,8 +82,54 @@ describe('startWebSpring', () => {
     expect(old.cancel).toHaveBeenCalled();
   });
 
+  it('keeps a running move of another property (a slide and its fade run side by side)', () => {
+    const slide = { cancel: jest.fn(), effect: { getKeyframes: () => [{ transform: 'none', offset: 0 }, { transform: 'none', offset: 1 }] } };
+    const fade = { cancel: jest.fn(), effect: { getKeyframes: () => [{ opacity: '0', offset: 0 }, { opacity: '1', offset: 1 }] } };
+    const el = { animate: jest.fn(() => ({})), getAnimations: () => [slide, fade] };
+    startWebSpring(el as never, [{ opacity: 1 }, { opacity: 0 }], SPRING.fastEffects);
+    expect(fade.cancel).toHaveBeenCalled();
+    expect(slide.cancel).not.toHaveBeenCalled();
+  });
+
   it('does nothing where WAAPI is missing', () => {
     expect(startWebSpring({} as never, [{ opacity: 0 }, { opacity: 1 }], SPRING.effects)).toBeNull();
     expect(startWebSpring(null, [{ opacity: 0 }, { opacity: 1 }], SPRING.effects)).toBeNull();
+  });
+});
+
+describe('startWebFade (Reduce Motion: a plain timed opacity change)', () => {
+  it('fades opacity over the given time, replacing a running fade', () => {
+    const old = { cancel: jest.fn() };
+    const el = { animate: jest.fn(() => ({})), getAnimations: () => [old] };
+    startWebFade(el as never, 0, 1, 120);
+    expect(old.cancel).toHaveBeenCalled();
+    expect(el.animate).toHaveBeenCalledWith(
+      [{ opacity: 0 }, { opacity: 1 }], expect.objectContaining({ duration: 120 }),
+    );
+  });
+
+  it('does nothing where WAAPI is missing', () => {
+    expect(startWebFade(null, 0, 1, 120)).toBeNull();
+  });
+});
+
+describe('currentWebStyle', () => {
+  it('reads what the browser is showing now (mid-animation values included)', () => {
+    const el = { nodeType: 1 };
+    const spy = jest.fn(() => ({ opacity: '0.4', transform: 'matrix(1, 0, 0, 1, 19, 0)' }));
+    const g = globalThis as unknown as { getComputedStyle?: unknown };
+    const original = g.getComputedStyle;
+    g.getComputedStyle = spy;
+    try {
+      expect(currentWebStyle(el as never)).toEqual({ opacity: '0.4', transform: 'matrix(1, 0, 0, 1, 19, 0)' });
+      expect(spy).toHaveBeenCalledWith(el);
+    } finally {
+      g.getComputedStyle = original;
+    }
+  });
+
+  it('is null for anything that is not a DOM element', () => {
+    expect(currentWebStyle(null)).toBeNull();
+    expect(currentWebStyle({} as never)).toBeNull();
   });
 });

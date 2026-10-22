@@ -56,15 +56,35 @@ export function springEasing(token: SpringToken, samples = 48): { easing: string
   return out;
 }
 
+type RunningAnimation = {
+  cancel: () => void;
+  /** A KeyframeEffect in browsers (others have no keyframes to read). */
+  effect?: unknown;
+};
 type Animatable = {
   animate?: (keyframes: Keyframe[], options: KeyframeAnimationOptions) => Animation;
-  getAnimations?: () => { cancel: () => void }[];
+  getAnimations?: () => RunningAnimation[];
 };
+
+const NOT_PROPERTIES = new Set(['offset', 'easing', 'composite', 'computedOffset']);
+const propertiesOf = (frames: Record<string, unknown>[]) =>
+  new Set(frames.flatMap((f) => Object.keys(f).filter((k) => !NOT_PROPERTIES.has(k))));
+
+/** Cancel what the element runs on the same properties (unknown effects too). */
+function replaceRunning(el: Animatable, keyframes: Keyframe[]) {
+  const mine = propertiesOf(keyframes as Record<string, unknown>[]);
+  el.getAnimations?.().forEach((a) => {
+    const effect = a.effect as { getKeyframes?: () => Record<string, unknown>[] } | null | undefined;
+    const theirs = effect?.getKeyframes ? propertiesOf(effect.getKeyframes()) : null;
+    if (!theirs || [...theirs].some((p) => mine.has(p))) a.cancel();
+  });
+}
 
 /**
  * Start `keyframes` on a DOM element with a SPRING token's curve, replacing
- * whatever it was animating. Returns null where WAAPI is missing (native, old
- * browsers): the element simply shows its end state.
+ * whatever it was animating on the same properties (a slide and its fade run
+ * side by side). Returns null where WAAPI is missing (native, old browsers):
+ * the element simply shows its end state.
  */
 export function startWebSpring(
   el: Animatable | null | undefined,
@@ -72,7 +92,32 @@ export function startWebSpring(
   token: SpringToken,
 ): Animation | null {
   if (!el || typeof el.animate !== 'function') return null;
-  el.getAnimations?.().forEach((a) => a.cancel());
+  replaceRunning(el, keyframes);
   const { easing, durationMs } = springEasing(token);
   return el.animate(keyframes, { duration: durationMs, easing });
+}
+
+/** Reduce Motion's plain timed opacity change (motion spec §3.4: fades only). */
+export function startWebFade(
+  el: Animatable | null | undefined,
+  from: number,
+  to: number,
+  durationMs: number,
+): Animation | null {
+  if (!el || typeof el.animate !== 'function') return null;
+  const keyframes = [{ opacity: from }, { opacity: to }];
+  replaceRunning(el, keyframes);
+  return el.animate(keyframes, { duration: durationMs, easing: 'ease-in-out' });
+}
+
+/**
+ * What the browser shows for the element right now — mid-animation values
+ * included — so a move can turn around from where it is. Null off the DOM.
+ */
+export function currentWebStyle(el: unknown): { opacity: string; transform: string } | null {
+  const node = el as { nodeType?: number } | null;
+  const g = globalThis as unknown as { getComputedStyle?: (e: unknown) => { opacity: string; transform: string } };
+  if (!node || node.nodeType !== 1 || typeof g.getComputedStyle !== 'function') return null;
+  const cs = g.getComputedStyle(node);
+  return { opacity: cs.opacity, transform: cs.transform };
 }

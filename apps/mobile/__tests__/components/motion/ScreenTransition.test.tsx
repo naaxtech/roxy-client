@@ -10,11 +10,21 @@
  * a 120 ms fade, nothing moves.
  */
 import React from 'react';
-import { I18nManager, StyleSheet, Text } from 'react-native';
+import { I18nManager, Platform, StyleSheet, Text } from 'react-native';
 import { render } from '@testing-library/react-native';
 
 const mockReduced = jest.fn(() => false);
 jest.mock('../../../hooks/useReducedMotion', () => ({ useReducedMotion: () => mockReduced() }));
+
+/** What the browser reports for the element mid-animation (null: at rest). */
+let mockCurrent: { opacity: string; transform: string } | null = null;
+const mockWebSpring = jest.fn();
+const mockWebFade = jest.fn();
+jest.mock('../../../components/motion/webSpring', () => ({
+  startWebSpring: (...args: unknown[]) => mockWebSpring(...args),
+  startWebFade: (...args: unknown[]) => mockWebFade(...args),
+  currentWebStyle: () => mockCurrent,
+}));
 
 jest.mock('react-native-reanimated', () => {
   const actual = jest.requireActual('react-native-reanimated/mock');
@@ -59,6 +69,7 @@ const screen = (props: Partial<React.ComponentProps<typeof ScreenTransition>> = 
 beforeEach(() => {
   calls.length = 0;
   mockReduced.mockReturnValue(false);
+  mockCurrent = null;
   I18nManager.isRTL = false;
 });
 
@@ -123,5 +134,79 @@ describe('ScreenTransition — Reduce Motion', () => {
     expect(calls).toEqual([
       expect.objectContaining({ kind: 'timing', toValue: 0, config: expect.objectContaining({ duration: 120 }) }),
     ]);
+  });
+});
+
+/**
+ * On the web the move runs on the compositor (WAAPI) with the same SPRING
+ * curves: reanimated's web springs run on the main thread, where the new
+ * screen's own render stretched a 200 ms push to 360 ms at 4x CPU (feel run,
+ * 390x844). The element rests at its phase's end state; the animation plays
+ * from where the screen is to there.
+ */
+describe('ScreenTransition — web', () => {
+  const originalOS = Platform.OS;
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', { value: 'web' });
+    mockWebSpring.mockClear();
+    mockWebFade.mockClear();
+  });
+  afterEach(() => Object.defineProperty(Platform, 'OS', { value: originalOS }));
+
+  const moves = () => mockWebSpring.mock.calls.map(([, keyframes, token]) => ({ keyframes, token }));
+
+  it('a push slides 32 dp on calm and fades in on effects, resting at its end state', () => {
+    const { getByTestId } = render(screen());
+    expect(moves()).toEqual([
+      { keyframes: [{ transform: 'translateX(32px) translateY(0px)' }, { transform: 'translateX(0px) translateY(0px)' }], token: SPRING.calm },
+      { keyframes: [{ opacity: 0 }, { opacity: 1 }], token: SPRING.effects },
+    ]);
+    expect(flat(getByTestId('st')).opacity).toBe(1);
+    expect(calls).toEqual([]);
+  });
+
+  it('a modal rises 48 dp', () => {
+    render(screen({ kind: 'modal' }));
+    expect(moves()[0].keyframes).toEqual([
+      { transform: 'translateX(0px) translateY(48px)' }, { transform: 'translateX(0px) translateY(0px)' },
+    ]);
+  });
+
+  it('a pop plays the enter reversed (calm out, fastEffects to 0) and rests out of sight, taking no touches', () => {
+    const { getByTestId, rerender } = render(screen({ phase: 'idle', animate: false }));
+    expect(mockWebSpring).not.toHaveBeenCalled();
+    rerender(screen({ phase: 'exit', animate: false }));
+    expect(moves()).toEqual([
+      { keyframes: [{ transform: 'translateX(0px) translateY(0px)' }, { transform: 'translateX(32px) translateY(0px)' }], token: SPRING.calm },
+      { keyframes: [{ opacity: 1 }, { opacity: 0 }], token: SPRING.fastEffects },
+    ]);
+    expect(flat(getByTestId('st')).opacity).toBe(0);
+    expect(getByTestId('st').props.pointerEvents).toBe('none');
+  });
+
+  it('a back press mid-push turns around from where the screen is', () => {
+    const { rerender } = render(screen());
+    mockCurrent = { opacity: '0.4', transform: 'matrix(1, 0, 0, 1, 19, 0)' };
+    mockWebSpring.mockClear();
+    rerender(screen({ phase: 'exit' }));
+    expect(moves()).toEqual([
+      { keyframes: [{ transform: 'matrix(1, 0, 0, 1, 19, 0)' }, { transform: 'translateX(32px) translateY(0px)' }], token: SPRING.calm },
+      { keyframes: [{ opacity: 0.4 }, { opacity: 0 }], token: SPRING.fastEffects },
+    ]);
+  });
+
+  it('the first screen of a stack is simply there', () => {
+    render(screen({ phase: 'idle', animate: false }));
+    expect(mockWebSpring).not.toHaveBeenCalled();
+    expect(mockWebFade).not.toHaveBeenCalled();
+  });
+
+  it('Reduce Motion: a 120 ms fade, nothing moves', () => {
+    mockReduced.mockReturnValue(true);
+    const { rerender } = render(screen());
+    expect(mockWebSpring).not.toHaveBeenCalled();
+    expect(mockWebFade).toHaveBeenLastCalledWith(expect.anything(), 0, 1, 120);
+    rerender(screen({ phase: 'exit' }));
+    expect(mockWebFade).toHaveBeenLastCalledWith(expect.anything(), 1, 0, 120);
   });
 });

@@ -1,8 +1,9 @@
-import { useEffect, type ReactNode } from 'react';
-import { I18nManager, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { I18nManager, Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { SPRING } from '../../lib/motion';
+import { currentWebStyle, startWebFade, startWebSpring } from './webSpring';
 
 /*
  * Mirrors of the Wave 3 tokens lane C0 adds to `lib/motion.ts`
@@ -35,6 +36,11 @@ export type TransitionKind = 'push' | 'modal';
  * RTL mirrors x. Reduce Motion: nothing moves; opacity fades in 120 ms.
  * A leaving screen stops taking touches at once — input never waits for an
  * animation.
+ *
+ * On the web (where this view is used) the move runs on the compositor with
+ * WAAPI and the same curves (`webSpring`): reanimated's web springs run on the
+ * main thread, and the new screen's own render stretched a 200 ms push to
+ * ~360 ms at 4x CPU (jank audit #7). The reanimated path serves native.
  */
 export function ScreenTransition({
   phase, kind, animate, children, testID, nativeID, style,
@@ -50,16 +56,17 @@ export function ScreenTransition({
   style?: StyleProp<ViewStyle>;
 }) {
   const reducedMotion = useReducedMotion();
+  const isWeb = Platform.OS === 'web';
   const out = kind === 'modal'
     ? { x: 0, y: MODAL_RISE_DP }
     : { x: I18nManager.isRTL ? -PUSH_DP : PUSH_DP, y: 0 };
   const moves = animate && !reducedMotion;
-  const x = useSharedValue(moves ? out.x : 0);
-  const y = useSharedValue(moves ? out.y : 0);
-  const opacity = useSharedValue(animate ? 0 : 1);
+  const x = useSharedValue(moves && !isWeb ? out.x : 0);
+  const y = useSharedValue(moves && !isWeb ? out.y : 0);
+  const opacity = useSharedValue(animate && !isWeb ? 0 : 1);
 
   useEffect(() => {
-    if (phase === 'idle') return;
+    if (isWeb || phase === 'idle') return;
     const entering = phase === 'enter';
     if (entering && !animate) return;
     if (reducedMotion) {
@@ -74,10 +81,58 @@ export function ScreenTransition({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
+  // Web: the element rests at its phase's end state and the compositor plays
+  // the move (WAAPI, the same SPRING curves) before the browser paints — an
+  // exit from wherever the screen is, so a back press mid-push turns around.
+  const webLayer = useRef<View>(null);
+  useLayoutEffect(() => {
+    if (!isWeb || phase === 'idle') return;
+    const entering = phase === 'enter';
+    if (entering && !animate) return;
+    const node = webLayer.current as unknown as Element;
+    const now = entering ? null : currentWebStyle(node);
+    const fromOpacity = now ? Number(now.opacity) : entering ? 0 : 1;
+    if (reducedMotion) {
+      startWebFade(node, fromOpacity, entering ? 1 : 0, REDUCED_FADE_MS);
+      return;
+    }
+    const home = cssTranslate(0, 0);
+    const away = cssTranslate(out.x, out.y);
+    const fromTransform = entering ? away : now && now.transform !== 'none' ? now.transform : home;
+    startWebSpring(node, [{ transform: fromTransform }, { transform: entering ? home : away }], SPRING.calm);
+    startWebSpring(
+      node,
+      [{ opacity: fromOpacity }, { opacity: entering ? 1 : 0 }],
+      entering ? SPRING.effects : SPRING.fastEffects,
+    );
+    // The phase drives this; kind/offsets are fixed for a screen's life.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
   const motion = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ translateX: x.value }, { translateY: y.value }],
   }));
+
+  if (isWeb) {
+    const leaving = phase === 'exit';
+    const rest = leaving && !reducedMotion ? out : { x: 0, y: 0 };
+    return (
+      <View
+        ref={webLayer}
+        testID={testID}
+        nativeID={nativeID}
+        pointerEvents={leaving ? 'none' : 'auto'}
+        style={[
+          StyleSheet.absoluteFill,
+          style,
+          { opacity: leaving ? 0 : 1, transform: [{ translateX: rest.x }, { translateY: rest.y }] },
+        ]}
+      >
+        {children}
+      </View>
+    );
+  }
 
   return (
     <Animated.View
@@ -90,3 +145,5 @@ export function ScreenTransition({
     </Animated.View>
   );
 }
+
+const cssTranslate = (x: number, y: number) => `translateX(${x}px) translateY(${y}px)`;

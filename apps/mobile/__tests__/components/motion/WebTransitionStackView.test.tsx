@@ -27,14 +27,18 @@ jest.mock('@react-navigation/elements', () => {
 });
 
 const mockPhases: { key: string; phase: string; kind: string; animate: boolean }[] = [];
+const mockMounts: string[] = [];
 jest.mock('../../../components/motion/ScreenTransition', () => {
   const { View } = require('react-native');
+  const { useEffect } = require('react');
   return {
     ScreenTransition: (p: {
       phase: string; kind: string; animate: boolean; children: React.ReactNode;
       style?: unknown; testID?: string; nativeID?: string;
     }) => {
-      mockPhases.push({ key: String(p.nativeID).replace('screen-', ''), phase: p.phase, kind: p.kind, animate: p.animate });
+      const key = String(p.nativeID).replace('screen-', '');
+      mockPhases.push({ key, phase: p.phase, kind: p.kind, animate: p.animate });
+      useEffect(() => { mockMounts.push(key); }, [key]);
       return (
         <View testID={p.testID} style={p.style} pointerEvents={p.phase === 'exit' ? 'none' : 'auto'}>
           {p.children}
@@ -161,6 +165,16 @@ describe('WebTransitionStackView', () => {
     expect(layers(utils)).toEqual([{ key: 'a', display: 'flex', touches: true }]);
     // The revealed screen was never asked to animate: it is simply there.
     expect(mockPhases.filter((p) => p.key === 'a').every((p) => p.phase !== 'exit')).toBe(true);
+  });
+
+  it('the screen that turns around is the same instance (its springs carry on from where they are)', () => {
+    const utils = render(view(['a']));
+    utils.rerender(view(['a', 'b']));
+    act(() => { jest.advanceTimersByTime(100); });
+    mockMounts.length = 0;
+    utils.rerender(view(['a']));
+    expect(lastPhase('b')).toEqual(expect.objectContaining({ phase: 'exit' }));
+    expect(mockMounts).toEqual([]);
   });
 
   it('pushing again before an exit finishes keeps both moves independent', () => {

@@ -179,16 +179,22 @@ export function WebTransitionStackView({ state, descriptors }: Props) {
     );
   };
 
+  // ONE keyed array: a route moving from the stack to `closing` (a pop, or a
+  // back press mid-push) keeps its ScreenTransition instance, so its springs
+  // turn around from where they are. Two sibling arrays would remount it and
+  // the leaving screen would jump back to rest before fading.
+  const layers = [
+    ...state.routes.map((route) => {
+      const descriptor = descriptors[route.key];
+      const phase: TransitionPhase = current.entering.includes(route.key) ? 'enter' : 'idle';
+      return layer(route, descriptor, phase, route.key === topKey || route.key === coveredKey);
+    }),
+    ...current.closing.map(({ route, descriptor }) => layer(route, descriptor, 'exit', true)),
+  ];
+
   return (
     <SafeAreaProviderCompat>
-      <View style={s.container}>
-        {state.routes.map((route) => {
-          const descriptor = descriptors[route.key];
-          const phase: TransitionPhase = current.entering.includes(route.key) ? 'enter' : 'idle';
-          return layer(route, descriptor, phase, route.key === topKey || route.key === coveredKey);
-        })}
-        {current.closing.map(({ route, descriptor }) => layer(route, descriptor, 'exit', true))}
-      </View>
+      <View style={s.container}>{layers}</View>
     </SafeAreaProviderCompat>
   );
 }
