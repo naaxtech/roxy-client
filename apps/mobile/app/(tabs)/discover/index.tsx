@@ -25,6 +25,7 @@ import { fetchArchiveTotal } from '../../../components/archive/archiveCount';
 import { fetchArchiveEntries, type ArchiveEntry } from '../../../lib/archive';
 import { archiveDetailPath } from '../../../lib/contentNavigation';
 import { FilterChips } from '../../../components/discover/FilterChips';
+import { byTheme } from '../../../components/discover/byTheme';
 import {
   EventPoster, CommunityRow, LiveRow, ListRow, MemberCard, TileCard, type JoinState,
 } from '../../../components/discover/DiscoverCards';
@@ -542,7 +543,8 @@ function DiscoverScreen() {
   );
 }
 
-const styles = (colors: ThemeColors) => StyleSheet.create({
+// Built once per theme, not on every render (jank audit #8).
+const styles = byTheme((colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ground },
   header: {
     paddingHorizontal: MARGIN, paddingTop: SPACE[2], paddingBottom: SPACE[1], gap: SPACE[2],
@@ -568,7 +570,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   body: { paddingBottom: 8 },
   qotd: { marginHorizontal: MARGIN, marginTop: SPACE[5] },
   tail: { height: 120 },
-});
+}));
 
 export default function DiscoverRoute() {
   return (

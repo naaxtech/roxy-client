@@ -7,7 +7,8 @@ import { RADII, SPACE, MARGIN, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { DiscoverLayout } from './discoverFilters';
 import { CardSkeleton, type CardSkeletonKind } from './V2Cards';
-import { FadeIn, SkeletonGroup } from '../feedback/Skeleton';
+import { FadeIn, SkeletonGroup } from '../feedback/Skeleton';
+import { byTheme } from './byTheme';
 
 export type RailStatus = 'loading' | 'ready' | 'error';
 
@@ -176,7 +177,8 @@ export function Rail({
   );
 }
 
-const styles = (colors: ThemeColors) => StyleSheet.create({
+// Built once per theme, not on every render (jank audit #8).
+const styles = byTheme((colors: ThemeColors) => StyleSheet.create({
   wrap: { gap: SPACE[1], paddingTop: SPACE[5] },
   head: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -205,4 +207,4 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   skeletonRow: { flexDirection: 'row', alignItems: 'center', gap: SPACE[2] },
   skeletonCrest: { width: SKELETON_ROW_H, height: SKELETON_ROW_H, borderRadius: RADII.press },
   skeletonLine: { flex: 1, height: SPACE[2], borderRadius: RADII.pill, marginRight: SPACE[7] },
-});
+}));

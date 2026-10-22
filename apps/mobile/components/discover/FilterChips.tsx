@@ -8,7 +8,8 @@ import { a11yState } from '../../lib/a11yState';
 import { haptic } from '../../lib/haptics';
 import { PRESS } from '../../lib/motion';
 import { useThemeStore } from '../../store/themeStore';
-import { PressableScale, stateLayerFor } from '../ui/PressableScale';
+import { PressableScale, stateLayerFor } from '../ui/PressableScale';
+import { byTheme } from './byTheme';
 
 /** The painted pill's height. The TARGET is MIN_TOUCH_TARGET; this is the ink. */
 const PILL_HEIGHT = SPACE[6] + SPACE[0];
@@ -138,7 +139,8 @@ export function FilterChips<T extends string>({
   );
 }
 
-const styles = (colors: ThemeColors) => StyleSheet.create({
+// Built once per theme, not on every render (jank audit #8).
+const styles = byTheme((colors: ThemeColors) => StyleSheet.create({
   wrap: { flexGrow: 0, flexShrink: 0 },
   row: { gap: SPACE[1], paddingHorizontal: MARGIN, alignItems: 'center' },
   // A horizontal ScrollView has NO intrinsic height on react-native-web, so a
@@ -161,4 +163,4 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   tail: { width: SPACE[0] },
   tailFaded: { width: FADE_WIDTH },
   fade: { position: 'absolute', top: 0, bottom: 0, right: 0, width: FADE_WIDTH },
-});
+}));

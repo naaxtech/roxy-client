@@ -7,7 +7,8 @@ import { avatarGradient } from '../../lib/avatars';
 import { TYPE } from '../../lib/typography';
 import { RADII, LIVE_GRADIENT, inkOn, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
-import { RankNumeral } from './RankNumeral';
+import { RankNumeral } from './RankNumeral';
+import { byTheme } from './byTheme';
 
 /**
  * v2 cards (EventPoster, CommunityRow, LiveRow, ListRow, MemberCard, TileCard)
@@ -230,7 +231,8 @@ export function HeroCard({ badge, title, meta, body, cta, artSeed, onPress }: He
   );
 }
 
-const styles = (colors: ThemeColors) => StyleSheet.create({
+// Built once per theme, not on every render (jank audit #8).
+const styles = byTheme((colors: ThemeColors) => StyleSheet.create({
   poster: { width: 164, gap: 5 },
   art: { height: 96, borderRadius: RADII.md, padding: 8, justifyContent: 'flex-start' },
   badgeSlot: { alignSelf: 'flex-start' },
@@ -279,4 +281,4 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: RADII.pill, backgroundColor: colors.primary,
   },
   heroCtaText: { ...TYPE.bodyLg, fontWeight: '700', color: inkOn(colors.primary) },
-});
+}));

@@ -13,7 +13,8 @@ import {
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { Crest, CREST_RADIUS_RATIO } from './Crest';
 import { Skeleton } from '../feedback/Skeleton';
-import { LiveDot } from './LiveDot';
+import { LiveDot } from './LiveDot';
+import { byTheme } from './byTheme';
 
 /**
  * Discover's v2 cards and rows (design direction v2 › Discover, board v2-05).
@@ -427,7 +428,8 @@ const s = StyleSheet.create({
   posterDetail: { ...TYPE.meta },
 });
 
-const rowStyles = (colors: ThemeColors) => StyleSheet.create({
+// Built once per theme, not on every render (jank audit #8).
+const rowStyles = byTheme((colors: ThemeColors) => StyleSheet.create({
   row: {
     flexDirection: 'row', alignItems: 'center', gap: SPACE[2],
     minHeight: ROW_MIN, paddingHorizontal: MARGIN, paddingVertical: SPACE[1],
@@ -456,4 +458,4 @@ const rowStyles = (colors: ThemeColors) => StyleSheet.create({
   memberName: { minHeight: TYPE.label.lineHeight * MEMBER_NAME_LINES },
   rankLine: { flexDirection: 'row', alignItems: 'baseline', gap: SPACE[1], marginTop: SPACE[0] },
   rank: { ...TYPE.title, color: colors.ink, fontVariant: ['tabular-nums'] },
-});
+}));
