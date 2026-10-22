@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/nav/CreateSheet.test.tsx
+  h_0549c11fec2ab0 1,3,5-6,164-202
+apps/mobile/components/nav/CreateSheet.tsx
+  h_0549c11fec2ab0 1-2,9,13,56-60,128-136,194-195,206-208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39bae54c025e10dc80bdc53a49bca26b9a2b9aff",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
