@@ -1,0 +1,18 @@
+apps/mobile/__tests__/components/nav/FloatingTabBar.test.tsx
+  h_0549c11fec2ab0 53,56,603-690
+apps/mobile/components/nav/FloatingTabBar.tsx
+  h_0549c11fec2ab0 2,26,116,120-123,129,159,161,164-170,176,191-192,195,204-205,213,227-236,247-267,348-350,359,380-381,408-414,449-462,491-492,495,554-563
+apps/mobile/components/nav/webStageFade.ts
+  h_0549c11fec2ab0 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee289840f7b639c6a0d6c39a1ef1b16929ea47d8",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
