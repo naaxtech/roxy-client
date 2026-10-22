@@ -1,0 +1,24 @@
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  h_0549c11fec2ab0 3,5,505,512,538,545,609,625,643,651,661,674,729,737,739,746
+apps/mobile/components/channels/ChannelComposer.tsx
+  h_0549c11fec2ab0 2-3,147,158
+apps/mobile/components/channels/ChannelMessage.tsx
+  h_0549c11fec2ab0 2-3,127,136,143,163,175,182
+apps/mobile/components/profile/ProfileExtras.tsx
+  h_0549c11fec2ab0 2-3,74,85
+apps/mobile/components/profile/ProfileNudge.tsx
+  h_0549c11fec2ab0 2-3,73,82,94,96
+apps/mobile/components/profile/SavedWatchlist.tsx
+  h_0549c11fec2ab0 2-3,76,78,92,113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6309312c595b41c329f20fe3a51fd797f9ac0f8b",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
