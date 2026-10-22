@@ -1,9 +1,10 @@
-import { useEffect, type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useNavigationState, useRoute } from '@react-navigation/native';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { SPRING } from '../../lib/motion';
+import { startWebSpring } from './webSpring';
 
 /**
  * A tab's content fading in over its own ground (motion spec §3.1 row 4, F4).
@@ -20,6 +21,11 @@ import { SPRING } from '../../lib/motion';
  * reveal the tab as it was. While another tab is selected the content waits at
  * opacity 0 (it is hidden anyway), so the next visit starts on ground.
  *
+ * Native: a reanimated spring on the UI thread. Web: a compositor animation
+ * (WAAPI) with the same curve, started before the first paint — reanimated
+ * runs on the web's main thread, where the destination's render stretched the
+ * fade to 300-480 ms at 4x CPU.
+ *
  * Reduce Motion: the content is simply there (row 4: "no fade (instant)").
  */
 export function TabFade({
@@ -30,12 +36,15 @@ export function TabFade({
   children: ReactNode;
   testID?: string;
 }) {
+  const isWeb = Platform.OS === 'web';
   const reducedMotion = useReducedMotion();
   const ownKey = useRoute().key;
   const selected = useNavigationState((s) => s.routes[s.index]?.key) === ownKey;
   const opacity = useSharedValue(reducedMotion ? 1 : 0);
+  const webContent = useRef<View>(null);
 
   useEffect(() => {
+    if (isWeb) return;
     if (reducedMotion) {
       opacity.value = 1;
     } else if (selected) {
@@ -43,15 +52,31 @@ export function TabFade({
     } else {
       opacity.value = 0;
     }
-  }, [selected, reducedMotion, opacity]);
+  }, [isWeb, selected, reducedMotion, opacity]);
+
+  // Before the browser paints the newly selected tab, so frame 1 is ground.
+  useLayoutEffect(() => {
+    if (!isWeb || reducedMotion || !selected) return;
+    startWebSpring(webContent.current as unknown as Element, [{ opacity: 0 }, { opacity: 1 }], SPRING.effects);
+  }, [isWeb, selected, reducedMotion]);
 
   const contentStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
     <View testID={testID} style={[s.fill, { backgroundColor: ground }]}>
-      <Animated.View testID={`${testID}-content`} style={[s.fill, contentStyle]}>
-        {children}
-      </Animated.View>
+      {isWeb ? (
+        <View
+          ref={webContent}
+          testID={`${testID}-content`}
+          style={[s.fill, { opacity: selected || reducedMotion ? 1 : 0 }]}
+        >
+          {children}
+        </View>
+      ) : (
+        <Animated.View testID={`${testID}-content`} style={[s.fill, contentStyle]}>
+          {children}
+        </Animated.View>
+      )}
     </View>
   );
 }

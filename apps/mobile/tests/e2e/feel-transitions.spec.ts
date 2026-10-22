@@ -164,9 +164,11 @@ function tabSwitch(slot: string, { t0, frames }: { t0: number; frames: Frame[] }
   const ramp = vis.filter((f) => opOf(f) > 0.01 && opOf(f) < 0.99).length;
   const sxOf = (f: Frame) => f.pills.find((p) => p.id === pillId)?.sx ?? NaN;
   let pillSettled: Frame | undefined;
+  // Settled = within REST.px (0.5 px) of the 56 dp pill's final width.
+  const pillRest = 0.5 / 56;
   for (let i = after.length - 1; i >= 0; i--) {
     const sx = sxOf(after[i]);
-    if (!(Math.abs(sx - 1) < 0.001)) break;
+    if (!(Math.abs(sx - 1) <= pillRest)) break;
     pillSettled = after[i];
   }
   const pillMin = Math.min(...after.map(sxOf).filter((v) => !Number.isNaN(v)));
@@ -370,6 +372,9 @@ test('feel: navigation and screen transitions (read-only)', async ({ browser }) 
     notifications: push(pushNotif),
     notificationsBack: pop(popNotif),
   };
+  if (process.env.FEEL_DUMP === '1') {
+    fs.writeFileSync(path.join(OUT, `frames-${RUN_ID}.json`), JSON.stringify({ pushSettings, popSettings, interrupt, pushNotif, popNotif }));
+  }
 
   // F5 (Create): open, then close with its × (read-only: nothing is chosen).
   await page.waitForTimeout(800);

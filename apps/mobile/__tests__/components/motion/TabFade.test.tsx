@@ -10,7 +10,7 @@
  * blank ground fading in under the leaving screen.
  */
 import React from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Platform, StyleSheet, Text } from 'react-native';
 import { render } from '@testing-library/react-native';
 
 let mockActiveKey = 'discover-1';
@@ -23,6 +23,11 @@ jest.mock('@react-navigation/native', () => ({
 
 const mockReduced = jest.fn(() => false);
 jest.mock('../../../hooks/useReducedMotion', () => ({ useReducedMotion: () => mockReduced() }));
+
+const mockWebSpring = jest.fn();
+jest.mock('../../../components/motion/webSpring', () => ({
+  startWebSpring: (...args: unknown[]) => mockWebSpring(...args),
+}));
 
 jest.mock('react-native-reanimated', () => {
   const actual = jest.requireActual('react-native-reanimated/mock');
@@ -109,5 +114,48 @@ describe('TabFade', () => {
     const { getByTestId } = render(tree());
     expect(flat(getByTestId('tab-fade-content')).opacity).toBe(1);
     expect(calls).toEqual([]);
+  });
+});
+
+/**
+ * On the web the fade runs as a compositor animation (WAAPI) with the effects
+ * curve: reanimated's main-thread spring stretched to 300-480 ms behind the
+ * destination's render at 4x CPU (feel run, 390x844). Same ground, same
+ * opacity-only rule; the element's resting opacity is set directly.
+ */
+describe('TabFade on the web', () => {
+  const originalOS = Platform.OS;
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', { value: 'web' });
+    mockWebSpring.mockClear();
+  });
+  afterEach(() => Object.defineProperty(Platform, 'OS', { value: originalOS }));
+
+  it('fades the content in on the compositor with the effects curve, at rest opacity 1', () => {
+    const { getByTestId } = render(tree());
+    expect(mockWebSpring).toHaveBeenCalledTimes(1);
+    expect(mockWebSpring).toHaveBeenCalledWith(
+      expect.anything(), [{ opacity: 0 }, { opacity: 1 }], SPRING.effects,
+    );
+    expect(flat(getByTestId('tab-fade-content')).opacity).toBe(1);
+    expect(calls).toEqual([]);
+  });
+
+  it('waits transparent while another tab is selected, and fades again on return', () => {
+    const { getByTestId, rerender } = render(tree());
+    mockActiveKey = 'feed-1';
+    rerender(tree());
+    expect(flat(getByTestId('tab-fade-content')).opacity).toBe(0);
+    expect(mockWebSpring).toHaveBeenCalledTimes(1);
+    mockActiveKey = 'discover-1';
+    rerender(tree());
+    expect(mockWebSpring).toHaveBeenCalledTimes(2);
+  });
+
+  it('Reduce Motion: no animation, the content is there', () => {
+    mockReduced.mockReturnValue(true);
+    const { getByTestId } = render(tree());
+    expect(mockWebSpring).not.toHaveBeenCalled();
+    expect(flat(getByTestId('tab-fade-content')).opacity).toBe(1);
   });
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { render, fireEvent, act } from '@testing-library/react-native';
 
 const mockInsets = jest.fn(() => ({ top: 0, bottom: 34, left: 0, right: 0 }));
@@ -49,6 +49,11 @@ jest.mock('react-native-reanimated', () => {
 });
 
 /** NavIcon render counter: which slots a navigation actually re-rendered. */
+const mockWebSpring = jest.fn();
+jest.mock('../../../components/motion/webSpring', () => ({
+  startWebSpring: (...args: unknown[]) => mockWebSpring(...args),
+}));
+
 const mockIconRenders: string[] = [];
 jest.mock('../../../components/nav/NavIcons', () => {
   const actual = jest.requireActual('../../../components/nav/NavIcons');
@@ -294,7 +299,10 @@ describe('FloatingTabBar — M3 flexible navigation bar (v2)', () => {
   it('marks the active slot with a 56 × 32 pinkContainer pill and an onPinkContainer icon', () => {
     const { getByTestId, queryByTestId } = renderBar({ index: 1 });
     const pill = flat(getByTestId('nav-indicator-discover'));
-    expect(pill.backgroundColor).toBe(THEMES.light.pinkContainer);
+    // The pill's colour is its fill layer (it cross-fades on the Feed); the
+    // pill itself is the 56 × 32 shape that grows.
+    expect(flat(getByTestId('nav-indicator-discover-fill')).backgroundColor).toBe(THEMES.light.pinkContainer);
+    expect(flat(getByTestId('nav-indicator-discover-fill')).borderRadius).toBe(RADII.pill);
     expect(pill.width).toBe(NAV_INDICATOR.width);
     expect(pill.height).toBe(NAV_INDICATOR.height);
     expect(NAV_INDICATOR).toEqual({ width: 56, height: 32, from: 32 });
@@ -329,7 +337,7 @@ describe('FloatingTabBar — M3 flexible navigation bar (v2)', () => {
     const { getByTestId, getByText } = renderBar({ index: 0 });
     expect(flat(getByTestId('nav-bar')).backgroundColor).toBe(THEMES.light.stage);
     expect(flat(getByTestId('nav-pill')).backgroundColor).toBe(THEMES.light.stage);
-    expect(flat(getByTestId('nav-indicator-feed')).backgroundColor).toBe(THEMES.light.stageRaised);
+    expect(flat(getByTestId('nav-indicator-feed-fill')).backgroundColor).toBe(THEMES.light.stageRaised);
     expect(iconColor(getByTestId('nav-icon-feed'))).toBe('#FFFFFF');
     expect(flat(getByText('Feed')).color).toBe('#FFFFFF');
     expect(flat(getByText('You')).color).toBe(THEMES.dark.ink2);
@@ -352,7 +360,7 @@ describe('FloatingTabBar — M3 flexible navigation bar (v2)', () => {
     expect(flat(getByTestId('nav-bar')).backgroundColor).toBe(THEMES.dark.ground);
     expect(flat(getByTestId('nav-create-key')).backgroundColor).toBe(THEMES.dark.pink);
     expect(flat(getByTestId('nav-create-icon')).color).toBe(THEMES.dark.onPink);
-    expect(flat(getByTestId('nav-indicator-discover')).backgroundColor).toBe(THEMES.dark.pinkContainer);
+    expect(flat(getByTestId('nav-indicator-discover-fill')).backgroundColor).toBe(THEMES.dark.pinkContainer);
   });
 
   it('turns the plus 45° into a close × while the Create sheet is open', () => {
@@ -509,5 +517,41 @@ describe('FloatingTabBar — motion on the UI thread (Wave 3)', () => {
     fireEvent(getByTestId('nav-slot-create'), 'pressOut');
     rerenderAt(1, true);
     expect(springCalls).toHaveLength(0);
+  });
+});
+
+/**
+ * On the web the pill grows as a compositor animation (WAAPI, the fastSpatial
+ * curve): reanimated's main-thread spring settled in 250-460 ms behind the
+ * destination's render at 4x CPU (feel run, 390x844), past F4's 250 ms.
+ */
+describe('FloatingTabBar on the web — the pill grows on the compositor', () => {
+  const originalOS = Platform.OS;
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', { value: 'web' });
+    mockWebSpring.mockClear();
+  });
+  afterEach(() => Object.defineProperty(Platform, 'OS', { value: originalOS }));
+
+  it('runs scaleX 32/56 → 1 with the fastSpatial curve; no main-thread spring for it', () => {
+    mockReducedMotion.mockReturnValue(false);
+    const { rerenderAt } = renderBar({ index: 1 });
+    expect(mockWebSpring).not.toHaveBeenCalled();
+    springCalls.length = 0;
+    rerenderAt(2);
+    expect(mockWebSpring).toHaveBeenCalledTimes(1);
+    expect(mockWebSpring).toHaveBeenCalledWith(
+      expect.anything(),
+      [{ transform: `scaleX(${NAV_INDICATOR.from / NAV_INDICATOR.width})` }, { transform: 'scaleX(1)' }],
+      SPRING.fastSpatial,
+    );
+    expect(springCalls.filter((c) => c.config && (c.config as { stiffness?: number }).stiffness === SPRING.fastSpatial.stiffness)).toEqual([]);
+  });
+
+  it('Reduce Motion: no grow at all', () => {
+    mockReducedMotion.mockReturnValue(true);
+    const { rerenderAt } = renderBar({ index: 1 });
+    rerenderAt(2);
+    expect(mockWebSpring).not.toHaveBeenCalled();
   });
 });

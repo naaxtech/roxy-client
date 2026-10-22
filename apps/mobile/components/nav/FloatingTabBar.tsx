@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, Pressable, Platform } from 'react-native';
 import Animated, {
   interpolateColor,
@@ -20,6 +20,7 @@ import { PRESS, SPRING } from '../../lib/motion';
 import { haptic } from '../../lib/haptics';
 import { PressableScale } from '../ui/PressableScale';
 import { afterPaint } from '../motion/afterPaint';
+import { startWebSpring } from '../motion/webSpring';
 import {
   CREATE_KEY,
   NAV_HEIGHT,
@@ -113,17 +114,40 @@ function NavPill({
   growNew: boolean;
 }) {
   const [growIn] = useState(() => barPainted.current && growNew);
-  const grow = useSharedValue(growIn ? NAV_INDICATOR.from / NAV_INDICATOR.width : 1);
+  const isWeb = Platform.OS === 'web';
+  // Native grows on the UI thread (reanimated); the web on the compositor (WAAPI).
+  const grow = useSharedValue(growIn && !isWeb ? NAV_INDICATOR.from / NAV_INDICATOR.width : 1);
+  const webShape = useRef<View>(null);
   useEffect(() => {
-    if (growIn) grow.value = withSpring(1, SPRING.fastSpatial);
-  }, [growIn, grow]);
+    if (growIn && !isWeb) grow.value = withSpring(1, SPRING.fastSpatial);
+  }, [growIn, isWeb, grow]);
+  useLayoutEffect(() => {
+    if (!growIn || !isWeb) return;
+    startWebSpring(
+      webShape.current as unknown as Element,
+      [{ transform: `scaleX(${NAV_INDICATOR.from / NAV_INDICATOR.width})` }, { transform: 'scaleX(1)' }],
+      SPRING.fastSpatial,
+    );
+  }, [growIn, isWeb]);
   const fromPill = inks.theme.pill;
   const toPill = inks.stage.pill;
-  const style = useAnimatedStyle(() => ({
+  const fillStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(stage.value, [0, 1], [fromPill, toPill]),
-    transform: [{ scaleX: grow.value }],
   }));
-  return <Animated.View testID={`nav-indicator-${name}`} pointerEvents="none" style={[s.indicator, style]} />;
+  const growStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: grow.value }] }));
+  const fill = <Animated.View testID={`nav-indicator-${name}-fill`} style={[s.indicatorFill, fillStyle]} />;
+  if (isWeb) {
+    return (
+      <View ref={webShape} testID={`nav-indicator-${name}`} pointerEvents="none" style={s.indicator}>
+        {fill}
+      </View>
+    );
+  }
+  return (
+    <Animated.View testID={`nav-indicator-${name}`} pointerEvents="none" style={[s.indicator, growStyle]}>
+      {fill}
+    </Animated.View>
+  );
 }
 
 type RouteSlotProps = {
@@ -406,6 +430,10 @@ const s = StyleSheet.create({
     height: NAV_INDICATOR.height,
     borderRadius: RADII.pill,
     zIndex: 0,
+  },
+  indicatorFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: RADII.pill,
   },
   // Above the pill: on the web an absolutely positioned pill would otherwise
   // paint over the (non-positioned) icon whatever the DOM order.
