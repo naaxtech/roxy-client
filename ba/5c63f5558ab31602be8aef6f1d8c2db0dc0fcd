@@ -1,0 +1,14 @@
+apps/mobile/__tests__/screens/TabLayout.test.tsx
+  h_0549c11fec2ab0 176-180,182,184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba5c63f5558ab31602be8aef6f1d8c2db0dc0fcd",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
