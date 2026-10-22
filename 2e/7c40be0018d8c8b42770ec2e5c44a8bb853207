@@ -1,0 +1,26 @@
+apps/mobile/__tests__/components/discover/byTheme.test.tsx
+  h_0549c11fec2ab0 1-45
+apps/mobile/app/(tabs)/discover/index.tsx
+  h_0549c11fec2ab0 28,546-547,573
+apps/mobile/components/discover/DiscoverCards.tsx
+  h_0549c11fec2ab0 1-284
+apps/mobile/components/discover/FilterChips.tsx
+  h_0549c11fec2ab0 1-166
+apps/mobile/components/discover/Rail.tsx
+  h_0549c11fec2ab0 1-210
+apps/mobile/components/discover/V2Cards.tsx
+  h_0549c11fec2ab0 1-461
+apps/mobile/components/discover/byTheme.ts
+  h_0549c11fec2ab0 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e7c40be0018d8c8b42770ec2e5c44a8bb853207",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
