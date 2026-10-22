@@ -236,12 +236,24 @@ describe('RoxyCompanionButton — tuck on scroll', () => {
     ]);
   });
 
-  it('a tap on the tucked button brings her back instead of opening the sheet', () => {
+  it('a tap on the tucked O opens Roxy AI in one tap (M3: a collapsed FAB keeps its action)', () => {
     useRoxyFab.setState({ tucked: true });
-    const { getByTestId, queryByTestId } = render(<RoxyCompanionButton />);
-    fireEvent.press(getByTestId('fab-tucked'));
-    expect(useRoxyFab.getState().tucked).toBe(false);
-    expect(queryByTestId('hello-roxy-sheet')).toBeNull();
+    const { getByTestId } = render(<RoxyCompanionButton />);
+    const hit = getByTestId('fab-tucked');
+    expect(hit.props.accessibilityLabel).toBe('Roxy AI');
+    expect(hit.props.accessibilityHint).toBe('Opens your chat with Roxy AI');
+    fireEvent.press(hit);
+    expect(getByTestId('hello-roxy-sheet')).toBeTruthy();
+    expect(mockImpact).toHaveBeenCalledWith('light');
+    // Her lane still holds the list's content: she stays tucked behind the sheet.
+    expect(useRoxyFab.getState().tucked).toBe(true);
+  });
+
+  it('on the Feed stage she is out even when the last list left her tucked', () => {
+    useRoxyFab.setState({ tucked: true });
+    const { getByTestId, queryByTestId } = render(<RoxyCompanionButton onStage />);
+    expect(getByTestId('fab-o-open')).toBeTruthy();
+    expect(queryByTestId('fab-tucked')).toBeNull();
   });
 
   it('the tucked target is 28 × 48 dp at the screen edge', () => {
@@ -256,7 +268,7 @@ describe('RoxyCompanionButton — tuck on scroll', () => {
   it('comes back when the store says so', () => {
     useRoxyFab.setState({ tucked: true });
     const { getByTestId, queryByTestId } = render(<RoxyCompanionButton />);
-    act(() => { useRoxyFab.getState().untuck(); });
+    act(() => { useRoxyFab.setState({ tucked: false }); });
     expect(getByTestId('fab-o-open')).toBeTruthy();
     expect(queryByTestId('fab-tucked')).toBeNull();
   });

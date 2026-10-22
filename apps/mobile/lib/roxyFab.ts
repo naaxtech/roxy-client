@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
-import { makeMutable, runOnJS, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import { makeMutable, runOnJS, useAnimatedScrollHandler } from 'react-native-reanimated';
 
 /**
  * The Roxy AI button's state (design direction v2 › The Roxy AI button).
@@ -12,11 +12,13 @@ import { makeMutable, runOnJS, useAnimatedScrollHandler, useSharedValue } from '
  *    account signing in on the same phone starts with her on, not with the
  *    last member's choice. Default: on. Optimistic: the button leaves the
  *    screen before storage answers.
- *  - **tucked**: whether she is tucked into the screen edge because a list is
- *    scrolling down (M3's extended-FAB behaviour, made Roxy's).
+ *  - **tucked**: whether she rests tucked into the screen edge because list
+ *    content sits in her lane (see `nextTuck`; M3's extended-FAB collapse,
+ *    made Roxy's, with the lane rule on top).
  *  - **onListScroll**: a plain `onScroll` handler any list passes straight in
- *    (`onScroll={onListScroll} scrollEventThrottle={16}`). Not the Feed pager:
- *    on the Feed she never tucks.
+ *    (`onScroll={onListScroll} scrollEventThrottle={16}`), plus
+ *    `onListContentSizeChange`; `useFabScrollHandler` is the UI-thread form
+ *    for Animated lists. Not the Feed pager: on the Feed she never tucks.
  *
  * Why not a server column: Roxy AI on/off is a per-device presentation choice
  * today (the FAB), and `profiles` has no column for it. If it has to follow her
@@ -30,58 +32,63 @@ export function enabledKeyFor(userId: string): string {
   return `${ROXY_AI_ENABLED_KEY}:${userId}`;
 }
 
-/**
- * How far (dp) a list must travel one way before she tucks or comes back.
- * Small enough to answer a flick, big enough to ignore a resting thumb.
+/*
+ * RETIRED (Wave 3, lane C, 2026-10-23): the Wave 2 hysteresis rule (tuck after
+ * TUCK_THRESHOLD dp down, back after TUCK_THRESHOLD dp up, always out within
+ * EDGE_ZONE of the top). Origin: lane roxy-ai (`git log -S TUCK_THRESHOLD`).
+ * Why: it brought her back at the top of every list and on every scroll up, so
+ * at rest at 360 x 800 she sat on Discover's "Joined", You's "Apply" and
+ * Settings' Ghost mode switch (wave2/ship/shots/local-360/report.json). The
+ * constants stay exported for any caller; nothing in the app reads them now.
  */
+/** RETIRED with the hysteresis rule (see above). */
 export const TUCK_THRESHOLD = 12;
-
-/** Within this many dp of the top or the end of a list she stays out. */
+/** RETIRED with the hysteresis rule (see above). */
 export const EDGE_ZONE = 24;
+
+/**
+ * How close (dp) to the end of a list counts as the end. Only rounding: on web
+ * the last scroll position can be fractional at DPR 2. Lists end FAB_LANE
+ * higher, so at the end her lane holds only that padding.
+ */
+export const END_SLACK = 2;
 
 export type ScrollSample = { y: number; contentHeight: number; viewportHeight: number };
 export type TuckState = { tucked: boolean; anchor: number };
 
 /**
- * One scroll sample in, the next tuck state out. Pure, so the rule is tested
- * without a list.
- *
- * Hysteresis by anchor: while she is out, the anchor follows the list's
- * highest point; travelling more than `TUCK_THRESHOLD` below it tucks her.
- * While tucked, the anchor follows the lowest point; travelling back up more
- * than the threshold brings her out. At the top, or at the end of the list
- * (where her lane is empty by design), she is always out.
+ * Her lane is empty at this scroll position: the list is at its end (where it
+ * ends FAB_LANE higher, design direction › The lane), or it fits the screen.
  */
-export function nextTuck(state: TuckState, s: ScrollSample): TuckState {
+export function laneClear(s: ScrollSample): boolean {
   'worklet';
-  const end = s.contentHeight - s.viewportHeight;
-  const atTop = s.y <= EDGE_ZONE;
-  const atEnd = s.y >= end - EDGE_ZONE;
-  if (atTop || atEnd) return { tucked: false, anchor: s.y };
-
-  if (state.tucked) {
-    if (s.y > state.anchor) return { tucked: true, anchor: s.y };
-    if (state.anchor - s.y > TUCK_THRESHOLD) return { tucked: false, anchor: s.y };
-    return state;
-  }
-  if (s.y < state.anchor) return { tucked: false, anchor: s.y };
-  if (s.y - state.anchor > TUCK_THRESHOLD) return { tucked: true, anchor: s.y };
-  return state;
+  return s.y >= s.contentHeight - s.viewportHeight - END_SLACK;
 }
 
 /**
- * `nextTuck` with plain arguments, for the UI-thread scroll handler
- * (`useFabScrollHandler`) and the JS one (`onListScroll`) alike.
+ * One scroll sample in, the next tuck state out. Pure, so the rule is tested
+ * without a list.
+ *
+ * The lane rule (design direction v2 › The Roxy AI button: "at rest nothing
+ * readable or tappable sits in the lane") decides, not the scroll direction:
+ * she is out only where her lane is empty (`laneClear`), and rests tucked
+ * everywhere else. That is M3's extended FAB collapsing while content scrolls
+ * under it; a tap on the tucked O still opens Roxy AI (a collapsed FAB keeps
+ * its action), so she stays one tap away. `anchor` is unused (kept so the
+ * state shape callers hold does not change).
  */
-export function fabScrollStep(
-  tucked: boolean,
-  anchor: number,
-  y: number,
-  contentHeight: number,
-  viewportHeight: number,
-): TuckState {
+export function nextTuck(state: TuckState, s: ScrollSample): TuckState {
   'worklet';
-  return nextTuck({ tucked, anchor }, { y, contentHeight, viewportHeight });
+  return { tucked: !laneClear(s), anchor: state.anchor };
+}
+
+/**
+ * The rule with plain arguments (tucked or not), for the UI-thread scroll
+ * handler (`useFabScrollHandler`) and the JS one (`onListScroll`) alike.
+ */
+export function fabScrollStep(y: number, contentHeight: number, viewportHeight: number): boolean {
+  'worklet';
+  return !laneClear({ y, contentHeight, viewportHeight });
 }
 
 /**
@@ -93,18 +100,23 @@ export function fabScrollStep(
 export const fabTuck = makeMutable(0);
 
 /**
- * The JS handler's anchor. It moves with nearly every scroll sample, so it
- * lives here and not in the store: a store write wakes every `useRoxyFab`
- * subscriber, 60 times a second while a list scrolls (jank audit #9).
+ * The last scroll sample a list reported. It changes with nearly every scroll
+ * event, so it lives here and not in the store: a store write wakes every
+ * `useRoxyFab` subscriber, 60 times a second while a list scrolls (jank
+ * audit #9). Read back when the list's content grows under her.
  */
-let jsAnchor = 0;
+let lastSample: ScrollSample | null = null;
 
 interface RoxyFabState {
   /** Roxy AI is switched on. */
   enabled: boolean;
   /** The member whose choice `enabled` holds; null until loaded. */
   loadedFor: string | null;
-  /** She is tucked. Written only when she flips, never per scroll event. */
+  /**
+   * She rests tucked (off the Feed). Written only when she flips, never per
+   * scroll event. Starts true: until a list says her lane is empty, something
+   * may sit under her.
+   */
   tucked: boolean;
   /**
    * RETIRED (Wave 3, jank audit #9): the anchor moved out of the store (it
@@ -119,14 +131,19 @@ interface RoxyFabState {
   setEnabled: (userId: string | null, value: boolean) => Promise<void>;
   /** Feed one scroll sample through `nextTuck`; writes only on a flip. */
   onScrollSample: (sample: ScrollSample) => void;
-  /** Bring her back at once: a tap on the tucked button, a new screen. */
+  /**
+   * A new screen (the tabs layout calls this on every route change): forget
+   * the last list, so she rests tucked until the new screen's list reports an
+   * empty lane. Wave 2 brought her OUT here, over whatever the new screen had
+   * at the bottom; the name stays because the layout (lane A) calls it.
+   */
   untuck: () => void;
 }
 
 export const useRoxyFab = create<RoxyFabState>((set, get) => ({
   enabled: true,
   loadedFor: null,
-  tucked: false,
+  tucked: true,
   anchor: 0,
 
   load: async (userId: string) => {
@@ -140,7 +157,9 @@ export const useRoxyFab = create<RoxyFabState>((set, get) => ({
   },
 
   setEnabled: async (userId: string | null, value: boolean) => {
-    set({ enabled: value, tucked: false, ...(userId ? { loadedFor: userId } : {}) });
+    // `tucked` stays: she returns in the rest state the list on screen calls
+    // for (Wave 2 untucked her here, onto Settings' Ghost mode switch).
+    set({ enabled: value, ...(userId ? { loadedFor: userId } : {}) });
     if (!userId) return;
     try {
       await AsyncStorage.setItem(enabledKeyFor(userId), value ? 'on' : 'off');
@@ -150,14 +169,14 @@ export const useRoxyFab = create<RoxyFabState>((set, get) => ({
   },
 
   onScrollSample: (sample: ScrollSample) => {
-    const { tucked } = get();
-    const next = nextTuck({ tucked, anchor: jsAnchor }, sample);
-    jsAnchor = next.anchor;
-    if (next.tucked !== tucked) set({ tucked: next.tucked });
+    lastSample = sample;
+    const tucked = !laneClear(sample);
+    if (tucked !== get().tucked) set({ tucked });
   },
 
   untuck: () => {
-    if (get().tucked) set({ tucked: false });
+    lastSample = null;
+    if (!get().tucked) set({ tucked: true });
   },
 }));
 
@@ -180,17 +199,12 @@ function syncTuckedFromUi(tucked: boolean): void {
  * Plain lists keep `onListScroll` (JS thread, also flip-only).
  */
 export function useFabScrollHandler() {
-  const anchor = useSharedValue(0);
   return useAnimatedScrollHandler({
     onScroll: (e) => {
-      const tucked = fabTuck.value === 1;
-      const next = fabScrollStep(
-        tucked, anchor.value, e.contentOffset.y, e.contentSize.height, e.layoutMeasurement.height,
-      );
-      anchor.value = next.anchor;
-      if (next.tucked !== tucked) {
-        fabTuck.value = next.tucked ? 1 : 0;
-        runOnJS(syncTuckedFromUi)(next.tucked);
+      const tucked = fabScrollStep(e.contentOffset.y, e.contentSize.height, e.layoutMeasurement.height);
+      if (tucked !== (fabTuck.value === 1)) {
+        fabTuck.value = tucked ? 1 : 0;
+        runOnJS(syncTuckedFromUi)(tucked);
       }
     },
   });
@@ -207,6 +221,21 @@ export function onListScroll(e: NativeSyntheticEvent<NativeScrollEvent>): void {
     contentHeight: contentSize.height,
     viewportHeight: layoutMeasurement.height,
   });
+}
+
+/**
+ * Pass to the same list: `onContentSizeChange={onListContentSizeChange}`.
+ * When content lands after she came out at the end (Discover's rails on a slow
+ * network, a next page), it now reaches into her lane: she tucks. A size change
+ * only ever tucks her, never brings her out, because a hidden tab's list may
+ * report one while another list is on screen.
+ */
+export function onListContentSizeChange(_width: number, height: number): void {
+  if (!lastSample) return;
+  const grown = { ...lastSample, contentHeight: height };
+  if (laneClear(grown) || useRoxyFab.getState().tucked) return;
+  lastSample = grown;
+  useRoxyFab.setState({ tucked: true });
 }
 
 /** How often a list reports its scroll to `onListScroll` (ms). */

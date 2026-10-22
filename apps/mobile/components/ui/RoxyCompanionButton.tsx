@@ -54,9 +54,11 @@ const REDUCED_FADE_MS = 120;
  * tappable sits under her. One job: a tap (or a long-press — there is no
  * menu) gives a light haptic and grows the O into the "Hello, Roxy" sheet.
  *
- * While a list scrolls down she tucks in (`lib/roxyFab.ts`): 40 dp, eyes
- * closed, centred on the screen edge, on `SPRING.fastSpatial`; a tap on the
- * tucked button, a scroll up, the top or the end of the list brings her back.
+ * She rests tucked wherever list content sits in her lane (`lib/roxyFab.ts`,
+ * the lane rule: at rest nothing readable or tappable under her): 40 dp, eyes
+ * closed, centred on the screen edge, on `SPRING.fastSpatial`. She is out
+ * where her lane is empty: the end of a list (lists end FAB_LANE higher), a
+ * list that fits, and the Feed. Tucked or out, one tap opens Roxy AI.
  * The tuck springs on the UI thread from `fabTuck` (a shared value), so a busy
  * JS thread cannot hold it back and no scroll event re-renders her; React
  * hears only the flip (eyes, hit area). On the Feed stage she never tucks.
@@ -75,7 +77,6 @@ export function RoxyCompanionButton({ visible = true, onStage = false }: Props) 
   const user = useAuthStore((s) => s.user);
   const profile = useProfileStore((s) => s.profile);
   const storeTucked = useRoxyFab((s) => s.tucked);
-  const untuck = useRoxyFab((s) => s.untuck);
   // On the Feed (a pager) she never tucks (design direction › Scroll behaviour).
   const tucked = storeTucked && !onStage;
 
@@ -129,18 +130,20 @@ export function RoxyCompanionButton({ visible = true, onStage = false }: Props) 
   if (!visible) return null;
 
   const barTop = NAV_HEIGHT + Math.max(insets.bottom, NAV_MIN_BOTTOM);
+  const seatY = winH - barTop - FAB_MARGIN - FAB_SIZE / 2;
 
-  const origin: HelloRoxyOrigin = {
-    x: I18nManager.isRTL ? FAB_MARGIN + FAB_SIZE / 2 : winW - FAB_MARGIN - FAB_SIZE / 2,
-    y: winH - barTop - FAB_MARGIN - FAB_SIZE / 2,
-    size: FAB_SIZE,
-  };
+  // The sheet grows from wherever the O is: her seat, or the edge when tucked.
+  const origin: HelloRoxyOrigin = tucked
+    ? { x: I18nManager.isRTL ? 0 : winW, y: seatY, size: FAB_TUCKED }
+    : {
+        x: I18nManager.isRTL ? FAB_MARGIN + FAB_SIZE / 2 : winW - FAB_MARGIN - FAB_SIZE / 2,
+        y: seatY,
+        size: FAB_SIZE,
+      };
 
+  // Tucked or out, one tap opens Roxy AI (M3: a collapsed FAB keeps its
+  // action). She stays tucked behind the sheet while content fills her lane.
   const openRoxy = () => {
-    if (tucked) {
-      untuck();
-      return;
-    }
     tapLight();
     setSheetOpen(true);
   };
@@ -173,10 +176,10 @@ export function RoxyCompanionButton({ visible = true, onStage = false }: Props) 
         {tucked ? (
           <Pressable
             testID="fab-tucked"
-            onPress={untuck}
+            onPress={openRoxy}
             accessibilityRole="button"
             accessibilityLabel="Roxy AI"
-            accessibilityHint="Brings the Roxy AI button back"
+            accessibilityHint="Opens your chat with Roxy AI"
             style={s.tuckedHit}
           />
         ) : null}
