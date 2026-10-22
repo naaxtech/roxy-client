@@ -115,3 +115,101 @@ export function runSnap(
 export function popInStyle(scale: Animated.Value): { transform: [{ scale: Animated.Value }] } {
   return { transform: [{ scale }] };
 }
+
+// ─── Wave 3 "Feel" token additions (polish/motion-spec.md §3.2) ───────────
+//
+// Rules that come with them:
+// - Animate a 0 → 1 progress and interpolate to pixels, or spring pixels with
+//   `springTo(name, { px: true })` (rest threshold `REST.px`). With the default
+//   0.001 a 500 px sheet reports "finished" ~870 ms in, although it looks done
+//   at ~250 ms. NEVER gate input or an unmount on a completion callback.
+// - Reduce Motion is owned by `hooks/useReducedMotion` (live), so reanimated
+//   springs go out with `reduceMotion: 'never'` (`springTo`) and the caller
+//   jumps (spatial) or fades `REDUCED.fadeMs` (effects) itself.
+
+/** Reduce Motion: effects become 120 ms fades (direction › Motion). */
+export const REDUCED = { fadeMs: 120 } as const;
+
+/** Waits (M3 loading indicator): nothing < 200 ms, then >= 400 ms, determinate after 5 s. */
+export const WAIT = { showAfterMs: 200, minShowMs: 400, determinateAfterMs: 5000 } as const;
+
+/** Skeleton pulse: one shared clock, opacity 1 ↔ 0.55, 700 ms each way. */
+export const SKELETON = { low: 0.55, halfMs: 700 } as const;
+
+/** Entrance distances (dp): web push, modal route rise, chat message rise. */
+export const ENTER = { pushDp: 32, modalRiseDp: 48, messageRiseDp: 8 } as const;
+
+/** Gesture physics (WWDC18 "Designing Fluid Interfaces"). */
+export const GESTURE = {
+  /** Projection: x + v/1000 · r/(1 − r). */
+  decelerationRate: 0.998,
+  /** Rubber band: (1 − 1/(x·c/d + 1))·d. */
+  rubberBand: 0.55,
+  /** A sheet dismisses past 35% of its height, projected… */
+  dismissFraction: 0.35,
+  /** …or when flung faster than this (dp/s). */
+  flingDpPerS: 800,
+  longPressMs: 300,
+  /** Pull-to-refresh commits past this pull (dp). */
+  refreshThresholdDp: 72,
+} as const;
+
+/** Spring rest thresholds: `unit` for 0 → 1 progress, `px` for pixel values. */
+export const REST = { unit: 0.001, px: 0.5 } as const;
+
+/** expo-image `transition` for content images (ms). */
+export const CROSS_DISSOLVE_MS = 150;
+
+/**
+ * Where a released gesture would come to rest (WWDC18): the position plus the
+ * distance its velocity (units/s) carries it at `GESTURE.decelerationRate`.
+ * Choose the end state from this, not from where the finger lifted.
+ */
+export function projectRelease(position: number, velocity: number): number {
+  'worklet';
+  const r = GESTURE.decelerationRate;
+  return position + ((velocity / 1000) * r) / (1 - r);
+}
+
+/**
+ * iOS-style rubber band for a drag past an edge: follows the finger at first,
+ * resists more the further it goes, never travels past `dimension`.
+ */
+export function rubberBand(overshoot: number, dimension: number): number {
+  'worklet';
+  if (overshoot === 0 || dimension <= 0) return 0;
+  const x = Math.abs(overshoot);
+  const banded = (1 - 1 / ((x * GESTURE.rubberBand) / dimension + 1)) * dimension;
+  return overshoot < 0 ? -banded : banded;
+}
+
+/** A reanimated `withSpring` config for a `SPRING` token. */
+export type SpringToConfig = {
+  mass: number;
+  stiffness: number;
+  damping: number;
+  velocity?: number;
+  restDisplacementThreshold?: number;
+  restSpeedThreshold?: number;
+  /** reanimated's `ReduceMotion.Never`: this app decides Reduce Motion itself. */
+  reduceMotion: 'never';
+};
+
+/**
+ * `withSpring(target, springTo('spatial', { px: true, velocity }))`.
+ * `px`: the value is in pixels, so rest at `REST.px` instead of 0.001.
+ * `velocity`: a released gesture's velocity, so the spring carries it on.
+ */
+export function springTo(
+  name: SpringName,
+  opts: { px?: boolean; velocity?: number } = {},
+): SpringToConfig {
+  'worklet';
+  const config: SpringToConfig = { ...SPRING[name], reduceMotion: 'never' };
+  if (opts.velocity !== undefined) config.velocity = opts.velocity;
+  if (opts.px) {
+    config.restDisplacementThreshold = REST.px;
+    config.restSpeedThreshold = REST.px;
+  }
+  return config;
+}
