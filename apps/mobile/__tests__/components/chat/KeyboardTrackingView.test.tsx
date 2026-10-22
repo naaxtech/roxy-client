@@ -83,7 +83,7 @@ describe('KeyboardTrackingView', () => {
 
   it('on mobile web the bottom inset follows visualViewport', () => {
     setPlatform('web', '');
-    const listeners: Record<string, Array<() => void>> = {};
+    const listeners: Record<string, (() => void)[]> = {};
     const vv = {
       height: 844, offsetTop: 0,
       addEventListener: (t: string, f: () => void) => { (listeners[t] ||= []).push(f); },
