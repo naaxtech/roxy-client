@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
@@ -64,6 +65,13 @@ describe('GifPicker', () => {
     const v = render(<GifPicker visible={true} onGifSelected={jest.fn()} onClose={jest.fn()} />);
     expect(v.getByTestId('gif-loading').props.accessibilityRole).toBe('progressbar');
     expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
+  it('opens on the shared Sheet (F5), not a pop-in Modal', () => {
+    mockGiphyResponse([]);
+    const v = render(<GifPicker visible={true} onGifSelected={jest.fn()} onClose={jest.fn()} />);
+    expect(v.getByTestId('gif-picker')).toBeTruthy();
+    expect(v.getByTestId('gif-picker-scrim', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('fetches trending GIFs on open', async () => {

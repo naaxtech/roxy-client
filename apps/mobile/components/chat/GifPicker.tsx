@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Modal, View, Text, TextInput, FlatList, Image, StyleSheet, Animated,
+  View, Text, TextInput, FlatList, Image, StyleSheet,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
-import { usePopIn } from '../ui/popIn';
-import { Skeleton, SkeletonGroup } from '../feedback';
+import { Sheet, Skeleton, SkeletonGroup } from '../feedback';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { useAppWidth, FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
+import { useAppWidth } from '../../hooks/useAppWidth';
 import { isGiphyConfigured, giphyEndpoint } from '../../lib/giphy';
 
 interface GiphyResult {
@@ -26,7 +25,6 @@ interface GifPickerProps {
 
 export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
   const colors = useThemeColors();
-  const pop = usePopIn(visible);
   const appWidth = useAppWidth();
   const COL_WIDTH = (appWidth - 48) / 2;
   const [query, setQuery] = useState('');
@@ -74,14 +72,7 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
   };
 
   const styles = StyleSheet.create({
-    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-    container: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      maxHeight: '70%',
-      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
-    },
+    container: { backgroundColor: colors.background },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -117,9 +108,8 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
   });
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <Animated.View style={[styles.container, pop]}>
+    // F5: the shared Sheet (drag from the handle; the grid scrolls).
+    <Sheet visible={visible} onClose={onClose} accessibilityLabel="GIFs" maxHeight="70%" testID="gif-picker" style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>GIFs</Text>
           <TouchableOpacity onPress={onClose} hitSlop={12} accessibilityLabel="Close GIF picker">
@@ -185,7 +175,6 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
             <Text style={styles.poweredBy}>Powered by GIPHY</Text>
           </>
         )}
-      </Animated.View>
-    </Modal>
+    </Sheet>
   );
 }

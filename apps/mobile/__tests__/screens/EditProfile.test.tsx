@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 /**
  * PRO-04 / PRO-05 on the Edit Profile screen.
  */

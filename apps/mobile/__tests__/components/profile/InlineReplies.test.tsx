@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { ActivityIndicator } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
