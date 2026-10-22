@@ -21,6 +21,7 @@ import { fetchUnreadNotificationCount } from '../../../lib/notifications';
 import { logError } from '../../../lib/errorLogger';
 import { Rail } from '../../../components/discover/Rail';
 import { ArchiveRail } from '../../../components/archive/ArchiveRail';
+import { fetchArchiveTotal } from '../../../components/archive/archiveCount';
 import { fetchArchiveEntries, type ArchiveEntry } from '../../../lib/archive';
 import { archiveDetailPath } from '../../../lib/contentNavigation';
 import { FilterChips } from '../../../components/discover/FilterChips';
@@ -114,15 +115,16 @@ function DiscoverScreen() {
   const loadArchive = useCallback(async () => {
     setArchiveStatus('loading');
     try {
-      const [top, all] = await Promise.all([
+      // The total is a count (head request), not 200 rows measured (jank audit #4).
+      const [top, total] = await Promise.all([
         fetchArchiveEntries({ sort: 'top', limit: 12 }),
-        fetchArchiveEntries({ sort: 'voted', limit: 200 }),
+        fetchArchiveTotal(),
       ]);
       setArchiveEntries(top);
-      setArchiveTotal(all.length);
+      setArchiveTotal(total);
       setArchiveStatus('ready');
     } catch {
-      // fetchArchiveEntries logs before throwing; logging again double-reports.
+      // Both fetchers log before throwing; logging again double-reports.
       setArchiveStatus('error');
     }
   }, []);
