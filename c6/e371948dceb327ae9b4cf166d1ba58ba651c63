@@ -1,0 +1,24 @@
+apps/mobile/__tests__/components/discover/railCacheFirst.test.ts
+  h_0549c11fec2ab0 1-92
+apps/mobile/__tests__/components/feed/feedRenderCount.test.tsx
+  h_0549c11fec2ab0 84-97,163-210
+apps/mobile/__tests__/lib/cacheFirst.test.ts
+  h_0549c11fec2ab0 1-80
+apps/mobile/components/discover/useDiscoverData.ts
+  h_0549c11fec2ab0 6-7,62-69,75-85,87,90-94,97,163,176,189,202
+apps/mobile/components/feed/ReelsFeed.tsx
+  h_0549c11fec2ab0 1-895
+apps/mobile/lib/cacheFirst.ts
+  h_0549c11fec2ab0 1-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6e371948dceb327ae9b4cf166d1ba58ba651c63",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
