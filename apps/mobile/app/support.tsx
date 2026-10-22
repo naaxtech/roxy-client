@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TextInput,
-  ActivityIndicator, StyleSheet, Modal,
+  View, Text, ScrollView, TextInput, StyleSheet,
 } from 'react-native';
 import { TouchableOpacity } from '../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,7 +12,9 @@ import { useAuthStore } from '../store/authStore';
 import { useBuildStore } from '../store/buildStore';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { TYPE } from '../lib/typography';
-import { RADII, inkOn, type ThemeColors, scrim } from '../lib/theme';
+import { RADII, inkOn, type ThemeColors } from '../lib/theme';
+import { Sheet, Skeleton, SkeletonGroup } from '../components/feedback';
+import { BusySwap } from '../components/messages/LoadingShapes';
 import { MIN_TOUCH_TARGET } from '../lib/touchTargets';
 import { FeatureVoteCard, type FeatureRequest } from '../components/build/FeatureVoteCard';
 import { DonateModal } from '../components/donations/DonateModal';
@@ -191,7 +192,10 @@ export default function SupportScreen() {
         {error ? <Text style={s.error} accessibilityLiveRegion="polite">{error}</Text> : null}
 
         {status === 'loading' ? (
-          <View style={s.state}><ActivityIndicator color={colors.roxy} /></View>
+          // F8: cards at their final size while the roadmap loads; F11: no spinner.
+          <SkeletonGroup testID="support-loading" accessibilityLabel="Loading" style={s.skeleton}>
+            {[0, 1, 2].map((i) => <Skeleton key={i} width="100%" height={96} radius={RADII.md} />)}
+          </SkeletonGroup>
         ) : status === 'error' ? (
           <View style={s.state}>
             <Text style={s.stateText}>We could not load this right now.</Text>
@@ -261,9 +265,8 @@ export default function SupportScreen() {
         <View style={s.tail} />
       </ScrollView>
 
-      <Modal visible={pitchOpen} transparent animationType="slide" onRequestClose={() => setPitchOpen(false)}>
-        <View style={s.scrim}>
-          <View style={s.sheet} testID="support-pitch-sheet">
+      {/* F5: the shared Sheet (drag from the handle: the form has inputs). */}
+      <Sheet visible={pitchOpen} onClose={() => setPitchOpen(false)} accessibilityLabel="Pitch an idea" testID="support-pitch-sheet" style={s.sheet}>
             <Text style={s.sheetTitle}>Pitch an idea</Text>
             <TextInput
               style={s.input}
@@ -298,14 +301,12 @@ export default function SupportScreen() {
                 style={[s.send, (pitchTitle.trim().length < 3 || pitching) && s.sendOff]}
                 testID="support-pitch-send"
               >
-                {pitching
-                  ? <ActivityIndicator color={inkOn(colors.primary)} />
-                  : <Text style={s.sendText}>Pitch it</Text>}
+                <BusySwap busy={pitching} onFill label="Sending your idea">
+                  <Text style={s.sendText}>Pitch it</Text>
+                </BusySwap>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </Modal>
+      </Sheet>
 
       <DonateModal visible={donateOpen} onClose={() => setDonateOpen(false)} />
     </SafeAreaView>
@@ -360,11 +361,8 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   pitchCtaText: { ...TYPE.bodyLg, color: colors.roxy, fontWeight: '800' },
   tail: { height: 40 },
-  scrim: { flex: 1, backgroundColor: scrim(0.66), justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.surface, padding: 18, gap: 10,
-    borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet,
-  },
+  skeleton: { gap: 12 },
+  sheet: { paddingHorizontal: 18, paddingBottom: 12, gap: 10 },
   sheetTitle: { ...TYPE.headline, color: colors.textPrimary },
   input: {
     minHeight: MIN_TOUCH_TARGET, borderRadius: RADII.md, paddingHorizontal: 14, paddingVertical: 10,
