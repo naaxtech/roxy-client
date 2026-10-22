@@ -81,6 +81,20 @@ jest.mock('../../../lib/wallFeed', () => ({
   })),
 }));
 
+/** For You's page 1 (cache-first tests): held until a test answers it. */
+const mockForYou: { next: Promise<unknown> } = { next: new Promise(() => undefined) };
+jest.mock('../../../lib/announcements', () => ({
+  ...jest.requireActual('../../../lib/announcements'),
+  fetchAnnouncementPage: jest.fn(() => mockForYou.next),
+}));
+
+jest.mock('../../../store/authStore', () => {
+  const state = { user: { id: 'u-me' } };
+  const useAuthStore = (selector: (s: typeof state) => unknown): unknown => selector(state);
+  useAuthStore.getState = (): typeof state => state;
+  return { useAuthStore };
+});
+
 jest.mock('../../../lib/supabase', () => ({
   supabase: { from: jest.fn(), rpc: jest.fn(() => Promise.resolve({ data: [], error: null })) },
   callEdgeFunction: jest.fn(() => Promise.resolve({ data: null, error: null })),
@@ -144,6 +158,54 @@ async function mountFeed() {
 
 beforeEach(() => {
   for (const k of Object.keys(mockRenders)) delete mockRenders[k];
+});
+
+describe('For You page 1, cache-first (decision P2, budget F7)', () => {
+  const cells = (v: ReturnType<typeof render>) => v.queryAllByTestId('feed-cell-a11y', { includeHiddenElements: true });
+  const mountForYou = () => {
+    const view = render(<ReelsFeed scope="announcements" />);
+    fireEvent(view.getByTestId('reels-feed'), 'layout', { nativeEvent: { layout: { height: 800, width: 400 } } });
+    return view;
+  };
+
+  beforeEach(async () => {
+    const AsyncStorage = jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock');
+    await AsyncStorage.clear();
+    mockForYou.next = new Promise(() => undefined);
+  });
+
+  it('paints her last-known page 1 while the network is still out', async () => {
+    const { writeCache } = jest.requireActual('../../../lib/cacheFirst');
+    await writeCache('u-me', 'feed:foryou:p1', mockFeedRows.slice(0, 3));
+    const view = mountForYou();
+    await waitFor(() => expect(cells(view)).toHaveLength(3));
+  });
+
+  it('then shows the network page and keeps it for the next cold start', async () => {
+    const { readCache, writeCache } = jest.requireActual('../../../lib/cacheFirst');
+    await writeCache('u-me', 'feed:foryou:p1', mockFeedRows.slice(0, 2));
+    let answer!: (v: unknown) => void;
+    mockForYou.next = new Promise((r) => { answer = r; });
+    const view = mountForYou();
+    await waitFor(() => expect(cells(view)).toHaveLength(2));
+
+    await act(async () => { answer({ page: { rows: mockFeedRows, cursor: null, hasMore: true }, error: null }); });
+    await waitFor(() => expect(cells(view)).toHaveLength(5));
+    await expect(readCache('u-me', 'feed:foryou:p1')).resolves.toHaveLength(5);
+  });
+
+  it('keeps the page she is reading when the refresh fails', async () => {
+    const { writeCache } = jest.requireActual('../../../lib/cacheFirst');
+    await writeCache('u-me', 'feed:foryou:p1', mockFeedRows.slice(0, 3));
+    let answer!: (v: unknown) => void;
+    mockForYou.next = new Promise((r) => { answer = r; });
+    const view = mountForYou();
+    await waitFor(() => expect(cells(view)).toHaveLength(3));
+
+    await act(async () => { answer({ page: null, error: { message: 'offline' } }); });
+    expect(cells(view)).toHaveLength(3);
+    expect(view.queryByText('Could not load the feed.')).toBeNull();
+  });
 });
 
 describe('ReelsFeed prefetch (budget F15)', () => {

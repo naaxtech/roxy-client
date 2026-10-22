@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { callEdgeFunction } from '../../lib/supabase';
 import { logError } from '../../lib/errorLogger';
 import type { RailStatus } from './Rail';
+import { readCache, writeCache, type CacheScope } from '../../lib/cacheFirst';
+import { useAuthStore } from '../../store/authStore';
 
 export type LiveRoomRow = {
   id: string;
@@ -57,18 +59,42 @@ export type SupportRow = {
  */
 type Rail<T> = { rows: T[]; status: RailStatus; reload: () => void };
 
-function useRail<T>(loader: () => Promise<T[] | null>, deps: unknown[]): Rail<T> {
+/**
+ * `cache` (decision P2, budget F7): the rail paints her last-known rows from
+ * `lib/cacheFirst` while the network is out, the network answer replaces them
+ * and is kept for next time, and a failed refresh keeps what she can see. A
+ * network answer that lands first wins. Rails whose data goes stale in minutes
+ * (live rooms) pass no scope.
+ */
+function useRail<T>(loader: () => Promise<T[] | null>, deps: unknown[], cache?: CacheScope): Rail<T> {
   const [rows, setRows] = useState<T[]>([]);
   const [status, setStatus] = useState<RailStatus>('loading');
 
   const run = useCallback(async () => {
     setStatus('loading');
+    const userId = cache ? useAuthStore.getState().user?.id : undefined;
+    let answered = false;
+    let showing = false;
+    if (cache && userId) {
+      void readCache<T[]>(userId, cache).then((known) => {
+        if (answered || !known || known.length === 0) return;
+        showing = true;
+        setRows(known);
+        setStatus('ready');
+      });
+    }
     const result = await loader();
+    answered = true;
     // State before logging, always — a throwing logger must never leave a rail
     // spinning. See `lib/errorLogger.ts`.
-    if (result === null) { setStatus('error'); return; }
+    if (result === null) {
+      // She is already looking at her last-known rows: keep them.
+      if (!showing) setStatus('error');
+      return;
+    }
     setRows(result);
     setStatus('ready');
+    if (cache && userId) void writeCache(userId, cache, result);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
@@ -134,7 +160,7 @@ export function useEvents(): Rail<EventRow> {
         community_name: raw.communities?.name ?? null,
       };
     });
-  }, []);
+  }, [], 'discover:events');
 }
 
 export function useGames(): Rail<GameRow> {
@@ -147,7 +173,7 @@ export function useGames(): Rail<GameRow> {
       .limit(12);
     if (error) { logError(error, 'discover.games'); return null; }
     return (data ?? []) as GameRow[];
-  }, []);
+  }, [], 'discover:games');
 }
 
 export function useImpact(): Rail<ImpactRow> {
@@ -160,7 +186,7 @@ export function useImpact(): Rail<ImpactRow> {
       .limit(20);
     if (error) { logError(error, 'discover.impact'); return null; }
     return (data ?? []) as ImpactRow[];
-  }, []);
+  }, [], 'discover:impact');
 }
 
 export function useSupport(): Rail<SupportRow> {
@@ -173,5 +199,5 @@ export function useSupport(): Rail<SupportRow> {
     // envelope is the only way to know this failed.
     if (error || !data) { logError(new Error(error ?? 'no features'), 'discover.support'); return null; }
     return data.features ?? [];
-  }, []);
+  }, [], 'discover:support');
 }
