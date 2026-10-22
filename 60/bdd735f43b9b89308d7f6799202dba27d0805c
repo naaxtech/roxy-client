@@ -1,0 +1,20 @@
+apps/mobile/__tests__/components/chat/threadCache.test.ts
+  h_0549c11fec2ab0 1-56
+apps/mobile/__tests__/screens/ChatThread.test.tsx
+  h_0549c11fec2ab0 151-152,174,192-226
+apps/mobile/app/chat/[id].tsx
+  h_0549c11fec2ab0 44,90-93,125-131,177-179,190-192,198-200
+apps/mobile/components/chat/threadCache.ts
+  h_0549c11fec2ab0 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "60bdd735f43b9b89308d7f6799202dba27d0805c",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
