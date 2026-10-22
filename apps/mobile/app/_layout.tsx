@@ -19,6 +19,7 @@ import { Analytics } from '../lib/analytics';
 import { logError, logBreadcrumb, setCrashlyticsUser, hashUserId } from '../lib/errorLogger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ReportSheet } from '../components/safety/ReportSheet';
+import { SnackbarHost } from '../components/feedback/SnackbarHost';
 import { useThemeStore } from '../store/themeStore';
 import { THEMES } from '../lib/theme';
 import { useAppFonts } from '../hooks/useAppFonts';
@@ -338,6 +339,10 @@ function AppNavigator() {
                 did nothing at all. Chat kept working only because it carries
                 its own local modal. */}
             <ReportSheet />
+            {/* The one snackbar (lane C0's SnackbarHost): any screen calls
+                snackbar.show(); it sits above the nav bar and the Roxy
+                button's lane, inside the app frame. */}
+            <SnackbarHost />
           </ErrorBoundary>
         </WebAppFrame>
         {__DEV__ && <DevPanel />}

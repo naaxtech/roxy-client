@@ -105,6 +105,16 @@ describe('the root layout uses the TransitionStack', () => {
     expect(src).toMatch(/<TransitionStack\b/);
     expect(src).not.toMatch(/<Stack\b/);
   });
+
+  // Lane C0's SnackbarHost (c0-api.md): mounted ONCE, at the root, so
+  // `snackbar.show()` works from any screen.
+  it('mounts the SnackbarHost once, from components/feedback', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src: string = fs.readFileSync(path.join(__dirname, '../../app/_layout.tsx'), 'utf8');
+    expect(src.match(/<SnackbarHost\b/g)).toHaveLength(1);
+    expect(src).toMatch(/import \{ SnackbarHost \} from '\.\.\/components\/feedback\/SnackbarHost';/);
+  });
 });
 
 describe('tab layouts fade their content over their own ground', () => {
