@@ -1,0 +1,94 @@
+apps/mobile/__tests__/components/CommentActions.test.tsx
+  h_0549c11fec2ab0 12-13,61-72
+apps/mobile/__tests__/components/CommentSheet.test.tsx
+  h_0549c11fec2ab0 17
+apps/mobile/__tests__/components/FeedInterestCard.test.tsx
+  h_0549c11fec2ab0 17-18,34-47
+apps/mobile/__tests__/components/FirstPostCelebration.test.tsx
+  h_0549c11fec2ab0 45-47,49,59-60,66
+apps/mobile/__tests__/components/archive/VoteCard.test.tsx
+  h_0549c11fec2ab0 11-13,22-31
+apps/mobile/__tests__/components/chat/MessageRowSwipe.test.tsx
+  h_0549c11fec2ab0 93,117,131,140
+apps/mobile/__tests__/components/feed/DailyPromptCell.test.tsx
+  h_0549c11fec2ab0 13,35-36,44
+apps/mobile/__tests__/components/feedback/RoxyRefresh.test.tsx
+  h_0549c11fec2ab0 19-20,68-87
+apps/mobile/__tests__/components/reactions/ReactionBurst.test.tsx
+  h_0549c11fec2ab0 32,171,196
+apps/mobile/__tests__/components/reactions/ReactionButton.test.tsx
+  h_0549c11fec2ab0 140-141,209-211,216-217
+apps/mobile/__tests__/components/ui/SwitchMotion.test.tsx
+  h_0549c11fec2ab0 34,170
+apps/mobile/__tests__/feel/feelGate.test.ts
+  h_0549c11fec2ab0 85-99
+apps/mobile/__tests__/screens/CommunityChannelsReactions.test.tsx
+  h_0549c11fec2ab0 155
+apps/mobile/app/(auth)/onboarding/step2-interests.tsx
+  h_0549c11fec2ab0 11,58-59
+apps/mobile/app/(auth)/welcome-in.tsx
+  h_0549c11fec2ab0 25,93-94
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  h_0549c11fec2ab0 618
+apps/mobile/app/(tabs)/feed/index.tsx
+  h_0549c11fec2ab0 11,65-69,230
+apps/mobile/app/(tabs)/you/settings.tsx
+  h_0549c11fec2ab0 127
+apps/mobile/app/archive/[slug]/index.tsx
+  h_0549c11fec2ab0 379,410
+apps/mobile/app/archive/index.tsx
+  h_0549c11fec2ab0 26-27,61-66,331,334
+apps/mobile/app/chat/[id].tsx
+  h_0549c11fec2ab0 913
+apps/mobile/app/event/[id].tsx
+  h_0549c11fec2ab0 3,5,57-61,63
+apps/mobile/components/archive/VoteCard.tsx
+  h_0549c11fec2ab0 11,112,114
+apps/mobile/components/chat/MessageRow.tsx
+  h_0549c11fec2ab0 114,213,292
+apps/mobile/components/discover/FilterChips.tsx
+  h_0549c11fec2ab0 59
+apps/mobile/components/feed/CommentThread.tsx
+  h_0549c11fec2ab0 13,93-97,107
+apps/mobile/components/feed/DailyPromptCell.tsx
+  h_0549c11fec2ab0 39,47
+apps/mobile/components/feed/DoubleTapLike.tsx
+  h_0549c11fec2ab0 6,37
+apps/mobile/components/feed/FeedInterestCard.tsx
+  h_0549c11fec2ab0 7,53-57,84,95
+apps/mobile/components/feed/FirstPostCelebration.tsx
+  h_0549c11fec2ab0 58-59
+apps/mobile/components/feed/PollCell.tsx
+  h_0549c11fec2ab0 68
+apps/mobile/components/feedback/RoxyRefresh.tsx
+  h_0549c11fec2ab0 8,125-133,141,160,222
+apps/mobile/components/messages/RequestsSheet.tsx
+  h_0549c11fec2ab0 182
+apps/mobile/components/nav/FloatingTabBar.tsx
+  h_0549c11fec2ab0 439
+apps/mobile/components/profile/SelfControls.tsx
+  h_0549c11fec2ab0 13,68
+apps/mobile/components/reactions/DoubleTapReact.tsx
+  h_0549c11fec2ab0 6,30
+apps/mobile/components/reactions/useReactionPicker.ts
+  h_0549c11fec2ab0 4,141,148,171-172,193
+apps/mobile/components/ui/RoxyCompanionButton.tsx
+  h_0549c11fec2ab0 14,175
+apps/mobile/components/ui/Switch.tsx
+  h_0549c11fec2ab0 10,126
+apps/mobile/hooks/useCommentLikes.ts
+  h_0549c11fec2ab0 43
+apps/mobile/scripts/feel/feelGateConfig.ts
+  h_0549c11fec2ab0 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd04f83ed342fae8989031c3636809d84dd6b2e0",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
