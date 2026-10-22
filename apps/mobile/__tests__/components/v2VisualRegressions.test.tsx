@@ -11,7 +11,7 @@ import { render } from '@testing-library/react-native';
 type HostNode = { type: unknown; props: Record<string, unknown> };
 import { CommunityRoomCard } from '../../components/community/CommunityRoomCard';
 import { ProfileShell } from '../../components/profile/ProfileShell';
-import { THEMES, contrastRatio, pinkFill, scrim } from '../../lib/theme';
+import { THEMES, contrastRatio, scrim } from '../../lib/theme';
 import { useThemeStore } from '../../store/themeStore';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
@@ -67,11 +67,14 @@ describe('profile cover controls (v2)', () => {
     }
   });
 
-  it.each(['light', 'dark'] as const)('draws the self Edit action on flat pink with onPink ink (%s)', (theme) => {
+  // Wave 2 (direction › You): Edit is a quiet `raised` pill, not the pink
+  // action. Was: flat pink with onPink ink (Wave 1 slice 8c).
+  it.each(['light', 'dark'] as const)('draws the self Edit action as a quiet raised pill with ink (%s)', (theme) => {
     const v = shell(theme);
     const label = v.getByText('Edit');
-    expect(StyleSheet.flatten(label.props.style).color).toBe(THEMES[theme].onPink);
-    expect(label.parent?.parent?.props.colors).toEqual(pinkFill(THEMES[theme]));
-    expect(contrastRatio(THEMES[theme].onPink, THEMES[theme].pink)).toBeGreaterThanOrEqual(4.5);
+    expect(StyleSheet.flatten(label.props.style).color).toBe(THEMES[theme].ink);
+    const face = v.getByTestId('profile-primary-action');
+    expect(StyleSheet.flatten(face.props.style).backgroundColor).toBe(THEMES[theme].raised);
+    expect(contrastRatio(THEMES[theme].ink, THEMES[theme].raised)).toBeGreaterThanOrEqual(4.5);
   });
 });
