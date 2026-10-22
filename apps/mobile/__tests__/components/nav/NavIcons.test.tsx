@@ -9,13 +9,14 @@ jest.mock('react-native-svg', () => ({
 }));
 
 describe('NavIcon', () => {
-  it('draws the Claude Design Feed rosette — five petals and a filled centre', () => {
-    const { UNSAFE_getAllByType } = render(<NavIcon name="feed" color="#F22481" />);
-    const circles = UNSAFE_getAllByType('Circle' as never);
-    expect(circles).toHaveLength(6);
-    expect(circles[5].props.fill).toBe('#F22481');
-    expect(circles[5].props.cx).toBe('12');
-    expect(circles[5].props.cy).toBe('11.6');
+  // v2 bans the flower anywhere (direction › Bans; board v2-04 draws Feed as
+  // a house). Was: the prototype's five-petal rosette (six Circles).
+  it('draws Feed as a house in one stroked outline, with no petals', () => {
+    const { UNSAFE_queryAllByType, UNSAFE_getByType } = render(<NavIcon name="feed" color="#F22481" />);
+    expect(UNSAFE_queryAllByType('Circle' as never)).toHaveLength(0);
+    const house = UNSAFE_getByType('Path' as never);
+    expect(house.props.d).toBe('M4 10.4 12 4l8 6.4V20h-5.4v-5.8H9.4V20H4Z');
+    expect(house.props.stroke).toBe('#F22481');
   });
 
   it('draws Discover as the search glass from the prototype', () => {

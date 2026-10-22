@@ -39,6 +39,32 @@ export const COVER_TITLE: TypeStep = {
 export const COVER_PADDING = 8;
 
 /**
+ * Average advance of one Geologica 800 glyph, in em, used to keep a whole word
+ * on one line of the type cover. Measured in the Wave 2 browser run: "Cheerlea"
+ * filled the 88 dp inner width of a 104 dp cover at 18 dp (0.61 em), so 0.64
+ * leaves a little room for wide capitals.
+ */
+export const COVER_GLYPH_EM = 0.64;
+
+/** The smallest the type cover's title steps down to (a very long single word). */
+export const COVER_TITLE_MIN = 12;
+
+/**
+ * The type cover title's size for this title on a cover this wide: the
+ * direction's 18/20 unless the longest word would not fit the field's inner
+ * width, then the largest whole size that fits (leading = size + 2), never
+ * below `COVER_TITLE_MIN`. A word is never split across lines.
+ */
+export function coverTitleStep(title: string, width: number): { fontSize: number; lineHeight: number } {
+  const inner = Math.max(0, width - 2 * COVER_PADDING);
+  const longest = title.split(/\s+/).reduce((n, w) => Math.max(n, w.length), 0);
+  const base = Number(COVER_TITLE.fontSize);
+  const fits = longest > 0 ? Math.floor(inner / (longest * COVER_GLYPH_EM)) : base;
+  const fontSize = Math.max(COVER_TITLE_MIN, Math.min(base, fits));
+  return { fontSize, lineHeight: fontSize === base ? Number(COVER_TITLE.lineHeight) : fontSize + 2 };
+}
+
+/**
  * The Archive's visual vocabulary, derived from theme tokens rather than pasted
  * from the prototype's CSS.
  *

@@ -1,7 +1,7 @@
 import { render, fireEvent, configure } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { ArchiveCover } from '../../../components/archive/ArchiveCover';
-import { COVER_ASPECT, COVER_TITLE } from '../../../components/archive/archiveTokens';
+import { COVER_ASPECT, COVER_GLYPH_EM, COVER_PADDING, COVER_TITLE, COVER_TITLE_MIN, coverTitleStep } from '../../../components/archive/archiveTokens';
 import { IDENTITY, RADII, identityFor, inkOn } from '../../../lib/theme';
 import { FONTS } from '../../../lib/typography';
 
@@ -58,6 +58,26 @@ describe('ArchiveCover', () => {
   it('never paints a gradient', () => {
     const v = render(<ArchiveCover entryId="e1" title="Carol" coverUrl={null} width={104} testID="c" />);
     expect(v.UNSAFE_queryAllByType('LinearGradient' as never)).toHaveLength(0);
+  });
+
+  /**
+   * Seen in the Wave 2 browser run: "But I'm a Cheerleader" broke as
+   * "Cheerlea / der" on the 104 dp row cover, because one word was wider than
+   * the field at 18 dp. A word is never split: the title steps down until its
+   * longest word fits the field's inner width (GLYPH_EM per character).
+   */
+  it('steps the title down until its longest word fits, and never below the floor', () => {
+    const inner = 104 - 2 * COVER_PADDING;
+    const v = render(
+      <ArchiveCover entryId="e1" title="But I'm a Cheerleader" coverUrl={null} width={104} testID="c" />,
+    );
+    const t = flat(v.getByText("But I'm a Cheerleader"));
+    expect(Number(t.fontSize)).toBeLessThan(18);
+    expect('Cheerleader'.length * COVER_GLYPH_EM * Number(t.fontSize)).toBeLessThanOrEqual(inner);
+    expect(Number(t.lineHeight)).toBe(Number(t.fontSize) + 2);
+    expect(coverTitleStep('Supercalifragilisticexpialidocious', 104).fontSize).toBe(COVER_TITLE_MIN);
+    // Short words keep the direction's 18/20.
+    expect(coverTitleStep('Tipping the Velvet', 104)).toEqual({ fontSize: 18, lineHeight: 20 });
   });
 
   it('falls back to the type cover when the uploaded image fails to load', () => {

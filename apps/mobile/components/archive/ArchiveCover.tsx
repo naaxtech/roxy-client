@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { RADII, identityFor, inkOn } from '../../lib/theme';
-import { COVER_ASPECT, COVER_PADDING, COVER_TITLE } from './archiveTokens';
+import { COVER_ASPECT, COVER_PADDING, COVER_TITLE, coverTitleStep } from './archiveTokens';
 
 interface Props {
   /** Picks the identity field. The id, not the slug or title: a renamed entry keeps its colour. */
@@ -52,7 +52,7 @@ export function ArchiveCover({ entryId, title, coverUrl, width, testID }: Props)
       alignItems: 'flex-start',
       padding: COVER_PADDING,
     },
-    title: { ...COVER_TITLE, color: inkOn(field), textAlign: 'left' },
+    title: { ...COVER_TITLE, ...coverTitleStep(title, width), color: inkOn(field), textAlign: 'left' },
   });
 
   return (

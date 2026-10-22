@@ -13,8 +13,6 @@ import { NowRail } from '../../../components/feed/NowRail';
 import { MiniWinsSheet } from '../../../components/feed/MiniWinsSheet';
 import { STAGE, STAGE_BG } from '../../../components/feed/stageColors';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
-import { FirstStepsCard } from '../../../components/account/FirstStepsCard';
-import { RAIL_GUTTER } from '../../../components/feed/feedChromeTokens';
 import { TYPE } from '../../../lib/typography';
 import { RADII } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
@@ -63,8 +61,7 @@ function FeedScreen() {
   const [nowOpen, setNowOpen] = useState(false);
   const [liveCount, setLiveCount] = useState(0);
   const [miniWinsOpen, setMiniWinsOpen] = useState(false);
-  const { can, kind } = useAccess();
-  const showFirstSteps = segment === 'foryou' && kind !== 'pending';
+  const { can } = useAccess();
 
   /**
    * Question of the day (audit #4). Null until we know she has not answered
@@ -223,14 +220,11 @@ function FeedScreen() {
 
         <FeedSegments value={segment} onChange={setSegment} />
 
-        {/* Her first five minutes (G-11), the same card "You're in" showed.
-            Approved members only, For You only; it renders nothing once she
-            hides it or until it knows whether she did. */}
-        {showFirstSteps && (
-          <View style={s.firstSteps}>
-            <FirstStepsCard testID="feed-first-steps" />
-          </View>
-        )}
+        {/* Her first five minutes (G-11) used to sit here over For You. v2
+            (direction: "Three first-run checklists → one nudge at a time, in
+            place"; Feed: the post is the screen) takes the card off the Feed;
+            it stays on "You're in" (app/(auth)/welcome-in.tsx), and each step's
+            feature keeps its own home (Messages, Discover, Settings, You). */}
       </SafeAreaView>
 
       <MiniWinsSheet
@@ -253,7 +247,6 @@ const s = StyleSheet.create({
   railWrap: { },
   // Clear of the right-hand rail column, like every other full-width piece of
   // chrome on the stage.
-  firstSteps: { marginTop: 8, marginRight: RAIL_GUTTER - 14 },
   searchBtn: {
     minHeight: MIN_TOUCH_TARGET,
     minWidth: MIN_TOUCH_TARGET,

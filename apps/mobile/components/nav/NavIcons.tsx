@@ -3,7 +3,8 @@ import Svg, { Circle, Path } from 'react-native-svg';
 /**
  * Bottom-bar marks from the Claude Design prototype (`Roxy App.dc.html`).
  *
- * They are not Ionicons. Feed is the five-petal brand rosette; Discover is a
+ * They are not Ionicons. Feed is a house (v2, board v2-04: the prototype's
+ * five-petal rosette retired, because v2 bans the flower anywhere); Discover is a
  * search glass; Messages is a tailed bubble; You is a person. Active state
  * is colour, not a filled swap — the prototype never changes the stroke.
  *
@@ -24,7 +25,7 @@ export function NavIcon({
 }) {
   switch (name) {
     case 'feed':
-      return <FeedMark color={color} size={size} testID={testID} />;
+      return <HomeMark color={color} size={size} testID={testID} />;
     case 'discover':
       return <DiscoverMark color={color} size={size} testID={testID} />;
     case 'messages':
@@ -36,7 +37,27 @@ export function NavIcon({
   }
 }
 
-function FeedMark({ color, size, testID }: { color: string; size: number; testID?: string }) {
+/** Feed (v2): a house in one stroked outline, the same weight as its neighbours. */
+function HomeMark({ color, size, testID }: { color: string; size: number; testID?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" testID={testID}>
+      <Path
+        d="M4 10.4 12 4l8 6.4V20h-5.4v-5.8H9.4V20H4Z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/**
+ * RETIRED in Wave 2 (design direction v2 › Bans: "The flower, anywhere"; board
+ * v2-04 draws the Feed key as a house). The Claude Design prototype's Feed
+ * rosette (`Roxy App.dc.html`), origin: `git log -S FeedMark`. Kept, not
+ * deleted (user rule), in case the brand ever brings a non-flower rosette back.
+ */
+function _RetiredFeedRosette({ color, size, testID }: { color: string; size: number; testID?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" testID={testID}>
       <Circle cx="12" cy="5.6" r="3" stroke={color} strokeWidth={1.8} />

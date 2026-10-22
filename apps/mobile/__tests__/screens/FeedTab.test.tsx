@@ -117,10 +117,17 @@ beforeEach(() => {
   useCommunityFilterStore.setState({ selectedCommunityId: null, filterable: false });
 });
 
+/**
+ * v2 (direction › What changes: "Three first-run checklists → one nudge at a
+ * time, in place"; Feed note: the post is the screen). The first-steps card no
+ * longer sits over For You; it stays on "You're in" (welcome-in), where it is
+ * the next step after the card. Was: an approved member saw it over For You.
+ */
 describe('First steps on the Feed (G-11, after "You\'re in")', () => {
-  it('an approved member sees her first-steps card over For You', () => {
-    const { getByTestId } = render(<FeedScreen />);
-    expect(getByTestId('feed-first-steps')).toBeTruthy();
+  it('an approved member gets the post, not a checklist card over it', () => {
+    const { queryByTestId, getByTestId } = render(<FeedScreen />);
+    expect(getByTestId('feed-segment-following')).toBeTruthy();
+    expect(queryByTestId('feed-first-steps')).toBeNull();
   });
 
   it('only on For You, not over Following or Communities', () => {
