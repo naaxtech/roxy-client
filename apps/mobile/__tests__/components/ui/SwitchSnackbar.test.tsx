@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, processColor } from 'react-native';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { Switch, SWITCH } from '../../../components/ui/Switch';
 import { Snackbar, SNACKBAR_DURATION } from '../../../components/ui/Snackbar';
@@ -19,6 +19,8 @@ const flat = (node: { props: { style?: unknown } }) =>
   StyleSheet.flatten(node.props.style as never) as Record<string, unknown>;
 
 const light = THEMES.light;
+/** The switch paints colours from reanimated (rgba strings): compare as native colour ints. */
+const sameColour = (a: unknown, b: string) => processColor(a as string) === processColor(b);
 
 beforeEach(() => {
   useThemeStore.setState({ theme: 'light', choice: 'light' });
@@ -71,17 +73,17 @@ describe('Switch', () => {
     const track = flat(getByTestId('sw-track'));
     expect(track.width).toBe(SWITCH.width);
     expect(track.height).toBe(SWITCH.height);
-    expect(track.backgroundColor).toBe(light.pink);
-    expect(flat(getByTestId('sw-thumb')).backgroundColor).toBe('#FFFFFF');
+    expect(sameColour(track.backgroundColor, light.pink)).toBe(true);
+    expect(sameColour(flat(getByTestId('sw-thumb')).backgroundColor, '#FFFFFF')).toBe(true);
   });
 
   it('off: raised track with a control outline and a control thumb', () => {
     const { getByTestId } = render(<Switch testID="sw" value={false} />);
     const track = flat(getByTestId('sw-track'));
-    expect(track.backgroundColor).toBe(light.raised);
-    expect(track.borderColor).toBe(light.control);
+    expect(sameColour(track.backgroundColor, light.raised)).toBe(true);
+    expect(sameColour(track.borderColor, light.control)).toBe(true);
     expect(track.borderWidth).toBe(SWITCH.outline);
-    expect(flat(getByTestId('sw-thumb')).backgroundColor).toBe(light.control);
+    expect(sameColour(flat(getByTestId('sw-thumb')).backgroundColor, light.control)).toBe(true);
   });
 
   it('measures a real 48 dp target without hitSlop', () => {
@@ -91,11 +93,14 @@ describe('Switch', () => {
     expect(node.props.hitSlop).toBeUndefined();
   });
 
-  it('the thumb grows while pressed (20 → 24 on)', () => {
+  // Wave 3: the thumb is one 24 dp disc scaled to its size (UI thread, no
+  // relayout); the press growth itself is timed in SwitchMotion.test.tsx.
+  it('the thumb is 20 dp on at rest (a 24 dp disc at 20/24)', () => {
     const { getByTestId } = render(<Switch testID="sw" value />);
-    expect(flat(getByTestId('sw-thumb')).width).toBe(SWITCH.thumbOn);
-    act(() => { fireEvent(getByTestId('sw'), 'pressIn'); });
-    expect(flat(getByTestId('sw-thumb')).width).toBe(SWITCH.thumbPressed);
+    const thumb = flat(getByTestId('sw-thumb'));
+    expect(thumb.width).toBe(SWITCH.thumbPressed);
+    const scale = (thumb.transform as Record<string, number>[]).find((t) => 'scale' in t)?.scale;
+    expect(scale).toBeCloseTo(SWITCH.thumbOn / SWITCH.thumbPressed, 3);
   });
 });
 
