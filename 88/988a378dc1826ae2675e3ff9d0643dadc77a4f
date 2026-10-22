@@ -1,0 +1,24 @@
+apps/mobile/__tests__/components/messages/PinnedPersonaRow.test.tsx
+  h_0549c11fec2ab0 3,7-17,19,61,65-68,71-73,77,80-82
+apps/mobile/__tests__/screens/YouProfileShell.test.tsx
+  h_0549c11fec2ab0 2,163-181
+apps/mobile/app/(tabs)/you/index.tsx
+  h_0549c11fec2ab0 45,512-517
+apps/mobile/components/feed/feedChromeTokens.ts
+  h_0549c11fec2ab0 2,144-145,147
+apps/mobile/components/messages/PinnedPersonaRow.tsx
+  h_0549c11fec2ab0 3,73-75
+apps/mobile/components/nav/navTokens.ts
+  h_0549c11fec2ab0 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88988a378dc1826ae2675e3ff9d0643dadc77a4f",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
