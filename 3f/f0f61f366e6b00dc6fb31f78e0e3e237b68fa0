@@ -1,0 +1,16 @@
+apps/mobile/__tests__/store/authStore.test.ts
+  h_0549c11fec2ab0 3-37
+apps/mobile/store/authStore.ts
+  h_0549c11fec2ab0 3-16,31-34,36-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ff0f61f366e6b00dc6fb31f78e0e3e237b68fa0",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
