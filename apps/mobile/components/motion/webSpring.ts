@@ -111,13 +111,20 @@ export function startWebFade(
 }
 
 /**
- * What the browser shows for the element right now — mid-animation values
- * included — so a move can turn around from where it is. Null off the DOM.
+ * What the browser shows for the element while it is mid-animation, so a move
+ * can turn around from where it is. Null at rest and off the DOM: at rest the
+ * computed style is the rest style React has just committed for the NEW phase
+ * (a closing screen already reads 32 dp out at opacity 0), not what is on
+ * screen — reading it turned every pop from rest into a jump cut (feel run
+ * 6b32c0f). The caller then starts from the previous phase's end.
  */
 export function currentWebStyle(el: unknown): { opacity: string; transform: string } | null {
-  const node = el as { nodeType?: number } | null;
+  const node = el as { nodeType?: number; getAnimations?: () => { playState: string }[] } | null;
   const g = globalThis as unknown as { getComputedStyle?: (e: unknown) => { opacity: string; transform: string } };
   if (!node || node.nodeType !== 1 || typeof g.getComputedStyle !== 'function') return null;
+  if (typeof node.getAnimations === 'function' && !node.getAnimations().some((a) => a.playState === 'running')) {
+    return null;
+  }
   const cs = g.getComputedStyle(node);
   return { opacity: cs.opacity, transform: cs.transform };
 }

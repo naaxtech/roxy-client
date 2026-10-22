@@ -115,7 +115,7 @@ describe('startWebFade (Reduce Motion: a plain timed opacity change)', () => {
 
 describe('currentWebStyle', () => {
   it('reads what the browser is showing now (mid-animation values included)', () => {
-    const el = { nodeType: 1 };
+    const el = { nodeType: 1, getAnimations: () => [{ playState: 'running' }] };
     const spy = jest.fn(() => ({ opacity: '0.4', transform: 'matrix(1, 0, 0, 1, 19, 0)' }));
     const g = globalThis as unknown as { getComputedStyle?: unknown };
     const original = g.getComputedStyle;
@@ -131,5 +131,22 @@ describe('currentWebStyle', () => {
   it('is null for anything that is not a DOM element', () => {
     expect(currentWebStyle(null)).toBeNull();
     expect(currentWebStyle({} as never)).toBeNull();
+  });
+
+  it('is null at rest: nothing animating means the computed style is already the NEW rest style', () => {
+    // Feel run 6b32c0f: by the time a layout effect runs, React has committed
+    // the closing screen's rest style (32 dp out, opacity 0), so reading it
+    // made every pop from rest animate "from away to away" — a jump cut.
+    const spy = jest.fn(() => ({ opacity: '0', transform: 'matrix(1, 0, 0, 1, 32, 0)' }));
+    const g = globalThis as unknown as { getComputedStyle?: unknown };
+    const original = g.getComputedStyle;
+    g.getComputedStyle = spy;
+    try {
+      expect(currentWebStyle({ nodeType: 1, getAnimations: () => [] } as never)).toBeNull();
+      expect(currentWebStyle({ nodeType: 1, getAnimations: () => [{ playState: 'finished' }] } as never)).toBeNull();
+      expect(currentWebStyle({ nodeType: 1, getAnimations: () => [{ playState: 'running' }] } as never)).not.toBeNull();
+    } finally {
+      g.getComputedStyle = original;
+    }
   });
 });
