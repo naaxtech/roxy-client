@@ -14,7 +14,7 @@ jest.mock('../../lib/comments', () => {
 });
 jest.mock('../../lib/supabase', () => ({ supabase: { rpc: jest.fn(), from: jest.fn() }, callEdgeFunction: jest.fn() }));
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
-jest.mock('../../lib/haptics', () => ({ tapLight: jest.fn(), celebrate: jest.fn() }));
+jest.mock('../../lib/haptics', () => ({ haptic: jest.fn(), tapLight: jest.fn(), celebrate: jest.fn() }));
 jest.mock('../../lib/confirm', () => ({ showAlert: jest.fn() }));
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 jest.mock('../../components/ui/popIn', () => ({ usePopIn: () => ({}) }));

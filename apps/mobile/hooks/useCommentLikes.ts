@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { toggleCommentLike } from '../lib/comments';
 import { logError } from '../lib/errorLogger';
-import { tapLight } from '../lib/haptics';
 
 /**
  * Which comments she has liked, with an optimistic toggle that rolls back.
@@ -41,7 +40,7 @@ export function useCommentLikes(userId: string | null | undefined) {
     if (!userId || inflight.current.has(commentId)) return false;
     const wasLiked = likedRef.current.has(commentId);
     flip(commentId, !wasLiked);
-    if (!wasLiked) tapLight();
+    // §3.3 / P3: no haptic on a comment like (Wave 3: haptics fire only on the §3.3 events).
     inflight.current.add(commentId);
     try {
       const { error } = await toggleCommentLike({ commentId, userId, liked: wasLiked });

@@ -10,7 +10,7 @@ jest.mock('expo-linear-gradient', () => {
   return { LinearGradient: View };
 });
 const mockTap = jest.fn();
-jest.mock('../../../lib/haptics', () => ({ tapLight: (...a: unknown[]) => mockTap(...a) }));
+jest.mock('../../../lib/haptics', () => ({ tapLight: (...a: unknown[]) => mockTap(...a), haptic: (...a: unknown[]) => mockTap(...a) }));
 
 import { DailyPromptCell } from '../../../components/feed/DailyPromptCell';
 import { DAILY_PROMPT_KICK, dailyPromptFor } from '../../../lib/dailyPrompt';
@@ -32,7 +32,8 @@ describe('DailyPromptCell', () => {
     expect(v.getByText(DAILY_PROMPT_KICK)).toBeTruthy();
   });
 
-  it('one tap opens the composer on this question, by index, with a light haptic', () => {
+  // Wave 3 (§3.3, P3): answering the prompt is a plain tap, no haptic (was a light one).
+  it('one tap opens the composer on this question, by index, with no haptic', () => {
     const v = render(<DailyPromptCell prompt={PROMPT} width={390} height={800} reducedMotion={false} />);
     fireEvent.press(v.getByTestId('daily-prompt-answer'));
 
@@ -40,7 +41,7 @@ describe('DailyPromptCell', () => {
       pathname: '/community/create-post',
       params: { prompt: String(PROMPT.index) },
     });
-    expect(mockTap).toHaveBeenCalledWith(false);
+    expect(mockTap).not.toHaveBeenCalled();
   });
 
   it('is a labelled button a thumb can hit, clear of the rail/FAB gutter', () => {

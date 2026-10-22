@@ -31,7 +31,7 @@ jest.mock('react-native-reanimated', () => {
 });
 
 const mockTap = jest.fn();
-jest.mock('../../../lib/haptics', () => ({ tapLight: (...a: unknown[]) => mockTap(...a), haptic: jest.fn() }));
+jest.mock('../../../lib/haptics', () => ({ tapLight: jest.fn(), haptic: (...a: unknown[]) => mockTap(...a) }));
 let mockReduced = false;
 jest.mock('../../../hooks/useReducedMotion', () => ({
   ...jest.requireActual('../../../hooks/useReducedMotion'),
@@ -167,7 +167,7 @@ describe('Switch on the UI thread', () => {
     const view = render(<Switch testID="sw" value={false} onValueChange={onValueChange} />);
     frames(16);
     fireEvent.press(view.getByTestId('sw'));
-    expect(mockTap).toHaveBeenCalled();
+    expect(mockTap).toHaveBeenCalledWith('light');
     expect(onValueChange).toHaveBeenCalledWith(true);
     view.rerender(<Switch testID="sw" value onValueChange={onValueChange} />);
     frames(16);

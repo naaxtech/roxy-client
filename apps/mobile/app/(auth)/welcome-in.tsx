@@ -22,7 +22,7 @@ import { TYPE, emphasized } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { INVITE_CODE_LENGTH } from '../../lib/inviteCode';
 import { animatedSpring } from '../../lib/motion';
-import { celebrate } from '../../lib/haptics';
+import { haptic } from '../../lib/haptics';
 import { fetchAdmissionCommunity, markWelcomeSeen } from '../../lib/welcomeIn';
 import { FirstStepsCard } from '../../components/account/FirstStepsCard';
 
@@ -90,8 +90,8 @@ export default function WelcomeInScreen() {
 
   useEffect(() => {
     // The one success haptic of the moment (direction › Haptics). Haptics
-    // stay under Reduce Motion; `celebrate` itself is a no-op on the web.
-    celebrate();
+    // stay under Reduce Motion; `haptic` itself is a no-op on the web.
+    haptic('success');
     if (reduced) {
       progress.setValue(1);
       return;

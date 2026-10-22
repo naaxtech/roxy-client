@@ -29,7 +29,7 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 const mockTap = jest.fn();
-jest.mock('../../../lib/haptics', () => ({ tapLight: (...a: unknown[]) => mockTap(...a), haptic: jest.fn() }));
+jest.mock('../../../lib/haptics', () => ({ tapLight: jest.fn(), haptic: (...a: unknown[]) => mockTap(...a) }));
 
 configure({ defaultIncludeHiddenElements: true });
 setUpTests();
@@ -168,7 +168,7 @@ describe('useDoubleTapReact', () => {
     frames(16);
 
     expect(onReact).toHaveBeenCalledWith('❤️');
-    expect(mockTap).toHaveBeenCalledWith(false);
+    expect(mockTap.mock.calls).toEqual([['light']]);
     expect(painted(view, 'reaction-burst-heart').opacity).toBe(1);
   });
 
@@ -193,7 +193,7 @@ describe('useDoubleTapReact', () => {
     frames(16);
 
     expect(onReact).toHaveBeenCalledWith('❤️');
-    expect(mockTap).toHaveBeenCalled();
+    expect(mockTap).toHaveBeenCalledWith('light');
     expect(painted(view, 'reaction-burst-heart').opacity).toBe(0);
   });
 });

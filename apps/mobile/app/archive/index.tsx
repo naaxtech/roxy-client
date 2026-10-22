@@ -24,6 +24,7 @@ import { PendingBanner } from '../../components/archive/PendingBanner';
 import { AccountStatusTag } from '../../components/account/AccountStatusTag';
 import type { ArchiveEntry } from '../../lib/archive';
 import { RoxyRefresh } from '../../components/feedback/RoxyRefresh';
+import { haptic } from '../../lib/haptics';
 
 /**
  * Browse the WLW Archive.
@@ -57,6 +58,12 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
   const filters = useArchiveStore((s) => s.filters);
   const load = useArchiveStore((s) => s.load);
   const setFilters = useArchiveStore((s) => s.setFilters);
+  // §3.3 selection: a chip choice (media type, sort) ticks once, only when it changes.
+  const chooseFilter = useCallback((patch: Partial<Pick<typeof filters, 'mediaType' | 'sort'>>) => {
+    const keys = Object.keys(patch) as (keyof typeof patch)[];
+    if (keys.some((k) => patch[k] !== filters[k])) haptic('selection');
+    setFilters(patch);
+  }, [filters, setFilters]);
   const hydrateMine = useArchiveStore((s) => s.hydrateMine);
   const refresh = useArchiveStore((s) => s.refresh);
   const loadMore = useArchiveStore((s) => s.loadMore);
@@ -321,10 +328,10 @@ export default function ArchiveBrowseScreen({ asHome = false }: Props) {
 
       <MediaTypeChips
         value={filters.mediaType}
-        onChange={(mediaType) => setFilters({ mediaType })}
+        onChange={(mediaType) => chooseFilter({ mediaType })}
         counts={typeCounts}
       />
-      <SortChips value={filters.sort} onChange={(sort) => setFilters({ sort })} />
+      <SortChips value={filters.sort} onChange={(sort) => chooseFilter({ sort })} />
 
       {toast ? (
         <View style={s.toast} testID="archive-submitted-toast" accessibilityLiveRegion="polite" accessibilityRole="alert">

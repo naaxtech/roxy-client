@@ -12,7 +12,6 @@ import { CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
 import { pollShare, pollVoteTotal } from './poll';
 import { DoubleTapReact, useDoubleTapReact } from '../reactions/DoubleTapReact';
 import { ReactionBurst } from '../reactions/ReactionBurst';
-import { tapLight } from '../../lib/haptics';
 import type { ParsedPoll } from './poll';
 import { a11yState } from '../../lib/a11yState';
 
@@ -66,8 +65,7 @@ export function PollCell({
     setFailed(false);
     setPendingKey(optionKey);
     setVotedKey(optionKey);
-    // The vote is a small yes too (FEED-09).
-    tapLight(chrome.reducedMotion);
+    // §3.3 / P3: a poll vote has no haptic; the bars answer (FEED-09).
 
     let ok = false;
     try {

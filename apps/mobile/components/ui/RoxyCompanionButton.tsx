@@ -11,7 +11,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
 import { RADII, floatElevation } from '../../lib/theme';
 import { POP_FROM, PRESS, fadeConfig, headStart, springTo } from '../../lib/motion';
-import { tapLight } from '../../lib/haptics';
+import { haptic } from '../../lib/haptics';
 import { useRoxyFab, fabTuck } from '../../lib/roxyFab';
 import {
   FAB_LANE, FAB_MARGIN, FAB_SIZE, FAB_TUCKED, FAB_TUCKED_HIT, NAV_HEIGHT, NAV_MIN_BOTTOM,
@@ -172,7 +172,7 @@ export function RoxyCompanionButton({ visible = true, onStage = false }: Props) 
   // Tucked or out, one tap opens Roxy AI (M3: a collapsed FAB keeps its
   // action). She stays tucked behind the sheet while content fills her lane.
   const openRoxy = () => {
-    tapLight();
+    haptic('light');
     setSheetOpen(true);
   };
 

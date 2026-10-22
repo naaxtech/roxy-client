@@ -152,7 +152,7 @@ describe('CHAT-17 channel reactions', () => {
     await view.findByTestId('channel-message-m1');
     haptic.mockClear();
     fireEvent(view.getByTestId('channel-message-m1'), 'longPress');
-    expect(haptic.mock.calls).toEqual([['select']]);
+    expect(haptic.mock.calls).toEqual([['selection']]);
     haptic.mockClear();
     await act(async () => { fireEvent.press(view.getByLabelText('React with 💜')); });
     expect(haptic.mock.calls).toEqual([['light']]);

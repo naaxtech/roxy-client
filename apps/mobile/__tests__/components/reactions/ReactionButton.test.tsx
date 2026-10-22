@@ -137,7 +137,8 @@ describe('ReactionButton taps', () => {
     fireEvent(button, 'responderRelease', touch(CENTRE.x, CENTRE.y));
 
     expect(onReact).toHaveBeenCalledWith('❤️');
-    expect(mockTap).toHaveBeenCalled();
+    // §3.3 light: a committed reaction (Wave 3: haptic('light'), was tapLight).
+    expect(mockHaptic.mock.calls).toEqual([['light']]);
     expect(view.queryByTestId('reaction-picker')).toBeNull();
   });
 
@@ -205,13 +206,15 @@ describe('ReactionButton long-press picker', () => {
     fireEvent(button, 'responderMove', touch(cellCentre(4).x, cellCentre(4).y));
     expect(view.getByTestId('reaction-picker-item-😡').props.accessibilityState.selected).toBe(true);
     fireEvent(button, 'responderMove', touch(cellCentre(2).x, cellCentre(2).y));
-    expect(mockHaptic).toHaveBeenCalledWith('select', false);
-    expect(mockHaptic).toHaveBeenCalledTimes(2);
+    // P3: the long-press that opened the picker ticked once; then one
+    // selection tick per emoji passed (§3.3).
+    expect(mockHaptic.mock.calls).toEqual([['selection'], ['selection'], ['selection']]);
 
     fireEvent(button, 'responderRelease', touch(cellCentre(2).x, cellCentre(2).y));
 
     expect(onReact).toHaveBeenCalledWith('😮');
-    expect(mockTap).toHaveBeenCalled();
+    // §3.3 light: the committed reaction.
+    expect(mockHaptic).toHaveBeenLastCalledWith('light');
     expect(view.queryByTestId('reaction-picker')).toBeNull();
   });
 

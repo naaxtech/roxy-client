@@ -56,7 +56,7 @@ export function FilterChips<T extends string>({
   const layer = stateLayerFor(useThemeStore((st) => st.theme));
 
   const select = (next: T) => {
-    if (next !== value) haptic('select');
+    if (next !== value) haptic('selection');
     onChange(next);
   };
 

@@ -615,7 +615,7 @@ export default function CommunityChannelsScreen() {
             // A provisional message does not exist yet: nothing to report,
             // remove or react to until the server has it.
             // A long-press that opens a menu ticks as a selection (§3.3).
-            onLongPress={isPending(item) ? undefined : (m) => { haptic('select'); setMenuFor(m); }}
+            onLongPress={isPending(item) ? undefined : (m) => { haptic('selection'); setMenuFor(m); }}
             onOpenCard={(path) => router.push(path as never)}
             footer={(reactionsMap[item.id]?.length ?? 0) > 0 ? (
               <ReactionChips

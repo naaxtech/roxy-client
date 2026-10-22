@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GestureResponderEvent, LayoutChangeEvent } from 'react-native';
 import { HEART, type PostReaction } from '../../lib/postReactions';
-import { haptic, tapLight } from '../../lib/haptics';
+import { haptic } from '../../lib/haptics';
 import { PICKER, pickerHit, type Box } from './reactionGeometry';
 
 /**
@@ -138,14 +138,14 @@ export function useReactionPicker({
   const pick = useCallback((emoji: PostReaction) => {
     setOpenState(false);
     if (emoji === latest.current.reaction) return;
-    tapLight(false);
+    haptic('light');
     setPulse((n) => n + 1);
     latest.current.onReact(emoji);
   }, [setOpenState]);
 
   const tap = useCallback(() => {
     const next = latest.current.reaction ? null : HEART;
-    if (next) tapLight(false);
+    if (next) haptic('light');
     setPulse((n) => n + 1);
     latest.current.onReact(next);
   }, []);
@@ -168,7 +168,8 @@ export function useReactionPicker({
       if (openRef.current) return;
       timer.current = setTimeout(() => {
         timer.current = null;
-        if (!scrolling.current) openPicker();
+        // P3: a long-press that opens the picker ticks (selection, §3.3).
+        if (!scrolling.current) { haptic('selection'); openPicker(); }
       }, PICKER.longPressMs);
     },
     onResponderMove: (e: GestureResponderEvent) => {
@@ -189,7 +190,7 @@ export function useReactionPicker({
       if (next !== hoveredRef.current) {
         hoveredRef.current = next;
         setHovered(next);
-        if (next) haptic('select', false);
+        if (next) haptic('selection');
       }
     },
     onResponderRelease: (e: GestureResponderEvent) => {

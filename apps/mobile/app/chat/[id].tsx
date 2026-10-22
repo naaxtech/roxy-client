@@ -910,7 +910,7 @@ export default function ChatScreen() {
             const target = reactAnyFor;
             setReactAnyFor(null);
             // A committed reaction: the light tap (§3.3).
-            haptic('tap');
+            haptic('light');
             if (target) void toggleReaction(target, emoji);
           }}
         />

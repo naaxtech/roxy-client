@@ -5,6 +5,7 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { GESTURE, rubberBand, springTo } from '../../lib/motion';
 import { LOADING_SIZES, LoadingO, useWaitVisible } from './RoxyLoading';
+import { haptic } from '../../lib/haptics';
 
 /**
  * Pull-to-refresh for the app AND roxy.expo.app (polish/motion-spec.md §1.3
@@ -121,6 +122,15 @@ function scrollerFor(target: EventTarget | null, root: HTMLElement): HTMLElement
   return null;
 }
 
+/**
+ * P3: crossing the pull-to-refresh threshold ticks (§3.3 selection; lib/haptics
+ * plays nothing on the web), then the caller's own `onThreshold`.
+ */
+function thresholdTick(onThreshold?: () => void): void {
+  haptic('selection');
+  onThreshold?.();
+}
+
 const animatable = typeof Reanimated?.createAnimatedComponent === 'function';
 const AnimatedView = (animatable ? Reanimated.View : View) as unknown as typeof View;
 const O = LOADING_SIZES.default.box;
@@ -128,7 +138,7 @@ const O = LOADING_SIZES.default.box;
 export type RoxyRefreshProps = {
   refreshing: boolean;
   onRefresh: () => void;
-  /** Once per pull, when it crosses the threshold (Lane E: `selection` haptic). */
+  /** Once per pull, when it crosses the threshold (the `selection` tick is built in). */
   onThreshold?: () => void;
   /** Render the list; pass `refreshControl` to it (undefined on web). */
   children: (refreshControl: ReactElement | undefined) => ReactNode;
@@ -147,7 +157,7 @@ function NativeRefresh({ refreshing, onRefresh, onThreshold, children, tone = 'p
   const colors = useThemeColors();
   const tint = tone === 'stage' ? colors.brandPink : colors.pink;
   const handle = useCallback(() => {
-    onThreshold?.();
+    thresholdTick(onThreshold);
     onRefresh();
   }, [onThreshold, onRefresh]);
   return (
@@ -209,7 +219,7 @@ function WebRefresh({
       onPull: (d) => {
         pull.value = d;
       },
-      onThreshold: () => onThresholdRef.current?.(),
+      onThreshold: () => thresholdTick(onThresholdRef.current),
       onRelease: (armed) => {
         if (armed) {
           settle(threshold);

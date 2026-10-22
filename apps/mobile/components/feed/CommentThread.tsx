@@ -10,7 +10,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { hideMutedComments } from '../../lib/comments';
 import type { CommentRemoval } from '../../lib/comments';
-import { tapLight } from '../../lib/haptics';
+import { haptic } from '../../lib/haptics';
 import { useSafetyStore } from '../../store/safetyStore';
 import { CommentActionsSheet } from './CommentActionsSheet';
 import { Avatar } from '../ui/Avatar';
@@ -90,8 +90,11 @@ function CommentRow({
     );
   }
 
-  const openActions = () => {
-    tapLight();
+  // §3.3 / P3: a long-press that opens the comment menu ticks (selection); the
+  // ⋯ button opening the same menu is a plain tap (no haptic).
+  const openActions = () => onActions();
+  const openActionsByLongPress = () => {
+    haptic('selection');
     onActions();
   };
 
@@ -101,7 +104,7 @@ function CommentRow({
       // Long-press is the gesture people already know from every other app;
       // the ⋯ below is the same menu for anyone who does not long-press and for
       // screen readers, which announce it as an action.
-      onLongPress={isDeleted ? undefined : openActions}
+      onLongPress={isDeleted ? undefined : openActionsByLongPress}
       delayLongPress={350}
       accessible={false}
       testID={`comment-${comment.id}`}

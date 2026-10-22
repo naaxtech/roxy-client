@@ -111,7 +111,7 @@ function MessageRowImpl({
 
   // JS-side ends of the worklets: the threshold tick (selection, §3.3; it
   // stays under Reduce Motion) and the reply itself.
-  const tick = useCallback(() => haptic('select'), []);
+  const tick = useCallback(() => haptic('selection'), []);
   const reply = useCallback(() => onReply(m), [onReply, m]);
 
   const pan = useMemo(() => Gesture.Pan()
@@ -210,7 +210,7 @@ function MessageRowImpl({
         <Animated.View style={bubbleStyle}>
           <Pressable
             // A long-press that opens a menu ticks as a selection (§3.3).
-            onLongPress={() => { haptic('select'); onLongPress(m); }}
+            onLongPress={() => { haptic('selection'); onLongPress(m); }}
             delayLongPress={320}
             testID={`message-${m.id}`}
             accessibilityLabel={`${isOwn ? 'You' : senderName}: ${unsent ? 'Message unsent' : m.message_type === 'image' ? 'GIF' : m.content ?? ''}`}
@@ -289,7 +289,7 @@ function MessageRowImpl({
             reactions={reactions}
             currentUserId={currentUserId}
             // A committed reaction: the light tap (§3.3).
-            onToggle={(emoji, own) => { haptic('tap'); onToggleReaction(m.id, emoji, own); }}
+            onToggle={(emoji, own) => { haptic('light'); onToggleReaction(m.id, emoji, own); }}
           />
         </View>
       ) : null}

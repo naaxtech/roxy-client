@@ -3,7 +3,7 @@ import type { ReactElement, ReactNode, RefObject } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { feedMediaTaps } from '../../lib/feedMediaTaps';
-import { tapLight } from '../../lib/haptics';
+import { haptic } from '../../lib/haptics';
 import type { LikeBurstHandle } from './LikeBurst';
 
 /**
@@ -34,7 +34,7 @@ export function useDoubleTapLike({
   const onDoubleTap = useCallback(() => {
     if (onDoubleTapLike) onDoubleTapLike();
     else if (!liked) onLike();
-    tapLight(reducedMotion);
+    haptic('light');
     burstRef.current?.play();
   }, [liked, onLike, onDoubleTapLike, reducedMotion]);
   return { burstRef, onDoubleTap };

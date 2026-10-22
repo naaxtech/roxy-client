@@ -436,7 +436,7 @@ export function FloatingTabBar({
       return;
     }
     // Haptics stay under Reduce Motion (direction › Motion).
-    haptic('select');
+    haptic('selection');
     setPending({ name: route.name, from: committedRef.current });
     cancels.current.push(afterPaint(() => {
       if (!mounted.current) return;

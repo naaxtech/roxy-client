@@ -3,7 +3,7 @@ import type { ReactElement, ReactNode, RefObject } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { HEART, type PostReaction } from '../../lib/postReactions';
-import { tapLight } from '../../lib/haptics';
+import { haptic } from '../../lib/haptics';
 import { reactionTaps, type TapPoint } from './reactionTaps';
 import type { ReactionBurstHandle } from './ReactionBurst';
 
@@ -27,7 +27,7 @@ export function useDoubleTapReact({
   const onDoubleTap = useCallback((point: TapPoint) => {
     const already = reaction !== null;
     if (!already) onReact(HEART);
-    tapLight(false);
+    haptic('light');
     if (!reducedMotion) burstRef.current?.play(point, { small: already });
   }, [reaction, onReact, reducedMotion]);
   return { burstRef, onDoubleTap };
