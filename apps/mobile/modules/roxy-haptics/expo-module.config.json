@@ -1,0 +1,7 @@
+{
+  "platforms": ["android"],
+  "android": {
+    "modules": ["expo.modules.roxyhaptics.RoxyHapticsModule"],
+    "gradlePath": "android-native/build.gradle"
+  }
+}

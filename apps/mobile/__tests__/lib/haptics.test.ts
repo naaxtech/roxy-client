@@ -1,7 +1,12 @@
 /**
  * lib/haptics is shared by chat (`haptic(kind)`) and feed/gate (`tapLight`,
  * `celebrate`). These pin the contract both lanes relied on: the right engine
- * call per kind, nothing on web, nothing under reduced motion, and never a throw.
+ * call per kind, nothing on web, and never a throw.
+ *
+ * Wave 3 (polish/motion-spec.md §3.3, decision P3): haptics STAY under Reduce
+ * Motion, so the two "stays still under reduced motion" cases below now assert
+ * the opposite. The full §3.3 contract (kinds, Android native path, fallback)
+ * is in __tests__/feel/haptics.test.ts; this file runs on iOS (jest default).
  */
 const mockImpact = jest.fn();
 const mockNotify = jest.fn();
@@ -34,7 +39,8 @@ afterAll(() => {
 
 describe('haptic(kind) — chat', () => {
   it('maps each kind to its engine call', () => {
-    haptic();
+    // Wave 3: the kind is required (it used to default to 'tap').
+    haptic('tap');
     expect(mockImpact).toHaveBeenLastCalledWith('light');
     haptic('select');
     expect(mockSelect).toHaveBeenCalledTimes(1);
@@ -44,9 +50,10 @@ describe('haptic(kind) — chat', () => {
     expect(mockNotify).toHaveBeenLastCalledWith('warning');
   });
 
-  it('stays still under reduced motion', () => {
+  // Wave 3 (§3.3 P3): was 'stays still under reduced motion'; haptics now stay on.
+  it('still fires under reduced motion', () => {
     haptic('success', true);
-    expect(mockNotify).not.toHaveBeenCalled();
+    expect(mockNotify).toHaveBeenCalledWith('success');
   });
 });
 
@@ -58,11 +65,12 @@ describe('tapLight / celebrate — feed', () => {
     expect(mockNotify).toHaveBeenCalledWith('success');
   });
 
-  it('stays still under reduced motion', () => {
+  // Wave 3 (§3.3 P3): was 'stays still under reduced motion'; haptics now stay on.
+  it('still fires under reduced motion', () => {
     tapLight(true);
     celebrate(true);
-    expect(mockImpact).not.toHaveBeenCalled();
-    expect(mockNotify).not.toHaveBeenCalled();
+    expect(mockImpact).toHaveBeenCalledWith('light');
+    expect(mockNotify).toHaveBeenCalledWith('success');
   });
 });
 
@@ -82,7 +90,7 @@ describe('every export', () => {
       throw new Error('no vibrator');
     });
     mockNotify.mockReturnValue(Promise.reject(new Error('no engine')));
-    expect(() => haptic()).not.toThrow();
+    expect(() => haptic('tap')).not.toThrow();
     expect(() => tapLight()).not.toThrow();
     expect(() => celebrate()).not.toThrow();
     expect(() => haptic('warning')).not.toThrow();

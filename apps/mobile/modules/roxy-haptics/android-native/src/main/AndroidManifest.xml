@@ -1,0 +1,2 @@
+<!-- No permission: View.performHapticFeedback needs none (unlike expo-haptics' VIBRATE). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
