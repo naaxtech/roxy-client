@@ -1,0 +1,24 @@
+apps/mobile/__tests__/components/feed/feedRenderCount.test.tsx
+  h_0549c11fec2ab0 1-195
+apps/mobile/components/feed/CaughtUpCell.tsx
+  h_0549c11fec2ab0 2,23-24,26,46
+apps/mobile/components/feed/DailyPromptCell.tsx
+  h_0549c11fec2ab0 2,36,38-40,78
+apps/mobile/components/feed/FeedCell.tsx
+  h_0549c11fec2ab0 1,8,111-140
+apps/mobile/components/feed/FeedVideoPlayer.tsx
+  h_0549c11fec2ab0 38-47,84
+apps/mobile/components/feed/ReelsFeed.tsx
+  h_0549c11fec2ab0 135-164,604-616,618-654,656-675,679-681,691,706,723-727,729-732,736-738
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "adf66a0d13420de04580309a3ee9aee2bed9c2c8",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
