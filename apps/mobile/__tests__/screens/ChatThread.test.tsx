@@ -195,6 +195,19 @@ describe('ChatScreen — keyboard (F14)', () => {
   });
 });
 
+describe('ChatScreen — haptics follow the map (motion spec §3.3)', () => {
+  const { haptic: mockHapticFn } = jest.requireMock('../../lib/haptics') as { haptic: jest.Mock };
+
+  it('sending a message does not buzz', async () => {
+    const view = await openThread();
+    mockHapticFn.mockClear();
+    fireEvent.changeText(view.getByTestId('chat-input'), 'hello world');
+    fireEvent.press(view.getByTestId('chat-send'));
+    await waitFor(() => expect(mockInsert).toHaveBeenCalled());
+    expect(mockHapticFn).not.toHaveBeenCalled();
+  });
+});
+
 describe('ChatScreen — sending (CHAT-06, CHAT-03)', () => {
   it('sends under a client-minted uuid and shows exactly one delivered bubble', async () => {
     const view = await openThread();

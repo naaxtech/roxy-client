@@ -300,7 +300,7 @@ export default function ChatScreen() {
     appendOptimistic(msg);
     setInputText('');
     setReplyTo(null);
-    haptic('tap');
+    // No haptic on send (motion spec §3.3: sending never buzzes).
     scrollToBottom();
     await deliver(msg);
   }, [me, conversationId, capped, replyTo, appendOptimistic, deliver, scrollToBottom, stopTyping]);
@@ -320,7 +320,6 @@ export default function ChatScreen() {
     patchMessage(target.id, { content: text, edited_at: new Date().toISOString() });
     try {
       await editMessage(target.id, text);
-      haptic('select');
     } catch (e) {
       patchMessage(target.id, { content: target.content, edited_at: target.edited_at ?? null });
       setSendError(e instanceof Error ? e.message : chatErrorMessage(e));
@@ -377,7 +376,6 @@ export default function ChatScreen() {
     patchMessage(m.id, { deleted_at: new Date().toISOString() });
     try {
       await unsendMessage(m.id);
-      haptic('select');
     } catch (e) {
       patchMessage(m.id, { deleted_at: null });
       showAlert("Couldn't unsend", e instanceof Error ? e.message : chatErrorMessage(e));
@@ -387,7 +385,6 @@ export default function ChatScreen() {
   const copy = useCallback(async (text: string) => {
     try {
       await Clipboard.setStringAsync(text);
-      haptic('select');
       setToast('Copied');
     } catch (e) {
       logError(e, 'chat_copy');
@@ -406,7 +403,6 @@ export default function ChatScreen() {
     setMenuOpen(false);
     try {
       await muteConversation(conversationId, muted ? null : MUTE_FOREVER);
-      haptic('select');
       void reloadMeta();
       void refreshInbox();
     } catch (e) {
@@ -461,7 +457,6 @@ export default function ChatScreen() {
       await respondMessageRequest(conversationId, accept);
       const sender = meta?.others[0]?.id;
       if (alsoBlock && sender) await blockUser(sender);
-      haptic(accept ? 'success' : 'tap');
       void refreshInbox();
       if (accept) {
         await reloadMeta();
@@ -895,7 +890,8 @@ export default function ChatScreen() {
           onEmojiSelected={({ emoji }: { emoji: string }) => {
             const target = reactAnyFor;
             setReactAnyFor(null);
-            haptic('select');
+            // A committed reaction: the light tap (§3.3).
+            haptic('tap');
             if (target) void toggleReaction(target, emoji);
           }}
         />
