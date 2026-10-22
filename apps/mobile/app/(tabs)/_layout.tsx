@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, AppState } from 'react-native';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import { RoxyCompanionButton } from '../../components/ui/RoxyCompanionButton';
+import { useRoxyFab, fabVisible, fabOnStage } from '../../lib/roxyFab';
 import { FloatingTabBar } from '../../components/nav/FloatingTabBar';
 import { CreateSheet } from '../../components/nav/CreateSheet';
 import { useFriendStore } from '../../store/friendStore';
@@ -24,15 +25,14 @@ import { useLastPushResponse } from '../../hooks/useLastPushResponse';
 // which throws on web). Re-add it here only if this layout needs another
 // expo-notifications API, and guard native-only calls with Platform.OS.
 
-/**
- * The companion FAB pins itself 90pt above its parent's bottom edge, a number
- * tuned to the old 68pt full-width bar. The floating pill is taller than that
- * once a home indicator is in play, so the FAB's parent is inset by this much
- * instead — lifting the button without editing it. The ceiling is 12: the FAB's
- * own pop-out sheet anchors at 158pt from the screen bottom, and the button's
- * top edge reaches 146 + lift. Roxy moving into Inbox (plan §1) retires this.
+/*
+ * RETIRED (v2, 2026-10-21): `FAB_LIFT = 8`. The FAB used to pin itself 90pt
+ * above its parent and the parent was inset by this lift to clear the old
+ * floating pill. Origin: the Roxy 3.0 shell (`git log -S FAB_LIFT`). The
+ * Roxy AI button now measures its own lane from the docked bar
+ * (`navTokens.FAB_LANE`, 16 dp above `NAV_HEIGHT` + inset), so its parent is
+ * full-window. Reintroduce a lift only if the bar stops being docked.
  */
-const FAB_LIFT = 8;
 
 /**
  * Where the Roxy companion is suppressed.
@@ -48,14 +48,31 @@ export default function TabLayout() {
   const pathname = usePathname();
   const { can, tier } = useAccess();
   const slots = navSlotsFor(tier);
-  const showFab =
-    can('roxyCompanion') &&
-    !FAB_SUPPRESSED_ON.some((fragment) => pathname.includes(fragment));
+  const { user } = useAuthStore();
+  // Roxy AI on/off (Settings), kept per member on this phone.
+  const roxyEnabled = useRoxyFab((s) => s.enabled);
+  const roxyLoadedFor = useRoxyFab((s) => s.loadedFor);
+  const showFab = fabVisible({
+    pathname,
+    allowed: can('roxyCompanion'),
+    enabled: roxyEnabled,
+    loadedFor: roxyLoadedFor,
+    userId: user?.id,
+    suppressedOn: FAB_SUPPRESSED_ON,
+  });
   const [createOpen, setCreateOpen] = useState(false);
   const pendingCount = useFriendStore((s) => s.pendingCount);
-  const { user } = useAuthStore();
   const profile = useProfileStore((s) => s.profile);
   const router = useRouter();
+
+  useEffect(() => {
+    if (user?.id) void useRoxyFab.getState().load(user.id);
+  }, [user?.id]);
+
+  // A new screen starts with her out, not tucked from the last list.
+  useEffect(() => {
+    useRoxyFab.getState().untuck();
+  }, [pathname]);
 
   // Secondary guard: if a user somehow reaches tabs without completing onboarding,
   // redirect them back. The root layout is the primary guard; this is the fallback.
@@ -203,10 +220,10 @@ export default function TabLayout() {
       </Tabs>
 
       <View
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: FAB_LIFT }}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         pointerEvents="box-none"
       >
-        <RoxyCompanionButton visible={showFab} />
+        <RoxyCompanionButton visible={showFab} onStage={fabOnStage(pathname)} />
       </View>
 
       <CreateSheet

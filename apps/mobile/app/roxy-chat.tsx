@@ -1,367 +1,393 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Animated,
+  View, Text, StyleSheet, TextInput, ScrollView, KeyboardAvoidingView, Platform, Modal, Pressable,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../store/authStore';
-import { callEdgeFunction } from '../lib/supabase';
+import { useProfileStore } from '../store/profileStore';
+import { useRoxyChatStore } from '../store/roxyChatStore';
 import { Analytics } from '../lib/analytics';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { showAlert } from '../lib/confirm';
-import { BRAND_GRADIENT, RADII, inkOn } from '../lib/theme';
-import { POP_FROM, SNAP_SPRING } from '../lib/motion';
-import { TYPE, FONTS } from '../lib/typography';
+import { confirmAction } from '../lib/confirm';
+import { MARGIN, RADII, SPACE, floatElevation, scrim } from '../lib/theme';
+import { TYPE, emphasized } from '../lib/typography';
+import { MIN_TOUCH_TARGET } from '../lib/touchTargets';
+import { a11yState } from '../lib/a11yState';
+import { useRoxyFab, ROXY_OFF_COPY } from '../lib/roxyFab';
+import { TouchableOpacity } from '../components/ui/PressableScale';
+import { Snackbar } from '../components/ui/Snackbar';
+import { RoxyO } from '../components/roxy/RoxyO';
+import { RoxyWriting } from '../components/roxy/RoxyWriting';
+import { RoxyBubble, BUBBLE_O } from '../components/roxy/RoxyBubble';
+import { RoxyChip } from '../components/roxy/RoxyChip';
+import {
+  sendToRoxy, retryRoxy, clearRoxyChat, useRoxyFailure, greetingFor, firstNameOf,
+  HELLO_SUGGESTIONS, FOLLOW_UPS,
+} from '../components/roxy/roxyConversation';
 
-type Message = { role: 'user' | 'roxy'; content: string };
+/** The O in her header, dp. */
+const HEADER_O = 40;
+/** Her O on an empty chat (the same 80 dp as the Hello sheet). */
+const HELLO_O = 80;
+/** The composer's outline (design direction v2 › Roxy AI chat: "a 1.5 dp outline"). */
+const COMPOSER_OUTLINE = 1.5;
+/** The composer grows to this height, then scrolls. */
+const COMPOSER_MAX = 120;
 
-// Roxy's brand identity gradient — used for her wordmark, avatar mark, and
-// the "what's on your mind" suggestion chips. Keeps her visually distinct
-// from the plain user/partner bubbles used elsewhere in Connect.
+/*
+ * RETIRED (v2, 2026-10-21): v0's Roxy chat chrome — the gradient sparkle
+ * mark, the "WINGWOMAN" tag, "● always on — replies instantly", the emoji
+ * gradient suggestion chips (Dating Advice · Her Texts · Confidence Tips ·
+ * Queer Events), "Ask Roxy anything…" and the gradient Send. Origin: the Roxy
+ * 3.0 chat (`git log -S "WINGWOMAN" -- apps/mobile/app/roxy-chat.tsx`). Why:
+ * Roxy AI is the emotional companion and says she is an AI; "always on",
+ * "ask me anything" and the sparkle are banned (direction v2 › Bans), and the
+ * gradient is the wordmark's alone. The old suggestions' prompts are not
+ * lost: she can type any of them, and the new three cover the same ground.
+ */
 
-type Suggestion = { label: string; emoji: string; prompt: string; gradient: [string, string] };
-
-const SUGGESTIONS: Suggestion[] = [
-  { label: 'Dating Advice', emoji: '💕', prompt: 'Give me some dating advice', gradient: ['#FF6A2E', '#FF2F71'] },
-  { label: 'Her Texts', emoji: '💬', prompt: 'Help me decode her last text', gradient: ['#FF2F71', '#FF6A2E'] },
-  { label: 'Confidence Tips', emoji: '🤝', prompt: 'Give me some confidence tips', gradient: ['#FF6A2E', '#E81C8E'] },
-  { label: 'Queer Events', emoji: '🌈', prompt: 'What queer events are happening?', gradient: ['#8B5CF6', '#E81C8E'] },
-];
-
+/**
+ * Roxy AI's own chat (design direction v2 › "Roxy AI chat + FAB", board
+ * v2-05). Her chat, not a DM.
+ *
+ * Header: back, her O at 40 dp, "Roxy AI", "Only you see this chat", more
+ * (Clear chat, Report a reply, Turn off Roxy AI). Her bubbles on `surface`
+ * with her 32 dp O; the member's in `pinkContainer`. Two follow-ups after her
+ * latest reply. While she writes: her O in `think` mood squashing beside
+ * "Roxy AI is writing" — never a spinner; replies arrive by sentence. The
+ * composer sits on `surface` with a 1.5 dp outline and a `pink` send.
+ * Footer: "Roxy AI can be wrong. Keep passwords and addresses to yourself."
+ *
+ * The conversation is shared with the "Hello, Roxy" sheet
+ * (`components/roxy/roxyConversation.ts`). A failed send keeps her message
+ * and says so in one sentence with Retry. If she brings up harming herself,
+ * Roxy AI's answer comes from the `roxy-chat` edge function; the Sister
+ * support card for that moment must be designed with care professionals
+ * before launch (direction), so it is not improvised here.
+ */
 export default function RoxyChatScreen() {
   const colors = useThemeColors();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
+  const user = useAuthStore((s) => s.user);
+  const profile = useProfileStore((s) => s.profile);
+  const messages = useRoxyChatStore((s) => s.messages);
+  const isTyping = useRoxyChatStore((s) => s.isTyping);
+  const failureRaw = useRoxyFailure((s) => s.failure);
+  const failure = failureRaw && user?.id && failureRaw.userId === user.id ? failureRaw : null;
+  const roxyEnabled = useRoxyFab((s) => s.enabled);
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [snack, setSnack] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const heroAnim = useRef(new Animated.Value(POP_FROM)).current;
-
-  const conversationId = `roxy-${user?.id ?? 'anon'}`;
+  // Replies that arrive while she is here reveal by sentence; older ones show whole.
+  const seenAtOpen = useRef(messages.length);
 
   useEffect(() => {
     Analytics.roxyChatOpened();
   }, []);
 
   useEffect(() => {
-    if (messages.length > 0) {
-      scrollRef.current?.scrollToEnd({ animated: true });
+    if (messages.length > 0 || isTyping) scrollRef.current?.scrollToEnd({ animated: true });
+  }, [messages.length, isTyping, failure]);
+
+  const userId = user?.id ?? null;
+  const canSend = draft.trim().length > 0 && !isTyping;
+  const last = messages[messages.length - 1];
+  const showFollowUps = !isTyping && !failure && last?.role === 'roxy';
+
+  const send = async (text: string) => {
+    if (!text.trim() || isTyping) return;
+    setDraft('');
+    await sendToRoxy(userId, text);
+  };
+
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/feed' as never);
+  };
+
+  const clearChat = async () => {
+    setMenuOpen(false);
+    const ok = await confirmAction(
+      'Clear this chat?',
+      'Your messages with Roxy AI leave this phone. This cannot be undone.',
+      'Clear chat',
+    );
+    if (ok) clearRoxyChat();
+  };
+
+  const reportReply = () => {
+    setMenuOpen(false);
+    // No report type exists for an AI reply (reports.content_type); the team
+    // reads Feedback. She chooses what to quote — nothing is copied for her.
+    router.push({
+      pathname: '/(tabs)/you/feedback',
+      params: { category: 'other', prefillMessage: 'About a Roxy AI reply: ' },
+    } as never);
+  };
+
+  const toggleRoxy = async () => {
+    setMenuOpen(false);
+    if (roxyEnabled) {
+      await useRoxyFab.getState().setEnabled(userId, false);
+      setSnack(true);
+    } else {
+      await useRoxyFab.getState().setEnabled(userId, true);
     }
-  }, [messages]);
-
-  useEffect(() => {
-    Animated.spring(heroAnim, { toValue: 1, ...SNAP_SPRING }).start();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Shared send path so both the composer and the suggestion chips funnel
-  // through identical request/response/error handling.
-  const sendText = async (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || loading) return;
-
-    setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
-    setLoading(true);
-
-    try {
-      const { data, error: fnError } = await callEdgeFunction<{ response: string }>('roxy-chat', {
-        conversation_id: conversationId,
-        message: trimmed,
-      });
-
-      if (fnError) {
-        showAlert('Roxy is unavailable', fnError);
-        return;
-      }
-
-      if (data?.response) {
-        setMessages((prev) => [...prev, { role: 'roxy', content: data.response }]);
-      }
-    } catch {
-      showAlert('Something went wrong', 'Please try again.');
-    } finally {
-      setLoading(false);
-    }
   };
 
-  const handleSend = async () => {
-    await sendText(input);
-  };
-
-  const handleSuggestion = (prompt: string) => {
-    void sendText(prompt);
-  };
-
-  const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    header: {
-      flexDirection: 'row', alignItems: 'center', gap: 10,
-      paddingHorizontal: 12, paddingVertical: 10,
-      backgroundColor: colors.backgroundAlt,
-      borderBottomWidth: 1, borderBottomColor: colors.primary,
-    },
-    backBtn: {
-      width: 30, height: 30, borderRadius: RADII.pill,
-      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    headerMark: { width: 38, height: 38, borderRadius: RADII.pill, padding: 2 },
-    headerMarkInner: {
-      flex: 1, borderRadius: RADII.pill, alignItems: 'center', justifyContent: 'center',
-      backgroundColor: colors.backgroundAlt,
-    },
-    headerCenter: { flex: 1, gap: 2 },
-    headerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-    headerTitle: { ...TYPE.body, fontFamily: FONTS.display.bold, color: colors.textPrimary },
-    headerTag: {
-      borderRadius: RADII.pill, borderWidth: 1, borderColor: colors.primary,
-      backgroundColor: colors.surfaceLight, paddingHorizontal: 7, paddingVertical: 2,
-    },
-    headerTagText: { ...TYPE.micro, color: colors.primaryInk, fontWeight: '800', letterSpacing: 0.8 },
-    headerSub: { ...TYPE.micro, color: colors.successInk, fontWeight: '600' },
-
-    messageList: { flex: 1 },
-    messageListContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 10, flexGrow: 1 },
-
-    // Empty-state hero: avatar mark + greeting card + suggestion chips
-    heroWrap: { alignItems: 'center', paddingTop: 20, paddingHorizontal: 12, paddingBottom: 8 },
-    heroAvatarRing: {
-      width: 92, height: 92, borderRadius: 46,
-      alignItems: 'center', justifyContent: 'center',
-      shadowColor: '#FF2F71', shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.35, shadowRadius: 14, elevation: 8,
-    },
-    greetingCard: {
-      backgroundColor: colors.surface, borderRadius: 22,
-      paddingHorizontal: 20, paddingVertical: 18,
-      marginTop: -18, width: '100%',
-      shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
-    },
-    greetingTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '800', marginBottom: 6 },
-    greetingBody: { color: colors.textSecondary, fontSize: 14.5, lineHeight: 21 },
-    heroCaret: { marginTop: 4 },
-    promptLabel: {
-      color: colors.textPrimary, fontSize: 16, fontWeight: '700',
-      textAlign: 'center', marginTop: 16, marginBottom: 12,
-    },
-    chipsGrid: {
-      flexDirection: 'row', flexWrap: 'wrap',
-      gap: 10, width: '100%',
-    },
-    chip: { flexBasis: '47%', flexGrow: 1, borderRadius: 18, minHeight: 48, overflow: 'hidden' },
-    chipInner: {
-      flex: 1, flexDirection: 'row', alignItems: 'center',
-      justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 12, gap: 6,
-    },
-    chipEmoji: { fontSize: 15 },
-    chipLabel: { color: '#fff', fontWeight: '700', fontSize: 13.5 },
-
-    // Roxy's small avatar mark shown beside her bubbles — the identity cue
-    // that makes her messages read as distinct from the user's own.
-    roxyAvaSlot: { width: 26, marginRight: 8, alignSelf: 'flex-end' },
-    roxyAva: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-
-    bubbleWrap: { flexDirection: 'row', marginVertical: 4, alignItems: 'flex-end' },
-    bubbleWrapUser: { justifyContent: 'flex-end' },
-    bubbleWrapRoxy: { justifyContent: 'flex-start' },
-    bubble: { maxWidth: '78%', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 11 },
-    bubbleUser: {
-      backgroundColor: colors.primary, borderBottomRightRadius: 6,
-      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 1,
-    },
-    bubbleRoxy: {
-      backgroundColor: colors.surface, borderBottomLeftRadius: 6,
-      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 1,
-    },
-    bubbleText: { fontSize: 15, lineHeight: 22 },
-    bubbleTextUser: { color: inkOn(colors.primary) },
-    bubbleTextRoxy: { color: colors.textPrimary },
-
-    thinkingWrap: { flexDirection: 'row', alignItems: 'flex-end', marginVertical: 4 },
-    thinkingBubble: {
-      backgroundColor: colors.surface, borderRadius: 20, borderBottomLeftRadius: 6,
-      paddingHorizontal: 14, paddingVertical: 10,
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-    },
-    thinkingText: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic' },
-
-    inputArea: {
-      flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 16, paddingVertical: 12,
-      borderTopWidth: 1, borderTopColor: colors.surfaceLight, gap: 10,
-    },
-    input: {
-      flex: 1, backgroundColor: colors.surface, borderRadius: 24,
-      paddingHorizontal: 18, paddingVertical: 12,
-      color: colors.textPrimary, fontSize: 15, maxHeight: 100, minHeight: 44,
-    },
-    inputDisabled: { opacity: 0.5 },
-    sendBtn: { borderRadius: 24, minHeight: 44, minWidth: 76, overflow: 'hidden' },
-    sendBtnGradient: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-    sendBtnDisabled: { opacity: 0.4 },
-    sendBtnText: { color: inkOn(BRAND_GRADIENT[1]), fontWeight: '700', fontSize: 15 },
-  });
+  const greeting = greetingFor(new Date(), firstNameOf(profile?.display_name));
+  const firstTime = messages[0]
+    ? new Date(messages[0].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : null;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
-        {/* Header */}
-        <View style={styles.header}>
+    <SafeAreaView style={[s.container, { backgroundColor: colors.ground }]} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView style={s.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={s.header}>
           <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backBtn}
+            onPress={goBack}
+            style={s.iconBtn}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel="Back"
           >
-            <Ionicons name="chevron-back" size={16} color={colors.textSecondary} />
+            <Ionicons name="chevron-back" size={24} color={colors.ink} />
           </TouchableOpacity>
-          <LinearGradient colors={BRAND_GRADIENT} style={styles.headerMark}>
-            <View style={styles.headerMarkInner}>
-              <Ionicons name="sparkles" size={16} color={colors.primaryInk} />
-            </View>
-          </LinearGradient>
-          <View style={styles.headerCenter}>
-            <View style={styles.headerNameRow}>
-              <Text style={styles.headerTitle}>Roxy</Text>
-              <View style={styles.headerTag}>
-                <Text style={styles.headerTagText}>WINGWOMAN</Text>
-              </View>
-            </View>
-            <Text style={styles.headerSub}>● always on — replies instantly</Text>
+          <RoxyO size={HEADER_O} mood={isTyping ? 'think' : 'open'} testID="roxy-chat-header-o" />
+          <View style={s.headerText}>
+            <Text style={[s.name, { color: colors.ink }]} accessibilityRole="header">Roxy AI</Text>
+            <Text style={[s.meta, { color: colors.ink2 }]}>Only you see this chat</Text>
           </View>
+          <TouchableOpacity
+            onPress={() => setMenuOpen(true)}
+            style={s.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="More"
+            testID="roxy-chat-more"
+          >
+            <Ionicons name="ellipsis-horizontal" size={24} color={colors.ink} />
+          </TouchableOpacity>
         </View>
 
-        {/* Messages */}
         <ScrollView
           ref={scrollRef}
-          style={styles.messageList}
-          contentContainerStyle={styles.messageListContent}
+          style={s.fill}
+          contentContainerStyle={s.list}
           keyboardShouldPersistTaps="handled"
+          testID="roxy-chat-list"
         >
-          {messages.length === 0 && (
-            <Animated.View
-              style={[
-                styles.heroWrap,
-                { transform: [{ scale: heroAnim }] },
-              ]}
-            >
-              <LinearGradient colors={BRAND_GRADIENT} style={styles.heroAvatarRing}>
-                <Ionicons name="sparkles" size={38} color="#fff" />
-              </LinearGradient>
-
-              <View style={styles.greetingCard}>
-                <Text style={styles.greetingTitle}>Hey! I'm Roxy 😄</Text>
-                <Text style={styles.greetingBody}>
-                  Your WLW wingwoman 💜{'\n'}Ask me anything — dating, confidence… or decoding her last text 👀
-                </Text>
-              </View>
-
-              <Ionicons name="caret-down" size={16} color={colors.roxy} style={styles.heroCaret} />
-
-              <Text style={styles.promptLabel}>What's on your mind today?</Text>
-
-              <View style={styles.chipsGrid}>
-                {SUGGESTIONS.map((s) => (
-                  <TouchableOpacity
-                    key={s.label}
-                    style={styles.chip}
-                    onPress={() => handleSuggestion(s.prompt)}
-                    disabled={loading}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Ask Roxy about ${s.label}`}
-                  >
-                    <LinearGradient colors={s.gradient} style={styles.chipInner}>
-                      <Text style={styles.chipEmoji}>{s.emoji}</Text>
-                      <Text style={styles.chipLabel}>{s.label}</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
+          {messages.length === 0 ? (
+            <View style={s.hello} testID="roxy-chat-hello">
+              <RoxyO size={HELLO_O} mood="happy" />
+              <Text style={[s.greeting, { color: colors.ink }]}>{greeting.line1}</Text>
+              <Text style={[s.greeting, { color: colors.ink }]}>{greeting.line2}</Text>
+              <Text style={[s.intro, { color: colors.ink }]}>
+                I&apos;m here for the big stuff and the small stuff. Pick one or just start typing.
+              </Text>
+              <View style={s.chips}>
+                {HELLO_SUGGESTIONS.map((text) => (
+                  <RoxyChip key={text} label={text} onPress={() => void send(text)} disabled={isTyping} />
                 ))}
               </View>
-            </Animated.View>
+            </View>
+          ) : (
+            <Text style={[s.meta, s.when, { color: colors.ink2 }]}>{`Today ${firstTime}`}</Text>
           )}
 
-          {messages.map((msg, idx) => (
-            <View
-              key={idx}
-              style={[
-                styles.bubbleWrap,
-                msg.role === 'user' ? styles.bubbleWrapUser : styles.bubbleWrapRoxy,
-              ]}
-            >
-              {msg.role === 'roxy' && (
-                <View style={styles.roxyAvaSlot}>
-                  <LinearGradient colors={BRAND_GRADIENT} style={styles.roxyAva}>
-                    <Ionicons name="sparkles" size={12} color="#fff" />
-                  </LinearGradient>
-                </View>
-              )}
-              <View style={[styles.bubble, msg.role === 'user' ? styles.bubbleUser : styles.bubbleRoxy]}>
-                <Text style={[styles.bubbleText, msg.role === 'user' ? styles.bubbleTextUser : styles.bubbleTextRoxy]}>
-                  {msg.content}
-                </Text>
-              </View>
-            </View>
+          {messages.map((m, i) => (
+            <RoxyBubble
+              key={`${m.id}-${i}`}
+              role={m.role}
+              content={m.content}
+              index={i}
+              fresh={m.role === 'roxy' && i >= seenAtOpen.current}
+            />
           ))}
 
-          {loading && (
-            <View style={styles.thinkingWrap}>
-              <View style={styles.roxyAvaSlot}>
-                <LinearGradient colors={BRAND_GRADIENT} style={styles.roxyAva}>
-                  <Ionicons name="sparkles" size={12} color="#fff" />
-                </LinearGradient>
-              </View>
-              <View style={styles.thinkingBubble}>
-                <Text style={styles.thinkingText}>Roxy is thinking…</Text>
-                <ActivityIndicator size="small" color={colors.roxy} />
-              </View>
+          {failure ? (
+            <View style={s.failure} accessibilityLiveRegion="polite">
+              <Text style={[s.meta, s.failureText, { color: colors.dangerInk }]}>{failure.message}</Text>
+              <TouchableOpacity
+                onPress={() => void retryRoxy(userId)}
+                accessibilityRole="button"
+                accessibilityLabel="Retry"
+                style={s.retry}
+              >
+                <Text style={[s.retryLabel, { color: colors.pinkInk }]}>Retry</Text>
+              </TouchableOpacity>
             </View>
-          )}
+          ) : null}
+
+          {showFollowUps ? (
+            <View style={[s.chips, s.followUps]}>
+              {FOLLOW_UPS.map((text) => (
+                <RoxyChip key={text} label={text} onPress={() => void send(text)} />
+              ))}
+            </View>
+          ) : null}
+
+          {isTyping ? (
+            <View style={s.writing}>
+              <RoxyWriting testID="roxy-chat-writing" />
+            </View>
+          ) : null}
         </ScrollView>
 
-        {/* Input */}
-        <View style={styles.inputArea}>
-          <TextInput
-            style={[styles.input, loading && styles.inputDisabled]}
-            value={input}
-            onChangeText={setInput}
-            placeholder="Ask Roxy anything…"
-            placeholderTextColor={colors.textMuted}
-            multiline
-            editable={!loading}
-            returnKeyType="default"
-            accessibilityLabel="Message Roxy"
-            // Web: Enter sends, Shift+Enter inserts a newline (chat convention).
-            onKeyPress={(e: any) => {
-              if (Platform.OS === 'web' && e.nativeEvent?.key === 'Enter' && !e.nativeEvent?.shiftKey) {
-                e.preventDefault?.();
-                if (input.trim() && !loading) void handleSend();
-              }
-            }}
-          />
-          <TouchableOpacity
-            style={[styles.sendBtn, (loading || !input.trim()) && styles.sendBtnDisabled]}
-            onPress={handleSend}
-            disabled={loading || !input.trim()}
-            accessibilityRole="button"
-            accessibilityLabel="Send message"
+        <View style={s.composerWrap}>
+          <View
+            testID="roxy-chat-composer"
+            style={[s.composer, { backgroundColor: colors.surface, borderColor: colors.control }]}
           >
-            <LinearGradient colors={BRAND_GRADIENT} style={styles.sendBtnGradient}>
-              <Text style={styles.sendBtnText}>Send</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+            <TextInput
+              style={[s.input, { color: colors.ink }]}
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Message Roxy AI"
+              placeholderTextColor={colors.ink3}
+              multiline
+              accessibilityLabel="Message Roxy AI"
+              // Web: Enter sends, Shift+Enter inserts a newline (chat convention).
+              onKeyPress={(e) => {
+                const ne = e.nativeEvent as { key?: string; shiftKey?: boolean };
+                if (Platform.OS === 'web' && ne.key === 'Enter' && !ne.shiftKey) {
+                  (e as unknown as { preventDefault?: () => void }).preventDefault?.();
+                  void send(draft);
+                }
+              }}
+            />
+            <TouchableOpacity
+              testID="roxy-chat-send"
+              onPress={() => void send(draft)}
+              disabled={!canSend}
+              accessibilityRole="button"
+              accessibilityLabel="Send"
+              {...a11yState({ disabled: !canSend })}
+              style={[s.send, { backgroundColor: canSend ? colors.pink : colors.raised }]}
+            >
+              <Ionicons name="paper-plane-outline" size={22} color={canSend ? colors.onPink : colors.ink3} />
+            </TouchableOpacity>
+          </View>
+          <Text style={[s.meta, s.footer, { color: colors.ink2 }]}>
+            Roxy AI can be wrong. Keep passwords and addresses to yourself.
+          </Text>
         </View>
       </KeyboardAvoidingView>
+
+      <Snackbar
+        visible={snack}
+        message={ROXY_OFF_COPY}
+        actionLabel="Undo"
+        onAction={() => void useRoxyFab.getState().setEnabled(userId, true)}
+        onDismiss={() => setSnack(false)}
+        bottom={insets.bottom + MIN_TOUCH_TARGET + SPACE[6]}
+        testID="roxy-chat-snackbar"
+      />
+
+      <Modal visible={menuOpen} transparent animationType="none" onRequestClose={() => setMenuOpen(false)}>
+        <Pressable
+          style={[StyleSheet.absoluteFill, { backgroundColor: scrim(0.16) }]}
+          onPress={() => setMenuOpen(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Close menu"
+        />
+        <View
+          style={[s.menu, floatElevation(colors), { backgroundColor: colors.surface, top: insets.top + MIN_TOUCH_TARGET + SPACE[2] }]}
+          accessibilityViewIsModal
+        >
+          <MenuRow icon="trash-outline" label="Clear chat" onPress={() => void clearChat()} />
+          <MenuRow icon="flag-outline" label="Report a reply" onPress={reportReply} />
+          <MenuRow
+            icon="power-outline"
+            label={roxyEnabled ? 'Turn off Roxy AI' : 'Turn on Roxy AI'}
+            onPress={() => void toggleRoxy()}
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
+
+function MenuRow({
+  icon, label, onPress,
+}: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
+  const colors = useThemeColors();
+  return (
+    <TouchableOpacity onPress={onPress} accessibilityRole="menuitem" accessibilityLabel={label} style={s.menuRow}>
+      <Ionicons name={icon} size={24} color={colors.ink2} />
+      <Text style={[s.menuLabel, { color: colors.ink }]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const s = StyleSheet.create({
+  container: { flex: 1 },
+  fill: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE[2],
+    paddingStart: SPACE[0],
+    paddingEnd: SPACE[0],
+    paddingVertical: SPACE[1],
+  },
+  iconBtn: {
+    width: MIN_TOUCH_TARGET,
+    height: MIN_TOUCH_TARGET,
+    borderRadius: RADII.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerText: { flex: 1, minWidth: 0 },
+  name: { ...emphasized('title') },
+  meta: { ...TYPE.meta },
+  list: { paddingHorizontal: MARGIN, paddingVertical: SPACE[3], gap: SPACE[2], flexGrow: 1 },
+  when: { textAlign: 'center' },
+  hello: { gap: SPACE[1], paddingTop: SPACE[4] },
+  greeting: { ...TYPE.headline },
+  intro: { ...TYPE.body, marginTop: SPACE[1] },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE[1], marginTop: SPACE[3] },
+  followUps: { marginTop: 0, paddingStart: BUBBLE_O + SPACE[1] },
+  failure: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: SPACE[1] },
+  failureText: { flexShrink: 1, textAlign: 'right' },
+  retry: { minHeight: MIN_TOUCH_TARGET, paddingHorizontal: SPACE[2], justifyContent: 'center', borderRadius: RADII.pill },
+  retryLabel: { ...emphasized('label') },
+  writing: { paddingStart: SPACE[0] },
+  composerWrap: { paddingHorizontal: MARGIN, paddingTop: SPACE[1], paddingBottom: SPACE[1], gap: SPACE[1] },
+  composer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    borderRadius: RADII.sheet,
+    borderWidth: COMPOSER_OUTLINE,
+    paddingStart: MARGIN,
+    paddingEnd: SPACE[0],
+    paddingVertical: SPACE[0],
+    minHeight: MIN_TOUCH_TARGET + SPACE[1],
+  },
+  input: { ...TYPE.body, flex: 1, maxHeight: COMPOSER_MAX, paddingVertical: SPACE[2] },
+  send: {
+    width: MIN_TOUCH_TARGET,
+    height: MIN_TOUCH_TARGET,
+    borderRadius: RADII.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footer: { textAlign: 'center' },
+  menu: {
+    position: 'absolute',
+    end: MARGIN,
+    borderRadius: RADII.md,
+    paddingVertical: SPACE[1],
+  },
+  menuRow: {
+    minHeight: MIN_TOUCH_TARGET + SPACE[1],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE[2],
+    paddingHorizontal: MARGIN,
+  },
+  menuLabel: { ...TYPE.label },
+});

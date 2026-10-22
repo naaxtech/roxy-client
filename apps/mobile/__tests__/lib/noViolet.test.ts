@@ -15,8 +15,12 @@ import path from 'path';
 const ROOT = path.resolve(__dirname, '../..');
 const DIRS = ['app', 'components', 'lib', 'hooks', 'store'];
 
-/** Wave 2 owns these files (Roxy AI chat lane); remove once it lands. */
-const WAVE2_EXEMPT = new Set(['app/roxy-chat.tsx']);
+/**
+ * Files exempt while another lane rewrote them. Empty since Wave 2's Roxy AI
+ * lane rewrote `app/roxy-chat.tsx` on tokens (its violet chip gradient went
+ * with the v0 chat chrome). Add a name here only with the lane that owns it.
+ */
+const WAVE2_EXEMPT = new Set<string>([]);
 
 function walk(dir: string, out: string[]): string[] {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -12,6 +12,8 @@ import { useBuildStore } from '../../../store/buildStore';
 import { TYPE, FONTS } from '../../../lib/typography';
 import { RADII, type ThemeColors } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
+import { onListScroll, LIST_SCROLL_THROTTLE } from '../../../lib/roxyFab';
+import { FAB_LANE } from '../../../components/nav/navTokens';
 import { formatMoney } from '../../../lib/currency';
 import { isPlayableGameUrl } from '../../../lib/gameUrl';
 import { fetchUnreadNotificationCount } from '../../../lib/notifications';
@@ -243,7 +245,14 @@ function DiscoverScreen() {
         />
       </View>
 
-      <ScrollView contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[s.body, { paddingBottom: FAB_LANE }]}
+        showsVerticalScrollIndicator={false}
+        // Roxy AI's lane (roxy-ai lane props): she tucks while this scrolls
+        // down, and the list ends FAB_LANE higher so nothing parks under her.
+        onScroll={onListScroll}
+        scrollEventThrottle={LIST_SCROLL_THROTTLE}
+      >
         {/* qotd leads the all-view, ahead of hero — a today thing below a
             browse rail is a today thing nobody scrolls far enough to answer.
             Gated on a real user id: the card's own query is

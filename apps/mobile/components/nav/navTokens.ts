@@ -45,6 +45,30 @@ export const CREATE_KEY = { width: 52, height: 40, radius: 12 } as const;
 export const UNREAD_DOT = 8;
 
 /**
+ * The Roxy AI button's lane (design direction v2 › The Roxy AI button): an
+ * 88 × 88 dp square at the bottom end corner, directly above the bar. At rest
+ * nothing readable or tappable sits inside it: lists end `FAB_LANE` higher
+ * (bottom padding), the Feed rail starts at its top and captions keep an end
+ * margin of `FAB_LANE`. `feedChromeTokens.ts` mirrors the 88; keep them equal.
+ */
+export const FAB_LANE = 88;
+
+/** The Roxy O at rest: a 56 dp circle. */
+export const FAB_SIZE = 56;
+
+/** The Roxy O tucked while a list scrolls down: 40 dp, centred on the edge. */
+export const FAB_TUCKED = 40;
+
+/** The button's distance from the end edge and from the top of the bar. */
+export const FAB_MARGIN = 16;
+
+/**
+ * The tucked button's hit area: 28 dp of it shows inside the screen (20 of the
+ * O plus 8), 48 dp tall so it stays a real target.
+ */
+export const FAB_TUCKED_HIT = { width: 28, height: 48 } as const;
+
+/**
  * RETIRED with the floating pill (v2: the bar is docked full width, so there
  * is no inset). Kept exported for any caller still reading it. Origin: the
  * Roxy 3.0 shell (`git log -S PILL_INSET`). Superseded 2026-10-21; remove once
