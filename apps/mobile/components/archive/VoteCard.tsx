@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { PressableScale } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
@@ -63,6 +64,8 @@ export function VoteCard({
     starRow: { alignItems: 'flex-start', gap: 2 },
     stars: { flexDirection: 'row', alignSelf: 'flex-start' },
     value: { ...TYPE.micro, color: colors.textMuted, paddingHorizontal: 4 },
+    // The press layer rounds like the star's own 48 dp target.
+    starPress: { borderRadius: RADII.pill },
     star: {
       minWidth: MIN_TOUCH_TARGET,
       minHeight: MIN_TOUCH_TARGET,
@@ -106,7 +109,7 @@ export function VoteCard({
           // never withdrawn. `onRate(0)` is what makes it 0..5 exactly.
           const next = n === filled ? 0 : n;
           return (
-            <Pressable key={n} onPress={() => onRate(next)} accessible={false}>
+            <PressableScale key={n} onPress={() => onRate(next)} accessible={false} style={s.starPress}>
               <View
                 testID={id}
                 style={s.star}
@@ -124,7 +127,7 @@ export function VoteCard({
                   color={selected ? colors.primary : colors.textMuted}
                 />
               </View>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>
@@ -163,7 +166,7 @@ export function VoteCard({
             onToggle={() => onAckChange?.(!ack)}
             testID={testID ? `${testID}-ack` : undefined}
           />
-          <Pressable
+          <PressableScale
             testID={testID ? `${testID}-review-submit` : undefined}
             style={[s.submit, (commentBusy || !ack || !(comment ?? '').trim()) && { opacity: 0.5 }]}
             onPress={commentBusy || !ack || !(comment ?? '').trim() ? undefined : onSubmitComment}
@@ -172,7 +175,7 @@ export function VoteCard({
             accessibilityLabel="Post review"
           >
             <Text style={s.submitText}>{commentBusy ? 'Posting…' : 'Post review'}</Text>
-          </Pressable>
+          </PressableScale>
         </>
       ) : null}
       {note ? (

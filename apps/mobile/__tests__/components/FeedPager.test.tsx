@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
-import { Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { FeedPager } from '../../components/feed/FeedPager';
 import type { FeedPagerCell } from '../../components/feed/FeedPager';
 
@@ -586,6 +586,39 @@ describe('FeedPager active item reporting', () => {
     mountPager({ items: [], onActiveItemChange });
 
     expect(onActiveItemChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('FeedPager touch snap on web (jank audit #1)', () => {
+  const realOS = Platform.OS;
+  afterEach(() => { Platform.OS = realOS; });
+
+  /**
+   * CSS scroll-snap needs every page to declare where it comes to rest. That
+   * used to be found by measuring every node for one page of height, after
+   * the fact — which never ran, because the list had not drawn yet. The page
+   * frame carries it from its first render instead.
+   */
+  it('wraps each web page in a frame that snaps to its start, one page per flick', () => {
+    Platform.OS = 'web';
+    mountPager();
+
+    const page = render(latest().renderItem({ item: ITEMS[1], index: 1 }) as React.ReactElement);
+    const frame = page.getByTestId('feed-pager-page');
+    const style = StyleSheet.flatten(frame.props.style) as Record<string, unknown>;
+
+    expect(style.scrollSnapAlign).toBe('start');
+    expect(style.scrollSnapStop).toBe('always');
+    expect(style.height).toBe(PAGE_H);
+    expect(page.getByTestId('cell-b')).toBeTruthy();
+  });
+
+  it('adds no frame on native, where snapToInterval pages the list', () => {
+    mountPager();
+
+    const page = render(latest().renderItem({ item: ITEMS[1], index: 1 }) as React.ReactElement);
+    expect(page.queryByTestId('feed-pager-page')).toBeNull();
+    expect(page.getByTestId('cell-b')).toBeTruthy();
   });
 });
 

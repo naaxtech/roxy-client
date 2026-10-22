@@ -21,9 +21,11 @@ import { fetchUnreadNotificationCount } from '../../../lib/notifications';
 import { logError } from '../../../lib/errorLogger';
 import { Rail } from '../../../components/discover/Rail';
 import { ArchiveRail } from '../../../components/archive/ArchiveRail';
+import { fetchArchiveTotal } from '../../../components/archive/archiveCount';
 import { fetchArchiveEntries, type ArchiveEntry } from '../../../lib/archive';
 import { archiveDetailPath } from '../../../lib/contentNavigation';
 import { FilterChips } from '../../../components/discover/FilterChips';
+import { byTheme } from '../../../components/discover/byTheme';
 import {
   EventPoster, CommunityRow, LiveRow, ListRow, MemberCard, TileCard, type JoinState,
 } from '../../../components/discover/DiscoverCards';
@@ -114,15 +116,16 @@ function DiscoverScreen() {
   const loadArchive = useCallback(async () => {
     setArchiveStatus('loading');
     try {
-      const [top, all] = await Promise.all([
+      // The total is a count (head request), not 200 rows measured (jank audit #4).
+      const [top, total] = await Promise.all([
         fetchArchiveEntries({ sort: 'top', limit: 12 }),
-        fetchArchiveEntries({ sort: 'voted', limit: 200 }),
+        fetchArchiveTotal(),
       ]);
       setArchiveEntries(top);
-      setArchiveTotal(all.length);
+      setArchiveTotal(total);
       setArchiveStatus('ready');
     } catch {
-      // fetchArchiveEntries logs before throwing; logging again double-reports.
+      // Both fetchers log before throwing; logging again double-reports.
       setArchiveStatus('error');
     }
   }, []);
@@ -303,6 +306,7 @@ function DiscoverScreen() {
                   : 'Nothing on the calendar yet. Your communities post events here first.'
             }
             onRetry={events.reload}
+            skeleton={{ kind: 'poster', width: cardWidth }}
             testID="rail-events"
             filters={
               <FilterChips
@@ -340,6 +344,7 @@ function DiscoverScreen() {
             onRetry={() => void hydrate(user?.id)}
             linkLabel={placedCommunities.length > shownCommunities.length || chip === 'all' ? 'See all' : undefined}
             onLinkPress={() => router.push('/communities' as never)}
+            skeleton={{ kind: 'row', count: COMMUNITY_ROWS }}
             testID="rail-communities"
           >
             {joinError ? (
@@ -391,6 +396,7 @@ function DiscoverScreen() {
             count={live.rows.length}
             emptyBody="Nothing live right now. Rooms open through the day."
             onRetry={live.reload}
+            skeleton={{ kind: 'row' }}
             testID="rail-live"
           >
             {live.rows.map((room) => (
@@ -422,6 +428,7 @@ function DiscoverScreen() {
                     : 'No shops here yet.'
             }
             onRetry={kind === 'shops' ? () => void loadShops() : kind === 'impact' ? impact.reload : support.reload}
+            skeleton={kind === 'support' ? { kind: 'row' } : { kind: 'tile', width: cardWidth }}
             testID="rail-economy"
             filters={
               <FilterChips
@@ -477,6 +484,7 @@ function DiscoverScreen() {
             count={games.rows.length}
             emptyBody="No games yet. New ones land here first."
             onRetry={games.reload}
+            skeleton={{ kind: 'row' }}
             testID="rail-games"
           >
             {games.rows.map((g) => (
@@ -507,6 +515,7 @@ function DiscoverScreen() {
             count={topMembers.length}
             emptyBody="Nobody on the board yet."
             onRetry={() => void loadTopMembers()}
+            skeleton={{ kind: 'member', width: cardWidth }}
             testID="rail-top10"
           >
             {topMembers.map((m, i) => (
@@ -534,7 +543,8 @@ function DiscoverScreen() {
   );
 }
 
-const styles = (colors: ThemeColors) => StyleSheet.create({
+// Built once per theme, not on every render (jank audit #8).
+const styles = byTheme((colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ground },
   header: {
     paddingHorizontal: MARGIN, paddingTop: SPACE[2], paddingBottom: SPACE[1], gap: SPACE[2],
@@ -560,7 +570,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   body: { paddingBottom: 8 },
   qotd: { marginHorizontal: MARGIN, marginTop: SPACE[5] },
   tail: { height: 120 },
-});
+}));
 
 export default function DiscoverRoute() {
   return (

@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { MARGIN, RADII, SPACE } from '../../lib/theme';
@@ -19,9 +20,10 @@ export function isCaughtUpItem(item: { id: string }): item is CaughtUpItem {
 /**
  * The end of the feed (direction v2 › Feed): "You're caught up. Your
  * communities are talking in Messages." with the way there. On the stage, in
- * stage ink, clear of the Roxy AI lane. No emoji, no illustration.
+ * stage ink, clear of the Roxy AI lane. No emoji, no illustration. Memoised:
+ * a page change re-runs every mounted cell's render (jank audit #5).
  */
-export function CaughtUpCell({
+export const CaughtUpCell = memo(function CaughtUpCell({
   width, height, onOpenMessages,
 }: { width: number; height: number; onOpenMessages: () => void }): ReactElement {
   return (
@@ -41,7 +43,7 @@ export function CaughtUpCell({
       </View>
     </View>
   );
-}
+});
 
 const s = StyleSheet.create({
   page: { backgroundColor: STAGE_BG, justifyContent: 'center' },

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
+import { IMAGE_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import { getVideoPlaybackUrl, getPostImageUrl } from '../../lib/media';
 
 let AVModule: typeof import('expo-av') | null = null;
@@ -34,6 +35,46 @@ type AvVideoInstance = InstanceType<typeof import('expo-av').Video>;
  * src: https://source.android.com/docs/compatibility/15/android-15-cdd · media performance class · 2026-08-05
  */
 const DECODER_WINDOW = 1;
+
+/**
+ * Whether the cell at `index` is inside the decoder window around the active
+ * cell. Omitted positions (a single-video screen) are always near. Exported so
+ * a memoised cell can tell whether a page change moved it in or out of the
+ * window — the only thing about the active INDEX a video cell renders from.
+ */
+export function decoderNear(index?: number, activeIndex?: number): boolean {
+  return index == null || activeIndex == null || Math.abs(index - activeIndex) <= DECODER_WINDOW;
+}
+
+/** The parts of the Network Information API this reads (Chromium-only, so optional). */
+export interface ConnectionHint {
+  effectiveType?: string;
+  saveData?: boolean;
+}
+
+/**
+ * How much of a clip the web player may fetch before she is on its page.
+ *
+ * The clip she is watching loads in full. A neighbour inside the decoder window
+ * fetches only its metadata, so it can show its first frame the moment she
+ * lands — and on a slow or data-saving connection nothing at all: its poster
+ * covers it, and the bandwidth goes to the requests the screen is waiting on.
+ * Before this every near cell mounted `<video src>` with the browser's default
+ * preload, and on Fast 4G the app's own API calls took 3-6 s while the backend
+ * answered in under 1 s (jank audit #10).
+ */
+export function videoPreload(isActive: boolean, connection?: ConnectionHint): 'auto' | 'metadata' | 'none' {
+  if (isActive) return 'auto';
+  const slow = connection?.saveData === true
+    || (connection?.effectiveType != null && connection.effectiveType !== '4g');
+  return slow ? 'none' : 'metadata';
+}
+
+/** `navigator.connection` where the browser has one. */
+function currentConnection(): ConnectionHint | undefined {
+  if (typeof navigator === 'undefined') return undefined;
+  return (navigator as Navigator & { connection?: ConnectionHint }).connection;
+}
 
 interface Props {
   videoUrl: string | null | undefined;
@@ -71,8 +112,7 @@ export function FeedVideoPlayer({
   // Cells outside the window unmount their player so the active video always
   // gets a decoder. `index`/`activeIndex` omitted (single-video screens) means
   // "always near" — there is nothing to compete with.
-  const near =
-    index == null || activeIndex == null || Math.abs(index - activeIndex) <= DECODER_WINDOW;
+  const near = decoderNear(index, activeIndex);
 
   // A recycled cell shows the previous clip's last frame until the new one
   // decodes; forget readiness whenever the clip changes — or whenever the player
@@ -124,6 +164,8 @@ export function FeedVideoPlayer({
    */
   const posterOverlay = posterUri ? (
     <Image
+      transition={IMAGE_TRANSITION}
+      cachePolicy={IMAGE_CACHE}
       testID="feed-video-poster"
       source={{ uri: posterUri }}
       contentFit="cover"
@@ -151,6 +193,7 @@ export function FeedVideoPlayer({
               pointerEvents: 'none',
             }}
             autoPlay={isActive}
+            preload={videoPreload(isActive, currentConnection())}
             loop
             muted={isMuted}
             playsInline

@@ -2,18 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import type {
-  LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent, ViewToken,
+  LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent, ViewStyle, ViewToken,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { activeIndexFromScroll } from '../../lib/reels';
 import { snapPageOffset } from '../../lib/feedPagerSnap';
 import {
   applyWebPageOffset,
-  applyTouchSnap,
+  watchTouchSnap,
   isTouchPointer,
   attachFeedPagerWebGestures,
   createFeedPagerWebController,
   findWebNode,
+  PAGE_FRAME_TESTID,
 } from '../../lib/feedPagerWeb';
 
 /** Everything the pager knows about one cell when it asks the caller to draw it. */
@@ -339,7 +340,12 @@ export function FeedPager<TItem>({
     // and carries the platform's own momentum curve; intercepting pointer
     // events to jump a page fights that momentum, which is exactly the stutter
     // this pager was reported for on a phone.
-    if (isTouchPointer()) return applyTouchSnap(node, pageHRef.current);
+    //
+    // The snap is WATCHED, not applied once: the list draws its scroller and
+    // cells in commits after this effect, so a one-shot apply found nothing on
+    // a phone and the feed never snapped (jank audit #1). Each page declares
+    // its own snap point through the page frame below.
+    if (isTouchPointer()) return watchTouchSnap(node, () => pageHRef.current);
     const controller = createFeedPagerWebController({
       getPageH: () => pageHRef.current,
       getCount: () => itemsLenRef.current,
@@ -347,11 +353,9 @@ export function FeedPager<TItem>({
       goToIndex: goToPage,
     });
     return attachFeedPagerWebGestures(node, controller);
-    // `items.length` is in the deps because the scroller does not EXIST until
-    // the list has enough content to overflow. Without it this ran once on an
-    // empty list, found nothing, and never looked again — so the snap was never
-    // applied on a device that needed it.
-  }, [showsList, goToPage, resolveFrameNode, pageH, items.length]);
+    // Page height and count are read through refs, so neither re-attaches the
+    // listeners; the list being (re)built is what this has to follow.
+  }, [showsList, goToPage, resolveFrameNode]);
 
   /** WHICH item is active, not merely which slot. */
   const activeItem: TItem | undefined = items[activeIndex];
@@ -437,9 +441,18 @@ export function FeedPager<TItem>({
       {...(onRefresh ? { onRefresh, refreshing, progressViewOffset: REFRESH_OFFSET } : {})}
       viewabilityConfig={viewabilityConfig}
       onViewableItemsChanged={onViewableItemsChanged}
-      renderItem={({ item, index }) => renderCell({
-        item, index, activeIndex, activeItemId, width, height: pageH,
-      })}
+      renderItem={({ item, index }) => {
+        const cell = renderCell({
+          item, index, activeIndex, activeItemId, width, height: pageH,
+        });
+        // Web pages declare their own CSS snap point (the scroller carries the
+        // snap type, `watchTouchSnap`); native pages on snapToInterval.
+        return web ? (
+          <View testID={PAGE_FRAME_TESTID} style={[styles.webPage, { height: pageH }]}>
+            {cell}
+          </View>
+        ) : cell;
+      }}
     />
   ) : null;
 
@@ -454,4 +467,12 @@ export function FeedPager<TItem>({
 // it never reads the theme.
 const styles = StyleSheet.create({
   frame: { flex: 1, backgroundColor: '#000' },
+  // One page per flick on a touch screen: `start` is where a page rests and
+  // `always` stops a fast fling from sailing past the next page — the web
+  // twin of native's `disableIntervalMomentum`. Web-only CSS properties that
+  // react-native-web passes through; RN's own style types do not list them.
+  webPage: {
+    scrollSnapAlign: 'start',
+    scrollSnapStop: 'always',
+  } as unknown as ViewStyle,
 });

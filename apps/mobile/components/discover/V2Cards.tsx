@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
+import { IMAGE_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { initialsOf } from '../ui/Avatar';
@@ -11,7 +12,9 @@ import {
 } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { Crest, CREST_RADIUS_RATIO } from './Crest';
-import { LiveDot } from './LiveDot';
+import { Skeleton } from '../feedback/Skeleton';
+import { LiveDot } from './LiveDot';
+import { byTheme } from './byTheme';
 
 /**
  * Discover's v2 cards and rows (design direction v2 › Discover, board v2-05).
@@ -31,6 +34,8 @@ const CREST = 48;
 const POSTER_RATIO = 4 / 3;
 const PHOTO_RATIO = 5 / 4;
 const TILE_RATIO = 3 / 4;
+/** A Top 10 name may take two lines (and every card keeps room for two). */
+const MEMBER_NAME_LINES = 2;
 
 // — Event poster ——————————————————————————————————————————————————————
 
@@ -250,6 +255,8 @@ export function MemberCard({
   } else if (avatarUrl) {
     face = (
       <ExpoImage
+        transition={IMAGE_TRANSITION}
+        cachePolicy={IMAGE_CACHE}
         source={{ uri: avatarUrl }}
         style={[st.photo, box] as never}
         contentFit="cover"
@@ -276,7 +283,10 @@ export function MemberCard({
       {face}
       <View style={st.rankLine}>
         <Text style={st.rank} testID={testID ? `${testID}-rank` : undefined}>{rank}</Text>
-        <Text style={st.title} numberOfLines={1}>{name}</Text>
+        {/* Two lines, reserved on every card: a long name wraps at a word
+            instead of being cut (live discover-audit, Wave 2: "Aimee Naught
+            Straight" needed 156 px of a 134 px line), and the row stays even. */}
+        <Text style={[st.title, st.memberName]} numberOfLines={MEMBER_NAME_LINES}>{name}</Text>
       </View>
       <Text style={st.meta} numberOfLines={1}>{subtitle}</Text>
     </TouchableOpacity>
@@ -321,6 +331,94 @@ export function TileCard({ seed, title, meta, width, onPress, testID }: TileCard
   );
 }
 
+// — Skeletons ———————————————————————————————————————————————————————————
+
+/** Which card a loading placeholder stands in for. */
+export type CardSkeletonKind = 'poster' | 'member' | 'tile' | 'row';
+
+export interface CardSkeletonProps {
+  kind: CardSkeletonKind;
+  /** The card's width (posters, member and tile cards); rows fill the line. */
+  width?: number;
+  testID?: string;
+}
+
+/**
+ * One card's loading shape at that card's FINAL geometry (budgets F8/F9).
+ *
+ * Built from the same ratios and style objects as the card it stands for —
+ * the poster's 3:4 box, the photo's 4:5 plus the rank and meta lines at their
+ * line heights, the tile's 4:3 plus two title lines, the row's 72 dp — so the
+ * rail does not move when content lands. Discover used one 140 x 180 box for
+ * every card and 48 dp rows for every row (jank audit #4: tab-cycle CLS 0.19).
+ */
+export function CardSkeleton({ kind, width = 0, testID }: CardSkeletonProps) {
+  const colors = useThemeColors();
+  const st = rowStyles(colors);
+  const id = (part: string) => (testID ? `${testID}-${part}` : undefined);
+  // The card's own Text, same style and line budget, ink invisible: the line
+  // boxes come out identical whatever the font, with no guessed heights.
+  const ghost = (part: string, style: object, lines?: number) => (
+    <Text style={[style, sk.ghostInk]} numberOfLines={lines} testID={id(part)}>{GHOST}</Text>
+  );
+  const bar = (short = false) => (
+    <Skeleton radius={RADII.pill} style={[sk.bar, short && sk.barShort]} />
+  );
+
+  if (kind === 'poster') {
+    return (
+      <Skeleton
+        width={width}
+        height={Math.round(width * POSTER_RATIO)}
+        radius={RADII.md}
+        style={s.poster}
+        testID={testID}
+      />
+    );
+  }
+  if (kind === 'row') {
+    return (
+      <View style={st.row} testID={testID}>
+        <Skeleton style={st.iconSquircle} radius={StyleSheet.flatten(st.iconSquircle).borderRadius as number} />
+        <View style={st.text}>
+          <View>{ghost('name', st.title, 1)}{bar()}</View>
+          <View>{ghost('meta', st.meta, 1)}{bar(true)}</View>
+        </View>
+      </View>
+    );
+  }
+  const member = kind === 'member';
+  return (
+    <View style={[st.card, { width }]} testID={testID}>
+      <Skeleton
+        width={width}
+        height={Math.round(width * (member ? PHOTO_RATIO : TILE_RATIO))}
+        radius={RADII.md}
+        testID={id('media')}
+      />
+      {member ? (
+        <View style={st.rankLine}>
+          {ghost('rank', st.rank)}
+          {ghost('name', [st.title, st.memberName], MEMBER_NAME_LINES)}
+          {bar()}
+        </View>
+      ) : (
+        <View>{ghost('name', [st.title, st.tileTitle], 2)}{bar()}</View>
+      )}
+      <View>{ghost('meta', st.meta, 1)}{bar(true)}</View>
+    </View>
+  );
+}
+
+/** A no-break space: one line box of the style's own height. */
+const GHOST = '\u00A0';
+
+const sk = StyleSheet.create({
+  ghostInk: { color: 'transparent' },
+  bar: { position: 'absolute', left: 0, top: SPACE[1] / 2, height: SPACE[2], width: '80%' },
+  barShort: { width: '55%', top: SPACE[0] },
+});
+
 const s = StyleSheet.create({
   poster: { borderRadius: RADII.md, padding: SPACE[2], overflow: 'hidden' },
   posterWhen: { ...emphasized('meta') },
@@ -330,7 +428,8 @@ const s = StyleSheet.create({
   posterDetail: { ...TYPE.meta },
 });
 
-const rowStyles = (colors: ThemeColors) => StyleSheet.create({
+// Built once per theme, not on every render (jank audit #8).
+const rowStyles = byTheme((colors: ThemeColors) => StyleSheet.create({
   row: {
     flexDirection: 'row', alignItems: 'center', gap: SPACE[2],
     minHeight: ROW_MIN, paddingHorizontal: MARGIN, paddingVertical: SPACE[1],
@@ -356,6 +455,7 @@ const rowStyles = (colors: ThemeColors) => StyleSheet.create({
   photoInitials: { ...TYPE.display },
   tileInitials: { ...TYPE.headline },
   tileTitle: { minHeight: TYPE.label.lineHeight * 2 },
+  memberName: { minHeight: TYPE.label.lineHeight * MEMBER_NAME_LINES },
   rankLine: { flexDirection: 'row', alignItems: 'baseline', gap: SPACE[1], marginTop: SPACE[0] },
   rank: { ...TYPE.title, color: colors.ink, fontVariant: ['tabular-nums'] },
-});
+}));

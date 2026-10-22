@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Image } from 'expo-image';
+import { IMAGE_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { supabase } from '../../lib/supabase';
@@ -95,7 +96,7 @@ export function ShoppableProductCard({ productId, testID = 'feed-cell-shop' }: P
       activeOpacity={0.85}
     >
       {photo?.url ? (
-        <Image source={{ uri: photo.url }} style={s.thumb} contentFit="cover" accessibilityLabel={product.name} />
+        <Image transition={IMAGE_TRANSITION} cachePolicy={IMAGE_CACHE} source={{ uri: photo.url }} style={s.thumb} contentFit="cover" accessibilityLabel={product.name} />
       ) : (
         <View style={s.thumbPlaceholder}>
           <Ionicons name="bag-handle" size={18} color="#FFF8FB" />

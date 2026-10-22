@@ -1,10 +1,11 @@
-import { useCallback } from 'react';
+import { memo, useCallback } from 'react';
 import type { ReactElement } from 'react';
 import { View } from 'react-native';
 import type { ReelRow } from '../../lib/reels';
 import type { PostType } from '../../types';
 import type { FeedCellChromeProps } from './FeedCellChrome';
 import { ReelCell } from './ReelCell';
+import { decoderNear } from './FeedVideoPlayer';
 import { PhotoCell } from './PhotoCell';
 import { TextCell } from './TextCell';
 import { PollCell } from './PollCell';
@@ -107,7 +108,36 @@ export function feedItemType(post: Pick<ReelRow, 'post_type'>): PostType {
  * Android half. Both are needed; neither covers the other platform.
  * src: https://reactnative-archive-august-2025.netlify.app/docs/0.74/accessibility · react-native 0.74.5 · 2026-08-07
  */
-export function FeedCell(props: FeedCellProps): ReactElement {
+export const FeedCell = memo(FeedCellImpl, feedCellPropsEqual);
+
+/**
+ * Whether a cell would render the same thing for `next` as it did for `prev`.
+ *
+ * A page change re-runs `renderItem` for every mounted cell (the pager's active
+ * item is in FlashList's `extraData`), and before this every one of them
+ * re-rendered its whole tree as the page landed (jank audit #5). The active
+ * index and id are compared by what a cell actually renders from — is THIS
+ * post the active one, and (video only) is it inside the decoder window —
+ * so only the page she left, the page she landed on and a video crossing the
+ * window edge render again. Everything else is compared by identity, which is
+ * why ReelsFeed hands each post stable callbacks.
+ */
+export function feedCellPropsEqual(prev: FeedCellProps, next: FeedCellProps): boolean {
+  const prevKeys = Object.keys(prev) as (keyof FeedCellProps)[];
+  if (prevKeys.length !== Object.keys(next).length) return false;
+  for (const key of prevKeys) {
+    if (key === 'activeIndex' || key === 'activeItemId') continue;
+    if (!Object.is(prev[key], next[key])) return false;
+  }
+  if ((prev.post.id === prev.activeItemId) !== (next.post.id === next.activeItemId)) return false;
+  if (next.post.post_type === 'video'
+    && decoderNear(prev.index, prev.activeIndex) !== decoderNear(next.index, next.activeIndex)) {
+    return false;
+  }
+  return true;
+}
+
+function FeedCellImpl(props: FeedCellProps): ReactElement {
   // Identity, never `index === activeIndex`: an index carries neither identity
   // nor type, and it is stale the moment a page is spliced in ahead of a cell.
   const active = props.post.id === props.activeItemId;

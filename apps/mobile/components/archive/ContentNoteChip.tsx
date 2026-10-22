@@ -1,4 +1,5 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { PressableScale } from '../ui/PressableScale';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII } from '../../lib/theme';
@@ -83,12 +84,20 @@ export function ContentNoteChip({ label, agreeCount, agreed, index, onPress, onL
       backgroundColor: palette.bg,
       borderColor: palette.line,
     },
+    press: { borderRadius: RADII.pill },
     label: { ...TYPE.caption, color: palette.ink, fontWeight: '700' },
     count: { ...TYPE.micro, color: palette.ink, fontWeight: '800' },
   });
 
   return (
-    <Pressable onPress={onPress} onLongPress={onLongPress} delayLongPress={400} accessible={false}>
+    <PressableScale
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={400}
+      accessible={false}
+      // The press layer rounds like the pill she sees.
+      style={s.press}
+    >
       {/* The a11y identity sits on this View, not on the Pressable wrapping it.
           RN's Pressable builds an explicit prop list and DROPS unknown props —
           verified here: a host Pressable receives testID and accessibilityState
@@ -108,6 +117,6 @@ export function ContentNoteChip({ label, agreeCount, agreed, index, onPress, onL
         <Text style={s.label}>{label}</Text>
         <Text style={s.count}>{agreeCount}</Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }

@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Image } from 'expo-image';
+import { IMAGE_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import { Ionicons } from '@expo/vector-icons';
 import { getPostImageUrl } from '../../lib/media';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -76,6 +77,8 @@ export function PostMediaCarousel({ urls, blurhash, variant, onOpen }: Props) {
             style={{ width: SLIDE_WIDTH, height }}
           >
             <Image
+              transition={IMAGE_TRANSITION}
+              cachePolicy={IMAGE_CACHE}
               testID={i === 0 ? 'post-image' : undefined}
               source={{ uri: getPostImageUrl(path, variant === 'detail' ? 'detail' : 'feed') }}
               placeholder={blurhash ?? undefined}

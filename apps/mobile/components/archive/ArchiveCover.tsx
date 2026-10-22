@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
+import { IMAGE_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import { RADII, identityFor, inkOn } from '../../lib/theme';
 import { COVER_ASPECT, COVER_PADDING, COVER_TITLE, coverTitleStep } from './archiveTokens';
 
@@ -64,6 +65,8 @@ export function ArchiveCover({ entryId, title, coverUrl, width, testID }: Props)
     >
       {showImage ? (
         <ExpoImage
+          transition={IMAGE_TRANSITION}
+          cachePolicy={IMAGE_CACHE}
           source={{ uri: coverUrl as string }}
           style={s.image}
           contentFit="cover"

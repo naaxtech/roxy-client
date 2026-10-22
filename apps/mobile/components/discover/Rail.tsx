@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -6,6 +6,9 @@ import { TYPE } from '../../lib/typography';
 import { RADII, SPACE, MARGIN, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { DiscoverLayout } from './discoverFilters';
+import { CardSkeleton, type CardSkeletonKind } from './V2Cards';
+import { FadeIn, SkeletonGroup } from '../feedback/Skeleton';
+import { byTheme } from './byTheme';
 
 export type RailStatus = 'loading' | 'ready' | 'error';
 
@@ -33,6 +36,12 @@ interface Props {
   /** "See all" — pass it only when there is more than the section shows. */
   linkLabel?: string;
   onLinkPress?: () => void;
+  /**
+   * The loading shape: which card the section will draw, at what width, and
+   * how many (rows default to 3). Without it the section falls back to the
+   * generic boxes, which do not match any v2 card and so shift on load.
+   */
+  skeleton?: { kind: CardSkeletonKind; width?: number; count?: number };
   testID?: string;
 }
 
@@ -52,11 +61,14 @@ const SKELETON_COUNT = 3;
  */
 export function Rail({
   title, status, count, emptyBody, onRetry, children, filters,
-  layout = 'rail', linkLabel, onLinkPress, testID,
+  layout = 'rail', linkLabel, onLinkPress, skeleton, testID,
 }: Props) {
   const colors = useThemeColors();
   const s = styles(colors);
   const rows = layout === 'list';
+  // Did this section show its skeleton? Then content fades in; else it was known.
+  const wasLoading = useRef(status === 'loading');
+  if (status === 'loading') wasLoading.current = true;
 
   return (
     <View style={s.wrap} testID={testID}>
@@ -77,7 +89,27 @@ export function Rail({
 
       {filters}
 
-      {status === 'loading' && (
+      {status === 'loading' && skeleton ? (
+        // The card the section will draw, in the container it will use, so
+        // nothing below moves when content lands (budgets F8/F9). One busy
+        // progressbar for screen readers; the blocks pulse on C0's shared clock.
+        <SkeletonGroup
+          style={layout === 'rail' ? s.cards : rows ? s.list : s.grid}
+          testID={testID ? `${testID}-loading` : undefined}
+          accessibilityLabel={`Loading ${title}`}
+        >
+          {Array.from({ length: skeleton.count ?? SKELETON_COUNT }, (_, i) => (
+            <CardSkeleton
+              key={i}
+              kind={skeleton.kind}
+              width={skeleton.width}
+              testID={testID ? `${testID}-skeleton-${i}` : undefined}
+            />
+          ))}
+        </SkeletonGroup>
+      ) : null}
+
+      {status === 'loading' && !skeleton && (
         <View
           style={rows ? s.skeletonRows : s.skeletonCards}
           testID={testID ? `${testID}-loading` : undefined}
@@ -120,7 +152,10 @@ export function Rail({
           wrapper's testID is mounted in EVERY status, so an e2e assertion on it
           passed for a section that was still loading or erroring. */}
       {status === 'ready' && count > 0 && (
-        layout === 'rail' ? (
+        // Content replaces the skeleton with a short fade (F8); content that
+        // was already in memory when the section mounted shows at once.
+        <FadeIn instant={!wasLoading.current}>
+        {layout === 'rail' ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -135,13 +170,15 @@ export function Rail({
           <View style={rows ? s.list : s.grid} testID={testID ? `${testID}-cards` : undefined}>
             {children}
           </View>
-        )
+        )}
+        </FadeIn>
       )}
     </View>
   );
 }
 
-const styles = (colors: ThemeColors) => StyleSheet.create({
+// Built once per theme, not on every render (jank audit #8).
+const styles = byTheme((colors: ThemeColors) => StyleSheet.create({
   wrap: { gap: SPACE[1], paddingTop: SPACE[5] },
   head: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -170,4 +207,4 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   skeletonRow: { flexDirection: 'row', alignItems: 'center', gap: SPACE[2] },
   skeletonCrest: { width: SKELETON_ROW_H, height: SKELETON_ROW_H, borderRadius: RADII.press },
   skeletonLine: { flex: 1, height: SPACE[2], borderRadius: RADII.pill, marginRight: SPACE[7] },
-});
+}));

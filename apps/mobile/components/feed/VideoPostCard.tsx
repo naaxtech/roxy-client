@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Image } from 'expo-image';
+import { IMAGE_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { getPostImageUrl } from '../../lib/media';
 import { PostActionRow } from './PostActionRow';
@@ -88,6 +89,8 @@ export function VideoPostCard({
       >
         {thumbUri ? (
           <Image
+            transition={IMAGE_TRANSITION}
+            cachePolicy={IMAGE_CACHE}
             source={{ uri: thumbUri }}
             placeholder={post.blurhash ?? undefined}
             contentFit="cover"

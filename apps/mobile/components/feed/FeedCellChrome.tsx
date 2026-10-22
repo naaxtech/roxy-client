@@ -3,6 +3,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { AccessibilityInfo, Share, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
+import { NO_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import * as Linking from 'expo-linking';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { avatarGradient, isPresetAvatar, presetColor, presetEmoji } from '../../lib/avatars';
@@ -210,6 +211,8 @@ export function FeedCellChrome({
   } else if (avatarUrl) {
     avatarFace = (
       <Image
+        transition={NO_TRANSITION}
+        cachePolicy={IMAGE_CACHE}
         source={{ uri: avatarUrl }}
         contentFit="cover"
         // Without this a recycled cell wears the previous author's face until

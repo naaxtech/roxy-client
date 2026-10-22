@@ -1,5 +1,6 @@
 import type { TextStyle } from 'react-native';
 import { FAB_LANE as NAV_FAB_LANE } from '../nav/navTokens';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
 /**
  * The one legibility problem every full-bleed cell has, and how it is actually
@@ -210,6 +211,25 @@ export const RAIL_GUTTER = FAB_LANE;
 
 /** Below the identity block, above the page bottom (v2: 24, was 34). */
 export const CHROME_BOTTOM = 24;
+
+/**
+ * What the feed header owns at the top of every page, below the safe area:
+ * `app/(tabs)/feed/index.tsx` lays an absolute `headerLayer` over the pager —
+ * the streak / search / Now row (48 dp targets), the Now rail's slot (empty
+ * while it is closed) and the For You · Following · Communities tabs (48 dp),
+ * spaced by the layer's 4 dp gap. The pager keeps the whole box, so a cell
+ * that places its own content near the top must start below this.
+ */
+export const STAGE_HEADER = MIN_TOUCH_TARGET + 4 + 4 + MIN_TOUCH_TARGET;
+
+/**
+ * Where a page's own content may start: under the header plus one 12 dp
+ * breath, plus the status bar on a phone that has one (add `insets.top`, as
+ * the header's SafeAreaView does). Wave 2 ship shots: the Question of the Day
+ * kept only the text card's 34 dp, so its kick and first line ran under the
+ * header's two rows at 360x800 and 390x844.
+ */
+export const STAGE_TOP = STAGE_HEADER + 12;
 
 /**
  * v0's rotating community disc at the rail's foot. RETIRED with

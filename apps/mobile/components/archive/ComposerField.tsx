@@ -1,10 +1,14 @@
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { PressableScale } from '../ui/PressableScale';
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII, inkOn } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
+
+/** The press layer of a pill-shaped composer control rounds like the pill. */
+const pressPill = { borderRadius: RADII.pill } as const;
 
 interface FieldProps {
   label: string;
@@ -114,7 +118,8 @@ export function ComposerCheckbox({ label, checked, onToggle, testID }: CheckProp
   });
 
   return (
-    <Pressable onPress={onToggle} accessible={false}>
+    // A whole row: the layer alone, no shrink (PressableScale feedback 'layer').
+    <PressableScale onPress={onToggle} accessible={false} feedback="layer">
       {/* a11y identity on the View: RN's Pressable drops `aria-*`, and
           accessibilityState alone renders nothing on react-native-web 0.19. */}
       <View
@@ -127,7 +132,7 @@ export function ComposerCheckbox({ label, checked, onToggle, testID }: CheckProp
         <View style={s.box}>{checked ? <Text style={s.tick}>✓</Text> : null}</View>
         <Text style={s.label}>{label}</Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -166,7 +171,7 @@ export function ComposerChoice({ label, selected, onPress, testID }: ChoiceProps
     },
   });
   return (
-    <Pressable onPress={onPress} accessible={false}>
+    <PressableScale onPress={onPress} accessible={false} style={pressPill}>
       <View
         style={s.btn}
         testID={testID}
@@ -176,7 +181,7 @@ export function ComposerChoice({ label, selected, onPress, testID }: ChoiceProps
       >
         <Text style={s.text}>{label}</Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -232,7 +237,7 @@ export function LegacyComposerSubmit({ label, onPress, disabled, busy, testID }:
   });
 
   return (
-    <Pressable onPress={disabled || busy ? undefined : onPress} accessible={false}>
+    <PressableScale onPress={disabled || busy ? undefined : onPress} accessible={false} style={pressPill}>
       <View
         style={s.btn}
         testID={testID}
@@ -242,6 +247,6 @@ export function LegacyComposerSubmit({ label, onPress, disabled, busy, testID }:
       >
         <Text style={s.text}>{busy ? 'Sending…' : label}</Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
