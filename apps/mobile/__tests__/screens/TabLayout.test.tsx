@@ -173,11 +173,15 @@ describe('TabLayout — a route change re-renders the leaves, not the navigator'
     expect(mockTabsRenders.length).toBe(navigatorRenders);
   });
 
-  it('still brings her back out on every new screen (untuck on route)', () => {
+  // Wave 3 lane rule (lib/roxyFab, lane C): a route change still calls
+  // untuck(), which now forgets the last list so she RESTS TUCKED until the new
+  // screen's list reports an empty lane. Wave 2 brought her out here, over
+  // whatever the new screen had at the bottom ("Apply", the Ghost switch).
+  it('rests her tucked on every new screen until its list reports an empty lane (untuck on route)', () => {
     render(<TabLayout />);
-    act(() => useRoxyFab.setState({ tucked: true }));
+    act(() => useRoxyFab.setState({ tucked: false }));
     act(() => mockPath.set('/you'));
-    expect(useRoxyFab.getState().tucked).toBe(false);
+    expect(useRoxyFab.getState().tucked).toBe(true);
   });
 
   it('hands the navigator the same screenOptions and tabBar on every render', () => {
