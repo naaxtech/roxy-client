@@ -243,6 +243,16 @@ export function isTouchPointer(): boolean {
  * Returns a cleanup that restores whatever was there before, so the effect can
  * re-run without stacking.
  */
+/**
+ * RETIRED by `watchTouchSnap` (Wave 3 lane B, jank audit #1). It ran once, in
+ * the commit that set the pager's items, and needed the scroller to overflow
+ * already; the list draws its scroller and cells in a later commit, so on a
+ * phone it found nothing, returned undefined and never looked again — the feed
+ * never snapped (0 of 8 flicks landed on a page). Origin: `git log -S
+ * applyTouchSnap` (the touch-pager slice). Kept exported, uncalled, for any
+ * surface that applies a snap to a list it knows is already drawn; prefer
+ * `watchTouchSnap`.
+ */
 export function applyTouchSnap(root: HTMLElement, pageH: number): (() => void) | undefined {
   const scroller = findOverflowScroller(root);
   if (!scroller || !(pageH > 0)) return undefined;
@@ -277,6 +287,10 @@ export function applyTouchSnap(root: HTMLElement, pageH: number): (() => void) |
  *
  * Measured, not matched by selector: the list renderer owns its own DOM and a
  * class name is not a contract. A cell within 2px of the page height is a page.
+ *
+ * RETIRED with `applyTouchSnap`: measuring every node forced a layout per node
+ * (jank audit #9). The pager's page frame now declares `scrollSnapAlign` from
+ * its first render (`FeedPager`, testID `feed-pager-page`).
  */
 export function pageCells(scroller: HTMLElement, pageH: number): HTMLElement[] {
   const out: HTMLElement[] = [];
@@ -285,4 +299,76 @@ export function pageCells(scroller: HTMLElement, pageH: number): HTMLElement[] {
     if (Math.abs(h - pageH) <= 2 && child.children.length > 0) out.push(child);
   }
   return out;
+}
+
+/**
+ * The pager's own vertical scroller: the first element, in document order, that
+ * scrolls on y. The list's scroller is an ancestor of every cell, so a sideways
+ * carousel inside a cell (overflow-y hidden) or anything deeper never wins.
+ *
+ * Unlike `findOverflowScroller` this does not ask whether it overflows yet. It
+ * does not need to: a snap on a scroller with nothing to scroll does nothing,
+ * and waiting for the overflow is exactly what left the feed unsnapped.
+ */
+export function findPagerScroller(root: HTMLElement): HTMLElement | null {
+  if (typeof getComputedStyle === 'undefined') return null;
+  const nodes: HTMLElement[] = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))];
+  for (const el of nodes) {
+    const { overflowY } = getComputedStyle(el);
+    if (overflowY === 'auto' || overflowY === 'scroll') return el;
+  }
+  return null;
+}
+
+/** Writes the snap onto one scroller; returns the undo. */
+function snapScroller(scroller: HTMLElement): () => void {
+  const style = scroller.style as CSSStyleDeclaration & { webkitOverflowScrolling?: string };
+  const previous = {
+    scrollSnapType: style.scrollSnapType ?? '',
+    overscrollBehaviorY: style.overscrollBehaviorY ?? '',
+    webkitOverflowScrolling: style.webkitOverflowScrolling ?? '',
+  };
+  style.scrollSnapType = 'y mandatory';
+  style.overscrollBehaviorY = 'contain';
+  style.webkitOverflowScrolling = 'touch';
+  return () => {
+    style.scrollSnapType = previous.scrollSnapType;
+    style.overscrollBehaviorY = previous.overscrollBehaviorY;
+    style.webkitOverflowScrolling = previous.webkitOverflowScrolling;
+  };
+}
+
+/**
+ * Hand paging to CSS on a touch device, and keep it handed over.
+ *
+ * `scroll-snap-type: y mandatory` on the pager's scroller (see `applyTouchSnap`
+ * above for why CSS and not JS); each page declares `scroll-snap-align: start`
+ * itself (the pager's page frame). The list renderer draws its scroller and
+ * cells in commits after the pager's effect runs, and rebuilds the scroller
+ * when the list is rebuilt, so this watches the pager's subtree until the
+ * scroller is there and follows it when it is replaced. Once applied, a
+ * mutation costs one `contains` check — no style or layout reads.
+ *
+ * Returns the cleanup: stops watching and puts the scroller's style back.
+ */
+export function watchTouchSnap(root: HTMLElement): () => void {
+  let applied: { scroller: HTMLElement; undo: () => void } | null = null;
+
+  const sync = () => {
+    if (applied && root.contains(applied.scroller)) return;
+    applied?.undo();
+    applied = null;
+    const scroller = findPagerScroller(root);
+    if (scroller) applied = { scroller, undo: snapScroller(scroller) };
+  };
+
+  sync();
+  const observer = typeof MutationObserver === 'function' ? new MutationObserver(sync) : null;
+  observer?.observe(root, { childList: true, subtree: true });
+
+  return () => {
+    observer?.disconnect();
+    applied?.undo();
+    applied = null;
+  };
 }
