@@ -76,6 +76,19 @@ export const NAV_SLOTS_PUBLIC: readonly NavSlot[] = [
   },
 ];
 
-export function navSlotsFor(tier: AccessTier): readonly NavSlot[] {
+/**
+ * While her access is still loading the bar is its ground alone (jank audit
+ * #6): the fail-closed tier reads 'public' until the profile lands, and drawing
+ * Archive · Chat · You for an approved member, then swapping her real bar in,
+ * was a flash of the wrong app. One frozen empty array keeps the bar's props
+ * equal across loading renders.
+ */
+const NO_SLOTS: readonly NavSlot[] = Object.freeze([]);
+
+export function navSlotsFor(
+  tier: AccessTier,
+  { loading = false }: { loading?: boolean } = {},
+): readonly NavSlot[] {
+  if (loading) return NO_SLOTS;
   return tier === 'beta' ? NAV_SLOTS_3 : NAV_SLOTS_PUBLIC;
 }

@@ -12,6 +12,8 @@ import { StreakChip } from '../../../components/feed/StreakChip';
 import { NowRail } from '../../../components/feed/NowRail';
 import { MiniWinsSheet } from '../../../components/feed/MiniWinsSheet';
 import { STAGE, STAGE_BG } from '../../../components/feed/stageColors';
+import { FeedStageSkeleton } from '../../../components/feed/FeedStageSkeleton';
+import { useReducedMotion } from '../../../hooks/useReducedMotion';
 import { CommunityContextSwitcher } from '../../../components/CommunityContextSwitcher';
 import { TYPE } from '../../../lib/typography';
 import { RADII } from '../../../lib/theme';
@@ -272,7 +274,21 @@ const s = StyleSheet.create({
 });
 
 export default function FeedRoute() {
-  const { can } = useAccess();
+  const { can, loading } = useAccess();
+  // Cold start (jank audit #6): gates fail closed until the profile lands, so
+  // `can('feed')` alone sent an approved member to the public Archive shell
+  // ("Membership pending") for 0.5-3 s. Until access is known, the Feed shows
+  // its own stage skeleton, which says nothing about her membership.
+  if (loading) return <FeedAccessLoading />;
   if (!can('feed')) return <ArchiveBrowseScreen asHome />;
   return <FeedScreen />;
+}
+
+function FeedAccessLoading() {
+  const reducedMotion = useReducedMotion();
+  return (
+    <View style={s.stage} testID="feed-access-loading">
+      <FeedStageSkeleton reducedMotion={reducedMotion} />
+    </View>
+  );
 }
