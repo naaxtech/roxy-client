@@ -1,0 +1,14 @@
+apps/mobile/tests/e2e/fab-occlusion.spec.ts
+  h_0549c11fec2ab0 1,14-20,23-27,29,31-40,42-46,49,51-52,54-93,95-112,114,116,118-153,156-160,162-181,184-186,188-192,194-215,217,220-267,270-275,277-285,287-297,299-300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b1a6059263f3170b0708721457c218b3276dcdb",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
