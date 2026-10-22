@@ -111,7 +111,7 @@ function ActionSheetBody({
                 key={e}
                 style={s.react}
                 // A committed reaction: the light tap (§3.3).
-                onPress={close(() => { haptic('tap'); onReact(message.id, e); })}
+                onPress={close(() => { haptic('light'); onReact(message.id, e); })}
                 accessibilityRole="button"
                 accessibilityLabel={`React ${e}`}
                 testID={`msg-react-${e}`}

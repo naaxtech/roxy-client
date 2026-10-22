@@ -100,7 +100,7 @@ describe('MessageActionSheet', () => {
     haptic.mockClear();
     const { view } = renderSheet({ ...base, sender_id: 'ana' });
     fireEvent.press(view.getByTestId('msg-react-❤️'));
-    expect(haptic.mock.calls).toEqual([['tap']]);
+    expect(haptic.mock.calls).toEqual([['light']]);
   });
 
   it('shows a preview of the message it acts on', () => {

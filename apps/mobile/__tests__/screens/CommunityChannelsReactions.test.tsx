@@ -155,7 +155,7 @@ describe('CHAT-17 channel reactions', () => {
     expect(haptic.mock.calls).toEqual([['select']]);
     haptic.mockClear();
     await act(async () => { fireEvent.press(view.getByLabelText('React with 💜')); });
-    expect(haptic.mock.calls).toEqual([['tap']]);
+    expect(haptic.mock.calls).toEqual([['light']]);
   });
 
   it('a removed message offers no reactions', async () => {

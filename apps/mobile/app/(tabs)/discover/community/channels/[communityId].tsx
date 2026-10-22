@@ -148,7 +148,7 @@ export default function CommunityChannelsScreen() {
   const toggleReaction = useCallback((messageId: string, emoji: string, own: boolean) => {
     if (!me) return;
     // A committed reaction: the light tap (§3.3).
-    haptic('tap');
+    haptic('light');
     if (own) void removeReaction(messageId, emoji, me);
     else void addReaction(messageId, emoji, me);
   }, [me, addReaction, removeReaction]);

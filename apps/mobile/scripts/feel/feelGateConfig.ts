@@ -22,6 +22,10 @@ export const STATIC_ALLOWLIST: Allowlist = {
       max: 1,
       reason: 'scrim backdrop `first-post-scrim` (§2 F2)',
     },
+    'components/feedback/Sheet.tsx': {
+      max: 1,
+      reason: 'scrim backdrop `<id>-scrim-press` (closes the sheet; the scrim itself fades, §2 F5): a tap on the dimmed backdrop needs no press state (§2 F2). Added at the Wave 3 merge: C0 Sheet postdates this baseline',
+    },
     'components/reactions/ReactionPicker.tsx': {
       max: 1,
       reason: 'dim backdrop `reaction-picker-dismiss` (§2 F2)',
