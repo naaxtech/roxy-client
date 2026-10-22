@@ -1,0 +1,28 @@
+apps/mobile/__tests__/components/channels/channelCache.test.ts
+  h_0549c11fec2ab0 1-39
+apps/mobile/__tests__/screens/CommunityChannels.test.tsx
+  h_0549c11fec2ab0 4-5,170,246-301
+apps/mobile/__tests__/screens/CommunityChannelsModeration.test.tsx
+  h_0549c11fec2ab0 4-5,77
+apps/mobile/__tests__/screens/CommunityChannelsPaging.test.tsx
+  h_0549c11fec2ab0 4-5,86
+apps/mobile/__tests__/screens/CommunityChannelsReactions.test.tsx
+  h_0549c11fec2ab0 4-5,107
+apps/mobile/__tests__/screens/CommunityChannelsSafety.test.tsx
+  h_0549c11fec2ab0 4-5,112
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  h_0549c11fec2ab0 23-25,73-86,92,170-176,180,182,185-187,233-238,244-247,251,253,255,259,261-264,267,269,272-274
+apps/mobile/components/channels/channelCache.ts
+  h_0549c11fec2ab0 1-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c4c3ba2a92f7836ef7051bc3eb9f86c1637b512",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
