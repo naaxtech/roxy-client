@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { TransitionStack } from '../../../components/motion/TransitionStack';
 import { FeatureGate } from '../../../components/features/FeatureGate';
 import { TabFade } from '../../../components/motion/TabFade';
 import { useThemeColors } from '../../../hooks/useThemeColors';
@@ -9,7 +9,7 @@ export default function DiscoverLayout() {
   return (
     <TabFade ground={colors.ground}>
       <FeatureGate feature="discover">
-        <Stack screenOptions={{ headerShown: false }} />
+        <TransitionStack screenOptions={{ headerShown: false }} />
       </FeatureGate>
     </TabFade>
   );

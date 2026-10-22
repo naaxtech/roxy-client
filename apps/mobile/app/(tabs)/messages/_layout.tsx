@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { TransitionStack } from '../../../components/motion/TransitionStack';
 import { TabFade } from '../../../components/motion/TabFade';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 
@@ -7,7 +7,7 @@ export default function MessagesLayout() {
   const colors = useThemeColors();
   return (
     <TabFade ground={colors.ground}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <TransitionStack screenOptions={{ headerShown: false }} />
     </TabFade>
   );
 }

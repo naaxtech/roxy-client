@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { TransitionStack } from '../../../components/motion/TransitionStack';
 
 /**
  * One entry, plus the three things she can write about it.
@@ -9,11 +9,11 @@ import { Stack } from 'expo-router';
  */
 export default function ArchiveEntryLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="review" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="edit" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="note" options={{ presentation: 'modal' }} />
-    </Stack>
+    <TransitionStack screenOptions={{ headerShown: false }}>
+      <TransitionStack.Screen name="index" />
+      <TransitionStack.Screen name="review" options={{ presentation: 'modal' }} />
+      <TransitionStack.Screen name="edit" options={{ presentation: 'modal' }} />
+      <TransitionStack.Screen name="note" options={{ presentation: 'modal' }} />
+    </TransitionStack>
   );
 }

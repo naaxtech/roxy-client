@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { TransitionStack } from '../../../components/motion/TransitionStack';
 import { TabFade } from '../../../components/motion/TabFade';
 import { STAGE_BG } from '../../../components/feed/stageColors';
 
@@ -9,7 +9,7 @@ import { STAGE_BG } from '../../../components/feed/stageColors';
 export default function FeedLayout() {
   return (
     <TabFade ground={STAGE_BG}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <TransitionStack screenOptions={{ headerShown: false }} />
     </TabFade>
   );
 }

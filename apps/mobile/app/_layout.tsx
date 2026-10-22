@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
-import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
+import { useRouter, useSegments, usePathname } from 'expo-router';
+import { TransitionStack } from '../components/motion/TransitionStack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StripeProvider } from '@stripe/stripe-react-native';
@@ -41,6 +42,9 @@ import { applyBrandType } from '../lib/applyBrandType';
 import { useWelcomeInRedirect } from '../hooks/useWelcomeInRedirect';
 
 applyBrandType();
+
+/** Created once: a new object per render re-derived every root descriptor. */
+const ROOT_STACK_OPTIONS = { headerShown: false } as const;
 
 
 function AppNavigator() {
@@ -322,7 +326,10 @@ function AppNavigator() {
         <WebAppFrame>
           <ErrorBoundary>
             <LaunchGate>
-              <Stack screenOptions={{ headerShown: false }} />
+              {/* The platform push on native, explicit; push/pop/modal
+                  transitions on the web (TransitionStack, motion spec §3.1
+                  row 5). A bare expo-router Stack jump-cut on roxy.expo.app. */}
+              <TransitionStack screenOptions={ROOT_STACK_OPTIONS} />
             </LaunchGate>
             {/* Mounted once, at the root, so every surface that calls
                 safetyStore.openReportModal actually opens something. Before
