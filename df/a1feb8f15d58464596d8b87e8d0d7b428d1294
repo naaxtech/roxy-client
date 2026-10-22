@@ -1,0 +1,42 @@
+apps/mobile/__tests__/components/motion/ScreenTransition.test.tsx
+  h_0549c11fec2ab0 1-127
+apps/mobile/__tests__/components/motion/TransitionStack.test.tsx
+  h_0549c11fec2ab0 1-137
+apps/mobile/__tests__/components/motion/WebTransitionStackView.test.tsx
+  h_0549c11fec2ab0 1-186
+apps/mobile/__tests__/screens/TabStackLayouts.test.tsx
+  h_0549c11fec2ab0 2-3,8-12,27-42,45-47,57-59,66,70-109
+apps/mobile/app/(auth)/_layout.tsx
+  h_0549c11fec2ab0 1,4
+apps/mobile/app/(tabs)/discover/_layout.tsx
+  h_0549c11fec2ab0 1,12
+apps/mobile/app/(tabs)/feed/_layout.tsx
+  h_0549c11fec2ab0 1,12
+apps/mobile/app/(tabs)/messages/_layout.tsx
+  h_0549c11fec2ab0 1,10
+apps/mobile/app/(tabs)/you/_layout.tsx
+  h_0549c11fec2ab0 1,10
+apps/mobile/app/_layout.tsx
+  h_0549c11fec2ab0 3-4,46-48,329-332
+apps/mobile/app/archive/[slug]/_layout.tsx
+  h_0549c11fec2ab0 1,12-17
+apps/mobile/app/archive/_layout.tsx
+  h_0549c11fec2ab0 1,12-16
+apps/mobile/components/motion/ScreenTransition.tsx
+  h_0549c11fec2ab0 1-92
+apps/mobile/components/motion/TransitionStack.tsx
+  h_0549c11fec2ab0 1-118
+apps/mobile/components/motion/WebTransitionStackView.tsx
+  h_0549c11fec2ab0 1-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dfa1feb8f15d58464596d8b87e8d0d7b428d1294",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
