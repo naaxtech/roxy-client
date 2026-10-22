@@ -52,9 +52,11 @@ describe('the lane tokens', () => {
     expect(FAB_SIZE + 2 * FAB_MARGIN).toBe(FAB_LANE);
   });
 
-  it('keeps a 48 dp hit target while tucked (48 × 28)', () => {
+  // Wave 3 (lane C): 28 dp reached 12 dp into the content column (a tap on the
+  // end of "Joined" opened Roxy AI); the tucked target is the margin strip.
+  it('keeps a 48 dp tall hit target while tucked, as wide as the margin (48 × 16)', () => {
     expect(FAB_TUCKED_HIT.height).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
-    expect(FAB_TUCKED_HIT.width).toBe(28);
+    expect(FAB_TUCKED_HIT.width).toBe(FAB_MARGIN);
   });
 });
 

@@ -37,12 +37,13 @@ interface Props {
  */
 const TUCK_TRAVEL = FAB_SIZE / 2 + FAB_TUCKED / 2;
 /**
- * The tucked target: the margin strip beside the O, 48 dp tall. The token's
- * 28 dp (FAB_TUCKED_HIT.width) reached 12 dp into the content column, so a tap
- * on the end of a row or button opened Roxy AI. At the end of a list she comes
- * out at 56 dp (the equivalent full-size target on the same screen).
+ * The tucked target: the margin strip beside the O, 48 dp tall
+ * (FAB_TUCKED_HIT = FAB_MARGIN x 48 since the Wave 3 merge). The old 28 dp
+ * reached 12 dp into the content column, so a tap on the end of a row or button
+ * opened Roxy AI. At the end of a list she comes out at 56 dp (the equivalent
+ * full-size target on the same screen).
  */
-const TUCKED_HIT_WIDTH = FAB_MARGIN;
+const TUCKED_HIT_WIDTH = FAB_TUCKED_HIT.width;
 const TUCK_SCALE = FAB_TUCKED / FAB_SIZE;
 
 /*

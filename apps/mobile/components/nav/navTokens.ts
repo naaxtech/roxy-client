@@ -56,17 +56,23 @@ export const FAB_LANE = 88;
 /** The Roxy O at rest: a 56 dp circle. */
 export const FAB_SIZE = 56;
 
-/** The Roxy O tucked while a list scrolls down: 40 dp, centred on the edge. */
+/**
+ * The Roxy O tucked (list content in her lane): 40 dp, her inner edge on the
+ * margin line, so only the 16 dp margin of her shows (Wave 3, lane C).
+ */
 export const FAB_TUCKED = 40;
 
 /** The button's distance from the end edge and from the top of the bar. */
 export const FAB_MARGIN = 16;
 
 /**
- * The tucked button's hit area: 28 dp of it shows inside the screen (20 of the
- * O plus 8), 48 dp tall so it stays a real target.
+ * The tucked button's hit area: the margin strip beside the O (FAB_MARGIN wide),
+ * 48 dp tall so it stays a real target. Wave 3 (lane C): the direction's 28 dp
+ * reached 12 dp into the content column, so a tap on the end of "Joined" or the
+ * Ghost switch opened Roxy AI. At the end of a list she is out at 56 dp (the
+ * equivalent full-size target on the same screen, WCAG 2.5.8).
  */
-export const FAB_TUCKED_HIT = { width: 28, height: 48 } as const;
+export const FAB_TUCKED_HIT = { width: FAB_MARGIN, height: 48 } as const;
 
 /**
  * RETIRED with the floating pill (v2: the bar is docked full width, so there
