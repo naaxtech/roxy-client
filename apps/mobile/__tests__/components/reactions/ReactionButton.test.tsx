@@ -6,7 +6,7 @@
  */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, within } from '@testing-library/react-native';
 import type { PostReaction } from '../../../lib/postReactions';
 import { ReactionButton } from '../../../components/reactions/ReactionButton';
 import { ReactionPicker } from '../../../components/reactions/ReactionPicker';
@@ -177,6 +177,17 @@ describe('ReactionButton long-press picker', () => {
       'React with heart', 'React with laughing', 'React with wow',
       'React with sad', 'React with angry', 'React with purple heart',
     ]);
+  });
+
+  // Motion spec §3.1 row 11 / F2: a tapped emoji answers on press-in, like
+  // every other control (the one press primitive, `PressableScale`).
+  it('each emoji answers on press-in, before it is released', () => {
+    const { view, button } = open();
+    fireEvent(button, 'responderRelease', touch(CENTRE.x, CENTRE.y));
+    const item = view.getByTestId('reaction-picker-item-😂');
+    expect(within(item).queryByTestId('press-state-layer')).toBeNull();
+    fireEvent(item, 'pressIn');
+    expect(within(item).getByTestId('press-state-layer')).toBeTruthy();
   });
 
   it('slide to an emoji and let go: that is her reaction, with selection haptics on the way', () => {
