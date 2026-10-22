@@ -1,0 +1,24 @@
+apps/mobile/__tests__/components/motion/TabFade.test.tsx
+  h_0549c11fec2ab0 14,18,21,54,73,164-183
+apps/mobile/__tests__/components/motion/tabSelection.test.ts
+  h_0549c11fec2ab0 1-36
+apps/mobile/__tests__/screens/TabLayout.test.tsx
+  h_0549c11fec2ab0 140,190-198
+apps/mobile/app/(tabs)/_layout.tsx
+  h_0549c11fec2ab0 1,10,124-130
+apps/mobile/components/motion/TabFade.tsx
+  h_0549c11fec2ab0 8,43-49
+apps/mobile/components/motion/tabSelection.ts
+  h_0549c11fec2ab0 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc9e486b972db524bfd35ca580d930f624fc7cb4",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
