@@ -1,0 +1,22 @@
+apps/mobile/__tests__/components/discover/railSkeleton.test.tsx
+  h_0549c11fec2ab0 12,22-23,58,70,72,74-76,82,88,91-93,102,110-130,139,149
+apps/mobile/__tests__/screens/DiscoverSkeletons.test.tsx
+  h_0549c11fec2ab0 65-66,76,79-80,85-87
+apps/mobile/components/discover/Rail.tsx
+  h_0549c11fec2ab0 1,10,68-70,93-95,108,154-157,172-173
+apps/mobile/components/discover/V2Cards.tsx
+  h_0549c11fec2ab0 15,364,369-373,381,392-395,417
+apps/mobile/components/feed/FeedSkeleton.tsx
+  h_0549c11fec2ab0 50-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86846d8d7c0dc7511ec7e7f78b1acc67d8b48206",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
