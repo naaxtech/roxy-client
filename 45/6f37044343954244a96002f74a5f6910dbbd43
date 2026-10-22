@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/reactions/ReactionButtonPress.test.tsx
+  h_0549c11fec2ab0 1-146
+apps/mobile/components/reactions/ReactionButton.tsx
+  h_0549c11fec2ab0 3-4,9,47-50,62-63,67-71,74-86,110,114,118,122,132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "456f37044343954244a96002f74a5f6910dbbd43",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
