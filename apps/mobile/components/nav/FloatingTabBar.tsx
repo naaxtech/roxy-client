@@ -16,7 +16,7 @@ import { NAV_SLOTS_3 } from './navSlots3';
 import { NavIcon, type NavIconName } from './NavIcons';
 import type { NavSlot } from './navTokens';
 import { a11yState } from '../../lib/a11yState';
-import { PRESS, SPRING } from '../../lib/motion';
+import { PRESS, SPRING, springTo } from '../../lib/motion';
 import { haptic } from '../../lib/haptics';
 import { PressableScale } from '../ui/PressableScale';
 import { afterPaint } from '../motion/afterPaint';
@@ -119,7 +119,7 @@ function NavPill({
   const grow = useSharedValue(growIn && !isWeb ? NAV_INDICATOR.from / NAV_INDICATOR.width : 1);
   const webShape = useRef<View>(null);
   useEffect(() => {
-    if (growIn && !isWeb) grow.value = withSpring(1, SPRING.fastSpatial);
+    if (growIn && !isWeb) grow.value = withSpring(1, springTo('fastSpatial'));
   }, [growIn, isWeb, grow]);
   useLayoutEffect(() => {
     if (!growIn || !isWeb) return;
@@ -228,10 +228,10 @@ function CreateSlot({
     if (wasOpen.current === open) return;
     wasOpen.current = open;
     const to = open ? 1 : 0;
-    turn.value = reducedMotion ? to : withSpring(to, SPRING.spatial);
+    turn.value = reducedMotion ? to : withSpring(to, springTo('spatial'));
   }, [open, reducedMotion, turn]);
   const pressTo = (to: number) => {
-    press.value = reducedMotion ? to : withSpring(to, SPRING.fastSpatial);
+    press.value = reducedMotion ? to : withSpring(to, springTo('fastSpatial'));
   };
   const keyStyle = useAnimatedStyle(() => ({ transform: [{ scale: press.value }] }));
   const glyphStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value * 45}deg` }] }));
@@ -272,7 +272,7 @@ function useStageProgress(onStage: boolean, reducedMotion: boolean): SharedValue
     if (was.current === onStage) return;
     was.current = onStage;
     const to = onStage ? 1 : 0;
-    stage.value = reducedMotion ? to : withSpring(to, SPRING.fastEffects);
+    stage.value = reducedMotion ? to : withSpring(to, springTo('fastEffects'));
   }, [onStage, reducedMotion, stage]);
   return stage;
 }

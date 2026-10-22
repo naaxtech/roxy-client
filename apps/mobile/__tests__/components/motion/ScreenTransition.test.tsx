@@ -86,6 +86,11 @@ describe('ScreenTransition — push', () => {
     expect(calls).toHaveLength(2);
   });
 
+  it('owns Reduce Motion itself: no spring defers to reanimated\'s system setting (C0 springTo)', () => {
+    render(screen());
+    expect(calls.map((c) => (c.config as { reduceMotion?: string }).reduceMotion)).toEqual(['never', 'never']);
+  });
+
   it('mirrors the slide in a right-to-left layout', () => {
     I18nManager.isRTL = true;
     const { getByTestId } = render(screen());

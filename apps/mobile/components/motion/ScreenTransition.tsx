@@ -2,18 +2,8 @@ import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { I18nManager, Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { SPRING } from '../../lib/motion';
+import { ENTER, REDUCED, SPRING, fadeConfig, springTo } from '../../lib/motion';
 import { currentWebStyle, startWebFade, startWebSpring } from './webSpring';
-
-/*
- * Mirrors of the Wave 3 tokens lane C0 adds to `lib/motion.ts`
- * (`ENTER.pushDp`, `ENTER.modalRiseDp`, `REDUCED.fadeMs`, `REST.px`; motion
- * spec §3.2). Replaced by the imports once C0 is merged into this branch.
- */
-const PUSH_DP = 32;
-const MODAL_RISE_DP = 48;
-const REDUCED_FADE_MS = 120;
-const REST_PX = 0.5;
 
 export type TransitionPhase = 'enter' | 'idle' | 'exit';
 export type TransitionKind = 'push' | 'modal';
@@ -58,8 +48,8 @@ export function ScreenTransition({
   const reducedMotion = useReducedMotion();
   const isWeb = Platform.OS === 'web';
   const out = kind === 'modal'
-    ? { x: 0, y: MODAL_RISE_DP }
-    : { x: I18nManager.isRTL ? -PUSH_DP : PUSH_DP, y: 0 };
+    ? { x: 0, y: ENTER.modalRiseDp }
+    : { x: I18nManager.isRTL ? -ENTER.pushDp : ENTER.pushDp, y: 0 };
   const moves = animate && !reducedMotion;
   const x = useSharedValue(moves && !isWeb ? out.x : 0);
   const y = useSharedValue(moves && !isWeb ? out.y : 0);
@@ -70,13 +60,13 @@ export function ScreenTransition({
     const entering = phase === 'enter';
     if (entering && !animate) return;
     if (reducedMotion) {
-      opacity.value = withTiming(entering ? 1 : 0, { duration: REDUCED_FADE_MS });
+      opacity.value = withTiming(entering ? 1 : 0, fadeConfig());
       return;
     }
-    const spatial = { ...SPRING.calm, restDisplacementThreshold: REST_PX };
+    const spatial = springTo('calm', { px: true });
     if (kind === 'modal') y.value = withSpring(entering ? 0 : out.y, spatial);
     else x.value = withSpring(entering ? 0 : out.x, spatial);
-    opacity.value = withSpring(entering ? 1 : 0, entering ? SPRING.effects : SPRING.fastEffects);
+    opacity.value = withSpring(entering ? 1 : 0, springTo(entering ? 'effects' : 'fastEffects'));
     // The phase drives this; kind/offsets are fixed for a screen's life.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
@@ -93,7 +83,7 @@ export function ScreenTransition({
     const now = entering ? null : currentWebStyle(node);
     const fromOpacity = now ? Number(now.opacity) : entering ? 0 : 1;
     if (reducedMotion) {
-      startWebFade(node, fromOpacity, entering ? 1 : 0, REDUCED_FADE_MS);
+      startWebFade(node, fromOpacity, entering ? 1 : 0, REDUCED.fadeMs);
       return;
     }
     const home = cssTranslate(0, 0);

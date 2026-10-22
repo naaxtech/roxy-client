@@ -17,13 +17,8 @@ import {
 } from '@react-navigation/native-stack';
 import { withLayoutContext } from 'expo-router';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { REDUCED } from '../../lib/motion';
 import { WebTransitionStackView } from './WebTransitionStackView';
-
-/*
- * Mirror of `REDUCED.fadeMs` from lane C0's `lib/motion.ts` additions (motion
- * spec §3.2); replaced by the import once C0 is merged into this branch.
- */
-const REDUCED_FADE_MS = 120;
 
 const NativeStack = createNativeStackNavigator();
 
@@ -47,7 +42,7 @@ export function withStackDefaults(screenOptions: StackOptionsProp, reducedMotion
     const options: StackOptions = { headerShown: false, animation: 'default', gestureEnabled: true, ...own };
     if (reducedMotion && options.animation !== 'none') {
       options.animation = 'fade';
-      options.animationDuration = REDUCED_FADE_MS;
+      options.animationDuration = REDUCED.fadeMs;
     }
     return options;
   };

@@ -7,7 +7,7 @@ import { FEED_SEGMENTS, type FeedSegment } from '../feed/FeedSegments';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
-import { SPRING } from '../../lib/motion';
+import { SPRING, springTo } from '../../lib/motion';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { startWebSpring } from '../motion/webSpring';
 
@@ -114,8 +114,8 @@ export function FeedSegmentTabs({ value, onChange }: Props) {
       left.value = toLeft;
       width.value = toWidth;
     } else {
-      left.value = withSpring(toLeft, SPRING.fastSpatial);
-      width.value = withSpring(toWidth, SPRING.fastSpatial);
+      left.value = withSpring(toLeft, springTo('fastSpatial', { px: true }));
+      width.value = withSpring(toWidth, springTo('fastSpatial', { px: true }));
     }
   }, [isWeb, reducedMotion, toLeft, toWidth, left, width]);
 

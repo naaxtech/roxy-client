@@ -3,7 +3,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useNavigationState, useRoute } from '@react-navigation/native';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { SPRING } from '../../lib/motion';
+import { SPRING, springTo } from '../../lib/motion';
 import { startWebSpring } from './webSpring';
 
 /**
@@ -48,7 +48,7 @@ export function TabFade({
     if (reducedMotion) {
       opacity.value = 1;
     } else if (selected) {
-      opacity.value = withSpring(1, SPRING.effects);
+      opacity.value = withSpring(1, springTo('effects'));
     } else {
       opacity.value = 0;
     }
