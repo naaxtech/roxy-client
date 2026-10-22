@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/feedback/RoxyRefresh.test.tsx
+  h_0549c11fec2ab0 166-189,199-200,202,210,216,223
+apps/mobile/components/feedback/RoxyRefresh.tsx
+  h_0549c11fec2ab0 258-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "379259452ee0a4fee2674f8dcdccfea244839f49",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
