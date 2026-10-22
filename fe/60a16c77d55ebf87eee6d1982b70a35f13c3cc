@@ -1,0 +1,20 @@
+apps/mobile/__tests__/components/FeedPager.test.tsx
+  h_0549c11fec2ab0 3,592-624
+apps/mobile/__tests__/lib/feedTouchSnap.test.ts
+  h_0549c11fec2ab0 1-98
+apps/mobile/components/feed/FeedPager.tsx
+  h_0549c11fec2ab0 5,12,342-347,355-357,443-454,469-476
+apps/mobile/lib/feedPagerWeb.ts
+  h_0549c11fec2ab0 246-255,290-293,303-374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe60a16c77d55ebf87eee6d1982b70a35f13c3cc",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
