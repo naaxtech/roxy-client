@@ -1,0 +1,14 @@
+apps/mobile/tests/e2e/feel-transitions.spec.ts
+  h_0549c11fec2ab0 34-36,58,69-105,182,188-190,200,202,218-220,222,229-233,257-260,263-265,322,341-343,345-346,376,378,537-540,543,547-551,555,558,562-566,570,574,598-602,622-625,635-636,639
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6b32c0f3a61acf3a378dc6662ebe23f8a5012f27",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
