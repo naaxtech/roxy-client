@@ -89,7 +89,8 @@ function MessagesScreen() {
 
   const requestCount = requests.length + pendingCount;
 
-  const load = useCallback(() => { void refresh(); }, [refresh]);
+  // Returns the reload so her pull spins until the new rows are in.
+  const load = useCallback(() => refresh(), [refresh]);
 
   useEffect(() => {
     if (!userId) return;

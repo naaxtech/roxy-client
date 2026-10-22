@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, TextInput, ScrollView,
-  KeyboardAvoidingView, Platform,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +20,7 @@ import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { FeatureGate } from '../../../components/features/FeatureGate';
 import { GROUP_EMOJIS, GROUP_TITLE_MAX } from '../../../lib/groupInfo';
+import { BusySwap, RowsSkeleton } from '../../../components/messages/LoadingShapes';
 
 // Shared with Group info (app/chat/info/[id].tsx); kept exported from here for
 // anything that imported it before it moved to lib/groupInfo.
@@ -214,9 +214,9 @@ function NewMessageScreen() {
             accessibilityState={{ disabled: !canGo, busy }}
             testID="new-message-go"
           >
-            {busy
-              ? <ActivityIndicator size="small" color={inkOn(colors.primary)} />
-              : <Text style={[s.goText, !canGo && s.goTextOff]}>{goLabel}</Text>}
+            <BusySwap busy={busy} onFill label={goLabel}>
+              <Text style={[s.goText, !canGo && s.goTextOff]}>{goLabel}</Text>
+            </BusySwap>
           </TouchableOpacity>
         </View>
 
@@ -290,8 +290,9 @@ function NewMessageScreen() {
           </View>
         ) : null}
 
-        {loading ? (
-          <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
+        {/* F7: friends already in memory show at once; F8: rows on a first load. */}
+        {loading && friends.length === 0 ? (
+          <RowsSkeleton testID="new-message-loading" label="Loading your friends" rows={5} />
         ) : (
           <FlatList
             data={visible}

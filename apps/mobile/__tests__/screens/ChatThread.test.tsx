@@ -218,9 +218,12 @@ describe('ChatScreen — a second visit (F7: no loader where data is known)', ()
     await act(async () => { tree.unmount(); });
   });
 
-  it('a thread never opened in this session still loads (and says so) the first time', () => {
-    const view = render(<ChatScreen />);
-    expect(view.getByLabelText('Loading messages')).toBeTruthy();
+  it('a thread never opened in this session shows a thread-shaped skeleton (F8), never a spinner (F11)', () => {
+    const v = render(<ChatScreen />);
+    const sk = v.getByTestId('chat-loading');
+    expect(sk.props.accessibilityRole).toBe('progressbar');
+    expect(v.getByLabelText('Loading messages')).toBeTruthy();
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
   });
 });
 

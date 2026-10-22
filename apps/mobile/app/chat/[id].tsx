@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, Platform,
-  ActivityIndicator, Modal, FlatList, Keyboard, Pressable,
-  type ListRenderItem, type NativeScrollEvent, type NativeSyntheticEvent,
+  View, Text, TextInput, StyleSheet, Platform, Modal, FlatList, Keyboard, Pressable, type ListRenderItem, type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -42,6 +40,8 @@ import {
 } from '../../lib/chatThread';
 import type { Message } from '../../types';
 import { readThreadPage, writeThreadPage } from '../../components/chat/threadCache';
+import { ThreadSkeleton } from '../../components/messages/LoadingShapes';
+import { FadeIn, RoxyLoading } from '../../components/feedback';
 import { ActionTray } from '../../components/chat/ActionTray';
 import { GifPicker } from '../../components/chat/GifPicker';
 import { TypingIndicator } from '../../components/chat/TypingIndicator';
@@ -91,6 +91,7 @@ export default function ChatScreen() {
   // first frame and refreshes quietly; only a first visit shows the loader.
   const [initialMessages, setInitialMessages] = useState<Message[]>(() => readThreadPage(me, conversationId) ?? []);
   const [loadingInitial, setLoadingInitial] = useState(() => readThreadPage(me, conversationId) === null);
+  const [openedFromMemory] = useState(() => readThreadPage(me, conversationId) !== null);
   const [loadError, setLoadError] = useState(false);
   const [inputText, setInputText] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
@@ -697,7 +698,8 @@ export default function ChatScreen() {
           iOS / Android 11+, visualViewport on web). */}
       <KeyboardTrackingView style={s.flex} testID="chat-keyboard">
         {loadingInitial ? (
-          <ActivityIndicator color={colors.roxy} style={s.flex} accessibilityLabel="Loading messages" />
+          // F8: the thread's own shape while a first visit loads; F11: no spinner.
+          <ThreadSkeleton testID="chat-loading" label="Loading messages" />
         ) : loadError ? (
           <View style={s.center}>
             <Text style={s.centerBody}>Could not load messages</Text>
@@ -711,7 +713,9 @@ export default function ChatScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={s.flex}>
+          // Content replaces the skeleton with a short fade; a thread painted
+          // from memory (F7) shows at once.
+          <FadeIn style={s.flex} instant={openedFromMemory}>
             <FlatList
               ref={listRef}
               testID="chat-list"
@@ -730,9 +734,10 @@ export default function ChatScreen() {
                 listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
               }}
               maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: AT_BOTTOM_PX }}
-              ListFooterComponent={loadingOlder ? (
-                <ActivityIndicator color={colors.textMuted} style={s.olderSpinner} accessibilityLabel="Loading earlier messages" />
-              ) : null}
+              // Kept mounted so a wait under 200 ms never flashes it (F11).
+              ListFooterComponent={(
+                <RoxyLoading active={loadingOlder} size="busy" style={s.olderSpinner} accessibilityLabel="Loading earlier messages" testID="chat-older-loading" />
+              )}
               ListEmptyComponent={
                 <Text style={s.empty}>
                   {searchActive ? 'No messages match your search.' : 'Say hi 💜'}
@@ -756,7 +761,7 @@ export default function ChatScreen() {
                 <Text style={s.toastText}>{toast}</Text>
               </View>
             ) : null}
-          </View>
+          </FadeIn>
         )}
 
         <TypingIndicator
@@ -1013,7 +1018,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   retryText: { ...TYPE.body, color: inkOn(colors.primary), fontWeight: '700' },
   listContent: { paddingVertical: 12, paddingHorizontal: 12 },
-  olderSpinner: { marginVertical: 12 },
+  olderSpinner: { alignSelf: 'center', marginVertical: 12 },
   empty: { ...TYPE.body, color: colors.textMuted, textAlign: 'center', marginTop: 40 },
   pill: {
     position: 'absolute', bottom: 12, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6,

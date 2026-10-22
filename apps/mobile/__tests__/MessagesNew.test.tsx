@@ -99,6 +99,19 @@ describe('NewMessageScreen', () => {
     expect(haptic).not.toHaveBeenCalled();
   });
 
+  it('while friends load for the first time: row skeleton (F8), no spinner (F11)', () => {
+    const v = render(<NewMessageScreen />);
+    expect(v.getByTestId('new-message-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
+  it('friends already in memory: the list is there in the first frame, no loader (F7)', () => {
+    friends.push(friend('u1', 'Sam'));
+    const v = render(<NewMessageScreen />);
+    expect(v.queryByTestId('new-message-loading')).toBeNull();
+    expect(v.getByText('Sam')).toBeTruthy();
+  });
+
   it('tapping a picked friend again unpicks her', async () => {
     friends.push(friend('u1', 'Sam'), friend('u2', 'Bea'));
     const view = render(<NewMessageScreen />);

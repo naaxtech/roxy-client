@@ -157,6 +157,15 @@ describe('Group info', () => {
     expect(haptic).not.toHaveBeenCalled();
   });
 
+  it('while the group loads: member-row skeleton (F8), no spinner (F11)', () => {
+    mockThread.loading = true;
+    mockThread.meta = null;
+    const v = render(<GroupInfoScreen />);
+    expect(v.getByTestId('group-info-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.getByLabelText('Loading group')).toBeTruthy();
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
   it('a refused action is shown in words, not swallowed', async () => {
     chat.renameGroup.mockRejectedValueOnce(new Error('Only the group owner or an admin can rename it.'));
     const view = render(<GroupInfoScreen />);

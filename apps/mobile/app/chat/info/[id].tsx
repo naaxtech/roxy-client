@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, ActivityIndicator, TextInput, Modal, FlatList,
+  View, Text, StyleSheet, ScrollView, TextInput, Modal, FlatList,
 } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,6 +30,8 @@ import { TYPE } from '../../../lib/typography';
 import { RADII, inkOn, type ThemeColors, BRAND_INK } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { FeatureGate } from '../../../components/features/FeatureGate';
+import { BusySwap, RowsSkeleton } from '../../../components/messages/LoadingShapes';
+import { RoxyLoading } from '../../../components/feedback';
 
 /**
  * Group info — `/chat/info/<conversationId>`.
@@ -98,7 +100,7 @@ function GroupInfo() {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
         <Header s={s} colors={colors} onBack={() => router.back()} />
-        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} accessibilityLabel="Loading group" />
+        <RowsSkeleton testID="group-info-loading" label="Loading group" rows={4} />
       </SafeAreaView>
     );
   }
@@ -259,9 +261,9 @@ function GroupInfo() {
                   accessibilityState={{ busy: busy === 'rename' }}
                   testID="group-save"
                 >
-                  {busy === 'rename'
-                    ? <ActivityIndicator size="small" color={inkOn(colors.primary)} />
-                    : <Text style={s.pillText}>Save</Text>}
+                  <BusySwap busy={busy === 'rename'} onFill label="Saving">
+                    <Text style={s.pillText}>Save</Text>
+                  </BusySwap>
                 </TouchableOpacity>
               </View>
             </View>
@@ -300,7 +302,7 @@ function GroupInfo() {
               <Text style={s.rowLabel}>{muted ? 'Unmute' : 'Mute'}</Text>
               <Text style={s.rowHint}>{muteLabel(mutedUntil)}</Text>
             </View>
-            {busy === 'mute' ? <ActivityIndicator size="small" color={colors.roxy} /> : null}
+            <RoxyLoading active={busy === 'mute'} size="busy" accessibilityLabel="Saving" testID="group-mute-loading" />
           </TouchableOpacity>
           {muteOpen && !muted ? MUTE_CHOICES.map((c) => (
             <TouchableOpacity
@@ -435,9 +437,9 @@ function GroupInfo() {
                 accessibilityState={{ disabled: picked.length === 0, busy: busy === 'add' }}
                 testID="add-confirm"
               >
-                {busy === 'add'
-                  ? <ActivityIndicator size="small" color={inkOn(colors.primary)} />
-                  : <Text style={[s.pillText, picked.length === 0 && s.pillOffText]}>Add{picked.length ? ` ${picked.length}` : ''}</Text>}
+                <BusySwap busy={busy === 'add'} onFill label="Adding">
+                  <Text style={[s.pillText, picked.length === 0 && s.pillOffText]}>Add{picked.length ? ` ${picked.length}` : ''}</Text>
+                </BusySwap>
               </TouchableOpacity>
             </View>
             <Text style={s.sheetHint}>
