@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/TextCell.test.tsx
+  h_0549c11fec2ab0 151-153,155-156
+apps/mobile/components/feed/TextCardFace.tsx
+  h_0549c11fec2ab0 34-36,160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b81cd227b0362ee21aafcdf4f2b4f7968c4eb0ec",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
