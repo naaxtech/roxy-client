@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Animated,
-  ActivityIndicator,
-  useWindowDimensions,
+  View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Animated, useWindowDimensions,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,6 +22,7 @@ import { MIN_PASSWORD_LENGTH } from '../../lib/passwordPolicy';
 import { captchaRequired, captchaSiteKey } from '../../lib/captcha';
 import { TurnstileWidget } from '../../components/auth/TurnstileWidget';
 import { authErrorCopy } from '../../lib/authErrorCopy';
+import { BusySwap } from '../../components/messages/LoadingShapes';
 
 // Bot protection (lib/captcha.ts): web only, and only once a site key is set.
 const NEEDS_CAPTCHA = captchaRequired(Platform.OS);
@@ -331,14 +323,12 @@ export default function WelcomeScreen() {
                   disabled={busy}
                   accessibilityLabel="Continue with Apple"
                 >
-                  {oauthPending === 'apple' ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
+                  <BusySwap busy={oauthPending === 'apple'} onFill>
                     <>
                       <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
                       <Text style={styles.btnAppleText}>Continue with Apple</Text>
                     </>
-                  )}
+                  </BusySwap>
                 </TouchableOpacity>
                 )}
 
@@ -350,14 +340,12 @@ export default function WelcomeScreen() {
                   disabled={busy}
                   accessibilityLabel="Continue with Google"
                 >
-                  {oauthPending === 'google' ? (
-                    <ActivityIndicator color={colors.textPrimary} />
-                  ) : (
+                  <BusySwap busy={oauthPending === 'google'}>
                     <>
                       <Ionicons name="logo-google" size={18} color={colors.textPrimary} />
                       <Text style={styles.btnGoogleText}>Continue with Google</Text>
                     </>
-                  )}
+                  </BusySwap>
                 </TouchableOpacity>
                 )}
 

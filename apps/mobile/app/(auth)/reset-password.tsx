@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
+  View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,6 +21,8 @@ import { logError } from '../../lib/errorLogger';
 import { pinkFill } from '../../lib/theme';
 // Same rule as sign-up (10): a reset used to accept 6, so the weakest rule won.
 import { MIN_PASSWORD_LENGTH, passwordTooShortMessage } from '../../lib/passwordPolicy';
+import { BusySwap } from '../../components/messages/LoadingShapes';
+import { RoxyLoading } from '../../components/feedback';
 
 /**
  * How long native waits for a deep link before calling it absent. Long enough
@@ -388,7 +383,7 @@ export default function ResetPasswordScreen() {
     if (phase === 'verifying') {
       return (
         <View style={styles.verifyingWrap} testID="reset-verifying">
-          <ActivityIndicator color={colors.roxy} />
+          <RoxyLoading />
           <Text style={styles.body}>Checking your link…</Text>
         </View>
       );
@@ -535,11 +530,9 @@ export default function ResetPasswordScreen() {
             end={{ x: 1, y: 0 }}
             style={[styles.btn, busy && styles.btnDisabled]}
           >
-            {busy ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
+            <BusySwap busy={busy} onFill>
               <Text style={styles.btnGradText}>Save new password</Text>
-            )}
+            </BusySwap>
           </LinearGradient>
         </TouchableOpacity>
       </View>

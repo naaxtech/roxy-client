@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, ActivityIndicator,
-  ScrollView, KeyboardAvoidingView, Platform, Linking,
+  View, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +17,8 @@ import {
 import { showAlert } from '../../lib/confirm';
 import { inkOn, pinkFill } from '../../lib/theme';
 import { a11yState } from '../../lib/a11yState';
+import { BusySwap } from '../../components/messages/LoadingShapes';
+import { RoxyLoading } from '../../components/feedback';
 
 /** Both are awarded together by the KYC webhook, so they share one row in the UI. */
 const KYC_KEYS = ['gov_id', 'kyc_liveness'];
@@ -229,7 +230,7 @@ export default function ApplicationScreen() {
     return (
       <SafeAreaView style={s.container}>
         <View style={s.centred}>
-          <ActivityIndicator color={colors.roxy} />
+          <RoxyLoading />
           <Text style={s.errorText}>Loading your application…</Text>
         </View>
       </SafeAreaView>
@@ -306,9 +307,9 @@ export default function ApplicationScreen() {
           {...a11yState({ disabled, busy: savingKey === c.id })}
           accessibilityLabel={`Save ${c.label}`}
         >
-          {savingKey === c.id
-            ? <ActivityIndicator color={roxyInk} size="small" />
-            : <Text style={s.saveText}>Save</Text>}
+          <BusySwap busy={savingKey === c.id} onFill>
+            <Text style={s.saveText}>Save</Text>
+          </BusySwap>
         </TouchableOpacity>
       </>
     );
@@ -381,9 +382,9 @@ export default function ApplicationScreen() {
                     {...a11yState({ disabled: startingKyc || !consentTicked, busy: startingKyc })}
                     accessibilityLabel="Start identity verification"
                   >
-                    {startingKyc
-                      ? <ActivityIndicator color={roxyInk} size="small" />
-                      : <Text style={s.saveText}>Start verification</Text>}
+                    <BusySwap busy={startingKyc} onFill>
+                      <Text style={s.saveText}>Start verification</Text>
+                    </BusySwap>
                   </TouchableOpacity>
                 </>
               )}
@@ -442,9 +443,9 @@ export default function ApplicationScreen() {
                     end={{ x: 1, y: 0 }}
                     style={[s.cta, submitDisabled && { opacity: 0.5 }]}
                   >
-                    {submitting
-                      ? <ActivityIndicator color={gradientInk} />
-                      : <Text style={s.ctaText}>Send for review</Text>}
+                    <BusySwap busy={submitting} onFill>
+                      <Text style={s.ctaText}>Send for review</Text>
+                    </BusySwap>
                   </LinearGradient>
                 </TouchableOpacity>
                 {submitError && (

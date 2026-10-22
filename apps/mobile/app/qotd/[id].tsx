@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList,
-  RefreshControl, Image, ActivityIndicator,
+  View, Text, StyleSheet, FlatList, RefreshControl, Image,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { AnswerSheet } from '../../components/grow/AnswerSheet';
+import { RoxyLoading } from '../../components/feedback';
 
 interface Answer {
   id: string;
@@ -106,7 +106,7 @@ export default function QotdAnswersScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
+        <RoxyLoading style={{ marginTop: 40 }} />
       </SafeAreaView>
     );
   }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, RefreshControl } from 'react-native';
 import { TouchableOpacity } from '../components/ui/PressableScale';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { TicketCard } from '../components/TicketCard';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { RoxyLoading } from '../components/feedback';
 
 interface TicketRow {
   event_id: string;
@@ -203,7 +204,7 @@ export default function MyTicketsScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
+        <RoxyLoading style={{ marginTop: 48 }} />
       ) : tickets.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>No tickets yet.</Text>

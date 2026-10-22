@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import { syncMyBadges } from '../lib/badges';
 import { useCelebrationStore } from '../store/celebrationStore';
 import { useAuthStore } from '../store/authStore';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { RoxyLoading } from '../components/feedback';
 
 type BadgeProgressRow = {
   user_id: string;
@@ -166,7 +167,7 @@ export default function BadgesScreen() {
 
       {loading ? (
         <View style={styles.centreWrap}>
-          <ActivityIndicator size="large" color={colors.roxy} accessibilityLabel="Loading badges" />
+          <RoxyLoading accessibilityLabel="Loading badges" />
         </View>
       ) : fetchError ? (
         <View style={styles.centreWrap}>

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ActivityIndicator,
-  ScrollView, Share, NativeSyntheticEvent, NativeScrollEvent,
+  View, Text, StyleSheet, ScrollView, Share, NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { Image } from 'expo-image';
@@ -21,6 +20,7 @@ import { OrderConfirmationSheet } from '../../components/build/OrderConfirmation
 import type { Business } from '../../types';
 import type { ProductWithVariants, ProductVariant } from '../../types/marketplace';
 import { pinkFill } from '../../lib/theme';
+import { RoxyLoading } from '../../components/feedback';
 
 
 export default function ProductDetailScreen() {
@@ -299,7 +299,7 @@ export default function ProductDetailScreen() {
             <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
-        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
+        <RoxyLoading style={{ marginTop: 48 }} />
       </SafeAreaView>
     );
   }
