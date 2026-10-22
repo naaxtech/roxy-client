@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useLayoutEffect } from 'react';
 import { View, AppState, StyleSheet } from 'react-native';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -7,6 +7,7 @@ import { useRoxyFab, fabVisible, fabOnStage } from '../../lib/roxyFab';
 import { FloatingTabBar, type TabBarRoute } from '../../components/nav/FloatingTabBar';
 import { CreateSheet } from '../../components/nav/CreateSheet';
 import { useCreateSheet } from '../../components/nav/createSheetStore';
+import { tabSelection } from '../../components/motion/tabSelection';
 import type { NavSlot } from '../../components/nav/navTokens';
 import { useFriendStore } from '../../store/friendStore';
 import { useConnectStore } from '../../store/connectStore';
@@ -120,6 +121,13 @@ function TabBarHost({ slots, state, descriptors, navigation }: BottomTabBarProps
       navigation.navigate(route.name);
     }
   }, [navigation]);
+  // Tell every TabFade which tab this commit shows, before the browser paints
+  // (React Navigation's 'state' event arrives only after the new tab's effects).
+  const selectedKey = state.routes[state.index]?.key ?? null;
+  useLayoutEffect(() => {
+    tabSelection.publish(selectedKey);
+  }, [selectedKey]);
+  useLayoutEffect(() => () => tabSelection.publish(null), []);
   return (
     <FloatingTabBar
       slots={slots}

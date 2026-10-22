@@ -137,6 +137,7 @@ jest.mock('../../hooks/useAccess', () => ({
 }));
 
 import TabLayout from '../../app/(tabs)/_layout';
+import { tabSelection } from '../../components/motion/tabSelection';
 import { useRoxyFab } from '../../lib/roxyFab';
 
 beforeEach(() => {
@@ -185,6 +186,15 @@ describe('TabLayout — a route change re-renders the leaves, not the navigator'
     const [first, second] = mockTabsRenders.slice(-2);
     expect(second.screenOptions).toBe(first.screenOptions);
     expect(second.tabBar).toBe(first.tabBar);
+  });
+
+  // TabFade starts each tab's fade from this, in the navigator's own commit
+  // (the 'state' event came only after the new tab's effects).
+  it('publishes the committed tab for TabFade, and clears it when the tabs go', () => {
+    const { unmount } = render(<TabLayout />);
+    expect(tabSelection.get()).toBe('feed-1');
+    unmount();
+    expect(tabSelection.get()).toBeNull();
   });
 });
 

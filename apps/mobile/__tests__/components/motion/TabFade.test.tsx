@@ -11,13 +11,14 @@
  */
 import React from 'react';
 import { Platform, StyleSheet, Text } from 'react-native';
-import { render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 
 let mockActiveKey = 'discover-1';
 const mockOwnKey = 'discover-1';
+const mockTabKeys = ['feed-1', 'discover-1'];
 jest.mock('@react-navigation/native', () => ({
   useNavigationState: (sel: (s: unknown) => unknown) =>
-    sel({ index: 0, routes: [{ key: mockActiveKey, name: 'x' }] }),
+    sel({ index: mockTabKeys.indexOf(mockActiveKey), routes: mockTabKeys.map((key) => ({ key, name: 'x' })) }),
   useRoute: () => ({ key: mockOwnKey, name: 'discover' }),
 }));
 
@@ -50,6 +51,7 @@ jest.mock('react-native-reanimated', () => {
 });
 
 import { TabFade } from '../../../components/motion/TabFade';
+import { tabSelection } from '../../../components/motion/tabSelection';
 import { SPRING } from '../../../lib/motion';
 
 const { __calls: calls } = jest.requireMock('react-native-reanimated') as {
@@ -68,6 +70,7 @@ const tree = () => (
 beforeEach(() => {
   calls.length = 0;
   mockActiveKey = 'discover-1';
+  tabSelection.publish(null);
   mockReduced.mockReturnValue(false);
 });
 
@@ -156,6 +159,26 @@ describe('TabFade on the web', () => {
     mockReduced.mockReturnValue(true);
     const { getByTestId } = render(tree());
     expect(mockWebSpring).not.toHaveBeenCalled();
+    expect(flat(getByTestId('tab-fade-content')).opacity).toBe(1);
+  });
+
+  // The tab bar host publishes the committed tab in a layout effect, in the
+  // navigator's own commit; the navigator's 'state' event only arrives after
+  // the new tab's effects (4 bare-ground frames at 4x CPU).
+  it('starts the fade from the tab bar\'s committed selection, before the navigator\'s state event', () => {
+    mockActiveKey = 'feed-1';
+    const { getByTestId } = render(tree());
+    expect(mockWebSpring).not.toHaveBeenCalled();
+    act(() => tabSelection.publish('discover-1'));
+    expect(mockWebSpring).toHaveBeenCalledTimes(1);
+    expect(flat(getByTestId('tab-fade-content')).opacity).toBe(1);
+  });
+
+  it('ignores a published key that is not one of its navigator\'s tabs (a stale bar)', () => {
+    // The navigator says this tab is selected; a stale bar says another tab.
+    act(() => tabSelection.publish('feed-OLD'));
+    const { getByTestId } = render(tree());
+    expect(mockWebSpring).toHaveBeenCalledTimes(1);
     expect(flat(getByTestId('tab-fade-content')).opacity).toBe(1);
   });
 });

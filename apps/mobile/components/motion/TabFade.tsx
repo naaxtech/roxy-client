@@ -5,6 +5,7 @@ import { useNavigationState, useRoute } from '@react-navigation/native';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { SPRING, springTo } from '../../lib/motion';
 import { startWebSpring } from './webSpring';
+import { useCommittedTabKey } from './tabSelection';
 
 /**
  * A tab's content fading in over its own ground (motion spec §3.1 row 4, F4).
@@ -39,7 +40,13 @@ export function TabFade({
   const isWeb = Platform.OS === 'web';
   const reducedMotion = useReducedMotion();
   const ownKey = useRoute().key;
-  const selected = useNavigationState((s) => s.routes[s.index]?.key) === ownKey;
+  // The tab bar host publishes the committed tab in the navigator's own
+  // commit; the navigator's state (read here) only catches up after the new
+  // tab's effects. Trust the published key only if it is one of these tabs.
+  const committed = useCommittedTabKey();
+  const navSelected = useNavigationState((s) => s.routes[s.index]?.key);
+  const committedIsOurs = useNavigationState((s) => committed !== null && s.routes.some((r) => r.key === committed));
+  const selected = (committedIsOurs ? committed : navSelected) === ownKey;
   const opacity = useSharedValue(reducedMotion ? 1 : 0);
   const webContent = useRef<View>(null);
 
