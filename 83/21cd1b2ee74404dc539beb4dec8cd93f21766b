@@ -1,0 +1,22 @@
+apps/mobile/__tests__/screens/BlockedList.test.tsx
+  h_0549c11fec2ab0 53-61
+apps/mobile/app/(tabs)/you/blocked.tsx
+  h_0549c11fec2ab0 2,16,132,186-188,200,233
+apps/mobile/app/(tabs)/you/delete-account.tsx
+  h_0549c11fec2ab0 3,16,224-226,263,265
+apps/mobile/app/(tabs)/you/edit.tsx
+  h_0549c11fec2ab0 4,29-30,137-142,255,324
+apps/mobile/app/(tabs)/you/feedback.tsx
+  h_0549c11fec2ab0 3,13-14,177-180,260-262,269-272,354-359
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8321cd1b2ee74404dc539beb4dec8cd93f21766b",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
