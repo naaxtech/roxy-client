@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +19,7 @@ import {
 import { ComingSoon } from '../features/ComingSoon';
 import { useAccess } from '../../hooks/useAccess';
 import { comingSoonCopy } from '../../lib/features';
+import { RowsSkeleton } from './LoadingShapes';
 
 /**
  * Public inbox: one row, Roxy Official, into community channels.
@@ -88,7 +89,7 @@ export function OfficialChatInbox() {
       </View>
       <Text style={s.section} testID="inbox-section-community" accessibilityRole="header">COMMUNITY CHATS</Text>
       {loading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 48 }} />
+        <RowsSkeleton testID="official-inbox-loading" label="Loading your chats" rows={2} />
       ) : (
         <>
           {community ? (

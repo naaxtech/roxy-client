@@ -27,6 +27,14 @@ beforeEach(() => {
 });
 
 describe('OfficialChatInbox', () => {
+  it('while the official chat loads: row skeleton (F8), no spinner (F11)', () => {
+    useProfileStore.setState({ profile: { vetting_status: 'approved' } as never });
+    mockFetchOfficialCommunity.mockReturnValue(new Promise(() => {}));
+    const v = render(<OfficialChatInbox />);
+    expect(v.getByTestId('official-inbox-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
   it('does not pretend Official chat is open for a pending applicant', () => {
     const { getByTestId, getByText, queryByTestId } = render(<OfficialChatInbox />);
     const copy = comingSoonCopy('officialChat', 'pending');

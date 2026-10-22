@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, ActivityIndicator,
+  View, Text, StyleSheet, FlatList,
 } from 'react-native';
 import { PressableScale } from '../../../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +20,7 @@ import {
   absorbEcho, dropPending, isPending, pendingMessage, settlePending,
 } from '../../../../../components/channels/pendingMessages';
 import { Snackbar } from '../../../../../components/ui/Snackbar';
+import { BusySwap, ThreadSkeleton } from '../../../../../components/messages/LoadingShapes';
 import {
   readChannelPage, readCommunitySnapshot, writeChannelPage, writeCommunitySnapshot,
 } from '../../../../../components/channels/channelCache';
@@ -525,9 +526,8 @@ export default function CommunityChannelsScreen() {
   const body = () => {
     if (loading) {
       return (
-        <View style={s.centre} testID="channels-loading">
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        // F8: the channel's shape while a first visit loads; F11: no spinner.
+        <ThreadSkeleton testID="channels-loading" label="Loading channels" />
       );
     }
 
@@ -582,9 +582,7 @@ export default function CommunityChannelsScreen() {
 
     if (loadingMessages && messages.length === 0) {
       return (
-        <View style={s.centre} testID="channel-messages-loading">
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        <ThreadSkeleton testID="channel-messages-loading" label="Loading messages" />
       );
     }
 
@@ -649,13 +647,11 @@ export default function CommunityChannelsScreen() {
               accessibilityState={{ busy: loadingOlder }}
               testID="channel-load-older"
             >
-              {loadingOlder ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (
+              <BusySwap busy={loadingOlder} label="Loading earlier messages">
                 <Text style={olderError ? s.olderError : s.older}>
                   {olderError ? "Couldn't load earlier messages. Tap to try again." : 'Earlier messages'}
                 </Text>
-              )}
+              </BusySwap>
             </PressableScale>
           ) : (
             <Text style={s.startOf} testID="channel-start">{`Start of # ${active.slug}`}</Text>

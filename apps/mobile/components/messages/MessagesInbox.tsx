@@ -9,6 +9,9 @@ import type { InboxCommunity } from '../../lib/inboxCommunities';
 import { TYPE, emphasized } from '../../lib/typography';
 import { RADII, SPACE, MARGIN, identityFor, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
+import { RoxyRefresh } from '../feedback';
+import { RowsSkeleton } from './LoadingShapes';
+import { usePullRefresh } from './usePullRefresh';
 
 /** Avatar and crest size on a 72 dp row (direction › Spacing). */
 const AVATAR = 48;
@@ -63,7 +66,8 @@ type Props = {
   formatTime: (ts: string | null) => string;
   isPartnerOnline: (item: InboxDm) => boolean;
   loading?: boolean;
-  onRefresh?: () => void;
+  /** Pull-to-refresh; may return a promise that settles once new rows are in. */
+  onRefresh?: () => void | Promise<unknown>;
   /** Leads the people section — the screen's Requests row. */
   directHeader?: ReactNode;
   footer?: ReactNode;
@@ -104,6 +108,8 @@ export function MessagesInbox({
   const colors = useThemeColors();
   // Built once per theme, not on every render (jank audit #8).
   const s = useMemo(() => styles(colors), [colors]);
+  // Spins only while HER pull runs, never under the first-load skeleton.
+  const pull = usePullRefresh(onRefresh);
 
   const sections: InboxSection[] = [
     { key: 'direct', data: chats },
@@ -118,13 +124,14 @@ export function MessagesInbox({
   );
 
   return (
+    <RoxyRefresh refreshing={pull.refreshing} onRefresh={pull.onRefresh} testID="inbox-refresh">
+      {(refreshControl) => (
     <SectionList
       sections={sections}
       keyExtractor={(item, index) => `${item.id}-${index}`}
       stickySectionHeadersEnabled={false}
       extraData={`${chats.length}-${communities.length}-${Object.values(unreadCounts).join(',')}`}
-      refreshing={loading}
-      onRefresh={onRefresh}
+      refreshControl={pull.enabled ? refreshControl : undefined}
       contentContainerStyle={s.list}
       renderSectionHeader={({ section }) =>
         section.key === 'direct' ? (
@@ -139,17 +146,7 @@ export function MessagesInbox({
         if (section.key === 'direct' && section.data.length === 0) {
           if (loading) {
             return (
-              <View testID="inbox-direct-loading" accessibilityLabel="Loading your messages">
-                {Array.from({ length: SKELETON_ROWS }, (_, i) => (
-                  <View key={i} style={s.row}>
-                    <View style={[s.skelAvatar, { backgroundColor: colors.raised }]} />
-                    <View style={s.content}>
-                      <View style={[s.skelLine, s.skelShort, { backgroundColor: colors.raised }]} />
-                      <View style={[s.skelLine, s.skelLong, { backgroundColor: colors.raised }]} />
-                    </View>
-                  </View>
-                ))}
-              </View>
+              <RowsSkeleton testID="inbox-direct-loading" label="Loading your messages" rows={SKELETON_ROWS} avatar={AVATAR} />
             );
           }
           return (
@@ -281,6 +278,8 @@ export function MessagesInbox({
       }}
       ListFooterComponent={footer ? <>{footer}</> : null}
     />
+      )}
+    </RoxyRefresh>
   );
 }
 
@@ -334,8 +333,4 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   emptyCtaText: { ...TYPE.label, color: colors.ink },
-  skelAvatar: { width: AVATAR, height: AVATAR, borderRadius: RADII.pill },
-  skelLine: { height: SPACE[2], borderRadius: RADII.pill },
-  skelShort: { width: '40%' },
-  skelLong: { width: '75%', marginTop: SPACE[0] },
 });

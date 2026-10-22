@@ -295,7 +295,14 @@ describe('a second visit (F7: no loader where data is known)', () => {
     const v = render(<CommunityChannelsScreen />);
     await release(general.id, []);
     await act(async () => { fireEvent.press(v.getByTestId('channel-bar-rants')); });
-    expect(v.getByTestId('channel-messages-loading')).toBeTruthy();
+    expect(v.getByTestId('channel-messages-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
+  it('a first visit to the community shows a skeleton (F8), never a spinner (F11)', () => {
+    const v = render(<CommunityChannelsScreen />);
+    expect(v.getByTestId('channels-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
   });
 });
 

@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Modal, View, Text, TextInput, FlatList, Image, ActivityIndicator, StyleSheet, Animated,
+  Modal, View, Text, TextInput, FlatList, Image, StyleSheet, Animated,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { usePopIn } from '../ui/popIn';
+import { Skeleton, SkeletonGroup } from '../feedback';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useAppWidth, FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
@@ -102,6 +103,7 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
     grid: { paddingHorizontal: 12, paddingBottom: 12 },
     row: { gap: 8, marginBottom: 8 },
     gif: { borderRadius: 8 },
+    skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     empty: { color: colors.textMuted, textAlign: 'center', marginTop: 32 },
     unavailable: { alignItems: 'center', paddingHorizontal: 32, paddingVertical: 40, gap: 8 },
     unavailableTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 15, textAlign: 'center' },
@@ -146,7 +148,12 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
             />
 
             {loading ? (
-              <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
+              // F8: GIF tiles at their column width while the first page loads.
+              <SkeletonGroup testID="gif-loading" accessibilityLabel="Loading GIFs" style={[styles.grid, styles.skeletonGrid]}>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <Skeleton key={i} width={COL_WIDTH} height={i % 3 === 0 ? 150 : 120} radius={8} />
+                ))}
+              </SkeletonGroup>
             ) : (
               <FlatList
                 data={results}

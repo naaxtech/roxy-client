@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { act, render, fireEvent } from '@testing-library/react-native';
 import { ActionTray } from '../../../components/chat/ActionTray';
 
 const defaultProps = {
@@ -50,17 +50,25 @@ describe('ActionTray', () => {
     expect(onNudgePress).toHaveBeenCalled();
   });
 
-  it('shows spinner and hides Wingwoman label when loading', () => {
-    const { queryByText } = render(
-      <ActionTray {...defaultProps} wingwomanLoading={true} />
-    );
-    expect(queryByText('Wingwoman')).toBeNull(); // replaced by spinner
+  // F11: no spinner; a wait over 200 ms swaps the label for the faceless O.
+  it('a slow Wingwoman wait swaps its label for the loading O after 200 ms (never a spinner)', () => {
+    jest.useFakeTimers();
+    const v = render(<ActionTray {...defaultProps} wingwomanLoading={true} />);
+    expect(v.getByText('Wingwoman')).toBeTruthy();
+    act(() => { jest.advanceTimersByTime(200); });
+    expect(v.queryByText('Wingwoman')).toBeNull();
+    expect(v.getByLabelText('Roxy is thinking')).toBeTruthy();
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+    jest.useRealTimers();
   });
 
-  it('shows spinner and hides Nudge label when loading', () => {
-    const { queryByText } = render(
-      <ActionTray {...defaultProps} nudgeLoading={true} />
-    );
-    expect(queryByText('Nudge')).toBeNull(); // replaced by spinner
+  it('a slow Nudge wait swaps its label for the loading O after 200 ms (never a spinner)', () => {
+    jest.useFakeTimers();
+    const v = render(<ActionTray {...defaultProps} nudgeLoading={true} />);
+    expect(v.getByText('Nudge')).toBeTruthy();
+    act(() => { jest.advanceTimersByTime(200); });
+    expect(v.queryByText('Nudge')).toBeNull();
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+    jest.useRealTimers();
   });
 });
