@@ -1,5 +1,40 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { useAuthStore } from '../../store/authStore';
+import { readThreadPage, writeThreadPage } from '../../components/chat/threadCache';
+import { readChannelPage, writeChannelPage } from '../../components/channels/channelCache';
+import { readEventMemory, writeEventMemory } from '../../components/events/eventCache';
+
+describe('in-session memory ends with the session (P2: never kept past her)', () => {
+  const remember = () => {
+    writeThreadPage('u1', 'c1', [{ id: 'm1' } as never]);
+    writeChannelPage('u1', 'ch1', [{ id: 'cm1' } as never]);
+    writeEventMemory('u1', 'e1', { event: { id: 'e1' }, ticketCode: null });
+  };
+  const forgotten = () => {
+    expect(readThreadPage('u1', 'c1')).toBeNull();
+    expect(readChannelPage('u1', 'ch1')).toBeNull();
+    expect(readEventMemory('u1', 'e1')).toBeNull();
+  };
+
+  it('signing out forgets her DM, channel and event memory', () => {
+    remember();
+    expect(readThreadPage('u1', 'c1')).not.toBeNull();
+    act(() => { useAuthStore.getState().signOut(); });
+    forgotten();
+  });
+
+  it('a session that ends (setSession(null)) forgets it too', () => {
+    remember();
+    act(() => { useAuthStore.getState().setSession(null); });
+    forgotten();
+  });
+
+  it('a token refresh for the same member keeps it', () => {
+    remember();
+    act(() => { useAuthStore.getState().setSession({ user: { id: 'u1' } } as never); });
+    expect(readThreadPage('u1', 'c1')).not.toBeNull();
+  });
+});
 
 describe('authStore', () => {
   beforeEach(() => {
