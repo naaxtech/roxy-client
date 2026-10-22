@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/ui/PrimaryButton.test.tsx
+  h_0549c11fec2ab0 2,30,170-173,176-182,184-206,210-220
+apps/mobile/components/ui/PrimaryButton.tsx
+  h_0549c11fec2ab0 15,50-54,74-75,106,120-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6dfb91efba0840fa1ba35412adaeb5ed38e2846c",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
