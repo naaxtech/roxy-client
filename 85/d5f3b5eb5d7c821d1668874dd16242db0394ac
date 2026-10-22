@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/archive/ArchiveRail.test.tsx
+  h_0549c11fec2ab0 131-162
+apps/mobile/components/archive/ArchiveRail.tsx
+  h_0549c11fec2ab0 72,169-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85d5f3b5eb5d7c821d1668874dd16242db0394ac",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
