@@ -1,6 +1,9 @@
-import React from 'react';
-import { Animated, StyleSheet } from 'react-native';
-import { render, fireEvent } from '@testing-library/react-native';
+import React, { Profiler } from 'react';
+import { Platform, StyleSheet } from 'react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
+import { getAnimatedStyle, setUpTests } from 'react-native-reanimated';
+
+setUpTests();
 
 const mockReducedMotion = jest.fn(() => false);
 jest.mock('../../../hooks/useReducedMotion', () => ({
@@ -9,21 +12,27 @@ jest.mock('../../../hooks/useReducedMotion', () => ({
 
 import { PrimaryButton } from '../../../components/ui/PrimaryButton';
 import { THEMES, LIP } from '../../../lib/theme';
-import { PRESS, SPRING } from '../../../lib/motion';
+import { PRESS } from '../../../lib/motion';
 import { TYPE } from '../../../lib/typography';
 import { useThemeStore } from '../../../store/themeStore';
 
 const flat = (node: { props: { style?: unknown } }) =>
   StyleSheet.flatten(node.props.style as never) as Record<string, unknown>;
 
-function translateYOf(node: { props: { style?: unknown } }): number {
-  const transform = (flat(node).transform ?? []) as Record<string, unknown>[];
+/** The face's drop as the UI thread paints it (reanimated). */
+function translateYOf(node: unknown): number {
+  const transform = ((getAnimatedStyle(node as never) as { transform?: Record<string, unknown>[] }).transform ?? []);
   return transform.reduce((acc, t) => (typeof t.translateY === 'number' ? acc + t.translateY : acc), 0);
 }
+const frames = (ms: number) => act(() => { jest.advanceTimersByTime(ms); });
 
 beforeEach(() => {
+  jest.useFakeTimers();
   mockReducedMotion.mockReturnValue(false);
   useThemeStore.setState({ theme: 'light' });
+});
+afterEach(() => {
+  jest.useRealTimers();
 });
 
 /**
@@ -71,22 +80,51 @@ describe('PrimaryButton — the Duolingo lip', () => {
     expect(label.fontSize).toBe(16);
   });
 
-  it('drops the face 3 dp onto the lip on press-in, on fastSpatial', () => {
-    const spring = jest.spyOn(Animated, 'spring');
-    const v = render(<PrimaryButton testID="go" label="Continue" onPress={() => {}} />);
+  // Wave 3 (motion spec F1): the drop runs on the UI thread from a shared
+  // value, so it starts in the next frame with no React render and a busy JS
+  // thread cannot hold it back once the press lands.
+  it('drops the face 3 dp onto the lip from press-in, on the UI thread (no render), and springs back', () => {
+    const commits = jest.fn();
+    const v = render(
+      <Profiler id="go" onRender={commits}>
+        <PrimaryButton testID="go" label="Continue" onPress={() => {}} />
+      </Profiler>,
+    );
+    frames(16);
+    commits.mockClear();
     fireEvent(v.getByTestId('go'), 'pressIn', { nativeEvent: {} });
-    const call = spring.mock.calls.find(([, cfg]) => cfg.toValue === PRESS.lipDrop);
-    expect(call?.[1]).toMatchObject({ stiffness: SPRING.fastSpatial.stiffness, damping: SPRING.fastSpatial.damping });
-    spring.mockRestore();
+    frames(16);
+    expect(commits).not.toHaveBeenCalled();
+    const first = translateYOf(v.getByTestId('go-face'));
+    expect(first).toBeGreaterThan(0);
+    frames(400);
+    expect(translateYOf(v.getByTestId('go-face'))).toBeCloseTo(PRESS.lipDrop, 2);
+    fireEvent(v.getByTestId('go'), 'pressOut', { nativeEvent: {} });
+    frames(400);
+    expect(translateYOf(v.getByTestId('go-face'))).toBeCloseTo(0, 2);
+  });
+
+  it('answers on web with no press delay (RN-web waits 50 ms by default)', () => {
+    const was = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+    try {
+      const v = render(<PrimaryButton testID="go" label="Continue" onPress={() => {}} />);
+      expect(v.getByTestId('go').props.delayPressIn).toBe(0);
+    } finally {
+      Object.defineProperty(Platform, 'OS', { value: was, configurable: true });
+    }
   });
 
   it('jumps the face down and back under Reduce Motion', () => {
     mockReducedMotion.mockReturnValue(true);
     const v = render(<PrimaryButton testID="go" label="Continue" onPress={() => {}} />);
+    frames(16);
     expect(translateYOf(v.getByTestId('go-face'))).toBe(0);
     fireEvent(v.getByTestId('go'), 'pressIn', { nativeEvent: {} });
+    frames(16);
     expect(translateYOf(v.getByTestId('go-face'))).toBe(LIP);
     fireEvent(v.getByTestId('go'), 'pressOut', { nativeEvent: {} });
+    frames(16);
     expect(translateYOf(v.getByTestId('go-face'))).toBe(0);
   });
 

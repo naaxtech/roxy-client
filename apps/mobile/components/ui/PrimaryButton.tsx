@@ -1,7 +1,6 @@
-import { useRef } from 'react';
 import {
   ActivityIndicator,
-  Animated,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -9,10 +8,11 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { LIP, RADII } from '../../lib/theme';
-import { PRESS, animatedSpring } from '../../lib/motion';
+import { PRESS, SPRING } from '../../lib/motion';
 import { TYPE } from '../../lib/typography';
 
 /** Face height (direction › Spacing: buttons 52). */
@@ -43,7 +43,16 @@ type Props = {
  *
  * Every other pressable uses `PressableScale`; this is the only control with
  * a lip, which is what makes "the one thing to do here" read at a glance.
+ *
+ * The drop is a reanimated shared value set in the press handler (Wave 3,
+ * motion spec F1): it starts on the UI thread in the next frame, no React
+ * render per frame, and on web there is no 50 ms press delay.
  */
+
+/** RN-web reads `delayPressIn` (default 50 ms); native Pressable has no delay. */
+function noPressDelay(): Record<string, number> {
+  return Platform.OS === 'web' ? { delayPressIn: 0 } : {};
+}
 export function PrimaryButton({
   label,
   onPress,
@@ -56,14 +65,14 @@ export function PrimaryButton({
 }: Props) {
   const colors = useThemeColors();
   const reducedMotion = useReducedMotion();
-  const drop = useRef(new Animated.Value(0)).current;
+  const drop = useSharedValue(0);
   const inert = disabled || busy;
 
   const press = (to: number) => {
     if (inert) return;
-    if (reducedMotion) drop.setValue(to);
-    else Animated.spring(drop, { toValue: to, ...animatedSpring('fastSpatial') }).start();
+    drop.value = reducedMotion ? to : withSpring(to, SPRING.fastSpatial);
   };
+  const faceStyle = useAnimatedStyle(() => ({ transform: [{ translateY: drop.value }] }));
 
   const faceColor = inert ? colors.raised : colors.pink;
   const inkColor = inert ? colors.ink3 : colors.onPink;
@@ -74,6 +83,7 @@ export function PrimaryButton({
       onPress={onPress}
       onPressIn={() => press(PRESS.lipDrop)}
       onPressOut={() => press(0)}
+      {...noPressDelay()}
       disabled={inert}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
@@ -90,7 +100,7 @@ export function PrimaryButton({
       )}
       <Animated.View
         testID={testID ? `${testID}-face` : undefined}
-        style={[s.face, { backgroundColor: faceColor, transform: [{ translateY: drop }] }]}
+        style={[s.face, { backgroundColor: faceColor }, faceStyle]}
       >
         {busy ? (
           <ActivityIndicator testID={testID ? `${testID}-busy` : undefined} color={inkColor} />
