@@ -291,12 +291,16 @@ describe('PRO-06 / 07 / 08 on another member\'s profile', () => {
   });
 
   it('a follow that fails says so', async () => {
+    // F10: a snackbar with Retry (UserProfileOptimistic.test.tsx), not a
+    // blocking alert.
     mockFollow.mockResolvedValue(false);
     const { getByTestId, getByText } = render(<UserProfileScreen />);
     await waitFor(() => expect(getByText('Follow')).toBeTruthy());
     await act(async () => { fireEvent.press(getByText('Follow')); });
     expect(mockFollow).toHaveBeenCalledWith('u1', 'u2');
-    expect(mockAlert).toHaveBeenCalledWith(expect.stringMatching(/follow/i), expect.any(String));
+    expect(getByTestId('profile-action-snackbar')).toBeTruthy();
+    expect(getByText('Could not follow her.')).toBeTruthy();
+    expect(mockAlert).not.toHaveBeenCalled();
     expect(getByTestId('profile-shell')).toBeTruthy();
   });
 

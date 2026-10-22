@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
-  Modal, View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator,
+  Modal, View, Text, StyleSheet, Pressable, ScrollView,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
+import { Snackbar } from '../ui/Snackbar';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useFriendStore, type FriendshipRow } from '../../store/friendStore';
@@ -78,51 +79,63 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
   useEffect(() => {
     if (requests.length === 0 && invites.length > 0) setSegment('friends');
   }, [requests.length, invites.length]);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // F10: an answered card leaves in the same frame as the tap (no spinner in
+  // its place). `answering` hides it while the write is in flight; a refusal
+  // un-hides it and says so in a snackbar with Retry.
+  const [answering, setAnswering] = useState<ReadonlySet<string>>(() => new Set());
+  const [failure, setFailure] = useState<{ message: string; retry: () => void } | null>(null);
+  const hide = (key: string) => setAnswering((prev) => new Set(prev).add(key));
+  const unhide = (key: string) => setAnswering((prev) => {
+    const next = new Set(prev);
+    next.delete(key);
+    return next;
+  });
 
   const answerInvite = async (inv: CommunityInvite, accept: boolean) => {
-    setBusyId(`invite-${inv.community_id}`);
-    setError(null);
+    const key = `invite-${inv.community_id}`;
+    hide(key);
+    setFailure(null);
     try {
       await respondCommunityInvite(inv.community_id, accept);
       setInvites((prev) => prev.filter((x) => x.community_id !== inv.community_id));
-      haptic(accept ? 'success' : 'tap');
+      // No haptic: answering a request is not on the haptic map (motion spec §3.3).
       if (accept && user?.id) await fetchJoined(user.id);
     } catch (e) {
-      setError(e instanceof Error && e.message ? e.message : 'Could not answer that just now.');
+      setFailure({
+        message: e instanceof Error && e.message ? e.message : 'Could not answer that just now.',
+        retry: () => { void answerInvite(inv, accept); },
+      });
       logError(e, 'RequestsSheet.answerInvite');
     } finally {
-      setBusyId(null);
+      unhide(key);
     }
   };
 
   const actFriend = async (row: FriendshipRow, accept: boolean) => {
-    setBusyId(row.id);
-    setError(null);
+    setFailure(null);
     try {
-      // Both store actions throw on a refused write and refetch on success, so
-      // the list is never stale and a failure is never announced as a success.
+      // Both store actions are optimistic: the row leaves at once, comes back
+      // and throws on a refused write, refetch on success. A failure is never
+      // announced as a success.
       if (accept) await acceptRequest(row.id);
       else await rejectRequest(row.id);
-      haptic(accept ? 'success' : 'tap');
       void refresh();
     } catch (e) {
-      setError(accept ? 'Could not accept that just now.' : 'Could not decline that just now.');
+      setFailure({
+        message: accept ? 'Could not accept that just now.' : 'Could not decline that just now.',
+        retry: () => { void actFriend(row, accept); },
+      });
       logError(e, 'RequestsSheet.actFriend');
-    } finally {
-      setBusyId(null);
     }
   };
 
   const answerMessage = async (t: InboxThread, accept: boolean, alsoBlock = false) => {
-    setBusyId(t.conversation_id);
-    setError(null);
+    hide(t.conversation_id);
+    setFailure(null);
     try {
       await respondMessageRequest(t.conversation_id, accept);
       const sender = t.members[0]?.id;
       if (alsoBlock && sender) await blockUser(sender);
-      haptic(accept ? 'success' : 'tap');
       await refresh();
       if (accept) {
         onClose();
@@ -130,10 +143,14 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
       }
     } catch (e) {
       // The RPC's message is already written for her (chatErrorMessage).
-      setError(e instanceof Error && e.message ? e.message : 'Could not answer that just now.');
+      setFailure({
+        message: e instanceof Error && e.message ? e.message : 'Could not answer that just now.',
+        retry: () => { void answerMessage(t, accept, alsoBlock); },
+      });
       logError(e, 'RequestsSheet.answerMessage');
     } finally {
-      setBusyId(null);
+      // After refresh() the answered thread is gone from `requests` anyway.
+      unhide(t.conversation_id);
     }
   };
 
@@ -188,7 +205,10 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
     );
   };
 
-  const messageList = requests.length === 0 ? (
+  const shownRequests = requests.filter((t) => !answering.has(t.conversation_id));
+  const shownInvites = invites.filter((inv) => !answering.has(`invite-${inv.community_id}`));
+
+  const messageList = shownRequests.length === 0 ? (
     <View style={s.empty} testID="requests-empty">
       <Text style={s.emptyTitle}>No message requests</Text>
       <Text style={s.emptyBody}>
@@ -197,10 +217,9 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
     </View>
   ) : (
     <ScrollView style={s.list} contentContainerStyle={s.listContent}>
-      {requests.map((t) => {
+      {shownRequests.map((t) => {
         const who = t.members[0];
         const name = who ? memberName(who) : 'Someone';
-        const busy = busyId === t.conversation_id;
         return (
           <View key={t.conversation_id} style={s.card} testID={`message-request-${t.conversation_id}`}>
             <View style={s.cardHead}>
@@ -225,51 +244,46 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
             <Text style={s.note}>
               Not on your friends list. She can&apos;t see if you&apos;ve read this, and she won&apos;t know if you delete it.
             </Text>
-            {busy ? (
-              <ActivityIndicator color={colors.roxy} style={s.busy} />
-            ) : (
-              <View style={s.actions}>
-                <TouchableOpacity
-                  onPress={() => void confirmBlock(t)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Block ${name}`}
-                  activeOpacity={0.8}
-                  style={s.ghost}
-                  testID={`message-request-block-${t.conversation_id}`}
-                >
-                  <Text style={s.blockText}>Block</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => void answerMessage(t, false)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Delete the request from ${name}. She will not be told.`}
-                  activeOpacity={0.8}
-                  style={s.ghost}
-                  testID={`message-request-delete-${t.conversation_id}`}
-                >
-                  <Text style={s.ghostText}>Delete</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => void answerMessage(t, true)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Accept the request from ${name}`}
-                  activeOpacity={0.8}
-                  style={s.accept}
-                  testID={`message-request-accept-${t.conversation_id}`}
-                >
-                  <Text style={s.acceptText}>Accept</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            <View style={s.actions}>
+              <TouchableOpacity
+                onPress={() => void confirmBlock(t)}
+                accessibilityRole="button"
+                accessibilityLabel={`Block ${name}`}
+                activeOpacity={0.8}
+                style={s.ghost}
+                testID={`message-request-block-${t.conversation_id}`}
+              >
+                <Text style={s.blockText}>Block</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => void answerMessage(t, false)}
+                accessibilityRole="button"
+                accessibilityLabel={`Delete the request from ${name}. She will not be told.`}
+                activeOpacity={0.8}
+                style={s.ghost}
+                testID={`message-request-delete-${t.conversation_id}`}
+              >
+                <Text style={s.ghostText}>Delete</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => void answerMessage(t, true)}
+                accessibilityRole="button"
+                accessibilityLabel={`Accept the request from ${name}`}
+                activeOpacity={0.8}
+                style={s.accept}
+                testID={`message-request-accept-${t.conversation_id}`}
+              >
+                <Text style={s.acceptText}>Accept</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         );
       })}
     </ScrollView>
   );
 
-  const inviteRows = invites.map((inv) => {
+  const inviteRows = shownInvites.map((inv) => {
     const name = inv.community?.name ?? 'A private community';
-    const busy = busyId === `invite-${inv.community_id}`;
     return (
       <View key={`inv-${inv.community_id}`} style={s.row} testID={`community-invite-${inv.community_id}`}>
         {avatar(name)}
@@ -277,35 +291,31 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
           <Text style={s.name} numberOfLines={1}>{name}</Text>
           <Text style={s.handle} numberOfLines={1}>Invited you to join</Text>
         </View>
-        {busy ? (
-          <ActivityIndicator color={colors.roxy} />
-        ) : (
-          <View style={s.actions}>
-            <TouchableOpacity
-              onPress={() => void answerInvite(inv, false)}
-              accessibilityRole="button"
-              accessibilityLabel={`Not now for ${name}. Nobody is told.`}
-              activeOpacity={0.8}
-              style={s.ghost}
-            >
-              <Text style={s.ghostText}>Not now</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => void answerInvite(inv, true)}
-              accessibilityRole="button"
-              accessibilityLabel={`Join ${name}`}
-              activeOpacity={0.8}
-              style={s.accept}
-            >
-              <Text style={s.acceptText}>Join</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <View style={s.actions}>
+          <TouchableOpacity
+            onPress={() => void answerInvite(inv, false)}
+            accessibilityRole="button"
+            accessibilityLabel={`Not now for ${name}. Nobody is told.`}
+            activeOpacity={0.8}
+            style={s.ghost}
+          >
+            <Text style={s.ghostText}>Not now</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => void answerInvite(inv, true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Join ${name}`}
+            activeOpacity={0.8}
+            style={s.accept}
+          >
+            <Text style={s.acceptText}>Join</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   });
 
-  const friendList = friendCount === 0 ? (
+  const friendList = pendingReceived.length + shownInvites.length === 0 ? (
     <View style={s.empty} testID="requests-friends-empty">
       <Text style={s.emptyTitle}>No friend requests</Text>
       <Text style={s.emptyBody}>When someone asks to be friends, she waits here until you decide.</Text>
@@ -314,7 +324,6 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
     <ScrollView style={s.list} contentContainerStyle={s.listContent}>
       {inviteRows}
       {pendingReceived.map((row) => {
-        const busy = busyId === row.id;
         return (
           <View key={row.id} style={s.row} testID={`request-${row.id}`}>
             {avatar(row.profile.display_name ?? '?')}
@@ -322,32 +331,28 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
               <Text style={s.name} numberOfLines={1}>{row.profile.display_name}</Text>
               <Text style={s.handle} numberOfLines={1}>@{row.profile.username}</Text>
             </View>
-            {busy ? (
-              <ActivityIndicator color={colors.roxy} />
-            ) : (
-              <View style={s.actions}>
-                <TouchableOpacity
-                  onPress={() => void actFriend(row, false)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Decline ${row.profile.display_name}. She will not be told.`}
-                  activeOpacity={0.8}
-                  style={s.ghost}
-                  testID={`request-decline-${row.id}`}
-                >
-                  <Text style={s.ghostText}>Decline</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => void actFriend(row, true)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Accept ${row.profile.display_name}`}
-                  activeOpacity={0.8}
-                  style={s.accept}
-                  testID={`request-accept-${row.id}`}
-                >
-                  <Text style={s.acceptText}>Accept</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            <View style={s.actions}>
+              <TouchableOpacity
+                onPress={() => void actFriend(row, false)}
+                accessibilityRole="button"
+                accessibilityLabel={`Decline ${row.profile.display_name}. She will not be told.`}
+                activeOpacity={0.8}
+                style={s.ghost}
+                testID={`request-decline-${row.id}`}
+              >
+                <Text style={s.ghostText}>Decline</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => void actFriend(row, true)}
+                accessibilityRole="button"
+                accessibilityLabel={`Accept ${row.profile.display_name}`}
+                activeOpacity={0.8}
+                style={s.accept}
+                testID={`request-accept-${row.id}`}
+              >
+                <Text style={s.acceptText}>Accept</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         );
       })}
@@ -376,15 +381,20 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
         </View>
 
         <View style={s.tabs} accessibilityRole="tablist">
-          {tab('messages', 'Messages', requests.length)}
+          {tab('messages', 'Messages', shownRequests.length)}
           {tab('friends', 'Friends', friendCount)}
         </View>
 
-        {error ? (
-          <Text style={s.error} accessibilityLiveRegion="polite" testID="requests-error">{error}</Text>
-        ) : null}
-
         {segment === 'messages' ? messageList : friendList}
+
+        <Snackbar
+          visible={failure !== null}
+          message={failure?.message ?? ''}
+          actionLabel="Retry"
+          onAction={() => failure?.retry()}
+          onDismiss={() => setFailure(null)}
+          testID="requests-snackbar"
+        />
       </View>
     </Modal>
   );
@@ -428,7 +438,6 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   tabCountOn: { backgroundColor: inkOn(colors.primary) },
   tabCountText: { ...TYPE.micro, color: inkOn(colors.primary), fontWeight: '800' },
   tabCountTextOn: { color: colors.primary },
-  error: { ...TYPE.caption, color: colors.errorInk },
   empty: { paddingVertical: 26, gap: 6 },
   emptyTitle: { ...TYPE.bodyLg, color: colors.textPrimary, fontWeight: '700' },
   emptyBody: { ...TYPE.caption, color: colors.textSecondary, lineHeight: 18 },
@@ -452,7 +461,6 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   previewText: { ...TYPE.body, color: colors.textPrimary },
   note: { ...TYPE.micro, color: colors.textMuted, lineHeight: 16 },
-  busy: { alignSelf: 'flex-end', marginVertical: 8 },
   avatar: { width: 40, height: 40, borderRadius: RADII.pill, alignItems: 'center', justifyContent: 'center' },
   initial: { ...TYPE.bodyLg, fontWeight: '800' },
   rowText: { flex: 1, gap: 1 },
