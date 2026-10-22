@@ -1,0 +1,23 @@
+apply plugin: 'com.android.library'
+
+group = 'com.roxy.app'
+version = '1.0.0'
+
+// Local Expo module `RoxyHaptics` (apps/mobile/modules/roxy-haptics), linked by
+// expo-modules-autolinking from the project's `modules/` dir. This directory is
+// `android-native/`, not `android/`, because the repo's .gitignore and .easignore drop every
+// directory named `android/`; expo-module.config.json's `android.gradlePath` points here.
+// Same setup as node_modules/expo-haptics/android/build.gradle (SDK 51), minus publishing.
+def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+useCoreDependencies()
+useDefaultAndroidSdkVersions()
+
+android {
+  namespace "expo.modules.roxyhaptics"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
