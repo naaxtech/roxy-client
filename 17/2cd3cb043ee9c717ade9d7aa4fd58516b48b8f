@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/feed/feedVideoPreload.test.tsx
+  h_0549c11fec2ab0 1-69
+apps/mobile/components/feed/FeedVideoPlayer.tsx
+  h_0549c11fec2ab0 48-77,193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "172cd3cb043ee9c717ade9d7aa4fd58516b48b8f",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
