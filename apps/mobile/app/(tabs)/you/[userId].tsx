@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Animated, Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Share, StyleSheet, Text, View } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import * as Linking from 'expo-linking';
 import { compactCount, fetchFollowCounts, type FollowCounts } from '../../../lib/followCounts';
@@ -29,12 +29,12 @@ import { useFollowStore } from '../../../store/followStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { TYPE } from '../../../lib/typography';
-import { RADII, inkOn, scrim } from '../../../lib/theme';
+import { RADII, inkOn } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { confirmAction, showAlert } from '../../../lib/confirm';
 import { openDirectChat } from '../../../lib/directMessages';
 import { useSafetyStore } from '../../../store/safetyStore';
-import { usePopIn } from '../../../components/ui/popIn';
+import { Sheet } from '../../../components/feedback';
 import { Snackbar } from '../../../components/ui/Snackbar';
 import type { CommunityRoom, Event, Profile } from '../../../types';
 import { FeatureGate } from '../../../components/features/FeatureGate';
@@ -108,7 +108,6 @@ function UserProfileScreen() {
   const [counts, setCounts] = useState<FollowCounts | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
-  const safetyPop = usePopIn(safetyOpen);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [badges, setBadges] = useState<EarnedBadge[]>([]);
@@ -679,14 +678,8 @@ function UserProfileScreen() {
         onRetry={() => void load()}
       />
 
-      <Modal
-        visible={safetyOpen}
-        transparent
-        animationType="none"
-        onRequestClose={() => setSafetyOpen(false)}
-      >
-        <Pressable style={rowStyles.scrim} onPress={() => setSafetyOpen(false)}>
-          <Animated.View style={[rowStyles.sheet, safetyPop]} testID="profile-more-sheet">
+      {/* F5: the shared Sheet (spring rise, drag, only the scrim fades). */}
+      <Sheet visible={safetyOpen} onClose={() => setSafetyOpen(false)} accessibilityLabel={profile?.display_name ?? 'This profile'} dragFrom="sheet" testID="profile-more-sheet" style={rowStyles.sheet}>
             <Text style={rowStyles.sheetTitle}>{profile?.display_name ?? 'This profile'}</Text>
             <TouchableOpacity
               style={rowStyles.sheetRow}
@@ -744,9 +737,7 @@ function UserProfileScreen() {
             >
               <Text style={rowStyles.sheetDanger}>Block</Text>
             </TouchableOpacity>
-          </Animated.View>
-        </Pressable>
-      </Modal>
+      </Sheet>
 
       <Snackbar
         visible={actionFailure !== null}
@@ -814,15 +805,7 @@ function hostedStyles(colors: ReturnType<typeof useThemeColors>) {
       borderRadius: RADII.md,
     },
     onlineText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '600', flex: 1 },
-    scrim: { flex: 1, backgroundColor: scrim(0.5), justifyContent: 'flex-end' },
-    sheet: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: RADII.sheet,
-      borderTopRightRadius: RADII.sheet,
-      padding: 20,
-      paddingBottom: 28,
-      gap: 4,
-    },
+    sheet: { backgroundColor: colors.background, paddingHorizontal: 20, paddingBottom: 16, gap: 4 },
     sheetTitle: { ...TYPE.title, color: colors.textPrimary, marginBottom: 8 },
     sheetRow: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
     sheetLabel: { ...TYPE.body, color: colors.textPrimary, fontWeight: '700' },

@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import UserProfileScreen from '../../app/(tabs)/you/[userId]';
@@ -271,6 +272,14 @@ describe('PRO-06 / 07 / 08 on another member\'s profile', () => {
     await waitFor(() => expect(getByTestId('profile-error')).toBeTruthy());
     expect(queryByTestId('profile-not-found')).toBeNull();
     expect(getByTestId('profile-retry')).toBeTruthy();
+  });
+
+  it('the profile menu opens on the shared Sheet (F5), not a pop-in Modal', async () => {
+    const v = render(<UserProfileScreen />);
+    await waitFor(() => expect(v.getByTestId('profile-more')).toBeTruthy());
+    fireEvent.press(v.getByTestId('profile-more'));
+    expect(v.getByTestId('profile-more-sheet')).toBeTruthy();
+    expect(v.getByTestId('profile-more-sheet-scrim', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('the ⋯ sheet offers Mute, which mutes her', async () => {
