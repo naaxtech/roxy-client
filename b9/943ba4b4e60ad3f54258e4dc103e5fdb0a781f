@@ -1,0 +1,16 @@
+apps/mobile/__tests__/screens/EventPoster.test.tsx
+  h_0549c11fec2ab0 47-50,64-65,67-68,87-88,189,195-268
+apps/mobile/app/event/[id].tsx
+  h_0549c11fec2ab0 9-10,112-114,215-220,224,232-235,274,276-281,286-308,448,629-637
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b9943ba4b4e60ad3f54258e4dc103e5fdb0a781f",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
