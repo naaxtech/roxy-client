@@ -61,7 +61,8 @@ test('no visible text is clipped by its own box', async ({ page }) => {
 });
 
 test('every category chip is legible and hittable', async ({ page }) => {
-  const chips = page.locator('[data-testid^="discover-chips-"]:not([data-testid$="-pill"])');
+  // v2 adds the row's end fade (`discover-chips-fade`, decorative): not a chip.
+  const chips = page.locator('[data-testid^="discover-chips-"]:not([data-testid$="-pill"]):not([data-testid$="-fade"])');
   const count = await chips.count();
   expect(count, 'no category chips rendered').toBeGreaterThan(0);
 
@@ -80,7 +81,8 @@ test('every category chip is legible and hittable', async ({ page }) => {
 });
 
 test('the chip row is one line, not a wrapped block', async ({ page }) => {
-  const chips = page.locator('[data-testid^="discover-chips-"]:not([data-testid$="-pill"])');
+  // v2 adds the row's end fade (`discover-chips-fade`, decorative): not a chip.
+  const chips = page.locator('[data-testid^="discover-chips-"]:not([data-testid$="-pill"]):not([data-testid$="-fade"])');
   const count = await chips.count();
 
   const tops = new Set<number>();
