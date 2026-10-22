@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE, FONTS } from '../../lib/typography';
@@ -6,6 +6,9 @@ import { RADII, SPACE, MARGIN, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
 import { haptic } from '../../lib/haptics';
+import { PRESS } from '../../lib/motion';
+import { useThemeStore } from '../../store/themeStore';
+import { PressableScale, stateLayerFor } from '../ui/PressableScale';
 
 /** The painted pill's height. The TARGET is MIN_TOUCH_TARGET; this is the ink. */
 const PILL_HEIGHT = SPACE[6] + SPACE[0];
@@ -49,6 +52,7 @@ export function FilterChips<T extends string>({
   const colors = useThemeColors();
   const s = styles(colors);
   const primary = emphasis === 'primary';
+  const layer = stateLayerFor(useThemeStore((st) => st.theme));
 
   const select = (next: T) => {
     if (next !== value) haptic('select');
@@ -69,32 +73,52 @@ export function FilterChips<T extends string>({
         {chips.map((chip) => {
           const on = chip.key === value;
           return (
-            <Pressable key={chip.key} onPress={() => select(chip.key)} accessible={false}>
-              {/* The 48 dp minimum belongs on what a FINGER HITS. The target
-                  below is full height and transparent; the pill inside is
-                  paint only. The a11y identity sits on this View rather than
-                  the Pressable: RN's Pressable drops unknown props so `aria-*`
-                  never reaches the node on react-native-web 0.19. */}
-              <View
-                style={s.target}
-                testID={testID ? `${testID}-${chip.key}` : undefined}
-                accessibilityRole="radio"
-                {...a11yState({ selected: on, checked: on })}
-                accessibilityLabel={chip.label}
-              >
+            // The press belongs on the PILL, not on the transparent 48 dp target
+            // around it (a state layer over the target would paint a capsule
+            // taller than the chip). So the target is the PressableScale with
+            // its own feedback off, and the pill reads `pressed`: the shared
+            // scale and a state layer clipped to the pill. C0 handover: the
+            // chips were a raw Pressable with no press state at all.
+            <PressableScale
+              key={chip.key}
+              onPress={() => select(chip.key)}
+              accessible={false}
+              feedback="none"
+            >
+              {({ pressed }) => (
+                // The 48 dp minimum belongs on what a FINGER HITS. The target
+                // below is full height and transparent; the pill inside is
+                // paint only. The a11y identity sits on this View rather than
+                // the Pressable: RN's Pressable drops unknown props so `aria-*`
+                // never reaches the node on react-native-web 0.19.
                 <View
-                  testID={testID ? `${testID}-${chip.key}-pill` : undefined}
-                  style={[s.chip, { backgroundColor: on ? colors.pinkContainer : colors.raised }]}
+                  style={s.target}
+                  testID={testID ? `${testID}-${chip.key}` : undefined}
+                  accessibilityRole="radio"
+                  {...a11yState({ selected: on, checked: on })}
+                  accessibilityLabel={chip.label}
                 >
-                  <Text
-                    numberOfLines={1}
-                    style={on ? s.labelOn : s.labelOff}
+                  <View
+                    testID={testID ? `${testID}-${chip.key}-pill` : undefined}
+                    style={[s.chip, { backgroundColor: on ? colors.pinkContainer : colors.raised }, pressed && s.chipPressed]}
                   >
-                    {chip.label}
-                  </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={on ? s.labelOn : s.labelOff}
+                    >
+                      {chip.label}
+                    </Text>
+                    {pressed ? (
+                      <View
+                        pointerEvents="none"
+                        testID={testID ? `${testID}-${chip.key}-press` : undefined}
+                        style={[s.pressLayer, { backgroundColor: layer.color, opacity: layer.alpha }]}
+                      />
+                    ) : null}
+                  </View>
                 </View>
-              </View>
-            </Pressable>
+              )}
+            </PressableScale>
           );
         })}
         {/* Trailing room so the last chip can scroll clear of the fade. */}
@@ -127,7 +151,10 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: SPACE[3],
     borderRadius: RADII.pill,
+    overflow: 'hidden',
   },
+  chipPressed: { transform: [{ scale: PRESS.scale }] },
+  pressLayer: { ...StyleSheet.absoluteFillObject },
   // Text tops out at 600, so the chip's emphasized pair is 500 at rest → 600 on.
   labelOn: { ...TYPE.label, color: colors.onPinkContainer },
   labelOff: { ...TYPE.label, fontFamily: FONTS.text.medium, color: colors.ink2 },
