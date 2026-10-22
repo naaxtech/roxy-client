@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
+import { IMAGE_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { initialsOf } from '../ui/Avatar';
@@ -252,6 +253,8 @@ export function MemberCard({
   } else if (avatarUrl) {
     face = (
       <ExpoImage
+        transition={IMAGE_TRANSITION}
+        cachePolicy={IMAGE_CACHE}
         source={{ uri: avatarUrl }}
         style={[st.photo, box] as never}
         contentFit="cover"

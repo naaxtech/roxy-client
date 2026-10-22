@@ -6,6 +6,7 @@ import { TouchableOpacity } from '../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { IMAGE_TRANSITION, IMAGE_CACHE } from '../lib/imageLoading';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { globalSearch, GlobalSearchResult } from '../lib/globalSearch';
@@ -257,7 +258,7 @@ export default function GlobalSearchScreen() {
                     accessibilityLabel={`Open post by ${name}`}
                   >
                     {thumb ? (
-                      <Image source={{ uri: thumb }} style={styles.thumb} contentFit="cover" />
+                      <Image transition={IMAGE_TRANSITION} cachePolicy={IMAGE_CACHE} source={{ uri: thumb }} style={styles.thumb} contentFit="cover" />
                     ) : (
                       <View style={styles.iconPlate}>
                         <Ionicons name={isVideo ? 'videocam' : 'document-text'} size={20} color={colors.roxy} />

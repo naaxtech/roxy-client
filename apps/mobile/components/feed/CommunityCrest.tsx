@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import type { ReactElement, ReactNode } from 'react';
 import { Image } from 'expo-image';
+import { NO_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import { LinearGradient } from 'expo-linear-gradient';
 import { avatarGradient } from '../../lib/avatars';
 import { BRAND_INK } from '../../lib/theme';
@@ -79,6 +80,8 @@ export function CommunityCrest({
     <LinearGradient colors={grad} style={s.face}>
       {imageUrl ? (
         <Image
+          transition={NO_TRANSITION}
+          cachePolicy={IMAGE_CACHE}
           testID="community-crest-image"
           source={{ uri: imageUrl }}
           contentFit="cover"

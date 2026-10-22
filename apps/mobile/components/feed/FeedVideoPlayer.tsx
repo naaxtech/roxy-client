@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
+import { IMAGE_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import { getVideoPlaybackUrl, getPostImageUrl } from '../../lib/media';
 
 let AVModule: typeof import('expo-av') | null = null;
@@ -163,6 +164,8 @@ export function FeedVideoPlayer({
    */
   const posterOverlay = posterUri ? (
     <Image
+      transition={IMAGE_TRANSITION}
+      cachePolicy={IMAGE_CACHE}
       testID="feed-video-poster"
       source={{ uri: posterUri }}
       contentFit="cover"

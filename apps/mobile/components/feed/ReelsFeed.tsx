@@ -16,6 +16,8 @@ import {
   excludeSeenReels, excludeHidden, excludeMutedAuthors, initialReelIndex,
 } from '../../lib/reels';
 import type { ReelRow } from '../../lib/reels';
+import { prefetchImages } from '../../lib/imageLoading';
+import { feedCellImageUrls, imagesAhead } from './feedPrefetch';
 import { fetchAnnouncementPage } from '../../lib/announcements';
 import type { ForYouCursor } from '../../lib/announcements';
 import { fetchWallPage } from '../../lib/wallFeed';
@@ -445,13 +447,25 @@ export function ReelsFeed({
    * re-upserting the same row.
    */
   const lastSeenRef = useRef<string | null>(null);
+  const pagerItemsRef = useRef<readonly FeedItem[]>([]);
+  const activeIndexRef = useRef(0);
+  const warmAround = useCallback((index: number) => {
+    const items = pagerItemsRef.current as readonly { id: string }[];
+    const here = items[index];
+    prefetchImages([...(here ? feedCellImageUrls(here) : []), ...imagesAhead(items, index)]);
+  }, []);
   const handleActiveItemChange = useCallback((itemId: string) => {
+    const index = pagerItemsRef.current.findIndex((it) => it.id === itemId);
+    if (index >= 0 && index !== activeIndexRef.current) {
+      activeIndexRef.current = index;
+      warmAround(index);
+    }
     if (lastSeenRef.current === itemId) return;
     lastSeenRef.current = itemId;
     // The question of the day is not a post: there is no seen_posts row for it.
     if (isDailyPromptId(itemId)) return;
     markSeen(itemId);
-  }, [markSeen]);
+  }, [markSeen, warmAround]);
 
   /**
    * The negative half of the feed.
@@ -574,6 +588,17 @@ export function ReelsFeed({
       ? [...pages, { id: CAUGHT_UP_ID, kind: 'caught_up' } as CaughtUpItem]
       : pages;
   }, [scope, dailyPrompt, initialPostId, visibleReels, hasMore, loading]);
+
+  /**
+   * Budget F15: the page she is on and the next `PREFETCH_AHEAD` have their
+   * first image (photo or poster) and the author's face warmed, so a page
+   * lands with its picture already decoded. Re-run when pages arrive (page 1,
+   * then each `onEndReached`); `prefetchImages` requests each URL once.
+   */
+  pagerItemsRef.current = pagerItems;
+  useEffect(() => {
+    warmAround(activeIndexRef.current);
+  }, [pagerItems, warmAround]);
 
   // FlashList recycles cells. Without this it has no reason to re-render one
   // when the mute state or a like changes, so a recycled cell keeps the previous

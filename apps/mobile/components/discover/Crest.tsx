@@ -1,4 +1,5 @@
 import { Image as ExpoImage } from 'expo-image';
+import { NO_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import { View, Text, StyleSheet } from 'react-native';
 import { initialsOf } from '../ui/Avatar';
 import { identityFor, inkOn } from '../../lib/theme';
@@ -42,6 +43,8 @@ export function Crest({ name, seed, uri, size, testID }: Props) {
   if (uri) {
     return (
       <ExpoImage
+        transition={NO_TRANSITION}
+        cachePolicy={IMAGE_CACHE}
         source={{ uri }}
         style={[s.image, box] as never}
         contentFit="cover"

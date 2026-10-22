@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { TouchableOpacity } from '../../../../components/ui/PressableScale';
 import { Image as ExpoImage } from 'expo-image';
+import { IMAGE_TRANSITION, IMAGE_CACHE } from '../../../../lib/imageLoading';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -524,7 +525,7 @@ export default function CreatePostScreen() {
         >
           {photos.map((p) => (
             <View key={p.uri} style={styles.photoThumbWrap}>
-              <ExpoImage source={{ uri: p.uri }} style={styles.photoThumb} contentFit="cover" />
+              <ExpoImage transition={IMAGE_TRANSITION} cachePolicy={IMAGE_CACHE} source={{ uri: p.uri }} style={styles.photoThumb} contentFit="cover" />
               <TouchableOpacity
                 style={styles.photoRemove}
                 onPress={() => removePhoto(p.uri)}

@@ -63,9 +63,16 @@ const mockFeedRows = ['p0', 'p1', 'p2', 'p3', 'p4'].map((id, i) => ({
   feed_score: 100 - i,
   video_url: null,
   video_thumbnail_url: null,
+  media_urls: i % 2 === 1 ? [`https://cdn.test/photo-${i}.jpg`] : null,
   created_at: '2026-10-01T00:00:00Z',
-  profiles: { display_name: `Member ${i}`, avatar_url: null },
+  profiles: { display_name: `Member ${i}`, avatar_url: `https://cdn.test/face-${i}.jpg` },
   communities: null,
+}));
+
+const mockPrefetch = jest.fn((urls: readonly (string | null | undefined)[]) => urls);
+jest.mock('../../../lib/imageLoading', () => ({
+  ...jest.requireActual('../../../lib/imageLoading'),
+  prefetchImages: (urls: readonly (string | null | undefined)[]) => mockPrefetch(urls),
 }));
 
 jest.mock('../../../lib/wallFeed', () => ({
@@ -137,6 +144,30 @@ async function mountFeed() {
 
 beforeEach(() => {
   for (const k of Object.keys(mockRenders)) delete mockRenders[k];
+});
+
+describe('ReelsFeed prefetch (budget F15)', () => {
+  const warmed = () => mockPrefetch.mock.calls.flatMap(([urls]) => [...urls]);
+
+  it('warms the first pages as soon as they arrive', async () => {
+    mockPrefetch.mockClear();
+    await mountFeed();
+    expect(warmed()).toEqual(expect.arrayContaining([
+      'https://cdn.test/face-0.jpg', 'https://cdn.test/photo-1.jpg', 'https://cdn.test/face-2.jpg',
+    ]));
+  });
+
+  it('warms the next two pages when she lands on one, and no further', async () => {
+    await mountFeed();
+    mockPrefetch.mockClear();
+
+    act(() => { latestList().onViewableItemsChanged({ viewableItems: [{ index: 1 }] }); });
+
+    expect(warmed()).toEqual(expect.arrayContaining([
+      'https://cdn.test/face-2.jpg', 'https://cdn.test/photo-3.jpg', 'https://cdn.test/face-3.jpg',
+    ]));
+    expect(warmed()).not.toContain('https://cdn.test/face-4.jpg');
+  });
 });
 
 describe('ReelsFeed page change (jank audit #5)', () => {

@@ -1,7 +1,9 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, View, Text, StyleSheet, Image,
+  ActivityIndicator, Animated, View, Text, StyleSheet,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { IMAGE_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -112,9 +114,11 @@ function CommentRow({
           <Text style={styles.deletedText}>This comment was removed.</Text>
         ) : comment.gif_url || comment.media_url ? (
           <Image
+            transition={IMAGE_TRANSITION}
+            cachePolicy={IMAGE_CACHE}
             source={{ uri: (comment.gif_url ?? comment.media_url)! }}
             style={{ width: 180, height: 135, borderRadius: 10, marginTop: 2 }}
-            resizeMode="cover"
+            contentFit="cover"
           />
         ) : (
           <Text style={styles.commentContent}>{comment.content}</Text>

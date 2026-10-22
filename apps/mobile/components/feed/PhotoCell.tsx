@@ -6,6 +6,7 @@ import {
 import { TouchableOpacity } from '../ui/PressableScale';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { Image } from 'expo-image';
+import { IMAGE_TRANSITION, IMAGE_CACHE } from '../../lib/imageLoading';
 import { Ionicons } from '@expo/vector-icons';
 import { getPostImageUrl } from '../../lib/media';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
@@ -89,6 +90,8 @@ export function PhotoCell({
         >
           {urls.map((path, i) => (
             <Image
+              transition={IMAGE_TRANSITION}
+              cachePolicy={IMAGE_CACHE}
               key={`${post.id}:${i}`}
               testID={`photo-cell-image-${i}`}
               source={{ uri: getPostImageUrl(path, 'detail') }}
