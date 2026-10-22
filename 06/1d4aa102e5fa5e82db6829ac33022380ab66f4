@@ -1,0 +1,26 @@
+apps/mobile/__tests__/components/feedback/RoxyRefresh.test.tsx
+  h_0549c11fec2ab0 1-200
+apps/mobile/__tests__/components/feedback/Sheet.test.tsx
+  h_0549c11fec2ab0 1-335
+apps/mobile/__tests__/components/feedback/SnackbarHost.test.tsx
+  h_0549c11fec2ab0 1-113
+apps/mobile/components/feedback/RoxyRefresh.tsx
+  h_0549c11fec2ab0 1-269
+apps/mobile/components/feedback/Sheet.tsx
+  h_0549c11fec2ab0 1-295
+apps/mobile/components/feedback/SnackbarHost.tsx
+  h_0549c11fec2ab0 1-99
+apps/mobile/components/feedback/index.ts
+  h_0549c11fec2ab0 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "061d4aa102e5fa5e82db6829ac33022380ab66f4",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
