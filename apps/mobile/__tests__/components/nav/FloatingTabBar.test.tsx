@@ -50,8 +50,10 @@ jest.mock('react-native-reanimated', () => {
 
 /** NavIcon render counter: which slots a navigation actually re-rendered. */
 const mockWebSpring = jest.fn();
+const mockCurrentWebStyle = jest.fn((): { opacity: string; transform: string } | null => null);
 jest.mock('../../../components/motion/webSpring', () => ({
   startWebSpring: (...args: unknown[]) => mockWebSpring(...args),
+  currentWebStyle: (...args: unknown[]) => mockCurrentWebStyle(...(args as [])),
 }));
 
 const mockIconRenders: string[] = [];
@@ -596,5 +598,93 @@ describe('FloatingTabBar on the web — the pill grows on the compositor', () =>
     const { rerenderAt } = renderBar({ index: 1 });
     rerenderAt(2);
     expect(mockWebSpring).not.toHaveBeenCalled();
+  });
+});
+
+describe('FloatingTabBar on the web — the Feed\'s colours cross-fade on the compositor', () => {
+  // Feel run 3074493 (4x CPU): leaving the Feed, the bar's colour spring ran on
+  // the page's main thread and froze half-way — a grey bar with near-invisible
+  // labels — for ~900 ms while Discover / Messages mounted, then jumped. On the
+  // web the stage colours are layers whose opacity the compositor fades.
+  const originalOS = Platform.OS;
+  // The stage twins are hidden from assistive tech (aria-hidden) by design.
+  const HIDDEN = { includeHiddenElements: true };
+  const fadeCalls = () => mockWebSpring.mock.calls.filter(
+    ([, keyframes]) => (keyframes as Record<string, unknown>[]).some((k) => 'opacity' in k),
+  );
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', { value: 'web' });
+    mockWebSpring.mockClear();
+    mockWebSpring.mockReturnValue(undefined);
+    mockCurrentWebStyle.mockReset();
+    mockCurrentWebStyle.mockReturnValue(null);
+  });
+  afterEach(() => Object.defineProperty(Platform, 'OS', { value: originalOS }));
+
+  it('paints the stage ground, pill and labels as layers over the theme colours', () => {
+    const { getByTestId } = renderBar({ index: 0 });
+    expect(flat(getByTestId('nav-bar')).backgroundColor).toBe(THEMES.light.ground);
+    expect(flat(getByTestId('nav-bar-stage', HIDDEN))).toEqual(
+      expect.objectContaining({ backgroundColor: THEMES.light.stage, opacity: 1 }),
+    );
+    expect(flat(getByTestId('nav-indicator-feed-fill')).backgroundColor).toBe(THEMES.light.pinkContainer);
+    expect(flat(getByTestId('nav-indicator-feed-fill-stage', HIDDEN))).toEqual(
+      expect.objectContaining({ backgroundColor: THEMES.light.stageRaised, opacity: 1 }),
+    );
+    expect(flat(getByTestId('nav-label-feed-stage', HIDDEN))).toEqual(expect.objectContaining({ color: '#FFFFFF', opacity: 1 }));
+    expect(flat(getByTestId('nav-label-discover-stage', HIDDEN))).toEqual(
+      expect.objectContaining({ color: THEMES.dark.ink2, opacity: 1 }),
+    );
+    expect(flat(getByTestId('nav-label-discover')).color).toBe(THEMES.light.ink2);
+  });
+
+  it('leaving the Feed fades every stage layer 1 → 0 on fastEffects; no main-thread colour spring', () => {
+    mockReducedMotion.mockReturnValue(false);
+    const { getByTestId, rerenderAt } = renderBar({ index: 0 });
+    mockWebSpring.mockClear();
+    springCalls.length = 0;
+
+    rerenderAt(1);
+    expect(flat(getByTestId('nav-bar-stage', HIDDEN)).opacity).toBe(0);
+    expect(flat(getByTestId('nav-label-messages-stage', HIDDEN)).opacity).toBe(0);
+    expect(flat(getByTestId('nav-indicator-discover-fill-stage', HIDDEN)).opacity).toBe(0);
+    // Ground, four labels and the new pill — one compositor fade each, in step.
+    expect(fadeCalls()).toHaveLength(6);
+    for (const [, keyframes, token] of fadeCalls()) {
+      expect(keyframes).toEqual([{ opacity: 1 }, { opacity: 0 }]);
+      expect(token).toBe(SPRING.fastEffects);
+    }
+    const effects = (c: { config: unknown }) => (c.config as { stiffness?: number } | undefined)?.stiffness === SPRING.fastEffects.stiffness;
+    expect(springCalls.filter(effects)).toEqual([]);
+  });
+
+  it('arriving on the Feed fades them 0 → 1; a switch between light tabs leaves them alone', () => {
+    mockReducedMotion.mockReturnValue(false);
+    const { rerenderAt } = renderBar({ index: 1 });
+    rerenderAt(2);
+    expect(fadeCalls()).toEqual([]);
+    rerenderAt(0);
+    expect(fadeCalls()).toHaveLength(6);
+    for (const [, keyframes] of fadeCalls()) expect(keyframes).toEqual([{ opacity: 0 }, { opacity: 1 }]);
+  });
+
+  it('turns around from what is on screen when she leaves mid-fade', () => {
+    mockReducedMotion.mockReturnValue(false);
+    mockWebSpring.mockReturnValue({ playState: 'running' });
+    const { rerenderAt } = renderBar({ index: 1 });
+    rerenderAt(0);
+    mockWebSpring.mockClear();
+    mockCurrentWebStyle.mockReturnValue({ opacity: '0.4', transform: 'none' });
+    rerenderAt(1);
+    const ground = fadeCalls()[0];
+    expect(ground[1]).toEqual([{ opacity: 0.4 }, { opacity: 0 }]);
+  });
+
+  it('Reduce Motion: the colours simply switch', () => {
+    mockReducedMotion.mockReturnValue(true);
+    const { getByTestId, rerenderAt } = renderBar({ index: 0 });
+    rerenderAt(1);
+    expect(fadeCalls()).toEqual([]);
+    expect(flat(getByTestId('nav-bar-stage', HIDDEN)).opacity).toBe(0);
   });
 });

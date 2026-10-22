@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, Pressable, Platform } from 'react-native';
+import { View, StyleSheet, Pressable, Platform, Text } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -23,6 +23,7 @@ import { PRESS_HEAD_START, PressableScale, stateLayerFor } from '../ui/Pressable
 import { useThemeStore } from '../../store/themeStore';
 import { afterPaint } from '../motion/afterPaint';
 import { startWebSpring } from '../motion/webSpring';
+import { useWebStageFade } from './webStageFade';
 import {
   CREATE_KEY,
   NAV_HEIGHT,
@@ -112,15 +113,20 @@ function UnreadDot({ value, slotKey, colors }: { value: number | string; slotKey
  * there; one that mounts on a later selection grows in.
  */
 function NavPill({
-  name, stage, inks, barPainted, growNew,
+  name, stage, stageOn, stageShown, inks, barPainted, growNew, reducedMotion,
 }: {
   name: string;
   stage: SharedValue<number>;
+  /** The bar wears the Feed's stage colours (web: the layer's resting opacity). */
+  stageOn: boolean;
+  /** The stage the bar last painted: a pill mounting with the switch fades from it (web). */
+  stageShown: { current: boolean };
   inks: InkPair;
   /** True once the bar has painted: a pill mounting after that is a new selection. */
   barPainted: { current: boolean };
   /** False under Reduce Motion: the pill is simply there. */
   growNew: boolean;
+  reducedMotion: boolean;
 }) {
   const [growIn] = useState(() => barPainted.current && growNew);
   const isWeb = Platform.OS === 'web';
@@ -150,17 +156,24 @@ function NavPill({
     backgroundColor: interpolateColor(stage.value, [0, 1], [fromPill, toPill]),
   }));
   const growStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: grow.value }] }));
-  const fill = <Animated.View testID={`nav-indicator-${name}-fill`} style={[s.indicatorFill, fillStyle]} />;
+  const stageFill = useWebStageFade<View>(stageOn, reducedMotion, stageShown.current);
   if (isWeb) {
+    // The theme pill with the stage pill over it, faded on the compositor.
     return (
       <View ref={webShape} testID={`nav-indicator-${name}`} pointerEvents="none" style={s.indicator}>
-        {fill}
+        <View testID={`nav-indicator-${name}-fill`} style={[s.indicatorFill, { backgroundColor: fromPill }]} />
+        <View
+          ref={stageFill}
+          testID={`nav-indicator-${name}-fill-stage`}
+          aria-hidden
+          style={[s.indicatorFill, { backgroundColor: toPill, opacity: stageOn ? 1 : 0 }]}
+        />
       </View>
     );
   }
   return (
     <Animated.View testID={`nav-indicator-${name}`} pointerEvents="none" style={[s.indicator, growStyle]}>
-      {fill}
+      <Animated.View testID={`nav-indicator-${name}-fill`} style={[s.indicatorFill, fillStyle]} />
     </Animated.View>
   );
 }
@@ -175,8 +188,11 @@ type RouteSlotProps = {
   ink: BarInk;
   inks: InkPair;
   stage: SharedValue<number>;
+  stageOn: boolean;
+  stageShown: { current: boolean };
   barPainted: { current: boolean };
   growNew: boolean;
+  reducedMotion: boolean;
   onSlotPress: (route: TabBarRoute, isFocused: boolean) => void;
 };
 
@@ -185,7 +201,8 @@ type RouteSlotProps = {
  * selection and the one that gained it, not all five (jank audit #3).
  */
 const RouteSlot = memo(function RouteSlot({
-  route, label, icon, isFocused, badge, colors, ink, inks, stage, barPainted, growNew, onSlotPress,
+  route, label, icon, isFocused, badge, colors, ink, inks, stage, stageOn, stageShown, barPainted, growNew,
+  reducedMotion, onSlotPress,
 }: RouteSlotProps) {
   const labelStyle = isFocused ? emphasized('meta') : TYPE.meta;
   const fromLabel = isFocused ? inks.theme.activeLabel : inks.theme.idle;
@@ -193,6 +210,7 @@ const RouteSlot = memo(function RouteSlot({
   const labelInk = useAnimatedStyle(() => ({
     color: interpolateColor(stage.value, [0, 1], [fromLabel, toLabel]),
   }));
+  const stageLabel = useWebStageFade<Text>(stageOn, reducedMotion);
 
   return (
     <PressableScale
@@ -206,7 +224,16 @@ const RouteSlot = memo(function RouteSlot({
     >
       <View style={s.indicatorWrap}>
         {isFocused ? (
-          <NavPill name={route.name} stage={stage} inks={inks} barPainted={barPainted} growNew={growNew} />
+          <NavPill
+            name={route.name}
+            stage={stage}
+            stageOn={stageOn}
+            stageShown={stageShown}
+            inks={inks}
+            barPainted={barPainted}
+            growNew={growNew}
+            reducedMotion={reducedMotion}
+          />
         ) : null}
         <View testID={`nav-icon-layer-${route.name}`} style={s.iconLayer}>
           <NavIcon
@@ -217,9 +244,27 @@ const RouteSlot = memo(function RouteSlot({
         </View>
         {badge !== undefined ? <UnreadDot value={badge} slotKey={route.name} colors={colors} /> : null}
       </View>
-      <Animated.Text style={[s.label, labelStyle, labelInk]} numberOfLines={1}>
-        {label}
-      </Animated.Text>
+      {Platform.OS === 'web' ? (
+        // The theme label with its stage twin over it, faded on the compositor.
+        <View style={s.labelWrap}>
+          <Text testID={`nav-label-${route.name}`} style={[s.label, labelStyle, { color: fromLabel }]} numberOfLines={1}>
+            {label}
+          </Text>
+          <Text
+            ref={stageLabel}
+            testID={`nav-label-${route.name}-stage`}
+            aria-hidden
+            style={[s.label, labelStyle, s.labelStage, { color: toLabel, opacity: stageOn ? 1 : 0 }]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+        </View>
+      ) : (
+        <Animated.Text style={[s.label, labelStyle, labelInk]} numberOfLines={1}>
+          {label}
+        </Animated.Text>
+      )}
     </PressableScale>
   );
 });
@@ -300,7 +345,9 @@ function CreateSlot({
 /**
  * The Feed recolours the bar to the stage. A 0 → 1 progress on `fastEffects`
  * (ζ 1, so colour never overshoots) cross-fades ground, pill and labels on the
- * UI thread; under Reduce Motion the bar simply recolours.
+ * UI thread; under Reduce Motion the bar simply recolours. The web fades its
+ * stage layers on the compositor instead (useWebStageFade), so nothing there
+ * animates this value.
  */
 function useStageProgress(onStage: boolean, reducedMotion: boolean): SharedValue<number> {
   const stage = useSharedValue(onStage ? 1 : 0);
@@ -309,7 +356,7 @@ function useStageProgress(onStage: boolean, reducedMotion: boolean): SharedValue
     if (was.current === onStage) return;
     was.current = onStage;
     const to = onStage ? 1 : 0;
-    stage.value = reducedMotion ? to : withSpring(to, springTo('fastEffects'));
+    stage.value = reducedMotion || Platform.OS === 'web' ? to : withSpring(to, springTo('fastEffects'));
   }, [onStage, reducedMotion, stage]);
   return stage;
 }
@@ -330,7 +377,8 @@ function useStageProgress(onStage: boolean, reducedMotion: boolean): SharedValue
  * Wave 3 (motion spec §3.1 row 4): a tap paints the new selection (pill,
  * colours) at once and asks the navigator to move only after that frame is on
  * screen (`afterPaint`), so the bar answers the finger even while the
- * destination is still rendering. All of its motion runs on reanimated.
+ * destination is still rendering. Its motion runs on reanimated natively and
+ * on the compositor (WAAPI) on the web.
  *
  * The bar sits in the navigator's normal flow, so React Navigation reserves
  * its height and no screen loses its last row behind it. Full width leaves room
@@ -357,6 +405,13 @@ export function FloatingTabBar({
   const groundStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(stage.value, [0, 1], [inks.theme.ground, inks.stage.ground]),
   }));
+  const isWeb = Platform.OS === 'web';
+  const stageGround = useWebStageFade<View>(onStage, reducedMotion);
+  // The stage the bar last painted (read by pills mounting with a switch).
+  const stageShown = useRef(onStage);
+  useLayoutEffect(() => {
+    stageShown.current = onStage;
+  });
 
   // Slots mounted with the bar keep their pill at rest; later selections grow.
   const barPainted = useRef(false);
@@ -391,8 +446,20 @@ export function FloatingTabBar({
   }, [onTabPress]);
 
   return (
-    <Animated.View testID="nav-bar" style={[s.bar, { paddingBottom: bottomInset }, groundStyle]}>
-      <Animated.View testID="nav-pill" style={[s.row, groundStyle]}>
+    <Animated.View
+      testID="nav-bar"
+      style={[s.bar, { paddingBottom: bottomInset }, isWeb ? { backgroundColor: inks.theme.ground } : groundStyle]}
+    >
+      {isWeb ? (
+        <View
+          ref={stageGround}
+          testID="nav-bar-stage"
+          aria-hidden
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: inks.stage.ground, opacity: onStage ? 1 : 0 }]}
+        />
+      ) : null}
+      <Animated.View testID="nav-pill" style={[s.row, isWeb ? null : groundStyle]}>
         {slots.map((slot) => {
           if (slot.kind === 'action') {
             return (
@@ -421,8 +488,11 @@ export function FloatingTabBar({
               ink={ink}
               inks={inks}
               stage={stage}
+              stageOn={onStage}
+              stageShown={stageShown}
               barPainted={barPainted}
               growNew={!indicatorSnapsInstantly(reducedMotion)}
+              reducedMotion={reducedMotion}
               onSlotPress={onSlotPress}
             />
           );
@@ -480,6 +550,16 @@ const s = StyleSheet.create({
   },
   label: {
     textAlign: 'center',
+  },
+  labelWrap: {
+    position: 'relative',
+    maxWidth: '100%',
+  },
+  labelStage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
   },
   dot: {
     position: 'absolute',
