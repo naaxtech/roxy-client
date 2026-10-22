@@ -9,6 +9,7 @@ import { RADII, floatElevation } from '../../lib/theme';
 import { a11yState } from '../../lib/a11yState';
 import { STAGE } from '../feed/stageColors';
 import { PICKER_DIM } from '../feed/feedChromeTokens';
+import { PressableScale } from '../ui/PressableScale';
 import { PICKER, pickerFrame } from './reactionGeometry';
 import type { ReactionPickerController } from './useReactionPicker';
 
@@ -30,8 +31,10 @@ const HOVER_SCALE = PICKER.hoverEmoji / PICKER.emoji;
  * it springs out (`spatial`) and the items follow on `fastSpatial`, 20 ms
  * apart from the button's side. The emoji under her finger grows to 44 dp and
  * lifts 26 dp. Her current reaction sits on a `pinkContainer` cell. Tapping an
- * emoji works too; tapping the dimmed post closes it. Floats, so it carries
- * the `float` elevation.
+ * emoji works too, and each one answers on press-in like every control (the
+ * one press primitive, `PressableScale`: scale + state layer); tapping the
+ * dimmed post closes it (a scrim: no press state). Floats, so it carries the
+ * `float` elevation.
  */
 export function ReactionPicker({ picker, reaction, reducedMotion }: Props): ReactElement | null {
   if (!picker.open) return null;
@@ -111,7 +114,7 @@ function PickerItem({
   }, [hovered, lift, reducedMotion]);
 
   return (
-    <Pressable
+    <PressableScale
       testID={`reaction-picker-item-${emoji}`}
       onPress={() => onPick(emoji)}
       accessibilityRole="menuitem"
@@ -129,7 +132,7 @@ function PickerItem({
       >
         <Text style={s.emoji} allowFontScaling={false}>{emoji}</Text>
       </Animated.View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

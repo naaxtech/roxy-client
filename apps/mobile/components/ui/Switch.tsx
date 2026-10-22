@@ -1,12 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect } from 'react';
+import { I18nManager, Pressable, StyleSheet } from 'react-native';
+import Animated, {
+  interpolateColor, useAnimatedStyle, useSharedValue, withSpring, withTiming,
+} from 'react-native-reanimated';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { BRAND_INK_INVERSE, RADII } from '../../lib/theme';
-import { runSpring } from '../../lib/motion';
+import { fadeConfig, headStart, springTo } from '../../lib/motion';
 import { tapLight } from '../../lib/haptics';
 import { a11yState } from '../../lib/a11yState';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
+import { noPressDelay } from './noPressDelay';
 
 /**
  * The M3 switch, Roxy's one switch (design direction v2 › Settings).
@@ -16,6 +20,13 @@ import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
  * `control` thumb (also 24 while pressed). The thumb travels on
  * `SPRING.fastSpatial`; Reduce Motion makes it jump. A light haptic lands on
  * every change (haptics stay under Reduce Motion, per the direction).
+ *
+ * Motion runs on the UI thread (Wave 3, motion spec §3.1 row 2): travel,
+ * size and colour are shared values, so press-in grows the thumb without a
+ * React render and a busy JS thread cannot hold the travel back. The track
+ * and thumb colours cross-fade on `SPRING.fastEffects` (never a snap; Reduce
+ * Motion: a 120 ms fade). The thumb is one 24 dp disc scaled to 16 / 20 / 24
+ * and moved by a transform, so nothing relayouts while it moves.
  *
  * Same props as React Native's `Switch` (`value`, `onValueChange`, `disabled`)
  * so a call site swaps one import. The control is a real 48 dp target and a
@@ -39,6 +50,8 @@ const INNER_H = SWITCH.height - 2 * SWITCH.outline;
 const INNER_W = SWITCH.width - 2 * SWITCH.outline;
 const CENTER_OFF = INNER_H / 2;
 const CENTER_ON = INNER_W - INNER_H / 2;
+/** The thumb is drawn at its pressed size and scaled down. */
+const THUMB_BOX = SWITCH.thumbPressed;
 
 export type SwitchProps = {
   value: boolean;
@@ -54,15 +67,59 @@ export function Switch({
 }: SwitchProps) {
   const colors = useThemeColors();
   const reducedMotion = useReducedMotion();
-  const [pressed, setPressed] = useState(false);
-  const travel = useRef(new Animated.Value(value ? 1 : 0)).current;
+  /** 0 off → 1 on: the thumb's travel (spatial) … */
+  const travel = useSharedValue(value ? 1 : 0);
+  /** … and the colours (effects: no overshoot). */
+  const tint = useSharedValue(value ? 1 : 0);
+  /** 1 while pressed: the thumb grows to 24 dp. */
+  const press = useSharedValue(0);
+  const rtl = I18nManager.isRTL;
 
   useEffect(() => {
-    runSpring(travel, value ? 1 : 0, 'fastSpatial', reducedMotion, false);
-  }, [value, reducedMotion, travel]);
+    const to = value ? 1 : 0;
+    if (reducedMotion) {
+      travel.value = to;
+      tint.value = withTiming(to, fadeConfig());
+    } else {
+      travel.value = withSpring(to, springTo('fastSpatial'));
+      tint.value = withSpring(to, springTo('fastEffects'));
+    }
+  }, [value, reducedMotion, travel, tint]);
 
-  const thumb = pressed && !disabled ? SWITCH.thumbPressed : value ? SWITCH.thumbOn : SWITCH.thumbOff;
-  const centre = travel.interpolate({ inputRange: [0, 1], outputRange: [CENTER_OFF, CENTER_ON] });
+  const pressTo = (to: number) => {
+    if (disabled) return;
+    if (reducedMotion) {
+      press.value = to;
+    } else if (to === 1 && press.value <= 0.001) {
+      // From rest: leave one frame into the spring (F1, painted next frame).
+      const { start, config } = headStart(0, 1);
+      press.value = start;
+      press.value = withSpring(1, config);
+    } else {
+      press.value = withSpring(to, springTo('fastSpatial'));
+    }
+  };
+
+  const off = { track: colors.raised, border: colors.control, thumb: colors.control };
+  const on = { track: colors.pink, border: colors.pink, thumb: BRAND_INK_INVERSE };
+
+  const trackStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(tint.value, [0, 1], [off.track, on.track]),
+    borderColor: interpolateColor(tint.value, [0, 1], [off.border, on.border]),
+  }), [off.track, on.track, off.border, on.border]);
+
+  const thumbStyle = useAnimatedStyle(() => {
+    const centre = CENTER_OFF + travel.value * (CENTER_ON - CENTER_OFF);
+    const rest = SWITCH.thumbOff + tint.value * (SWITCH.thumbOn - SWITCH.thumbOff);
+    const size = rest + press.value * (SWITCH.thumbPressed - rest);
+    return {
+      backgroundColor: interpolateColor(tint.value, [0, 1], [off.thumb, on.thumb]),
+      transform: [
+        { translateX: (rtl ? INNER_W - centre : centre) - THUMB_BOX / 2 },
+        { scale: size / THUMB_BOX },
+      ],
+    };
+  }, [off.thumb, on.thumb, rtl]);
 
   const toggle = () => {
     if (disabled) return;
@@ -74,8 +131,9 @@ export function Switch({
     <Pressable
       testID={testID}
       onPress={toggle}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
+      onPressIn={() => pressTo(1)}
+      onPressOut={() => pressTo(0)}
+      {...noPressDelay()}
       disabled={disabled}
       accessibilityRole="switch"
       accessibilityLabel={accessibilityLabel}
@@ -83,32 +141,13 @@ export function Switch({
       {...a11yState({ checked: value, disabled })}
       style={[s.target, disabled && s.disabled]}
     >
-      <View
-        testID={testID ? `${testID}-track` : undefined}
-        style={[
-          s.track,
-          {
-            backgroundColor: value ? colors.pink : colors.raised,
-            borderColor: value ? colors.pink : colors.control,
-          },
-        ]}
-      >
+      <Animated.View testID={testID ? `${testID}-track` : undefined} style={[s.track, trackStyle]}>
         <Animated.View
           testID={testID ? `${testID}-thumb` : undefined}
           pointerEvents="none"
-          style={[
-            s.thumb,
-            {
-              width: thumb,
-              height: thumb,
-              top: (INNER_H - thumb) / 2,
-              marginStart: -thumb / 2,
-              start: centre,
-              backgroundColor: value ? BRAND_INK_INVERSE : colors.control,
-            },
-          ]}
+          style={[s.thumb, thumbStyle]}
         />
-      </View>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -129,6 +168,10 @@ const s = StyleSheet.create({
   },
   thumb: {
     position: 'absolute',
+    left: 0,
+    top: (INNER_H - THUMB_BOX) / 2,
+    width: THUMB_BOX,
+    height: THUMB_BOX,
     borderRadius: RADII.pill,
   },
 });

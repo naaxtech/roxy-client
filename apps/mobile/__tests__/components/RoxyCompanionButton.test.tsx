@@ -1,3 +1,5 @@
+// Hello, Roxy hosts an RNGH Pan (Wave 3): RNGH's jest setup mocks its native module.
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import fs from 'fs';
 import path from 'path';
@@ -224,31 +226,53 @@ describe('RoxyCompanionButton', () => {
 });
 
 describe('RoxyCompanionButton — tuck on scroll', () => {
-  it('tucked: eyes closed, 40 dp, centred on the end edge', () => {
+  // Wave 3 (lane rule): the direction's "20 dp shows inside the margin" is
+  // 4 dp more than the 16 dp margin, so the tucked O sat on the right edge of
+  // "Joined" and the Ghost switch. She now shows exactly the margin.
+  it('tucked: eyes closed, 40 dp, only the margin of her shows (nothing under her)', () => {
     useRoxyFab.setState({ tucked: true });
     const { getByTestId } = render(<RoxyCompanionButton />);
     expect(getByTestId('fab-o-rest')).toBeTruthy();
     const transform = flat(getByTestId('fab-tuck')).transform as Record<string, number>[];
     // Reduce Motion is on in this suite: the tuck lands at its end state.
     expect(transform).toEqual([
-      { translateX: FAB_MARGIN + FAB_SIZE / 2 },
+      { translateX: FAB_SIZE / 2 + FAB_TUCKED / 2 },
       { scale: FAB_TUCKED / FAB_SIZE },
     ]);
+    // The O's centre sits this far inside the end edge (negative: beyond it);
+    // its inner edge, so the part that shows, is exactly the margin.
+    const centreFromEnd = FAB_MARGIN + FAB_SIZE / 2 - (FAB_SIZE / 2 + FAB_TUCKED / 2);
+    expect(centreFromEnd + FAB_TUCKED / 2).toBe(FAB_MARGIN);
   });
 
-  it('a tap on the tucked button brings her back instead of opening the sheet', () => {
+  it('a tap on the tucked O opens Roxy AI in one tap (M3: a collapsed FAB keeps its action)', () => {
     useRoxyFab.setState({ tucked: true });
-    const { getByTestId, queryByTestId } = render(<RoxyCompanionButton />);
-    fireEvent.press(getByTestId('fab-tucked'));
-    expect(useRoxyFab.getState().tucked).toBe(false);
-    expect(queryByTestId('hello-roxy-sheet')).toBeNull();
+    const { getByTestId } = render(<RoxyCompanionButton />);
+    const hit = getByTestId('fab-tucked');
+    expect(hit.props.accessibilityLabel).toBe('Roxy AI');
+    expect(hit.props.accessibilityHint).toBe('Opens your chat with Roxy AI');
+    fireEvent.press(hit);
+    expect(getByTestId('hello-roxy-sheet')).toBeTruthy();
+    expect(mockImpact).toHaveBeenCalledWith('light');
+    // Her lane still holds the list's content: she stays tucked behind the sheet.
+    expect(useRoxyFab.getState().tucked).toBe(true);
   });
 
-  it('the tucked target is 28 × 48 dp at the screen edge', () => {
+  it('on the Feed stage she is out even when the last list left her tucked', () => {
+    useRoxyFab.setState({ tucked: true });
+    const { getByTestId, queryByTestId } = render(<RoxyCompanionButton onStage />);
+    expect(getByTestId('fab-o-open')).toBeTruthy();
+    expect(queryByTestId('fab-tucked')).toBeNull();
+  });
+
+  // The direction's 28 x 48 target reached 12 dp into the content column (a
+  // tap on the end of "Joined" opened Roxy AI). It is the margin strip now,
+  // still 48 dp tall; scrolling to the list's end brings her out at 56 dp.
+  it('the tucked target is the margin strip at the screen edge, 48 dp tall', () => {
     useRoxyFab.setState({ tucked: true });
     const { getByTestId } = render(<RoxyCompanionButton />);
     const hit = flat(getByTestId('fab-tucked'));
-    expect(hit.width).toBe(FAB_TUCKED_HIT.width);
+    expect(hit.width).toBe(FAB_MARGIN);
     expect(hit.height).toBe(FAB_TUCKED_HIT.height);
     expect(hit.end).toBe(0);
   });
@@ -256,7 +280,7 @@ describe('RoxyCompanionButton — tuck on scroll', () => {
   it('comes back when the store says so', () => {
     useRoxyFab.setState({ tucked: true });
     const { getByTestId, queryByTestId } = render(<RoxyCompanionButton />);
-    act(() => { useRoxyFab.getState().untuck(); });
+    act(() => { useRoxyFab.setState({ tucked: false }); });
     expect(getByTestId('fab-o-open')).toBeTruthy();
     expect(queryByTestId('fab-tucked')).toBeNull();
   });

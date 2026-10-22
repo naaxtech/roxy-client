@@ -6,7 +6,8 @@
  */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, within } from '@testing-library/react-native';
+import { getAnimatedStyle } from 'react-native-reanimated';
 import type { PostReaction } from '../../../lib/postReactions';
 import { ReactionButton } from '../../../components/reactions/ReactionButton';
 import { ReactionPicker } from '../../../components/reactions/ReactionPicker';
@@ -177,6 +178,25 @@ describe('ReactionButton long-press picker', () => {
       'React with heart', 'React with laughing', 'React with wow',
       'React with sad', 'React with angry', 'React with purple heart',
     ]);
+  });
+
+  // Motion spec §3.1 row 11 / F2: a tapped emoji answers on press-in, like
+  // every other control (the one press primitive, `PressableScale`).
+  it('each emoji answers on press-in, before it is released', () => {
+    const { view, button } = open();
+    fireEvent(button, 'responderRelease', touch(CENTRE.x, CENTRE.y));
+    const item = view.getByTestId('reaction-picker-item-😂');
+    // PressableScale v3 keeps its state layer mounted at opacity 0: read the
+    // opacity the UI thread paints, one frame after the press lands.
+    const layerOpacity = () => {
+      const layer = within(item).getByTestId('press-state-layer');
+      return Number((getAnimatedStyle(layer as never) as { opacity?: number }).opacity ?? 0);
+    };
+    act(() => { jest.advanceTimersByTime(16); });
+    expect(layerOpacity()).toBe(0);
+    fireEvent(item, 'pressIn');
+    act(() => { jest.advanceTimersByTime(16); });
+    expect(layerOpacity()).toBeGreaterThan(0);
   });
 
   it('slide to an emoji and let go: that is her reaction, with selection haptics on the way', () => {

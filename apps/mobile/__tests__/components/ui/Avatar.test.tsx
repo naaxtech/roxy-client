@@ -1,8 +1,13 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
+
+let mockReduced = false;
+jest.mock('../../../hooks/useReducedMotion', () => ({ useReducedMotion: () => mockReduced }));
+
 import { Avatar, initialsOf } from '../../../components/ui/Avatar';
-import { AVATAR_GRADS } from '../../../lib/avatars';
+import { AVATAR_GRADS, avatarGradient } from '../../../lib/avatars';
+import { CROSS_DISSOLVE_MS } from '../../../lib/motion';
 import { BRAND_GRADIENT, LIVE_GRADIENT, IDENTITY, THEMES, worstContrast, inkOnGradient } from '../../../lib/theme';
 
 describe('Avatar (delight: initials gradient from theme tokens)', () => {
@@ -22,6 +27,44 @@ describe('Avatar (delight: initials gradient from theme tokens)', () => {
     const r = render(<Avatar uri="https://x/broken.jpg" name="Jo" />);
     fireEvent(r.getByTestId('avatar-photo'), 'error');
     expect(r.getByText('J')).toBeTruthy();
+  });
+
+  // Wave 3 (F15, motion spec §3.1 row 16): frame 1 is never blank, the
+  // photo cross-dissolves in, and a recycled row never flashes.
+  describe('image defaults', () => {
+    beforeEach(() => { mockReduced = false; });
+
+    it('frame 1 shows her identity colour under the photo (never a blank circle)', () => {
+      const r = render(<Avatar uri="https://x/f1.jpg" name="Maya Lin" seed="u-1" />);
+      const style = StyleSheet.flatten(r.getByTestId('avatar-photo').props.style);
+      expect(style.backgroundColor).toBe(avatarGradient('u-1')[0]);
+    });
+
+    it('a first-time photo cross-dissolves in over CROSS_DISSOLVE_MS', () => {
+      const r = render(<Avatar uri="https://x/new.jpg" name="Jo" />);
+      expect(r.getByTestId('avatar-photo').props.transition).toBe(CROSS_DISSOLVE_MS);
+    });
+
+    it('recycled rows key the image by its URL and keep it in memory', () => {
+      const r = render(<Avatar uri="https://x/rk.jpg" name="Jo" />);
+      const img = r.getByTestId('avatar-photo');
+      expect(img.props.recyclingKey).toBe('https://x/rk.jpg');
+      expect(img.props.cachePolicy).toBe('memory-disk');
+    });
+
+    it('a photo this session has already painted comes back with no fade (no flicker on recycle)', () => {
+      const first = render(<Avatar uri="https://x/seen.jpg" name="Jo" />);
+      fireEvent(first.getByTestId('avatar-photo'), 'load', { source: { url: 'https://x/seen.jpg' } });
+      first.unmount();
+      const again = render(<Avatar uri="https://x/seen.jpg" name="Jo" />);
+      expect(again.getByTestId('avatar-photo').props.transition).toBe(0);
+    });
+
+    it('Reduce Motion: no fade', () => {
+      mockReduced = true;
+      const r = render(<Avatar uri="https://x/rm.jpg" name="Jo" />);
+      expect(r.getByTestId('avatar-photo').props.transition).toBe(0);
+    });
   });
 
   it('a preset renders its emoji', () => {

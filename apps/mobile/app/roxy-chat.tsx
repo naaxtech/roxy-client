@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, ScrollView, KeyboardAvoidingView, Platform, Modal, Pressable,
+  View, Text, StyleSheet, TextInput, Platform, Modal, Pressable, type LayoutChangeEvent,
 } from 'react-native';
+import Animated, {
+  runOnJS, scrollTo, useAnimatedReaction, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle,
+  useDerivedValue, useSharedValue,
+} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +26,7 @@ import { RoxyO } from '../components/roxy/RoxyO';
 import { RoxyWriting } from '../components/roxy/RoxyWriting';
 import { RoxyBubble, BUBBLE_O } from '../components/roxy/RoxyBubble';
 import { RoxyChip } from '../components/roxy/RoxyChip';
+import { useComposerKeyboard } from '../components/roxy/useComposerKeyboard';
 import {
   sendToRoxy, retryRoxy, clearRoxyChat, useRoxyFailure, greetingFor, firstNameOf,
   HELLO_SUGGESTIONS, FOLLOW_UPS,
@@ -35,6 +40,11 @@ const HELLO_O = 80;
 const COMPOSER_OUTLINE = 1.5;
 /** The composer grows to this height, then scrolls. */
 const COMPOSER_MAX = 120;
+/** The list's top and bottom padding. */
+const LIST_PAD = SPACE[3];
+/** Within this of the end, the list counts as "at the end" (pinned to the keyboard). */
+const END_SLOP = 24;
+const IS_WEB = Platform.OS === 'web';
 
 /*
  * RETIRED (v2, 2026-10-21): v0's Roxy chat chrome — the gradient sparkle
@@ -60,6 +70,14 @@ const COMPOSER_MAX = 120;
  * composer sits on `surface` with a 1.5 dp outline and a `pink` send.
  * Footer: "Roxy AI can be wrong. Keep passwords and addresses to yourself."
  *
+ * The keyboard (motion spec §3.1 row 15, F14): the composer rides it frame by
+ * frame. Its height is a UI-thread shared value (`useComposerKeyboard`:
+ * reanimated's `useAnimatedKeyboard` on native, mounted only here; the visual
+ * viewport on web); a spacer under the composer takes `keyboard − bottom
+ * inset` each frame, and when the list was at its end as the keyboard started
+ * moving, it scrolls to the new end in the same frame, so her last message
+ * stays in view. Reading older messages, she stays where she was.
+ *
  * The conversation is shared with the "Hello, Roxy" sheet
  * (`components/roxy/roxyConversation.ts`). A failed send keeps her message
  * and says so in one sentence with Retry. If she brings up harming herself,
@@ -82,7 +100,44 @@ export default function RoxyChatScreen() {
   const [draft, setDraft] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [snack, setSnack] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
+  const listRef = useAnimatedRef<Animated.ScrollView>();
+  const keyboard = useComposerKeyboard();
+  const bottomInset = insets.bottom;
+  /** The list's height with the keyboard down, and its messages' height. */
+  const listAtRest = useSharedValue(0);
+  const contentH = useSharedValue(0);
+  const scrollY = useSharedValue(0);
+  const pinned = useSharedValue(true);
+  const lastLift = useSharedValue(0);
+  // The safe-area inset sits under the keyboard: only the rest needs room.
+  const lift = useDerivedValue(() => Math.max(0, keyboard.value - bottomInset), [bottomInset]);
+  const spacerStyle = useAnimatedStyle(() => ({ height: lift.value }));
+  const onListScroll = useAnimatedScrollHandler({
+    onScroll: (e) => { scrollY.value = e.contentOffset.y; },
+  });
+  const scrollOnJs = (y: number) => { listRef.current?.scrollTo({ y, animated: false }); };
+  useAnimatedReaction(
+    () => lift.value,
+    (now) => {
+      const before = lastLift.value;
+      if (now === before) return;
+      lastLift.value = now;
+      const content = contentH.value + 2 * LIST_PAD;
+      // Decide once, as the keyboard starts to move: was she at the end?
+      if (before === 0) pinned.value = scrollY.value >= content - listAtRest.value - END_SLOP;
+      if (!pinned.value) return;
+      const end = Math.max(0, content - (listAtRest.value - now));
+      if (IS_WEB) runOnJS(scrollOnJs)(end);
+      else scrollTo(listRef, 0, end, false);
+    },
+    [bottomInset],
+  );
+  const onListLayout = (e: LayoutChangeEvent) => {
+    if (lift.value === 0) listAtRest.value = e.nativeEvent.layout.height;
+  };
+  const onMessagesLayout = (e: LayoutChangeEvent) => {
+    contentH.value = e.nativeEvent.layout.height;
+  };
   // Replies that arrive while she is here reveal by sentence; older ones show whole.
   const seenAtOpen = useRef(messages.length);
 
@@ -91,8 +146,8 @@ export default function RoxyChatScreen() {
   }, []);
 
   useEffect(() => {
-    if (messages.length > 0 || isTyping) scrollRef.current?.scrollToEnd({ animated: true });
-  }, [messages.length, isTyping, failure]);
+    if (messages.length > 0 || isTyping) listRef.current?.scrollToEnd({ animated: true });
+  }, [messages.length, isTyping, failure, listRef]);
 
   const userId = user?.id ?? null;
   const canSend = draft.trim().length > 0 && !isTyping;
@@ -147,7 +202,7 @@ export default function RoxyChatScreen() {
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: colors.ground }]} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView style={s.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={s.fill}>
         <View style={s.header}>
           <TouchableOpacity
             onPress={goBack}
@@ -173,13 +228,17 @@ export default function RoxyChatScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          ref={scrollRef}
+        <Animated.ScrollView
+          ref={listRef}
           style={s.fill}
           contentContainerStyle={s.list}
           keyboardShouldPersistTaps="handled"
+          onScroll={onListScroll}
+          scrollEventThrottle={16}
+          onLayout={onListLayout}
           testID="roxy-chat-list"
         >
+          <View style={s.messages} onLayout={onMessagesLayout} testID="roxy-chat-messages">
           {messages.length === 0 ? (
             <View style={s.hello} testID="roxy-chat-hello">
               <RoxyO size={HELLO_O} mood="happy" />
@@ -235,7 +294,8 @@ export default function RoxyChatScreen() {
               <RoxyWriting testID="roxy-chat-writing" />
             </View>
           ) : null}
-        </ScrollView>
+          </View>
+        </Animated.ScrollView>
 
         <View style={s.composerWrap}>
           <View
@@ -275,7 +335,8 @@ export default function RoxyChatScreen() {
             Roxy AI can be wrong. Keep passwords and addresses to yourself.
           </Text>
         </View>
-      </KeyboardAvoidingView>
+        <Animated.View testID="roxy-chat-keyboard-spacer" style={spacerStyle} />
+      </View>
 
       <Snackbar
         visible={snack}
@@ -344,7 +405,8 @@ const s = StyleSheet.create({
   headerText: { flex: 1, minWidth: 0 },
   name: { ...emphasized('title') },
   meta: { ...TYPE.meta },
-  list: { paddingHorizontal: MARGIN, paddingVertical: SPACE[3], gap: SPACE[2], flexGrow: 1 },
+  list: { paddingHorizontal: MARGIN, paddingVertical: LIST_PAD, flexGrow: 1 },
+  messages: { gap: SPACE[2] },
   when: { textAlign: 'center' },
   hello: { gap: SPACE[1], paddingTop: SPACE[4] },
   greeting: { ...TYPE.headline },

@@ -1,6 +1,6 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
 import { render, act, configure } from '@testing-library/react-native';
+import { getAnimatedStyle } from 'react-native-reanimated';
 
 // The O is decorative (hidden from assistive tech) unless named; its parts
 // are still what these tests inspect.
@@ -126,7 +126,8 @@ describe('RoxyWriting (her writing indicator)', () => {
   it('holds still under Reduce Motion', () => {
     mockReduced = true;
     const { getByTestId } = render(<RoxyWriting testID="w" />);
-    const style = StyleSheet.flatten(getByTestId('w-squash').props.style) as { transform?: unknown };
+    // Wave 3: the squash is a reanimated style (frame-by-frame loop in RoxyWritingLoop.test).
+    const style = getAnimatedStyle(getByTestId('w-squash') as never) as { transform?: unknown };
     expect(style.transform).toEqual([{ scaleX: 1 }, { scaleY: 1 }]);
   });
 });
