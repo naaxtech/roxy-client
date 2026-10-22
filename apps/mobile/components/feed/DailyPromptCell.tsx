@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useRouter } from 'expo-router';
@@ -32,8 +33,11 @@ export function dailyPromptComposerHref(prompt: DailyPrompt) {
  * feed rather than an ad for it; the kick says what it is. One tap on
  * "Answer it" opens the composer with the question already on the card. No
  * rail: there is no author to like or follow, and a swipe is the skip.
+ * Memoised: a page change re-runs every mounted cell's render (jank audit #5).
  */
-export function DailyPromptCell({ prompt, width, height, reducedMotion }: Props): ReactElement {
+export const DailyPromptCell = memo(function DailyPromptCell({
+  prompt, width, height, reducedMotion,
+}: Props): ReactElement {
   const router = useRouter();
 
   const answer = () => {
@@ -71,7 +75,7 @@ export function DailyPromptCell({ prompt, width, height, reducedMotion }: Props)
       </View>
     </View>
   );
-}
+});
 
 const s = StyleSheet.create({
   page: { backgroundColor: THEMES.dark.stage },

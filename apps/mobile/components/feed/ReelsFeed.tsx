@@ -132,6 +132,36 @@ interface ReelsFeedProps {
 
 type LoadMode = 'initial' | 'refresh';
 
+/** What a post's cell can ask the list to do; one stable set per row object. */
+interface CellHandlers {
+  onReact: (next: PostReaction | null) => void;
+  onSave: () => void;
+  onOpenComments: () => void;
+  onOpenPost: () => void;
+  onOpenAuthor: () => void;
+  onFollowAuthor: () => void;
+  onOpenCommunity: () => void;
+  onOpenSafety: () => void;
+}
+
+// Placeholders are stage surfaces, so they take STAGE ink, not `colors`.
+// See `stageColors.ts`: the ground here is forced dark in both themes, and a
+// light-theme ink on it measured 3.4:1 on the empty state. Module-level: none
+// of it reads the theme, and building it per render recompiled every style
+// into atomic CSS on web on each page change (jank audit #8).
+const s = StyleSheet.create({
+  frame: { flex: 1 },
+  centred: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12,
+    backgroundColor: STAGE_BG,
+  },
+  errorText: { color: STAGE.textSecondary, textAlign: 'center', ...TYPE.bodyLg },
+  retry: { color: STAGE.primaryInk, fontWeight: '700', ...TYPE.bodyLg },
+  emptyWrap: { flex: 1, backgroundColor: STAGE_BG },
+  emptyTitle: { color: STAGE.textPrimary, textAlign: 'center', ...TYPE.title },
+  emptyBody: { color: STAGE.textSecondary, textAlign: 'center', ...TYPE.bodyLg },
+});
+
 /**
  * The vertical feed: a data source for `FeedPager`.
  *
@@ -571,27 +601,84 @@ export function ReelsFeed({
   const keyExtractor = useCallback((item: FeedItem) => item.id, []);
   const handleEndReached = useCallback(() => { void loadMore(); }, [loadMore]);
 
-  // Placeholders are stage surfaces, so they take STAGE ink, not `colors`.
-  // See `stageColors.ts`: the ground here is forced dark in both themes, and a
-  // light-theme ink on it measured 3.4:1 on the empty state.
-  const s = StyleSheet.create({
-    frame: { flex: 1 },
-    centred: {
-      flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12,
-      backgroundColor: STAGE_BG,
-    },
-    errorText: { color: STAGE.textSecondary, textAlign: 'center', ...TYPE.bodyLg },
-    retry: { color: STAGE.primaryInk, fontWeight: '700', ...TYPE.bodyLg },
-    emptyWrap: { flex: 1, backgroundColor: STAGE_BG },
-    emptyTitle: { color: STAGE.textPrimary, textAlign: 'center', ...TYPE.title },
-    emptyBody: { color: STAGE.textSecondary, textAlign: 'center', ...TYPE.bodyLg },
-  });
-
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
 
   /**
+   * The newest of everything a cell's callbacks reach for, read when she taps
+   * rather than when the cell rendered. That is what lets each post keep ONE
+   * set of callbacks for as long as its row object lives (`handlersFor`), so a
+   * memoised `FeedCell` sees the same props on a page change and bails out
+   * (jank audit #5). Written during render on purpose: callbacks only run
+   * after a commit, and every render that commits wrote it first.
+   */
+  const latest = useRef({
+    react, likedPostIds, toggleSave, openComments, router, followingIds,
+    followAuthor, unfollowAuthor, userId, answerPrompt, dropPost,
+  });
+  latest.current = {
+    react, likedPostIds, toggleSave, openComments, router, followingIds,
+    followAuthor, unfollowAuthor, userId, answerPrompt, dropPost,
+  };
+
+  /** One set of callbacks per row object; a refreshed row gets a fresh set. */
+  const handlerCache = useRef(new WeakMap<ReelRow, CellHandlers>());
+  const handlersFor = useCallback((item: ReelRow): CellHandlers => {
+    const cached = handlerCache.current.get(item);
+    if (cached) return cached;
+    const handlers: CellHandlers = {
+      onReact: (next) => {
+        const l = latest.current;
+        void l.react(item.id, next, { legacyLiked: l.likedPostIds.has(item.id) });
+      },
+      onSave: () => { void latest.current.toggleSave(item.id); },
+      // Comments stay on this page — the sheet, not a detail route. Pushing
+      // /community/post/:id here is what made the comment button feel broken:
+      // she left the feed for another view just to type.
+      onOpenComments: () => { void latest.current.openComments(item.id); },
+      onOpenPost: () => latest.current.router.push(contentDetailPath(item.id, item.post_type) as never),
+      onOpenAuthor: () => latest.current.router.push(`/user/${item.author_id}` as never),
+      onFollowAuthor: () => {
+        const l = latest.current;
+        if (l.followingIds.has(item.author_id)) void l.unfollowAuthor(l.userId, item.author_id);
+        else void l.followAuthor(l.userId, item.author_id);
+      },
+      onOpenCommunity: () => latest.current.router.push(
+        (item.community_id
+          ? `/community/${item.community_id}`
+          : `/user/${item.author_id}`) as never,
+      ),
+      onOpenSafety: () => setSafetyPost(item),
+    };
+    handlerCache.current.set(item, handlers);
+    return handlers;
+  }, []);
+
+  /** The "interested in this?" card for a row, built once per row object. */
+  const promptCache = useRef(new WeakMap<ReelRow, JSX.Element>());
+  const interestPromptFor = useCallback((item: ReelRow): JSX.Element => {
+    const cached = promptCache.current.get(item);
+    if (cached) return cached;
+    const prompt = (
+      <FeedInterestCard
+        onNotForMe={() => {
+          latest.current.answerPrompt(item.id);
+          latest.current.dropPost(item.id, 'not_for_me');
+        }}
+        onMoreOfThis={() => latest.current.answerPrompt(item.id)}
+        onDismiss={() => latest.current.answerPrompt(item.id)}
+      />
+    );
+    promptCache.current.set(item, prompt);
+    return prompt;
+  }, []);
+
+  const openMessages = useCallback(() => router.push('/(tabs)/messages' as never), [router]);
+
+  /**
    * `FeedCell` picks the body from `post_type`; this list keeps supplying the
-   * data and the callbacks. Every cell type is reachable through here.
+   * data and the callbacks. Every cell type is reachable through here. Each
+   * prop is either a primitive or a per-post stable object, so the memoised
+   * cell re-renders only when something it shows changed.
    */
   const renderCell = useCallback(({
     item, index, activeIndex, activeItemId, width, height,
@@ -601,7 +688,7 @@ export function ReelsFeed({
         <CaughtUpCell
           width={width}
           height={height}
-          onOpenMessages={() => router.push('/(tabs)/messages' as never)}
+          onOpenMessages={openMessages}
         />
       );
     }
@@ -616,6 +703,7 @@ export function ReelsFeed({
     const legacyLiked = likedPostIds.has(item.id);
     const reactionState = { mine: reactionMine, deltas: reactionDeltas };
     const reaction = myReactionOf(reactionState, item.id, legacyLiked);
+    const handlers = handlersFor(item);
 
     return (
       <FeedCell
@@ -632,44 +720,22 @@ export function ReelsFeed({
         saved={savedPostIds.has(item.id)}
         reducedMotion={reducedMotion}
         onToggleMute={toggleMute}
-        onReact={(next: PostReaction | null) => {
-          void react(item.id, next, { legacyLiked });
-        }}
-        onSave={() => void toggleSave(item.id)}
-        // Comments stay on this page — the sheet, not a detail route. Pushing
-        // /community/post/:id here is what made the comment button feel broken:
-        // she left the feed for another view just to type.
-        onOpenComments={() => { void openComments(item.id); }}
-        onOpenPost={() => router.push(contentDetailPath(item.id, item.post_type) as never)}
-        onOpenAuthor={() => router.push(`/user/${item.author_id}` as never)}
+        onReact={handlers.onReact}
+        onSave={handlers.onSave}
+        onOpenComments={handlers.onOpenComments}
+        onOpenPost={handlers.onOpenPost}
+        onOpenAuthor={handlers.onOpenAuthor}
         following={followingIds.has(item.author_id)}
-        onFollowAuthor={
-          userId && item.author_id !== userId
-            ? () => {
-                if (followingIds.has(item.author_id)) void unfollowAuthor(userId, item.author_id);
-                else void followAuthor(userId, item.author_id);
-              }
-            : undefined
-        }
-        onOpenCommunity={() => router.push(
-          (item.community_id
-            ? `/community/${item.community_id}`
-            : `/user/${item.author_id}`) as never,
-        )}
-        onOpenSafety={() => setSafetyPost(item)}
-        interestPrompt={asks ? (
-          <FeedInterestCard
-            onNotForMe={() => { answerPrompt(item.id); dropPost(item.id, 'not_for_me'); }}
-            onMoreOfThis={() => answerPrompt(item.id)}
-            onDismiss={() => answerPrompt(item.id)}
-          />
-        ) : undefined}
+        onFollowAuthor={userId && item.author_id !== userId ? handlers.onFollowAuthor : undefined}
+        onOpenCommunity={handlers.onOpenCommunity}
+        onOpenSafety={handlers.onOpenSafety}
+        interestPrompt={asks ? interestPromptFor(item) : undefined}
       />
     );
   }, [
-    muted, playbackAllowed, likedPostIds, savedPostIds, reactionMine, reactionDeltas, react,
-    reducedMotion, answeredPrompts, toggleMute, toggleSave, router, answerPrompt, dropPost,
-    openComments, followingIds, followAuthor, unfollowAuthor, userId,
+    muted, playbackAllowed, likedPostIds, savedPostIds, reactionMine, reactionDeltas,
+    reducedMotion, answeredPrompts, toggleMute, openMessages, followingIds, userId,
+    handlersFor, interestPromptFor,
   ]);
 
   // The three states this surface owes a viewer. Non-null means the pager shows

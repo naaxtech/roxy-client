@@ -35,6 +35,16 @@ type AvVideoInstance = InstanceType<typeof import('expo-av').Video>;
  */
 const DECODER_WINDOW = 1;
 
+/**
+ * Whether the cell at `index` is inside the decoder window around the active
+ * cell. Omitted positions (a single-video screen) are always near. Exported so
+ * a memoised cell can tell whether a page change moved it in or out of the
+ * window — the only thing about the active INDEX a video cell renders from.
+ */
+export function decoderNear(index?: number, activeIndex?: number): boolean {
+  return index == null || activeIndex == null || Math.abs(index - activeIndex) <= DECODER_WINDOW;
+}
+
 interface Props {
   videoUrl: string | null | undefined;
   isActive: boolean;
@@ -71,8 +81,7 @@ export function FeedVideoPlayer({
   // Cells outside the window unmount their player so the active video always
   // gets a decoder. `index`/`activeIndex` omitted (single-video screens) means
   // "always near" — there is nothing to compete with.
-  const near =
-    index == null || activeIndex == null || Math.abs(index - activeIndex) <= DECODER_WINDOW;
+  const near = decoderNear(index, activeIndex);
 
   // A recycled cell shows the previous clip's last frame until the new one
   // decodes; forget readiness whenever the clip changes — or whenever the player
