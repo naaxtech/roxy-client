@@ -1,0 +1,22 @@
+apps/mobile/__tests__/components/motion/afterPaint.test.ts
+  h_0549c11fec2ab0 1-46
+apps/mobile/__tests__/components/nav/FloatingTabBar.test.tsx
+  h_0549c11fec2ab0 3,22-67,74,116-127,143-148,151-160,206,209,214,217,385-513
+apps/mobile/__tests__/screens/TabLayout.test.tsx
+  h_0549c11fec2ab0 70-73
+apps/mobile/components/motion/afterPaint.ts
+  h_0549c11fec2ab0 1-22
+apps/mobile/components/nav/FloatingTabBar.tsx
+  h_0549c11fec2ab0 1-9,19,22,76-84,95-105,107-129,137-142,144-150,152-156,163,170,181,183,186,197-201,206-207,209-213,220-221,225,229,231-232,239-255,269-273,286-330,333-334,361-365,369-370,405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd96b633f8fcc840e235b2493036343e17c3e0e3",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
