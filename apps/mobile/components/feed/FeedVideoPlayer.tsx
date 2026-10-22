@@ -45,6 +45,36 @@ export function decoderNear(index?: number, activeIndex?: number): boolean {
   return index == null || activeIndex == null || Math.abs(index - activeIndex) <= DECODER_WINDOW;
 }
 
+/** The parts of the Network Information API this reads (Chromium-only, so optional). */
+export interface ConnectionHint {
+  effectiveType?: string;
+  saveData?: boolean;
+}
+
+/**
+ * How much of a clip the web player may fetch before she is on its page.
+ *
+ * The clip she is watching loads in full. A neighbour inside the decoder window
+ * fetches only its metadata, so it can show its first frame the moment she
+ * lands — and on a slow or data-saving connection nothing at all: its poster
+ * covers it, and the bandwidth goes to the requests the screen is waiting on.
+ * Before this every near cell mounted `<video src>` with the browser's default
+ * preload, and on Fast 4G the app's own API calls took 3-6 s while the backend
+ * answered in under 1 s (jank audit #10).
+ */
+export function videoPreload(isActive: boolean, connection?: ConnectionHint): 'auto' | 'metadata' | 'none' {
+  if (isActive) return 'auto';
+  const slow = connection?.saveData === true
+    || (connection?.effectiveType != null && connection.effectiveType !== '4g');
+  return slow ? 'none' : 'metadata';
+}
+
+/** `navigator.connection` where the browser has one. */
+function currentConnection(): ConnectionHint | undefined {
+  if (typeof navigator === 'undefined') return undefined;
+  return (navigator as Navigator & { connection?: ConnectionHint }).connection;
+}
+
 interface Props {
   videoUrl: string | null | undefined;
   isActive: boolean;
@@ -160,6 +190,7 @@ export function FeedVideoPlayer({
               pointerEvents: 'none',
             }}
             autoPlay={isActive}
+            preload={videoPreload(isActive, currentConnection())}
             loop
             muted={isMuted}
             playsInline
