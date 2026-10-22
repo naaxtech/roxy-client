@@ -292,6 +292,19 @@ describe('a second visit (F7: no loader where data is known)', () => {
     expect(v.getByText('typed on the way in')).toBeTruthy();
   });
 
+  it('reopening an EMPTY channel shows its empty state while the quiet refresh runs, never the skeleton', async () => {
+    // Seen in the browser probe (WLW London #general): an empty remembered page is still known data.
+    const first = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    await waitFor(() => expect(first.getByTestId('channel-messages-empty')).toBeTruthy());
+    first.unmount();
+
+    const v = render(<CommunityChannelsScreen />);
+    // Effects have run: the refresh is in flight (held open by the mock).
+    expect(v.queryByTestId('channel-messages-loading')).toBeNull();
+    expect(v.getByTestId('channel-messages-empty')).toBeTruthy();
+  });
+
   it('a channel never opened in this session still shows its loader the first time', async () => {
     const v = render(<CommunityChannelsScreen />);
     await release(general.id, []);

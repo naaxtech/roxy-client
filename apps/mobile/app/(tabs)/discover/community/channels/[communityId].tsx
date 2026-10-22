@@ -86,6 +86,9 @@ export default function CommunityChannelsScreen() {
   const [communityName, setCommunityName] = useState<string>(() => remembered.snap?.communityName ?? '');
   const [loading, setLoading] = useState(() => remembered.snap === null);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  // F7: the shown channel's page is known (remembered or loaded), even when it is EMPTY.
+  // Known data never goes back under a skeleton while a quiet refresh runs.
+  const [pageKnown, setPageKnown] = useState(() => remembered.page !== null);
   // Two independent loaders get two error slots. One shared slot let a
   // successful channel-list refresh silently clear a message-load failure.
   const [error, setError] = useState<string | null>(null);
@@ -232,6 +235,7 @@ export default function CommunityChannelsScreen() {
       // reply typed against them posts to the room she is not looking at.
       if (shownChannelId.current !== channelId) return;
       if (me) writeChannelPage(me, channelId, rows, MESSAGE_PAGE);
+      setPageKnown(true);
       setMessages((prev) => {
         // Her own sends still in flight stay on screen across the refresh.
         const inFlight = prev.filter((m) => isPending(m) && m.channel_id === channelId);
@@ -263,6 +267,7 @@ export default function CommunityChannelsScreen() {
     // channel's rows.
     const page = me ? readChannelPage(me, activeId) : null;
     setMessages(page ?? []);
+    setPageKnown(page !== null);
     setSendFailure(null);
     setMessageError(null);
     setHasOlder(page ? page.length >= MESSAGE_PAGE : false);
@@ -580,7 +585,7 @@ export default function CommunityChannelsScreen() {
       );
     }
 
-    if (loadingMessages && messages.length === 0) {
+    if (loadingMessages && messages.length === 0 && !pageKnown) {
       return (
         <ThreadSkeleton testID="channel-messages-loading" label="Loading messages" />
       );
