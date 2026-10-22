@@ -1,14 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Animated, I18nManager, Modal, PanResponder, Platform, Pressable, StyleSheet, Text, TextInput,
-  View, useWindowDimensions,
+  I18nManager, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions,
 } from 'react-native';
+import Reanimated, {
+  interpolate, runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue, withDelay, withSpring,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { MARGIN, RADII, SPACE, popElevation, scrim } from '../../lib/theme';
-import { SPRING, runSpring } from '../../lib/motion';
+import { projectRelease, springTo } from '../../lib/motion';
 import { TYPE, emphasized } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
@@ -28,6 +31,14 @@ const CLOSE_DRAG = 96;
 const SCRIM_ALPHA = 0.32;
 /** Lines of the greeting arrive one after another (ms). */
 const LINE_STEP_MS = 160;
+/** The rise counts as landed here (0 → 1 progress): it looks home, the face turns happy. */
+const LANDED_AT = 0.98;
+// Suites that mock RNGH partially get the sheet without the drag.
+const canPan = typeof Gesture?.Pan === 'function' && typeof GestureDetector === 'function';
+// The Modal is its own native root: RNGH needs a root view inside it.
+const GestureRoot = (typeof GestureHandlerRootView === 'function' || typeof GestureHandlerRootView === 'object'
+  ? GestureHandlerRootView
+  : View) as typeof View;
 
 export type HelloRoxyOrigin = { x: number; y: number; size: number };
 
@@ -57,6 +68,11 @@ export type HelloRoxySheetProps = {
  * things wrong." Drag up (or the handle) for the full chat; drag down, the
  * scrim or close to leave. Reduce Motion: everything lands at once.
  *
+ * Wave 3 (lane C): the rise, scrim, flight and lines are reanimated shared
+ * values and the drag is an RNGH Pan, so all of it runs on the UI thread;
+ * the release is judged by its projected position; the face turns happy and
+ * the lines start when the sheet looks landed, not on the spring's callback.
+ *
  * A first message from here goes through the shared conversation engine and
  * opens the full chat, where her words and Roxy's writing indicator already
  * are.
@@ -69,11 +85,18 @@ export function HelloRoxySheet({
   const insets = useSafeAreaInsets();
   const { width: winW, height: winH } = useWindowDimensions();
 
-  const progress = useRef(new Animated.Value(0)).current;
-  const drag = useRef(new Animated.Value(0)).current;
-  const lines = useRef([new Animated.Value(0), new Animated.Value(0)]).current;
+  /** 0 → 1: the rise, the scrim and the O's flight (one container transform). */
+  const progress = useSharedValue(0);
+  /** The handle drag (dp; negative = up). */
+  const drag = useSharedValue(0);
+  /** The greeting's second and third lines (opacity). */
+  const line2 = useSharedValue(0);
+  const line3 = useSharedValue(0);
+  /** 1 once the sheet looks landed: her face is happy and the lines have started. */
+  const landedSV = useSharedValue(0);
+  /** How far below its seat the sheet starts: its height once known. */
+  const travel = useSharedValue(winH);
   const [sheetH, setSheetH] = useState<number | null>(null);
-  const [landed, setLanded] = useState(false);
   const [draft, setDraft] = useState('');
 
   const greeting = useMemo(() => greetingFor(now ?? new Date(), firstName), [now, firstName, visible]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -81,62 +104,68 @@ export function HelloRoxySheet({
   // Reset for every opening.
   useEffect(() => {
     if (!visible) {
-      progress.setValue(0);
-      drag.setValue(0);
-      lines.forEach((l) => l.setValue(0));
+      landedSV.value = 0;
+      progress.value = 0;
+      drag.value = 0;
+      line2.value = 0;
+      line3.value = 0;
       setSheetH(null);
-      setLanded(false);
       setDraft('');
       return;
     }
     if (reducedMotion) {
-      progress.setValue(1);
-      lines.forEach((l) => l.setValue(1));
-      setLanded(true);
+      landedSV.value = 1;
+      line2.value = 1;
+      line3.value = 1;
+      progress.value = 1;
     }
-  }, [visible, reducedMotion, progress, drag, lines]);
+  }, [visible, reducedMotion, progress, drag, line2, line3, landedSV]);
 
   // Rise once the sheet knows its height (it hugs its content).
   useEffect(() => {
-    if (!visible || reducedMotion || sheetH == null) return undefined;
-    const anim = Animated.spring(progress, { toValue: 1, ...SPRING.spatial, useNativeDriver: true });
-    anim.start(({ finished }) => {
-      if (!finished) return;
-      setLanded(true);
-      lines.forEach((l, i) => {
-        Animated.sequence([
-          Animated.delay(LINE_STEP_MS * (i + 1)),
-          Animated.spring(l, { toValue: 1, ...SPRING.calm, useNativeDriver: true }),
-        ]).start();
-      });
-    });
-    return () => anim.stop();
-  }, [visible, reducedMotion, sheetH, progress, lines]);
+    if (!visible || reducedMotion || sheetH == null) return;
+    travel.value = sheetH;
+    progress.value = withSpring(1, springTo('spatial'));
+  }, [visible, reducedMotion, sheetH, progress, travel]);
+
+  // Her face turns happy and the lines start when the sheet LOOKS landed, on
+  // the UI thread — never on the spring's "finished" callback, which fires
+  // long after it looks done (motion spec §3.2). No React state: the two
+  // faces are both mounted and swap by opacity, so nothing commits mid-rise.
+  useAnimatedReaction(
+    () => progress.value >= LANDED_AT && landedSV.value === 0,
+    (arrived) => {
+      if (!arrived) return;
+      landedSV.value = 1;
+      line2.value = withDelay(LINE_STEP_MS, withSpring(1, springTo('calm')));
+      line3.value = withDelay(LINE_STEP_MS * 2, withSpring(1, springTo('calm')));
+    },
+  );
 
   const pan = useMemo(
     () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dy) > 6,
-        onPanResponderMove: (_e, g) => drag.setValue(Math.max(g.dy, -EXPAND_DRAG * 2)),
-        onPanResponderRelease: (_e, g) => {
-          if (g.dy < -EXPAND_DRAG) {
-            onOpenChat();
-          } else if (g.dy > CLOSE_DRAG) {
-            onClose();
-          } else {
-            runSpring(drag, 0, 'spatial', reducedMotion);
-          }
-        },
-      }),
+      canPan
+        ? Gesture.Pan()
+            .withTestId('hello-roxy-pan')
+            .activeOffsetY([-6, 6])
+            .onUpdate((e) => {
+              drag.value = Math.max(e.translationY, -EXPAND_DRAG * 2);
+            })
+            .onEnd((e) => {
+              // Choose the end from where the release is heading (WWDC18).
+              const projected = projectRelease(drag.value, e.velocityY);
+              if (projected < -EXPAND_DRAG) {
+                runOnJS(onOpenChat)();
+              } else if (projected > CLOSE_DRAG) {
+                runOnJS(onClose)();
+              } else {
+                drag.value = reducedMotion
+                  ? 0
+                  : withSpring(0, springTo('spatial', { px: true, velocity: e.velocityY }));
+              }
+            })
+        : null,
     [drag, onOpenChat, onClose, reducedMotion],
-  );
-
-  if (!visible) return null;
-
-  const travel = sheetH ?? winH;
-  const translateY = Animated.add(
-    progress.interpolate({ inputRange: [0, 1], outputRange: [travel, 0] }),
-    drag,
   );
 
   // The avatar's flight: from the FAB's centre to its seat on the sheet edge.
@@ -144,13 +173,24 @@ export function HelloRoxySheet({
   const fromX = origin ? origin.x - seatX : 0;
   const fromY = origin ? origin.y - winH : 0;
   const fromScale = origin ? origin.size / HELLO_AVATAR : 1;
-  const avatarFlight = {
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(progress.value, [0, 1], [travel.value, 0]) + drag.value }],
+  }));
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: Math.min(Math.max(progress.value, 0), 1) }));
+  const avatarFlight = useAnimatedStyle(() => ({
     transform: [
-      { translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [fromX, 0] }) },
-      { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [fromY, 0] }) },
-      { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [fromScale, 1] }) },
+      { translateX: interpolate(progress.value, [0, 1], [fromX, 0]) },
+      { translateY: interpolate(progress.value, [0, 1], [fromY, 0]) },
+      { scale: interpolate(progress.value, [0, 1], [fromScale, 1]) },
     ],
-  };
+  }), [fromX, fromY, fromScale]);
+  const openFace = useAnimatedStyle(() => ({ opacity: 1 - landedSV.value }));
+  const happyFace = useAnimatedStyle(() => ({ opacity: landedSV.value }));
+  const line2Style = useAnimatedStyle(() => ({ opacity: line2.value }));
+  const line3Style = useAnimatedStyle(() => ({ opacity: line3.value }));
+
+  if (!visible) return null;
 
   const canSend = draft.trim().length > 0;
   const send = async (text: string) => {
@@ -160,114 +200,127 @@ export function HelloRoxySheet({
     await sendToRoxy(userId, text);
   };
 
+  const header = (
+    <View>
+      <Pressable
+        testID="hello-roxy-expand"
+        onPress={onOpenChat}
+        accessibilityRole="button"
+        accessibilityLabel="Open the full chat"
+        accessibilityHint="Or drag the sheet up"
+        style={s.handleTarget}
+      >
+        <View style={[s.handle, { backgroundColor: colors.control }]} />
+      </Pressable>
+      <View style={s.headerRow}>
+        <View style={s.avatarRoom} />
+        <View style={s.headerText}>
+          <Text style={[s.name, { color: colors.ink }]}>Roxy AI</Text>
+          <Text style={[s.meta, { color: colors.ink2 }]}>Only you see this chat.</Text>
+        </View>
+        <TouchableOpacity
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          style={s.close}
+        >
+          <Ionicons name="close" size={24} color={colors.ink} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <Animated.View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { backgroundColor: scrim(SCRIM_ALPHA), opacity: progress }]}
-      />
-      <Pressable
-        testID="hello-roxy-scrim"
-        style={StyleSheet.absoluteFill}
-        onPress={onClose}
-        accessibilityRole="button"
-        accessibilityLabel="Close Roxy AI"
-      />
+      <GestureRoot style={StyleSheet.absoluteFill}>
+        <Reanimated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: scrim(SCRIM_ALPHA) }, scrimStyle]}
+        />
+        <Pressable
+          testID="hello-roxy-scrim"
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close Roxy AI"
+        />
 
-      <Animated.View
-        testID="hello-roxy-sheet"
-        accessibilityViewIsModal
-        onLayout={(e) => setSheetH(e.nativeEvent.layout.height)}
-        style={[
-          s.sheet,
-          popElevation(colors),
-          {
-            backgroundColor: colors.surface,
-            paddingBottom: Math.max(insets.bottom, SPACE[2]),
-            transform: [{ translateY }],
-          },
-        ]}
-      >
-        <View {...pan.panHandlers}>
-          <Pressable
-            testID="hello-roxy-expand"
-            onPress={onOpenChat}
-            accessibilityRole="button"
-            accessibilityLabel="Open the full chat"
-            accessibilityHint="Or drag the sheet up"
-            style={s.handleTarget}
-          >
-            <View style={[s.handle, { backgroundColor: colors.control }]} />
-          </Pressable>
-          <View style={s.headerRow}>
-            <View style={s.avatarRoom} />
-            <View style={s.headerText}>
-              <Text style={[s.name, { color: colors.ink }]}>Roxy AI</Text>
-              <Text style={[s.meta, { color: colors.ink2 }]}>Only you see this chat.</Text>
+        <Reanimated.View
+          testID="hello-roxy-sheet"
+          accessibilityViewIsModal
+          onLayout={(e) => setSheetH(e.nativeEvent.layout.height)}
+          style={[
+            s.sheet,
+            popElevation(colors),
+            {
+              backgroundColor: colors.surface,
+              paddingBottom: Math.max(insets.bottom, SPACE[2]),
+            },
+            sheetStyle,
+          ]}
+        >
+          {pan ? <GestureDetector gesture={pan}>{header}</GestureDetector> : header}
+
+          <View style={s.body} accessibilityLiveRegion="polite">
+            <Text style={[s.greeting, { color: colors.ink }]} accessibilityRole="header">{greeting.line1}</Text>
+            <Reanimated.Text testID="hello-roxy-line-2" style={[s.greeting, { color: colors.ink }, line2Style]}>
+              {greeting.line2}
+            </Reanimated.Text>
+            <Reanimated.Text testID="hello-roxy-line-3" style={[s.intro, { color: colors.ink }, line3Style]}>
+              I&apos;m here for the big stuff and the small stuff. Pick one or just start typing.
+            </Reanimated.Text>
+
+            <View style={s.chips}>
+              {HELLO_SUGGESTIONS.map((text) => (
+                <RoxyChip key={text} testID={`hello-roxy-chip-${text}`} label={text} onPress={() => void send(text)} />
+              ))}
             </View>
-            <TouchableOpacity
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              style={s.close}
-            >
-              <Ionicons name="close" size={24} color={colors.ink} />
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        <View style={s.body} accessibilityLiveRegion="polite">
-          <Text style={[s.greeting, { color: colors.ink }]} accessibilityRole="header">{greeting.line1}</Text>
-          <Animated.Text style={[s.greeting, { color: colors.ink, opacity: lines[0] }]}>{greeting.line2}</Animated.Text>
-          <Animated.Text style={[s.intro, { color: colors.ink, opacity: lines[1] }]}>
-            I&apos;m here for the big stuff and the small stuff. Pick one or just start typing.
-          </Animated.Text>
+            <View style={[s.composer, { backgroundColor: colors.raised }]}>
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                placeholder="Message Roxy AI"
+                placeholderTextColor={colors.ink3}
+                style={[s.input, { color: colors.ink }]}
+                accessibilityLabel="Message Roxy AI"
+                returnKeyType="send"
+                blurOnSubmit
+                onSubmitEditing={() => void send(draft)}
+                onKeyPress={(e) => {
+                  const ne = e.nativeEvent as { key?: string; shiftKey?: boolean };
+                  if (Platform.OS === 'web' && ne.key === 'Enter' && !ne.shiftKey) {
+                    (e as unknown as { preventDefault?: () => void }).preventDefault?.();
+                    void send(draft);
+                  }
+                }}
+              />
+              <TouchableOpacity
+                testID="hello-roxy-send"
+                onPress={() => void send(draft)}
+                disabled={!canSend}
+                accessibilityRole="button"
+                accessibilityLabel="Send"
+                {...a11yState({ disabled: !canSend })}
+                style={[s.send, { backgroundColor: canSend ? colors.pink : 'transparent' }]}
+              >
+                <Ionicons name="paper-plane-outline" size={22} color={canSend ? colors.onPink : colors.ink2} />
+              </TouchableOpacity>
+            </View>
 
-          <View style={s.chips}>
-            {HELLO_SUGGESTIONS.map((text) => (
-              <RoxyChip key={text} testID={`hello-roxy-chip-${text}`} label={text} onPress={() => void send(text)} />
-            ))}
-          </View>
-
-          <View style={[s.composer, { backgroundColor: colors.raised }]}>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Message Roxy AI"
-              placeholderTextColor={colors.ink3}
-              style={[s.input, { color: colors.ink }]}
-              accessibilityLabel="Message Roxy AI"
-              returnKeyType="send"
-              blurOnSubmit
-              onSubmitEditing={() => void send(draft)}
-              onKeyPress={(e) => {
-                const ne = e.nativeEvent as { key?: string; shiftKey?: boolean };
-                if (Platform.OS === 'web' && ne.key === 'Enter' && !ne.shiftKey) {
-                  (e as unknown as { preventDefault?: () => void }).preventDefault?.();
-                  void send(draft);
-                }
-              }}
-            />
-            <TouchableOpacity
-              testID="hello-roxy-send"
-              onPress={() => void send(draft)}
-              disabled={!canSend}
-              accessibilityRole="button"
-              accessibilityLabel="Send"
-              {...a11yState({ disabled: !canSend })}
-              style={[s.send, { backgroundColor: canSend ? colors.pink : 'transparent' }]}
-            >
-              <Ionicons name="paper-plane-outline" size={22} color={canSend ? colors.onPink : colors.ink2} />
-            </TouchableOpacity>
+            <Text style={[s.footer, { color: colors.ink2 }]}>Roxy AI is an AI and can get things wrong.</Text>
           </View>
 
-          <Text style={[s.footer, { color: colors.ink2 }]}>Roxy AI is an AI and can get things wrong.</Text>
-        </View>
-
-        <Animated.View pointerEvents="none" style={[s.avatar, avatarFlight]}>
-          <RoxyO size={HELLO_AVATAR} mood={landed ? 'happy' : 'open'} testID="hello-roxy-avatar" />
-        </Animated.View>
-      </Animated.View>
+          <Reanimated.View pointerEvents="none" style={[s.avatar, avatarFlight]}>
+            <Reanimated.View testID="hello-roxy-face-open" style={[StyleSheet.absoluteFill, openFace]}>
+              <RoxyO size={HELLO_AVATAR} mood="open" testID="hello-roxy-avatar-arriving" />
+            </Reanimated.View>
+            <Reanimated.View testID="hello-roxy-face-happy" style={happyFace}>
+              <RoxyO size={HELLO_AVATAR} mood="happy" testID="hello-roxy-avatar" />
+            </Reanimated.View>
+          </Reanimated.View>
+        </Reanimated.View>
+      </GestureRoot>
     </Modal>
   );
 }

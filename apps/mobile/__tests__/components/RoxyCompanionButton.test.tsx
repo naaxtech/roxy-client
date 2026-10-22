@@ -1,3 +1,5 @@
+// Hello, Roxy hosts an RNGH Pan (Wave 3): RNGH's jest setup mocks its native module.
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import fs from 'fs';
 import path from 'path';
