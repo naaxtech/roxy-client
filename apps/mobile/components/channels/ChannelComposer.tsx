@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { PressableScale } from '../ui/PressableScale';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII, inkOn } from '../../lib/theme';
@@ -143,7 +144,7 @@ export function ChannelComposer({
           accessibilityLabel={placeholder}
           testID={`${testID}-input`}
         />
-        <Pressable
+        <PressableScale
           onPress={submit}
           disabled={!canSend}
           style={[s.send, !canSend && s.sendOff]}
@@ -154,7 +155,7 @@ export function ChannelComposer({
           testID={`${testID}-send`}
         >
           <Text style={s.sendText}>Send</Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {overLong ? (

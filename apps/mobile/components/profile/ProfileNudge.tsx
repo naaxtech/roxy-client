@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { PressableScale } from '../ui/PressableScale';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -69,7 +70,7 @@ export function ProfileNudge({
   });
 
   return (
-    <Pressable onPress={onOpen} accessible={false}>
+    <PressableScale feedback="layer" onPress={onOpen} accessible={false}>
       <View style={s.card} testID="profile-complete-nudge" accessibilityRole="button" accessibilityLabel={`${title}. ${body}`}>
         <View style={s.icon}>
           <Ionicons name={gaps[0] === 'photo' ? 'camera-outline' : 'create-outline'} size={18} color={inkOn(colors.primary)} />
@@ -78,7 +79,7 @@ export function ProfileNudge({
           <Text style={s.title}>{title}</Text>
           <Text style={s.body}>{body}</Text>
         </View>
-        <Pressable
+        <PressableScale
           onPress={() => {
             setDismissed(true);
             void AsyncStorage.setItem(dismissKey(userId), '1').catch(() => undefined);
@@ -90,8 +91,8 @@ export function ProfileNudge({
           hitSlop={8}
         >
           <Ionicons name="close" size={18} color={colors.textMuted} />
-        </Pressable>
+        </PressableScale>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }

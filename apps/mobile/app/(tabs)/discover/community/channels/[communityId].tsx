@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, ActivityIndicator, Pressable,
+  View, Text, StyleSheet, FlatList, ActivityIndicator,
 } from 'react-native';
+import { PressableScale } from '../../../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -501,14 +502,14 @@ export default function CommunityChannelsScreen() {
       return (
         <View style={s.centre} testID="channels-error">
           <Text style={s.centreBody}>{error}</Text>
-          <Pressable
+          <PressableScale
             onPress={() => { setLoading(true); void loadChannels(); }}
             style={s.retryHit}
             accessibilityRole="button"
             accessibilityLabel="Try again"
           >
             <Text style={s.retry}>Try again</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       );
     }
@@ -534,14 +535,14 @@ export default function CommunityChannelsScreen() {
           {/* Retries THIS channel. The screen-level retry reloads the channel
               list and resets `active`, which dropped her into #general when
               what had failed was #rants. */}
-          <Pressable
+          <PressableScale
             onPress={() => { if (active) void loadMessages(active.id); }}
             style={s.retryHit}
             accessibilityRole="button"
             accessibilityLabel="Try again"
           >
             <Text style={s.retry}>Try again</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       );
     }
@@ -605,7 +606,7 @@ export default function CommunityChannelsScreen() {
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         ListHeaderComponent={
           hasOlder || olderError ? (
-            <Pressable
+            <PressableScale
               onPress={() => { void loadOlder(); }}
               disabled={loadingOlder}
               style={s.olderHit}
@@ -621,7 +622,7 @@ export default function CommunityChannelsScreen() {
                   {olderError ? "Couldn't load earlier messages. Tap to try again." : 'Earlier messages'}
                 </Text>
               )}
-            </Pressable>
+            </PressableScale>
           ) : (
             <Text style={s.startOf} testID="channel-start">{`Start of # ${active.slug}`}</Text>
           )
@@ -639,7 +640,7 @@ export default function CommunityChannelsScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <Pressable
+        <PressableScale
           onPress={() => router.back()}
           style={s.back}
           accessibilityRole="button"
@@ -647,7 +648,7 @@ export default function CommunityChannelsScreen() {
           testID="channels-back"
         >
           <Ionicons name="chevron-back" size={22} color={colors.textSecondary} />
-        </Pressable>
+        </PressableScale>
         <View style={s.headText}>
           <Text style={s.title} numberOfLines={1}>
             {communityName || 'Community'}
@@ -657,7 +658,7 @@ export default function CommunityChannelsScreen() {
             <Text style={s.subtitle} numberOfLines={1}>{active.topic}</Text>
           ) : null}
         </View>
-        <Pressable
+        <PressableScale
           onPress={() => { void toggleNotifications(); }}
           style={s.notifyBtn}
           accessibilityRole="button"
@@ -670,7 +671,7 @@ export default function CommunityChannelsScreen() {
             size={20}
             color={notifyEnabled ? colors.roxy : colors.textSecondary}
           />
-        </Pressable>
+        </PressableScale>
       </View>
 
       {channels.length > 0 ? (
@@ -725,7 +726,7 @@ export default function CommunityChannelsScreen() {
         header={menuFor && !menuFor.deleted_at && me ? (
           <View style={s.reactRow}>
             {SHEET_EMOJIS.map((emoji) => (
-              <Pressable
+              <PressableScale
                 key={emoji}
                 style={s.reactHit}
                 onPress={() => { const id = menuFor.id; setMenuFor(null); reactFromMenu(id, emoji); }}
@@ -733,16 +734,16 @@ export default function CommunityChannelsScreen() {
                 accessibilityLabel={`React with ${emoji}`}
               >
                 <Text style={s.reactEmoji}>{emoji}</Text>
-              </Pressable>
+              </PressableScale>
             ))}
-            <Pressable
+            <PressableScale
               style={s.reactHit}
               onPress={() => { const id = menuFor.id; setMenuFor(null); setReactAnyFor(id); }}
               accessibilityRole="button"
               accessibilityLabel="Choose any emoji"
             >
               <Ionicons name="add" size={22} color={colors.textPrimary} />
-            </Pressable>
+            </PressableScale>
           </View>
         ) : null}
       />
