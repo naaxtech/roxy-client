@@ -1,0 +1,18 @@
+apps/mobile/tests/e2e/parity.spec.ts
+  h_0549c11fec2ab0 57-61
+apps/mobile/tests/e2e/profile-align.spec.ts
+  h_0549c11fec2ab0 37-50
+apps/mobile/tests/e2e/top-members.spec.ts
+  h_0549c11fec2ab0 24-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca748434189dac3ead84ac28cabbc86bc112a891",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
