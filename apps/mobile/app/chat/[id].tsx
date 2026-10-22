@@ -40,7 +40,8 @@ import {
 import type { Message } from '../../types';
 import { readThreadPage, writeThreadPage } from '../../components/chat/threadCache';
 import { ThreadSkeleton } from '../../components/messages/LoadingShapes';
-import { FadeIn, RoxyLoading, Sheet } from '../../components/feedback';
+import { FadeIn, RoxyLoading, Sheet, SNACKBAR_SHORT_MS } from '../../components/feedback';
+import { Snackbar } from '../../components/ui/Snackbar';
 import { ActionTray } from '../../components/chat/ActionTray';
 import { GifPicker } from '../../components/chat/GifPicker';
 import { TypingIndicator } from '../../components/chat/TypingIndicator';
@@ -245,12 +246,6 @@ export default function ChatScreen() {
   }, [messages]);
 
   useEffect(() => () => { if (markReadTimer.current) clearTimeout(markReadTimer.current); }, []);
-
-  useEffect(() => {
-    if (!toast) return undefined;
-    const t = setTimeout(() => setToast(null), 1600);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   useEffect(() => {
     if (!flashId) return undefined;
@@ -755,11 +750,15 @@ export default function ChatScreen() {
                 <Text style={s.pillText}>{unseen === 1 ? 'New message' : `${unseen} new messages`}</Text>
               </TouchableOpacity>
             ) : null}
-            {toast ? (
-              <View style={s.toast} pointerEvents="none" accessibilityLiveRegion="polite">
-                <Text style={s.toastText}>{toast}</Text>
-              </View>
-            ) : null}
+            {/* The shared snackbar (§3.1 row 13): rises from the bottom edge,
+                polite, leaves on its own (4 s, no action). */}
+            <Snackbar
+              visible={toast !== null}
+              message={toast ?? ''}
+              duration={SNACKBAR_SHORT_MS}
+              onDismiss={() => setToast(null)}
+              testID="chat-snackbar"
+            />
           </FadeIn>
         )}
 
@@ -1022,12 +1021,6 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.primary, borderRadius: RADII.pill, paddingHorizontal: 16, minHeight: 40,
   },
   pillText: { ...TYPE.caption, color: inkOn(colors.primary), fontWeight: '700' },
-  toast: {
-    position: 'absolute', top: 12, alignSelf: 'center', backgroundColor: colors.surface,
-    borderRadius: RADII.pill, paddingHorizontal: 14, paddingVertical: 6,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line,
-  },
-  toastText: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '700' },
   inputWrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, backgroundColor: colors.background },
   metaError: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 12,

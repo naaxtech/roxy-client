@@ -361,6 +361,14 @@ describe('ChatScreen — message requests (CHAT-02)', () => {
 });
 
 describe('ChatScreen — reporting (CHAT-11)', () => {
+  it('Copy confirms with the shared snackbar (§3.1 row 13), not an ad-hoc toast', async () => {
+    const view = await openThread();
+    fireEvent(view.getByTestId('message-m1'), 'longPress');
+    await act(async () => { fireEvent.press(await view.findByTestId('msg-action-copy')); });
+    const bar = await view.findByTestId('chat-snackbar');
+    expect(within(bar).getByText('Copied')).toBeTruthy();
+  });
+
   it('long-press → Report message opens the global sheet once, with the message id', async () => {
     const view = await openThread();
     fireEvent(view.getByTestId('message-m1'), 'longPress');
