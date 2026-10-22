@@ -1,0 +1,44 @@
+apps/mobile/__tests__/components/ReportSheet.test.tsx
+  h_0549c11fec2ab0 1,47-55
+apps/mobile/__tests__/components/chat/MessageActionSheet.test.tsx
+  h_0549c11fec2ab0 1,39-47
+apps/mobile/__tests__/components/messages/RequestsSheet.test.tsx
+  h_0549c11fec2ab0 1,77-85
+apps/mobile/__tests__/components/messages/RequestsSheetInvites.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/ChatThread.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/CommunityChannels.test.tsx
+  h_0549c11fec2ab0 1,382-390
+apps/mobile/__tests__/screens/CommunityChannelsModeration.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/CommunityChannelsPaging.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/CommunityChannelsReactions.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/CommunityChannelsSafety.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/MessagesRequestsLink.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/MessagesScreenV2.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/components/channels/ChannelMessageActions.tsx
+  h_0549c11fec2ab0 1-4,36,44-46,65,68-94,97-98,100-102
+apps/mobile/components/chat/MessageActionSheet.tsx
+  h_0549c11fec2ab0 1-2,10-11,50-62,64,66-67,101-102,152,157
+apps/mobile/components/messages/RequestsSheet.tsx
+  h_0549c11fec2ab0 2,22-23,363-365,397,402
+apps/mobile/components/safety/ReportSheet.tsx
+  h_0549c11fec2ab0 2,6-8,74,94,104-105,115,125,143,147-148,158,160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0b12b9c68e0c1e71f2799f87844dd340642b5de",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
