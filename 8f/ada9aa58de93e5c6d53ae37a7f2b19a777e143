@@ -1,0 +1,24 @@
+apps/mobile/__tests__/components/motion/ScreenTransition.test.tsx
+  h_0549c11fec2ab0 89-93
+apps/mobile/components/motion/ScreenTransition.tsx
+  h_0549c11fec2ab0 5,51-52,63,66,69,86
+apps/mobile/components/motion/TabFade.tsx
+  h_0549c11fec2ab0 6,51
+apps/mobile/components/motion/TransitionStack.tsx
+  h_0549c11fec2ab0 20,45
+apps/mobile/components/nav/FeedSegmentTabs.tsx
+  h_0549c11fec2ab0 10,117-118
+apps/mobile/components/nav/FloatingTabBar.tsx
+  h_0549c11fec2ab0 19,122,231,234,275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8fada9aa58de93e5c6d53ae37a7f2b19a777e143",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
