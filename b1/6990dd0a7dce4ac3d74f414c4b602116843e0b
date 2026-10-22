@@ -1,0 +1,28 @@
+apps/mobile/__tests__/MessagesNew.test.tsx
+  h_0549c11fec2ab0 90-101
+apps/mobile/__tests__/components/chat/MessageActionSheet.test.tsx
+  h_0549c11fec2ab0 88-95
+apps/mobile/__tests__/screens/CommunityChannelsReactions.test.tsx
+  h_0549c11fec2ab0 145-156
+apps/mobile/__tests__/screens/GroupInfo.test.tsx
+  h_0549c11fec2ab0 147-159
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  h_0549c11fec2ab0 135-136,582-583
+apps/mobile/app/(tabs)/messages/new.tsx
+  h_0549c11fec2ab0 72,274
+apps/mobile/app/chat/info/[id].tsx
+  h_0549c11fec2ab0 129,141,146,151,159,233
+apps/mobile/components/chat/MessageActionSheet.tsx
+  h_0549c11fec2ab0 103-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b16990dd0a7dce4ac3d74f414c4b602116843e0b",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
