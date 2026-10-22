@@ -1,0 +1,20 @@
+apps/mobile/__tests__/components/reactions/ReactionBurst.test.tsx
+  h_0549c11fec2ab0 6-11,13,15-16,34-42,54-57,63,66-75,77,79,86-113,117,120,122-123,129,132,134,166,168,172,179,181,184,191,193,197
+apps/mobile/__tests__/components/reactions/ReactionButton.test.tsx
+  h_0549c11fec2ab0 9,182-192
+apps/mobile/components/reactions/ReactionBurst.tsx
+  h_0549c11fec2ab0 1-6,9,24-29,49-52,56-64,68-75,79-99,102-122,128-152,154-157,162-164
+apps/mobile/components/reactions/ReactionPicker.tsx
+  h_0549c11fec2ab0 12,34-37,117,135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01dffaa871791d2c92fc8dfd880a0b09d7e236d6",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
