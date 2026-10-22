@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/motion/webSpring.test.ts
+  h_0549c11fec2ab0 118,135-151
+apps/mobile/components/motion/webSpring.ts
+  h_0549c11fec2ab0 114-119,122,125-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9898ad1639efa991cd87255468dc5dbfcfdd0202",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
