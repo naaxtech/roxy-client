@@ -1,0 +1,20 @@
+apps/mobile/__tests__/screens/ChatThread.test.tsx
+  h_0549c11fec2ab0 231-239
+apps/mobile/__tests__/screens/GroupInfo.test.tsx
+  h_0549c11fec2ab0 1,219-226
+apps/mobile/app/chat/[id].tsx
+  h_0549c11fec2ab0 3,27,43,926-927,953,1056
+apps/mobile/app/chat/info/[id].tsx
+  h_0549c11fec2ab0 3,35,424-425,486,576
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e25d8904eab008a69ecde45d505bbe942a38b4f2",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
