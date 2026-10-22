@@ -1,0 +1,24 @@
+apps/mobile/__tests__/feel/feelGate.test.ts
+  h_0549c11fec2ab0 1-84
+apps/mobile/__tests__/feel/feelGateLogic.test.ts
+  h_0549c11fec2ab0 1-141
+apps/mobile/scripts/feel/README.md
+  h_0549c11fec2ab0 1-35
+apps/mobile/scripts/feel/feel-baseline.json
+  h_0549c11fec2ab0 1-168
+apps/mobile/scripts/feel/feelGate.ts
+  h_0549c11fec2ab0 1-223
+apps/mobile/scripts/feel/feelGateConfig.ts
+  h_0549c11fec2ab0 1-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6560e004020c2c2cb663a7610774843ef0fa3bcf",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
