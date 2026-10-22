@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';
 import CommunityChannelsScreen from '../../app/(tabs)/discover/community/channels/[communityId]';
 import type { Channel, ChannelMessage } from '../../lib/channels';
 
@@ -231,6 +231,14 @@ describe('switching channels', () => {
     await release(rants.id, []);
 
     expect(v.getByTestId('channel-composer-input').props.value).toBe('');
+  });
+});
+
+describe('keyboard (F14)', () => {
+  it('the channel and its composer sit in the keyboard tracker', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    expect(within(v.getByTestId('channel-keyboard')).getByTestId('channel-composer-input')).toBeTruthy();
   });
 });
 

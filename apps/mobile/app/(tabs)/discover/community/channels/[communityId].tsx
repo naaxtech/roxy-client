@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator, Pressable,
-  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,6 +34,7 @@ import { useReactions } from '../../../../../hooks/useReactions';
 import { useTyping } from '../../../../../hooks/useTyping';
 import { ReactionChips } from '../../../../../components/chat/ReactionBar';
 import { TypingIndicator } from '../../../../../components/chat/TypingIndicator';
+import { KeyboardTrackingView } from '../../../../../components/chat/KeyboardTrackingView';
 import { SHEET_EMOJIS } from '../../../../../components/chat/MessageActionSheet';
 import { typingLabel } from '../../../../../lib/chatThread';
 import { haptic } from '../../../../../lib/haptics';
@@ -471,6 +471,7 @@ export default function CommunityChannelsScreen() {
     reactEmoji: { fontSize: 24 },
     startOf: { ...TYPE.micro, color: colors.textMuted, textAlign: 'center', paddingVertical: 8 },
     snackAnchor: { height: 0, zIndex: 1 },
+    flex: { flex: 1 },
   });
 
   if (!loading && communitySlug && !canCommunity(communitySlug)) {
@@ -678,10 +679,8 @@ export default function CommunityChannelsScreen() {
         />
       ) : null}
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      {/* F14: the composer rides the keyboard frame by frame. */}
+      <KeyboardTrackingView style={s.flex} testID="channel-keyboard">
         {body()}
         <TypingIndicator partnerName="" visible={typingNames.length > 0} label={typingLabel(typingNames)} />
         {/* A zero-height anchor: the snackbar rises from the composer's top
@@ -710,7 +709,7 @@ export default function CommunityChannelsScreen() {
             disabledReason="Sign in to post here."
           />
         ) : null}
-      </KeyboardAvoidingView>
+      </KeyboardTrackingView>
 
       <ChannelMessageActions
         title={menuFor ? authorName(menuFor.author) : ''}

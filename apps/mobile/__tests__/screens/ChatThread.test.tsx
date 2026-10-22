@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { KeyboardAvoidingView } from 'react-native';
+import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';
 
 /**
  * The DM / group thread screen (app/chat/[id].tsx) on the migration-132
@@ -184,6 +185,15 @@ async function openThread() {
   await view.findByText('hey you');
   return view;
 }
+
+describe('ChatScreen — keyboard (F14)', () => {
+  it('the thread and its composer sit in the keyboard tracker, not a KeyboardAvoidingView', async () => {
+    const view = await openThread();
+    const tracker = view.getByTestId('chat-keyboard');
+    expect(within(tracker).getByTestId('chat-input')).toBeTruthy();
+    expect(view.UNSAFE_queryAllByType(KeyboardAvoidingView)).toHaveLength(0);
+  });
+});
 
 describe('ChatScreen — sending (CHAT-06, CHAT-03)', () => {
   it('sends under a client-minted uuid and shows exactly one delivered bubble', async () => {

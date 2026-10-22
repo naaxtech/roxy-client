@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, StyleSheet, Platform,
   ActivityIndicator, Modal, FlatList, Keyboard, Pressable,
   type ListRenderItem, type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
@@ -38,12 +38,13 @@ import {
 import {
   groupMessages, composerState, replyQuote, typingLabel, trustRoxy, threadHeader,
   senderNamer, conversationReportTarget, isMutedUntil, MUTE_FOREVER, groupInfoPath,
-  keyboardBehavior, type GroupedMessage,
+  type GroupedMessage,
 } from '../../lib/chatThread';
 import type { Message } from '../../types';
 import { ActionTray } from '../../components/chat/ActionTray';
 import { GifPicker } from '../../components/chat/GifPicker';
 import { TypingIndicator } from '../../components/chat/TypingIndicator';
+import { KeyboardTrackingView } from '../../components/chat/KeyboardTrackingView';
 import { MessageRow } from '../../components/chat/MessageRow';
 import { MessageActionSheet } from '../../components/chat/MessageActionSheet';
 import { ReplyBar, RequestGate, ThreadNotice } from '../../components/chat/ComposerBanners';
@@ -681,7 +682,9 @@ export default function ChatScreen() {
         </View>
       )}
 
-      <KeyboardAvoidingView style={s.flex} behavior={keyboardBehavior(Platform.OS)} keyboardVerticalOffset={0}>
+      {/* F14: the composer rides the keyboard frame by frame (UI thread on
+          iOS / Android 11+, visualViewport on web). */}
+      <KeyboardTrackingView style={s.flex} testID="chat-keyboard">
         {loadingInitial ? (
           <ActivityIndicator color={colors.roxy} style={s.flex} accessibilityLabel="Loading messages" />
         ) : loadError ? (
@@ -870,7 +873,7 @@ export default function ChatScreen() {
             </View>
           </View>
         ) : null}
-      </KeyboardAvoidingView>
+      </KeyboardTrackingView>
 
       <MessageActionSheet
         message={sheetFor}
