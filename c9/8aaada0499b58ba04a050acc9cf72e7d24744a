@@ -1,0 +1,20 @@
+apps/mobile/__tests__/components/RoxyCompanionButton.test.tsx
+  h_0549c11fec2ab0 239,241-256,271
+apps/mobile/__tests__/lib/roxyFab.test.ts
+  h_0549c11fec2ab0 11-13,61-75,78-80,84-86,89-90,93-95,98-100,106,109,111-112,115-116,118-132,134-142,157-159,166-167,171,178-182,218-221,224-225
+apps/mobile/components/ui/RoxyCompanionButton.tsx
+  h_0549c11fec2ab0 57-61,133-145,179,182
+apps/mobile/lib/roxyFab.ts
+  h_0549c11fec2ab0 4,15-17,19-21,35-42,44,46,49-55,59-67,72-78,82,86-87,89,91,103-106,108,115-119,134-139,146,160-162,172-174,178-179,204-207,226-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c98aaada0499b58ba04a050acc9cf72e7d24744a",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
