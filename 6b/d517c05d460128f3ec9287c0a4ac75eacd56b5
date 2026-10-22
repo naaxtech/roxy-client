@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/ui/SnackbarSwipe.test.tsx
+  h_0549c11fec2ab0 1-142
+apps/mobile/components/ui/Snackbar.tsx
+  h_0549c11fec2ab0 1-4,8,16-22,25-26,34,42-46,54-62,71-75,78-88,92-93,96-156,160-161,165-168,176,185,187-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6bd517c05d460128f3ec9287c0a4ac75eacd56b5",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
