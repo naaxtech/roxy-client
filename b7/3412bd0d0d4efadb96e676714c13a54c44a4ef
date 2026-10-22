@@ -1,0 +1,20 @@
+apps/mobile/__tests__/components/feed/DailyPromptCell.test.tsx
+  h_0549c11fec2ab0 17-18,56-87
+apps/mobile/components/feed/DailyPromptCell.tsx
+  h_0549c11fec2ab0 2,4,14,43-45,54,60
+apps/mobile/components/feed/TextCardFace.tsx
+  h_0549c11fec2ab0 30-35,51,78
+apps/mobile/components/feed/feedChromeTokens.ts
+  h_0549c11fec2ab0 3,215-233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b73412bd0d0d4efadb96e676714c13a54c44a4ef",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
