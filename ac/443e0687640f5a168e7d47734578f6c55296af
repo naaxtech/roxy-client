@@ -1,0 +1,26 @@
+apps/mobile/__tests__/components/messages/RequestsSheet.test.tsx
+  h_0549c11fec2ab0 7,133-181
+apps/mobile/__tests__/screens/UserProfileOptimistic.test.tsx
+  h_0549c11fec2ab0 1-143
+apps/mobile/__tests__/screens/UserProfileShell.test.tsx
+  h_0549c11fec2ab0 294-295,301-303
+apps/mobile/__tests__/store/friendStoreOptimistic.test.ts
+  h_0549c11fec2ab0 1-183
+apps/mobile/app/(tabs)/you/[userId].tsx
+  h_0549c11fec2ab0 38,87-93,126-129,294-301,303-306,313,315-318,385,388,394,400-403,750-758
+apps/mobile/components/messages/RequestsSheet.tsx
+  h_0549c11fec2ab0 3,6,82-92,95-97,101,104-107,110,115,117-119,124-127,133-134,146-149,152-153,208-211,220,247-278,285,294-313,318,334-355,384,389-397
+apps/mobile/store/friendStore.ts
+  h_0549c11fec2ab0 44-45,111-116,118,127-159,163-166,173-183,188-202,208,210,215,217,222,224,228-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ac443e0687640f5a168e7d47734578f6c55296af",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
