@@ -1,0 +1,22 @@
+apps/mobile/__tests__/feel/roxyHapticsNative.test.ts
+  h_0549c11fec2ab0 1-117
+apps/mobile/modules/roxy-haptics/android-native/build.gradle
+  h_0549c11fec2ab0 1-23
+apps/mobile/modules/roxy-haptics/android-native/src/main/AndroidManifest.xml
+  h_0549c11fec2ab0 1-2
+apps/mobile/modules/roxy-haptics/android-native/src/main/java/expo/modules/roxyhaptics/RoxyHapticsModule.kt
+  h_0549c11fec2ab0 1-43
+apps/mobile/modules/roxy-haptics/expo-module.config.json
+  h_0549c11fec2ab0 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb3b1dca5bfecc2a47db270ac3d00f983002ae46",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
