@@ -1,0 +1,22 @@
+apps/mobile/__tests__/components/chat/MessageActionSheet.test.tsx
+  h_0549c11fec2ab0 103
+apps/mobile/__tests__/screens/CommunityChannelsReactions.test.tsx
+  h_0549c11fec2ab0 158
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  h_0549c11fec2ab0 151
+apps/mobile/components/chat/MessageActionSheet.tsx
+  h_0549c11fec2ab0 114
+apps/mobile/scripts/feel/feelGateConfig.ts
+  h_0549c11fec2ab0 25-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0788a40f47db648288b9aca800485398d4b2adcd",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
