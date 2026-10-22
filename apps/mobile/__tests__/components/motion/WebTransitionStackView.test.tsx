@@ -58,6 +58,10 @@ const R: Record<string, Route> = {
   b: { key: 'b', name: 'post' },
   c: { key: 'c', name: 'settings' },
   m: { key: 'm', name: 'note' },
+  /** `a` rebuilt under a new key (expo-router's popstate without a history record). */
+  a2: { key: 'a2', name: 'index' },
+  /** `b` rebuilt under a new key. */
+  b2: { key: 'b2', name: 'post' },
 };
 const descriptorFor = (route: Route, options: Record<string, unknown> = {}) => ({
   route,
@@ -70,6 +74,8 @@ const DESCRIPTORS = {
   b: descriptorFor(R.b),
   c: descriptorFor(R.c),
   m: descriptorFor(R.m, { presentation: 'modal' }),
+  a2: descriptorFor(R.a2),
+  b2: descriptorFor(R.b2),
 };
 const stateOf = (keys: string[]) => ({
   key: 'stack-1',
@@ -93,7 +99,7 @@ function view(keys: string[]) {
 /** Each rendered layer: its route key, display, and whether it takes touches. */
 function layers(utils: ReturnType<typeof render>) {
   return utils.queryAllByTestId('screen-transition', { includeHiddenElements: true }).map((node) => {
-    const key = ['a', 'b', 'c', 'm'].find((k) => within(node).queryByText(`screen ${k}`, { includeHiddenElements: true })) ?? '?';
+    const key = ['a', 'b', 'c', 'm', 'a2', 'b2'].find((k) => within(node).queryByText(`screen ${k}`, { includeHiddenElements: true })) ?? '?';
     const style = StyleSheet.flatten(node.props.style as never) as Record<string, unknown>;
     return { key, display: style.display ?? 'flex', touches: node.props.pointerEvents !== 'none' };
   });
@@ -189,6 +195,28 @@ describe('WebTransitionStackView', () => {
       { key: 'a', display: 'none', touches: true },
       { key: 'c', display: 'flex', touches: true },
     ]);
+  });
+
+  it('a browser back that rebuilds the stack under new keys still pops the top (no jump cut)', () => {
+    const utils = render(view(['a', 'b']));
+    act(() => { jest.advanceTimersByTime(ENTER_HOLD_MS); });
+    utils.rerender(view(['a2']));
+    expect(lastPhase('b')).toEqual(expect.objectContaining({ phase: 'exit' }));
+    expect(lastPhase('a2')).toEqual(expect.objectContaining({ phase: 'idle', animate: false }));
+    expect(layers(utils)).toEqual([
+      { key: 'a2', display: 'flex', touches: true },
+      { key: 'b', display: 'flex', touches: false },
+    ]);
+    act(() => { jest.advanceTimersByTime(EXIT_HOLD_MS); });
+    expect(layers(utils)).toEqual([{ key: 'a2', display: 'flex', touches: true }]);
+  });
+
+  it('a rebuild at the same depth is simply there (not a pop)', () => {
+    const utils = render(view(['a', 'b']));
+    act(() => { jest.advanceTimersByTime(ENTER_HOLD_MS); });
+    utils.rerender(view(['a2', 'b2']));
+    expect(mockPhases.some((p) => p.phase === 'exit')).toBe(false);
+    expect(lastPhase('b2')).toEqual(expect.objectContaining({ animate: false }));
   });
 
   it('a replace (redirect) is simply there: no enter, no exit', () => {

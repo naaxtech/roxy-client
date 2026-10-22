@@ -64,9 +64,23 @@ function firstModel(state: StackNavigationState<ParamListBase>, descriptors: Nat
 }
 
 /**
+ * Same screen: the same route name, and the same params when both carry
+ * params (a rebuilt parent may carry its child only as nested state).
+ */
+const sameScreen = (a: Route<string> | undefined, b: Route<string> | undefined) =>
+  !!a && !!b && a.name === b.name
+  && (a.params === undefined || b.params === undefined || JSON.stringify(a.params) === JSON.stringify(b.params));
+
+/**
  * The next model for a new navigation state: a push is exactly one new route
  * on top of the old stack; a pop removes the old top. Anything else (replace,
  * reset, a redirect) is simply there.
+ *
+ * A browser back that expo-router answers by rebuilding the state from the URL
+ * (its popstate path when the history entry has no stored state) arrives with
+ * NEW keys for every route. When the new stack is the old one minus its top,
+ * screen for screen, it is still a pop: the old top exits over the rebuilt
+ * screen (which is simply there) instead of jump-cutting away.
  */
 function nextModel(
   prev: Model,
@@ -79,7 +93,11 @@ function nextModel(
   const prevTop = prev.keys[prev.keys.length - 1];
   const top = keys[keys.length - 1];
   const isPush = added.length === 1 && added[0] === top && removed.length === 0;
-  const isPop = added.length === 0 && removed.includes(prevTop);
+  const rebuiltPop = added.length > 0
+    && removed.includes(prevTop)
+    && state.routes.length < prev.source.routes.length
+    && state.routes.every((r, i) => sameScreen(r, prev.source.routes[i]));
+  const isPop = (added.length === 0 && removed.includes(prevTop)) || rebuiltPop;
 
   const animated = { ...prev.animated };
   for (const k of added) {
