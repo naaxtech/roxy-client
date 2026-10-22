@@ -10,6 +10,26 @@ import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { RankNumeral } from './RankNumeral';
 
 /**
+ * v2 cards (EventPoster, CommunityRow, LiveRow, ListRow, MemberCard, TileCard)
+ * live in `V2Cards.tsx` and are re-exported here so Discover has one import.
+ */
+export * from './V2Cards';
+
+/*
+ * RETIRED v0 cards — `PosterCard`, `RowCard`, `HeroCard` and their caps
+ * `Badge` below.
+ * Origin: 69b7a50 (2026-08-17, "feat(discover): seven rails where three tabs
+ * used to be"), the Roxy 3.0 Discover.
+ * Why unused now: design direction v2 (2026-10-21) bans what they draw —
+ * gradient art plates, tracked-caps badges (LIVE / IN PERSON / MEMBER), the
+ * lilac `secondary`, the stroked rank numeral — and replaces the hero with
+ * identity-colour posters. Discover renders the v2 cards from `V2Cards.tsx`.
+ * When to use: never for new UI; kept (with their geometry tests in
+ * `chipGeometry.test.tsx`) so a rollback is one import. Delete only with
+ * Nicole's agreement.
+ */
+
+/**
  * A badge that names the kind of thing a card is.
  *
  * Always a word, never a colour on its own. `live` additionally carries a dot,

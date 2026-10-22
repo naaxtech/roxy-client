@@ -1,21 +1,26 @@
 import { useState, type ReactNode } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl,
+  View, Text, ScrollView, StyleSheet, RefreshControl,
+  type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { isPresetAvatar, presetEmoji, presetColor, avatarGradient } from '../../lib/avatars';
-import { TYPE } from '../../lib/typography';
+import { isPresetAvatar, presetEmoji, presetColor } from '../../lib/avatars';
+import { TYPE, FONTS } from '../../lib/typography';
 import {
   RADII,
-  LIVE_GRADIENT,
-  inkOnGradient,
+  SPACE,
+  MARGIN,
+  identityFor,
+  inkOn,
   type ThemeColors,
   pinkFill,
 } from '../../lib/theme';
+import { PrimaryButton } from '../ui/PrimaryButton';
+import { LiveDot } from '../discover/LiveDot';
 import { initialsOf } from '../ui/Avatar';
 import {
   collapseProfileTags, profileDisplayTags, RETIRED_PROFILE_CHIPS,
@@ -155,6 +160,16 @@ export interface ProfileShellProps {
   /** Pull-to-refresh (PRO-08). Omit onRefresh and the gesture is not offered. */
   refreshing?: boolean;
   onRefresh?: () => void;
+  /**
+   * The root list's scroll hook-ups, passed straight to its ScrollView. The
+   * You tab's root list lives here, so the Roxy AI button's tuck-on-scroll
+   * (lane roxy-ai: `onListScroll`, `scrollEventThrottle`) and the 88 dp lane
+   * (`contentBottomInset` = `FAB_LANE`) attach through these props.
+   */
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  scrollEventThrottle?: number;
+  /** Extra space under the last item (the Roxy AI lane). */
+  contentBottomInset?: number;
   testID?: string;
 }
 
@@ -175,12 +190,20 @@ export const PROFILE_COVER_HEIGHT = 112;
 export const PROFILE_AVATAR_SIZE = 76;
 export const PROFILE_AVATAR_FRAME = 3;
 export const PROFILE_AVATAR_SEAM = PROFILE_AVATAR_SIZE / 2;
+/**
+ * v2: without an uploaded cover the header is flat — a band on `ground` just
+ * tall enough for the icon row above the avatar (no gradient cover).
+ */
+export const PROFILE_BAR_HEIGHT = 80;
 
 const COVER_HEIGHT = PROFILE_COVER_HEIGHT;
 const AVATAR_SIZE = PROFILE_AVATAR_SIZE;
 const AVATAR_FRAME = PROFILE_AVATAR_FRAME;
-const ON_COLOR = '#FFFFFF';
 const BIO_COLLAPSE_LINES = 2;
+/** Header icons: 24 dp outlines. */
+const ICON = 24;
+/** The quiet Edit pill's face; hitSlop brings the target to 48. */
+const EDIT_HEIGHT = 40;
 
 /** What an empty profile says, per variant. Never a bare blank column. */
 const EMPTY_COPY: Record<ProfileVariant, string> = {
@@ -226,6 +249,9 @@ export function ProfileShell({
   refreshing = false,
   onRefresh,
   emptyMessage,
+  onScroll,
+  scrollEventThrottle,
+  contentBottomInset = 0,
   testID = 'profile-shell',
 }: ProfileShellProps) {
   const colors = useThemeColors();
@@ -244,7 +270,11 @@ export function ProfileShell({
   const active = resolveActiveTab(tabs, selected);
 
   const isCommunity = variant === 'community' || official;
-  const level = typeof points === 'number' ? profileLevel(points) : null;
+  // v2 bans XP bars, levels and points on her own profile: the self variant
+  // never draws the level badge, whatever it is passed.
+  const level = variant !== 'self' && typeof points === 'number' ? profileLevel(points) : null;
+  const hasCover = !!coverUrl;
+  const bandHeight = hasCover ? COVER_HEIGHT : PROFILE_BAR_HEIGHT;
   const initial = (name || '?').charAt(0).toUpperCase();
   const hasPreset = !!avatarUrl && isPresetAvatar(avatarUrl);
 
@@ -270,18 +300,9 @@ export function ProfileShell({
         />
       );
     }
-    // A per-subject gradient, which is what the prototype paints (`pvCover` is
-    // the subject's own ramp). Deliberately NOT `BRAND_GRADIENT`: that ramp is
-    // reserved for identity chrome — the wordmark, the create button, the Roxy
-    // FAB — and a full-bleed brand cover behind every profile would make it mean
-    // nothing there.
-    return (
-      <LinearGradient
-        colors={avatarGradient(name)}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-    );
+    // v2: no gradient cover (direction › Bans: generic gradient heroes). The
+    // band is flat `ground`; only an uploaded cover photo paints it.
+    return null;
   };
 
   const renderAvatar = () => {
@@ -302,16 +323,11 @@ export function ProfileShell({
         />
       );
     }
-    // No photo: her initials on her gradient — the same face she has in
-    // comments, the feed and every list (components/ui/Avatar).
+    // No photo: her initials on her identity field (flat), ink by `inkOn`.
+    const field = identityFor(name);
     return (
-      <View style={[s.avatarInner, shape, s.avatarFallback]} testID="profile-avatar-initials">
-        <LinearGradient
-          colors={avatarGradient(name)}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <Text style={[s.avatarInitial, { color: inkOnGradient(avatarGradient(name)) }]}>{initialsOf(name) || initial}</Text>
+      <View style={[s.avatarInner, shape, { backgroundColor: field }]} testID="profile-avatar-initials">
+        <Text style={[s.avatarInitial, { color: inkOn(field) }]}>{initialsOf(name) || initial}</Text>
       </View>
     );
   };
@@ -320,7 +336,7 @@ export function ProfileShell({
     const id = action.testID ?? (kind === 'primary' ? 'profile-primary-action' : 'profile-secondary-action');
     const box = kind === 'primary' ? s.primaryBtn : s.secondaryBtn;
     const label = kind === 'primary' ? s.primaryLabel : s.secondaryLabel;
-    const iconColor = kind === 'primary' ? ON_COLOR : colors.primaryInk;
+    const iconColor = colors.ink;
     const selfEdit = variant === 'self' && kind === 'primary' && !!action.onPress;
 
     if (!action.onPress) {
@@ -334,26 +350,31 @@ export function ProfileShell({
     }
 
     if (selfEdit) {
+      // v2 (direction › You): Edit is a quiet `raised` pill, not the pink
+      // action — on her own profile there is nothing to sell her.
       return (
         <TouchableOpacity
           onPress={action.onPress}
-          activeOpacity={0.85}
-          // The button keeps the design's 28px height; the tappable area is a
-          // full 44 either side of it.
-          hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+          hitSlop={{ top: SPACE[0], bottom: SPACE[0], left: SPACE[0], right: SPACE[0] }}
           accessibilityRole="button"
           accessibilityLabel={action.accessibilityLabel ?? action.label}
+          style={s.selfEditBtn}
           testID={id}
         >
-          <LinearGradient
-            colors={pinkFill(colors)}
-            // v2: the flat pink action fill (was the pink -> violet 120deg ramp).
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
-            style={s.selfEditBtn}
-          >
-            <Text style={[s.selfEditLabel, { color: colors.onPink }]}>{action.label}</Text>
-          </LinearGradient>
+          <Text style={s.selfEditLabel}>{action.label}</Text>
         </TouchableOpacity>
+      );
+    }
+
+    if (kind === 'primary') {
+      // The screen's one primary (Message, Join): the lipped PrimaryButton.
+      return (
+        <PrimaryButton
+          label={action.label}
+          onPress={action.onPress}
+          accessibilityLabel={action.accessibilityLabel ?? action.label}
+          testID={id}
+        />
       );
     }
 
@@ -375,8 +396,10 @@ export function ProfileShell({
   const renderBody = () => {
     if (status === 'loading') {
       return (
-        <View style={s.bodyState} testID="profile-loading">
-          <ActivityIndicator color={colors.roxy} />
+        <View style={s.skeletonGrid} testID="profile-loading" accessibilityLabel="Loading">
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={[s.skeletonTile, { backgroundColor: colors.raised }]} />
+          ))}
         </View>
       );
     }
@@ -389,7 +412,6 @@ export function ProfileShell({
             <TouchableOpacity
               style={s.retryBtn}
               onPress={onRetry}
-              activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Try loading this again"
               testID="profile-retry"
@@ -441,31 +463,34 @@ export function ProfileShell({
   return (
     <ScrollView
       style={s.scroll}
-      contentContainerStyle={s.scrollContent}
+      contentContainerStyle={[s.scrollContent, contentBottomInset ? { paddingBottom: s.scrollContent.paddingBottom + contentBottomInset } : null]}
       showsVerticalScrollIndicator={false}
+      onScroll={onScroll}
+      scrollEventThrottle={scrollEventThrottle}
       testID={testID}
       refreshControl={onRefresh ? (
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.roxy} colors={[colors.roxy]} />
       ) : undefined}
     >
       <View style={s.headerBlock} testID="profile-header">
-        <View style={s.coverWrap} testID="profile-cover">
+        <View style={[s.coverWrap, { height: bandHeight }, !hasCover && s.coverFlat]} testID="profile-cover">
           {renderCover()}
-          {/* The scrim is what keeps a white icon legible on a light cover photo. */}
-          <LinearGradient
-            colors={[colors.backgroundAlt + '00', colors.backgroundAlt + '66']}
-            style={StyleSheet.absoluteFill}
-          />
+          {/* The neutral media scrim keeps the icon plates legible on a photo. */}
+          {hasCover ? (
+            <LinearGradient
+              colors={[colors.ground + '00', colors.ground + '66']}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : null}
           {onBack ? (
             <TouchableOpacity
-              style={[s.coverBtn, s.coverBtnLeft]}
+              style={[s.coverBtn, hasCover && s.coverBtnPlate, s.coverBtnLeft]}
               onPress={onBack}
-              activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Back"
               testID="profile-back"
             >
-              <Ionicons name="chevron-back" size={20} color={colors.ink} />
+              <Ionicons name="chevron-back" size={ICON} color={colors.ink} />
             </TouchableOpacity>
           ) : null}
           {headerActions.length > 0 ? (
@@ -473,14 +498,13 @@ export function ProfileShell({
               {headerActions.map((action) => (
                 <TouchableOpacity
                   key={action.testID ?? action.label}
-                  style={s.coverBtn}
+                  style={[s.coverBtn, hasCover && s.coverBtnPlate]}
                   onPress={action.onPress}
-                  activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityLabel={action.label}
                   testID={action.testID}
                 >
-                  <Ionicons name={action.icon} size={19} color={colors.ink} />
+                  <Ionicons name={action.icon} size={ICON} color={colors.ink} />
                   {action.badge ? <View style={s.coverBtnDot} /> : null}
                 </TouchableOpacity>
               ))}
@@ -488,7 +512,7 @@ export function ProfileShell({
           ) : null}
         </View>
 
-        <View style={s.avatarOnSeam} testID="profile-avatar">
+        <View style={[s.avatarOnSeam, { top: bandHeight - PROFILE_AVATAR_SEAM }]} testID="profile-avatar">
           <View style={[s.avatarFrame, isCommunity ? s.avatarFrameSquare : s.avatarFrameRound]}>
             {renderAvatar()}
           </View>
@@ -583,25 +607,20 @@ export function ProfileShell({
             ) : null}
             {official ? (
               <View style={s.sellerChip} testID="profile-official-chip">
-                <Text style={s.sellerChipText}>OFFICIAL</Text>
+                <Text style={s.sellerChipText}>Official</Text>
               </View>
             ) : null}
             {sellerApproved ? (
               <View style={s.sellerChip} testID="profile-seller-chip">
-                <Text style={s.sellerChipText}>APPROVED SELLER</Text>
+                <Text style={s.sellerChipText}>Approved seller</Text>
               </View>
             ) : null}
             {live ? (
-              // Never colour alone: the dot AND the word, per the 3.0 rule.
-              <LinearGradient
-                colors={LIVE_GRADIENT}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={s.livePill}
-                testID="profile-live"
-              >
-                <View style={[s.liveDot, { backgroundColor: ON_COLOR }]} />
-                <Text style={[s.livePillText, { color: ON_COLOR }]}>LIVE</Text>
-              </LinearGradient>
+              // Never colour alone: the dot AND the word (LIVE = dot + word).
+              <View style={s.livePill} testID="profile-live">
+                <LiveDot />
+                <Text style={s.livePillText}>LIVE</Text>
+              </View>
             ) : null}
           </View>
 
@@ -684,38 +703,39 @@ export function ProfileShell({
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.background },
+  scroll: { flex: 1, backgroundColor: colors.ground },
   scrollContent: { paddingBottom: 100, overflow: 'visible' },
 
   // — cover ——————————————————————————————————————————————————
   headerBlock: {
     position: 'relative',
-    backgroundColor: colors.background,
+    backgroundColor: colors.ground,
     zIndex: 1,
   },
   coverWrap: {
     height: COVER_HEIGHT,
-    backgroundColor: colors.surfaceLight,
+    backgroundColor: colors.raised,
     overflow: 'hidden',
   },
+  coverFlat: { backgroundColor: colors.ground },
   coverBtn: {
     width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET,
     minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET,
     borderRadius: RADII.pill,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.backgroundAlt + 'A6',
-    borderWidth: 1, borderColor: colors.lineStrong,
   },
-  coverBtnLeft: { position: 'absolute', top: 8, left: 10 },
-  coverActions: { position: 'absolute', top: 8, right: 10, flexDirection: 'row', gap: 7 },
+  /** Only over a photo: a ground plate keeps the glyph legible. */
+  coverBtnPlate: { backgroundColor: colors.ground + 'CC' },
+  coverBtnLeft: { position: 'absolute', top: SPACE[1], left: SPACE[1] },
+  coverActions: { position: 'absolute', top: SPACE[1], right: SPACE[1], flexDirection: 'row', gap: SPACE[0] },
   coverBtnDot: {
-    position: 'absolute', top: 12, right: 12,
-    width: 7, height: 7, borderRadius: RADII.pill,
-    backgroundColor: colors.primary,
+    position: 'absolute', top: SPACE[2], right: SPACE[2],
+    width: SPACE[1], height: SPACE[1], borderRadius: RADII.pill,
+    backgroundColor: colors.pink,
   },
 
   // — identity ————————————————————————————————————————————————
-  body: { paddingHorizontal: 16, gap: 10 },
+  body: { paddingHorizontal: MARGIN, gap: SPACE[2] },
   identityRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -738,32 +758,30 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   avatarWrap: { width: AVATAR_SIZE, height: AVATAR_SIZE },
   avatarFrame: {
     width: AVATAR_SIZE, height: AVATAR_SIZE, padding: AVATAR_FRAME,
-    backgroundColor: colors.lineStrong,
-    borderWidth: 2, borderColor: colors.background,
+    backgroundColor: colors.ground,
   },
   avatarFrameRound: { borderRadius: RADII.pill },
-  avatarFrameSquare: { borderRadius: RADII.lg },
+  avatarFrameSquare: { borderRadius: Math.round(AVATAR_SIZE * 0.28) },
   avatarInner: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarRound: { borderRadius: RADII.pill },
-  avatarSquare: { borderRadius: RADII.md },
-  avatarFallback: { backgroundColor: colors.surfaceLight },
-  avatarEmoji: { ...TYPE.display, color: colors.textPrimary },
-  avatarInitial: { ...TYPE.display, color: colors.textPrimary },
+  avatarSquare: { borderRadius: Math.round((AVATAR_SIZE - AVATAR_FRAME * 2) * 0.28) },
+  avatarEmoji: { ...TYPE.display, color: colors.ink },
+  avatarInitial: { ...TYPE.title, fontFamily: FONTS.display.extrabold, fontSize: TYPE.headline.fontSize, lineHeight: TYPE.headline.lineHeight },
   levelBadgeWrap: { position: 'absolute', bottom: -6, right: -10 },
   levelBadge: {
     flexDirection: 'row', alignItems: 'center',
     borderRadius: RADII.pill, paddingHorizontal: 7, paddingVertical: 2.5,
     borderWidth: 2, borderColor: colors.background,
   },
-  levelBadgeText: { ...TYPE.micro, color: ON_COLOR, fontWeight: '800' },
+  levelBadgeText: { ...TYPE.micro, color: colors.onPink, fontWeight: '800' },
 
   // — actions ——————————————————————————————————————————————————
   actionCol: { flex: 1, alignItems: 'flex-end', justifyContent: 'center', gap: 6 },
   actionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, flexWrap: 'wrap', justifyContent: 'flex-end' },
   badgeChip: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
-    borderRadius: RADII.pill, paddingHorizontal: 10, paddingVertical: 5,
+    backgroundColor: colors.raised,
+    borderRadius: RADII.pill, paddingHorizontal: SPACE[2], paddingVertical: SPACE[0],
   },
   badgeChipEmojis: { fontSize: 12, letterSpacing: 1 },
   badgeChipExtra: { ...TYPE.micro, color: colors.primaryInk, fontWeight: '800', marginLeft: 2 },
@@ -773,10 +791,11 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   // what shipped. The 44pt target is restored with hitSlop, which grows the
   // touch area without growing the button, the same split the chips use.
   selfEditBtn: {
-    paddingHorizontal: 13, paddingVertical: 7,
+    minHeight: EDIT_HEIGHT, paddingHorizontal: SPACE[4],
     borderRadius: RADII.pill, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.raised,
   },
-  selfEditLabel: { ...TYPE.caption, color: ON_COLOR, fontWeight: '700' },
+  selfEditLabel: { ...TYPE.label, color: colors.ink },
   xpPill: {
     flexDirection: 'row', alignItems: 'center', gap: 7,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
@@ -789,67 +808,57 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   },
   xpFill: { height: '100%', borderRadius: RADII.pill },
   primaryBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 18,
-    borderRadius: RADII.sm, backgroundColor: colors.primary,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACE[1],
+    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: SPACE[4],
+    borderRadius: RADII.pill, backgroundColor: colors.raised,
   },
-  primaryLabel: { ...TYPE.body, color: ON_COLOR, fontWeight: '700' },
+  primaryLabel: { ...TYPE.label, color: colors.ink },
   secondaryBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 14,
-    borderRadius: RADII.sm, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.primary + '59',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACE[1],
+    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: SPACE[4],
+    borderRadius: RADII.pill, backgroundColor: colors.raised,
   },
-  secondaryLabel: { ...TYPE.body, color: colors.primaryInk, fontWeight: '700' },
-  statusPill: { borderColor: colors.line },
-  statusPillLabel: { color: colors.textSecondary },
+  secondaryLabel: { ...TYPE.label, color: colors.ink },
+  statusPill: { backgroundColor: colors.raised },
+  statusPillLabel: { color: colors.ink2 },
 
   // — name block ——————————————————————————————————————————————
   nameBlock: { gap: 5 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  name: { ...TYPE.headline, color: colors.textPrimary, flexShrink: 1 },
-  pronounsBeside: { ...TYPE.caption, color: colors.textMuted, fontWeight: '600' },
-  subtitle: { ...TYPE.caption, color: colors.textMuted },
+  name: { ...TYPE.headline, color: colors.ink, flexShrink: 1 },
+  pronounsBeside: { ...TYPE.meta, color: colors.ink2 },
+  subtitle: { ...TYPE.meta, color: colors.ink2 },
   sellerChip: {
-    borderRadius: RADII.pill, paddingHorizontal: 8, paddingVertical: 3,
-    backgroundColor: colors.primary + '1F',
-    borderWidth: 1, borderColor: colors.primary + '4D',
+    borderRadius: RADII.pill, paddingHorizontal: SPACE[1], paddingVertical: SPACE[0] / 2,
+    backgroundColor: colors.raised,
   },
-  sellerChipText: { ...TYPE.micro, color: colors.primaryInk, fontWeight: '800' },
-  livePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    borderRadius: RADII.pill, paddingHorizontal: 8, paddingVertical: 3,
-  },
-  liveDot: { width: 5, height: 5, borderRadius: RADII.pill },
-  livePillText: { ...TYPE.micro, fontWeight: '800' },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
+  sellerChipText: { ...TYPE.meta, color: colors.ink2 },
+  livePill: { flexDirection: 'row', alignItems: 'center', gap: SPACE[0] },
+  livePillText: { ...TYPE.meta, fontFamily: FONTS.text.semibold, color: colors.ink },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE[1], marginTop: SPACE[0] / 2 },
   pronounChip: {
-    borderRadius: RADII.pill, paddingHorizontal: 10, paddingVertical: 4,
-    backgroundColor: colors.roxy + '20',
-    borderWidth: 1, borderColor: colors.roxy + '45',
+    borderRadius: RADII.pill, paddingHorizontal: SPACE[2], paddingVertical: SPACE[0],
+    backgroundColor: colors.pinkContainer,
   },
-  pronounChipText: { ...TYPE.caption, color: colors.roxy, fontWeight: '700' },
+  pronounChipText: { ...TYPE.meta, color: colors.onPinkContainer },
   identityChip: {
-    borderRadius: RADII.pill, paddingHorizontal: 10, paddingVertical: 4,
-    backgroundColor: colors.secondary + '20',
-    borderWidth: 1, borderColor: colors.secondary + '45',
+    borderRadius: RADII.pill, paddingHorizontal: SPACE[2], paddingVertical: SPACE[0],
+    backgroundColor: colors.raised,
   },
-  identityChipText: { ...TYPE.caption, color: colors.secondaryInk, fontWeight: '700' },
+  identityChipText: { ...TYPE.meta, color: colors.ink },
   customChip: {
-    borderRadius: RADII.pill, paddingHorizontal: 10, paddingVertical: 4,
-    backgroundColor: colors.surfaceLight,
-    borderWidth: 1, borderColor: colors.line,
+    borderRadius: RADII.pill, paddingHorizontal: SPACE[2], paddingVertical: SPACE[0],
+    backgroundColor: colors.raised,
   },
-  customChipText: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '700' },
+  customChipText: { ...TYPE.meta, color: colors.ink2 },
   moreChip: {
-    borderRadius: RADII.pill, paddingHorizontal: 10, paddingVertical: 4,
-    backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.line,
-    minHeight: 28, justifyContent: 'center',
+    borderRadius: RADII.pill, paddingHorizontal: SPACE[2], paddingVertical: SPACE[0],
+    backgroundColor: colors.raised,
+    minHeight: SPACE[6] - SPACE[0], justifyContent: 'center',
   },
-  moreChipText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '800' },
-  bio: { ...TYPE.body, color: colors.textSecondary },
-  bioMore: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '700', marginTop: 2 },
+  moreChipText: { ...TYPE.meta, color: colors.ink2 },
+  bio: { ...TYPE.body, color: colors.ink2 },
+  bioMore: { ...TYPE.meta, color: colors.ink, marginTop: SPACE[0] / 2 },
 
   // — stats ——————————————————————————————————————————————————
   statRow: {
@@ -865,27 +874,30 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
 
   // — tabs ————————————————————————————————————————————————————
   tabStrip: {
-    flexDirection: 'row', gap: 2, marginTop: 2,
+    flexDirection: 'row', gap: SPACE[0], marginTop: SPACE[1],
     borderBottomWidth: 1, borderBottomColor: colors.line,
   },
   tab: {
-    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 12,
+    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: SPACE[2],
     alignItems: 'center', justifyContent: 'center',
-    borderBottomWidth: 2, borderBottomColor: colors.background,
+    borderBottomWidth: 3, borderBottomColor: 'transparent',
     marginBottom: -1,
   },
-  tabActive: { borderBottomColor: colors.primary },
-  tabLabel: { ...TYPE.body, color: colors.textMuted, fontWeight: '600' },
-  tabLabelActive: { color: colors.textPrimary, fontWeight: '700' },
-  tabContent: { paddingTop: 12 },
+  /** The 3 dp underline, like the Feed segments. */
+  tabActive: { borderBottomColor: colors.pink },
+  tabLabel: { ...TYPE.label, fontFamily: FONTS.text.medium, color: colors.ink2 },
+  tabLabelActive: { fontFamily: FONTS.text.semibold, color: colors.ink },
+  tabContent: { paddingTop: SPACE[2] },
 
   // — the three states ————————————————————————————————————————
-  bodyState: { paddingVertical: 40, paddingHorizontal: 12, alignItems: 'center', gap: 10 },
-  bodyStateText: { ...TYPE.body, color: colors.textSecondary, textAlign: 'center' },
+  bodyState: { paddingVertical: SPACE[7], paddingHorizontal: SPACE[2], alignItems: 'center', gap: SPACE[2] },
+  bodyStateText: { ...TYPE.body, color: colors.ink2, textAlign: 'center' },
   retryBtn: {
-    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 22,
+    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: SPACE[5],
     alignItems: 'center', justifyContent: 'center',
-    borderRadius: RADII.pill, backgroundColor: colors.primary,
+    borderRadius: RADII.pill, backgroundColor: colors.raised,
   },
-  retryLabel: { ...TYPE.body, color: ON_COLOR, fontWeight: '700' },
+  retryLabel: { ...TYPE.label, color: colors.ink },
+  skeletonGrid: { flexDirection: 'row', gap: SPACE[0], paddingTop: SPACE[2] },
+  skeletonTile: { flex: 1, aspectRatio: 3 / 4, borderRadius: RADII.sm },
 });

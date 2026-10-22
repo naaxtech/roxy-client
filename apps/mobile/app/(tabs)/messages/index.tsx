@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput, Platform,
+  View, Text, StyleSheet, TextInput, Platform,
 } from 'react-native';
+import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname, useLocalSearchParams } from 'expo-router';
@@ -10,7 +11,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useConnectStore } from '../../../store/connectStore';
 import { useFriendStore, isOnline } from '../../../store/friendStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
-import { ScreenHeader } from '../../../components/ui/ScreenHeader';
+import { AccountStatusTag } from '../../../components/account/AccountStatusTag';
 import { PinnedPersonaRow } from '../../../components/messages/PinnedPersonaRow';
 import { RequestsSheet } from '../../../components/messages/RequestsSheet';
 import { OfficialChatInbox } from '../../../components/messages/OfficialChatInbox';
@@ -28,18 +29,27 @@ import {
   type InboxCommunityMeta,
 } from '../../../lib/inboxCommunities';
 import { TYPE } from '../../../lib/typography';
-import { RADII, inkOn } from '../../../lib/theme';
+import { RADII, SPACE, MARGIN, type ThemeColors } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 
+/** Header and row icons: 24 dp outlines (direction › Create sheet, Bans). */
+const ICON = 24;
+/** The Requests row (direction › Spacing: rows 56 / 64 / 72). */
+const REQUESTS_ROW_MIN = 56;
+
 /**
- * The Messages inbox.
+ * The Messages inbox (design direction v2 › Messages, board v2-06, normal
+ * state only — the discreet switch is held with Premium, so no eye button and
+ * no lock badge ship).
+ *
+ * `headline` "Messages" with search and compose; Roxy AI and Sister pinned;
+ * then a Requests row ("2 waiting"), the people and a Communities group.
+ * Search moved from a permanent field into the header (it opens one in place),
+ * and the v0 caps "Requests" chip became the row.
  *
  * Direct + private-group threads come from ONE server call, `inbox_summary()`
  * (migration 132), through connectStore — the same call that feeds the tab
- * badge (CHAT-13). The old four-query fetch (conversations → profiles → every
- * message → unread rows) is gone: it pulled every message she had ever been
- * sent to draw one preview line, and it computed unread its own way, so the
- * badge and the row could disagree.
+ * badge (CHAT-13).
  *
  * Message requests never appear in this list (CHAT-02): they wait in the
  * Requests sheet, which is also where friend requests are answered.
@@ -61,6 +71,7 @@ function MessagesScreen() {
   const profile = useProfileStore((st) => st.profile);
   const dmPermission = readDmPermission(profile as { dm_permission?: unknown } | null);
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [requestsOpen, setRequestsOpen] = useState(false);
   // A community-invite notification (135) links to /messages?requests=1: open
   // Requests, where she answers it, then spend the param so a later visit to
@@ -162,94 +173,78 @@ function MessagesScreen() {
 
   const isPartnerOnline = (item: InboxDm) => isOnline(lastSeen.get(item.id) ?? null);
 
-  const s = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    iconBtn: {
-      width: 34, height: 34, borderRadius: RADII.pill,
-      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    requestsChip: {
-      flexDirection: 'row', alignItems: 'center', gap: 6,
-      minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 12,
-      borderRadius: RADII.pill, backgroundColor: colors.surface,
-      borderWidth: 1, borderColor: colors.line,
-    },
-    requestsChipText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '700' },
-    requestsBadge: {
-      backgroundColor: colors.primary, borderRadius: RADII.pill,
-      minWidth: 18, height: 18, paddingHorizontal: 6,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    requestsBadgeText: { ...TYPE.micro, color: inkOn(colors.primary), fontWeight: '800' },
-    search: {
-      flexDirection: 'row', alignItems: 'center', gap: 9,
-      backgroundColor: colors.surface, borderRadius: 14,
-      marginHorizontal: 14, marginTop: 10, marginBottom: 12,
-      paddingHorizontal: 13, paddingVertical: 9,
-      borderWidth: 1, borderColor: colors.line,
-    },
-    searchInput: { ...TYPE.body, color: colors.textPrimary, flex: 1 },
-    personas: { paddingHorizontal: 14, gap: 8, paddingBottom: 6 },
-    footer: {
-      paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8,
-    },
-    footerText: { ...TYPE.caption, color: colors.textMuted, fontWeight: '600' },
-    footerAccent: { color: colors.textSecondary, fontWeight: '700' },
-  });
+  const closeSearch = () => {
+    setSearch('');
+    setSearchOpen(false);
+  };
+
+  const s = styles(colors);
+  const waiting = requestCount > 0
+    ? `${requestCount > 99 ? '99+' : requestCount} waiting`
+    : 'None waiting';
+
+  const pinnedAndRequests = (
+    <View>
+      <PinnedPersonaRow persona="roxy" onPress={() => router.push('/roxy-chat' as never)} />
+      <PinnedPersonaRow persona="sister" onPress={() => router.push('/sister-button' as never)} />
+      <TouchableOpacity
+        style={s.requestsRow}
+        onPress={() => setRequestsOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`Requests, ${waiting.toLowerCase()}`}
+        testID="messages-requests-entry"
+      >
+        <Text style={s.requestsLabel}>Requests</Text>
+        <Text style={[s.requestsCount, requestCount > 0 ? s.requestsCountOn : null]}>{waiting}</Text>
+        <Ionicons
+          name="chevron-forward"
+          size={ICON - SPACE[1]}
+          color={requestCount > 0 ? colors.pinkInk : colors.ink3}
+        />
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <SafeAreaView style={s.container}>
-      <ScreenHeader
-        title="Messages"
-        actions={
-          <>
-            <TouchableOpacity
-              style={s.requestsChip}
-              onPress={() => setRequestsOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel={
-                requestCount > 0
-                  ? `${requestCount} ${requestCount === 1 ? 'request' : 'requests'} waiting`
-                  : 'Requests'
-              }
-              activeOpacity={0.85}
-              testID="messages-requests-entry"
-            >
-              <Text style={s.requestsChipText}>Requests</Text>
-              {requestCount > 0 ? (
-                <View style={s.requestsBadge}>
-                  <Text style={s.requestsBadgeText}>{requestCount > 99 ? '99+' : requestCount}</Text>
-                </View>
-              ) : null}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={s.iconBtn}
-              onPress={() => router.push('/(tabs)/messages/new' as never)}
-              accessibilityLabel="New message"
-              testID="messages-new"
-            >
-              <Ionicons name="create-outline" size={17} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </>
-        }
-      />
-
-      <View style={s.search}>
-        <Ionicons name="search-outline" size={15} color={colors.textMuted} />
-        <TextInput
-          style={s.searchInput}
-          placeholder="Search messages"
-          placeholderTextColor={colors.textMuted}
-          value={search}
-          onChangeText={setSearch}
-        />
+      <View style={s.header}>
+        <Text style={s.title} accessibilityRole="header">Messages</Text>
+        <AccountStatusTag />
+        <TouchableOpacity
+          style={s.iconBtn}
+          onPress={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+          accessibilityRole="button"
+          accessibilityLabel={searchOpen ? 'Close search' : 'Search messages'}
+          testID="messages-search-toggle"
+        >
+          <Ionicons name={searchOpen ? 'close' : 'search-outline'} size={ICON} color={colors.ink} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={s.iconBtn}
+          onPress={() => router.push('/(tabs)/messages/new' as never)}
+          accessibilityRole="button"
+          accessibilityLabel="New message"
+          testID="messages-new"
+        >
+          <Ionicons name="create-outline" size={ICON} color={colors.ink} />
+        </TouchableOpacity>
       </View>
 
-      <View style={s.personas}>
-        <PinnedPersonaRow persona="roxy" onPress={() => router.push('/roxy-chat' as never)} />
-        <PinnedPersonaRow persona="sister" onPress={() => router.push('/sister-button' as never)} />
-      </View>
+      {searchOpen ? (
+        <View style={s.search}>
+          <Ionicons name="search-outline" size={ICON - SPACE[1]} color={colors.ink2} />
+          <TextInput
+            style={s.searchInput}
+            placeholder="Search people and communities"
+            placeholderTextColor={colors.ink3}
+            value={search}
+            onChangeText={setSearch}
+            autoFocus
+            accessibilityLabel="Search messages"
+            testID="messages-search"
+          />
+        </View>
+      ) : null}
 
       <MessagesInbox
         chats={filteredChats}
@@ -262,17 +257,18 @@ function MessagesScreen() {
         isPartnerOnline={isPartnerOnline}
         loading={loading && !loaded}
         onRefresh={load}
+        directHeader={pinnedAndRequests}
         footer={
           <TouchableOpacity
             style={s.footer}
             onPress={() => router.push('/(tabs)/you/settings' as never)}
             accessibilityRole="button"
             accessibilityLabel={`Who can message you: ${dmPermissionLabel(dmPermission)}. Change in Settings.`}
+            testID="messages-dm-permission"
           >
             <Text style={s.footerText}>
-              Who can message you:{' '}
-              <Text style={s.footerAccent}>{dmPermissionLabel(dmPermission)}</Text>
-              {' · request-first inbox · change in Settings →'}
+              Who can message you: {dmPermissionLabel(dmPermission)}.{' '}
+              <Text style={s.footerLink}>Change in Settings</Text>
             </Text>
           </TouchableOpacity>
         }
@@ -286,6 +282,36 @@ function MessagesScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.ground },
+  header: {
+    flexDirection: 'row', alignItems: 'center', gap: SPACE[0],
+    paddingLeft: MARGIN, paddingRight: SPACE[1], paddingTop: SPACE[2], paddingBottom: SPACE[1],
+  },
+  title: { ...TYPE.headline, color: colors.ink, flex: 1 },
+  iconBtn: {
+    width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, borderRadius: RADII.pill,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  search: {
+    flexDirection: 'row', alignItems: 'center', gap: SPACE[1],
+    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: MARGIN,
+    marginHorizontal: MARGIN, marginBottom: SPACE[1],
+    borderRadius: RADII.pill, backgroundColor: colors.raised,
+  },
+  searchInput: { ...TYPE.body, color: colors.ink, flex: 1, minHeight: MIN_TOUCH_TARGET },
+  requestsRow: {
+    flexDirection: 'row', alignItems: 'center', gap: SPACE[1],
+    minHeight: REQUESTS_ROW_MIN, paddingHorizontal: MARGIN,
+  },
+  requestsLabel: { ...TYPE.label, color: colors.ink, flex: 1 },
+  requestsCount: { ...TYPE.body, color: colors.ink3 },
+  requestsCountOn: { ...TYPE.label, color: colors.pinkInk },
+  footer: { paddingHorizontal: MARGIN, paddingVertical: SPACE[3], minHeight: MIN_TOUCH_TARGET },
+  footerText: { ...TYPE.meta, color: colors.ink2 },
+  footerLink: { color: colors.pinkInk },
+});
 
 export default function MessagesRoute() {
   const { can } = useAccess();

@@ -1,26 +1,40 @@
 import type { ReactNode } from 'react';
-import { SectionList, View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { SectionList, View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { avatarGradient } from '../../lib/avatars';
-import { channelCountLabel, type InboxCommunity } from '../../lib/inboxCommunities';
-import { TYPE } from '../../lib/typography';
-import { RADII, inkOn, type ThemeColors, BRAND_INK } from '../../lib/theme';
+import { Avatar } from '../ui/Avatar';
+import { Crest } from '../discover/Crest';
+import type { InboxCommunity } from '../../lib/inboxCommunities';
+import { TYPE, emphasized } from '../../lib/typography';
+import { RADII, SPACE, MARGIN, identityFor, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 
+/** Avatar and crest size on a 72 dp row (direction › Spacing). */
+const AVATAR = 48;
+/** The stacked-initials pair inside a 48 dp group avatar. */
+const STACK_AVATAR = 30;
+const ROW_MIN = 72;
+/** Unread is an 8 dp `pink` dot (direction › Navigation). */
+const DOT = SPACE[1];
+/** The presence dot on a person's avatar. */
+const ONLINE_DOT = SPACE[2];
+const SKELETON_ROWS = 3;
+
 /**
- * The two inbox lists from the 3.0 prototype (markup 421–448).
+ * The two inbox lists (v2 board v2-06, normal state).
  *
- * Direct and Community chats used to share one FlatList, with communities
- * stuffed in the footer. An empty DM list then drew a full-screen empty and
- * made group chat look missing. They are two sections now, always labelled,
- * and an empty Direct list is a compact row — Community stays on screen.
+ * People and Communities are two sections. An empty people list is a compact
+ * line — Communities stays on screen — because the old shared list drew a
+ * full-screen empty and made group chat look missing.
  *
- * Shape carries the kind: circle avatars for people, rounded squares for
- * communities, plus a `N CHANNELS` pill so the two cannot be mistaken at a
- * glance even in greyscale.
+ * v2: rows sit on the ground, 72 dp, avatar or crest at 48. Unread is the
+ * emphasized preview plus an 8 dp `pink` dot; the count is spoken in the
+ * accessibility label, not painted as a badge. Shape carries the kind: circles
+ * for people, crest squircles with initials for communities. v0's caps eyebrows
+ * ("DIRECT", "COMMUNITY CHATS") and the "N CHANNELS" caps pill are gone; the
+ * people section opens with the screen's Requests row (`directHeader`) and the
+ * Communities group has a quiet sentence-case heading.
  */
 export type InboxDm = {
   id: string;
@@ -50,6 +64,8 @@ type Props = {
   isPartnerOnline: (item: InboxDm) => boolean;
   loading?: boolean;
   onRefresh?: () => void;
+  /** Leads the people section — the screen's Requests row. */
+  directHeader?: ReactNode;
   footer?: ReactNode;
 };
 
@@ -59,13 +75,17 @@ type Props = {
  * `SectionList` infers ONE item type across every section, so a union of two
  * differently-shaped sections does not satisfy `SectionListData<ItemT, SectionT>`
  * — the community rows are not assignable to the DM row type. The item type is
- * therefore the union, and `section.key` discriminates it at the render site,
- * which is what the code was already doing.
+ * therefore the union, and `section.key` discriminates it at the render site.
  */
 type InboxRow = InboxDm | InboxCommunity;
-type DirectSection = { key: 'direct'; title: 'DIRECT'; data: InboxRow[] };
-type CommunitySection = { key: 'community'; title: 'COMMUNITY CHATS'; data: InboxRow[] };
+type DirectSection = { key: 'direct'; data: InboxRow[] };
+type CommunitySection = { key: 'community'; data: InboxRow[] };
 type InboxSection = DirectSection | CommunitySection;
+
+function channelWords(count: number): string {
+  if (count <= 0) return 'channels';
+  return `${count} ${count === 1 ? 'channel' : 'channels'}`;
+}
 
 export function MessagesInbox({
   chats,
@@ -78,15 +98,23 @@ export function MessagesInbox({
   isPartnerOnline,
   loading = false,
   onRefresh,
+  directHeader,
   footer,
 }: Props) {
   const colors = useThemeColors();
   const s = styles(colors);
 
   const sections: InboxSection[] = [
-    { key: 'direct', title: 'DIRECT', data: chats },
-    { key: 'community', title: 'COMMUNITY CHATS', data: communities },
+    { key: 'direct', data: chats },
+    { key: 'community', data: communities },
   ];
+
+  const unreadDot = (id: string, muted: boolean) => (
+    <View
+      testID={`inbox-unread-${id}`}
+      style={[s.dot, { backgroundColor: muted ? colors.control : colors.pink }]}
+    />
+  );
 
   return (
     <SectionList
@@ -97,39 +125,55 @@ export function MessagesInbox({
       refreshing={loading}
       onRefresh={onRefresh}
       contentContainerStyle={s.list}
-      renderSectionHeader={({ section }) => (
-        <Text
-          style={s.divider}
-          testID={`inbox-section-${section.key}`}
-          accessibilityRole="header"
-        >
-          {section.title}
-        </Text>
-      )}
+      renderSectionHeader={({ section }) =>
+        section.key === 'direct' ? (
+          <View testID="inbox-section-direct">{directHeader}</View>
+        ) : (
+          <Text style={s.groupHeading} testID="inbox-section-community" accessibilityRole="header">
+            Communities
+          </Text>
+        )
+      }
       renderSectionFooter={({ section }) => {
         if (section.key === 'direct' && section.data.length === 0) {
           if (loading) {
-            return <ActivityIndicator color={colors.primary} style={s.directSpinner} />;
+            return (
+              <View testID="inbox-direct-loading" accessibilityLabel="Loading your messages">
+                {Array.from({ length: SKELETON_ROWS }, (_, i) => (
+                  <View key={i} style={s.row}>
+                    <View style={[s.skelAvatar, { backgroundColor: colors.raised }]} />
+                    <View style={s.content}>
+                      <View style={[s.skelLine, s.skelShort, { backgroundColor: colors.raised }]} />
+                      <View style={[s.skelLine, s.skelLong, { backgroundColor: colors.raised }]} />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            );
           }
           return (
-            <View style={s.directEmpty} testID="inbox-direct-empty">
-              <Text style={s.directEmptyText}>No private messages</Text>
+            <View style={s.empty} testID="inbox-direct-empty">
+              <Text style={s.emptyText}>
+                No messages yet. When someone writes, it waits here as a request until you say yes.
+              </Text>
               <TouchableOpacity
                 onPress={onStartChat}
                 accessibilityRole="button"
                 accessibilityLabel="Start a chat"
-                activeOpacity={0.85}
-                style={s.directEmptyCta}
+                style={s.emptyCta}
+                testID="inbox-start-chat"
               >
-                <Text style={s.directEmptyCtaText}>Start a chat</Text>
+                <Text style={s.emptyCtaText}>Start a chat</Text>
               </TouchableOpacity>
             </View>
           );
         }
         if (section.key === 'community' && section.data.length === 0) {
           return (
-            <View style={s.communityEmpty} testID="inbox-community-empty">
-              <Text style={s.directEmptyText}>Join a community to see group chat here.</Text>
+            <View style={s.empty} testID="inbox-community-empty">
+              <Text style={s.emptyText}>
+                Join a community on Discover and its chat shows up here.
+              </Text>
             </View>
           );
         }
@@ -143,7 +187,6 @@ export function MessagesInbox({
           const isGroup = dm.kind === 'group';
           const online = !isGroup && isPartnerOnline(dm);
           const name = isGroup ? (dm.title ?? 'Group') : (dm.partner?.display_name ?? 'Unknown');
-          const grad = avatarGradient(name);
           const muted = !!dm.muted;
           const label = [
             name,
@@ -153,9 +196,8 @@ export function MessagesInbox({
           ].filter(Boolean).join(', ');
           return (
             <TouchableOpacity
-              style={[s.row, muted && s.rowMuted]}
+              style={s.row}
               onPress={() => onOpenDm(dm)}
-              activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel={label}
               testID={isGroup ? `inbox-group-${dm.id}` : `inbox-dm-${dm.id}`}
@@ -164,50 +206,43 @@ export function MessagesInbox({
                 {isGroup && !dm.emoji ? (
                   <View style={s.stack}>
                     {(dm.memberNames ?? []).slice(0, 2).map((n, i) => (
-                      <LinearGradient
+                      <View
                         key={`${n}-${i}`}
-                        colors={avatarGradient(n)}
-                        style={[s.stackAva, i === 0 ? s.stackBack : s.stackFront]}
+                        style={[s.stackItem, i === 0 ? s.stackBack : s.stackFront]}
                       >
-                        <Text style={s.stackText}>{n[0]?.toUpperCase() ?? '?'}</Text>
-                      </LinearGradient>
+                        <Avatar name={n} size={STACK_AVATAR} testID={`inbox-stack-${i}`} />
+                      </View>
                     ))}
                   </View>
+                ) : isGroup ? (
+                  <View style={[s.emojiAva, { backgroundColor: identityFor(dm.id) }]}>
+                    <Text style={s.emoji}>{dm.emoji}</Text>
+                  </View>
                 ) : (
-                  <LinearGradient colors={grad} style={s.ava}>
-                    <Text style={isGroup ? s.emoji : s.avaText}>
-                      {isGroup ? dm.emoji : (name[0]?.toUpperCase() ?? '?')}
-                    </Text>
-                  </LinearGradient>
+                  <Avatar name={name} seed={dm.partner?.id ?? name} size={AVATAR} testID={`inbox-avatar-${dm.id}`} />
                 )}
-                {online ? <View style={s.onlineDot} /> : null}
+                {online ? <View style={s.onlineDot} testID={`inbox-online-${dm.id}`} /> : null}
               </View>
               <View style={s.content}>
                 <View style={s.nameLine}>
                   <View style={s.nameWrap}>
-                    <Text style={[s.name, hasUnread && s.nameUnread]} numberOfLines={1}>{name}</Text>
+                    <Text style={s.name} numberOfLines={1}>{name}</Text>
                     {muted ? (
                       <Ionicons
-                        name="notifications-off"
-                        size={12}
-                        color={colors.textMuted}
+                        name="notifications-off-outline"
+                        size={TYPE.meta.lineHeight}
+                        color={colors.ink3}
                         testID={`inbox-muted-${dm.id}`}
                       />
                     ) : null}
                   </View>
-                  <Text style={[s.time, hasUnread && !muted && s.timeUnread]}>{formatTime(dm.last_message_at)}</Text>
+                  <Text style={s.time}>{formatTime(dm.last_message_at)}</Text>
                 </View>
-                <View style={s.bottom}>
-                  <Text style={[s.preview, hasUnread && s.previewUnread]} numberOfLines={1}>
-                    {dm.lastMessagePreview}
-                  </Text>
-                  {hasUnread ? (
-                    <View style={[s.badge, muted && s.badgeMuted]}>
-                      <Text style={[s.badgeText, muted && s.badgeTextMuted]}>{unread > 99 ? '99+' : unread}</Text>
-                    </View>
-                  ) : null}
-                </View>
+                <Text style={[s.preview, hasUnread && !muted && s.previewUnread]} numberOfLines={1}>
+                  {dm.lastMessagePreview}
+                </Text>
               </View>
+              <View style={s.dotSlot}>{hasUnread ? unreadDot(dm.id, muted) : null}</View>
             </TouchableOpacity>
           );
         }
@@ -215,37 +250,31 @@ export function MessagesInbox({
         const community = item as InboxCommunity;
         const unread = community.unreadCount ?? 0;
         const hasUnread = unread > 0;
-        const grad = avatarGradient(community.name);
+        const label = [
+          `${community.name} community chat`,
+          channelWords(community.channelCount),
+          hasUnread ? `${unread} unread` : null,
+          community.muted ? 'muted' : null,
+        ].filter(Boolean).join(', ');
         return (
           <TouchableOpacity
-            style={[s.row, community.muted && s.rowMuted]}
+            style={s.row}
             onPress={() => onOpenCommunity(community)}
-            activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel={`${community.name} community chat`}
+            accessibilityLabel={label}
             testID={`inbox-community-${community.id}`}
           >
-            <LinearGradient colors={grad} style={s.commAva}>
-              <Text style={s.avaText}>{community.name[0]?.toUpperCase() ?? '?'}</Text>
-            </LinearGradient>
+            <Crest name={community.name} seed={community.id} size={AVATAR} testID={`inbox-crest-${community.id}`} />
             <View style={s.content}>
-              <View style={s.nameRow}>
-                <Text style={[s.name, s.nameUnread]} numberOfLines={1}>{community.name}</Text>
-                <View style={s.chanTag}>
-                  <Text style={s.chanTagText}>{channelCountLabel(community.channelCount)}</Text>
-                </View>
-              </View>
-              <Text style={[s.preview, hasUnread && s.previewUnread]} numberOfLines={1}>
+              <Text style={s.name} numberOfLines={1}>{community.name}</Text>
+              <Text
+                style={[s.preview, hasUnread && !community.muted && s.previewUnread]}
+                numberOfLines={1}
+              >
                 {community.preview}
               </Text>
             </View>
-            {hasUnread ? (
-              <View style={s.badge}>
-                <Text style={s.badgeText}>{unread > 99 ? '99+' : unread}</Text>
-              </View>
-            ) : (
-              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-            )}
+            <View style={s.dotSlot}>{hasUnread ? unreadDot(community.id, community.muted) : null}</View>
           </TouchableOpacity>
         );
       }}
@@ -255,83 +284,57 @@ export function MessagesInbox({
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
-  list: { flexGrow: 1, paddingBottom: 24 },
-  divider: {
-    paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4,
-    ...TYPE.micro, color: colors.textMuted, fontWeight: '800',
-    letterSpacing: 1.4,
+  list: { flexGrow: 1, paddingBottom: SPACE[6] },
+  groupHeading: {
+    ...TYPE.meta, color: colors.ink2,
+    paddingHorizontal: MARGIN, paddingTop: SPACE[5], paddingBottom: SPACE[1],
   },
   row: {
-    flexDirection: 'row', alignItems: 'center', gap: 11,
-    marginHorizontal: 8, paddingHorizontal: 6, paddingVertical: 8,
-    minHeight: MIN_TOUCH_TARGET,
-    borderRadius: 14,
+    flexDirection: 'row', alignItems: 'center', gap: SPACE[2],
+    minHeight: ROW_MIN,
+    paddingHorizontal: MARGIN, paddingVertical: SPACE[1],
   },
-  rowMuted: { opacity: 0.75 },
-  avaWrap: { position: 'relative' },
-  ava: {
-    width: 44, height: 44, borderRadius: RADII.pill,
+  avaWrap: { width: AVATAR, height: AVATAR },
+  emojiAva: {
+    width: AVATAR, height: AVATAR, borderRadius: RADII.pill,
     alignItems: 'center', justifyContent: 'center',
   },
-  commAva: {
-    width: 44, height: 44, borderRadius: 15,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avaText: { color: BRAND_INK, fontWeight: '800', fontSize: 16 },
-  emoji: { fontSize: 22 },
-  stack: { width: 44, height: 44 },
-  stackAva: {
-    position: 'absolute', width: 30, height: 30, borderRadius: RADII.pill,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: colors.background,
+  emoji: { ...TYPE.title },
+  stack: { width: AVATAR, height: AVATAR },
+  stackItem: {
+    position: 'absolute', borderRadius: RADII.pill,
+    borderWidth: 2, borderColor: colors.ground,
   },
   stackBack: { top: 0, left: 0 },
   stackFront: { bottom: 0, right: 0 },
-  stackText: { color: BRAND_INK, fontWeight: '800', fontSize: 12 },
-  nameWrap: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
   onlineDot: {
-    position: 'absolute', bottom: 1, right: 1,
-    width: 12, height: 12, borderRadius: 6,
+    position: 'absolute', bottom: 0, right: 0,
+    width: ONLINE_DOT, height: ONLINE_DOT, borderRadius: RADII.pill,
     backgroundColor: colors.success,
-    borderWidth: 2, borderColor: colors.background,
+    borderWidth: 2, borderColor: colors.ground,
   },
-  content: { flex: 1, gap: 2 },
-  nameLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 7 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
-  name: { ...TYPE.body, color: colors.textSecondary, fontWeight: '600', flexShrink: 1 },
-  nameUnread: { color: colors.textPrimary, fontWeight: '700' },
-  chanTag: {
-    borderRadius: RADII.pill, borderWidth: 1, borderColor: colors.line,
-    backgroundColor: colors.surfaceLight, paddingHorizontal: 7, paddingVertical: 2,
+  content: { flex: 1, gap: SPACE[0] / 2 },
+  nameLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: SPACE[1] },
+  nameWrap: { flexDirection: 'row', alignItems: 'center', gap: SPACE[0], flexShrink: 1 },
+  name: { ...TYPE.label, color: colors.ink, flexShrink: 1 },
+  time: { ...TYPE.meta, color: colors.ink3, flexShrink: 0 },
+  preview: { ...TYPE.body, color: colors.ink2 },
+  previewUnread: { ...emphasized('body'), color: colors.ink },
+  dotSlot: { width: DOT, alignItems: 'center' },
+  dot: { width: DOT, height: DOT, borderRadius: RADII.pill },
+  empty: {
+    paddingHorizontal: MARGIN, paddingVertical: SPACE[2], gap: SPACE[2],
+    alignItems: 'flex-start',
   },
-  chanTagText: { ...TYPE.micro, color: colors.secondaryInk, fontWeight: '800' },
-  time: { ...TYPE.caption, color: colors.textMuted, flexShrink: 0 },
-  timeUnread: { color: colors.primary, fontWeight: '600' },
-  bottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  preview: { ...TYPE.caption, color: colors.textMuted, flex: 1 },
-  previewUnread: { color: colors.textSecondary, fontWeight: '600' },
-  badge: {
-    backgroundColor: colors.primary, borderRadius: RADII.pill,
-    minWidth: 20, height: 20, paddingHorizontal: 6,
-    alignItems: 'center', justifyContent: 'center', marginLeft: 8,
-  },
-  badgeText: { ...TYPE.micro, color: inkOn(colors.primary), fontWeight: '800' },
-  badgeMuted: { backgroundColor: colors.surfaceLight },
-  badgeTextMuted: { color: colors.textMuted },
-  directEmpty: {
-    marginHorizontal: 16, marginBottom: 8, paddingVertical: 10,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-  },
-  directEmptyText: { ...TYPE.caption, color: colors.textMuted, fontWeight: '600', flex: 1 },
-  directEmptyCta: {
-    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: 12,
-    borderRadius: RADII.pill, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.line,
+  emptyText: { ...TYPE.body, color: colors.ink2 },
+  emptyCta: {
+    minHeight: MIN_TOUCH_TARGET, paddingHorizontal: SPACE[4],
+    borderRadius: RADII.pill, backgroundColor: colors.raised,
     alignItems: 'center', justifyContent: 'center',
   },
-  directEmptyCtaText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '700' },
-  communityEmpty: {
-    marginHorizontal: 16, marginBottom: 8, paddingVertical: 10,
-  },
-  directSpinner: { marginVertical: 16 },
+  emptyCtaText: { ...TYPE.label, color: colors.ink },
+  skelAvatar: { width: AVATAR, height: AVATAR, borderRadius: RADII.pill },
+  skelLine: { height: SPACE[2], borderRadius: RADII.pill },
+  skelShort: { width: '40%' },
+  skelLong: { width: '75%', marginTop: SPACE[0] },
 });

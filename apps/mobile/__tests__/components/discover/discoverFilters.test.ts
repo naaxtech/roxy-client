@@ -25,13 +25,15 @@ const ALL_RAILS: DiscoverRail[] = [
 ];
 
 describe('the top chip row', () => {
-  it('offers exactly the seven categories, All first and Archive second', () => {
-    // Archive joined the design's original six. It sits second on purpose: it
-    // is the only surface a pending member can use, so it has to be reachable
-    // before she has joined a single community.
+  it('offers exactly the seven categories in the v2 order, For you first', () => {
+    // v2 (design direction › Discover): For you · Events · Communities ·
+    // Archive · Shops · Live · Games. v0 put Archive second for pending
+    // members, but the pending tier never reaches Discover (navSlots3: public
+    // tier = Archive · Chat · You); the Archive keeps its own chip and rail.
     expect(DISCOVER_CHIPS.map((c) => c.key)).toEqual([
-      'all', 'archive', 'events', 'shops', 'live', 'comms', 'games',
+      'all', 'events', 'comms', 'archive', 'shops', 'live', 'games',
     ]);
+    expect(DISCOVER_CHIPS[0].label).toBe('For you');
   });
 
   it('shows every rail under All', () => {

@@ -48,7 +48,9 @@ describe('MessagesInbox — private groups', () => {
     expect(view.getByText('Weekend crew')).toBeTruthy();
     expect(view.getByText('🌈')).toBeTruthy();
     expect(view.getByText('Ana: pizza at 8?')).toBeTruthy();
-    expect(view.getByText('4')).toBeTruthy();
+    // v2: unread is a pink dot plus the emphasized preview; the count is
+    // spoken in the accessibility label (next test), not painted as a badge.
+    expect(view.getByTestId('inbox-unread-g1')).toBeTruthy();
   });
 
   it('tells a screen reader it is a group and how many are in it', () => {

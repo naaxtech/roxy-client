@@ -80,14 +80,17 @@ describe('ProfileShell — the header the prototype draws', () => {
     expect(view.getByTestId('profile-cover-photo')).toBeTruthy();
   });
 
-  it('pins the avatar to the cover/body seam the prototype draws', () => {
+  it('pins the avatar to the cover/body seam when there is an uploaded cover', () => {
     expect(PROFILE_COVER_HEIGHT).toBe(112);
     expect(PROFILE_AVATAR_SIZE).toBe(76);
     expect(PROFILE_AVATAR_SEAM).toBe(PROFILE_AVATAR_SIZE / 2);
+    // v2: the seam is a cover-photo rule. Without a cover the header is flat
+    // (PROFILE_BAR_HEIGHT, asserted in youV2.test.tsx); the seam needs a photo.
     const view = renderShell({
       variant: 'self',
       primaryAction: { label: 'Edit', onPress: jest.fn() },
       xp: { label: 'Lvl 4', progress: 0.4 },
+      coverUrl: 'https://cdn.example/cover.jpg',
     });
     const avatar = view.getByTestId('profile-avatar');
     const style = StyleSheet.flatten(avatar.props.style) as { top?: number; height?: number };

@@ -7,6 +7,12 @@ interface Props {
 }
 
 /**
+ * RETIRED (design direction v2 bans stroked numerals: Top 10 shows the rank as
+ * a plain number under her photo, `MemberCard` in `V2Cards.tsx`).
+ * Origin: 69b7a50 (2026-08-17), the Roxy 3.0 Discover Top 10.
+ * When to use: never for new UI; kept so a rollback is one import. Its only
+ * caller is the retired `PosterCard`.
+ *
  * The Netflix rank numeral — an outlined digit that sits half-behind its card.
  *
  * Drawn with `react-native-svg` rather than a `<Text>` with a shadow, because

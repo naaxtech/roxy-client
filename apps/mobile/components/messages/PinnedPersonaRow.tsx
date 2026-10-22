@@ -1,160 +1,111 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
-import { RADII, type ThemeColors, flatFill, pinkFill, inkOn } from '../../lib/theme';
-import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
+import { RADII, SPACE, MARGIN, type ThemeColors } from '../../lib/theme';
 
 export type Persona = 'roxy' | 'sister';
 
+/** Avatar size on a 72 dp row (direction › Spacing: rows 56 / 64 / 72). */
+export const PERSONA_AVATAR = 48;
+const ROW_MIN = 72;
+/** The unread dot (direction › Navigation: unread is an 8 dp `pink` dot). */
+const DOT = SPACE[1];
+
 /**
- * The two pinned AI rows in the inbox.
+ * The two pinned rows at the top of Messages (v2 board v2-06, normal state).
+ *
+ * **Roxy AI** is the emotional AI companion; Messages is one of the screens
+ * where she is a pinned row instead of the floating button. **Sister** is the
+ * quieter companion: a private space for the days that are not going well.
  *
  * They must be tellable apart **without colour**, because colour is the one
- * signal a viewer may not have and because these two do very different jobs: one
- * is a wingwoman who will hype you up about a date, the other is a private space
- * for the days that are not going well. Confusing them is not a cosmetic bug.
+ * signal a viewer may not have and because these two do very different jobs:
+ *   1. wording — "Roxy AI" + "Only you see this chat." vs "Sister" + "Just for
+ *      you. Nothing leaves here.", in the row and in the accessibility label;
+ *   2. mark — her circle carries a letter, Sister's disc carries nothing;
+ *   3. colour — `pink` vs `sister`.
  *
- * So the difference is carried four ways, only one of which is hue:
- *   1. wording — "wingwoman" vs "private space", in the subtitle and the label
- *   2. shape — Roxy gets a gradient ring, Sister a quiet rounded plate
- *   3. weight — Roxy's name is bold display, Sister's is regular
- *   4. colour — warm brand ramp vs `colors.sister`
+ * v2 drops v0's caps tags (WINGWOMAN, PRIVATE), the gradient ring, the sparkle
+ * and the emoji: rows sit on the ground like every other row in the inbox.
  *
- * Sister carries no gamification: no streak, no points, no badge count, no unread
- * count. Turning a vent space into something with a score is the fastest way to
- * make it useless, so the component has no prop that could put one there.
- *
- * Copy matches the 3.0 prototype inbox (markup 402–418).
+ * Sister carries no gamification: no streak, no points, no badge count, no
+ * unread dot. Turning a vent space into something with a score is the fastest
+ * way to make it useless, so the component draws nothing countable for her.
  */
 interface Props {
   persona: Persona;
   onPress: () => void;
+  /** Roxy AI has written since she last looked. Ignored for Sister. */
+  unread?: boolean;
 }
 
-const COPY: Record<Persona, {
-  name: string;
-  sub: string;
-  tag: string;
-  a11y: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}> = {
+const COPY: Record<Persona, { name: string; sub: string; a11y: string }> = {
   roxy: {
-    name: 'Roxy',
-    sub: 'Openers, plans, pep talks — always on 💗',
-    tag: 'WINGWOMAN',
-    a11y: 'Roxy, your wingwoman. Chat about dating, confidence and her texts.',
-    icon: 'sparkles',
+    name: 'Roxy AI',
+    sub: 'Only you see this chat.',
+    a11y: 'Roxy AI, your companion. Only you see this chat.',
   },
   sister: {
     name: 'Sister',
-    sub: 'A quiet place to let it out. Never shared.',
-    tag: 'PRIVATE',
+    sub: 'Just for you. Nothing leaves here.',
     a11y: 'Sister, a private space to talk. Nothing here is shared, scored or saved to your profile.',
-    icon: 'moon',
   },
 };
 
-// v2: the Sister plate is the flat `sister` role (the indigo ramp
-// #4B54A8 -> #8E9BFF was retired 2026-10-21).
-
-export function PinnedPersonaRow({ persona, onPress }: Props) {
+export function PinnedPersonaRow({ persona, onPress, unread = false }: Props) {
   const colors = useThemeColors();
   const s = styles(colors);
   const copy = COPY[persona];
   const isRoxy = persona === 'roxy';
+  const showDot = isRoxy && unread;
 
   return (
     <TouchableOpacity
       testID={`persona-row-${persona}`}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={copy.a11y}
-      activeOpacity={0.85}
-      style={[s.row, isRoxy ? s.rowRoxy : s.rowSister]}
+      accessibilityLabel={showDot ? `${copy.a11y} New message.` : copy.a11y}
+      style={s.row}
     >
       {isRoxy ? (
-        <LinearGradient
-          colors={pinkFill(colors)}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.ring}
-          testID="persona-roxy-ring"
-        >
-          <View style={[s.ringInner, { backgroundColor: colors.backgroundAlt }]}>
-            <Ionicons name={copy.icon} size={18} color={colors.primaryInk} />
-          </View>
-        </LinearGradient>
+        // Stand-in for the Roxy O: the orchestrator swaps in RoxyCompanionButton's mark (lane roxy-ai) at merge.
+        <View style={[s.avatar, { backgroundColor: colors.pink }]} testID="persona-roxy-ring">
+          <Text style={[s.initial, { color: colors.onPink }]} testID="persona-roxy-initial">
+            R
+          </Text>
+        </View>
       ) : (
-        <LinearGradient
-          colors={flatFill(colors.sister)}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.plate}
-          testID="persona-sister-plate"
-        >
-          <Ionicons name={copy.icon} size={20} color={inkOn(colors.sister)} />
-        </LinearGradient>
+        <View style={[s.avatar, { backgroundColor: colors.sister }]} testID="persona-sister-plate" />
       )}
 
       <View style={s.text}>
-        <View style={s.nameRow}>
-          <Text
-            testID={`persona-name-${persona}`}
-            style={[s.name, isRoxy ? s.nameRoxy : s.nameSister]}
-          >
-            {copy.name}
-          </Text>
-          <View style={[s.tag, isRoxy ? s.tagRoxy : s.tagSister]}>
-            <Text style={[s.tagText, isRoxy ? s.tagTextRoxy : s.tagTextSister]}>
-              {copy.tag}
-            </Text>
-          </View>
-        </View>
-        <Text style={s.sub} numberOfLines={2}>{copy.sub}</Text>
+        <Text testID={`persona-name-${persona}`} style={s.name} numberOfLines={1}>
+          {copy.name}
+        </Text>
+        <Text style={s.sub} numberOfLines={1}>{copy.sub}</Text>
       </View>
 
-      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+      {showDot ? (
+        <View style={[s.dot, { backgroundColor: colors.pink }]} testID={`persona-unread-${persona}`} />
+      ) : null}
     </TouchableOpacity>
   );
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
   row: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    minHeight: MIN_TOUCH_TARGET + 16,
-    paddingHorizontal: 12, paddingVertical: 11,
-    borderRadius: RADII.lg, borderWidth: 1,
+    flexDirection: 'row', alignItems: 'center', gap: SPACE[2],
+    minHeight: ROW_MIN,
+    paddingHorizontal: MARGIN, paddingVertical: SPACE[1],
   },
-  rowRoxy: { backgroundColor: colors.surface, borderColor: colors.primary },
-  rowSister: { backgroundColor: colors.background, borderColor: colors.sister },
-  ring: {
-    width: 46, height: 46, borderRadius: RADII.pill,
-    padding: 2, alignItems: 'center', justifyContent: 'center',
-  },
-  ringInner: {
-    width: '100%', height: '100%', borderRadius: RADII.pill,
+  avatar: {
+    width: PERSONA_AVATAR, height: PERSONA_AVATAR, borderRadius: RADII.pill,
     alignItems: 'center', justifyContent: 'center',
   },
-  plate: {
-    width: 46, height: 46, borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  text: { flex: 1, gap: 2 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
-  name: { color: colors.textPrimary },
-  nameRoxy: { ...TYPE.title },
-  nameSister: { ...TYPE.bodyLg, fontWeight: '600' },
-  tag: {
-    borderRadius: RADII.pill, borderWidth: 1,
-    paddingHorizontal: 7, paddingVertical: 2,
-  },
-  tagRoxy: { backgroundColor: colors.surfaceLight, borderColor: colors.primary },
-  tagSister: { backgroundColor: 'transparent', borderColor: colors.sister },
-  tagText: { ...TYPE.micro, fontWeight: '800', letterSpacing: 0.8 },
-  tagTextRoxy: { color: colors.primaryInk },
-  tagTextSister: { color: colors.sisterInk },
-  sub: { ...TYPE.caption, color: colors.textSecondary, lineHeight: 17 },
+  initial: { ...TYPE.title },
+  text: { flex: 1, gap: SPACE[0] / 2 },
+  name: { ...TYPE.label, color: colors.ink },
+  sub: { ...TYPE.body, color: colors.ink2 },
+  dot: { width: DOT, height: DOT, borderRadius: RADII.pill },
 });
