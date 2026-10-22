@@ -1,0 +1,30 @@
+apps/mobile/__tests__/screens/laneDNoSpinners.test.ts
+  h_0549c11fec2ab0 1-46
+apps/mobile/app/(auth)/application.tsx
+  h_0549c11fec2ab0 3,20-21,233,310-312,385-387,446-448
+apps/mobile/app/(auth)/pending.tsx
+  h_0549c11fec2ab0 3,21-22,174,261-263
+apps/mobile/app/(auth)/reset-password.tsx
+  h_0549c11fec2ab0 3,24-25,386,533,535
+apps/mobile/app/(auth)/welcome.tsx
+  h_0549c11fec2ab0 3,25,326,331,343,348
+apps/mobile/app/badges.tsx
+  h_0549c11fec2ab0 2,13,170
+apps/mobile/app/product/[id].tsx
+  h_0549c11fec2ab0 3,23,302
+apps/mobile/app/qotd/[id].tsx
+  h_0549c11fec2ab0 3,13,109
+apps/mobile/app/tickets.tsx
+  h_0549c11fec2ab0 2,12,207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "facc779760e6ba98817eebba6ebb1e5ee010d1e6",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
