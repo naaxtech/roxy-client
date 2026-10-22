@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import GroupInfoScreen from '../../app/chat/info/[id]';
 
@@ -213,6 +214,14 @@ describe('Group info', () => {
     fireEvent.press(view.getByTestId('add-dee'));
     fireEvent.press(view.getByTestId('add-confirm'));
     await waitFor(() => expect(showAlert).toHaveBeenCalledWith('Added 1 of 2', expect.stringMatching(/group adds/)));
+  });
+
+  it('Add people opens on the shared Sheet (F5), not a system slide', () => {
+    mockFriends.push(friend('cat', 'Cat'));
+    const view = render(<GroupInfoScreen />);
+    fireEvent.press(view.getByTestId('group-add'));
+    expect(view.getByTestId('add-sheet')).toBeTruthy();
+    expect(view.getByTestId('add-sheet-scrim', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('the add picker stops at the 32 cap', async () => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TextInput, Modal, FlatList,
+  View, Text, StyleSheet, ScrollView, TextInput, FlatList,
 } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,6 +32,7 @@ import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { FeatureGate } from '../../../components/features/FeatureGate';
 import { BusySwap, RowsSkeleton } from '../../../components/messages/LoadingShapes';
 import { RoxyLoading } from '../../../components/feedback';
+import { Sheet } from '../../../components/feedback';
 
 /**
  * Group info — `/chat/info/<conversationId>`.
@@ -420,9 +421,8 @@ function GroupInfo() {
         </Text>
       </ScrollView>
 
-      <Modal visible={addOpen} animationType="slide" transparent onRequestClose={() => setAddOpen(false)}>
-        <View style={s.sheetBackdrop}>
-          <View style={s.sheet} testID="add-sheet">
+      {/* F5: the shared Sheet (drag from the handle; the list scrolls). */}
+      <Sheet visible={addOpen} onClose={() => setAddOpen(false)} accessibilityLabel="Add people" testID="add-sheet" style={s.sheet}>
             <View style={s.sheetHeader}>
               <TouchableOpacity onPress={() => setAddOpen(false)} style={s.iconBtn} accessibilityRole="button" accessibilityLabel="Close">
                 <Ionicons name="close" size={22} color={colors.textPrimary} />
@@ -483,9 +483,7 @@ function GroupInfo() {
                 );
               }}
             />
-          </View>
-        </View>
-      </Modal>
+      </Sheet>
     </SafeAreaView>
   );
 }
@@ -575,11 +573,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   empty: { alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12 },
   emptyIcon: { fontSize: 40 },
   emptyText: { ...TYPE.body, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
-  sheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: {
-    maxHeight: '85%', minHeight: '50%', backgroundColor: colors.background,
-    borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet, paddingBottom: 24,
-  },
+  sheet: { minHeight: '50%', paddingBottom: 12 },
   sheetHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8, paddingVertical: 8,
     borderBottomWidth: 1, borderBottomColor: colors.line,

@@ -228,6 +228,15 @@ describe('ChatScreen — a second visit (F7: no loader where data is known)', ()
   });
 });
 
+describe('ChatScreen — header menu (F5)', () => {
+  it('the options menu opens on the shared Sheet, not a system fade', async () => {
+    const view = await openThread();
+    fireEvent.press(view.getByTestId('chat-menu'));
+    expect(view.getByTestId('chat-menu-sheet')).toBeTruthy();
+    expect(view.getByTestId('chat-menu-sheet-scrim', { includeHiddenElements: true })).toBeTruthy();
+  });
+});
+
 describe('ChatScreen — keyboard (F14)', () => {
   it('the thread and its composer sit in the keyboard tracker, not a KeyboardAvoidingView', async () => {
     const view = await openThread();

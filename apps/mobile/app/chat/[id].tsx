@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, Platform, Modal, FlatList, Keyboard, Pressable, type ListRenderItem, type NativeScrollEvent, type NativeSyntheticEvent,
+  View, Text, TextInput, StyleSheet, Platform, FlatList, Keyboard, type ListRenderItem, type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,10 +24,9 @@ import { logError } from '../../lib/errorLogger';
 import { Analytics } from '../../lib/analytics';
 import { haptic } from '../../lib/haptics';
 import { avatarGradient } from '../../lib/avatars';
-import { inkOn, inkOnGradient, RADII, type ThemeColors, scrim, pinkFill } from '../../lib/theme';
+import { inkOn, inkOnGradient, RADII, type ThemeColors, pinkFill } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
-import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { setActivePath as setActivePushPath } from '../../lib/pushRegistration';
 import {
   insertMessage, editMessage, unsendMessage, newMessageId, chatErrorMessage,
@@ -41,7 +40,7 @@ import {
 import type { Message } from '../../types';
 import { readThreadPage, writeThreadPage } from '../../components/chat/threadCache';
 import { ThreadSkeleton } from '../../components/messages/LoadingShapes';
-import { FadeIn, RoxyLoading } from '../../components/feedback';
+import { FadeIn, RoxyLoading, Sheet } from '../../components/feedback';
 import { ActionTray } from '../../components/chat/ActionTray';
 import { GifPicker } from '../../components/chat/GifPicker';
 import { TypingIndicator } from '../../components/chat/TypingIndicator';
@@ -924,9 +923,8 @@ export default function ChatScreen() {
         onClose={() => setShowGifs(false)}
       />
 
-      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
-        <Pressable style={s.scrim} onPress={() => setMenuOpen(false)} accessibilityLabel="Close options" />
-        <View style={s.sheet} testID="chat-menu-sheet">
+      {/* F5: the shared Sheet, not a system fade. */}
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} accessibilityLabel="Chat options" closeLabel="Close options" dragFrom="sheet" testID="chat-menu-sheet" style={s.sheet}>
           <MenuRow s={s} colors={colors} icon="search-outline" label="Search messages" testID="chat-menu-search"
             onPress={() => { setMenuOpen(false); setSearchActive(true); }} />
           {isGroup ? (
@@ -952,8 +950,7 @@ export default function ChatScreen() {
               onPress={() => void blockFromHeader()} danger />
           ) : null}
           <MenuRow s={s} colors={colors} label="Cancel" testID="chat-menu-cancel" onPress={() => setMenuOpen(false)} muted />
-        </View>
-      </Modal>
+      </Sheet>
     </SafeAreaView>
   );
 }
@@ -1056,11 +1053,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   sendBtn: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden' },
   sendFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   sendOff: { opacity: 0.4 },
-  scrim: { flex: 1, backgroundColor: scrim(0.55) },
-  sheet: {
-    backgroundColor: colors.surface, borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet,
-    paddingTop: 10, paddingBottom: 30, width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
-  },
+  sheet: { paddingBottom: 16 },
   menuRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, minHeight: MIN_TOUCH_TARGET + 4,
   },
