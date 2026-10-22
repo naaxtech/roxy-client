@@ -65,12 +65,14 @@ describe('Suggest a new entry (ARC-04, ARC-09, ARC-15)', () => {
     expect(r.getByText(/year between 1800 and/)).toBeTruthy();
   });
 
-  it('after sending, she is told it went to the mods (flash for the Archive screen)', async () => {
+  it('after sending, she is told it went to the Archive team (flash for the Archive screen)', async () => {
     mockSubmitEntry.mockResolvedValue({ data: { entry_id: 'x' }, error: null });
     const r = render(<AddArchiveEntryScreen />);
     fireEvent.changeText(r.getByTestId('archive-add-title'), 'Carol');
     await act(async () => { fireEvent.press(r.getByTestId('archive-add-submit')); });
-    expect(useArchiveStore.getState().flash).toMatch(/Sent to the mods/);
+    expect(useArchiveStore.getState().flash).toMatch(/Sent to the Archive team/);
+    // v2 bans the flower anywhere, including this line's old ✿.
+    expect(useArchiveStore.getState().flash).not.toMatch(/✿/);
     expect(mockBack).toHaveBeenCalled();
   });
 

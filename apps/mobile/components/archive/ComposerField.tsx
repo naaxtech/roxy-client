@@ -1,4 +1,5 @@
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { PrimaryButton } from '../ui/PrimaryButton';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII, inkOn } from '../../lib/theme';
@@ -12,26 +13,32 @@ interface FieldProps {
   placeholder?: string;
   multiline?: boolean;
   maxLength?: number;
-  keyboardType?: 'default' | 'number-pad';
+  keyboardType?: 'default' | 'number-pad' | 'url';
+  /** Focus this field on open ("Add a cover" opens the editor on the cover). */
+  autoFocus?: boolean;
   testID?: string;
 }
 
-/** A labelled input. The label is a real label, not a placeholder pretending. */
+/**
+ * A labelled input. The label is a real label, not a placeholder pretending,
+ * in sentence case (v2 bans tracked capitals).
+ */
 export function ComposerField({
-  label, value, onChangeText, placeholder, multiline, maxLength, keyboardType, testID,
+  label, value, onChangeText, placeholder, multiline, maxLength, keyboardType, autoFocus, testID,
 }: FieldProps) {
   const colors = useThemeColors();
 
   const s = StyleSheet.create({
     wrap: { gap: 6 },
-    label: { ...TYPE.micro, color: colors.textMuted, fontWeight: '800', letterSpacing: 0.6 },
+    label: { ...TYPE.label, color: colors.ink2 },
     input: {
       ...TYPE.body,
       color: colors.textPrimary,
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.line,
-      borderRadius: RADII.md,
+      // v2: inputs take the small radius (direction › Spacing, radius).
+      borderRadius: RADII.sm,
       paddingHorizontal: 12,
       paddingVertical: 10,
       minHeight: multiline ? 120 : MIN_TOUCH_TARGET,
@@ -44,7 +51,7 @@ export function ComposerField({
     <View style={s.wrap}>
       {/* A placeholder disappears the moment she types, taking the only
           description of the field with it. The label stays. */}
-      <Text style={s.label}>{label.toUpperCase()}</Text>
+      <Text style={s.label}>{label}</Text>
       <TextInput
         style={s.input}
         value={value}
@@ -54,6 +61,9 @@ export function ComposerField({
         multiline={multiline}
         maxLength={maxLength}
         keyboardType={keyboardType ?? 'default'}
+        autoCapitalize={keyboardType === 'url' ? 'none' : undefined}
+        autoCorrect={keyboardType === 'url' ? false : undefined}
+        autoFocus={autoFocus}
         accessibilityLabel={label}
         testID={testID}
       />
@@ -178,7 +188,31 @@ interface SubmitProps {
   testID?: string;
 }
 
+/**
+ * The composer's one primary action: v2's lipped `PrimaryButton` (pink face
+ * on a 3 dp lip, `onPink` label; `raised` + `ink3` while waiting). v0 painted
+ * the label in `textPrimary` on the action pink, which fails contrast in the
+ * light theme (the dark ink on #C8126A).
+ */
 export function ComposerSubmit({ label, onPress, disabled, busy, testID }: SubmitProps) {
+  return (
+    <PrimaryButton
+      label={label}
+      onPress={onPress}
+      disabled={!!disabled}
+      busy={!!busy}
+      testID={testID}
+      accessibilityLabel={label}
+    />
+  );
+}
+
+/**
+ * RETIRED (v2, 2026-10-21): v0's flat submit pill, replaced by `PrimaryButton`
+ * above. Origin: the Roxy 3.0 Archive composers (`git log -S ComposerSubmit`).
+ * Kept for a revert; not rendered anywhere.
+ */
+export function LegacyComposerSubmit({ label, onPress, disabled, busy, testID }: SubmitProps) {
   const colors = useThemeColors();
 
   const s = StyleSheet.create({

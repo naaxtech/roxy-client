@@ -192,6 +192,28 @@ describe('the Archive browse screen', () => {
     expect(queryByTestId('archive-empty')).toBeNull();
   });
 
+  it('loads as skeleton rows at their final layout, not a spinner (v2 › Bans)', () => {
+    seed({ entries: [], loading: true });
+    const { getAllByTestId, UNSAFE_queryAllByType } = render(<ArchiveBrowseScreen />);
+    expect(getAllByTestId('archive-skeleton-row').length).toBeGreaterThanOrEqual(3);
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { ActivityIndicator } = require('react-native');
+    expect(UNSAFE_queryAllByType(ActivityIndicator)).toHaveLength(0);
+  });
+
+  it('separates rows by space, not by cards', () => {
+    const { getByTestId } = render(<ArchiveBrowseScreen />);
+    expect(flat({ props: { style: getByTestId('archive-list').props.contentContainerStyle } }).gap).toBe(24);
+  });
+
+  it('says a locked action in words, never with a lock emoji', () => {
+    mockStatus = 'pending';
+    seed({ entries: [], filters: { query: 'x', mediaType: null, sort: 'top' } });
+    const { getByTestId, queryByText } = render(<ArchiveBrowseScreen />);
+    expect(getByTestId('archive-empty-suggest')).toHaveTextContent('Suggest an entry once you’re approved');
+    expect(queryByText(/🔒/)).toBeNull();
+  });
+
   it('offers a retry on error instead of looking like an empty Archive', () => {
     seed({ entries: [], loading: false, error: 'nope' });
     const { getByTestId, queryByTestId } = render(<ArchiveBrowseScreen />);

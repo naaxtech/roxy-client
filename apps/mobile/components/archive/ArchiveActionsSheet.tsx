@@ -31,6 +31,11 @@ interface Props {
   onEditReview?: () => void;
   /** A note was flagged by her: the screen may hide it for her at once. */
   onNoteFlagged?: (noteId: string) => void;
+  /**
+   * The entry's more menu offers Suggest an edit (design direction v2 ›
+   * Archive: "also in the entry's more menu"). Omit to hide the row.
+   */
+  onSuggestEdit?: () => void;
 }
 
 /**
@@ -41,7 +46,7 @@ interface Props {
  * content note, so the three cannot drift apart in wording or behaviour.
  */
 export function ArchiveActionsSheet({
-  target, onClose, onReviewDeleted, onEditReview, onNoteFlagged,
+  target, onClose, onReviewDeleted, onEditReview, onNoteFlagged, onSuggestEdit,
 }: Props): ReactElement | null {
   const colors = useThemeColors();
   const blockUser = useSafetyStore((s) => s.blockUser);
@@ -189,6 +194,9 @@ export function ArchiveActionsSheet({
 
           {step === 'menu' && target.kind === 'entry' ? (
             <View>
+              {onSuggestEdit
+                ? row('archive-entry-suggest-edit', 'create-outline', 'Suggest an edit', () => { onClose(); onSuggestEdit(); })
+                : null}
               {row('archive-entry-report-wrong', 'alert-circle-outline', 'Report wrong details', () => { void report('archive_bad_entry'); })}
               {row('archive-entry-report-spoiler', 'eye-off-outline', 'Report a spoiler in the summary', () => { void report('archive_spoiler'); })}
             </View>

@@ -20,7 +20,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useGateStore } from '../../store/gateStore';
 import { showAlert } from '../../lib/confirm';
-import { popElevation } from '../../lib/theme';
+import { RADII } from '../../lib/theme';
+import { TYPE } from '../../lib/typography';
+import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { POP_FROM, animatedSpring } from '../../lib/motion';
 import { enabledOAuthProviders } from '../../lib/authProviders';
@@ -188,13 +190,7 @@ export default function WelcomeScreen() {
       paddingHorizontal: 32,
       minHeight: compactHero ? 120 : 220,
     },
-    tagline: {
-      fontSize: 17,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      marginTop: 16,
-      textAlign: 'center',
-    },
+    tagline: { ...TYPE.label, color: colors.ink2, marginTop: 12, textAlign: 'center' },
     // v2: the wordmark sits straight on `ground`; the brand gradient lives in
     // the wordmark itself, so it needs no plate or glow.
     logoPlate: {
@@ -202,25 +198,15 @@ export default function WelcomeScreen() {
       paddingVertical: compactHero ? 14 : 22,
     },
 
-    // Bottom sheet card that carries all auth actions.
+    // v2 (direction › Onboarding): the form sits on `ground` like the code
+    // gate — no sheet, no grabber that suggests a drag that does nothing.
     sheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 28,
-      borderTopRightRadius: 28,
       paddingHorizontal: 24,
-      paddingTop: 24,
-      paddingBottom: 12,
+      paddingTop: 8,
+      paddingBottom: 16,
       gap: 12,
-      ...popElevation(colors),
     },
-    grabber: {
-      alignSelf: 'center',
-      width: 44,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: colors.textMuted + '40',
-      marginBottom: 4,
-    },
+    welcomeBack: { ...TYPE.headline, color: colors.ink, marginBottom: 4 },
 
     btn: {
       minHeight: 52,
@@ -242,40 +228,36 @@ export default function WelcomeScreen() {
 
     dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 2 },
     dividerLine: { flex: 1, height: 1, backgroundColor: colors.textMuted + '30' },
-    dividerText: { color: colors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+    dividerText: { ...TYPE.meta, color: colors.ink3 },
 
     emailLink: {
-      color: colors.roxy,
-      fontWeight: '700',
+      ...TYPE.label,
+      color: colors.pinkInk,
       textAlign: 'center',
-      paddingVertical: 12,
-      fontSize: 15,
+      paddingVertical: 14,
     },
     forgotLink: {
-      color: colors.primary,
+      ...TYPE.label,
+      color: colors.pinkInk,
       textAlign: 'right',
-      fontSize: 14,
-      fontWeight: '600',
-      paddingVertical: 4,
+      paddingVertical: 14,
     },
     inputLabel: {
-      color: colors.textSecondary,
-      fontSize: 13,
-      fontWeight: '700',
+      ...TYPE.label,
+      color: colors.ink2,
       marginBottom: 6,
-      marginLeft: 2,
     },
     input: {
-      backgroundColor: colors.surface,
-      borderRadius: 14,
+      ...TYPE.body,
+      backgroundColor: colors.raised,
+      borderRadius: RADII.sm,
       paddingHorizontal: 16,
-      paddingVertical: 14,
-      color: colors.textPrimary,
-      fontSize: 16,
-      borderWidth: 1.5,
+      minHeight: MIN_TOUCH_TARGET + 4,
+      color: colors.ink,
+      borderWidth: 2,
       borderColor: 'transparent',
     },
-    inputFocused: { borderColor: colors.roxy },
+    inputFocused: { borderColor: colors.pink },
     // Leaves room for the reveal button so a long password never runs under it.
     inputWithAffordance: { paddingRight: 52 },
     inputRow: { position: 'relative', justifyContent: 'center' },
@@ -288,25 +270,9 @@ export default function WelcomeScreen() {
       justifyContent: 'center',
     },
 
-    sentTitle: {
-      fontSize: 24,
-      fontWeight: '800',
-      color: colors.textPrimary,
-      textAlign: 'center',
-    },
-    sentBody: {
-      color: colors.textSecondary,
-      textAlign: 'center',
-      marginTop: 8,
-      lineHeight: 21,
-    },
-    privacy: {
-      color: colors.textMuted,
-      fontSize: 12,
-      textAlign: 'center',
-      marginTop: 6,
-      marginBottom: 4,
-    },
+    sentTitle: { ...TYPE.title, color: colors.ink, textAlign: 'center' },
+    sentBody: { ...TYPE.body, color: colors.ink2, textAlign: 'center', marginTop: 8 },
+    privacy: { ...TYPE.meta, color: colors.ink3, textAlign: 'center', marginTop: 6, marginBottom: 4 },
   });
 
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
@@ -336,7 +302,6 @@ export default function WelcomeScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheet}>
-            <View style={styles.grabber} />
             {resetSent ? (
               <>
                 <Text style={styles.sentTitle}>Check your email</Text>
@@ -349,6 +314,12 @@ export default function WelcomeScreen() {
               </>
             ) : (
               <>
+                {/* Returning members (direction › Onboarding). */}
+                {isSignIn ? (
+                  <Text style={styles.welcomeBack} testID="welcome-back" accessibilityRole="header">
+                    Welcome back.
+                  </Text>
+                ) : null}
                 {OAUTH.includes('apple') && (
                 <TouchableOpacity
                   testID="oauth-apple-btn"
@@ -396,7 +367,7 @@ export default function WelcomeScreen() {
                     {OAUTH.length > 0 && (
                       <View style={styles.dividerRow}>
                         <View style={styles.dividerLine} />
-                        <Text style={styles.dividerText}>OR</Text>
+                        <Text style={styles.dividerText}>or</Text>
                         <View style={styles.dividerLine} />
                       </View>
                     )}
@@ -481,7 +452,9 @@ export default function WelcomeScreen() {
                     />
                     <PrimaryButton
                       testID="auth-submit-btn"
-                      label={isSignIn ? 'Sign In' : 'Sign Up'}
+                      // Sentence case on screen; the accessibility label keeps
+                      // 'Sign In' / 'Sign Up', which the auth e2e helper asserts.
+                      label={isSignIn ? 'Sign in' : 'Sign up'}
                       onPress={handleSubmit}
                       disabled={busy}
                       busy={loading}
@@ -492,7 +465,7 @@ export default function WelcomeScreen() {
                       accessibilityRole="button"
                     >
                       <Text style={styles.emailLink}>
-                        {isSignIn ? 'New here? Sign Up' : 'Already have an account? Sign In'}
+                        {isSignIn ? 'New here? Sign up' : 'Already have an account? Sign in'}
                       </Text>
                     </TouchableOpacity>
                   </>

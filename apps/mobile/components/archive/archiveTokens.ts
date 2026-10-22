@@ -1,5 +1,42 @@
 import { THEMES, type ThemeColors } from '../../lib/theme';
+import { FONTS, type TypeStep } from '../../lib/typography';
 import type { ScoreTone } from '../../lib/archive';
+
+// ── Covers (v2) ──────────────────────────────────────────────────────────────
+
+/**
+ * Covers are posters: height is 3/2 of the width (2:3), radius `RADII.sm`.
+ *
+ * src: polish/design-direction.md · v2 › Screen notes › Archive · 2026-10-21
+ */
+export const COVER_ASPECT = 3 / 2;
+
+/**
+ * Cover widths by surface. 104 is the board's own cover (v2-05 "From the
+ * Archive"): wide enough that the type cover's 18 dp title keeps a whole word
+ * on a line. The entry page shows the cover a step larger.
+ */
+export const COVER_WIDTH = {
+  row: 104,
+  rail: 104,
+  hero: 128,
+} as const;
+
+/**
+ * The designed type cover's title: Geologica 800 at 18/20, bottom start, three
+ * lines at most. Not one of the nine `TYPE` steps on purpose — it is art on a
+ * cover, not interface text, and the direction sizes it for the 2:3 field.
+ *
+ * src: polish/design-direction.md · v2 › Screen notes › Archive ("Geologica 800 at 18/20") · 2026-10-21
+ */
+export const COVER_TITLE: TypeStep = {
+  fontFamily: FONTS.display.extrabold,
+  fontSize: 18,
+  lineHeight: 20,
+};
+
+/** Inner padding of the type cover (the 8 step of `SPACE`). */
+export const COVER_PADDING = 8;
 
 /**
  * The Archive's visual vocabulary, derived from theme tokens rather than pasted
@@ -15,7 +52,14 @@ import type { ScoreTone } from '../../lib/archive';
  * src: docs/handoff/roxy-3.0/Roxy App.dc.html · behaviour 1978–2010 · 2026-09-01
  */
 
-/** The prototype's `scoreIc`: ✿ at ≥75, ❋ at ≥50, 🥀 below. */
+/**
+ * The prototype's `scoreIc`: ✿ at ≥75, ❋ at ≥50, 🥀 below.
+ *
+ * RETIRED in v2 (2026-10-21): the flower is banned anywhere and the score is
+ * said in words (`scoreWords.ts`); its only caller was `ScorePill`, which is
+ * retired too. Origin: 74233bf (Roxy 3.0 Archive components). Kept so the
+ * retired pill compiles; do not show these glyphs on a new surface.
+ */
 export const SCORE_ICON = {
   good: '✿',
   mixed: '❋',

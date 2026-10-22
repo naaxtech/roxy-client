@@ -11,6 +11,14 @@ interface Props {
 }
 
 /**
+ * RETIRED in v2 (2026-10-21) — no surface renders it any more. The design
+ * direction says the Archive score is said in words ("4.4 from 7 members",
+ * `scoreWords.ts`), with no green pill and no flower glyph (the flower is
+ * banned everywhere). Origin: 74233bf "feat(archive): the ten components"
+ * (Roxy 3.0 prototype `scoreBg` pill). Kept, unchanged, so a revert is one
+ * import and its tests keep guarding the old behaviour; use it again only if
+ * the direction brings back a score badge (without the flower icons).
+ *
  * The score badge, and the honest version of "no score yet".
  *
  * Below the gate this is deliberately a different KIND of object: a neutral
