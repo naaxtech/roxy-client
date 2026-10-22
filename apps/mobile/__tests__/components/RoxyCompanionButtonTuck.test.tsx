@@ -54,7 +54,9 @@ import { useRoxyFab, fabTuck } from '../../lib/roxyFab';
 import { FAB_MARGIN, FAB_SIZE, FAB_TUCKED } from '../../components/nav/navTokens';
 import { PRESS } from '../../lib/motion';
 
-const TUCK_TRAVEL = FAB_MARGIN + FAB_SIZE / 2;
+/** Tucked, the O's inner edge sits on the margin line: only the margin shows. */
+const TUCK_TRAVEL = FAB_SIZE / 2 + FAB_TUCKED / 2;
+void FAB_MARGIN;
 const TUCK_SCALE = FAB_TUCKED / FAB_SIZE;
 
 type Transform = Record<string, number>[];

@@ -122,6 +122,8 @@ describe('onListScroll', () => {
     jest.isolateModules(() => {
       const fresh = jest.requireActual('../../lib/roxyFab') as typeof import('../../lib/roxyFab');
       expect(fresh.useRoxyFab.getState().tucked).toBe(true);
+      // The UI thread's copy starts in step: the button animates from it.
+      expect(fresh.fabTuck.value).toBe(1);
     });
   });
 });

@@ -181,7 +181,10 @@ export const useRoxyFab = create<RoxyFabState>((set, get) => ({
 }));
 
 // Every flip, from any path (a list, a route change, Settings), reaches the
-// UI thread's copy. Flips are rare, so this is not a per-scroll cost.
+// UI thread's copy. Flips are rare, so this is not a per-scroll cost. The copy
+// starts in step with the store (she starts tucked): a route change to a list
+// screen does not flip `tucked`, so a copy left at 0 would keep her out.
+fabTuck.value = useRoxyFab.getState().tucked ? 1 : 0;
 useRoxyFab.subscribe((state, prev) => {
   if (state.tucked !== prev.tucked) fabTuck.value = state.tucked ? 1 : 0;
 });

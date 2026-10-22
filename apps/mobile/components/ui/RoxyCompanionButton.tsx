@@ -27,8 +27,21 @@ interface Props {
   onStage?: boolean;
 }
 
-/** How far the tucked O travels toward the end edge: its centre lands on it. */
-const TUCK_TRAVEL = FAB_MARGIN + FAB_SIZE / 2;
+/**
+ * How far the tucked O travels toward the end edge: until its inner edge sits
+ * on the margin line, so only the margin shows (16 dp of a 40 dp O). The
+ * direction says "centred on the edge so 20 dp shows inside the margin", but
+ * 20 dp is 4 dp wider than the 16 dp margin: the O then sat on the end of
+ * "Joined" and the Ghost switch. The lane rule (nothing under her) wins.
+ */
+const TUCK_TRAVEL = FAB_SIZE / 2 + FAB_TUCKED / 2;
+/**
+ * The tucked target: the margin strip beside the O, 48 dp tall. The token's
+ * 28 dp (FAB_TUCKED_HIT.width) reached 12 dp into the content column, so a tap
+ * on the end of a row or button opened Roxy AI. At the end of a list she comes
+ * out at 56 dp (the equivalent full-size target on the same screen).
+ */
+const TUCKED_HIT_WIDTH = FAB_MARGIN;
 const TUCK_SCALE = FAB_TUCKED / FAB_SIZE;
 /** Reduce Motion: the tuck is a short fade to the end state (REDUCED.fadeMs). */
 const REDUCED_FADE_MS = 120;
@@ -231,7 +244,7 @@ const s = StyleSheet.create({
     position: 'absolute',
     end: 0,
     bottom: FAB_MARGIN + FAB_SIZE / 2 - FAB_TUCKED_HIT.height / 2,
-    width: FAB_TUCKED_HIT.width,
+    width: TUCKED_HIT_WIDTH,
     height: FAB_TUCKED_HIT.height,
   },
 });
