@@ -11,6 +11,8 @@ import { useAuthStore } from '../../store/authStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { logError } from '../../lib/errorLogger';
 import { Analytics } from '../../lib/analytics';
+import { runSpring } from '../../lib/motion';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 interface ResolveResult {
   status: 'waiting' | 'matched' | 'no_match';
@@ -43,19 +45,13 @@ export default function SpeedDateResult() {
     Analytics.speedDateCompleted();
   }, []);
 
-  // Pulse animation for the match card
-  const scaleAnim = useRef(new Animated.Value(0.6)).current;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // The match card springs in on the spatial token; under Reduce Motion it
+  // is simply there (F12).
+  const reduced = useReducedMotion();
+  const scaleAnim = useRef(new Animated.Value(reduced ? 1 : 0.6)).current;
   useEffect(() => {
-    if (matchCreated) {
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 60,
-        friction: 7,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [matchCreated]);
+    if (matchCreated) runSpring(scaleAnim, 1, 'spatial', reduced);
+  }, [matchCreated, reduced, scaleAnim]);
 
   const userId = user?.id ?? null;
   const icebreakerFired = useRef(false);

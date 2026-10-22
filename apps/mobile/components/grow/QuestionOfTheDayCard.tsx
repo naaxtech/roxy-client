@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { pinkFill, THEMES } from '../../lib/theme';
 import { AnswerSheet } from './AnswerSheet';
 
@@ -44,15 +45,23 @@ interface Props {
 }
 
 function LivePulse({ color }: { color: string }) {
+  const reduced = useReducedMotion();
   const anim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    Animated.loop(
+    // F12: loops are static under Reduce Motion; the word LIVE still says it.
+    if (reduced) {
+      anim.setValue(1);
+      return undefined;
+    }
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(anim, { toValue: 1.35, duration: 160, useNativeDriver: true }),
         Animated.timing(anim, { toValue: 1, duration: 160, useNativeDriver: true }),
       ])
-    ).start();
-  }, [anim]);
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [anim, reduced]);
   return <Animated.View style={[q.pulseDot, { backgroundColor: color, transform: [{ scale: anim }] }]} />;
 }
 

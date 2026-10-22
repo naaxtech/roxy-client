@@ -24,7 +24,8 @@ import { RADII } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { POP_FROM, animatedSpring } from '../../lib/motion';
+import { POP_FROM, runSpring } from '../../lib/motion';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { enabledOAuthProviders } from '../../lib/authProviders';
 import { MIN_PASSWORD_LENGTH } from '../../lib/passwordPolicy';
 import { captchaRequired, captchaSiteKey } from '../../lib/captcha';
@@ -64,10 +65,12 @@ export default function WelcomeScreen() {
   const [captchaRound, setCaptchaRound] = useState(0);
   const { signUp, signInWithPassword, resetPassword, signInWithApple, signInWithGoogle } = useAuth();
 
-  const heroAnim = useRef(new Animated.Value(POP_FROM)).current;
+  // F12: under Reduce Motion the hero is simply there (no pop).
+  const reduced = useReducedMotion();
+  const heroAnim = useRef(new Animated.Value(reduced ? 1 : POP_FROM)).current;
   useEffect(() => {
-    Animated.spring(heroAnim, { toValue: 1, ...animatedSpring('spatial') }).start();
-  }, [heroAnim]);
+    runSpring(heroAnim, 1, 'spatial', reduced);
+  }, [heroAnim, reduced]);
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) return;
