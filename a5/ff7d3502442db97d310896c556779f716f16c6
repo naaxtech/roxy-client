@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/ui/Avatar.test.tsx
+  h_0549c11fec2ab0 4-7,9-10,32-69
+apps/mobile/components/ui/Avatar.tsx
+  h_0549c11fec2ab0 8-21,54-60,66,81-82,87,89-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5ff7d3502442db97d310896c556779f716f16c6",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
