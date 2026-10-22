@@ -67,6 +67,10 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 jest.mock('react-native-svg', () => ({ __esModule: true, default: 'Svg', Circle: 'Circle', Path: 'Path' }));
 jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => true }));
+jest.mock('react-native-reanimated', () => {
+  const actual = jest.requireActual('react-native-reanimated/mock');
+  return { ...actual, __esModule: true, default: actual.default, interpolateColor: () => undefined };
+});
 jest.mock('../../lib/haptics', () => ({ haptic: jest.fn(), tapLight: jest.fn() }));
 
 // ── leaves under test only by their props ───────────────────────────────────

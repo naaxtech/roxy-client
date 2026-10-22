@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
 
 const mockInsets = jest.fn(() => ({ top: 0, bottom: 34, left: 0, right: 0 }));
 const mockReducedMotion = jest.fn(() => false);
@@ -19,12 +19,59 @@ jest.mock('../../../hooks/useReducedMotion', () => ({
   useReducedMotion: () => mockReducedMotion(),
 }));
 
+/**
+ * reanimated, recording: every `withSpring`/`withTiming` lands in `__calls`
+ * with its target and config, `useAnimatedStyle` evaluates its worklet at
+ * render, and `interpolateColor` answers with the nearest end colour. Motion
+ * is asserted as "which spring, to what, with which token" — the UI thread
+ * runs it, so there is no frame to sample in jest.
+ */
+jest.mock('react-native-reanimated', () => {
+  const actual = jest.requireActual('react-native-reanimated/mock');
+  const ReactLocal = require('react');
+  const calls: { kind: string; toValue: unknown; config: unknown }[] = [];
+  const record = (kind: string) => (toValue: unknown, config?: unknown) => {
+    calls.push({ kind, toValue, config });
+    return toValue;
+  };
+  return {
+    ...actual,
+    __esModule: true,
+    default: actual.default,
+    useSharedValue: (init: unknown) => ReactLocal.useRef({ value: init }).current,
+    useAnimatedStyle: (worklet: () => unknown) => worklet(),
+    withSpring: record('spring'),
+    withTiming: record('timing'),
+    interpolateColor: (v: number, input: number[], output: string[]) =>
+      (v >= input[input.length - 1] ? output[output.length - 1] : output[0]),
+    __calls: calls,
+  };
+});
+
+/** NavIcon render counter: which slots a navigation actually re-rendered. */
+const mockIconRenders: string[] = [];
+jest.mock('../../../components/nav/NavIcons', () => {
+  const actual = jest.requireActual('../../../components/nav/NavIcons');
+  return {
+    ...actual,
+    NavIcon: (p: { testID?: string }) => {
+      mockIconRenders.push(String(p.testID));
+      return actual.NavIcon(p);
+    },
+  };
+});
+
+const { __calls: springCalls } = jest.requireMock('react-native-reanimated') as {
+  __calls: { kind: string; toValue: unknown; config: unknown }[];
+};
+
 import { FloatingTabBar } from '../../../components/nav/FloatingTabBar';
 import {
   indicatorSnapsInstantly, TAB_MIN_TOUCH, NAV_HEIGHT, NAV_INDICATOR, CREATE_KEY,
 } from '../../../components/nav/navTokens';
 import { THEMES, contrastRatio, RADII } from '../../../lib/theme';
 import { FONTS } from '../../../lib/typography';
+import { SPRING, PRESS } from '../../../lib/motion';
 import { useThemeStore } from '../../../store/themeStore';
 
 type Route = { key: string; name: string };
@@ -66,7 +113,18 @@ function renderBar(overrides: {
       createOpen={overrides.createOpen}
     />
   );
-  return { ...utils, onTabPress, onCreatePress };
+  /** The navigator committed a new tab (or the sheet flipped): same handlers, new state. */
+  const rerenderAt = (index: number, createOpen = overrides.createOpen) =>
+    utils.rerender(
+      <FloatingTabBar
+        state={{ index, routes: ROUTES }}
+        descriptors={descriptors}
+        onTabPress={onTabPress}
+        onCreatePress={onCreatePress}
+        createOpen={createOpen}
+      />
+    );
+  return { ...utils, onTabPress, onCreatePress, rerenderAt };
 }
 
 const flat = (node: { props: { style?: unknown } }) =>
@@ -82,7 +140,23 @@ beforeEach(() => {
   mockInsets.mockReturnValue({ top: 0, bottom: 34, left: 0, right: 0 });
   mockReducedMotion.mockReturnValue(true);
   useThemeStore.setState({ theme: 'light' });
+  springCalls.length = 0;
+  mockIconRenders.length = 0;
 });
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+/** Run the frame + task the bar waits for before it navigates. */
+function flushPaint() {
+  act(() => {
+    jest.runOnlyPendingTimers();
+    jest.runOnlyPendingTimers();
+  });
+}
+
+const springsTo = (toValue: unknown) => springCalls.filter((c) => c.kind === 'spring' && c.toValue === toValue);
 
 describe('FloatingTabBar', () => {
   it('renders exactly five slots, in the order Feed · Discover · Create · Messages · You', () => {
@@ -129,14 +203,18 @@ describe('FloatingTabBar', () => {
   });
 
   it('routes Discover at the discover folder, whatever the folder used to mean', () => {
+    jest.useFakeTimers();
     const { getByTestId, onTabPress } = renderBar({ index: 0 });
     fireEvent.press(getByTestId('nav-slot-discover'));
+    flushPaint();
     expect(onTabPress).toHaveBeenCalledWith({ key: 'discover-1', name: 'discover' }, false);
   });
 
   it('routes You at the renamed you folder', () => {
+    jest.useFakeTimers();
     const { getByTestId, onTabPress } = renderBar();
     fireEvent.press(getByTestId('nav-slot-you'));
+    flushPaint();
     expect(onTabPress).toHaveBeenCalledWith({ key: 'you-1', name: 'you' }, false);
   });
 
@@ -302,5 +380,134 @@ describe('FloatingTabBar — M3 flexible navigation bar (v2)', () => {
   it('keeps its stage labels legible on the Feed', () => {
     expect(contrastRatio('#FFFFFF', THEMES.light.stageRaised)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(THEMES.dark.ink2, THEMES.light.stage)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+/**
+ * Wave 3 lane A (motion spec §3.1 row 4, budgets F1/F4/F12; jank audit #3, #7):
+ * the bar's motion runs on reanimated, never as a JS-driven `width` spring, and
+ * a tap paints the new selection before the navigator starts its work.
+ */
+describe('FloatingTabBar — motion on the UI thread (Wave 3)', () => {
+  const pillScaleX = (node: { props: { style?: unknown } }) =>
+    ((flat(node).transform ?? []) as Record<string, unknown>[])
+      .map((t) => t.scaleX)
+      .filter((v) => v !== undefined);
+
+  it('grows the new pill 32 → 56 dp by scaleX on fastSpatial; its laid-out width never animates', () => {
+    mockReducedMotion.mockReturnValue(false);
+    const { getByTestId, rerenderAt } = renderBar({ index: 1 });
+    springCalls.length = 0;
+
+    rerenderAt(2);
+    const pill = getByTestId('nav-indicator-messages');
+    // Layout is the final 56 × 32 from frame one; only the transform moves.
+    expect(flat(pill).width).toBe(NAV_INDICATOR.width);
+    expect(pillScaleX(pill)).toEqual([NAV_INDICATOR.from / NAV_INDICATOR.width]);
+    expect(springsTo(1)).toContainEqual(
+      expect.objectContaining({ config: expect.objectContaining(SPRING.fastSpatial) }),
+    );
+  });
+
+  it('shows the focused pill at rest on first paint (no grow on mount)', () => {
+    mockReducedMotion.mockReturnValue(false);
+    const { getByTestId } = renderBar({ index: 1 });
+    expect(pillScaleX(getByTestId('nav-indicator-discover'))).toEqual([1]);
+    expect(springCalls).toHaveLength(0);
+  });
+
+  it('Reduce Motion: the pill is simply there, no spring starts', () => {
+    mockReducedMotion.mockReturnValue(true);
+    const { getByTestId, rerenderAt } = renderBar({ index: 1 });
+    rerenderAt(2);
+    expect(pillScaleX(getByTestId('nav-indicator-messages'))).toEqual([1]);
+    expect(springCalls.filter((c) => c.kind === 'spring')).toHaveLength(0);
+  });
+
+  it('paints the pressed tab as selected before it asks the navigator to move', () => {
+    jest.useFakeTimers();
+    const { getByTestId, queryByTestId, onTabPress } = renderBar({ index: 1 });
+
+    fireEvent.press(getByTestId('nav-slot-you'));
+    // Same frame as the tap: the pill is on You, the navigator has not been asked.
+    expect(getByTestId('nav-indicator-you')).toBeTruthy();
+    expect(queryByTestId('nav-indicator-discover')).toBeNull();
+    expect(onTabPress).not.toHaveBeenCalled();
+
+    flushPaint();
+    expect(onTabPress).toHaveBeenCalledTimes(1);
+    expect(onTabPress).toHaveBeenCalledWith({ key: 'you-1', name: 'you' }, false);
+  });
+
+  it('falls back to the committed tab when the navigator declines the move', () => {
+    jest.useFakeTimers();
+    const { getByTestId, queryByTestId } = renderBar({ index: 1 });
+    fireEvent.press(getByTestId('nav-slot-you'));
+    flushPaint();
+    // onTabPress ran but the state index never changed (tabPress was prevented).
+    expect(getByTestId('nav-indicator-discover')).toBeTruthy();
+    expect(queryByTestId('nav-indicator-you')).toBeNull();
+  });
+
+  it('a focused tab press goes straight through (pop to top), no deferral', () => {
+    const { getByTestId, onTabPress } = renderBar({ index: 1 });
+    fireEvent.press(getByTestId('nav-slot-discover'));
+    expect(onTabPress).toHaveBeenCalledWith({ key: 'discover-1', name: 'discover' }, true);
+  });
+
+  it('a committed switch re-renders only the two slots whose selection changed', () => {
+    const { rerenderAt } = renderBar({ index: 1 });
+    mockIconRenders.length = 0;
+    rerenderAt(2);
+    expect([...new Set(mockIconRenders)].sort()).toEqual(['nav-icon-discover', 'nav-icon-messages']);
+  });
+
+  it('cross-fades the bar to the stage colours on the Feed with fastEffects (no overshoot)', () => {
+    mockReducedMotion.mockReturnValue(false);
+    const { getByTestId, rerenderAt } = renderBar({ index: 1 });
+    springCalls.length = 0;
+    rerenderAt(0);
+    expect(springsTo(1)).toContainEqual(
+      expect.objectContaining({ config: expect.objectContaining(SPRING.fastEffects) }),
+    );
+    rerenderAt(1);
+    expect(springsTo(0)).toContainEqual(
+      expect.objectContaining({ config: expect.objectContaining(SPRING.fastEffects) }),
+    );
+    expect(flat(getByTestId('nav-bar')).backgroundColor).toBeDefined();
+  });
+
+  it('Reduce Motion: the bar recolours at once', () => {
+    mockReducedMotion.mockReturnValue(true);
+    const { rerenderAt } = renderBar({ index: 1 });
+    rerenderAt(0);
+    expect(springCalls).toHaveLength(0);
+  });
+
+  it('turns the Create key on the spatial spring and presses it in on fastSpatial', () => {
+    mockReducedMotion.mockReturnValue(false);
+    const { getByTestId, rerenderAt } = renderBar({ createOpen: false });
+    fireEvent(getByTestId('nav-slot-create'), 'pressIn');
+    expect(springsTo(PRESS.scale)).toContainEqual(
+      expect.objectContaining({ config: expect.objectContaining(SPRING.fastSpatial) }),
+    );
+    fireEvent(getByTestId('nav-slot-create'), 'pressOut');
+    expect(springsTo(1)).toContainEqual(
+      expect.objectContaining({ config: expect.objectContaining(SPRING.fastSpatial) }),
+    );
+    springCalls.length = 0;
+    rerenderAt(1, true);
+    expect(springsTo(1)).toContainEqual(
+      expect.objectContaining({ config: expect.objectContaining(SPRING.spatial) }),
+    );
+  });
+
+  it('Reduce Motion: the Create key turns and presses without a spring', () => {
+    mockReducedMotion.mockReturnValue(true);
+    const { getByTestId, rerenderAt } = renderBar({ createOpen: false });
+    fireEvent(getByTestId('nav-slot-create'), 'pressIn');
+    fireEvent(getByTestId('nav-slot-create'), 'pressOut');
+    rerenderAt(1, true);
+    expect(springCalls).toHaveLength(0);
   });
 });
