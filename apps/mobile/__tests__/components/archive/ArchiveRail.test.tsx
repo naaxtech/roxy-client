@@ -128,4 +128,36 @@ describe('ArchiveRail', () => {
     expect(flat(v.getByTestId('archive-rail-art-carol-type', hidden)).backgroundColor).toBe(identityFor('carol-id'));
     expect(v.UNSAFE_queryAllByType('LinearGradient' as never)).toHaveLength(0);
   });
+
+  /**
+   * Live Wave 2 (discover-audit, 412 wide): in the 104 dp card "4.4 from 7
+   * members" needed 109 px and "Comics & Manga · 2006" 129 px, each forced onto
+   * ONE line and clipped (67 clipped strings on the rail). The words are the
+   * design (direction v2 › Archive), so they wrap at a word boundary onto a
+   * second line instead of being cut, and every card keeps the same lines so
+   * the row stays even.
+   */
+  it('wraps the type and the score in words onto a second line instead of clipping them', () => {
+    const v = render(
+      <ArchiveRail
+        entries={[
+          entry({ id: 'e3', slug: 'fun-home', title: 'Fun Home', media_type: 'comic', release_year: 2006 }),
+          entry(),
+        ]}
+        total={2}
+        onPressEntry={jest.fn()}
+        onSeeAll={jest.fn()}
+      />
+    );
+    const card = v.getByTestId('archive-rail-card-fun-home');
+    expect(flat(card).width).toBe(COVER_WIDTH.rail);
+
+    for (const text of ['Comics & Manga · 2006', '96% from 100 members']) {
+      const node = v.getAllByText(text)[0];
+      expect(node.props.numberOfLines).toBe(2);
+      // Reserve both lines, so a one-line score does not leave its card shorter.
+      const style = flat(node);
+      expect(style.minHeight).toBe(2 * Number(style.lineHeight));
+    }
+  });
 });

@@ -69,6 +69,7 @@ export function ArchiveRail({
     cardText: { gap: 2 },
     cardTitle: { ...TYPE.label, color: colors.ink },
     cardMeta: { ...TYPE.meta, color: colors.ink2 },
+    twoLines: { minHeight: 2 * TYPE.meta.lineHeight },
     bone: {
       width: COVER_WIDTH.rail,
       height: COVER_WIDTH.rail * COVER_ASPECT,
@@ -165,8 +166,11 @@ export function ArchiveRail({
                 />
                 <View style={s.cardText}>
                   <Text style={s.cardTitle} numberOfLines={2}>{entry.title}</Text>
-                  <Text style={s.cardMeta} numberOfLines={1}>{meta}</Text>
-                  <Text style={s.cardMeta} numberOfLines={1}>{words}</Text>
+                  {/* Two lines, reserved: in a 104 dp card "Comics & Manga · 2006"
+                      and "4.4 from 7 members" are wider than one line, and a
+                      single line clipped them on live (Wave 2 discover-audit). */}
+                  <Text style={[s.cardMeta, s.twoLines]} numberOfLines={2}>{meta}</Text>
+                  <Text style={[s.cardMeta, s.twoLines]} numberOfLines={2}>{words}</Text>
                 </View>
               </View>
             </PressableScale>
