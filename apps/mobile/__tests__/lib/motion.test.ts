@@ -114,9 +114,9 @@ describe('M3 Expressive spring tokens', () => {
 });
 
 describe('press tokens (Duolingo + M3)', () => {
-  it('scales to 0.96, lays an 8% (dark 10%) ink state layer, morphs pills to 12, drops the primary 3 dp', () => {
+  it('scales to 0.96, lays a 10% ink state layer (M3; P5 lifted light from 8%), morphs pills to 12, drops the primary 3 dp', () => {
     expect(PRESS.scale).toBe(0.96);
-    expect(PRESS.stateLayer.light).toBe(0.08);
+    expect(PRESS.stateLayer.light).toBe(0.1);
     expect(PRESS.stateLayer.dark).toBe(0.1);
     expect(PRESS.radius).toBe(12);
     expect(PRESS.lipDrop).toBe(3);

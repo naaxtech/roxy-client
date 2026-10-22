@@ -1,4 +1,5 @@
 import { Animated } from 'react-native';
+import type { ReduceMotion } from 'react-native-reanimated';
 
 /**
  * Roxy motion (design direction v2 › Motion): physics, not curves.
@@ -39,12 +40,13 @@ export type SpringName = keyof typeof SPRING;
 
 /**
  * Press feedback (Duolingo + M3). Every control answers on press-in, inside
- * one frame: scale 0.96 plus an `ink` state layer at 8% (dark 10%); pills and
+ * one frame: scale 0.96 plus an `ink` state layer at 10% (M3's pressed
+ * state-layer opacity; light was 8% until decisions.md 2026-10-23 P5); pills and
  * chips morph to radius 12; the one primary button drops 3 dp onto its lip.
  */
 export const PRESS = {
   scale: 0.96,
-  stateLayer: { light: 0.08, dark: 0.1 },
+  stateLayer: { light: 0.1, dark: 0.1 },
   radius: 12,
   lipDrop: 3,
 } as const;
@@ -192,8 +194,14 @@ export type SpringToConfig = {
   restDisplacementThreshold?: number;
   restSpeedThreshold?: number;
   /** reanimated's `ReduceMotion.Never`: this app decides Reduce Motion itself. */
-  reduceMotion: 'never';
+  reduceMotion: ReduceMotion;
 };
+
+/**
+ * reanimated's `ReduceMotion.Never` as its string value, so this module never
+ * reads reanimated at runtime (several suites mock reanimated partially).
+ */
+const NEVER = 'never' as ReduceMotion;
 
 /**
  * `withSpring(target, springTo('spatial', { px: true, velocity }))`.
@@ -205,11 +213,20 @@ export function springTo(
   opts: { px?: boolean; velocity?: number } = {},
 ): SpringToConfig {
   'worklet';
-  const config: SpringToConfig = { ...SPRING[name], reduceMotion: 'never' };
+  const config: SpringToConfig = { ...SPRING[name], reduceMotion: NEVER };
   if (opts.velocity !== undefined) config.velocity = opts.velocity;
   if (opts.px) {
     config.restDisplacementThreshold = REST.px;
     config.restSpeedThreshold = REST.px;
   }
   return config;
+}
+
+/**
+ * A reanimated `withTiming` config for an effect under Reduce Motion:
+ * `REDUCED.fadeMs` (120 ms), linear, and never skipped by reanimated.
+ */
+export function fadeConfig(durationMs: number = REDUCED.fadeMs): { duration: number; reduceMotion: ReduceMotion } {
+  'worklet';
+  return { duration: durationMs, reduceMotion: NEVER };
 }
