@@ -76,7 +76,7 @@ import {
 } from '../../../components/nav/navTokens';
 import { THEMES, contrastRatio, RADII } from '../../../lib/theme';
 import { FONTS } from '../../../lib/typography';
-import { SPRING } from '../../../lib/motion';
+import { SPRING, springAt } from '../../../lib/motion';
 import { PRESS_HEAD_START, stateLayerFor } from '../../../components/ui/PressableScale';
 import { useThemeStore } from '../../../store/themeStore';
 
@@ -412,9 +412,15 @@ describe('FloatingTabBar — motion on the UI thread (Wave 3)', () => {
     const pill = getByTestId('nav-indicator-messages');
     // Layout is the final 56 × 32 from frame one; only the transform moves.
     expect(flat(pill).width).toBe(NAV_INDICATOR.width);
-    expect(pillScaleX(pill)).toEqual([NAV_INDICATOR.from / NAV_INDICATOR.width]);
+    // One frame of the spring already in (C0's head start: an animation's
+    // first step paints a frame late), carrying that frame's velocity.
+    const from = NAV_INDICATOR.from / NAV_INDICATOR.width;
+    const head = springAt('fastSpatial', 1000 / 60);
+    expect(pillScaleX(pill)[0]).toBeCloseTo(from + (1 - from) * head.x, 6);
     expect(springsTo(1)).toContainEqual(
-      expect.objectContaining({ config: expect.objectContaining(SPRING.fastSpatial) }),
+      expect.objectContaining({
+        config: expect.objectContaining({ ...SPRING.fastSpatial, velocity: (1 - from) * head.v }),
+      }),
     );
   });
 
@@ -573,6 +579,16 @@ describe('FloatingTabBar on the web — the pill grows on the compositor', () =>
       SPRING.fastSpatial,
     );
     expect(springCalls.filter((c) => c.config && (c.config as { stiffness?: number }).stiffness === SPRING.fastSpatial.stiffness)).toEqual([]);
+  });
+
+  it('starts the grow one frame in (head start), so the first painted frame already moves', () => {
+    mockReducedMotion.mockReturnValue(false);
+    const anim = { currentTime: 0 as number | null };
+    mockWebSpring.mockReturnValue(anim);
+    const { rerenderAt } = renderBar({ index: 1 });
+    rerenderAt(2);
+    expect(anim.currentTime).toBeCloseTo(1000 / 60, 6);
+    mockWebSpring.mockReturnValue(undefined);
   });
 
   it('Reduce Motion: no grow at all', () => {

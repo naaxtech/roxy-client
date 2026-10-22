@@ -17,7 +17,7 @@ import { NAV_SLOTS_3 } from './navSlots3';
 import { NavIcon, type NavIconName } from './NavIcons';
 import type { NavSlot } from './navTokens';
 import { a11yState } from '../../lib/a11yState';
-import { PRESS, SPRING, fadeConfig, springTo } from '../../lib/motion';
+import { PRESS, SPRING, fadeConfig, springAt, springTo } from '../../lib/motion';
 import { haptic } from '../../lib/haptics';
 import { PRESS_HEAD_START, PressableScale, stateLayerFor } from '../ui/PressableScale';
 import { useThemeStore } from '../../store/themeStore';
@@ -85,6 +85,13 @@ type InkPair = { theme: BarInk; stage: BarInk };
  */
 const NO_PRESS_DELAY = Platform.OS === 'web' ? ({ delayPressIn: 0 } as Record<string, number>) : {};
 
+/** One 60 Hz frame, ms. */
+const FRAME_MS = 1000 / 60;
+/** The pill's start width as a fraction of its laid-out 56 dp (32 / 56). */
+const PILL_FROM = NAV_INDICATOR.from / NAV_INDICATOR.width;
+/** fastSpatial one frame in, from rest: position (fraction of travel) and velocity. */
+const PILL_HEAD_START = springAt('fastSpatial', FRAME_MS);
+
 function UnreadDot({ value, slotKey, colors }: { value: number | string; slotKey: string; colors: ThemeColors }) {
   return (
     <View
@@ -117,19 +124,25 @@ function NavPill({
 }) {
   const [growIn] = useState(() => barPainted.current && growNew);
   const isWeb = Platform.OS === 'web';
-  // Native grows on the UI thread (reanimated); the web on the compositor (WAAPI).
-  const grow = useSharedValue(growIn && !isWeb ? NAV_INDICATOR.from / NAV_INDICATOR.width : 1);
+  // Native grows on the UI thread (reanimated); the web on the compositor
+  // (WAAPI). Both start one frame in (C0's head start: an animation's first
+  // step paints a frame late), so the frame after the tap already moves and
+  // the pill settles inside F4's 250 ms (fastSpatial alone takes 210 ms).
+  const grow = useSharedValue(growIn && !isWeb ? PILL_FROM + (1 - PILL_FROM) * PILL_HEAD_START.x : 1);
   const webShape = useRef<View>(null);
   useEffect(() => {
-    if (growIn && !isWeb) grow.value = withSpring(1, springTo('fastSpatial'));
+    if (growIn && !isWeb) {
+      grow.value = withSpring(1, springTo('fastSpatial', { velocity: (1 - PILL_FROM) * PILL_HEAD_START.v }));
+    }
   }, [growIn, isWeb, grow]);
   useLayoutEffect(() => {
     if (!growIn || !isWeb) return;
-    startWebSpring(
+    const anim = startWebSpring(
       webShape.current as unknown as Element,
-      [{ transform: `scaleX(${NAV_INDICATOR.from / NAV_INDICATOR.width})` }, { transform: 'scaleX(1)' }],
+      [{ transform: `scaleX(${PILL_FROM})` }, { transform: 'scaleX(1)' }],
       SPRING.fastSpatial,
     );
+    if (anim) anim.currentTime = FRAME_MS;
   }, [growIn, isWeb]);
   const fromPill = inks.theme.pill;
   const toPill = inks.stage.pill;
