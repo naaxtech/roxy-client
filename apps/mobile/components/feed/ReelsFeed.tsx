@@ -13,7 +13,7 @@ import type { Comment } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { useFollowStore } from '../../store/followStore';
 import {
-  excludeSeenReels, excludeHidden, excludeMutedAuthors, displayedLikeCount, initialReelIndex,
+  excludeSeenReels, excludeHidden, excludeMutedAuthors, initialReelIndex,
 } from '../../lib/reels';
 import type { ReelRow } from '../../lib/reels';
 import { fetchAnnouncementPage } from '../../lib/announcements';
@@ -38,12 +38,17 @@ import { CommentSheet } from './CommentSheet';
 import { reportPost } from './feedSafety';
 import type { ReportReason } from './feedSafety';
 import { DailyPromptCell } from './DailyPromptCell';
+import { CaughtUpCell, CAUGHT_UP_ID, isCaughtUpItem, type CaughtUpItem } from './CaughtUpCell';
+import {
+  myReactionOf, reactionTotalOf, useReactionStore,
+} from '../reactions/reactionStore';
+import type { PostReaction } from '../../lib/postReactions';
 import {
   isDailyPromptId, isDailyPromptItem, withDailyPrompt, type DailyPrompt,
 } from '../../lib/dailyPrompt';
 
-/** A page in the pager: a post, or For You's question of the day. */
-type FeedItem = ReelRow | DailyPrompt;
+/** A page in the pager: a post, For You's question of the day, or the end. */
+type FeedItem = ReelRow | DailyPrompt | CaughtUpItem;
 
 /** Wall pages (Following, a community, a profile). For You pages at its RPC's own size. */
 const PAGE_SIZE = 10;
@@ -136,9 +141,9 @@ type LoadMode = 'initial' | 'refresh';
  * the feed: the source, the cursor, the scopes, safety, and the cell.
  *
  * Owns its own query and its own cursor rather than reading feedStore's: two
- * lists paginating through one cursor interleave their pages. Likes, saves and
- * hides still go through the store, because those are per-user state every
- * surface must agree on.
+ * lists paginating through one cursor interleave their pages. Saves and hides
+ * still go through feedStore and reactions through reactionStore, because
+ * those are per-user state every surface must agree on.
  *
  * Three things keep a post off this list, each for its own reason:
  *  - hidden (`hidden_posts`, 133) — never comes back, even if the page empties;
@@ -200,14 +205,17 @@ export function ReelsFeed({
   // Selector subscriptions, not the whole store: `markSeen` writes `seenPostIds`
   // on every swipe, and subscribing to the store object would re-render the
   // entire list each time a post is looked at.
+  // Her v0 likes: until she reacts, a like reads as her ❤️ (reactionStore).
   const likedPostIds = useFeedStore((st) => st.likedPostIds);
   const savedPostIds = useFeedStore((st) => st.savedPostIds);
-  const likeCountDeltas = useFeedStore((st) => st.likeCountDeltas);
   const hiddenPostIds = useFeedStore((st) => st.hiddenPostIds);
-  const toggleLike = useFeedStore((st) => st.toggleLike);
-  // The double tap: likes, never unlikes. Same store, so the rail heart, the
-  // count and the burst can never disagree.
-  const likePost = useFeedStore((st) => st.likePost);
+  // Her reaction per post (migration 136, with a fallback before it lands).
+  // One store for the rail, the double tap and the picker, so they never
+  // disagree; `mine` and `deltas` are what a cell renders from.
+  const reactionMine = useReactionStore((st) => st.mine);
+  const reactionDeltas = useReactionStore((st) => st.deltas);
+  const react = useReactionStore((st) => st.react);
+  const hydrateReactions = useReactionStore((st) => st.hydrate);
   const toggleSave = useFeedStore((st) => st.toggleSave);
   const markSeen = useFeedStore((st) => st.markSeen);
   const hidePost = useFeedStore((st) => st.hidePost);
@@ -387,6 +395,12 @@ export function ReelsFeed({
 
   useEffect(() => { void load('initial'); }, [load]);
 
+  // Learn her reactions for the posts this list holds (each post asked once).
+  useEffect(() => {
+    if (!userId || reels.length === 0) return;
+    void hydrateReactions(userId, reels.map((r) => r.id));
+  }, [userId, reels, hydrateReactions]);
+
   /** Pull-to-refresh: the first page again, from fresh cursors (FEED-06). */
   const refresh = useCallback(() => {
     setRefreshing(true);
@@ -519,22 +533,27 @@ export function ReelsFeed({
    * third page. Not when opening on a chosen post: `initialIndex` is counted
    * over the posts alone, and a page slotted in ahead of it would open one off.
    */
-  const pagerItems = useMemo<FeedItem[]>(
-    () => (scope === 'announcements' && dailyPrompt && !initialPostId
+  const pagerItems = useMemo<FeedItem[]>(() => {
+    const pages: FeedItem[] = scope === 'announcements' && dailyPrompt && !initialPostId
       ? withDailyPrompt<FeedItem>(visibleReels, dailyPrompt)
-      : visibleReels),
-    [scope, dailyPrompt, initialPostId, visibleReels],
-  );
+      : visibleReels;
+    // The end of the feed is a page of its own (direction v2 › Feed): she is
+    // told she is caught up and where the conversation is, not left on a
+    // last post that will not scroll.
+    return !hasMore && !loading && visibleReels.length > 0
+      ? [...pages, { id: CAUGHT_UP_ID, kind: 'caught_up' } as CaughtUpItem]
+      : pages;
+  }, [scope, dailyPrompt, initialPostId, visibleReels, hasMore, loading]);
 
   // FlashList recycles cells. Without this it has no reason to re-render one
   // when the mute state or a like changes, so a recycled cell keeps the previous
   // post's icons. The pager merges its own active-item state into this.
   const extraData = useMemo(
     () => ({
-      muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion, answeredPrompts,
+      muted, likedPostIds, savedPostIds, reactionMine, reactionDeltas, reducedMotion, answeredPrompts,
       playbackAllowed,
     }),
-    [muted, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion, answeredPrompts,
+    [muted, likedPostIds, savedPostIds, reactionMine, reactionDeltas, reducedMotion, answeredPrompts,
       playbackAllowed],
   );
 
@@ -543,7 +562,10 @@ export function ReelsFeed({
    * key and the component choice can never drift apart. See `feedItemType`.
    */
   const getItemType = useCallback(
-    (item: FeedItem) => (isDailyPromptItem(item) ? 'daily_prompt' : feedItemType(item)),
+    (item: FeedItem) => {
+      if (isCaughtUpItem(item)) return 'caught_up';
+      return isDailyPromptItem(item) ? 'daily_prompt' : feedItemType(item);
+    },
     [],
   );
   const keyExtractor = useCallback((item: FeedItem) => item.id, []);
@@ -563,7 +585,6 @@ export function ReelsFeed({
     emptyWrap: { flex: 1, backgroundColor: STAGE_BG },
     emptyTitle: { color: STAGE.textPrimary, textAlign: 'center', ...TYPE.title },
     emptyBody: { color: STAGE.textSecondary, textAlign: 'center', ...TYPE.bodyLg },
-    emptyEmoji: { fontSize: 40, textAlign: 'center' },
   });
 
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
@@ -575,6 +596,15 @@ export function ReelsFeed({
   const renderCell = useCallback(({
     item, index, activeIndex, activeItemId, width, height,
   }: FeedPagerCell<FeedItem>) => {
+    if (isCaughtUpItem(item)) {
+      return (
+        <CaughtUpCell
+          width={width}
+          height={height}
+          onOpenMessages={() => router.push('/(tabs)/messages' as never)}
+        />
+      );
+    }
     if (isDailyPromptItem(item)) {
       return (
         <DailyPromptCell prompt={item} width={width} height={height} reducedMotion={reducedMotion} />
@@ -583,6 +613,9 @@ export function ReelsFeed({
     // Offered on a cadence rather than on every cell, and only once per post.
     const asks = index % INTEREST_PROMPT_EVERY === INTEREST_PROMPT_EVERY - 1
       && !answeredPrompts.has(item.id);
+    const legacyLiked = likedPostIds.has(item.id);
+    const reactionState = { mine: reactionMine, deltas: reactionDeltas };
+    const reaction = myReactionOf(reactionState, item.id, legacyLiked);
 
     return (
       <FeedCell
@@ -594,13 +627,14 @@ export function ReelsFeed({
         height={height}
         muted={muted}
         playbackAllowed={playbackAllowed}
-        liked={likedPostIds.has(item.id)}
+        reaction={reaction}
+        reactionTotal={reactionTotalOf(reactionState, item)}
         saved={savedPostIds.has(item.id)}
-        likeCount={displayedLikeCount(item, likeCountDeltas)}
         reducedMotion={reducedMotion}
         onToggleMute={toggleMute}
-        onLike={() => void toggleLike(item.id)}
-        onDoubleTapLike={() => void likePost(item.id)}
+        onReact={(next: PostReaction | null) => {
+          void react(item.id, next, { legacyLiked });
+        }}
         onSave={() => void toggleSave(item.id)}
         // Comments stay on this page — the sheet, not a detail route. Pushing
         // /community/post/:id here is what made the comment button feel broken:
@@ -633,8 +667,8 @@ export function ReelsFeed({
       />
     );
   }, [
-    muted, playbackAllowed, likedPostIds, savedPostIds, likeCountDeltas, reducedMotion,
-    answeredPrompts, toggleMute, toggleLike, likePost, toggleSave, router, answerPrompt, dropPost,
+    muted, playbackAllowed, likedPostIds, savedPostIds, reactionMine, reactionDeltas, react,
+    reducedMotion, answeredPrompts, toggleMute, toggleSave, router, answerPrompt, dropPost,
     openComments, followingIds, followAuthor, unfollowAuthor, userId,
   ]);
 
@@ -664,7 +698,7 @@ export function ReelsFeed({
     // which paints light-theme ink on this permanently dark stage.
     placeholder = (
       <View style={[s.centred, s.emptyWrap]} testID="reels-feed-empty">
-        <Text style={s.emptyEmoji}>✿</Text>
+        <Ionicons name="albums-outline" size={36} color={STAGE.textSecondary} />
         <Text style={s.emptyTitle}>Nothing here yet</Text>
         <Text style={s.emptyBody}>{EMPTY_BODY[scope]}</Text>
         <TouchableOpacity

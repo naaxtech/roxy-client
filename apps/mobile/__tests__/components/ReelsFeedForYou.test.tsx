@@ -157,7 +157,18 @@ jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => false
 jest.mock('../../components/feed/CommentSheet', () => ({ CommentSheet: () => null }));
 jest.mock('../../hooks/usePlaybackAllowed', () => ({ usePlaybackAllowed: () => true }));
 
+/**
+ * The posts (and the question page) the list was handed. v2 (Wave 2 feed)
+ * appends the "You're caught up" page once nothing more loads; it is not a
+ * post, so these assertions read past it (`ReelsFeed caught-up page` and the
+ * keyset test below assert it).
+ */
 function latestData(): ReelRow[] {
+  return latestRaw().filter((r) => r.id !== '__caught_up__');
+}
+
+/** Exactly what the list was handed, the caught-up page included. */
+function latestRaw(): ReelRow[] {
   const { __captured } = jest.requireMock('@shopify/flash-list') as {
     __captured: { data: ReelRow[] }[];
   };
@@ -220,6 +231,9 @@ describe('For You (Feed tab, scope="announcements")', () => {
     };
     await act(async () => { __captured[__captured.length - 1].onEndReached(); });
     await waitFor(() => expect(latestData()).toHaveLength(51));
+    // The short second page ends For You: the caught-up page follows the last post.
+    expect(latestRaw()[latestRaw().length - 1].id).toBe('__caught_up__');
+    expect(latestRaw()).toHaveLength(52);
 
     expect(mockRpcCalls[1]).toMatchObject({
       fn: 'feed_rank_page',
