@@ -41,6 +41,7 @@ import {
   type GroupedMessage,
 } from '../../lib/chatThread';
 import type { Message } from '../../types';
+import { readThreadPage, writeThreadPage } from '../../components/chat/threadCache';
 import { ActionTray } from '../../components/chat/ActionTray';
 import { GifPicker } from '../../components/chat/GifPicker';
 import { TypingIndicator } from '../../components/chat/TypingIndicator';
@@ -86,8 +87,10 @@ export default function ChatScreen() {
 
   const { meta, loading: metaLoading, unavailable, reload: reloadMeta } = useThreadMeta(conversationId, me);
 
-  const [initialMessages, setInitialMessages] = useState<Message[]>([]);
-  const [loadingInitial, setLoadingInitial] = useState(true);
+  // F7: a thread opened earlier in this session paints from memory in the
+  // first frame and refreshes quietly; only a first visit shows the loader.
+  const [initialMessages, setInitialMessages] = useState<Message[]>(() => readThreadPage(me, conversationId) ?? []);
+  const [loadingInitial, setLoadingInitial] = useState(() => readThreadPage(me, conversationId) === null);
   const [loadError, setLoadError] = useState(false);
   const [inputText, setInputText] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
@@ -118,6 +121,13 @@ export default function ChatScreen() {
     messages, appendMessage, appendOptimistic, settleSend, retryMessage, failMessage,
     loadOlder, hasMoreOlder, loadingOlder, patchMessage,
   } = useRealtime({ conversationId, initialMessages, currentUserId: me, pageSize: PAGE_SIZE });
+
+  // Keep the remembered page current (sends, edits, unsends, echoes) so the
+  // next visit opens on what she last saw. Settled rows only.
+  useEffect(() => {
+    if (loadingInitial || loadError) return;
+    writeThreadPage(me, conversationId, messages, PAGE_SIZE);
+  }, [messages, me, conversationId, loadingInitial, loadError]);
 
   const messageIds = useMemo(() => messages.map((m) => m.id), [messages]);
   const { reactionsMap, addReaction, removeReaction } = useReactions({ conversationId, messageIds });
@@ -164,7 +174,9 @@ export default function ChatScreen() {
 
   const loadMessages = useCallback(async () => {
     if (!conversationId || !me) return;
-    setLoadingInitial(true);
+    const remembered = readThreadPage(me, conversationId);
+    if (remembered) setInitialMessages(remembered);
+    setLoadingInitial(remembered === null);
     setLoadError(false);
     try {
       // Newest page first, shown oldest → newest; older pages arrive on scroll.
@@ -175,13 +187,17 @@ export default function ChatScreen() {
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
       if (error) throw error;
-      setInitialMessages([...((data ?? []) as Message[])].reverse());
+      const page = [...((data ?? []) as Message[])].reverse();
+      writeThreadPage(me, conversationId, page, PAGE_SIZE);
+      setInitialMessages(page);
       // Server-owned unread (CHAT-13): moves her cursor, clears the bell rows
       // for this link, refreshes the badge. Never a receipt on a request.
       void markRead(conversationId);
     } catch (e) {
       logError(e, 'chat_loadMessages');
-      setLoadError(true);
+      // With remembered rows on screen a failed refresh stays quiet; a first
+      // visit with nothing to show says so.
+      if (!readThreadPage(me, conversationId)) setLoadError(true);
     } finally {
       setLoadingInitial(false);
     }

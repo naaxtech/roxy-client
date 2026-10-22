@@ -148,6 +148,8 @@ jest.mock('../../lib/chat', () => {
 
 import ChatScreen from '../../app/chat/[id]';
 import { MUTE_FOREVER } from '../../lib/chatThread';
+// eslint-disable-next-line import/first
+import { clearThreadCache } from '../../components/chat/threadCache';
 
 jest.setTimeout(20_000);
 
@@ -169,6 +171,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 
 beforeEach(() => {
   jest.clearAllMocks();
+  clearThreadCache();
   mockTablesTouched.length = 0;
   mockThread.meta = directMeta();
   mockThread.loading = false;
@@ -185,6 +188,41 @@ async function openThread() {
   await view.findByText('hey you');
   return view;
 }
+
+describe('ChatScreen — a second visit (F7: no loader where data is known)', () => {
+  it('reopening a thread shows its messages in the first frame, no spinner, then refreshes quietly', async () => {
+    const first = await openThread();
+    first.unmount();
+    // Checked before the refresh can answer: whatever shows now came from memory.
+    mockPages.newest = [row('m3', 'ana', 'still there?', 1), ...mockPages.newest];
+    const again = render(<ChatScreen />);
+    expect(again.getByText('hey you')).toBeTruthy();
+    expect(again.queryByLabelText('Loading messages')).toBeNull();
+    // The quiet refresh lands the newer row and still marks the thread read.
+    expect(await again.findByText('still there?')).toBeTruthy();
+    await waitFor(() => expect(mockMarkRead).toHaveBeenCalledTimes(2));
+  });
+
+  it('the very first committed frame of a revisit already has the messages (before any effect runs)', async () => {
+    const first = await openThread();
+    first.unmount();
+    // react-test-renderer outside act on purpose: React 18 legacy root commits
+    // synchronously and leaves passive effects pending, so this is the frame
+    // she sees before any effect (or fetch) runs.
+    const TestRenderer = require('react-test-renderer');
+    const tree = TestRenderer.create(<ChatScreen />);
+    const has = (label: string) => tree.root.findAll((n: { props: Record<string, unknown> }) => n.props.accessibilityLabel === label).length > 0;
+    const texts = tree.root.findAll((n: { props: Record<string, unknown> }) => n.props.children === 'hey you');
+    expect(has('Loading messages')).toBe(false);
+    expect(texts.length).toBeGreaterThan(0);
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('a thread never opened in this session still loads (and says so) the first time', () => {
+    const view = render(<ChatScreen />);
+    expect(view.getByLabelText('Loading messages')).toBeTruthy();
+  });
+});
 
 describe('ChatScreen — keyboard (F14)', () => {
   it('the thread and its composer sit in the keyboard tracker, not a KeyboardAvoidingView', async () => {
