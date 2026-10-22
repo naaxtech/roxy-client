@@ -1,0 +1,18 @@
+apps/mobile/__tests__/screens/UserProfileOptimistic.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/UserProfileShell.test.tsx
+  h_0549c11fec2ab0 1,277-284
+apps/mobile/app/(tabs)/you/[userId].tsx
+  h_0549c11fec2ab0 2,32,37,681-682,740,808
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5dc4fc5bed0292c5f8d2f9af51f2a5243897a263",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
