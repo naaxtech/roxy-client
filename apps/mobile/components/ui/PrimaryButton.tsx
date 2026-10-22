@@ -1,5 +1,4 @@
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   StyleSheet,
@@ -13,6 +12,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { LIP, RADII } from '../../lib/theme';
 import { PRESS, headStart, springTo } from '../../lib/motion';
+import { LoadingO, useWaitVisible } from '../feedback/RoxyLoading';
 import { TYPE } from '../../lib/typography';
 
 /** Face height (direction › Spacing: buttons 52). */
@@ -47,6 +47,11 @@ type Props = {
  * The drop is a reanimated shared value set in the press handler (Wave 3,
  * motion spec F1): it starts on the UI thread in the next frame, no React
  * render per frame, and on web there is no 50 ms press delay.
+ *
+ * Busy (F11): never a spinner. The button goes inert at once (announced
+ * busy); the label stays for the first 200 ms, then the faceless Roxy O at
+ * the busy size replaces it and stays at least 400 ms (`useWaitVisible`),
+ * the button inert until it goes, so a quick save never flashes a loader.
  */
 
 /** RN-web reads `delayPressIn` (default 50 ms); native Pressable has no delay. */
@@ -66,7 +71,8 @@ export function PrimaryButton({
   const colors = useThemeColors();
   const reducedMotion = useReducedMotion();
   const drop = useSharedValue(0);
-  const inert = disabled || busy;
+  const showWait = useWaitVisible(busy);
+  const inert = disabled || busy || showWait;
 
   const press = (to: number) => {
     if (inert) return;
@@ -97,7 +103,7 @@ export function PrimaryButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: inert, busy }}
+      accessibilityState={{ disabled: inert, busy: busy || showWait }}
       style={[s.hit, style]}
     >
       {inert ? null : (
@@ -111,8 +117,8 @@ export function PrimaryButton({
         testID={testID ? `${testID}-face` : undefined}
         style={[s.face, { backgroundColor: faceColor }, faceStyle]}
       >
-        {busy ? (
-          <ActivityIndicator testID={testID ? `${testID}-busy` : undefined} color={inkColor} />
+        {showWait ? (
+          <LoadingO size="busy" testID={testID ? `${testID}-busy` : 'primary-busy'} />
         ) : (
           <Text style={[s.label, { color: inkColor }]} numberOfLines={1}>
             {label}

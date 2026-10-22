@@ -1,5 +1,5 @@
 import React, { Profiler } from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet } from 'react-native';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { getAnimatedStyle, setUpTests } from 'react-native-reanimated';
 
@@ -27,6 +27,7 @@ jest.mock('../../../hooks/useReducedMotion', () => ({
 import { PrimaryButton } from '../../../components/ui/PrimaryButton';
 import { THEMES, LIP } from '../../../lib/theme';
 import { PRESS, springAt } from '../../../lib/motion';
+import { LOADING_SIZES } from '../../../components/feedback/RoxyLoading';
 import { TYPE } from '../../../lib/typography';
 import { useThemeStore } from '../../../store/themeStore';
 
@@ -166,14 +167,57 @@ describe('PrimaryButton — the Duolingo lip', () => {
     expect(onPress).not.toHaveBeenCalled();
   });
 
-  it('when busy: shows a progress indicator instead of the label, announces busy, and cannot be pressed', () => {
+  // F11 (Wave 3): never a spinner. Busy is the faceless Roxy O at the busy
+  // size, and it waits by length: a save that ends inside 200 ms never shows
+  // a loader; once shown it stays at least 400 ms (no flicker).
+  it('when busy: announces busy and cannot be pressed at once; the label stays until 200 ms, then the faceless O', () => {
     const onPress = jest.fn();
     const v = render(<PrimaryButton testID="go" label="Continue" onPress={onPress} busy />);
-    expect(v.queryByText('Continue')).toBeNull();
-    expect(v.getByTestId('go-busy')).toBeTruthy();
     expect(v.getByTestId('go').props.accessibilityState).toMatchObject({ busy: true, disabled: true });
     fireEvent.press(v.getByTestId('go'));
     expect(onPress).not.toHaveBeenCalled();
+    act(() => { jest.advanceTimersByTime(199); });
+    expect(v.getByText('Continue')).toBeTruthy();
+    expect(v.queryByTestId('go-busy')).toBeNull();
+    act(() => { jest.advanceTimersByTime(1); });
+    expect(v.queryByText('Continue')).toBeNull();
+    expect(v.getByTestId('go-busy').props.accessibilityRole).toBe('progressbar');
+    expect(v.getByTestId('go-busy-o')).toBeTruthy();
+    expect(StyleSheet.flatten(v.getByTestId('go-busy').props.style)).toMatchObject({
+      width: LOADING_SIZES.busy.box, height: LOADING_SIZES.busy.box,
+    });
+  });
+
+  it('a wait that ends inside 200 ms never shows the O', () => {
+    const v = render(<PrimaryButton testID="go" label="Continue" onPress={() => {}} busy />);
+    act(() => { jest.advanceTimersByTime(150); });
+    v.rerender(<PrimaryButton testID="go" label="Continue" onPress={() => {}} />);
+    act(() => { jest.advanceTimersByTime(600); });
+    expect(v.queryByTestId('go-busy')).toBeNull();
+    expect(v.getByText('Continue')).toBeTruthy();
+  });
+
+  it('once shown, the O stays at least 400 ms, and the button stays inert while it shows', () => {
+    const onPress = jest.fn();
+    const v = render(<PrimaryButton testID="go" label="Continue" onPress={onPress} busy />);
+    act(() => { jest.advanceTimersByTime(250); });
+    expect(v.getByTestId('go-busy')).toBeTruthy();
+    v.rerender(<PrimaryButton testID="go" label="Continue" onPress={onPress} />);
+    act(() => { jest.advanceTimersByTime(300); });
+    expect(v.getByTestId('go-busy')).toBeTruthy();
+    fireEvent.press(v.getByTestId('go'));
+    expect(onPress).not.toHaveBeenCalled();
+    act(() => { jest.advanceTimersByTime(60); });
+    expect(v.queryByTestId('go-busy')).toBeNull();
+    expect(v.getByText('Continue')).toBeTruthy();
+    fireEvent.press(v.getByTestId('go'));
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders no spinner element at all (F11)', () => {
+    const v = render(<PrimaryButton testID="go" label="Continue" onPress={() => {}} busy />);
+    act(() => { jest.advanceTimersByTime(250); });
+    expect(v.UNSAFE_queryAllByType(ActivityIndicator)).toHaveLength(0);
   });
 
   it('keeps a caller accessibilityLabel (e2e and screen readers depend on it)', () => {
