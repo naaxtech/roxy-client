@@ -1,0 +1,26 @@
+apps/mobile/__tests__/components/nav/navSlots3.test.ts
+  h_0549c11fec2ab0 92-103
+apps/mobile/__tests__/screens/FeedTab.test.tsx
+  h_0549c11fec2ab0 27-30,33-38,42-48,129-130,134-167
+apps/mobile/__tests__/screens/TabLayout.test.tsx
+  h_0549c11fec2ab0 1-220
+apps/mobile/app/(tabs)/_layout.tsx
+  h_0549c11fec2ab0 1-2,4,7,9-10,50-65,67,76,81-82,89-145,150,153,169,173-174,179-181,202,216,220,236,241-249,259,262,277-279,283-287
+apps/mobile/app/(tabs)/feed/index.tsx
+  h_0549c11fec2ab0 15-16,277-282,286-294
+apps/mobile/components/nav/createSheetStore.ts
+  h_0549c11fec2ab0 1-21
+apps/mobile/components/nav/navSlots3.ts
+  h_0549c11fec2ab0 79-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9941abaa1901d0d4766414101ac4b7d061b51fb3",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
