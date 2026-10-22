@@ -1,0 +1,26 @@
+apps/mobile/__tests__/components/motion/TabFade.test.tsx
+  h_0549c11fec2ab0 13,27-31,119-161
+apps/mobile/__tests__/components/motion/webSpring.test.ts
+  h_0549c11fec2ab0 1-89
+apps/mobile/__tests__/components/nav/FloatingTabBar.test.tsx
+  h_0549c11fec2ab0 2,52-56,302-305,340,363,522-557
+apps/mobile/components/motion/TabFade.tsx
+  h_0549c11fec2ab0 1-2,7,24-28,39,44,47,55-61,67-79
+apps/mobile/components/motion/webSpring.ts
+  h_0549c11fec2ab0 1-78
+apps/mobile/components/nav/FloatingTabBar.tsx
+  h_0549c11fec2ab0 1,23,117-120,122-131,134,137-150,434-437
+apps/mobile/tests/e2e/feel-transitions.spec.ts
+  h_0549c11fec2ab0 167-168,171,375-377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "977c9ccaf8a8ebc24a1463a6d42dc5680949a657",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
