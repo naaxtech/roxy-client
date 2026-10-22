@@ -163,7 +163,30 @@ describe('web: the faceless O', () => {
     );
     expect(control).toBeUndefined();
     expect(v.getByTestId('inbox-refresh')).toBeTruthy();
-    expect(Number(painted(v.getByTestId('inbox-refresh-indicator')).opacity)).toBe(0);
+    expect(Number(painted(v.getByTestId('inbox-refresh-indicator', { includeHiddenElements: true })).opacity)).toBe(0);
+  });
+
+  // Lane D request (Wave 3 merge): the idle O stays mounted (opacity 0) so a
+  // pull can grow it without a render, but an idle progressbar must not be
+  // announced, or counted as a loader on every visit of a list that adopts it.
+  it('hides the idle O from accessibility, and exposes it while refreshing', () => {
+    Platform.OS = 'web';
+    const v = render(
+      <RoxyRefresh refreshing={false} onRefresh={() => {}} testID="r">
+        {() => <Text>list</Text>}
+      </RoxyRefresh>,
+    );
+    expect(v.queryByTestId('r-indicator')).toBeNull();
+    expect(v.queryByRole('progressbar')).toBeNull();
+    expect(v.getByTestId('r-indicator', { includeHiddenElements: true }).props['aria-hidden']).toBe(true);
+    v.rerender(
+      <RoxyRefresh refreshing onRefresh={() => {}} testID="r">
+        {() => <Text>list</Text>}
+      </RoxyRefresh>,
+    );
+    advance(16);
+    expect(v.getByTestId('r-indicator')).toBeTruthy();
+    expect(v.getByTestId('r-indicator').props['aria-hidden']).toBe(false);
   });
 
   it('shows the O while refreshing and keeps it ≥ 400 ms even if the refresh ends at once', () => {
@@ -173,8 +196,10 @@ describe('web: the faceless O', () => {
         {() => <Text>list</Text>}
       </RoxyRefresh>,
     );
+    // Once it pops out it is hidden from accessibility again (still mounted).
+    const ind = () => v.getByTestId('r-indicator', { includeHiddenElements: true });
     advance(300);
-    expect(Number(painted(v.getByTestId('r-indicator')).opacity)).toBe(1);
+    expect(Number(painted(ind()).opacity)).toBe(1);
     expect(v.getByTestId('r-indicator-o')).toBeTruthy();
     v.rerender(
       <RoxyRefresh refreshing={false} onRefresh={() => {}} testID="r">
@@ -182,19 +207,19 @@ describe('web: the faceless O', () => {
       </RoxyRefresh>,
     );
     advance(WAIT.minShowMs - 320);
-    expect(Number(painted(v.getByTestId('r-indicator')).opacity)).toBe(1);
+    expect(Number(painted(ind()).opacity)).toBe(1);
     // Pops out once, never bounces back into view on the way.
     let back = false;
     let last = 1;
     for (let i = 0; i < 50; i += 1) {
       advance(16);
-      const o = Number(painted(v.getByTestId('r-indicator')).opacity);
+      const o = Number(painted(ind()).opacity);
       if (o > last + 0.01) back = true;
       last = o;
     }
     expect(back).toBe(false);
     expect(last).toBeLessThan(0.02);
     advance(400);
-    expect(Number(painted(v.getByTestId('r-indicator')).opacity)).toBe(0);
+    expect(Number(painted(ind()).opacity)).toBe(0);
   });
 });

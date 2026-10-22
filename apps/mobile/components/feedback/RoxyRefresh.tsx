@@ -255,6 +255,11 @@ function WebRefresh({
       <AnimatedView
         testID={`${testID}-indicator`}
         pointerEvents="none"
+        // Idle (no refresh held), the O stays mounted at opacity 0 so a pull
+        // grows it without a render, but an idle progressbar must not be
+        // announced (or counted as a loader on every visit). Exposed while
+        // refreshing. Lane D request, applied at the Wave 3 merge.
+        aria-hidden={!held}
         style={[styles.indicator, indicator] as StyleProp<ViewStyle>}
       >
         <LoadingO contained tone={tone} testID={`${testID}-indicator-o`} />
