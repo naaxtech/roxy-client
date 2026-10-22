@@ -1,0 +1,16 @@
+apps/mobile/__tests__/components/RoxyCompanionButtonTuck.test.tsx
+  h_0549c11fec2ab0 2,55,136-153
+apps/mobile/components/ui/RoxyCompanionButton.tsx
+  h_0549c11fec2ab0 13,92-93,123,127-130,186-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6456fad72d93667e5c199df838bbbc4e9b157299",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
