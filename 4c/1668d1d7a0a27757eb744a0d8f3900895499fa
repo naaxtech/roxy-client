@@ -1,0 +1,16 @@
+polish/decisions.md
+  h_0549c11fec2ab0 28
+polish/design-direction.md
+  h_0549c11fec2ab0 394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c1668d1d7a0a27757eb744a0d8f3900895499fa",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
