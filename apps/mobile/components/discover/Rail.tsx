@@ -6,6 +6,7 @@ import { TYPE } from '../../lib/typography';
 import { RADII, SPACE, MARGIN, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { DiscoverLayout } from './discoverFilters';
+import { CardSkeleton, type CardSkeletonKind } from './V2Cards';
 
 export type RailStatus = 'loading' | 'ready' | 'error';
 
@@ -33,6 +34,12 @@ interface Props {
   /** "See all" — pass it only when there is more than the section shows. */
   linkLabel?: string;
   onLinkPress?: () => void;
+  /**
+   * The loading shape: which card the section will draw, at what width, and
+   * how many (rows default to 3). Without it the section falls back to the
+   * generic boxes, which do not match any v2 card and so shift on load.
+   */
+  skeleton?: { kind: CardSkeletonKind; width?: number; count?: number };
   testID?: string;
 }
 
@@ -52,7 +59,7 @@ const SKELETON_COUNT = 3;
  */
 export function Rail({
   title, status, count, emptyBody, onRetry, children, filters,
-  layout = 'rail', linkLabel, onLinkPress, testID,
+  layout = 'rail', linkLabel, onLinkPress, skeleton, testID,
 }: Props) {
   const colors = useThemeColors();
   const s = styles(colors);
@@ -77,7 +84,26 @@ export function Rail({
 
       {filters}
 
-      {status === 'loading' && (
+      {status === 'loading' && skeleton ? (
+        // The card the section will draw, in the container it will use, so
+        // nothing below moves when content lands (budgets F8/F9).
+        <View
+          style={layout === 'rail' ? s.cards : rows ? s.list : s.grid}
+          testID={testID ? `${testID}-loading` : undefined}
+          accessibilityLabel={`Loading ${title}`}
+        >
+          {Array.from({ length: skeleton.count ?? SKELETON_COUNT }, (_, i) => (
+            <CardSkeleton
+              key={i}
+              kind={skeleton.kind}
+              width={skeleton.width}
+              testID={testID ? `${testID}-skeleton-${i}` : undefined}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      {status === 'loading' && !skeleton && (
         <View
           style={rows ? s.skeletonRows : s.skeletonCards}
           testID={testID ? `${testID}-loading` : undefined}

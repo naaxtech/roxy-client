@@ -305,6 +305,7 @@ function DiscoverScreen() {
                   : 'Nothing on the calendar yet. Your communities post events here first.'
             }
             onRetry={events.reload}
+            skeleton={{ kind: 'poster', width: cardWidth }}
             testID="rail-events"
             filters={
               <FilterChips
@@ -342,6 +343,7 @@ function DiscoverScreen() {
             onRetry={() => void hydrate(user?.id)}
             linkLabel={placedCommunities.length > shownCommunities.length || chip === 'all' ? 'See all' : undefined}
             onLinkPress={() => router.push('/communities' as never)}
+            skeleton={{ kind: 'row', count: COMMUNITY_ROWS }}
             testID="rail-communities"
           >
             {joinError ? (
@@ -393,6 +395,7 @@ function DiscoverScreen() {
             count={live.rows.length}
             emptyBody="Nothing live right now. Rooms open through the day."
             onRetry={live.reload}
+            skeleton={{ kind: 'row' }}
             testID="rail-live"
           >
             {live.rows.map((room) => (
@@ -424,6 +427,7 @@ function DiscoverScreen() {
                     : 'No shops here yet.'
             }
             onRetry={kind === 'shops' ? () => void loadShops() : kind === 'impact' ? impact.reload : support.reload}
+            skeleton={kind === 'support' ? { kind: 'row' } : { kind: 'tile', width: cardWidth }}
             testID="rail-economy"
             filters={
               <FilterChips
@@ -479,6 +483,7 @@ function DiscoverScreen() {
             count={games.rows.length}
             emptyBody="No games yet. New ones land here first."
             onRetry={games.reload}
+            skeleton={{ kind: 'row' }}
             testID="rail-games"
           >
             {games.rows.map((g) => (
@@ -509,6 +514,7 @@ function DiscoverScreen() {
             count={topMembers.length}
             emptyBody="Nobody on the board yet."
             onRetry={() => void loadTopMembers()}
+            skeleton={{ kind: 'member', width: cardWidth }}
             testID="rail-top10"
           >
             {topMembers.map((m, i) => (
