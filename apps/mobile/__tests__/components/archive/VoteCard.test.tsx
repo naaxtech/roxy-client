@@ -8,12 +8,25 @@ import { useThemeStore } from '../../../store/themeStore';
 const flat = (node: { props: { style?: unknown } }) =>
   StyleSheet.flatten(node.props.style as never) as Record<string, string | number>;
 
+const mockHaptic = jest.fn();
+jest.mock('../../../lib/haptics', () => ({ haptic: (...a: unknown[]) => mockHaptic(...a) }));
+
 afterEach(() => useThemeStore.setState({ theme: 'dark' }));
 
 describe('VoteCard', () => {
   it('asks her to rate out of 5 stars', () => {
     const v = render(<VoteCard myStars={null} onRate={jest.fn()} />);
     expect(v.getByText('Seen it? Rate it out of 5.')).toBeTruthy();
+  });
+
+  // §3.3 selection (Wave 3): a star is a radio choice and ticks once.
+  it('a star choice ticks once as a selection', () => {
+    mockHaptic.mockReset();
+    const onRate = jest.fn();
+    const v = render(<VoteCard myStars={2} onRate={onRate} testID="v" />);
+    fireEvent.press(v.getByTestId('v-star-5'));
+    expect(onRate).toHaveBeenCalledWith(5);
+    expect(mockHaptic.mock.calls).toEqual([['selection']]);
   });
 
   it('calls back with the star she tapped', () => {

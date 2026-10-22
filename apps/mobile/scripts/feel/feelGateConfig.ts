@@ -62,7 +62,7 @@ export const HAPTIC_SITES: HapticSite[] = [
   { id: 'comment-long-press', kind: 'selection', event: 'long-press opens the comment actions (P3)', files: ['components/feed/CommentThread.tsx'], max: 1, required: true, lane: 'B' },
   // selection — swipe-to-reply threshold (P3)
   { id: 'dm-swipe-reply', kind: 'selection', event: 'swipe-to-reply threshold in a DM (P3)', files: ['components/chat/MessageRow.tsx'], max: 1, required: true, lane: 'D' },
-  { id: 'channel-swipe-reply', kind: 'selection', event: 'swipe-to-reply threshold in a channel (P3)', files: ['components/channels/ChannelMessage.tsx'], max: 1, required: true, lane: 'D' },
+  { id: 'channel-swipe-reply', kind: 'selection', event: 'swipe-to-reply threshold in a channel (P3); not required until channel messages get swipe-to-reply (ChannelMessage has no swipe gesture at the Wave 3 merge)', files: ['components/channels/ChannelMessage.tsx'], max: 1, required: false, lane: 'D' },
   // selection — pull-to-refresh threshold (P3)
   { id: 'refresh-threshold', kind: 'selection', event: 'pull-to-refresh threshold (P3)', files: ['components/feedback/RoxyRefresh.tsx'], max: 1, required: true, lane: 'C0/C' },
   // light — committed reaction (§3.1 row 11: rail, double-tap, DM, channel, thoughts)

@@ -29,7 +29,6 @@ import { ArchiveActionsSheet, type ArchiveActionTarget } from '../../../componen
 import { fetchMyHelpful, setReviewHelpful } from '../../../lib/archiveSafety';
 import { fetchArchiveShelf, setArchiveShelf } from '../../../lib/profileExtras';
 import { useSafetyStore } from '../../../store/safetyStore';
-import { tapLight } from '../../../lib/haptics';
 import { PendingBanner } from '../../../components/archive/PendingBanner';
 import { EntryHero } from '../../../components/archive/EntryHero';
 
@@ -377,7 +376,7 @@ export default function ArchiveEntryScreen() {
 
   const toggleHelpful = async (reviewId: string) => {
     const on = !myHelpful.has(reviewId);
-    tapLight();
+    // §3.3 / P3: no haptic here (Wave 3: haptics fire only on the §3.3 events).
     const flip = (next: boolean) => {
       setMyHelpful((cur) => {
         const n = new Set(cur);
@@ -408,7 +407,7 @@ export default function ArchiveEntryScreen() {
     }
     const next = onShelf ? previous.filter((id) => id !== entry.id) : [...previous, entry.id];
     setShelfIds(next);
-    tapLight();
+    // §3.3 / P3: no haptic here (Wave 3: haptics fire only on the §3.3 events).
     try {
       await setArchiveShelf(next);
     } catch (e) {

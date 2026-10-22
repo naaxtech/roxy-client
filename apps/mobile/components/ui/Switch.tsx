@@ -7,7 +7,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { BRAND_INK_INVERSE, RADII } from '../../lib/theme';
 import { fadeConfig, headStart, springTo } from '../../lib/motion';
-import { tapLight } from '../../lib/haptics';
+import { haptic } from '../../lib/haptics';
 import { a11yState } from '../../lib/a11yState';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { noPressDelay } from './noPressDelay';
@@ -123,7 +123,7 @@ export function Switch({
 
   const toggle = () => {
     if (disabled) return;
-    tapLight();
+    haptic('light');
     onValueChange?.(!value);
   };
 

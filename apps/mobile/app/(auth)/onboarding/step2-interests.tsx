@@ -8,6 +8,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { logError, logBreadcrumb } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
 import { ChipSelector } from '../../../components/ui/ChipSelector';
+import { haptic } from '../../../lib/haptics';
 import { INTERESTS } from '../../../lib/constants';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { RoxyWordmark } from '../../../components/ui/RoxyWordmark';
@@ -54,7 +55,8 @@ export default function Step2Interests() {
         <Text style={styles.headline}>What lights you up?</Text>
         <Text style={styles.sub}>Pick up to 8</Text>
         <ChipSelector options={INTERESTS} selected={interests} max={8}
-          onToggle={(v) => setInterests((p) => p.includes(v) ? p.filter((x) => x !== v) : [...p, v])} />
+          // §3.3 selection: an interest chip choice.
+          onToggle={(v) => { haptic('selection'); setInterests((p) => p.includes(v) ? p.filter((x) => x !== v) : [...p, v]); }} />
         <TouchableOpacity
           style={[styles.btn, (loading || interests.length < 1) && styles.btnDisabled]}
           onPress={handleNext}

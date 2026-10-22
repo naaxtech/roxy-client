@@ -5,7 +5,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { celebrate } from '../../lib/haptics';
 import { BRAND_INK_DEEP, RADII, inkOn } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
@@ -56,7 +55,8 @@ export function FirstPostCelebration({ postType, onDismiss, testID = 'first-post
     // must not buzz her phone a second time.
     if (announced.current) return;
     announced.current = true;
-    celebrate(reduced);
+    // §3.3 / P3: no haptic (`success` is for "You're in" only); she gets the
+    // overlay and the announcement.
     AccessibilityInfo.announceForAccessibility(`${TITLE}. ${body}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

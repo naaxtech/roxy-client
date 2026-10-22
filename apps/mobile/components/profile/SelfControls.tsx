@@ -10,7 +10,7 @@ import { runSpring } from '../../lib/motion';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { logError } from '../../lib/errorLogger';
 import { recordDailyCheckin } from '../../lib/streaks';
-import { tapLight } from '../../lib/haptics';
+import { haptic } from '../../lib/haptics';
 
 interface Props {
   userId: string;
@@ -65,7 +65,7 @@ export function SelfControls({ userId, onOpenDaily }: Props) {
     const setSaving = key === 'is_dating_mode' ? setSavingDating : setSavingGhost;
     setSaving(true);
     setError(null);
-    tapLight();
+    haptic('light');
     try {
       await updateProfile({ [key]: value });
       AccessibilityInfo.announceForAccessibility(

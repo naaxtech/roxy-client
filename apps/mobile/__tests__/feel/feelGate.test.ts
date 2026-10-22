@@ -82,3 +82,18 @@ describe('feel gate: counts may only go down (ratchet vs main 50b1f5d)', () => {
     expect(mine).toEqual([]);
   });
 });
+
+/**
+ * Wave 3 integration (decision P3): the haptic call sites now EQUAL the §3.3 map,
+ * so F13 is held to its target, not only to the ratchet. Every haptic call is a
+ * §3.3 kind (selection | light | medium | success) at one of its HAPTIC_SITES
+ * files, no file has more than its sites allow, and every required site exists.
+ */
+describe('feel gate: F13 haptics equal the §3.3 map (target, not ratchet)', () => {
+  it('no haptic call outside §3.3, no Wave 1/2 name, every required site present', () => {
+    const gaps = targetGaps(current, ALLOWLIST, HAPTIC_SITES)
+      .filter((g) => g.rule.startsWith('F13_'))
+      .map((g) => `${g.action} ${g.rule} ${g.file}: ${g.current} (target ${g.target})${g.site ? ` site ${g.site}` : ''}`);
+    expect(gaps).toEqual([]);
+  });
+});

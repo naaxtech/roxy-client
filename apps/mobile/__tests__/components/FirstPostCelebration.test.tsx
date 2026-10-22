@@ -42,9 +42,11 @@ describe('FirstPostCelebration', () => {
     expect(v.getByTestId('first-post-body').props.children).toMatch(/profile/i);
   });
 
-  it('celebrates with a success haptic, once', () => {
+  // Wave 3 (§3.3, P3): `success` fires only on "You're in"; her first post gets
+  // the overlay and the announcement, no haptic (it used to celebrate).
+  it('plays no haptic (success is for "You\'re in" only)', () => {
     render(<FirstPostCelebration postType="standard" onDismiss={jest.fn()} />);
-    expect(mockNotify).toHaveBeenCalledTimes(1);
+    expect(mockNotify).not.toHaveBeenCalled();
   });
 
   it('says it out loud for a screen reader', () => {
@@ -54,15 +56,14 @@ describe('FirstPostCelebration', () => {
     spy.mockRestore();
   });
 
-  // Wave 3 (polish/motion-spec.md §3.3, decision P3): haptics STAY under Reduce Motion;
-  // lib/haptics no longer silences them (lane E). Was "no haptic" before.
-  it('with Reduce Motion: no confetti, the haptic stays, and still dismissible', () => {
+  // Wave 3 (§3.3, P3): no haptic at all here now, with or without Reduce Motion.
+  it('with Reduce Motion: no confetti, no haptic, and still dismissible', () => {
     mockReduced = true;
     const onDismiss = jest.fn();
     const v = render(<FirstPostCelebration postType="photo" onDismiss={onDismiss} />);
 
     expect(v.queryByTestId('confetti')).toBeNull();
-    expect(mockNotify).toHaveBeenCalledTimes(1);
+    expect(mockNotify).not.toHaveBeenCalled();
     fireEvent.press(v.getByTestId('first-post-dismiss'));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });

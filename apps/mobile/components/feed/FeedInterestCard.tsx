@@ -4,6 +4,7 @@ import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { CHROME_SHADOW, RAIL_GUTTER } from './feedChromeTokens';
+import { haptic } from '../../lib/haptics';
 
 export interface FeedInterestCardProps {
   /** Hide this post and keep it out of future pages. */
@@ -49,6 +50,11 @@ export interface FeedInterestCardProps {
 export function FeedInterestCard({
   onNotForMe, onMoreOfThis, onDismiss,
 }: FeedInterestCardProps): ReactElement {
+  // §3.3 selection: an answer (Not for me / More of this) is a choice; the ✕ is not.
+  const choose = (answer: () => void) => () => {
+    haptic('selection');
+    answer();
+  };
   return (
     <View
       testID="interest-card"
@@ -75,7 +81,7 @@ export function FeedInterestCard({
         <TouchableOpacity
           testID="interest-not-for-me"
           style={s.answer}
-          onPress={onNotForMe}
+          onPress={choose(onNotForMe)}
           accessibilityRole="button"
           accessibilityLabel="Not for me. Hide this post and show fewer like it"
         >
@@ -86,7 +92,7 @@ export function FeedInterestCard({
         <TouchableOpacity
           testID="interest-more-of-this"
           style={s.answer}
-          onPress={onMoreOfThis}
+          onPress={choose(onMoreOfThis)}
           accessibilityRole="button"
           accessibilityLabel="More of this. Keep this post in your feed"
         >

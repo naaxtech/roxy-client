@@ -8,7 +8,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { RADII, inkOn, THEMES } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
-import { tapLight } from '../../lib/haptics';
 import { DAILY_PROMPT_KICK, type DailyPrompt } from '../../lib/dailyPrompt';
 import { TEXT_CARD_INK } from '../../lib/textCard';
 import { CHROME_BOTTOM, RAIL_GUTTER, STAGE_TOP } from './feedChromeTokens';
@@ -37,7 +36,7 @@ export function dailyPromptComposerHref(prompt: DailyPrompt) {
  * Memoised: a page change re-runs every mounted cell's render (jank audit #5).
  */
 export const DailyPromptCell = memo(function DailyPromptCell({
-  prompt, width, height, reducedMotion,
+  prompt, width, height,
 }: Props): ReactElement {
   const router = useRouter();
   // The header's SafeAreaView adds the status bar; so does the card. Read the
@@ -45,7 +44,7 @@ export const DailyPromptCell = memo(function DailyPromptCell({
   const statusBar = useContext(SafeAreaInsetsContext)?.top ?? 0;
 
   const answer = () => {
-    tapLight(reducedMotion);
+    // §3.3 / P3: no haptic here (Wave 3: haptics fire only on the §3.3 events).
     router.push(dailyPromptComposerHref(prompt) as never);
   };
 

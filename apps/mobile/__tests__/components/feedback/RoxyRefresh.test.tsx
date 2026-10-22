@@ -16,6 +16,8 @@ import { render, act } from '@testing-library/react-native';
 import { getAnimatedStyle } from 'react-native-reanimated';
 
 jest.mock('../../../hooks/useReducedMotion', () => ({ useReducedMotion: () => false }));
+const mockHaptic = jest.fn();
+jest.mock('../../../lib/haptics', () => ({ haptic: (...a: unknown[]) => mockHaptic(...a) }));
 
 import { RoxyRefresh, createPullController, pullDistance } from '../../../components/feedback/RoxyRefresh';
 import { GESTURE, WAIT } from '../../../lib/motion';
@@ -62,6 +64,26 @@ describe('native: the system control, tinted', () => {
     expect(onThreshold).toHaveBeenCalledTimes(1);
     expect(onRefresh).toHaveBeenCalledTimes(1);
     expect(onThreshold.mock.invocationCallOrder[0]).toBeLessThan(onRefresh.mock.invocationCallOrder[0]);
+  });
+
+  // P3 (Wave 3 merge): the pull-to-refresh threshold ticks once (§3.3
+  // selection), built in, before the refresh starts.
+  it('the system refresh ticks once as a selection, before it refreshes', () => {
+    Platform.OS = 'android';
+    mockHaptic.mockReset();
+    const onRefresh = jest.fn();
+    let control: React.ReactElement | undefined;
+    render(
+      <RoxyRefresh refreshing={false} onRefresh={onRefresh}>
+        {(rc) => {
+          control = rc;
+          return <Text>list</Text>;
+        }}
+      </RoxyRefresh>,
+    );
+    act(() => { control?.props.onRefresh(); });
+    expect(mockHaptic.mock.calls).toEqual([['selection']]);
+    expect(mockHaptic.mock.invocationCallOrder[0]).toBeLessThan(onRefresh.mock.invocationCallOrder[0]);
   });
 });
 

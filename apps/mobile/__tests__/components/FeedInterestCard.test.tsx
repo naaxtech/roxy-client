@@ -14,6 +14,8 @@ import { FeedInterestCard } from '../../components/feed/FeedInterestCard';
 import { RAIL_GUTTER } from '../../components/feed/feedChromeTokens';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
+const mockHaptic = jest.fn();
+jest.mock('../../lib/haptics', () => ({ haptic: (...a: unknown[]) => mockHaptic(...a) }));
 
 const noop = (): void => undefined;
 
@@ -29,6 +31,20 @@ function card(overrides: Partial<React.ComponentProps<typeof FeedInterestCard>> 
 }
 
 describe('FeedInterestCard', () => {
+  // §3.3 selection (Wave 3): an answer is a choice and ticks once; the ✕ does not.
+  it('an answer ticks once as a selection and still answers; dismissing plays nothing', () => {
+    mockHaptic.mockReset();
+    const onNotForMe = jest.fn();
+    const onDismiss = jest.fn();
+    const view = card({ onNotForMe, onDismiss });
+    fireEvent.press(view.getByTestId('interest-close'));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(mockHaptic).not.toHaveBeenCalled();
+    fireEvent.press(view.getByTestId('interest-not-for-me'));
+    expect(onNotForMe).toHaveBeenCalledTimes(1);
+    expect(mockHaptic.mock.calls).toEqual([['selection']]);
+  });
+
   it('asks the question and offers both answers', () => {
     const view = card();
 

@@ -179,7 +179,7 @@ export function RequestsSheet({ visible, onClose, onOpenChat }: Props) {
   const tab = (key: Segment, label: string, count: number) => (
     <TouchableOpacity
       key={key}
-      onPress={() => { setSegment(key); haptic('select'); }}
+      onPress={() => { setSegment(key); haptic('selection'); }}
       accessibilityRole="tab"
       accessibilityState={{ selected: segment === key }}
       accessibilityLabel={`${label}${count ? `, ${count} waiting` : ''}`}

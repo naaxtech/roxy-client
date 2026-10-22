@@ -9,7 +9,8 @@ jest.mock('../../lib/supabase', () => ({
   callEdgeFunction: (...a: unknown[]) => mockEdge(...a),
 }));
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
-jest.mock('../../lib/haptics', () => ({ tapLight: jest.fn(), celebrate: jest.fn() }));
+const mockHaptic = jest.fn();
+jest.mock('../../lib/haptics', () => ({ haptic: (...a: unknown[]) => mockHaptic(...a), tapLight: jest.fn(), celebrate: jest.fn() }));
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 
 import { CommentThread } from '../../components/feed/CommentThread';
@@ -55,6 +56,18 @@ describe('comment actions (FEED-04)', () => {
     const r = render(<CommentThread {...base} comments={[c('c1', 'dana')]} />);
     fireEvent(r.getByTestId('comment-c1'), 'longPress');
     expect(r.getByTestId('comment-actions-sheet')).toBeTruthy();
+  });
+
+  // §3.3 / P3 (Wave 3): a long-press that opens a menu ticks once (selection);
+  // the ⋯ button opening the same menu is a plain tap with no haptic.
+  it('the long-press ticks once as a selection; the ⋯ tap plays no haptic', () => {
+    mockHaptic.mockReset();
+    const r = render(<CommentThread {...base} comments={[c('c1', 'dana')]} />);
+    fireEvent.press(r.getByTestId('comment-c1-more'));
+    expect(mockHaptic).not.toHaveBeenCalled();
+    const r2 = render(<CommentThread {...base} comments={[c('c2', 'dana')]} />);
+    fireEvent(r2.getByTestId('comment-c2'), 'longPress');
+    expect(mockHaptic.mock.calls).toEqual([['selection']]);
   });
 
   it('a failed report says so and keeps the sheet on the form', async () => {

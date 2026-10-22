@@ -8,6 +8,7 @@ import { RADII } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
 import { ComposerCheckbox } from './ComposerField';
+import { haptic } from '../../lib/haptics';
 
 interface Props {
   myStars: number | null;
@@ -108,8 +109,9 @@ export function VoteCard({
           // was one star, and a rating cast by accident could only be moved,
           // never withdrawn. `onRate(0)` is what makes it 0..5 exactly.
           const next = n === filled ? 0 : n;
+          // §3.3 selection: every star press changes the rating (a radio choice).
           return (
-            <PressableScale key={n} onPress={() => onRate(next)} accessible={false} style={s.starPress}>
+            <PressableScale key={n} onPress={() => { haptic('selection'); onRate(next); }} accessible={false} style={s.starPress}>
               <View
                 testID={id}
                 style={s.star}

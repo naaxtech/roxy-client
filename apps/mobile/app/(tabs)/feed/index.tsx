@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ReelsFeed } from '../../../components/feed/ReelsFeed';
 import { followingAuthorIds } from '../../../lib/feedScope';
 import { type FeedSegment } from '../../../components/feed/FeedSegments';
+import { haptic } from '../../../lib/haptics';
 import { FeedSegmentTabs } from '../../../components/nav/FeedSegmentTabs';
 import { StreakChip } from '../../../components/feed/StreakChip';
 import { NowRail } from '../../../components/feed/NowRail';
@@ -61,6 +62,11 @@ function FeedScreen() {
   const setFilterable = useCommunityFilterStore((s) => s.setFilterable);
 
   const [segment, setSegment] = useState<FeedSegment>('foryou');
+  // §3.3 selection: a segment choice ticks once, only when it changes.
+  const chooseSegment = useCallback((next: FeedSegment) => {
+    if (next !== segment) haptic('selection');
+    setSegment(next);
+  }, [segment]);
   const [nowOpen, setNowOpen] = useState(false);
   const [liveCount, setLiveCount] = useState(0);
   const [miniWinsOpen, setMiniWinsOpen] = useState(false);
@@ -221,7 +227,7 @@ function FeedScreen() {
           <NowRail open={nowOpen} communityIds={communityIds} onCount={handleNowCount} />
         </View>
 
-        <FeedSegmentTabs value={segment} onChange={setSegment} />
+        <FeedSegmentTabs value={segment} onChange={chooseSegment} />
 
         {/* Her first five minutes (G-11) used to sit here over For You. v2
             (direction: "Three first-run checklists → one nudge at a time, in

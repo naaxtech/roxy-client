@@ -90,7 +90,7 @@ describe('MessageRow swipe (RNGH)', () => {
     fireGestureHandler(getByGestureTestId('swipe-reply-m1'), pull(SWIPE_REPLY_AT + 20));
     await settle();
     expect(onReply).toHaveBeenCalledTimes(1);
-    expect(mockHaptic.mock.calls).toEqual([['select']]);
+    expect(mockHaptic.mock.calls).toEqual([['selection']]);
   });
 
   it('a short pull neither replies nor ticks', async () => {
@@ -114,7 +114,7 @@ describe('MessageRow swipe (RNGH)', () => {
     fireGestureHandler(getByGestureTestId('swipe-reply-m1'), pull(SWIPE_REPLY_AT + 20));
     await settle();
     expect(onReply).toHaveBeenCalledTimes(1);
-    expect(mockHaptic.mock.calls).toEqual([['select']]);
+    expect(mockHaptic.mock.calls).toEqual([['selection']]);
   });
 
   it('a message still sending cannot be swiped', () => {
@@ -128,7 +128,7 @@ describe('MessageRow swipe (RNGH)', () => {
     const v = render(<MessageRow {...base} onLongPress={onLongPress} message={msg()} />);
     fireEvent(v.getByTestId('message-m1'), 'longPress');
     expect(onLongPress).toHaveBeenCalled();
-    expect(mockHaptic.mock.calls).toEqual([['select']]);
+    expect(mockHaptic.mock.calls).toEqual([['selection']]);
   });
 
   it('toggling a reaction chip is a committed reaction: a light tap (§3.3)', () => {
@@ -137,6 +137,6 @@ describe('MessageRow swipe (RNGH)', () => {
     const v = render(<MessageRow {...base} onToggleReaction={onToggleReaction} reactions={reactions as never} message={msg()} />);
     fireEvent.press(v.getByText(/❤️/));
     expect(onToggleReaction).toHaveBeenCalledWith('m1', '❤️', false);
-    expect(mockHaptic.mock.calls).toEqual([['tap']]);
+    expect(mockHaptic.mock.calls).toEqual([['light']]);
   });
 });

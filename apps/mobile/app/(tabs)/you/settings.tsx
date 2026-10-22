@@ -124,7 +124,7 @@ export default function SettingsScreen() {
 
   const pickTheme = (choice: ThemeChoice) => {
     if (choice === themeChoice) return;
-    haptic('select');
+    haptic('selection');
     void setTheme(choice).catch((e: unknown) => logError(e, 'Settings.setTheme'));
   };
 

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Animated, Linking, Platform, Share,
+  View, Text, StyleSheet, ScrollView, Animated, Linking, Share,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '../../lib/haptics';
 import * as ExpoLinking from 'expo-linking';
 import { PressableScale } from '../../components/ui/PressableScale';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
@@ -54,14 +54,13 @@ const SEAL_TRAVEL = 420;
 /** The words under the share button, true by construction (see `bringAFriend`). */
 export const SHARE_PRIVACY_COPY = 'The link preview won’t name the event or the club.';
 
-/** The medium thump when the seal lands (direction › Haptics). Never on the web. */
+/**
+ * The medium thump when the seal lands (§3.3 `medium`). lib/haptics never plays
+ * on the web, never throws, and on Android honours the phone's Touch feedback
+ * setting (RoxyHaptics). Was a direct expo-haptics call until the Wave 3 merge.
+ */
 function sealLanded(): void {
-  if (Platform.OS === 'web') return;
-  try {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)?.catch?.(() => undefined);
-  } catch {
-    // No haptics engine in this client. The seal still lands.
-  }
+  haptic('medium');
 }
 
 /** "Friday 5 December, 8:30 – 10:00 pm" — the day and the span, in words. */
