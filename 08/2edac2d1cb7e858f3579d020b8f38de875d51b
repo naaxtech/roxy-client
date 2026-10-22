@@ -1,0 +1,20 @@
+apps/mobile/__tests__/components/RoxyCompanionButton.test.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/__tests__/components/roxy/HelloRoxySheet.test.tsx
+  h_0549c11fec2ab0 1-2
+apps/mobile/__tests__/components/roxy/HelloRoxySheetMotion.test.tsx
+  h_0549c11fec2ab0 1-156
+apps/mobile/components/roxy/HelloRoxySheet.tsx
+  h_0549c11fec2ab0 1,3,5-8,14,34-41,71-75,88-98,107-111,117-120,122,126-143,147-167,176-181,183-185,187-193,203-204,206-207,209-211,213-219,221-231,233-246,248-262,264-271,273-312,314-323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "082edac2d1cb7e858f3579d020b8f38de875d51b",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
