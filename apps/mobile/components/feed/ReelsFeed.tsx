@@ -16,7 +16,8 @@ import {
   excludeSeenReels, excludeHidden, excludeMutedAuthors, initialReelIndex,
 } from '../../lib/reels';
 import type { ReelRow } from '../../lib/reels';
-import { prefetchImages } from '../../lib/imageLoading';
+import { prefetchImages } from '../../lib/imageLoading';
+import { readCache, writeCache } from '../../lib/cacheFirst';
 import { feedCellImageUrls, imagesAhead } from './feedPrefetch';
 import { fetchAnnouncementPage } from '../../lib/announcements';
 import type { ForYouCursor } from '../../lib/announcements';
@@ -303,6 +304,24 @@ export function ReelsFeed({
     if (mode === 'initial') setLoading(true);
     setError(null);
 
+    // Decision P2 (budget F7): For You's page 1 paints from her last-known copy
+    // while the network is out; the network answer replaces it (or, once she
+    // has moved on, adds to it) and a failed refresh keeps what she sees.
+    const cacheable = mode === 'initial' && scope === 'announcements' && !initialPostId && !!userId;
+    let answered = false;
+    let showingCache = false;
+    if (cacheable) {
+      void readCache<ReelRow[]>(userId, 'feed:foryou:p1').then((known) => {
+        if (answered || stale() || !known?.length) return;
+        const visible = keepVisible(excludeSeenReels(known, useFeedStore.getState().seenPostIds));
+        if (!visible.length) return;
+        showingCache = true;
+        setReels(visible);
+        setInitialIndex(0);
+        setLoading(false);
+      });
+    }
+
     // Cursor and hasMore come from the RAW page, before seen, hidden or muted
     // rows are dropped: paginating from the last KEPT row would skip every
     // row that sorted after a dropped one.
@@ -313,10 +332,12 @@ export function ReelsFeed({
       // walls are text and photos. FeedCell routes each type to its own cell.
       // Do not switch the Feed tab to `fetchAnnouncementVideos` (video only).
       const { page, error: rpcError } = await fetchAnnouncementPage({ cursor: null });
+      answered = true;
       if (stale()) return;
       if (rpcError || !page) {
         logError(rpcError ?? new Error('feed_rank_page returned no page'), 'ReelsFeed.load');
-        setError('Could not load the feed.');
+        // She is reading her last-known page: keep it rather than an error.
+        if (!showingCache) setError('Could not load the feed.');
         setLoading(false);
         setRefreshing(false);
         return;
@@ -324,6 +345,7 @@ export function ReelsFeed({
       forYouCursorRef.current = page.cursor;
       setHasMore(page.hasMore);
       raw = page.rows;
+      if (cacheable) void writeCache(userId, 'feed:foryou:p1', page.rows);
     } else {
       const wallAuthors = await resolveWallAuthors();
       if (stale()) return;
@@ -372,11 +394,21 @@ export function ReelsFeed({
     // the list, which is exactly what happens when this loader puts the
     // placeholder up and takes it down again.
     const startAt = initialReelIndex(rows, initialPostId);
-    setReels(rows);
-    setInitialIndex(startAt);
+    if (showingCache && activeIndexRef.current > 0) {
+      // She has already swiped into the cached page: never pull it from under
+      // her. Keep it and add the network's posts she has not been shown.
+      const fresh = rows;
+      setReels((prev) => {
+        const have = new Set(prev.map((r) => r.id));
+        return [...prev, ...fresh.filter((r) => !have.has(r.id))];
+      });
+    } else {
+      setReels(rows);
+      setInitialIndex(startAt);
+    }
     setLoading(false);
     setRefreshing(false);
-  }, [scope, filterValues, initialPostId, keepVisible, resolveWallAuthors, skipMuted]);
+  }, [scope, filterValues, initialPostId, keepVisible, resolveWallAuthors, skipMuted, userId]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || loading) return;
