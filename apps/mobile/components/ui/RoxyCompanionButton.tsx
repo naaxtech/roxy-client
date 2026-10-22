@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import { Animated, I18nManager, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useEffect, useState } from 'react';
+import { I18nManager, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, {
+  ReduceMotion, useAnimatedReaction, useAnimatedStyle, useSharedValue, withSpring, withTiming,
+} from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -7,9 +10,9 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
 import { RADII, floatElevation } from '../../lib/theme';
-import { POP_FROM, runSpring } from '../../lib/motion';
+import { POP_FROM, SPRING } from '../../lib/motion';
 import { tapLight } from '../../lib/haptics';
-import { useRoxyFab } from '../../lib/roxyFab';
+import { useRoxyFab, fabTuck } from '../../lib/roxyFab';
 import {
   FAB_LANE, FAB_MARGIN, FAB_SIZE, FAB_TUCKED, FAB_TUCKED_HIT, NAV_HEIGHT, NAV_MIN_BOTTOM,
 } from '../nav/navTokens';
@@ -27,8 +30,8 @@ interface Props {
 /** How far the tucked O travels toward the end edge: its centre lands on it. */
 const TUCK_TRAVEL = FAB_MARGIN + FAB_SIZE / 2;
 const TUCK_SCALE = FAB_TUCKED / FAB_SIZE;
-/** Reduce Motion: the tuck is a short fade to the end state. */
-const FADE_MS = 120;
+/** Reduce Motion: the tuck is a short fade to the end state (REDUCED.fadeMs). */
+const REDUCED_FADE_MS = 120;
 
 /*
  * RETIRED (v2, 2026-10-21): the v0 three-pill FAB menu — "Chat with Roxy",
@@ -54,6 +57,9 @@ const FADE_MS = 120;
  * While a list scrolls down she tucks in (`lib/roxyFab.ts`): 40 dp, eyes
  * closed, centred on the screen edge, on `SPRING.fastSpatial`; a tap on the
  * tucked button, a scroll up, the top or the end of the list brings her back.
+ * The tuck springs on the UI thread from `fabTuck` (a shared value), so a busy
+ * JS thread cannot hold it back and no scroll event re-renders her; React
+ * hears only the flip (eyes, hit area). On the Feed stage she never tucks.
  * Reduce Motion: the tuck is a short fade and she does not blink.
  *
  * Whether she shows at all (switched on in Settings, and not on a screen in
@@ -68,33 +74,61 @@ export function RoxyCompanionButton({ visible = true, onStage = false }: Props) 
   const { width: winW, height: winH } = useWindowDimensions();
   const user = useAuthStore((s) => s.user);
   const profile = useProfileStore((s) => s.profile);
-  const tucked = useRoxyFab((s) => s.tucked);
+  const storeTucked = useRoxyFab((s) => s.tucked);
   const untuck = useRoxyFab((s) => s.untuck);
+  // On the Feed (a pager) she never tucks (design direction › Scroll behaviour).
+  const tucked = storeTucked && !onStage;
 
   const [sheetOpen, setSheetOpen] = useState(false);
-  const tuck = useRef(new Animated.Value(tucked ? 1 : 0)).current;
-  const fade = useRef(new Animated.Value(1)).current;
-  const enter = useRef(new Animated.Value(reducedMotion ? 1 : POP_FROM)).current;
-  const lastTucked = useRef(tucked);
+  const fade = useSharedValue(1);
+  const enter = useSharedValue(reducedMotion ? 1 : POP_FROM);
+  // 0 out → 1 tucked; the style interpolates pixels from it (motion spec §3.2:
+  // animate a 0 → 1 progress, so the spring settles when it looks settled).
+  const verdict = onStage ? 0 : fabTuck.value;
+  const tuck = useSharedValue(verdict);
+  /** The verdict the reaction last acted on (it may fire more than once per change). */
+  const seen = useSharedValue(verdict);
+  const dir = I18nManager.isRTL ? -1 : 1;
 
   useEffect(() => {
-    if (visible) runSpring(enter, 1, 'fastSpatial', reducedMotion);
+    if (!visible) return;
+    enter.value = reducedMotion ? 1 : withSpring(1, SPRING.fastSpatial);
   }, [visible, reducedMotion, enter]);
 
-  useEffect(() => {
-    const changed = lastTucked.current !== tucked;
-    lastTucked.current = tucked;
-    runSpring(tuck, tucked ? 1 : 0, 'fastSpatial', reducedMotion);
-    if (reducedMotion && changed) {
-      fade.setValue(0);
-      Animated.timing(fade, { toValue: 1, duration: FADE_MS, useNativeDriver: true }).start();
-    }
-  }, [tucked, reducedMotion, tuck, fade]);
+  // Runs on the UI thread whenever the list's verdict (or the stage) changes:
+  // a spring that retargets from where she is. Reduce Motion: no travel, the
+  // new state fades in over REDUCED_FADE_MS.
+  useAnimatedReaction(
+    () => (onStage ? 0 : fabTuck.value),
+    (now) => {
+      if (now === seen.value) return;
+      seen.value = now;
+      if (!reducedMotion) {
+        tuck.value = withSpring(now, SPRING.fastSpatial);
+        return;
+      }
+      tuck.value = now;
+      fade.value = 0;
+      fade.value = withTiming(1, { duration: REDUCED_FADE_MS, reduceMotion: ReduceMotion.Never });
+    },
+    [onStage, reducedMotion],
+  );
+
+  const tuckStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: tuck.value * dir * TUCK_TRAVEL },
+      { scale: 1 + tuck.value * (TUCK_SCALE - 1) },
+    ],
+  }), [dir]);
+
+  const seatStyle = useAnimatedStyle(() => ({
+    opacity: sheetOpen ? 0 : fade.value,
+    transform: [{ scale: enter.value }],
+  }), [sheetOpen]);
 
   if (!visible) return null;
 
   const barTop = NAV_HEIGHT + Math.max(insets.bottom, NAV_MIN_BOTTOM);
-  const dir = I18nManager.isRTL ? -1 : 1;
 
   const origin: HelloRoxyOrigin = {
     x: I18nManager.isRTL ? FAB_MARGIN + FAB_SIZE / 2 : winW - FAB_MARGIN - FAB_SIZE / 2,
@@ -111,23 +145,10 @@ export function RoxyCompanionButton({ visible = true, onStage = false }: Props) 
     setSheetOpen(true);
   };
 
-  const tuckStyle = reducedMotion
-    ? { transform: [{ translateX: tucked ? dir * TUCK_TRAVEL : 0 }, { scale: tucked ? TUCK_SCALE : 1 }] }
-    : {
-        transform: [
-          { translateX: tuck.interpolate({ inputRange: [0, 1], outputRange: [0, dir * TUCK_TRAVEL] }) },
-          { scale: tuck.interpolate({ inputRange: [0, 1], outputRange: [1, TUCK_SCALE] }) },
-        ],
-      };
-
   return (
     <>
       <View testID="fab-lane" pointerEvents="box-none" style={[s.lane, { bottom: barTop }]}>
-        <Animated.View
-          testID="fab-seat"
-          pointerEvents="box-none"
-          style={[s.seat, { opacity: sheetOpen ? 0 : fade, transform: [{ scale: enter }] }]}
-        >
+        <Animated.View testID="fab-seat" pointerEvents="box-none" style={[s.seat, seatStyle]}>
           <Animated.View testID="fab-tuck" style={[s.disc, floatElevation(colors), tuckStyle]}>
             <PressableScale
               testID="fab-button"

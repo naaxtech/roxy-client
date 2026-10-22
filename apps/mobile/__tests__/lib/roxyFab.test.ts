@@ -8,6 +8,8 @@ import {
   fabOnStage,
   TUCK_THRESHOLD,
   EDGE_ZONE,
+  fabTuck,
+  fabScrollStep,
 } from '../../lib/roxyFab';
 import { FAB_LANE, FAB_SIZE, FAB_TUCKED, FAB_MARGIN, FAB_TUCKED_HIT } from '../../components/nav/navTokens';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
@@ -113,6 +115,49 @@ describe('onListScroll', () => {
     useRoxyFab.setState({ tucked: true, anchor: 800 });
     useRoxyFab.getState().untuck();
     expect(useRoxyFab.getState().tucked).toBe(false);
+  });
+});
+
+/**
+ * Jank audit #9: the Wave 2 handler wrote the store on nearly every scroll
+ * event (the anchor moves with each sample), waking every `useRoxyFab`
+ * subscriber 60 times a second. The anchor now lives outside the store; the
+ * store changes only when she actually tucks or comes back, and the button
+ * animates from a UI-thread shared value (`fabTuck`).
+ */
+describe('the tuck runs off the store (jank audit #9)', () => {
+  it('a long scroll down writes the store once (the flip), not once per event', () => {
+    const writes = jest.fn();
+    const unsubscribe = useRoxyFab.subscribe(writes);
+    onListScroll(scrollEvent(0));
+    for (let y = 40; y <= 1200; y += 20) onListScroll(scrollEvent(y));
+    unsubscribe();
+    expect(writes).toHaveBeenCalledTimes(1);
+    expect(useRoxyFab.getState().tucked).toBe(true);
+  });
+
+  it('every flip lands in the shared value the button animates from', () => {
+    onListScroll(scrollEvent(0));
+    expect(fabTuck.value).toBe(0);
+    onListScroll(scrollEvent(200));
+    expect(fabTuck.value).toBe(1);
+    onListScroll(scrollEvent(120));
+    expect(fabTuck.value).toBe(0);
+    useRoxyFab.setState({ tucked: true });
+    expect(fabTuck.value).toBe(1);
+  });
+
+  it('the UI-thread step (a worklet) answers like the JS handler', () => {
+    const ui = { tucked: false, anchor: 0 };
+    const step = (y: number) => {
+      const next = fabScrollStep(ui.tucked, ui.anchor, y, LONG.contentHeight, LONG.viewportHeight);
+      ui.tucked = next.tucked;
+      ui.anchor = next.anchor;
+      return ui.tucked;
+    };
+    expect(step(0)).toBe(false);
+    expect(step(200)).toBe(true);
+    expect(step(120)).toBe(false);
   });
 });
 

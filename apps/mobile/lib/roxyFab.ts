@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { makeMutable, runOnJS, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 
 /**
  * The Roxy AI button's state (design direction v2 › The Roxy AI button).
@@ -52,6 +53,7 @@ export type TuckState = { tucked: boolean; anchor: number };
  * (where her lane is empty by design), she is always out.
  */
 export function nextTuck(state: TuckState, s: ScrollSample): TuckState {
+  'worklet';
   const end = s.contentHeight - s.viewportHeight;
   const atTop = s.y <= EDGE_ZONE;
   const atEnd = s.y >= end - EDGE_ZONE;
@@ -67,18 +69,55 @@ export function nextTuck(state: TuckState, s: ScrollSample): TuckState {
   return state;
 }
 
+/**
+ * `nextTuck` with plain arguments, for the UI-thread scroll handler
+ * (`useFabScrollHandler`) and the JS one (`onListScroll`) alike.
+ */
+export function fabScrollStep(
+  tucked: boolean,
+  anchor: number,
+  y: number,
+  contentHeight: number,
+  viewportHeight: number,
+): TuckState {
+  'worklet';
+  return nextTuck({ tucked, anchor }, { y, contentHeight, viewportHeight });
+}
+
+/**
+ * The UI thread's copy of `tucked` (1 tucked, 0 out). The button's tuck
+ * springs from this on the UI thread, so a busy JS thread cannot hold it back
+ * once it starts, and a UI-thread scroll handler moves her without a render.
+ * The store mirrors into it on every flip (see the subscription below).
+ */
+export const fabTuck = makeMutable(0);
+
+/**
+ * The JS handler's anchor. It moves with nearly every scroll sample, so it
+ * lives here and not in the store: a store write wakes every `useRoxyFab`
+ * subscriber, 60 times a second while a list scrolls (jank audit #9).
+ */
+let jsAnchor = 0;
+
 interface RoxyFabState {
   /** Roxy AI is switched on. */
   enabled: boolean;
   /** The member whose choice `enabled` holds; null until loaded. */
   loadedFor: string | null;
+  /** She is tucked. Written only when she flips, never per scroll event. */
   tucked: boolean;
+  /**
+   * RETIRED (Wave 3, jank audit #9): the anchor moved out of the store (it
+   * changed on nearly every scroll event). Kept in the type, always 0, because
+   * other lanes' screen tests still seed it with `setState({ anchor: 0 })`.
+   * Remove once none does.
+   */
   anchor: number;
   /** Read one member's choice from this phone. */
   load: (userId: string) => Promise<void>;
   /** Switch Roxy AI on or off for one member. The screen changes first. */
   setEnabled: (userId: string | null, value: boolean) => Promise<void>;
-  /** Feed one scroll sample through `nextTuck`. */
+  /** Feed one scroll sample through `nextTuck`; writes only on a flip. */
   onScrollSample: (sample: ScrollSample) => void;
   /** Bring her back at once: a tap on the tucked button, a new screen. */
   untuck: () => void;
@@ -111,15 +150,51 @@ export const useRoxyFab = create<RoxyFabState>((set, get) => ({
   },
 
   onScrollSample: (sample: ScrollSample) => {
-    const { tucked, anchor } = get();
-    const next = nextTuck({ tucked, anchor }, sample);
-    if (next.tucked !== tucked || next.anchor !== anchor) set(next);
+    const { tucked } = get();
+    const next = nextTuck({ tucked, anchor: jsAnchor }, sample);
+    jsAnchor = next.anchor;
+    if (next.tucked !== tucked) set({ tucked: next.tucked });
   },
 
   untuck: () => {
     if (get().tucked) set({ tucked: false });
   },
 }));
+
+// Every flip, from any path (a list, a route change, Settings), reaches the
+// UI thread's copy. Flips are rare, so this is not a per-scroll cost.
+useRoxyFab.subscribe((state, prev) => {
+  if (state.tucked !== prev.tucked) fabTuck.value = state.tucked ? 1 : 0;
+});
+
+/** The UI-thread handler's flip, handed back to the store (React reads it). */
+function syncTuckedFromUi(tucked: boolean): void {
+  if (useRoxyFab.getState().tucked !== tucked) useRoxyFab.setState({ tucked });
+}
+
+/**
+ * The tuck driven from a UI-thread scroll value: for an `Animated.ScrollView`
+ * / `Animated.FlatList` (`onScroll={useFabScrollHandler()}`). The rule runs
+ * as a worklet on every frame of the scroll; `fabTuck` flips on the UI thread
+ * (the button starts moving in that frame) and the store hears only the flip.
+ * Plain lists keep `onListScroll` (JS thread, also flip-only).
+ */
+export function useFabScrollHandler() {
+  const anchor = useSharedValue(0);
+  return useAnimatedScrollHandler({
+    onScroll: (e) => {
+      const tucked = fabTuck.value === 1;
+      const next = fabScrollStep(
+        tucked, anchor.value, e.contentOffset.y, e.contentSize.height, e.layoutMeasurement.height,
+      );
+      anchor.value = next.anchor;
+      if (next.tucked !== tucked) {
+        fabTuck.value = next.tucked ? 1 : 0;
+        runOnJS(syncTuckedFromUi)(next.tucked);
+      }
+    },
+  });
+}
 
 /**
  * Pass straight to a list: `onScroll={onListScroll} scrollEventThrottle={16}`.
