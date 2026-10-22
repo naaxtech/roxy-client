@@ -14,6 +14,7 @@ import {
   attachFeedPagerWebGestures,
   createFeedPagerWebController,
   findWebNode,
+  PAGE_FRAME_TESTID,
 } from '../../lib/feedPagerWeb';
 
 /** Everything the pager knows about one cell when it asks the caller to draw it. */
@@ -344,7 +345,7 @@ export function FeedPager<TItem>({
     // cells in commits after this effect, so a one-shot apply found nothing on
     // a phone and the feed never snapped (jank audit #1). Each page declares
     // its own snap point through the page frame below.
-    if (isTouchPointer()) return watchTouchSnap(node);
+    if (isTouchPointer()) return watchTouchSnap(node, () => pageHRef.current);
     const controller = createFeedPagerWebController({
       getPageH: () => pageHRef.current,
       getCount: () => itemsLenRef.current,
@@ -447,7 +448,7 @@ export function FeedPager<TItem>({
         // Web pages declare their own CSS snap point (the scroller carries the
         // snap type, `watchTouchSnap`); native pages on snapToInterval.
         return web ? (
-          <View testID="feed-pager-page" style={[styles.webPage, { height: pageH }]}>
+          <View testID={PAGE_FRAME_TESTID} style={[styles.webPage, { height: pageH }]}>
             {cell}
           </View>
         ) : cell;

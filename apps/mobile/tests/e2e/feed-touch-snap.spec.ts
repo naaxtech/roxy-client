@@ -19,7 +19,12 @@ test.use({ ...devices['Pixel 7'] });
 test('a touch device gets CSS scroll-snap, not JS paging', async ({ page }) => {
   await signInWithSeedUser(page);
   await page.goto('/feed');
-  await page.waitForTimeout(4000);
+  // Wait for the first page the pager draws, not a fixed 4 s: on the free-tier
+  // backend the first feed page can take longer than that, and the snap is
+  // only meaningful once there are pages to snap to (jank audit #1).
+  await page.locator('[data-testid="feed-pager-page"]').first()
+    .waitFor({ state: 'attached', timeout: 60_000 });
+  await page.waitForTimeout(500);
 
   const snap = await page.evaluate(() => {
     const scroller = Array.from(document.querySelectorAll<HTMLElement>('*')).find((el) => {

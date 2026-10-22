@@ -302,22 +302,84 @@ export function pageCells(scroller: HTMLElement, pageH: number): HTMLElement[] {
 }
 
 /**
- * The pager's own vertical scroller: the first element, in document order, that
- * scrolls on y. The list's scroller is an ancestor of every cell, so a sideways
- * carousel inside a cell (overflow-y hidden) or anything deeper never wins.
+ * The testID of the frame `FeedPager` wraps every web page in. It carries the
+ * page's snap point, and it is how the snap finds the container the pages
+ * actually scroll in.
+ */
+export const PAGE_FRAME_TESTID = 'feed-pager-page';
+
+/**
+ * The container the pager's pages scroll in: the nearest y-scrolling ancestor
+ * of a page frame. Found from a page upwards because FlashList's web output
+ * nests two y-scroll containers — measured on the local export, an outer one
+ * that never overflows and the inner one that scrolls the whole feed — and a
+ * snap on the outer one does nothing. Null until the first page is drawn.
  *
- * Unlike `findOverflowScroller` this does not ask whether it overflows yet. It
- * does not need to: a snap on a scroller with nothing to scroll does nothing,
- * and waiting for the overflow is exactly what left the feed unsnapped.
+ * Whether it overflows yet is not asked: a snap on a scroller with nothing to
+ * scroll does nothing, and waiting for the overflow is what left the feed
+ * unsnapped.
  */
 export function findPagerScroller(root: HTMLElement): HTMLElement | null {
   if (typeof getComputedStyle === 'undefined') return null;
-  const nodes: HTMLElement[] = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))];
-  for (const el of nodes) {
+  const frame = root.querySelector<HTMLElement>(`[data-testid="${PAGE_FRAME_TESTID}"]`);
+  for (let el = frame?.parentElement ?? null; el; el = el.parentElement) {
     const { overflowY } = getComputedStyle(el);
     if (overflowY === 'auto' || overflowY === 'scroll') return el;
+    if (el === root) break;
   }
   return null;
+}
+
+/**
+ * How long a scroll must be still, with no finger down, before it counts as
+ * ended. Chrome's own `scrollend` is not enough on its own: on the local
+ * export a drag sometimes came to rest without ending (no snap, no
+ * `scrollend`) until the next touch.
+ */
+export const SETTLE_IDLE_MS = 200;
+
+/**
+ * Settles `scroller` onto the nearer page boundary whenever a scroll comes to
+ * rest off one. Returns the undo.
+ */
+function settleScroller(scroller: HTMLElement, getPageH: () => number): () => void {
+  let fingers = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const settle = () => {
+    const pageH = getPageH();
+    if (!(pageH > 0) || fingers > 0) return;
+    const top = scroller.scrollTop;
+    const target = Math.round(top / pageH) * pageH;
+    if (Math.abs(top - target) <= 1) return;
+    scroller.scrollTo({ top: target, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  };
+
+  const onScroll = () => {
+    if (timer !== null) clearTimeout(timer);
+    timer = setTimeout(() => { timer = null; settle(); }, SETTLE_IDLE_MS);
+  };
+  const onTouchStart = () => { fingers += 1; };
+  const onTouchEnd = () => {
+    fingers = Math.max(0, fingers - 1);
+    // A drag that is lifted without moving again still has to be looked at.
+    onScroll();
+  };
+
+  scroller.addEventListener('scrollend', settle);
+  scroller.addEventListener('scroll', onScroll, { passive: true });
+  scroller.addEventListener('touchstart', onTouchStart, { passive: true });
+  scroller.addEventListener('touchend', onTouchEnd, { passive: true });
+  scroller.addEventListener('touchcancel', onTouchEnd, { passive: true });
+
+  return () => {
+    if (timer !== null) clearTimeout(timer);
+    scroller.removeEventListener('scrollend', settle);
+    scroller.removeEventListener('scroll', onScroll);
+    scroller.removeEventListener('touchstart', onTouchStart);
+    scroller.removeEventListener('touchend', onTouchEnd);
+    scroller.removeEventListener('touchcancel', onTouchEnd);
+  };
 }
 
 /** Writes the snap onto one scroller; returns the undo. */
@@ -341,17 +403,25 @@ function snapScroller(scroller: HTMLElement): () => void {
 /**
  * Hand paging to CSS on a touch device, and keep it handed over.
  *
- * `scroll-snap-type: y mandatory` on the pager's scroller (see `applyTouchSnap`
- * above for why CSS and not JS); each page declares `scroll-snap-align: start`
- * itself (the pager's page frame). The list renderer draws its scroller and
- * cells in commits after the pager's effect runs, and rebuilds the scroller
- * when the list is rebuilt, so this watches the pager's subtree until the
- * scroller is there and follows it when it is replaced. Once applied, a
- * mutation costs one `contains` check — no style or layout reads.
+ * `scroll-snap-type: y mandatory` on the container the pages scroll in (see
+ * `applyTouchSnap` above for why CSS and not JS); each page declares
+ * `scroll-snap-align: start` itself (the pager's page frame). The list
+ * renderer draws its scroller and pages in commits after the pager's effect
+ * runs, and rebuilds the scroller when the list is rebuilt, so this watches the
+ * pager's subtree until the first page is there and follows the scroller when
+ * it is replaced. Once applied, a mutation costs one `contains` check — no
+ * style or layout reads.
  *
  * Returns the cleanup: stops watching and puts the scroller's style back.
+ *
+ * With `getPageH`, a scroll that comes to REST between pages is also settled
+ * onto the nearer page (`settleScroller`). Measured on the local export: the
+ * first drag of a session could stop 322 px into the next page and stay there
+ * although the snap was on; later drags snapped. Settling runs after the
+ * scroll has ended — `scrollend`, or 150 ms of stillness with no finger down
+ * where the browser has no `scrollend` — so it never fights a drag or a fling.
  */
-export function watchTouchSnap(root: HTMLElement): () => void {
+export function watchTouchSnap(root: HTMLElement, getPageH?: () => number): () => void {
   let applied: { scroller: HTMLElement; undo: () => void } | null = null;
 
   const sync = () => {
@@ -359,7 +429,10 @@ export function watchTouchSnap(root: HTMLElement): () => void {
     applied?.undo();
     applied = null;
     const scroller = findPagerScroller(root);
-    if (scroller) applied = { scroller, undo: snapScroller(scroller) };
+    if (!scroller) return;
+    const undoSnap = snapScroller(scroller);
+    const undoSettle = getPageH ? settleScroller(scroller, getPageH) : () => undefined;
+    applied = { scroller, undo: () => { undoSettle(); undoSnap(); } };
   };
 
   sync();
