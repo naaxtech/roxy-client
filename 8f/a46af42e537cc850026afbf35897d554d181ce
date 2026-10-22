@@ -1,0 +1,26 @@
+apps/mobile/__tests__/components/archive/ArchiveCover.test.tsx
+  h_0549c11fec2ab0 4,63-82
+apps/mobile/__tests__/components/nav/NavIcons.test.tsx
+  h_0549c11fec2ab0 12-19
+apps/mobile/__tests__/screens/FeedTab.test.tsx
+  h_0549c11fec2ab0 120-125,127-130
+apps/mobile/app/(tabs)/feed/index.tsx
+  h_0549c11fec2ab0 64,223-227
+apps/mobile/components/archive/ArchiveCover.tsx
+  h_0549c11fec2ab0 5,55
+apps/mobile/components/archive/archiveTokens.ts
+  h_0549c11fec2ab0 41-66
+apps/mobile/components/nav/NavIcons.tsx
+  h_0549c11fec2ab0 6-7,28,40-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8fa46af42e537cc850026afbf35897d554d181ce",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
