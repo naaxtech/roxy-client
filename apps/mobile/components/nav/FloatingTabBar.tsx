@@ -5,6 +5,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,9 +17,10 @@ import { NAV_SLOTS_3 } from './navSlots3';
 import { NavIcon, type NavIconName } from './NavIcons';
 import type { NavSlot } from './navTokens';
 import { a11yState } from '../../lib/a11yState';
-import { PRESS, SPRING, springTo } from '../../lib/motion';
+import { PRESS, SPRING, fadeConfig, springTo } from '../../lib/motion';
 import { haptic } from '../../lib/haptics';
-import { PressableScale } from '../ui/PressableScale';
+import { PRESS_HEAD_START, PressableScale, stateLayerFor } from '../ui/PressableScale';
+import { useThemeStore } from '../../store/themeStore';
 import { afterPaint } from '../motion/afterPaint';
 import { startWebSpring } from '../motion/webSpring';
 import {
@@ -219,10 +221,13 @@ function CreateSlot({
   onPress: () => void;
 }) {
   // The plus turns 45° into a close × while the sheet is open (shape morph #3),
-  // and the key presses in — both on the UI thread (reanimated), so a busy JS
-  // thread cannot eat them.
+  // and the key presses in exactly like every PressableScale (lane C0, F1): a
+  // one-frame head start, then the scale on fastSpatial and an ink state layer
+  // on fastEffects — all on the UI thread. The slot, not the key, stays the
+  // 48 dp touch target, so the press is drawn on the key here.
   const turn = useSharedValue(open ? 1 : 0);
-  const press = useSharedValue(1);
+  const press = useSharedValue(0);
+  const layer = useSharedValue(0);
   const wasOpen = useRef(open);
   useEffect(() => {
     if (wasOpen.current === open) return;
@@ -230,10 +235,24 @@ function CreateSlot({
     const to = open ? 1 : 0;
     turn.value = reducedMotion ? to : withSpring(to, springTo('spatial'));
   }, [open, reducedMotion, turn]);
-  const pressTo = (to: number) => {
-    press.value = reducedMotion ? to : withSpring(to, springTo('fastSpatial'));
+  const pressTo = (to: 0 | 1) => {
+    if (reducedMotion) {
+      press.value = to;
+      layer.value = withTiming(to, fadeConfig());
+    } else if (to === 1 && press.value <= 0.001 && layer.value <= 0.001) {
+      const { spatial, effects } = PRESS_HEAD_START;
+      press.value = spatial.x;
+      layer.value = effects.x;
+      press.value = withSpring(1, springTo('fastSpatial', { velocity: spatial.v }));
+      layer.value = withSpring(1, springTo('fastEffects', { velocity: effects.v }));
+    } else {
+      press.value = withSpring(to, springTo('fastSpatial'));
+      layer.value = withSpring(to, springTo('fastEffects'));
+    }
   };
-  const keyStyle = useAnimatedStyle(() => ({ transform: [{ scale: press.value }] }));
+  const { color: layerInk, alpha: layerAlpha } = stateLayerFor(useThemeStore((st) => st.theme));
+  const keyStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 + (PRESS.scale - 1) * press.value }] }));
+  const layerStyle = useAnimatedStyle(() => ({ opacity: layer.value * layerAlpha }));
   const glyphStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value * 45}deg` }] }));
 
   return (
@@ -241,8 +260,8 @@ function CreateSlot({
       testID="nav-slot-create"
       style={s.slot}
       onPress={onPress}
-      onPressIn={() => pressTo(PRESS.scale)}
-      onPressOut={() => pressTo(1)}
+      onPressIn={() => pressTo(1)}
+      onPressOut={() => pressTo(0)}
       accessibilityRole="button"
       accessibilityLabel={open ? 'Close create menu' : label}
       accessibilityHint={open ? undefined : 'Choose what to create'}
@@ -252,6 +271,11 @@ function CreateSlot({
         testID="nav-create-key"
         style={[s.createKey, { backgroundColor: colors.pink }, keyStyle]}
       >
+        <Animated.View
+          testID="nav-create-layer"
+          pointerEvents="none"
+          style={[s.createLayer, { backgroundColor: layerInk }, layerStyle]}
+        />
         <Animated.View testID="nav-create-glyph" style={glyphStyle}>
           <Animated.Text testID="nav-create-icon" style={[s.createPlus, { color: colors.onPink }]}>+</Animated.Text>
         </Animated.View>
@@ -459,6 +483,10 @@ const s = StyleSheet.create({
     borderRadius: RADII.press,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  createLayer: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: RADII.press,
   },
   createPlus: {
     fontFamily: FONTS.display.bold,

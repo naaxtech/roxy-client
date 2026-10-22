@@ -76,7 +76,8 @@ import {
 } from '../../../components/nav/navTokens';
 import { THEMES, contrastRatio, RADII } from '../../../lib/theme';
 import { FONTS } from '../../../lib/typography';
-import { SPRING, PRESS } from '../../../lib/motion';
+import { SPRING } from '../../../lib/motion';
+import { PRESS_HEAD_START, stateLayerFor } from '../../../components/ui/PressableScale';
 import { useThemeStore } from '../../../store/themeStore';
 
 type Route = { key: string; name: string };
@@ -492,17 +493,9 @@ describe('FloatingTabBar — motion on the UI thread (Wave 3)', () => {
     expect(springCalls).toHaveLength(0);
   });
 
-  it('turns the Create key on the spatial spring and presses it in on fastSpatial', () => {
+  it('turns the Create key on the spatial spring', () => {
     mockReducedMotion.mockReturnValue(false);
-    const { getByTestId, rerenderAt } = renderBar({ createOpen: false });
-    fireEvent(getByTestId('nav-slot-create'), 'pressIn');
-    expect(springsTo(PRESS.scale)).toContainEqual(
-      expect.objectContaining({ config: expect.objectContaining(SPRING.fastSpatial) }),
-    );
-    fireEvent(getByTestId('nav-slot-create'), 'pressOut');
-    expect(springsTo(1)).toContainEqual(
-      expect.objectContaining({ config: expect.objectContaining(SPRING.fastSpatial) }),
-    );
+    const { rerenderAt } = renderBar({ createOpen: false });
     springCalls.length = 0;
     rerenderAt(1, true);
     expect(springsTo(1)).toContainEqual(
@@ -510,13 +503,47 @@ describe('FloatingTabBar — motion on the UI thread (Wave 3)', () => {
     );
   });
 
-  it('Reduce Motion: the Create key turns and presses without a spring', () => {
+  // Lane C0's PressableScale press (F1), on the key itself — the slot stays the
+  // 48 dp touch target: a one-frame head start, then fastSpatial for the scale
+  // and fastEffects for the state layer, both carrying the head start's velocity.
+  it('presses the Create key in like every PressableScale: head start, then fastSpatial + its state layer', () => {
+    mockReducedMotion.mockReturnValue(false);
+    const { getByTestId } = renderBar({ createOpen: false });
+    springCalls.length = 0;
+    fireEvent(getByTestId('nav-slot-create'), 'pressIn');
+    expect(springsTo(1)).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        config: expect.objectContaining({ ...SPRING.fastSpatial, velocity: PRESS_HEAD_START.spatial.v }),
+      }),
+      expect.objectContaining({
+        config: expect.objectContaining({ ...SPRING.fastEffects, velocity: PRESS_HEAD_START.effects.v }),
+      }),
+    ]));
+    fireEvent(getByTestId('nav-slot-create'), 'pressOut');
+    expect(springsTo(0)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ config: expect.objectContaining(SPRING.fastSpatial) }),
+      expect.objectContaining({ config: expect.objectContaining(SPRING.fastEffects) }),
+    ]));
+  });
+
+  it("the Create key's state layer is the theme's pressed ink, on the key's own shape", () => {
+    const { getByTestId } = renderBar();
+    const layer = flat(getByTestId('nav-create-layer'));
+    expect(layer.backgroundColor).toBe(stateLayerFor('light').color);
+    expect(layer.borderRadius).toBe(RADII.press);
+    expect(layer.opacity).toBe(0);
+  });
+
+  it('Reduce Motion: the Create key turns and presses without a spring (its state layer fades 120 ms)', () => {
     mockReducedMotion.mockReturnValue(true);
     const { getByTestId, rerenderAt } = renderBar({ createOpen: false });
+    springCalls.length = 0;
     fireEvent(getByTestId('nav-slot-create'), 'pressIn');
     fireEvent(getByTestId('nav-slot-create'), 'pressOut');
     rerenderAt(1, true);
-    expect(springCalls).toHaveLength(0);
+    expect(springCalls.filter((c) => c.kind === 'spring')).toHaveLength(0);
+    expect(springCalls.filter((c) => c.kind === 'timing').map((c) => (c.config as { duration: number }).duration))
+      .toEqual([120, 120]);
   });
 });
 
