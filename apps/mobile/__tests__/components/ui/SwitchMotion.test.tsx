@@ -16,6 +16,20 @@ import { getAnimatedStyle, setUpTests } from 'react-native-reanimated';
 configure({ defaultIncludeHiddenElements: true });
 setUpTests();
 
+// Spy on withSpring (real reanimated underneath) to read the head start.
+const mockWithSpring = jest.fn();
+jest.mock('react-native-reanimated', () => {
+  const actual = jest.requireActual('react-native-reanimated');
+  return {
+    __esModule: true,
+    ...actual,
+    withSpring: (...a: unknown[]) => {
+      mockWithSpring(...a);
+      return actual.withSpring(...a);
+    },
+  };
+});
+
 const mockTap = jest.fn();
 jest.mock('../../../lib/haptics', () => ({ tapLight: (...a: unknown[]) => mockTap(...a), haptic: jest.fn() }));
 let mockReduced = false;
@@ -26,6 +40,7 @@ jest.mock('../../../hooks/useReducedMotion', () => ({
 
 import { Switch, SWITCH } from '../../../components/ui/Switch';
 import { THEMES, BRAND_INK_INVERSE } from '../../../lib/theme';
+import { springAt } from '../../../lib/motion';
 import { useThemeStore } from '../../../store/themeStore';
 
 const light = THEMES.light;
@@ -109,6 +124,20 @@ describe('Switch on the UI thread', () => {
     fireEvent(view.getByTestId('sw'), 'pressOut');
     frames(400);
     expect(part(painted(view, 'sw-thumb'), 'scale')).toBeCloseTo(SWITCH.thumbOn / SWITCH.thumbPressed, 2);
+  });
+
+  it('the grow leaves one frame into its spring (F1 head start)', () => {
+    const h = springAt('fastSpatial', 1000 / 60);
+    const view = render(<Switch testID="sw" value />);
+    frames(16);
+    mockWithSpring.mockClear();
+    fireEvent(view.getByTestId('sw'), 'pressIn');
+    const call = mockWithSpring.mock.calls.find(([to, cfg]) => to === 1 && cfg?.velocity !== undefined);
+    expect(call?.[1]).toMatchObject({ reduceMotion: 'never' });
+    expect(call?.[1].velocity).toBeCloseTo(h.v, 6);
+    frames(16);
+    const rest = SWITCH.thumbOn / SWITCH.thumbPressed;
+    expect(part(painted(view, 'sw-thumb'), 'scale')).toBeGreaterThanOrEqual(rest + (1 - rest) * h.x - 1e-6);
   });
 
   it('a disabled switch does not grow on press-in', () => {

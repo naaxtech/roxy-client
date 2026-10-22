@@ -5,6 +5,20 @@ import { getAnimatedStyle, setUpTests } from 'react-native-reanimated';
 
 setUpTests();
 
+// Spy on withSpring (real reanimated underneath) to read the head start.
+const mockWithSpring = jest.fn();
+jest.mock('react-native-reanimated', () => {
+  const actual = jest.requireActual('react-native-reanimated');
+  return {
+    __esModule: true,
+    ...actual,
+    withSpring: (...a: unknown[]) => {
+      mockWithSpring(...a);
+      return actual.withSpring(...a);
+    },
+  };
+});
+
 const mockReducedMotion = jest.fn(() => false);
 jest.mock('../../../hooks/useReducedMotion', () => ({
   useReducedMotion: () => mockReducedMotion(),
@@ -12,7 +26,7 @@ jest.mock('../../../hooks/useReducedMotion', () => ({
 
 import { PrimaryButton } from '../../../components/ui/PrimaryButton';
 import { THEMES, LIP } from '../../../lib/theme';
-import { PRESS } from '../../../lib/motion';
+import { PRESS, springAt } from '../../../lib/motion';
 import { TYPE } from '../../../lib/typography';
 import { useThemeStore } from '../../../store/themeStore';
 
@@ -102,6 +116,19 @@ describe('PrimaryButton — the Duolingo lip', () => {
     fireEvent(v.getByTestId('go'), 'pressOut', { nativeEvent: {} });
     frames(400);
     expect(translateYOf(v.getByTestId('go-face'))).toBeCloseTo(0, 2);
+  });
+
+  it('the drop leaves one frame into its spring (F1 head start): the first painted frame is already down', () => {
+    const h = springAt('fastSpatial', 1000 / 60);
+    const v = render(<PrimaryButton testID="go" label="Continue" onPress={() => {}} />);
+    frames(16);
+    mockWithSpring.mockClear();
+    fireEvent(v.getByTestId('go'), 'pressIn', { nativeEvent: {} });
+    const call = mockWithSpring.mock.calls.find(([to]) => to === PRESS.lipDrop);
+    expect(call?.[1]).toMatchObject({ reduceMotion: 'never' });
+    expect(call?.[1].velocity).toBeCloseTo(PRESS.lipDrop * h.v, 6);
+    frames(16);
+    expect(translateYOf(v.getByTestId('go-face'))).toBeGreaterThanOrEqual(PRESS.lipDrop * h.x - 1e-6);
   });
 
   it('answers on web with no press delay (RN-web waits 50 ms by default)', () => {

@@ -12,7 +12,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { LIP, RADII } from '../../lib/theme';
-import { PRESS, SPRING } from '../../lib/motion';
+import { PRESS, headStart, springTo } from '../../lib/motion';
 import { TYPE } from '../../lib/typography';
 
 /** Face height (direction › Spacing: buttons 52). */
@@ -70,7 +70,16 @@ export function PrimaryButton({
 
   const press = (to: number) => {
     if (inert) return;
-    drop.value = reducedMotion ? to : withSpring(to, SPRING.fastSpatial);
+    if (reducedMotion) {
+      drop.value = to;
+    } else if (to > 0 && drop.value <= 0.01) {
+      // From rest: leave one frame into the spring (F1, painted next frame).
+      const { start, config } = headStart(0, to, 'fastSpatial', { px: true });
+      drop.value = start;
+      drop.value = withSpring(to, config);
+    } else {
+      drop.value = withSpring(to, springTo('fastSpatial', { px: true }));
+    }
   };
   const faceStyle = useAnimatedStyle(() => ({ transform: [{ translateY: drop.value }] }));
 

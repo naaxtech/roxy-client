@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { I18nManager, Pressable, StyleSheet } from 'react-native';
 import Animated, {
-  ReduceMotion, interpolateColor, useAnimatedStyle, useSharedValue, withSpring, withTiming,
+  interpolateColor, useAnimatedStyle, useSharedValue, withSpring, withTiming,
 } from 'react-native-reanimated';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { BRAND_INK_INVERSE, RADII } from '../../lib/theme';
-import { SPRING } from '../../lib/motion';
+import { fadeConfig, headStart, springTo } from '../../lib/motion';
 import { tapLight } from '../../lib/haptics';
 import { a11yState } from '../../lib/a11yState';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
@@ -51,8 +51,6 @@ const CENTER_OFF = INNER_H / 2;
 const CENTER_ON = INNER_W - INNER_H / 2;
 /** The thumb is drawn at its pressed size and scaled down. */
 const THUMB_BOX = SWITCH.thumbPressed;
-/** Reduce Motion: colour changes become this fade (motion spec REDUCED.fadeMs). */
-const REDUCED_FADE_MS = 120;
 
 export type SwitchProps = {
   value: boolean;
@@ -80,16 +78,25 @@ export function Switch({
     const to = value ? 1 : 0;
     if (reducedMotion) {
       travel.value = to;
-      tint.value = withTiming(to, { duration: REDUCED_FADE_MS, reduceMotion: ReduceMotion.Never });
+      tint.value = withTiming(to, fadeConfig());
     } else {
-      travel.value = withSpring(to, SPRING.fastSpatial);
-      tint.value = withSpring(to, SPRING.fastEffects);
+      travel.value = withSpring(to, springTo('fastSpatial'));
+      tint.value = withSpring(to, springTo('fastEffects'));
     }
   }, [value, reducedMotion, travel, tint]);
 
   const pressTo = (to: number) => {
     if (disabled) return;
-    press.value = reducedMotion ? to : withSpring(to, SPRING.fastSpatial);
+    if (reducedMotion) {
+      press.value = to;
+    } else if (to === 1 && press.value <= 0.001) {
+      // From rest: leave one frame into the spring (F1, painted next frame).
+      const { start, config } = headStart(0, 1);
+      press.value = start;
+      press.value = withSpring(1, config);
+    } else {
+      press.value = withSpring(to, springTo('fastSpatial'));
+    }
   };
 
   const off = { track: colors.raised, border: colors.control, thumb: colors.control };

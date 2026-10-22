@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { I18nManager, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
-  ReduceMotion, useAnimatedReaction, useAnimatedStyle, useSharedValue, withSpring, withTiming,
+  useAnimatedReaction, useAnimatedStyle, useSharedValue, withSpring, withTiming,
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +10,7 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
 import { RADII, floatElevation } from '../../lib/theme';
-import { POP_FROM, PRESS, SPRING } from '../../lib/motion';
+import { POP_FROM, PRESS, fadeConfig, headStart, springTo } from '../../lib/motion';
 import { tapLight } from '../../lib/haptics';
 import { useRoxyFab, fabTuck } from '../../lib/roxyFab';
 import {
@@ -43,8 +43,6 @@ const TUCK_TRAVEL = FAB_SIZE / 2 + FAB_TUCKED / 2;
  */
 const TUCKED_HIT_WIDTH = FAB_MARGIN;
 const TUCK_SCALE = FAB_TUCKED / FAB_SIZE;
-/** Reduce Motion: the tuck is a short fade to the end state (REDUCED.fadeMs). */
-const REDUCED_FADE_MS = 120;
 
 /*
  * RETIRED (v2, 2026-10-21): the v0 three-pill FAB menu — "Chat with Roxy",
@@ -108,24 +106,24 @@ export function RoxyCompanionButton({ visible = true, onStage = false }: Props) 
 
   useEffect(() => {
     if (!visible) return;
-    enter.value = reducedMotion ? 1 : withSpring(1, SPRING.fastSpatial);
+    enter.value = reducedMotion ? 1 : withSpring(1, springTo('fastSpatial'));
   }, [visible, reducedMotion, enter]);
 
   // Runs on the UI thread whenever the list's verdict (or the stage) changes:
   // a spring that retargets from where she is. Reduce Motion: no travel, the
-  // new state fades in over REDUCED_FADE_MS.
+  // new state fades in over REDUCED.fadeMs (fadeConfig).
   useAnimatedReaction(
     () => (onStage ? 0 : fabTuck.value),
     (now) => {
       if (now === seen.value) return;
       seen.value = now;
       if (!reducedMotion) {
-        tuck.value = withSpring(now, SPRING.fastSpatial);
+        tuck.value = withSpring(now, springTo('fastSpatial'));
         return;
       }
       tuck.value = now;
       fade.value = 0;
-      fade.value = withTiming(1, { duration: REDUCED_FADE_MS, reduceMotion: ReduceMotion.Never });
+      fade.value = withTiming(1, fadeConfig());
     },
     [onStage, reducedMotion],
   );
@@ -138,7 +136,16 @@ export function RoxyCompanionButton({ visible = true, onStage = false }: Props) 
   }), [dir]);
 
   const pressTo = (to: number) => {
-    press.value = reducedMotion ? to : withSpring(to, SPRING.fastSpatial);
+    if (reducedMotion) {
+      press.value = to;
+    } else if (to < 1 && press.value >= 0.999) {
+      // From rest: leave one frame into the spring (F1, painted next frame).
+      const { start, config } = headStart(1, to);
+      press.value = start;
+      press.value = withSpring(to, config);
+    } else {
+      press.value = withSpring(to, springTo('fastSpatial'));
+    }
   };
 
   const seatStyle = useAnimatedStyle(() => ({

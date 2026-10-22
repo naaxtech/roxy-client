@@ -261,3 +261,27 @@ export function springAt(name: SpringName, tMs: number): { x: number; v: number 
     v: e * ((w0 * w0) / wd) * Math.sin(wd * t),
   };
 }
+
+/** One 60 Hz frame, ms. */
+const FRAME_MS = 1000 / 60;
+
+/**
+ * A press from rest with a one-frame head start (F1), for any value:
+ * `const { start, config } = headStart(sv.value, to); sv.value = start;
+ * sv.value = withSpring(to, config);`. `start` is where the token spring
+ * from `from` to `to` is one frame in, `config` carries its velocity there
+ * (`springTo`: token physics, `reduceMotion: 'never'`; `px` for pixels).
+ * Same trajectory, painted one frame sooner (see `springAt`). Use it only
+ * from rest; a re-press mid-flight retargets with plain `springTo`.
+ */
+export function headStart(
+  from: number,
+  to: number,
+  name: SpringName = 'fastSpatial',
+  opts: { px?: boolean } = {},
+): { start: number; config: SpringToConfig } {
+  'worklet';
+  const h = springAt(name, FRAME_MS);
+  const travel = to - from;
+  return { start: from + travel * h.x, config: springTo(name, { px: opts.px, velocity: travel * h.v }) };
+}

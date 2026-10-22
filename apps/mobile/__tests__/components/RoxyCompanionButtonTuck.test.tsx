@@ -5,6 +5,20 @@ import { setUpTests, getAnimatedStyle } from 'react-native-reanimated';
 configure({ defaultIncludeHiddenElements: true });
 setUpTests();
 
+// Spy on withSpring (real reanimated underneath) to read the head start.
+const mockWithSpring = jest.fn();
+jest.mock('react-native-reanimated', () => {
+  const actual = jest.requireActual('react-native-reanimated');
+  return {
+    __esModule: true,
+    ...actual,
+    withSpring: (...a: unknown[]) => {
+      mockWithSpring(...a);
+      return actual.withSpring(...a);
+    },
+  };
+});
+
 /**
  * The Roxy AI button's tuck runs on the UI thread (motion spec §3.1 row 17,
  * jank audit #9): the list's scroll lands in a shared value (`fabTuck`), and
@@ -52,7 +66,7 @@ jest.mock('../../store/profileStore', () => ({
 import { RoxyCompanionButton } from '../../components/ui/RoxyCompanionButton';
 import { useRoxyFab, fabTuck } from '../../lib/roxyFab';
 import { FAB_MARGIN, FAB_SIZE, FAB_TUCKED } from '../../components/nav/navTokens';
-import { PRESS } from '../../lib/motion';
+import { PRESS, springAt } from '../../lib/motion';
 
 /** Tucked, the O's inner edge sits on the margin line: only the margin shows. */
 const TUCK_TRAVEL = FAB_SIZE / 2 + FAB_TUCKED / 2;
@@ -144,9 +158,16 @@ describe('RoxyCompanionButton — the tuck on the UI thread', () => {
     frame();
     const rest = pick(transformOf(getByTestId('fab-tuck')), 'scale') ?? 0;
     expect(rest).toBeCloseTo(TUCK_SCALE, 3);
+    mockWithSpring.mockClear();
     fireEvent(getByTestId('fab-tucked'), 'pressIn');
+    // F1 head start: the dip leaves one frame into its spring.
+    const h = springAt('fastSpatial', 1000 / 60);
+    const call = mockWithSpring.mock.calls.find(([to]) => to === PRESS.scale);
+    expect(call?.[1]).toMatchObject({ reduceMotion: 'never' });
+    expect(call?.[1].velocity).toBeCloseTo(-(1 - PRESS.scale) * h.v, 6);
     act(() => { jest.advanceTimersByTime(16); });
-    expect(pick(transformOf(getByTestId('fab-tuck')), 'scale')).toBeLessThan(rest);
+    expect(pick(transformOf(getByTestId('fab-tuck')), 'scale'))
+      .toBeLessThanOrEqual(rest * (1 - (1 - PRESS.scale) * h.x) + 1e-6);
     act(() => { jest.advanceTimersByTime(400); });
     expect(pick(transformOf(getByTestId('fab-tuck')), 'scale')).toBeCloseTo(rest * PRESS.scale, 3);
     fireEvent(getByTestId('fab-tucked'), 'pressOut');
