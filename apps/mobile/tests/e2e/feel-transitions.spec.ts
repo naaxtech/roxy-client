@@ -31,6 +31,9 @@ const SHOTS = process.env.FEEL_SHOTS === '1';
 const RUN_ID = `${VW}x${VH}${REDUCED ? '-rm' : ''}-${Date.now()}`;
 
 type Layer = { id: string; op: number; tx: number; ty: number; pe: string };
+/** A WAAPI animation the app started: compositor start, ms to come within REST of its end. */
+type Waapi = { tid: string; elId: string; at: number; start: number | null; state: string; reach: number; dur: number; kf: string };
+type Sample = { t0: number; frames: Frame[]; waapi?: Waapi[] };
 type Frame = {
   t: number;
   url: string;
@@ -52,7 +55,7 @@ const SAMPLER = `(() => {
     return { a: m.a, e: m.e, f: m.f };
   };
   const f = (window.__feel = {
-    frames: [], on: false, t0: 0, cold: { pendingAt: null, loadingAt: null, navAt: null },
+    frames: [], on: false, t0: 0, tapAt: null, cold: { pendingAt: null, loadingAt: null, navAt: null },
     // history.back() this many ms after a NEW screen layer first shows (in-page
     // timing: a Playwright wait under 4x CPU lands far too late).
     backArm: null, backAt: null, backLayerOp: null,
@@ -63,7 +66,43 @@ const SAMPLER = `(() => {
       this.backArm = { ms, seen: new Set(q('[data-testid="screen-transition"]').map((el) => el.id)) };
     },
   });
-  addEventListener('pointerdown', () => { f.t0 = performance.now(); }, true);
+  addEventListener('pointerdown', () => { f.t0 = performance.now(); f.tapAt = performance.timeOrigin + f.t0; }, true);
+  // Every WAAPI animation the app starts (web motion runs on the compositor).
+  // A rAF read of computed style only sees the main thread's view, which
+  // stalls while a destination renders; the compositor carries on. So for
+  // these the harness also reports what the compositor showed: the
+  // animation's resolved start time plus the time its own keyframes and
+  // easing need to come within REST of the end (replayed on a hidden probe).
+  const waapi = [];
+  const animate0 = Element.prototype.animate;
+  Element.prototype.animate = function (kf, opts) {
+    const a = animate0.call(this, kf, opts);
+    const host = this.closest ? this.closest('[data-testid]') : null;
+    waapi.push({ tid: (host && host.getAttribute('data-testid')) || '', elId: this.id || '', kf, opts, a, at: performance.now() });
+    return a;
+  };
+  const probeReach = (kf, opts) => {
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;left:-9999px;top:0;width:56px;height:32px;';
+    document.body.appendChild(probe);
+    const dur = typeof opts === 'number' ? opts : (opts && opts.duration) || 0;
+    const p = probe.animate(kf, { duration: dur, easing: (opts && opts.easing) || 'linear', fill: 'both' });
+    p.pause();
+    const read = () => { const cs = getComputedStyle(probe); const m = mx(probe); return { op: +cs.opacity, sx: m.a, tx: m.e, ty: m.f }; };
+    p.currentTime = dur; const end = read();
+    let reach = 0;
+    for (let t = Math.ceil(dur); t >= 0; t--) {
+      p.currentTime = t; const v = read();
+      if (Math.abs(v.op - end.op) > 0.01 || Math.abs(v.sx - end.sx) > 0.5 / 56 || Math.abs(v.tx - end.tx) > 0.5 || Math.abs(v.ty - end.ty) > 0.5) { reach = t + 1; break; }
+    }
+    p.cancel(); probe.remove();
+    return { reach, dur };
+  };
+  f.waapiSince = (t0) => waapi.filter((w) => w.at >= t0).map((w) => {
+    const { reach, dur } = probeReach(w.kf, w.opts);
+    return { tid: w.tid, elId: w.elId, at: w.at, start: w.a.startTime, state: w.a.playState, reach, dur,
+      kf: JSON.stringify(w.kf).slice(0, 120) };
+  });
   function tick() {
     const layers = q('[data-testid="screen-transition"]').filter(vis).map((el) => {
       const m = mx(el); const cs = getComputedStyle(el);
@@ -140,14 +179,15 @@ async function throttle(cdp: CDPSession) {
   });
 }
 
-async function sample(page: Page, act: () => Promise<void>, settleMs = 1400): Promise<{ t0: number; frames: Frame[] }> {
+async function sample(page: Page, act: () => Promise<void>, settleMs = 1400): Promise<Sample> {
   await page.evaluate(() => (window as unknown as { __feel: { start(): void } }).__feel.start());
   await page.waitForTimeout(80);
   await act();
   await page.waitForTimeout(settleMs);
   return page.evaluate(() => {
-    const f = (window as unknown as { __feel: { stop(): Frame[]; t0: number } }).__feel;
-    return { frames: f.stop(), t0: f.t0 };
+    const f = (window as unknown as { __feel: { stop(): Frame[]; t0: number; waapiSince(t0: number): Waapi[] } }).__feel;
+    const frames = f.stop();
+    return { frames, t0: f.t0, waapi: f.waapiSince(frames.length ? frames[0].t : 0) };
   });
 }
 
@@ -157,8 +197,9 @@ async function sample(page: Page, act: () => Promise<void>, settleMs = 1400): Pr
  * (WAAPI) animations that rAF sampling cannot see while the main thread is
  * busy. Files are named by ms since the action started (wall clock).
  */
-async function screencast(cdp: CDPSession, name: string, act: () => Promise<void>, ms = 1500) {
+async function screencast(page: Page, cdp: CDPSession, name: string, act: () => Promise<void>, ms = 1500) {
   if (!SHOTS) return;
+  await page.evaluate(() => { (window as unknown as { __feel: { tapAt: number | null } }).__feel.tapAt = null; });
   const dir = path.join(OUT, 'frames', `${RUN_ID}-${name}`);
   fs.mkdirSync(dir, { recursive: true });
   const frames: { data: string; ts: number }[] = [];
@@ -174,15 +215,22 @@ async function screencast(cdp: CDPSession, name: string, act: () => Promise<void
   await new Promise((r) => setTimeout(r, ms));
   await cdp.send('Page.stopScreencast');
   cdp.off('Page.screencastFrame', onFrame);
+  // Name frames by ms since the tap as the page saw it (pointerdown, or the
+  // in-page history.back()); the wall clock before the act is the fallback.
+  const tapAt = await page.evaluate(() => (window as unknown as { __feel: { tapAt: number | null } }).__feel.tapAt);
   frames.forEach((fr, i) => {
-    const rel = Math.round((fr.ts - tAct) * 1000);
+    const rel = Math.round(tapAt ? fr.ts * 1000 - tapAt : (fr.ts - tAct) * 1000);
     fs.writeFileSync(path.join(dir, `${String(i).padStart(3, '0')}-${rel}ms.jpg`), Buffer.from(fr.data, 'base64'));
   });
 }
 
 // ─── analysis ────────────────────────────────────────────────────────────────
 
-function tabSwitch(slot: string, { t0, frames }: { t0: number; frames: Frame[] }) {
+/** The last animation started on an element (by testID or element id) at or after t0. */
+const waapiOn = (list: Waapi[] | undefined, t0: number, match: (w: Waapi) => boolean) =>
+  (list ?? []).filter((w) => w.at >= t0 - 1 && match(w) && w.start !== null && w.state !== 'idle').pop();
+
+function tabSwitch(slot: string, { t0, frames, waapi }: Sample) {
   const after = frames.filter((f) => f.t >= t0);
   const pillId = `nav-indicator-${slot}`;
   const fadeId = `tab-fade-${slot}-content`;
@@ -206,8 +254,15 @@ function tabSwitch(slot: string, { t0, frames }: { t0: number; frames: Frame[] }
   const pillMin = Math.min(...after.map(sxOf).filter((v) => !Number.isNaN(v)));
   const bars = frames.map((f) => f.bar).filter(Boolean) as number[][];
   const barShift = bars.length ? Math.max(...bars.map((b) => Math.max(...b.map((v, i) => Math.abs(v - bars[0][i]))))) : NaN;
+  // What the compositor showed (web): the fade and the pill grow are WAAPI.
+  const fadeAnim = waapiOn(waapi, t0, (w) => w.tid === fadeId);
+  const pillAnim = waapiOn(waapi, t0, (w) => w.tid === pillId);
+  const fadeShown = fadeAnim ? Math.min(fadeAnim.start!, first ? first.t : fadeAnim.start!) : null;
   return {
     slot,
+    fadeCompositorMs: fadeAnim ? Math.round(fadeAnim.start! + fadeAnim.reach - fadeShown!) : null,
+    fadeCompositorFrames: fadeAnim ? Math.floor(fadeAnim.reach / (1000 / 60)) : null,
+    pillCompositorMs: pillAnim ? Math.round(pillAnim.start! + pillAnim.reach - t0) : null,
     selPaintMs: sel ? Math.round(sel.t - t0) : null,
     firstVisibleMs: first ? Math.round(first.t - t0) : null,
     firstOpacity: first ? Number(opOf(first).toFixed(3)) : null,
@@ -264,7 +319,7 @@ function push({ t0, frames }: { t0: number; frames: Frame[] }) {
   };
 }
 
-function pop({ t0, frames }: { t0: number; frames: Frame[] }, startAt = t0) {
+function pop({ t0, frames, waapi }: Sample, startAt = t0) {
   const before = frames.filter((f) => f.t < startAt).pop() ?? frames[0];
   const topId = before.layers[before.layers.length - 1]?.id;
   const after = frames.filter((f) => f.t >= startAt);
@@ -283,7 +338,12 @@ function pop({ t0, frames }: { t0: number; frames: Frame[] }, startAt = t0) {
     const l = f.layers.find((x) => x.id === topId)!;
     return (l.op > 0.02 && l.op < 0.98) || (Math.abs(l.tx) > 0.5 && Math.abs(l.tx) < 31.5) || (Math.abs(l.ty) > 0.5 && Math.abs(l.ty) < 47.5);
   });
+  // The exit as the compositor ran it (web: WAAPI on the leaving layer —
+  // transform on calm and opacity on effects; the longer one ends the move).
+  const exits = (waapi ?? []).filter((w) => w.at >= startAt - 1 && w.elId === topId && w.start !== null && w.state !== 'idle');
   return {
+    exitCompositorMs: exits.length ? Math.round(Math.max(...exits.map((w) => w.reach))) : null,
+    exitCompositorState: exits.length ? (exits.every((w) => w.state === 'finished') ? 'finished' : exits[0].state) : null,
     exitAnimatedFrames: midMove.length,
     leavingFrames: leaving.length,
     reversesFromCurrent: maxOpAfter <= startOp + 0.05,
@@ -313,7 +373,9 @@ function sheetOpen({ t0, frames }: { t0: number; frames: Frame[] }) {
   const onScreen = after.filter((f) => f.sheet!.top < VH - 2);
   const minOp = onScreen.length ? Math.min(...onScreen.map((f) => f.sheet!.op)) : 1;
   const from = after[0].t;
+  const opaque = onScreen.find((f) => f.sheet!.op >= 0.99);
   return {
+    opacityRampMs: opaque && onScreen.length ? Math.round(opaque.t - onScreen[0].t) : null,
     visibleMs: Math.round(from - t0),
     travelPx: Math.round(startTop - finalTop),
     p95Ms: at95 ? Math.round(at95.t - from) : null,
@@ -472,38 +534,44 @@ test('feel: navigation and screen transitions (read-only)', async ({ browser }) 
     await page.getByTestId('nav-slot-feed').tap();
     await expect(page).toHaveURL(/\/feed$/, { timeout: 20_000 });
     await page.waitForTimeout(1200);
-    await screencast(cdp, 'tab-feed-to-discover', tab('discover'));
-    await screencast(cdp, 'tab-discover-to-feed', tab('feed'));
-    await screencast(cdp, 'tab-feed-to-messages', tab('messages'));
-    await screencast(cdp, 'tab-messages-to-you', tab('you'));
+    await screencast(page, cdp, 'tab-feed-to-discover', tab('discover'));
+    await screencast(page, cdp, 'tab-discover-to-feed', tab('feed'));
+    await screencast(page, cdp, 'tab-feed-to-messages', tab('messages'));
+    await screencast(page, cdp, 'tab-messages-to-you', tab('you'));
     await expect(page.getByTestId('you-row-settings')).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(800);
-    await screencast(cdp, 'push-settings', async () => {
+    await screencast(page, cdp, 'push-settings', async () => {
       await page.getByTestId('you-row-settings').tap();
       await expect(page).toHaveURL(/\/settings$/, { timeout: 20_000 });
     });
-    await screencast(cdp, 'pop-settings', async () => {
-      await page.evaluate(() => history.back());
+    await screencast(page, cdp, 'pop-settings', async () => {
+      await page.evaluate(() => {
+        (window as unknown as { __feel: { tapAt: number } }).__feel.tapAt = performance.timeOrigin + performance.now();
+        history.back();
+      });
       await expect(page).toHaveURL(/\/you$/, { timeout: 20_000 });
     });
     await page.waitForTimeout(600);
-    await screencast(cdp, 'tab-you-to-discover', tab('discover'));
+    await screencast(page, cdp, 'tab-you-to-discover', tab('discover'));
     await expect(page.getByTestId('discover-notifications')).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(800);
-    await screencast(cdp, 'push-notifications', async () => {
+    await screencast(page, cdp, 'push-notifications', async () => {
       await page.getByTestId('discover-notifications').tap();
       await expect(page).toHaveURL(/\/notifications$/, { timeout: 20_000 });
     });
-    await screencast(cdp, 'pop-notifications', async () => {
-      await page.evaluate(() => history.back());
+    await screencast(page, cdp, 'pop-notifications', async () => {
+      await page.evaluate(() => {
+        (window as unknown as { __feel: { tapAt: number } }).__feel.tapAt = performance.timeOrigin + performance.now();
+        history.back();
+      });
       await expect(page).toHaveURL(/\/discover$/, { timeout: 20_000 });
     });
     await page.waitForTimeout(600);
-    await screencast(cdp, 'create-open', async () => {
+    await screencast(page, cdp, 'create-open', async () => {
       await page.getByTestId('nav-slot-create').tap();
       await expect(page.getByTestId('create-sheet')).toBeVisible({ timeout: 15_000 });
     }, 900);
-    await screencast(cdp, 'create-close', async () => {
+    await screencast(page, cdp, 'create-close', async () => {
       await page.getByTestId('create-sheet').getByLabel('Close').tap();
     }, 900);
   }
@@ -527,9 +595,11 @@ test('feel: navigation and screen transitions (read-only)', async ({ browser }) 
       expect.soft(t.fadeMs ?? 0, `F12 ${t.slot}: opacity change <= 120 ms`).toBeLessThanOrEqual(120 + 2 * frameMs);
       expect.soft(t.pillMinScale ?? 1, `F12 ${t.slot}: the pill does not scale`).toBeGreaterThanOrEqual(0.999);
     } else {
-      expect.soft(t.rampFrames, `F4 ${t.slot}: content fades over >= 2 frames`).toBeGreaterThanOrEqual(2);
-      expect.soft(t.fadeMs ?? 999, `F4 ${t.slot}: content faded in <= 200 ms`).toBeLessThanOrEqual(200);
-      expect.soft(t.pillSettleMs ?? 999, `F4 ${t.slot}: pill settles <= 250 ms`).toBeLessThanOrEqual(250);
+      // Web motion is WAAPI on the compositor: judge what it showed, and fall
+      // back to the rAF view where nothing was handed to the compositor.
+      expect.soft(t.fadeCompositorFrames ?? t.rampFrames, `F4 ${t.slot}: content fades over >= 2 frames`).toBeGreaterThanOrEqual(2);
+      expect.soft(t.fadeCompositorMs ?? t.fadeMs ?? 999, `F4 ${t.slot}: content faded in <= 200 ms`).toBeLessThanOrEqual(200);
+      expect.soft(t.pillCompositorMs ?? t.pillSettleMs ?? 999, `F4 ${t.slot}: pill settles <= 250 ms`).toBeLessThanOrEqual(250);
     }
   }
   const pushes = result.push as Record<string, Record<string, unknown>>;
@@ -549,7 +619,10 @@ test('feel: navigation and screen transitions (read-only)', async ({ browser }) 
     const p = pushes[name];
     expect.soft(p.leftoverHalfFaded, `F3 ${name}: nothing left half-faded`).toBe(0);
     expect.soft(p.revealedSolid, `F3 ${name}: the revealed screen is solid`).toBe(true);
-    if (!REDUCED) expect.soft(p.exitAnimatedFrames as number, `F3 ${name}: the pop is not a jump cut`).toBeGreaterThanOrEqual(2);
+    const exitFrames = p.exitCompositorState === 'finished' && typeof p.exitCompositorMs === 'number'
+      ? Math.floor(p.exitCompositorMs / frameMs)
+      : (p.exitAnimatedFrames as number);
+    if (!REDUCED) expect.soft(exitFrames, `F3 ${name}: the pop is not a jump cut`).toBeGreaterThanOrEqual(2);
   }
   const intr = pushes.interrupt as unknown as { back: ReturnType<typeof pop>; backLayerOp: number | null };
   if (!REDUCED) expect.soft(intr.backLayerOp ?? 1, 'F3 interrupt: back pressed while the push was still moving').toBeLessThan(0.95);
@@ -558,10 +631,12 @@ test('feel: navigation and screen transitions (read-only)', async ({ browser }) 
   expect.soft(intr.back.revealedSolid, 'F3 interrupt: ends on the old screen, solid').toBe(true);
 
   const create = result.create as { open: ReturnType<typeof sheetOpen>; scrimMidOpen: ReturnType<typeof sheetInterrupt> };
-  expect.soft(create.open.sheetMinOpacity ?? 0, 'F5 Create: the surface is never translucent').toBeGreaterThanOrEqual(0.99);
   if (REDUCED) {
+    // Reduce Motion: fades only (§3.4) — the sheet may fade, briefly.
+    expect.soft(create.open.opacityRampMs ?? 0, 'F12 Create: the sheet\'s fade <= 120 ms').toBeLessThanOrEqual(120 + 2 * frameMs);
     expect.soft(create.open.settledMs ?? 999, 'F12 Create: the sheet is simply there (no travel)').toBeLessThanOrEqual(2 * frameMs);
   } else {
+    expect.soft(create.open.sheetMinOpacity ?? 0, 'F5 Create: the surface is never translucent').toBeGreaterThanOrEqual(0.99);
     expect.soft(create.open.p95Ms ?? 999, 'F5 Create: 95% of the travel <= 250 ms').toBeLessThanOrEqual(250);
     expect.soft(create.open.settledMs ?? 999, 'F5 Create: settled <= 450 ms').toBeLessThanOrEqual(450);
     expect.soft(create.scrimMidOpen.maxJumpFraction ?? 1, 'F5 Create: scrim tap mid-open, no frame jumps > 1/3 of the sheet').toBeLessThanOrEqual(1 / 3);
