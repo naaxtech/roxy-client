@@ -15,7 +15,7 @@ import {
 import Reanimated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { THEMES } from '../../lib/theme';
-import { PRESS, fadeConfig, springTo } from '../../lib/motion';
+import { PRESS, fadeConfig, springAt, springTo } from '../../lib/motion';
 import { useThemeStore } from '../../store/themeStore';
 
 /**
@@ -83,6 +83,18 @@ const LayerView = (animatable ? Reanimated.View : View) as unknown as typeof Vie
 
 const NO_TRANSFORM: NonNullable<ViewStyle['transform']> = [];
 
+/**
+ * One-frame head start for a press from rest (F1): an animation's first step
+ * paints a frame after it starts (reanimated on web; the JS → UI hop on
+ * native), a direct assignment paints on the next frame. So press-in sets
+ * each spring's own position and velocity one 60 Hz frame in, then springs on
+ * from there: the identical trajectory, one frame sooner on screen.
+ */
+export const PRESS_HEAD_START = {
+  spatial: springAt('fastSpatial', 1000 / 60),
+  effects: springAt('fastEffects', 1000 / 60),
+} as const;
+
 /** The state-layer ink and alpha for a theme: `ink` at 10% (M3 pressed). */
 export function stateLayerFor(theme: 'light' | 'dark'): { color: string; alpha: number } {
   return { color: THEMES[theme].ink, alpha: PRESS.stateLayer[theme] };
@@ -144,7 +156,14 @@ export const PressableScale = forwardRef<View, PressableScaleProps>(function Pre
       if (reducedMotion) {
         progress.value = to;
         layer.value = withTiming(to, fadeConfig());
+      } else if (to === 1 && progress.value <= 0.001 && layer.value <= 0.001) {
+        const { spatial, effects } = PRESS_HEAD_START;
+        progress.value = spatial.x;
+        layer.value = effects.x;
+        progress.value = withSpring(1, springTo('fastSpatial', { velocity: spatial.v }));
+        layer.value = withSpring(1, springTo('fastEffects', { velocity: effects.v }));
       } else {
+        // Mid-flight (a re-press during the release): retarget from where it is.
         progress.value = withSpring(to, springTo('fastSpatial'));
         layer.value = withSpring(to, springTo('fastEffects'));
       }

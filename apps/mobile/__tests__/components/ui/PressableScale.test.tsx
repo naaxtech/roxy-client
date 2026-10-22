@@ -43,6 +43,7 @@ import {
   TouchableOpacity,
   stateLayerFor,
   PILL_RADIUS_MIN,
+  PRESS_HEAD_START,
 } from '../../../components/ui/PressableScale';
 import { PRESS, REDUCED, SPRING } from '../../../lib/motion';
 import { THEMES } from '../../../lib/theme';
@@ -107,6 +108,33 @@ describe('PressableScale v3 — press-in on shared values', () => {
     expect(spatial?.[1]).toMatchObject({ ...SPRING.fastSpatial, reduceMotion: 'never' });
     settle();
     expect(scaleOf(v.getByTestId('p'))).toBeCloseTo(PRESS.scale, 3);
+  });
+
+  it('starts one frame in (F1): the springs leave from their own first-frame position and velocity', () => {
+    const v = render(<PressableScale testID="p" onPress={() => {}} />);
+    press(v.getByTestId('p'));
+    const spatial = mockWithSpring.mock.calls.find(([to, cfg]) => to === 1 && cfg?.stiffness === SPRING.fastSpatial.stiffness);
+    const effects = mockWithSpring.mock.calls.find(([to, cfg]) => to === 1 && cfg?.stiffness === SPRING.fastEffects.stiffness);
+    expect(spatial?.[1].velocity).toBeCloseTo(PRESS_HEAD_START.spatial.v, 6);
+    expect(effects?.[1].velocity).toBeCloseTo(PRESS_HEAD_START.effects.v, 6);
+    expect(PRESS_HEAD_START.spatial.x).toBeGreaterThan(0.05);
+    expect(PRESS_HEAD_START.spatial.x).toBeLessThan(0.15);
+    frame();
+    // The first painted frame is already pressed by at least the head start.
+    expect(scaleOf(v.getByTestId('p'))).toBeLessThan(1 - (1 - PRESS.scale) * PRESS_HEAD_START.spatial.x + 1e-6);
+    expect(layerOpacity(v)).toBeGreaterThan(0);
+  });
+
+  it('a re-press during the release retargets from where it is (no head start jump)', () => {
+    const v = render(<PressableScale testID="p" onPress={() => {}} />);
+    press(v.getByTestId('p'));
+    settle();
+    release(v.getByTestId('p'));
+    settle(30);
+    mockWithSpring.mockClear();
+    press(v.getByTestId('p'));
+    const spatial = mockWithSpring.mock.calls.find(([to, cfg]) => to === 1 && cfg?.stiffness === SPRING.fastSpatial.stiffness);
+    expect(spatial?.[1].velocity).toBeUndefined();
   });
 
   it('does NOT re-render on press-in or release (no React state on the press path)', () => {

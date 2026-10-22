@@ -13,6 +13,7 @@ import {
   WAIT,
   projectRelease,
   rubberBand,
+  springAt,
   springTo,
 } from '../../lib/motion';
 
@@ -101,5 +102,46 @@ describe('springTo (reanimated config for a token)', () => {
     expect(springTo('fastSpatial').reduceMotion).toBe('never');
     expect(springTo('fastSpatial')).not.toHaveProperty('restDisplacementThreshold');
     expect(springTo('fastSpatial')).not.toHaveProperty('dampingRatio');
+  });
+});
+
+describe('springAt (where a token spring is after t ms, from rest toward 1)', () => {
+  it('starts at rest and settles at the target', () => {
+    expect(springAt('fastSpatial', 0)).toEqual({ x: 0, v: 0 });
+    const late = springAt('fastSpatial', 2000);
+    expect(late.x).toBeCloseTo(1, 4);
+    expect(Math.abs(late.v)).toBeLessThan(0.01);
+  });
+
+  it('one 60 Hz frame in: fastSpatial ~9% of the way, fastEffects ~27% (critically damped)', () => {
+    expect(springAt('fastSpatial', 1000 / 60).x).toBeCloseTo(0.092, 2);
+    expect(springAt('fastEffects', 1000 / 60).x).toBeCloseTo(0.275, 2);
+    expect(springAt('fastSpatial', 1000 / 60).v).toBeGreaterThan(0);
+  });
+
+  it('overshoots like the token says (fastSpatial ~9.4%, effects never)', () => {
+    let maxS = 0;
+    let maxE = 0;
+    for (let t = 0; t < 1000; t += 1) {
+      maxS = Math.max(maxS, springAt('fastSpatial', t).x);
+      maxE = Math.max(maxE, springAt('fastEffects', t).x);
+    }
+    expect(maxS).toBeGreaterThan(1.08);
+    expect(maxS).toBeLessThan(1.11);
+    expect(maxE).toBeLessThanOrEqual(1);
+  });
+
+  it('matches a numeric integration of the same spring', () => {
+    const { mass, stiffness, damping } = { mass: 1, stiffness: 800, damping: 33.9 };
+    let x = 0;
+    let v = 0;
+    const dt = 0.00001;
+    for (let t = 0; t < 0.05; t += dt) {
+      const a = (-stiffness * (x - 1) - damping * v) / mass;
+      v += a * dt;
+      x += v * dt;
+    }
+    expect(springAt('fastSpatial', 50).x).toBeCloseTo(x, 3);
+    expect(springAt('fastSpatial', 50).v).toBeCloseTo(v, 1);
   });
 });

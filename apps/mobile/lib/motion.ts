@@ -230,3 +230,34 @@ export function fadeConfig(durationMs: number = REDUCED.fadeMs): { duration: num
   'worklet';
   return { duration: durationMs, reduceMotion: NEVER };
 }
+
+/**
+ * Where a token spring released from rest at 0 toward 1 is after `tMs`:
+ * `x` = fraction of the travel, `v` = velocity in travel units per second.
+ * Closed form of the same physics reanimated runs (mass-spring-damper).
+ *
+ * Used to give a press-in a one-frame head start: reanimated (web, and the
+ * JS → UI hop on native) paints an animation's first step one frame after it
+ * starts, so PressableScale sets the spring's own first-frame position and
+ * velocity directly — the press shows on the very next frame and continues on
+ * the identical trajectory.
+ */
+export function springAt(name: SpringName, tMs: number): { x: number; v: number } {
+  'worklet';
+  if (tMs <= 0) return { x: 0, v: 0 };
+  const { mass, stiffness, damping } = SPRING[name];
+  const t = tMs / 1000;
+  const w0 = Math.sqrt(stiffness / mass);
+  const zeta = damping / (2 * Math.sqrt(stiffness * mass));
+  if (zeta >= 0.999) {
+    // Critically damped (the effects tokens): no overshoot.
+    const e = Math.exp(-w0 * t);
+    return { x: 1 - e * (1 + w0 * t), v: w0 * w0 * t * e };
+  }
+  const wd = w0 * Math.sqrt(1 - zeta * zeta);
+  const e = Math.exp(-zeta * w0 * t);
+  return {
+    x: 1 - e * (Math.cos(wd * t) + ((zeta * w0) / wd) * Math.sin(wd * t)),
+    v: e * ((w0 * w0) / wd) * Math.sin(wd * t),
+  };
+}
