@@ -1,0 +1,52 @@
+apps/mobile/__tests__/components/messages/RequestsSheet.test.tsx
+  h_0549c11fec2ab0 42-47
+apps/mobile/__tests__/components/messages/RequestsSheetInvites.test.tsx
+  h_0549c11fec2ab0 26-31
+apps/mobile/__tests__/screens/CommunityChannels.test.tsx
+  h_0549c11fec2ab0 38-41,47-50
+apps/mobile/__tests__/screens/CommunityChannelsModeration.test.tsx
+  h_0549c11fec2ab0 18-23,26-29
+apps/mobile/__tests__/screens/CommunityChannelsPaging.test.tsx
+  h_0549c11fec2ab0 21-26
+apps/mobile/__tests__/screens/CommunityChannelsReactions.test.tsx
+  h_0549c11fec2ab0 22-27
+apps/mobile/__tests__/screens/CommunityChannelsSafety.test.tsx
+  h_0549c11fec2ab0 22-27
+apps/mobile/__tests__/screens/MessagesRequestsLink.test.tsx
+  h_0549c11fec2ab0 20-25
+apps/mobile/__tests__/screens/MessagesScreenV2.test.tsx
+  h_0549c11fec2ab0 2-3,25-29,78-89
+apps/mobile/__tests__/screens/SettingsChat.test.tsx
+  h_0549c11fec2ab0 34-40,43-49
+apps/mobile/__tests__/screens/YouTabRenders.test.tsx
+  h_0549c11fec2ab0 1-105
+apps/mobile/app/(tabs)/discover/community/channels/[communityId].tsx
+  h_0549c11fec2ab0 64-66,103-106,437-438,481
+apps/mobile/app/(tabs)/messages/index.tsx
+  h_0549c11fec2ab0 61-63,73-74,95,97-99,140-141,151,153,165,169-170,174,176-179,186-187
+apps/mobile/app/(tabs)/you/index.tsx
+  h_0549c11fec2ab0 2,52-57,59-62,236-237,306,585,614
+apps/mobile/app/(tabs)/you/settings.tsx
+  h_0549c11fec2ab0 1,76-82,99-100
+apps/mobile/app/event/[id].tsx
+  h_0549c11fec2ab0 1,105-107,324-325,374
+apps/mobile/components/messages/MessagesInbox.tsx
+  h_0549c11fec2ab0 1,105-106
+apps/mobile/components/messages/PinnedPersonaRow.tsx
+  h_0549c11fec2ab0 1,60-61
+apps/mobile/components/messages/RequestsSheet.tsx
+  h_0549c11fec2ab0 1,51-52,61,67,69,73,103
+apps/mobile/components/profile/ProfileShell.tsx
+  h_0549c11fec2ab0 1,258-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "68c44e3d243c9178175406e8b9c517b0cc38bc40",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
