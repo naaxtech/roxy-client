@@ -1,0 +1,16 @@
+apps/mobile/__tests__/feel/feelStaticScan.test.ts
+  h_0549c11fec2ab0 1-183
+apps/mobile/scripts/feel/feelStaticScan.ts
+  h_0549c11fec2ab0 1-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa0969a9b45dbf106bb01f657c36851f5cd73a54",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
