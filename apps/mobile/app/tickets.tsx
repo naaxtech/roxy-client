@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../components/ui/PressableScale';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { TicketCard } from '../components/TicketCard';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { RoxyLoading, RoxyRefresh } from '../components/feedback';
 
 interface TicketRow {
   event_id: string;
@@ -203,13 +204,15 @@ export default function MyTicketsScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
+        <RoxyLoading style={{ marginTop: 48 }} />
       ) : tickets.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>No tickets yet.</Text>
           <Text style={styles.emptySubText}>Find events in the Discover tab.</Text>
         </View>
       ) : (
+        <RoxyRefresh refreshing={refreshing} onRefresh={onRefresh} testID="tickets-refresh">
+          {(refreshControl) => (
         <FlashList
           data={listData}
           renderItem={renderItem}
@@ -218,8 +221,10 @@ export default function MyTicketsScreen() {
           contentContainerStyle={styles.list}
           onEndReached={() => { if (hasMore && !loading) fetchTickets(); }}
           onEndReachedThreshold={0.4}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.roxy} />}
+          refreshControl={refreshControl}
         />
+          )}
+        </RoxyRefresh>
       )}
     </SafeAreaView>
   );

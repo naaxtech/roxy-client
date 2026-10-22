@@ -1,4 +1,5 @@
 import React from 'react';
+import { Animated } from 'react-native';
 import { render, waitFor } from '@testing-library/react-native';
 import { QuestionOfTheDayCard } from '../../../components/grow/QuestionOfTheDayCard';
 
@@ -17,6 +18,10 @@ jest.mock('../../../hooks/useThemeColors', () => ({
     roxy: '#E879A6', devPanel: '#FF1493',
   }),
 }));
+
+// F12: the Reduce Motion answer is driven per test.
+let mockReduced = false;
+jest.mock('../../../hooks/useReducedMotion', () => ({ useReducedMotion: () => mockReduced }));
 
 jest.mock('../../../components/grow/AnswerSheet', () => ({
   AnswerSheet: () => null,
@@ -47,6 +52,25 @@ jest.mock('../../../lib/supabase', () => ({
     }),
   },
 }));
+
+describe('QuestionOfTheDayCard LIVE dot (F12: loops are static under Reduce Motion)', () => {
+  afterEach(() => { mockReduced = false; jest.restoreAllMocks(); });
+
+  it('pulses on the native driver when motion is allowed', async () => {
+    const loop = jest.spyOn(Animated, 'loop');
+    const v = render(<QuestionOfTheDayCard communityIds={['c1']} userId="u1" />);
+    await waitFor(() => expect(v.getByText('LIVE')).toBeTruthy());
+    expect(loop).toHaveBeenCalledTimes(1);
+  });
+
+  it('under Reduce Motion the dot is static and the word LIVE stays', async () => {
+    mockReduced = true;
+    const loop = jest.spyOn(Animated, 'loop');
+    const v = render(<QuestionOfTheDayCard communityIds={['c1']} userId="u1" />);
+    await waitFor(() => expect(v.getByText('LIVE')).toBeTruthy());
+    expect(loop).not.toHaveBeenCalled();
+  });
+});
 
 describe('QuestionOfTheDayCard', () => {
   it('renders question text when question is available', async () => {

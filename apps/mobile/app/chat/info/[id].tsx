@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, ActivityIndicator, TextInput, Modal, FlatList,
+  View, Text, StyleSheet, ScrollView, TextInput, FlatList,
 } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,7 +23,6 @@ import {
 } from '../../../lib/groupInfo';
 import { conversationReportTarget, type ThreadMember } from '../../../lib/chatThread';
 import { routeParam } from '../../../lib/routeParams';
-import { haptic } from '../../../lib/haptics';
 import { logError } from '../../../lib/errorLogger';
 import { confirmAction, showAlert } from '../../../lib/confirm';
 import { avatarGradient } from '../../../lib/avatars';
@@ -31,6 +30,9 @@ import { TYPE } from '../../../lib/typography';
 import { RADII, inkOn, type ThemeColors, BRAND_INK } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { FeatureGate } from '../../../components/features/FeatureGate';
+import { BusySwap, RowsSkeleton } from '../../../components/messages/LoadingShapes';
+import { RoxyLoading } from '../../../components/feedback';
+import { Sheet } from '../../../components/feedback';
 
 /**
  * Group info — `/chat/info/<conversationId>`.
@@ -99,7 +101,7 @@ function GroupInfo() {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
         <Header s={s} colors={colors} onBack={() => router.back()} />
-        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} accessibilityLabel="Loading group" />
+        <RowsSkeleton testID="group-info-loading" label="Loading group" rows={4} />
       </SafeAreaView>
     );
   }
@@ -127,7 +129,7 @@ function GroupInfo() {
   const saveEdit = async () => {
     const clean = name.trim().slice(0, GROUP_TITLE_MAX) || null;
     const ok = await run('rename', () => renameGroup(conversationId, clean, emoji));
-    if (ok) { haptic('success'); setEditing(false); void refreshInbox(); }
+    if (ok) { setEditing(false); void refreshInbox(); }
   };
 
   const onRemove = async (target: ThreadMember) => {
@@ -139,19 +141,17 @@ function GroupInfo() {
     );
     if (!yes) return;
     const ok = await run(`remove-${target.id}`, () => removeGroupMember(conversationId, target.id));
-    if (ok) haptic('warning');
+    void ok; // No haptic (motion spec §3.3).
   };
 
   const onRole = async (target: ThreadMember) => {
     const next = target.role === 'admin' ? 'member' : 'admin';
-    const ok = await run(`role-${target.id}`, () => setGroupRole(conversationId, target.id, next));
-    if (ok) haptic('select');
+    await run(`role-${target.id}`, () => setGroupRole(conversationId, target.id, next));
   };
 
   const onMutePress = async () => {
     if (muted) {
-      const ok = await run('mute', () => muteConversation(conversationId, null));
-      if (ok) haptic('select');
+      await run('mute', () => muteConversation(conversationId, null));
       return;
     }
     setMuteOpen((v) => !v);
@@ -159,14 +159,13 @@ function GroupInfo() {
 
   const onMuteChoice = async (choice: MuteChoice) => {
     const ok = await run('mute', () => muteConversation(conversationId, muteUntil(choice)));
-    if (ok) { haptic('select'); setMuteOpen(false); }
+    if (ok) setMuteOpen(false);
   };
 
   const togglePick = (id: string) => {
     setPicked((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length >= free) return prev;
-      haptic('select');
       return [...prev, id];
     });
   };
@@ -185,7 +184,6 @@ function GroupInfo() {
         "Some friends don't take group adds, or can't be added to this group right now.",
       );
     } else {
-      haptic('success');
     }
   };
 
@@ -235,7 +233,7 @@ function GroupInfo() {
                 {GROUP_EMOJIS.map((e) => (
                   <TouchableOpacity
                     key={e}
-                    onPress={() => { haptic('select'); setEmoji((cur) => (cur === e ? null : e)); }}
+                    onPress={() => setEmoji((cur) => (cur === e ? null : e))}
                     style={[s.emojiBtn, emoji === e && s.emojiOn]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: emoji === e }}
@@ -264,9 +262,9 @@ function GroupInfo() {
                   accessibilityState={{ busy: busy === 'rename' }}
                   testID="group-save"
                 >
-                  {busy === 'rename'
-                    ? <ActivityIndicator size="small" color={inkOn(colors.primary)} />
-                    : <Text style={s.pillText}>Save</Text>}
+                  <BusySwap busy={busy === 'rename'} onFill label="Saving">
+                    <Text style={s.pillText}>Save</Text>
+                  </BusySwap>
                 </TouchableOpacity>
               </View>
             </View>
@@ -305,7 +303,7 @@ function GroupInfo() {
               <Text style={s.rowLabel}>{muted ? 'Unmute' : 'Mute'}</Text>
               <Text style={s.rowHint}>{muteLabel(mutedUntil)}</Text>
             </View>
-            {busy === 'mute' ? <ActivityIndicator size="small" color={colors.roxy} /> : null}
+            <RoxyLoading active={busy === 'mute'} size="busy" accessibilityLabel="Saving" testID="group-mute-loading" />
           </TouchableOpacity>
           {muteOpen && !muted ? MUTE_CHOICES.map((c) => (
             <TouchableOpacity
@@ -423,9 +421,8 @@ function GroupInfo() {
         </Text>
       </ScrollView>
 
-      <Modal visible={addOpen} animationType="slide" transparent onRequestClose={() => setAddOpen(false)}>
-        <View style={s.sheetBackdrop}>
-          <View style={s.sheet} testID="add-sheet">
+      {/* F5: the shared Sheet (drag from the handle; the list scrolls). */}
+      <Sheet visible={addOpen} onClose={() => setAddOpen(false)} accessibilityLabel="Add people" testID="add-sheet" style={s.sheet}>
             <View style={s.sheetHeader}>
               <TouchableOpacity onPress={() => setAddOpen(false)} style={s.iconBtn} accessibilityRole="button" accessibilityLabel="Close">
                 <Ionicons name="close" size={22} color={colors.textPrimary} />
@@ -440,9 +437,9 @@ function GroupInfo() {
                 accessibilityState={{ disabled: picked.length === 0, busy: busy === 'add' }}
                 testID="add-confirm"
               >
-                {busy === 'add'
-                  ? <ActivityIndicator size="small" color={inkOn(colors.primary)} />
-                  : <Text style={[s.pillText, picked.length === 0 && s.pillOffText]}>Add{picked.length ? ` ${picked.length}` : ''}</Text>}
+                <BusySwap busy={busy === 'add'} onFill label="Adding">
+                  <Text style={[s.pillText, picked.length === 0 && s.pillOffText]}>Add{picked.length ? ` ${picked.length}` : ''}</Text>
+                </BusySwap>
               </TouchableOpacity>
             </View>
             <Text style={s.sheetHint}>
@@ -486,9 +483,7 @@ function GroupInfo() {
                 );
               }}
             />
-          </View>
-        </View>
-      </Modal>
+      </Sheet>
     </SafeAreaView>
   );
 }
@@ -578,11 +573,7 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   empty: { alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12 },
   emptyIcon: { fontSize: 40 },
   emptyText: { ...TYPE.body, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
-  sheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: {
-    maxHeight: '85%', minHeight: '50%', backgroundColor: colors.background,
-    borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet, paddingBottom: 24,
-  },
+  sheet: { minHeight: '50%', paddingBottom: 12 },
   sheetHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8, paddingVertical: 8,
     borderBottomWidth: 1, borderBottomColor: colors.line,

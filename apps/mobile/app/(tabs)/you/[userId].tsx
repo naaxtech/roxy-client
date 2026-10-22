@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Animated, Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Share, StyleSheet, Text, View } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import * as Linking from 'expo-linking';
 import { compactCount, fetchFollowCounts, type FollowCounts } from '../../../lib/followCounts';
@@ -29,12 +29,13 @@ import { useFollowStore } from '../../../store/followStore';
 import { useCommunityStore } from '../../../store/communityStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { TYPE } from '../../../lib/typography';
-import { RADII, inkOn, scrim } from '../../../lib/theme';
+import { RADII, inkOn } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { confirmAction, showAlert } from '../../../lib/confirm';
 import { openDirectChat } from '../../../lib/directMessages';
 import { useSafetyStore } from '../../../store/safetyStore';
-import { usePopIn } from '../../../components/ui/popIn';
+import { Sheet } from '../../../components/feedback';
+import { Snackbar } from '../../../components/ui/Snackbar';
 import type { CommunityRoom, Event, Profile } from '../../../types';
 import { FeatureGate } from '../../../components/features/FeatureGate';
 import { isOfficialAccount } from '../../../lib/officialGrant';
@@ -83,7 +84,13 @@ function UserProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const { friends, pendingReceived, pendingSent, sendRequest, acceptRequest } = useFriendStore();
+  // Selectors, not the whole store: a heartbeat or a refetch elsewhere must
+  // not re-render this profile (jank audit #9).
+  const friends = useFriendStore((s) => s.friends);
+  const pendingReceived = useFriendStore((s) => s.pendingReceived);
+  const pendingSent = useFriendStore((s) => s.pendingSent);
+  const sendRequest = useFriendStore((s) => s.sendRequest);
+  const acceptRequest = useFriendStore((s) => s.acceptRequest);
   const fetchFriends = useFriendStore((s) => s.fetchAll);
   const followingIds = useFollowStore((s) => s.followingIds);
   const hydrateFollows = useFollowStore((s) => s.hydrate);
@@ -101,7 +108,6 @@ function UserProfileScreen() {
   const [counts, setCounts] = useState<FollowCounts | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
-  const safetyPop = usePopIn(safetyOpen);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [badges, setBadges] = useState<EarnedBadge[]>([]);
@@ -116,6 +122,10 @@ function UserProfileScreen() {
   const [reelsOpen, setReelsOpen] = useState(false);
   const [reelInitialId, setReelInitialId] = useState<string | null>(null);
   const [eventsView, setEventsView] = useState<'list' | 'calendar'>('list');
+  // F10: every button here flips at once (the stores are optimistic). When the
+  // server refuses, the store has already rolled the button back; this says
+  // so in one sentence and offers Retry, without blocking the screen.
+  const [actionFailure, setActionFailure] = useState<{ message: string; retry: () => void } | null>(null);
 
   const load = useCallback(async (opts?: { quiet?: boolean }) => {
     if (!userId) return;
@@ -280,20 +290,31 @@ function UserProfileScreen() {
 
   const handleAddFriend = async () => {
     if (!userId) return;
-    try { await sendRequest(userId); }
-    catch (e) {
+    setActionFailure(null);
+    try {
+      await sendRequest(userId, {
+        display_name: profile?.display_name ?? '',
+        username: profile?.username ?? '',
+        avatar_url: profile?.avatar_url ?? null,
+      });
+    } catch (e) {
       logError(e, 'userProfile_addFriend');
-      showAlert('Could not send that request', e instanceof Error && /signed in/i.test(e.message)
-        ? e.message
-        : 'Check your connection and try again.');
+      setActionFailure({
+        message: e instanceof Error && /signed in/i.test(e.message) ? e.message : 'Could not send that request.',
+        retry: () => { void handleAddFriend(); },
+      });
     }
   };
 
   const handleAcceptFriend = async () => {
     const row = pendingReceived.find((f) => f.profile.id === userId);
     if (!row) return;
+    setActionFailure(null);
     try { await acceptRequest(row.id); }
-    catch (e) { logError(e, 'userProfile_acceptFriend'); showAlert('Error', 'Could not accept that request.'); }
+    catch (e) {
+      logError(e, 'userProfile_acceptFriend');
+      setActionFailure({ message: 'Could not accept that request.', retry: () => { void handleAcceptFriend(); } });
+    }
   };
 
   const handleMessage = async () => {
@@ -360,21 +381,25 @@ function UserProfileScreen() {
       if (!userId || !user?.id) return;
       // The store rolls the button back on failure; this says why, instead
       // of the button silently flipping back (PRO-07).
+      setActionFailure(null);
       if (button.role === 'follow') {
         const ok = await follow(user.id, userId);
-        if (!ok) showAlert('Could not follow her', 'Check your connection and try again.');
+        if (!ok) setActionFailure({ message: 'Could not follow her.', retry: () => { void run(); } });
         else setCounts((c) => (c ? { ...c, followers: c.followers + 1 } : c));
         return;
       }
       if (button.role === 'unfollow') {
         const ok = await unfollow(user.id, userId);
-        if (!ok) showAlert('Could not unfollow her', 'Check your connection and try again.');
+        if (!ok) setActionFailure({ message: 'Could not unfollow her.', retry: () => { void run(); } });
         else setCounts((c) => (c ? { ...c, followers: Math.max(0, c.followers - 1) } : c));
         return;
       }
       if (button.role === 'join' && officialCommunityId) {
         try { await joinCommunity(officialCommunityId, user.id); }
-        catch (e) { logError(e, 'userProfile_join'); showAlert('Error', 'Could not join that community.'); }
+        catch (e) {
+          logError(e, 'userProfile_join');
+          setActionFailure({ message: 'Could not join that community.', retry: () => { void run(); } });
+        }
         return;
       }
       if (button.role === 'channels' && officialCommunityId) {
@@ -653,14 +678,8 @@ function UserProfileScreen() {
         onRetry={() => void load()}
       />
 
-      <Modal
-        visible={safetyOpen}
-        transparent
-        animationType="none"
-        onRequestClose={() => setSafetyOpen(false)}
-      >
-        <Pressable style={rowStyles.scrim} onPress={() => setSafetyOpen(false)}>
-          <Animated.View style={[rowStyles.sheet, safetyPop]} testID="profile-more-sheet">
+      {/* F5: the shared Sheet (spring rise, drag, only the scrim fades). */}
+      <Sheet visible={safetyOpen} onClose={() => setSafetyOpen(false)} accessibilityLabel={profile?.display_name ?? 'This profile'} dragFrom="sheet" testID="profile-more-sheet" style={rowStyles.sheet}>
             <Text style={rowStyles.sheetTitle}>{profile?.display_name ?? 'This profile'}</Text>
             <TouchableOpacity
               style={rowStyles.sheetRow}
@@ -718,9 +737,16 @@ function UserProfileScreen() {
             >
               <Text style={rowStyles.sheetDanger}>Block</Text>
             </TouchableOpacity>
-          </Animated.View>
-        </Pressable>
-      </Modal>
+      </Sheet>
+
+      <Snackbar
+        visible={actionFailure !== null}
+        message={actionFailure?.message ?? ''}
+        actionLabel="Retry"
+        onAction={() => actionFailure?.retry()}
+        onDismiss={() => setActionFailure(null)}
+        testID="profile-action-snackbar"
+      />
     </SafeAreaView>
   );
 }
@@ -779,15 +805,7 @@ function hostedStyles(colors: ReturnType<typeof useThemeColors>) {
       borderRadius: RADII.md,
     },
     onlineText: { ...TYPE.caption, color: colors.textSecondary, fontWeight: '600', flex: 1 },
-    scrim: { flex: 1, backgroundColor: scrim(0.5), justifyContent: 'flex-end' },
-    sheet: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: RADII.sheet,
-      borderTopRightRadius: RADII.sheet,
-      padding: 20,
-      paddingBottom: 28,
-      gap: 4,
-    },
+    sheet: { backgroundColor: colors.background, paddingHorizontal: 20, paddingBottom: 16, gap: 4 },
     sheetTitle: { ...TYPE.title, color: colors.textPrimary, marginBottom: 8 },
     sheetRow: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
     sheetLabel: { ...TYPE.body, color: colors.textPrimary, fontWeight: '700' },

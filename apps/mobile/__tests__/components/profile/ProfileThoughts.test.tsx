@@ -87,6 +87,12 @@ beforeEach(() => {
 void row;
 
 describe('ProfileThoughts instrumentation', () => {
+  it('first load: thought-card skeleton (F8), never a spinner (F11)', () => {
+    const v = render(<ProfileThoughts userId="u1" testID="t" />);
+    expect(v.getByTestId('t-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
   it('counts a thread being OPENED, and not its close', async () => {
     // Counting the close too would double every session and make the
     // open-to-sent rate — the one number this funnel exists for — meaningless.

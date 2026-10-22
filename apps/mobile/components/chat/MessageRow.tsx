@@ -1,7 +1,11 @@
-import { memo, useMemo, useRef } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import {
-  View, Text, Image, Pressable, StyleSheet, Animated, PanResponder,
+  View, Text, Image, Pressable, StyleSheet,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  Extrapolation, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring,
+} from 'react-native-reanimated';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,6 +18,8 @@ import { avatarGradient } from '../../lib/avatars';
 import { inkOn, type ThemeColors, BRAND_INK, pinkFill } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { haptic } from '../../lib/haptics';
+import { SPRING } from '../../lib/motion';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { MessageStatus } from './MessageStatus';
 import { ReactionChips } from './ReactionBar';
 import type { MessageReaction } from '../../types';
@@ -23,9 +29,34 @@ const AVA_GAP = 8;
 /** How far right she pulls a bubble before letting go means "reply". */
 export const SWIPE_REPLY_AT = 56;
 
+/** How far past the threshold the bubble can be pulled, at most (dp). */
+const SWIPE_OVERPULL = 24;
+/** Rubber-band coefficient past the threshold (iOS-like; spec §3.2 GESTURE.rubberBand). */
+const RUBBER_BAND = 0.55;
+
 /** Pure, so the gesture threshold is tested without a gesture. */
 export function swipeReplyDecision(dx: number, dy: number): 'reply' | 'none' {
+  'worklet';
   return dx >= SWIPE_REPLY_AT && Math.abs(dy) < dx / 2 ? 'reply' : 'none';
+}
+
+/**
+ * Where the bubble sits for a pull of `dx`: 1:1 up to the threshold, then
+ * rubber-banded towards `SWIPE_OVERPULL` (never past it). Under Reduce Motion
+ * it does not travel at all; the swipe still works.
+ */
+export function swipeOffset(dx: number, reduced: boolean): number {
+  'worklet';
+  if (reduced || dx <= 0) return 0;
+  if (dx <= SWIPE_REPLY_AT) return dx;
+  const over = dx - SWIPE_REPLY_AT;
+  return SWIPE_REPLY_AT + (1 - 1 / ((over * RUBBER_BAND) / SWIPE_OVERPULL + 1)) * SWIPE_OVERPULL;
+}
+
+/** The spring home on release, carrying the finger's velocity; none under Reduce Motion. */
+export function releaseSpring(velocityX: number, reduced: boolean): (typeof SPRING.spatial & { velocity: number }) | null {
+  'worklet';
+  return reduced ? null : { ...SPRING.spatial, velocity: velocityX };
 }
 
 const isWebImage = (url: string | null | undefined): url is string =>
@@ -54,9 +85,10 @@ interface Props {
  * One line of the thread.
  *
  * Swipe right on any bubble to reply (iMessage), long-press for the menu.
- * Both are also accessibility actions, so neither is gesture-only. The
- * gesture is a plain PanResponder that only claims a clearly horizontal pull,
- * so the list still scrolls and the web build behaves like the app.
+ * Both are also accessibility actions, so neither is gesture-only. The swipe
+ * is a gesture-handler `Pan` running as worklets (UI thread): it claims only a
+ * clearly rightward pull (12 dp right before any 12 dp vertical), so the list
+ * still scrolls, and the web build behaves like the app.
  */
 function MessageRowImpl({
   message: m, replyTo, currentUserId, isGroup, nameOf, reactions, showReadState, highlighted,
@@ -71,30 +103,44 @@ function MessageRowImpl({
   // and her own bubbles never carry "You".
   const showSenderName = isGroup && !isOwn && m.showName;
 
-  const dx = useRef(new Animated.Value(0)).current;
-  const armed = useRef(false);
+  const reduced = useReducedMotion();
+  const x = useSharedValue(0);
+  const armed = useSharedValue(false);
   const settled = (m.deliveryStatus ?? 'sent') === 'sent';
   const canReply = settled && !m.deleted_at && !m.isSystem;
 
-  const pan = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponder: (_e, g) => canReply && g.dx > 12 && Math.abs(g.dy) < g.dx / 2,
-    onPanResponderMove: (_e, g) => {
-      const x = Math.max(0, Math.min(g.dx, SWIPE_REPLY_AT + 24));
-      dx.setValue(x);
-      const nowArmed = swipeReplyDecision(g.dx, g.dy) === 'reply';
-      if (nowArmed && !armed.current) haptic('select');
-      armed.current = nowArmed;
-    },
-    onPanResponderRelease: (_e, g) => {
-      if (swipeReplyDecision(g.dx, g.dy) === 'reply') onReply(m);
-      armed.current = false;
-      Animated.spring(dx, { toValue: 0, useNativeDriver: true, friction: 7 }).start();
-    },
-    onPanResponderTerminate: () => {
-      armed.current = false;
-      Animated.spring(dx, { toValue: 0, useNativeDriver: true }).start();
-    },
-  }), [canReply, dx, m, onReply]);
+  // JS-side ends of the worklets: the threshold tick (selection, §3.3; it
+  // stays under Reduce Motion) and the reply itself.
+  const tick = useCallback(() => haptic('select'), []);
+  const reply = useCallback(() => onReply(m), [onReply, m]);
+
+  const pan = useMemo(() => Gesture.Pan()
+    .enabled(canReply)
+    .activeOffsetX(12)
+    .failOffsetY([-12, 12])
+    .onUpdate((e) => {
+      x.value = swipeOffset(e.translationX, reduced);
+      const nowArmed = swipeReplyDecision(e.translationX, e.translationY) === 'reply';
+      if (nowArmed && !armed.value) runOnJS(tick)();
+      armed.value = nowArmed;
+    })
+    .onEnd((e) => {
+      if (swipeReplyDecision(e.translationX, e.translationY) === 'reply') runOnJS(reply)();
+    })
+    .onFinalize((e) => {
+      armed.value = false;
+      const spring = releaseSpring(e.velocityX ?? 0, reduced);
+      x.value = spring ? withSpring(0, spring) : 0;
+    })
+    .withTestId(`swipe-reply-${m.id}`), [canReply, reduced, tick, reply, x, armed, m.id]);
+
+  const bubbleStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  // Under Reduce Motion nothing travels, so the glyph says "armed" instead.
+  const hintStyle = useAnimatedStyle(() => ({
+    opacity: reduced
+      ? (armed.value ? 1 : 0)
+      : interpolate(x.value, [0, SWIPE_REPLY_AT], [0, 1], Extrapolation.CLAMP),
+  }));
 
   const timeSep = m.showTimestamp ? <Text style={s.timeSep}>{formatSep(m.created_at)}</Text> : null;
 
@@ -152,19 +198,19 @@ function MessageRowImpl({
     <Text style={[s.text, isOwn ? s.textOwn : s.textOther]} selectable>{m.content}</Text>
   );
 
-  const replyIconOpacity = dx.interpolate({ inputRange: [0, SWIPE_REPLY_AT], outputRange: [0, 1], extrapolate: 'clamp' });
-
   return (
     <View>
       {timeSep}
       {showSenderName ? <Text style={s.name} testID={`message-sender-${m.id}`}>{senderName}</Text> : null}
       <View style={s.swipeWrap}>
-        <Animated.View style={[s.replyHint, { opacity: replyIconOpacity }]} pointerEvents="none">
+        <Animated.View style={[s.replyHint, hintStyle]} pointerEvents="none">
           <Ionicons name="arrow-undo" size={18} color={colors.textSecondary} />
         </Animated.View>
-        <Animated.View style={{ transform: [{ translateX: dx }] }} {...pan.panHandlers}>
+        <GestureDetector gesture={pan}>
+        <Animated.View style={bubbleStyle}>
           <Pressable
-            onLongPress={() => { haptic('tap'); onLongPress(m); }}
+            // A long-press that opens a menu ticks as a selection (§3.3).
+            onLongPress={() => { haptic('select'); onLongPress(m); }}
             delayLongPress={320}
             testID={`message-${m.id}`}
             accessibilityLabel={`${isOwn ? 'You' : senderName}: ${unsent ? 'Message unsent' : m.message_type === 'image' ? 'GIF' : m.content ?? ''}`}
@@ -234,6 +280,7 @@ function MessageRowImpl({
             </View>
           </Pressable>
         </Animated.View>
+        </GestureDetector>
       </View>
 
       {reactions.length > 0 ? (
@@ -241,7 +288,8 @@ function MessageRowImpl({
           <ReactionChips
             reactions={reactions}
             currentUserId={currentUserId}
-            onToggle={(emoji, own) => { haptic('select'); onToggleReaction(m.id, emoji, own); }}
+            // A committed reaction: the light tap (§3.3).
+            onToggle={(emoji, own) => { haptic('tap'); onToggleReaction(m.id, emoji, own); }}
           />
         </View>
       ) : null}

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, TextInput,
-  ScrollView, StyleSheet, ActivityIndicator, FlatList,
+  View, Text, TextInput, ScrollView, StyleSheet, FlatList,
 } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +10,8 @@ import { useFeedbackStore } from '../../../store/feedbackStore';
 import { showAlert } from '../../../lib/confirm';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { AppFeedback, FeatureRequest } from '../../../types';
+import { Skeleton, SkeletonGroup } from '../../../components/feedback';
+import { BusySwap } from '../../../components/messages/LoadingShapes';
 
 type Tab = 'report' | 'ideas';
 type Category = AppFeedback['category'];
@@ -173,7 +174,10 @@ export default function FeedbackScreen() {
   if (!user) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={colors.roxy} />
+        <SkeletonGroup testID="feedback-loading" accessibilityLabel="Loading" style={{ padding: 16, gap: 12 }}>
+          <Skeleton width="100%" height={120} radius={12} />
+          <Skeleton width="100%" height={48} radius={12} />
+        </SkeletonGroup>
       </SafeAreaView>
     );
   }
@@ -253,16 +257,19 @@ export default function FeedbackScreen() {
               onPress={handleSubmit}
               disabled={!message.trim() || submitting}
             >
-              {submitting
-                ? <ActivityIndicator color="#FFFFFF" />
-                : <Text style={styles.submitButtonText}>Send</Text>}
+              <BusySwap busy={submitting} onFill label="Sending">
+                <Text style={styles.submitButtonText}>Send</Text>
+              </BusySwap>
             </TouchableOpacity>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionHeader}>Your reports</Text>
             {loadingMyFeedback ? (
-              <ActivityIndicator color={colors.roxy} />
+              <SkeletonGroup testID="feedback-mine-loading" accessibilityLabel="Loading your reports" style={{ gap: 8 }}>
+                <Skeleton width="100%" height={56} radius={12} />
+                <Skeleton width="100%" height={56} radius={12} />
+              </SkeletonGroup>
             ) : myFeedback.length === 0 ? (
               <Text style={styles.emptyText}>Nothing sent yet — your reports will show up here.</Text>
             ) : (
@@ -344,7 +351,12 @@ export default function FeedbackScreen() {
           }}
           ListEmptyComponent={
             loadingFeatures
-              ? <ActivityIndicator color={colors.roxy} />
+              ? (
+                <SkeletonGroup testID="feedback-features-loading" accessibilityLabel="Loading ideas" style={{ gap: 8 }}>
+                  <Skeleton width="100%" height={72} radius={12} />
+                  <Skeleton width="100%" height={72} radius={12} />
+                </SkeletonGroup>
+              )
               : <Text style={styles.emptyText}>No ideas yet — be the first to pitch one.</Text>
           }
         />

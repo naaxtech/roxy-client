@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { ReportSheet } from '../../components/safety/ReportSheet';
@@ -41,6 +42,15 @@ describe('ReportSheet', () => {
     seed({ isReportModalOpen: false, reportTarget: null });
     const { queryByTestId } = render(<ReportSheet />);
     expect(queryByTestId('report-sheet')).toBeNull();
+  });
+
+  it('is the shared Sheet (F5)', () => {
+    // F5: the ONE bottom sheet (spring rise, UI-thread drag, only the scrim fades),
+    // not a system slide/fade Modal.
+    const v = render(<ReportSheet />);
+    expect(v.getByTestId('report-sheet')).toBeTruthy();
+    expect(v.getByTestId('report-sheet-scrim', { includeHiddenElements: true })).toBeTruthy();
+    expect(v.getByTestId('report-sheet-scrim-press', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('opens when the store says a report is in progress', () => {

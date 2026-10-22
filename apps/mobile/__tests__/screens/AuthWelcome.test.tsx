@@ -5,6 +5,7 @@
  * and `password-input`.
  */
 import React from 'react';
+import { Animated } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 
 jest.mock('expo-router', () => ({
@@ -25,12 +26,34 @@ jest.mock('../../store/gateStore', () => ({ useGateStore: () => mockGate }));
 jest.mock('../../components/ui/RoxyWordmark', () => ({ RoxyWordmark: () => null }));
 jest.mock('../../components/auth/TurnstileWidget', () => ({ TurnstileWidget: () => null }));
 jest.mock('../../lib/authProviders', () => ({ enabledOAuthProviders: () => [] }));
+// F12: the Reduce Motion answer is driven per test.
+let mockReduced = false;
+jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => mockReduced }));
 
 import WelcomeScreen from '../../app/(auth)/welcome';
 
 beforeEach(() => {
   mockGate.validatedCode = null;
   mockGate.validatedCommunityName = null;
+});
+
+describe('welcome hero motion (F12)', () => {
+  afterEach(() => { mockReduced = false; jest.restoreAllMocks(); });
+
+  it('the hero pops in on the spatial spring token', () => {
+    const spring = jest.spyOn(Animated, 'spring');
+    render(<WelcomeScreen />);
+    expect(spring).toHaveBeenCalledTimes(1);
+    expect(spring.mock.calls[0][1]).toEqual(expect.objectContaining({ toValue: 1, stiffness: expect.any(Number), damping: expect.any(Number) }));
+  });
+
+  it('under Reduce Motion the hero is simply there: no spring starts', () => {
+    mockReduced = true;
+    const spring = jest.spyOn(Animated, 'spring');
+    const v = render(<WelcomeScreen />);
+    expect(spring).not.toHaveBeenCalled();
+    expect(v.getByTestId('welcome-screen')).toBeTruthy();
+  });
 });
 
 describe('welcome / sign in (v2)', () => {

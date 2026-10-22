@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { RoxyO } from '../roxy/RoxyO';
@@ -56,7 +57,8 @@ const COPY: Record<Persona, { name: string; sub: string; a11y: string }> = {
 
 export function PinnedPersonaRow({ persona, onPress, unread = false }: Props) {
   const colors = useThemeColors();
-  const s = styles(colors);
+  // Built once per theme, not on every render (jank audit #8).
+  const s = useMemo(() => styles(colors), [colors]);
   const copy = COPY[persona];
   const isRoxy = persona === 'roxy';
   const showDot = isRoxy && unread;

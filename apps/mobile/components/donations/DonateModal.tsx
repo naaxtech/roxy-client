@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, Modal, Pressable, StyleSheet, Animated, ActivityIndicator, Linking,
+  View, Text, Modal, Pressable, StyleSheet, Animated, Linking,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { clampDonationAmount, startDonationCheckout, type DonationCadence } from '../../lib/donations';
 import { showAlert } from '../../lib/confirm';
 import { scrim, pinkFill } from '../../lib/theme';
+import { BusySwap } from '../../components/messages/LoadingShapes';
 
 const STEP_CENTS = 500; // $5
 const DEFAULT_AMOUNT_CENTS = 2000; // $20
@@ -176,11 +177,9 @@ export function DonateModal({ visible, onClose }: DonateModalProps) {
                 end={{ x: 1, y: 0 }}
                 style={styles.cta}
               >
-                {loading ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
+                <BusySwap busy={loading} onFill>
                   <Text style={styles.ctaText}>Donate 💜</Text>
-                )}
+                </BusySwap>
               </LinearGradient>
             </TouchableOpacity>
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { PressableScale } from '../ui/PressableScale';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
@@ -70,7 +71,7 @@ export function ProfileExtras({
             {shelf.map((e) => {
               const stops = avatarGradient(e.slug);
               return (
-                <Pressable
+                <PressableScale
                   key={e.id}
                   onPress={onOpenEntry ? () => onOpenEntry(e.slug) : undefined}
                   accessibilityRole="link"
@@ -81,7 +82,7 @@ export function ProfileExtras({
                   <LinearGradient colors={stops} style={s.poster}>
                     <Text style={[s.posterTitle, { color: inkOnGradient(stops) }]} numberOfLines={3}>{e.title}</Text>
                   </LinearGradient>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </View>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { ChannelBar } from '../../../components/channels/ChannelBar';
 import { ChannelMessage, formatTime } from '../../../components/channels/ChannelMessage';
 import { ChannelComposer } from '../../../components/channels/ChannelComposer';
@@ -159,7 +159,9 @@ describe('ChannelComposer', () => {
     expect(onSend).not.toHaveBeenCalled();
   });
 
-  it('sends the trimmed body and clears only after it settles', async () => {
+  it('sends the trimmed body and clears the box in the same frame (F10)', async () => {
+    // Optimistic: her words leave the box at once and the screen draws them in
+    // the channel; no spinner sits on Send while the write is in flight.
     let release: (() => void) | undefined;
     const onSend = jest.fn(() => new Promise<void>((r) => { release = r; }));
     const v = render(<ChannelComposer placeholder="Message # general" onSend={onSend} />);
@@ -167,12 +169,11 @@ describe('ChannelComposer', () => {
     fireEvent.changeText(v.getByTestId('channel-composer-input'), '  hello  ');
     fireEvent.press(v.getByTestId('channel-composer-send'));
     expect(onSend).toHaveBeenCalledWith('hello');
-
-    // Still in the box while the write is in flight: clearing first loses her
-    // text when the send fails.
-    expect(v.getByTestId('channel-composer-input').props.value).toBe('  hello  ');
-    release?.();
-    await waitFor(() => expect(v.getByTestId('channel-composer-input').props.value).toBe(''));
+    expect(v.getByTestId('channel-composer-input').props.value).toBe('');
+    expect(v.queryByTestId('channel-composer-sending')).toBeNull();
+    // She can type the next message while the first is still on its way.
+    expect(v.getByTestId('channel-composer-input').props.editable).not.toBe(false);
+    await act(async () => { release?.(); });
   });
 
   it('does not post twice on a double tap', async () => {
@@ -184,8 +185,38 @@ describe('ChannelComposer', () => {
     fireEvent.press(v.getByTestId('channel-composer-send'));
     fireEvent.press(v.getByTestId('channel-composer-send'));
     expect(onSend).toHaveBeenCalledTimes(1);
-    release?.();
-    await waitFor(() => expect(v.getByTestId('channel-composer-input').props.value).toBe(''));
+    await act(async () => { release?.(); });
+    expect(v.getByTestId('channel-composer-input').props.value).toBe('');
+  });
+
+  it('hands a failure to the screen with a Retry, and gives her words back', async () => {
+    const dbError = Object.assign(new Error('new row violates row-level security policy'), { code: '42501' });
+    const onSend = jest.fn().mockRejectedValueOnce(dbError).mockResolvedValueOnce(undefined);
+    const onSendFailed = jest.fn();
+    const v = render(<ChannelComposer placeholder="Message # general" onSend={onSend} onSendFailed={onSendFailed} />);
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'hi');
+    await act(async () => { fireEvent.press(v.getByTestId('channel-composer-send')); });
+
+    expect(onSendFailed).toHaveBeenCalledWith('You do not have permission to do that here.', expect.any(Function));
+    // The screen says it (snackbar); the composer does not say it twice.
+    expect(v.queryByTestId('channel-composer-error')).toBeNull();
+    expect(v.getByTestId('channel-composer-input').props.value).toBe('hi');
+
+    const retry = onSendFailed.mock.calls[0][1] as () => void;
+    await act(async () => { retry(); });
+    expect(onSend).toHaveBeenLastCalledWith('hi');
+    expect(v.getByTestId('channel-composer-input').props.value).toBe('');
+  });
+
+  it('a late failure never overwrites the next message she is already typing', async () => {
+    let fail: ((e: unknown) => void) | undefined;
+    const onSend = jest.fn(() => new Promise<void>((_, r) => { fail = r; }));
+    const v = render(<ChannelComposer placeholder="Message # general" onSend={onSend} onSendFailed={jest.fn()} />);
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'first');
+    fireEvent.press(v.getByTestId('channel-composer-send'));
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'second');
+    await act(async () => { fail?.(new Error('offline')); });
+    expect(v.getByTestId('channel-composer-input').props.value).toBe('second');
   });
 
   it('keeps her text when the send fails, and never prints the raw error', async () => {

@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform,
-  ActivityIndicator, Modal, FlatList, Keyboard, Pressable,
-  type ListRenderItem, type NativeScrollEvent, type NativeSyntheticEvent,
+  View, Text, TextInput, StyleSheet, Platform, FlatList, Keyboard, type ListRenderItem, type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,10 +24,9 @@ import { logError } from '../../lib/errorLogger';
 import { Analytics } from '../../lib/analytics';
 import { haptic } from '../../lib/haptics';
 import { avatarGradient } from '../../lib/avatars';
-import { inkOn, inkOnGradient, RADII, type ThemeColors, scrim, pinkFill } from '../../lib/theme';
+import { inkOn, inkOnGradient, RADII, type ThemeColors, pinkFill } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
-import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { setActivePath as setActivePushPath } from '../../lib/pushRegistration';
 import {
   insertMessage, editMessage, unsendMessage, newMessageId, chatErrorMessage,
@@ -38,12 +35,17 @@ import {
 import {
   groupMessages, composerState, replyQuote, typingLabel, trustRoxy, threadHeader,
   senderNamer, conversationReportTarget, isMutedUntil, MUTE_FOREVER, groupInfoPath,
-  keyboardBehavior, type GroupedMessage,
+  type GroupedMessage,
 } from '../../lib/chatThread';
 import type { Message } from '../../types';
+import { readThreadPage, writeThreadPage } from '../../components/chat/threadCache';
+import { ThreadSkeleton } from '../../components/messages/LoadingShapes';
+import { FadeIn, RoxyLoading, Sheet, SNACKBAR_SHORT_MS } from '../../components/feedback';
+import { Snackbar } from '../../components/ui/Snackbar';
 import { ActionTray } from '../../components/chat/ActionTray';
 import { GifPicker } from '../../components/chat/GifPicker';
 import { TypingIndicator } from '../../components/chat/TypingIndicator';
+import { KeyboardTrackingView } from '../../components/chat/KeyboardTrackingView';
 import { MessageRow } from '../../components/chat/MessageRow';
 import { MessageActionSheet } from '../../components/chat/MessageActionSheet';
 import { ReplyBar, RequestGate, ThreadNotice } from '../../components/chat/ComposerBanners';
@@ -85,8 +87,11 @@ export default function ChatScreen() {
 
   const { meta, loading: metaLoading, unavailable, reload: reloadMeta } = useThreadMeta(conversationId, me);
 
-  const [initialMessages, setInitialMessages] = useState<Message[]>([]);
-  const [loadingInitial, setLoadingInitial] = useState(true);
+  // F7: a thread opened earlier in this session paints from memory in the
+  // first frame and refreshes quietly; only a first visit shows the loader.
+  const [initialMessages, setInitialMessages] = useState<Message[]>(() => readThreadPage(me, conversationId) ?? []);
+  const [loadingInitial, setLoadingInitial] = useState(() => readThreadPage(me, conversationId) === null);
+  const [openedFromMemory] = useState(() => readThreadPage(me, conversationId) !== null);
   const [loadError, setLoadError] = useState(false);
   const [inputText, setInputText] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
@@ -117,6 +122,13 @@ export default function ChatScreen() {
     messages, appendMessage, appendOptimistic, settleSend, retryMessage, failMessage,
     loadOlder, hasMoreOlder, loadingOlder, patchMessage,
   } = useRealtime({ conversationId, initialMessages, currentUserId: me, pageSize: PAGE_SIZE });
+
+  // Keep the remembered page current (sends, edits, unsends, echoes) so the
+  // next visit opens on what she last saw. Settled rows only.
+  useEffect(() => {
+    if (loadingInitial || loadError) return;
+    writeThreadPage(me, conversationId, messages, PAGE_SIZE);
+  }, [messages, me, conversationId, loadingInitial, loadError]);
 
   const messageIds = useMemo(() => messages.map((m) => m.id), [messages]);
   const { reactionsMap, addReaction, removeReaction } = useReactions({ conversationId, messageIds });
@@ -163,7 +175,9 @@ export default function ChatScreen() {
 
   const loadMessages = useCallback(async () => {
     if (!conversationId || !me) return;
-    setLoadingInitial(true);
+    const remembered = readThreadPage(me, conversationId);
+    if (remembered) setInitialMessages(remembered);
+    setLoadingInitial(remembered === null);
     setLoadError(false);
     try {
       // Newest page first, shown oldest → newest; older pages arrive on scroll.
@@ -174,13 +188,17 @@ export default function ChatScreen() {
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
       if (error) throw error;
-      setInitialMessages([...((data ?? []) as Message[])].reverse());
+      const page = [...((data ?? []) as Message[])].reverse();
+      writeThreadPage(me, conversationId, page, PAGE_SIZE);
+      setInitialMessages(page);
       // Server-owned unread (CHAT-13): moves her cursor, clears the bell rows
       // for this link, refreshes the badge. Never a receipt on a request.
       void markRead(conversationId);
     } catch (e) {
       logError(e, 'chat_loadMessages');
-      setLoadError(true);
+      // With remembered rows on screen a failed refresh stays quiet; a first
+      // visit with nothing to show says so.
+      if (!readThreadPage(me, conversationId)) setLoadError(true);
     } finally {
       setLoadingInitial(false);
     }
@@ -228,12 +246,6 @@ export default function ChatScreen() {
   }, [messages]);
 
   useEffect(() => () => { if (markReadTimer.current) clearTimeout(markReadTimer.current); }, []);
-
-  useEffect(() => {
-    if (!toast) return undefined;
-    const t = setTimeout(() => setToast(null), 1600);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   useEffect(() => {
     if (!flashId) return undefined;
@@ -299,7 +311,7 @@ export default function ChatScreen() {
     appendOptimistic(msg);
     setInputText('');
     setReplyTo(null);
-    haptic('tap');
+    // No haptic on send (motion spec §3.3: sending never buzzes).
     scrollToBottom();
     await deliver(msg);
   }, [me, conversationId, capped, replyTo, appendOptimistic, deliver, scrollToBottom, stopTyping]);
@@ -319,7 +331,6 @@ export default function ChatScreen() {
     patchMessage(target.id, { content: text, edited_at: new Date().toISOString() });
     try {
       await editMessage(target.id, text);
-      haptic('select');
     } catch (e) {
       patchMessage(target.id, { content: target.content, edited_at: target.edited_at ?? null });
       setSendError(e instanceof Error ? e.message : chatErrorMessage(e));
@@ -376,7 +387,6 @@ export default function ChatScreen() {
     patchMessage(m.id, { deleted_at: new Date().toISOString() });
     try {
       await unsendMessage(m.id);
-      haptic('select');
     } catch (e) {
       patchMessage(m.id, { deleted_at: null });
       showAlert("Couldn't unsend", e instanceof Error ? e.message : chatErrorMessage(e));
@@ -386,7 +396,6 @@ export default function ChatScreen() {
   const copy = useCallback(async (text: string) => {
     try {
       await Clipboard.setStringAsync(text);
-      haptic('select');
       setToast('Copied');
     } catch (e) {
       logError(e, 'chat_copy');
@@ -405,7 +414,6 @@ export default function ChatScreen() {
     setMenuOpen(false);
     try {
       await muteConversation(conversationId, muted ? null : MUTE_FOREVER);
-      haptic('select');
       void reloadMeta();
       void refreshInbox();
     } catch (e) {
@@ -460,7 +468,6 @@ export default function ChatScreen() {
       await respondMessageRequest(conversationId, accept);
       const sender = meta?.others[0]?.id;
       if (alsoBlock && sender) await blockUser(sender);
-      haptic(accept ? 'success' : 'tap');
       void refreshInbox();
       if (accept) {
         await reloadMeta();
@@ -681,9 +688,12 @@ export default function ChatScreen() {
         </View>
       )}
 
-      <KeyboardAvoidingView style={s.flex} behavior={keyboardBehavior(Platform.OS)} keyboardVerticalOffset={0}>
+      {/* F14: the composer rides the keyboard frame by frame (UI thread on
+          iOS / Android 11+, visualViewport on web). */}
+      <KeyboardTrackingView style={s.flex} testID="chat-keyboard">
         {loadingInitial ? (
-          <ActivityIndicator color={colors.roxy} style={s.flex} accessibilityLabel="Loading messages" />
+          // F8: the thread's own shape while a first visit loads; F11: no spinner.
+          <ThreadSkeleton testID="chat-loading" label="Loading messages" />
         ) : loadError ? (
           <View style={s.center}>
             <Text style={s.centerBody}>Could not load messages</Text>
@@ -697,7 +707,9 @@ export default function ChatScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={s.flex}>
+          // Content replaces the skeleton with a short fade; a thread painted
+          // from memory (F7) shows at once.
+          <FadeIn style={s.flex} instant={openedFromMemory}>
             <FlatList
               ref={listRef}
               testID="chat-list"
@@ -716,9 +728,10 @@ export default function ChatScreen() {
                 listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
               }}
               maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: AT_BOTTOM_PX }}
-              ListFooterComponent={loadingOlder ? (
-                <ActivityIndicator color={colors.textMuted} style={s.olderSpinner} accessibilityLabel="Loading earlier messages" />
-              ) : null}
+              // Kept mounted so a wait under 200 ms never flashes it (F11).
+              ListFooterComponent={(
+                <RoxyLoading active={loadingOlder} size="busy" style={s.olderSpinner} accessibilityLabel="Loading earlier messages" testID="chat-older-loading" />
+              )}
               ListEmptyComponent={
                 <Text style={s.empty}>
                   {searchActive ? 'No messages match your search.' : 'Say hi 💜'}
@@ -737,12 +750,16 @@ export default function ChatScreen() {
                 <Text style={s.pillText}>{unseen === 1 ? 'New message' : `${unseen} new messages`}</Text>
               </TouchableOpacity>
             ) : null}
-            {toast ? (
-              <View style={s.toast} pointerEvents="none" accessibilityLiveRegion="polite">
-                <Text style={s.toastText}>{toast}</Text>
-              </View>
-            ) : null}
-          </View>
+            {/* The shared snackbar (§3.1 row 13): rises from the bottom edge,
+                polite, leaves on its own (4 s, no action). */}
+            <Snackbar
+              visible={toast !== null}
+              message={toast ?? ''}
+              duration={SNACKBAR_SHORT_MS}
+              onDismiss={() => setToast(null)}
+              testID="chat-snackbar"
+            />
+          </FadeIn>
         )}
 
         <TypingIndicator
@@ -870,7 +887,7 @@ export default function ChatScreen() {
             </View>
           </View>
         ) : null}
-      </KeyboardAvoidingView>
+      </KeyboardTrackingView>
 
       <MessageActionSheet
         message={sheetFor}
@@ -892,7 +909,8 @@ export default function ChatScreen() {
           onEmojiSelected={({ emoji }: { emoji: string }) => {
             const target = reactAnyFor;
             setReactAnyFor(null);
-            haptic('select');
+            // A committed reaction: the light tap (§3.3).
+            haptic('tap');
             if (target) void toggleReaction(target, emoji);
           }}
         />
@@ -904,9 +922,8 @@ export default function ChatScreen() {
         onClose={() => setShowGifs(false)}
       />
 
-      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
-        <Pressable style={s.scrim} onPress={() => setMenuOpen(false)} accessibilityLabel="Close options" />
-        <View style={s.sheet} testID="chat-menu-sheet">
+      {/* F5: the shared Sheet, not a system fade. */}
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} accessibilityLabel="Chat options" closeLabel="Close options" dragFrom="sheet" testID="chat-menu-sheet" style={s.sheet}>
           <MenuRow s={s} colors={colors} icon="search-outline" label="Search messages" testID="chat-menu-search"
             onPress={() => { setMenuOpen(false); setSearchActive(true); }} />
           {isGroup ? (
@@ -932,8 +949,7 @@ export default function ChatScreen() {
               onPress={() => void blockFromHeader()} danger />
           ) : null}
           <MenuRow s={s} colors={colors} label="Cancel" testID="chat-menu-cancel" onPress={() => setMenuOpen(false)} muted />
-        </View>
-      </Modal>
+      </Sheet>
     </SafeAreaView>
   );
 }
@@ -998,19 +1014,13 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   retryText: { ...TYPE.body, color: inkOn(colors.primary), fontWeight: '700' },
   listContent: { paddingVertical: 12, paddingHorizontal: 12 },
-  olderSpinner: { marginVertical: 12 },
+  olderSpinner: { alignSelf: 'center', marginVertical: 12 },
   empty: { ...TYPE.body, color: colors.textMuted, textAlign: 'center', marginTop: 40 },
   pill: {
     position: 'absolute', bottom: 12, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: colors.primary, borderRadius: RADII.pill, paddingHorizontal: 16, minHeight: 40,
   },
   pillText: { ...TYPE.caption, color: inkOn(colors.primary), fontWeight: '700' },
-  toast: {
-    position: 'absolute', top: 12, alignSelf: 'center', backgroundColor: colors.surface,
-    borderRadius: RADII.pill, paddingHorizontal: 14, paddingVertical: 6,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line,
-  },
-  toastText: { ...TYPE.caption, color: colors.textPrimary, fontWeight: '700' },
   inputWrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, backgroundColor: colors.background },
   metaError: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 12,
@@ -1036,11 +1046,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   sendBtn: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden' },
   sendFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   sendOff: { opacity: 0.4 },
-  scrim: { flex: 1, backgroundColor: scrim(0.55) },
-  sheet: {
-    backgroundColor: colors.surface, borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet,
-    paddingTop: 10, paddingBottom: 30, width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
-  },
+  sheet: { paddingBottom: 16 },
   menuRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, minHeight: MIN_TOUCH_TARGET + 4,
   },

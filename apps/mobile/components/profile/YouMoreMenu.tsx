@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Modal, View, Text, StyleSheet, ScrollView,
+  View, Text, StyleSheet, ScrollView,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Sheet } from '../feedback';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -141,13 +141,9 @@ export function YouMoreMenu({
   ];
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="fullScreen"
-      onRequestClose={onClose}
-    >
-      <SafeAreaView style={s.safe} testID="you-more-menu">
+    // F5: the shared Sheet (drag from the handle so the list keeps scrolling; the scrim and
+    // the close button both close it), not a full-screen system slide.
+    <Sheet visible={visible} onClose={onClose} accessibilityLabel="More" testID="you-more-menu" style={s.safe}>
         <View style={s.head}>
           <TouchableOpacity
             onPress={onClose}
@@ -189,13 +185,12 @@ export function YouMoreMenu({
             </View>
           ))}
         </ScrollView>
-      </SafeAreaView>
-    </Modal>
+    </Sheet>
   );
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { backgroundColor: colors.background },
   head: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 10, paddingVertical: 8,

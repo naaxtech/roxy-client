@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -16,6 +16,7 @@ import { reactToPost, withLocalReaction } from '../../lib/postReactions';
 import { Analytics } from '../../lib/analytics';
 import { useAuthStore } from '../../store/authStore';
 import type { PostType } from '../../types';
+import { Skeleton, SkeletonGroup } from '../feedback';
 
 /** The row shape as the database returns it, before it becomes a `Thought`. */
 type ThoughtRowData = {
@@ -153,6 +154,7 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
       padding: 14,
       overflow: 'hidden',
     },
+    skeletonLine: { marginTop: 10 },
     empty: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 32, gap: 6 },
     emptyTitle: { ...TYPE.title, color: colors.textPrimary, textAlign: 'center' },
     emptyBody: { ...TYPE.caption, color: colors.textSecondary, textAlign: 'center' },
@@ -161,7 +163,18 @@ export function ProfileThoughts({ userId, communityId, testID = 'profile-thought
   });
 
   if (loading) {
-    return <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} testID={`${testID}-loading`} />;
+    // F8: two thought cards at their final chrome; F11: no spinner.
+    return (
+      <SkeletonGroup testID={`${testID}-loading`} accessibilityLabel="Loading thoughts" style={s.wrap}>
+        {[0, 1].map((i) => (
+          <View key={i} style={s.card}>
+            <Skeleton width="35%" height={12} />
+            <Skeleton width="90%" height={14} style={s.skeletonLine} />
+            <Skeleton width="70%" height={14} style={s.skeletonLine} />
+          </View>
+        ))}
+      </SkeletonGroup>
+    );
   }
 
   if (failed) {

@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { View, Text, Modal, Pressable, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { useSafetyStore } from '../../store/safetyStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
-import { RADII, scrim } from '../../lib/theme';
+import { RADII } from '../../lib/theme';
+import { Sheet } from '../feedback';
+import { PressableScale } from '../ui/PressableScale';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { a11yState } from '../../lib/a11yState';
 import { logError } from '../../lib/errorLogger';
@@ -69,13 +71,7 @@ export function ReportSheet() {
   };
 
   const s = StyleSheet.create({
-    scrim: { flex: 1, backgroundColor: scrim(0.66), justifyContent: 'flex-end' },
-    sheet: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: RADII.sheet,
-      borderTopRightRadius: RADII.sheet,
-      padding: 20, gap: 12,
-    },
+    sheet: { paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
     title: { ...TYPE.title, color: colors.textPrimary },
     body: { ...TYPE.caption, color: colors.textSecondary },
     reason: {
@@ -95,6 +91,7 @@ export function ReportSheet() {
       flex: 1, minHeight: MIN_TOUCH_TARGET, alignItems: 'center',
       justifyContent: 'center', borderRadius: RADII.pill,
     },
+    btnHit: { flex: 1 },
     cancel: { backgroundColor: colors.surfaceLight },
     submit: { backgroundColor: colors.primary },
     btnText: { ...TYPE.body, fontWeight: '800', color: colors.textPrimary },
@@ -104,9 +101,8 @@ export function ReportSheet() {
   if (!open || !target) return null;
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={cancel}>
-      <View style={s.scrim}>
-        <View style={s.sheet} testID="report-sheet">
+    // F5: the shared Sheet (spring rise, drag, only the scrim fades).
+    <Sheet visible onClose={cancel} accessibilityLabel="Report" closeLabel="Cancel report" testID="report-sheet" style={s.sheet}>
           <Text style={s.title}>Report</Text>
           {/* The control that opened this already promised anonymity. Saying it
               again here is not repetition — it is the moment she decides. */}
@@ -116,7 +112,7 @@ export function ReportSheet() {
           </Text>
 
           {REASONS.map((r) => (
-            <Pressable key={r.key} onPress={() => setReason(r.key)} accessible={false}>
+            <PressableScale key={r.key} feedback="layer" onPress={() => setReason(r.key)} accessible={false}>
               <View
                 style={[s.reason, reason === r.key && s.reasonOn]}
                 testID={`report-reason-${r.key}`}
@@ -126,7 +122,7 @@ export function ReportSheet() {
               >
                 <Text style={s.reasonText}>{r.label}</Text>
               </View>
-            </Pressable>
+            </PressableScale>
           ))}
 
           <TextInput
@@ -144,12 +140,12 @@ export function ReportSheet() {
           {error ? <Text style={s.error} testID="report-error">{error}</Text> : null}
 
           <View style={s.row}>
-            <Pressable onPress={cancel} accessible={false} style={{ flex: 1 }}>
+            <PressableScale onPress={cancel} accessible={false} style={s.btnHit}>
               <View style={[s.btn, s.cancel]} testID="report-cancel" accessibilityRole="button" accessibilityLabel="Cancel">
                 <Text style={s.btnText}>Cancel</Text>
               </View>
-            </Pressable>
-            <Pressable onPress={() => void send()} accessible={false} style={{ flex: 1 }}>
+            </PressableScale>
+            <PressableScale onPress={() => void send()} accessible={false} style={s.btnHit}>
               <View
                 style={[s.btn, s.submit]}
                 testID="report-submit"
@@ -159,10 +155,8 @@ export function ReportSheet() {
               >
                 <Text style={s.btnText}>{busy ? 'Sending…' : 'Send report'}</Text>
               </View>
-            </Pressable>
+            </PressableScale>
           </View>
-        </View>
-      </View>
-    </Modal>
+    </Sheet>
   );
 }

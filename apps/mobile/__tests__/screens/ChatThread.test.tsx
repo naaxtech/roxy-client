@@ -1,5 +1,7 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { KeyboardAvoidingView } from 'react-native';
+import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';
 
 /**
  * The DM / group thread screen (app/chat/[id].tsx) on the migration-132
@@ -147,6 +149,8 @@ jest.mock('../../lib/chat', () => {
 
 import ChatScreen from '../../app/chat/[id]';
 import { MUTE_FOREVER } from '../../lib/chatThread';
+// eslint-disable-next-line import/first
+import { clearThreadCache } from '../../components/chat/threadCache';
 
 jest.setTimeout(20_000);
 
@@ -168,6 +172,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 
 beforeEach(() => {
   jest.clearAllMocks();
+  clearThreadCache();
   mockTablesTouched.length = 0;
   mockThread.meta = directMeta();
   mockThread.loading = false;
@@ -184,6 +189,75 @@ async function openThread() {
   await view.findByText('hey you');
   return view;
 }
+
+describe('ChatScreen — a second visit (F7: no loader where data is known)', () => {
+  it('reopening a thread shows its messages in the first frame, no spinner, then refreshes quietly', async () => {
+    const first = await openThread();
+    first.unmount();
+    // Checked before the refresh can answer: whatever shows now came from memory.
+    mockPages.newest = [row('m3', 'ana', 'still there?', 1), ...mockPages.newest];
+    const again = render(<ChatScreen />);
+    expect(again.getByText('hey you')).toBeTruthy();
+    expect(again.queryByLabelText('Loading messages')).toBeNull();
+    // The quiet refresh lands the newer row and still marks the thread read.
+    expect(await again.findByText('still there?')).toBeTruthy();
+    await waitFor(() => expect(mockMarkRead).toHaveBeenCalledTimes(2));
+  });
+
+  it('the very first committed frame of a revisit already has the messages (before any effect runs)', async () => {
+    const first = await openThread();
+    first.unmount();
+    // react-test-renderer outside act on purpose: React 18 legacy root commits
+    // synchronously and leaves passive effects pending, so this is the frame
+    // she sees before any effect (or fetch) runs.
+    const TestRenderer = require('react-test-renderer');
+    const tree = TestRenderer.create(<ChatScreen />);
+    const has = (label: string) => tree.root.findAll((n: { props: Record<string, unknown> }) => n.props.accessibilityLabel === label).length > 0;
+    const texts = tree.root.findAll((n: { props: Record<string, unknown> }) => n.props.children === 'hey you');
+    expect(has('Loading messages')).toBe(false);
+    expect(texts.length).toBeGreaterThan(0);
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('a thread never opened in this session shows a thread-shaped skeleton (F8), never a spinner (F11)', () => {
+    const v = render(<ChatScreen />);
+    const sk = v.getByTestId('chat-loading');
+    expect(sk.props.accessibilityRole).toBe('progressbar');
+    expect(v.getByLabelText('Loading messages')).toBeTruthy();
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+});
+
+describe('ChatScreen — header menu (F5)', () => {
+  it('the options menu opens on the shared Sheet, not a system fade', async () => {
+    const view = await openThread();
+    fireEvent.press(view.getByTestId('chat-menu'));
+    expect(view.getByTestId('chat-menu-sheet')).toBeTruthy();
+    expect(view.getByTestId('chat-menu-sheet-scrim', { includeHiddenElements: true })).toBeTruthy();
+  });
+});
+
+describe('ChatScreen — keyboard (F14)', () => {
+  it('the thread and its composer sit in the keyboard tracker, not a KeyboardAvoidingView', async () => {
+    const view = await openThread();
+    const tracker = view.getByTestId('chat-keyboard');
+    expect(within(tracker).getByTestId('chat-input')).toBeTruthy();
+    expect(view.UNSAFE_queryAllByType(KeyboardAvoidingView)).toHaveLength(0);
+  });
+});
+
+describe('ChatScreen — haptics follow the map (motion spec §3.3)', () => {
+  const { haptic: mockHapticFn } = jest.requireMock('../../lib/haptics') as { haptic: jest.Mock };
+
+  it('sending a message does not buzz', async () => {
+    const view = await openThread();
+    mockHapticFn.mockClear();
+    fireEvent.changeText(view.getByTestId('chat-input'), 'hello world');
+    fireEvent.press(view.getByTestId('chat-send'));
+    await waitFor(() => expect(mockInsert).toHaveBeenCalled());
+    expect(mockHapticFn).not.toHaveBeenCalled();
+  });
+});
 
 describe('ChatScreen — sending (CHAT-06, CHAT-03)', () => {
   it('sends under a client-minted uuid and shows exactly one delivered bubble', async () => {
@@ -287,6 +361,14 @@ describe('ChatScreen — message requests (CHAT-02)', () => {
 });
 
 describe('ChatScreen — reporting (CHAT-11)', () => {
+  it('Copy confirms with the shared snackbar (§3.1 row 13), not an ad-hoc toast', async () => {
+    const view = await openThread();
+    fireEvent(view.getByTestId('message-m1'), 'longPress');
+    await act(async () => { fireEvent.press(await view.findByTestId('msg-action-copy')); });
+    const bar = await view.findByTestId('chat-snackbar');
+    expect(within(bar).getByText('Copied')).toBeTruthy();
+  });
+
   it('long-press → Report message opens the global sheet once, with the message id', async () => {
     const view = await openThread();
     fireEvent(view.getByTestId('message-m1'), 'longPress');

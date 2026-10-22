@@ -50,6 +50,15 @@ beforeEach(() => {
 });
 
 describe('the blocked list', () => {
+  it('while both lists load: row skeletons (F8), never a spinner (F11)', () => {
+    seed({ blockedProfiles: [], blockedUserIds: [], loadingBlocks: true } as never);
+    mockLoadMuted.mockReturnValue(new Promise(() => {}));
+    const v = render(<BlockedScreen />);
+    expect(v.getByTestId('blocked-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.getByTestId('muted-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
   it('lists who she has blocked', () => {
     const { getByTestId, getByText } = render(<BlockedScreen />);
     expect(getByTestId('blocked-row-u9')).toBeTruthy();

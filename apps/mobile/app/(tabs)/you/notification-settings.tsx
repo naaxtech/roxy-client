@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, Switch, ScrollView, StyleSheet, ActivityIndicator, Platform,
+  View, Text, Switch, ScrollView, StyleSheet, Platform,
 } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +20,7 @@ import { TYPE } from '../../../lib/typography';
 import { RADII, inkOn, type ThemeColors } from '../../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { a11yState } from '../../../lib/a11yState';
+import { Skeleton, SkeletonGroup } from '../../../components/feedback';
 
 type ToggleKey = 'push_enabled' | 'messages' | 'friends' | 'events' | 'community_chats' | 'membership' | 'activity' | 'show_previews';
 
@@ -51,7 +52,8 @@ export default function NotificationSettingsScreen() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id ?? null);
   const colors = useThemeColors();
-  const s = styles(colors);
+  // Built once per theme, not on every render (jank audit #8).
+  const s = useMemo(() => styles(colors), [colors]);
 
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -127,7 +129,10 @@ export default function NotificationSettingsScreen() {
     return (
       <SafeAreaView style={s.container}>
         {header}
-        <View style={s.centred}><ActivityIndicator color={colors.primary} /></View>
+        {/* F8: switch rows at their final height; F11: no spinner. */}
+        <SkeletonGroup testID="notification-settings-loading" accessibilityLabel="Loading notification settings" style={s.skeleton}>
+          {[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} height={56} radius={12} style={s.skeletonRow} />)}
+        </SkeletonGroup>
       </SafeAreaView>
     );
   }
@@ -236,6 +241,8 @@ export default function NotificationSettingsScreen() {
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
+  skeleton: { padding: 16, gap: 8 },
+  skeletonRow: { width: '100%' },
   container: { flex: 1, backgroundColor: colors.background },
   topBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

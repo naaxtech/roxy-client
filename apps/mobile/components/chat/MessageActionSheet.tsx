@@ -1,4 +1,5 @@
-import { Modal, View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -6,9 +7,9 @@ import type { ChatMessage } from '../../hooks/useRealtime';
 import { canStillEdit } from '../../lib/chat';
 import { haptic } from '../../lib/haptics';
 import { TYPE } from '../../lib/typography';
-import { RADII, type ThemeColors, scrim } from '../../lib/theme';
+import { RADII, type ThemeColors } from '../../lib/theme';
+import { Sheet } from '../feedback';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
-import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 
 /** Same six as the quick bar, so muscle memory carries. */
 export const SHEET_EMOJIS = ['❤️', '😂', '😮', '😢', '🔥', '💜'];
@@ -46,13 +47,24 @@ type Action = {
  * judge), edit only on text, report only on someone else's. A bubble still
  * sending has no server row yet, so nothing that needs one is offered.
  */
-export function MessageActionSheet({
-  message, currentUserId, now, onClose, onReact, onMoreReactions,
+export function MessageActionSheet(props: Props) {
+  const { message } = props;
+  // The sheet animates out after the parent clears `message`: keep drawing
+  // the last one until it is gone (F5: nothing waits, nothing jump-cuts).
+  const [shown, setShown] = useState<ChatMessage | null>(message);
+  useEffect(() => { if (message) setShown(message); }, [message]);
+  const current = message ?? shown;
+  if (!current) return null;
+  return <ActionSheetBody {...props} message={current} open={message !== null} onClosed={() => setShown(null)} />;
+}
+
+function ActionSheetBody({
+  message, open, onClosed, currentUserId, now, onClose, onReact, onMoreReactions,
   onReply, onCopy, onEdit, onUnsend, onReport,
-}: Props) {
+}: Omit<Props, 'message'> & { message: ChatMessage; open: boolean; onClosed: () => void }) {
   const colors = useThemeColors();
-  const s = styles(colors);
-  if (!message) return null;
+  const s = useMemo(() => styles(colors), [colors]);
+
 
   const isOwn = message.sender_id === currentUserId;
   const settled = (message.deliveryStatus ?? 'sent') === 'sent';
@@ -86,10 +98,8 @@ export function MessageActionSheet({
     : message.message_type === 'image' ? 'GIF' : text;
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={s.scrim} onPress={onClose} accessibilityLabel="Close message actions" />
-      <View style={s.sheet} testID="message-action-sheet">
-        <View style={s.grabber} />
+    // F5: the shared Sheet, not a system fade.
+    <Sheet visible={open} onClose={onClose} onClosed={onClosed} accessibilityLabel="Message actions" closeLabel="Close message actions" dragFrom="sheet" testID="message-action-sheet" style={s.sheet}>
         <View style={[s.preview, isOwn ? s.previewOwn : s.previewOther]}>
           <Text style={[s.previewText, isOwn && s.previewTextOwn]} numberOfLines={3}>{preview}</Text>
         </View>
@@ -100,7 +110,8 @@ export function MessageActionSheet({
               <TouchableOpacity
                 key={e}
                 style={s.react}
-                onPress={close(() => { haptic('select'); onReact(message.id, e); })}
+                // A committed reaction: the light tap (§3.3).
+                onPress={close(() => { haptic('tap'); onReact(message.id, e); })}
                 accessibilityRole="button"
                 accessibilityLabel={`React ${e}`}
                 testID={`msg-react-${e}`}
@@ -138,20 +149,12 @@ export function MessageActionSheet({
         {canChange ? (
           <Text style={s.hint}>Edits and unsends are visible to everyone in the chat. Moderators can still see the original if it&apos;s reported.</Text>
         ) : null}
-      </View>
-    </Modal>
+    </Sheet>
   );
 }
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: scrim(0.55) },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: RADII.sheet, borderTopRightRadius: RADII.sheet,
-    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 30, gap: 12,
-    width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
-  },
-  grabber: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.line },
+  sheet: { paddingHorizontal: 16, paddingBottom: 18, gap: 12 },
   preview: { maxWidth: '86%', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 18 },
   previewOwn: { alignSelf: 'flex-end', backgroundColor: colors.primary, borderBottomRightRadius: 6 },
   previewOther: { alignSelf: 'flex-start', backgroundColor: colors.surfaceLight, borderBottomLeftRadius: 6 },

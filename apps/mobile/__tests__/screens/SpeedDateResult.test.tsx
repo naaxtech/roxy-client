@@ -1,4 +1,6 @@
+import { Animated } from 'react-native';
 import { render, waitFor } from '@testing-library/react-native';
+import { SPRING } from '../../lib/motion';
 
 let mockSearchParams: Record<string, string> = {};
 jest.mock('expo-router', () => ({
@@ -15,6 +17,9 @@ jest.mock('../../store/authStore', () => ({
 }));
 
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
+// F12: the Reduce Motion answer is driven per test.
+let mockReduced = false;
+jest.mock('../../hooks/useReducedMotion', () => ({ useReducedMotion: () => mockReduced }));
 jest.mock('../../lib/analytics', () => ({ Analytics: { speedDateCompleted: jest.fn() } }));
 
 const mockRpc = jest.fn();
@@ -35,6 +40,31 @@ beforeEach(() => {
   mockChannel.on.mockReturnThis();
   mockChannel.subscribe.mockReturnThis();
   mockSearchParams = { session_id: 'sess-1', liked: '1', partner_id: 'partner-1' };
+});
+
+describe('SpeedDateResult match card motion (F12, tokens)', () => {
+  afterEach(() => { mockReduced = false; jest.restoreAllMocks(); });
+
+  it('the match card springs in on SPRING.spatial, not legacy tension/friction', async () => {
+    mockRpc.mockResolvedValue({ data: { status: 'matched', conversation_id: 'conv-1' }, error: null });
+    const spring = jest.spyOn(Animated, 'spring');
+    const v = render(<SpeedDateResult />);
+    await v.findByText("It's a match!");
+    await waitFor(() => expect(spring).toHaveBeenCalled());
+    const cfg = spring.mock.calls[0][1] as unknown as Record<string, unknown>;
+    expect(cfg).toEqual(expect.objectContaining({ toValue: 1, ...SPRING.spatial }));
+    expect(cfg).not.toHaveProperty('tension');
+    expect(cfg).not.toHaveProperty('friction');
+  });
+
+  it('under Reduce Motion the match card is simply there: no spring', async () => {
+    mockReduced = true;
+    mockRpc.mockResolvedValue({ data: { status: 'matched', conversation_id: 'conv-1' }, error: null });
+    const spring = jest.spyOn(Animated, 'spring');
+    const v = render(<SpeedDateResult />);
+    await v.findByText("It's a match!");
+    expect(spring).not.toHaveBeenCalled();
+  });
 });
 
 describe('SpeedDateResult — mutual match resolution', () => {

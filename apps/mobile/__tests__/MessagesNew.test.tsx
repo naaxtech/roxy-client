@@ -87,6 +87,31 @@ describe('NewMessageScreen', () => {
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/chat/group-1'));
   });
 
+  it('picking friends, an emoji and creating a group never buzz (motion spec §3.3)', async () => {
+    const { haptic } = jest.requireMock('../lib/haptics') as { haptic: jest.Mock };
+    friends.push(friend('u1', 'Sam'), friend('u2', 'Bea'));
+    const view = render(<NewMessageScreen />);
+    fireEvent.press(await view.findByText('Sam'));
+    fireEvent.press(view.getByText('Bea'));
+    fireEvent.press(view.getByTestId('group-emoji-🌈'));
+    fireEvent.press(view.getByTestId('new-message-go'));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/chat/group-1'));
+    expect(haptic).not.toHaveBeenCalled();
+  });
+
+  it('while friends load for the first time: row skeleton (F8), no spinner (F11)', () => {
+    const v = render(<NewMessageScreen />);
+    expect(v.getByTestId('new-message-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
+  it('friends already in memory: the list is there in the first frame, no loader (F7)', () => {
+    friends.push(friend('u1', 'Sam'));
+    const v = render(<NewMessageScreen />);
+    expect(v.queryByTestId('new-message-loading')).toBeNull();
+    expect(v.getByText('Sam')).toBeTruthy();
+  });
+
   it('tapping a picked friend again unpicks her', async () => {
     friends.push(friend('u1', 'Sam'), friend('u2', 'Bea'));
     const view = render(<NewMessageScreen />);

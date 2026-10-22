@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import {
-  View, Text, StyleSheet,
-  Modal, ScrollView, ActivityIndicator, Animated,
+  View, Text, StyleSheet, ScrollView,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
 import { PRESET_AVATARS, PRESET_COLORS } from '../../lib/avatars';
-import { usePopIn } from '../ui/popIn';
+import { Sheet } from '../feedback';
+import { BusySwap } from '../messages/LoadingShapes';
 
 type Tab = 'photo' | 'avatar';
 
@@ -24,16 +23,9 @@ export function AvatarPickerSheet({
 }: AvatarPickerSheetProps) {
   const colors = useThemeColors();
   const [tab, setTab] = useState<Tab>('photo');
-  const pop = usePopIn(visible);
 
   const styles = StyleSheet.create({
-    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
-    sheet: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: 20, borderTopRightRadius: 20,
-      paddingBottom: 40, paddingTop: 12, maxHeight: '60%',
-      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
-    },
+    sheet: { backgroundColor: colors.background, paddingBottom: 24 },
     handle: {
       width: 36, height: 4, borderRadius: 2,
       backgroundColor: colors.textMuted + '60',
@@ -67,12 +59,8 @@ export function AvatarPickerSheet({
   });
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      {/* Backdrop appears instantly */}
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      {/* The sheet pops in — no slide-from-below */}
-      <Animated.View style={[styles.sheet, pop]}>
-        <View style={styles.handle} />
+    // F5: the shared Sheet (spring rise, drag from the handle, only the scrim fades).
+    <Sheet visible={visible} onClose={onClose} accessibilityLabel="Choose a photo" maxHeight="60%" testID="avatar-picker" style={styles.sheet}>
 
         <View style={styles.tabs}>
           {(['photo', 'avatar'] as Tab[]).map((t) => (
@@ -94,10 +82,9 @@ export function AvatarPickerSheet({
             onPress={() => { onUploadPhoto(); onClose(); }}
             disabled={uploading}
           >
-            {uploading
-              ? <ActivityIndicator color={colors.roxy} />
-              : <Text style={styles.uploadBtnText}>Choose from Library</Text>
-            }
+            <BusySwap busy={uploading} label="Uploading">
+              <Text style={styles.uploadBtnText}>Choose from Library</Text>
+            </BusySwap>
           </TouchableOpacity>
         ) : (
           <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
@@ -112,7 +99,6 @@ export function AvatarPickerSheet({
             ))}
           </ScrollView>
         )}
-      </Animated.View>
-    </Modal>
+    </Sheet>
   );
 }

@@ -1,5 +1,7 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { Profiler } from 'react';
+import { act, fireEvent, render } from '@testing-library/react-native';
 
 /**
  * Messages, v2 normal state (board v2-06): a headline, search and compose in
@@ -21,7 +23,11 @@ jest.mock('expo-router', () => ({
 jest.mock('@react-navigation/native', () => ({ useFocusEffect: jest.fn() }));
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('react-native-safe-area-context', () => ({ SafeAreaView: ({ children }: { children: React.ReactNode }) => children }));
-jest.mock('../../store/authStore', () => ({ useAuthStore: () => ({ user: { id: 'u1' } }) }));
+// A real zustand store: a token refresh (session) must not re-render the inbox.
+jest.mock('../../store/authStore', () => {
+  const { create } = require('zustand');
+  return { useAuthStore: create(() => ({ user: { id: 'u1' }, session: { access_token: 'a' } })) };
+});
 // Stable references: the screen's effects depend on `threads`, and a fresh []
 // on every render would loop them.
 const mockThreads: unknown[] = [];
@@ -70,6 +76,18 @@ jest.mock('../../lib/inboxCommunities', () => ({
 
 // eslint-disable-next-line import/first
 import MessagesRoute from '../../app/(tabs)/messages/index';
+// eslint-disable-next-line import/first
+import { useAuthStore } from '../../store/authStore';
+
+describe('Messages re-renders only for what it reads (jank audit #9)', () => {
+  it('a token refresh in the auth store does not re-render the inbox', () => {
+    let commits = 0;
+    render(<Profiler id="messages" onRender={() => { commits += 1; }}><MessagesRoute /></Profiler>);
+    const before = commits;
+    act(() => { (useAuthStore as unknown as { setState: (p: object) => void }).setState({ session: { access_token: 'refreshed' } }); });
+    expect(commits).toBe(before);
+  });
+});
 
 beforeEach(() => {
   mockPush.mockClear();

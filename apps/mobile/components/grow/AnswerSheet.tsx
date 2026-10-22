@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import {
-  Modal, View, Text, TextInput, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Animated,
+  Modal, View, Text, TextInput, KeyboardAvoidingView, Platform, StyleSheet, Animated,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { usePopIn } from '../ui/popIn';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
+import { BusySwap } from '../../components/messages/LoadingShapes';
 
 const MAX_LEN = 500;
 
@@ -80,11 +81,9 @@ export function AnswerSheet({ questionId, userId, onClose, onSubmitted }: Props)
             disabled={!content.trim() || loading}
             activeOpacity={0.85}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
+            <BusySwap busy={loading} onFill>
               <Text style={a.submitBtnText}>Submit</Text>
-            )}
+            </BusySwap>
           </TouchableOpacity>
         </Animated.View>
       </KeyboardAvoidingView>

@@ -1,9 +1,10 @@
 import React from 'react';
 import {
-  View, Text, ActivityIndicator, StyleSheet,
+  View, Text, StyleSheet,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { BusySwap } from '../messages/LoadingShapes';
 
 interface ActionTrayProps {
   onEmojiPress: () => void;
@@ -69,14 +70,10 @@ export function ActionTray({
         disabled={wingwomanLoading}
         hitSlop={4}
       >
-        {wingwomanLoading ? (
-          <ActivityIndicator size="small" color={colors.roxy} />
-        ) : (
-          <>
-            <Text style={styles.chipIcon}>✨</Text>
-            <Text style={[styles.chipLabel, styles.chipLabelRoxy]}>Wingwoman</Text>
-          </>
-        )}
+        <BusySwap busy={wingwomanLoading} label="Roxy is thinking">
+          <Text style={styles.chipIcon}>✨</Text>
+          <Text style={[styles.chipLabel, styles.chipLabelRoxy]}>Wingwoman</Text>
+        </BusySwap>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -85,14 +82,10 @@ export function ActionTray({
         disabled={nudgeLoading}
         hitSlop={4}
       >
-        {nudgeLoading ? (
-          <ActivityIndicator size="small" color={colors.roxy} />
-        ) : (
-          <>
-            <Text style={styles.chipIcon}>💜</Text>
-            <Text style={[styles.chipLabel, styles.chipLabelRoxy]}>Nudge</Text>
-          </>
-        )}
+        <BusySwap busy={nudgeLoading} label="Roxy is thinking">
+          <Text style={styles.chipIcon}>💜</Text>
+          <Text style={[styles.chipLabel, styles.chipLabelRoxy]}>Nudge</Text>
+        </BusySwap>
       </TouchableOpacity>
     </View>
   );

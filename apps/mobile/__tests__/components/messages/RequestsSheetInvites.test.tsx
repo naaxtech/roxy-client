@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 /**
  * CHAT-09: a moderator's invite to a private community waits in Requests →
  * Friends, beside friend requests — named, with Join / Not now. Saying no is
@@ -23,7 +24,12 @@ const mockFetchJoined = jest.fn().mockResolvedValue(undefined);
 jest.mock('../../../store/communityStore', () => ({
   useCommunityStore: (sel: (s: any) => unknown) => sel({ fetchJoined: mockFetchJoined }),
 }));
-jest.mock('../../../store/authStore', () => ({ useAuthStore: () => ({ user: { id: 'me' } }) }));
+jest.mock('../../../store/authStore', () => ({
+  useAuthStore: (sel?: (s: object) => unknown) => {
+    const state = { user: { id: 'me' } };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
+}));
 jest.mock('../../../lib/communityMembership', () => ({
   ...jest.requireActual('../../../lib/communityMembership'),
   fetchMyCommunityInvites: jest.fn(),

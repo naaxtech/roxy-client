@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, ActivityIndicator, StyleSheet, Image,
+  View, Text, TextInput, StyleSheet, Image,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
+import { Snackbar } from '../ui/Snackbar';
+import { useProfileStore } from '../../store/profileStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
@@ -13,6 +15,7 @@ import { GifPicker } from '../chat/GifPicker';
 import { Analytics } from '../../lib/analytics';
 import { relativeWhen } from './ThoughtRow';
 import type { Comment } from '../../types';
+import { Skeleton, SkeletonGroup } from '../feedback';
 
 interface Props {
   postId: string;
@@ -23,6 +26,10 @@ interface Props {
 }
 
 const MAX_REPLY = 2000;
+
+/** Id prefix of a reply drawn before the server has it (F10). */
+const PENDING = 'pending:';
+let pendingSeq = 0;
 
 /**
  * Replies, opened in place.
@@ -43,8 +50,16 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
   const [showGif, setShowGif] = useState(false);
+  // F10: a reply that the server refused. It has already left the thread;
+  // this says why and offers Retry.
+  const [failure, setFailure] = useState<{ message: string; retry: () => void } | null>(null);
+  const selfName = useProfileStore((st) => st.profile?.display_name ?? null);
+  const selfAvatar = useProfileStore((st) => st.profile?.avatar_url ?? null);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const commentsRef = useRef(comments);
+  commentsRef.current = comments;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,47 +74,77 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
 
   useEffect(() => { void load(); }, [load]);
 
-  const send = async () => {
+  /**
+   * Optimistic (motion spec F10): the reply is in the thread in the same
+   * frame as the tap, as a provisional row, and the box empties. The
+   * returned row replaces it. `submitComment` never throws; a refusal takes
+   * the reply back out, puts her words back in the box (unless she is
+   * already typing the next one) and offers Retry.
+   */
+  const post = (content: string, gifUrl?: string) => {
+    if (!currentUserId) return;
+    pendingSeq += 1;
+    const provisional: Comment = {
+      id: `${PENDING}${Date.now()}-${pendingSeq}`,
+      post_id: postId,
+      author_id: currentUserId,
+      parent_id: null,
+      content: content || null,
+      media_url: null,
+      gif_url: gifUrl ?? null,
+      like_count: 0,
+      deleted_at: null,
+      created_at: new Date().toISOString(),
+      profiles: { display_name: selfName ?? 'You', avatar_url: selfAvatar },
+    };
+    setFailure(null);
+    setError(null);
+    setComments((prev) => appendComment(prev, provisional));
+    if (!gifUrl && draftRef.current.trim() === content) {
+      draftRef.current = '';
+      setDraft('');
+    }
+    const request = gifUrl
+      ? submitComment({ postId, authorId: currentUserId, content: '', gifUrl })
+      : submitComment({ postId, authorId: currentUserId, content });
+    void request.then((res) => {
+      if (res.error || !res.comment) {
+        setComments((prev) => prev.filter((c) => c.id !== provisional.id));
+        if (!gifUrl && !draftRef.current.trim()) setDraft(content);
+        setFailure({
+          message: res.error ?? (gifUrl ? 'That GIF did not send.' : 'That reply did not send.'),
+          retry: () => post(content, gifUrl),
+        });
+        return;
+      }
+      // After the write, never before: firing first counts replies that never
+      // landed, which is the same lie in the metrics as in the UI.
+      Analytics.thoughtReplySent('profile');
+      const savedRow: Comment = { ...res.comment, replies: [] };
+      // Idempotent: applying it to a list that already holds the saved row
+      // only drops the provisional one, so the tally below can never count
+      // the reply twice, however React batched the update.
+      const settle = (prev: Comment[]) => {
+        if (prev.some((c) => c.id === savedRow.id)) return prev.filter((c) => c.id !== provisional.id);
+        return prev.some((c) => c.id === provisional.id)
+          ? prev.map((c) => (c.id === provisional.id ? savedRow : c))
+          : appendComment(prev, savedRow);
+      };
+      setComments(settle);
+      onCountChange?.(countAll(settle(commentsRef.current).filter((c) => !c.id.startsWith(PENDING))));
+    });
+  };
+
+  const send = () => {
     const body = draft.trim();
-    if (!body || sending || !currentUserId) return;
-    setSending(true);
-    const res = await submitComment({ postId, authorId: currentUserId, content: body });
-    setSending(false);
-
-    // `submitComment` returns `{comment, error}` and never throws. Clearing the
-    // box on anything other than a returned row would eat what she wrote.
-    if (res.error || !res.comment) {
-      setError(res.error ?? 'That reply did not send.');
-      return;
-    }
-    // After the write, never before: firing first counts replies that never
-    // landed, which is the same lie in the metrics as in the UI.
-    Analytics.thoughtReplySent('profile');
-    const next = appendComment(comments, res.comment);
-    setComments(next);
-    setDraft('');
-    setError(null);
-    onCountChange?.(countAll(next));
+    if (!body || !currentUserId) return;
+    post(body);
   };
 
-  const sendGif = async (url: string) => {
-    if (!currentUserId || sending) return;
-    setSending(true);
-    const res = await submitComment({ postId, authorId: currentUserId, content: '', gifUrl: url });
-    setSending(false);
-    if (res.error || !res.comment) {
-      setError(res.error ?? 'That GIF did not send.');
-      return;
-    }
-    Analytics.thoughtReplySent('profile');
-    const next = appendComment(comments, res.comment);
-    setComments(next);
-    setDraft('');
-    setError(null);
-    onCountChange?.(countAll(next));
-  };
+  const sendGif = (url: string) => post('', url);
 
-  const s = StyleSheet.create({
+  // Built once per theme, not on every keystroke (jank audit #8).
+  const s = useMemo(() => StyleSheet.create({
     wrap: {
       marginTop: 4,
       marginLeft: 50,
@@ -144,15 +189,19 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
     sendText: { ...TYPE.caption, fontWeight: '700', color: inkOn(colors.primary) },
     note: { ...TYPE.micro, color: colors.textMuted },
     error: { ...TYPE.micro, color: colors.errorInk },
-  });
+    snackAnchor: { height: 0, zIndex: 1 },
+  }), [colors]);
 
-  const canSend = draft.trim().length > 0 && draft.trim().length <= MAX_REPLY
-    && !sending && !!currentUserId;
+  const canSend = draft.trim().length > 0 && draft.trim().length <= MAX_REPLY && !!currentUserId;
 
   return (
     <View style={s.wrap} testID={testID}>
       {loading ? (
-        <ActivityIndicator color={colors.primary} testID={`${testID}-loading`} />
+        // F8: two reply lines at their final size; F11: no spinner.
+        <SkeletonGroup testID={`${testID}-loading`} accessibilityLabel="Loading replies" style={s.row}>
+          <Skeleton width="30%" height={12} />
+          <Skeleton width="80%" height={14} />
+        </SkeletonGroup>
       ) : null}
 
       {!loading && comments.length === 0 ? (
@@ -179,12 +228,22 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
         </View>
       ))}
 
+      <View style={s.snackAnchor} pointerEvents="box-none">
+        <Snackbar
+          visible={failure !== null}
+          message={failure?.message ?? ''}
+          actionLabel="Retry"
+          onAction={() => failure?.retry()}
+          onDismiss={() => setFailure(null)}
+          testID={`${testID}-snackbar`}
+        />
+      </View>
+
       {currentUserId ? (
         <View style={s.composer}>
           <TouchableOpacity
             style={s.gifBtn}
             onPress={() => setShowGif(true)}
-            disabled={sending}
             accessibilityRole="button"
             accessibilityLabel="Reply with a GIF"
             testID={`${testID}-gif`}
@@ -199,22 +258,19 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
             placeholderTextColor={colors.textMuted}
             multiline
             maxLength={MAX_REPLY}
-            editable={!sending}
             accessibilityLabel="Write a reply"
             testID={`${testID}-input`}
           />
           <TouchableOpacity
             style={[s.send, !canSend && s.sendOff]}
-            onPress={() => { void send(); }}
+            onPress={send}
             disabled={!canSend}
             accessibilityRole="button"
             accessibilityLabel="Send reply"
             accessibilityState={{ disabled: !canSend }}
             testID={`${testID}-send`}
           >
-            {sending
-              ? <ActivityIndicator color={inkOn(colors.primary)} />
-              : <Text style={s.sendText}>Reply</Text>}
+            <Text style={s.sendText}>Reply</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -223,7 +279,7 @@ export function InlineReplies({ postId, currentUserId, onCountChange, testID = '
 
       <GifPicker
         visible={showGif}
-        onGifSelected={(url) => { void sendGif(url); }}
+        onGifSelected={sendGif}
         onClose={() => setShowGif(false)}
       />
 

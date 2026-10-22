@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { PressableScale } from '../ui/PressableScale';
 import { useRouter } from 'expo-router';
 import { useArchiveStore } from '../../store/archiveStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -72,9 +73,9 @@ export function SavedWatchlist() {
       <View style={s.wrap} testID="watchlist-error">
         <Text style={s.heading}>WATCHLIST</Text>
         <Text style={s.error}>Could not load your watchlist.</Text>
-        <Pressable onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Try again">
+        <PressableScale onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Try again">
           <Text style={s.retry}>Try again</Text>
-        </Pressable>
+        </PressableScale>
       </View>
     );
   }
@@ -88,7 +89,7 @@ export function SavedWatchlist() {
         // ends up showing 100%.
         const score = scoreFromEntry(entry);
         return (
-          <Pressable
+          <PressableScale feedback="layer"
             key={entry.id}
             onPress={() => router.push(`/archive/${entry.slug}` as never)}
             accessible={false}
@@ -109,7 +110,7 @@ export function SavedWatchlist() {
               </View>
               <ScorePill score={score} />
             </View>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>

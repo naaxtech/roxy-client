@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import UserProfileScreen from '../../app/(tabs)/you/[userId]';
@@ -273,6 +274,23 @@ describe('PRO-06 / 07 / 08 on another member\'s profile', () => {
     expect(getByTestId('profile-retry')).toBeTruthy();
   });
 
+  it('pull-to-refresh is Roxy\'s refresh (F7 3.1 row 7): her pull reloads quietly', async () => {
+    const { RoxyRefresh } = require('../../components/feedback');
+    const v = render(<UserProfileScreen />);
+    await waitFor(() => expect(v.getByTestId('profile-more')).toBeTruthy());
+    const refresh = v.UNSAFE_getByType(RoxyRefresh);
+    expect(refresh.props.testID).toBe('profile-refresh');
+    expect(refresh.props.refreshing).toBe(false);
+  });
+
+  it('the profile menu opens on the shared Sheet (F5), not a pop-in Modal', async () => {
+    const v = render(<UserProfileScreen />);
+    await waitFor(() => expect(v.getByTestId('profile-more')).toBeTruthy());
+    fireEvent.press(v.getByTestId('profile-more'));
+    expect(v.getByTestId('profile-more-sheet')).toBeTruthy();
+    expect(v.getByTestId('profile-more-sheet-scrim', { includeHiddenElements: true })).toBeTruthy();
+  });
+
   it('the ⋯ sheet offers Mute, which mutes her', async () => {
     const { getByTestId } = render(<UserProfileScreen />);
     await waitFor(() => expect(getByTestId('profile-shell')).toBeTruthy());
@@ -291,12 +309,16 @@ describe('PRO-06 / 07 / 08 on another member\'s profile', () => {
   });
 
   it('a follow that fails says so', async () => {
+    // F10: a snackbar with Retry (UserProfileOptimistic.test.tsx), not a
+    // blocking alert.
     mockFollow.mockResolvedValue(false);
     const { getByTestId, getByText } = render(<UserProfileScreen />);
     await waitFor(() => expect(getByText('Follow')).toBeTruthy());
     await act(async () => { fireEvent.press(getByText('Follow')); });
     expect(mockFollow).toHaveBeenCalledWith('u1', 'u2');
-    expect(mockAlert).toHaveBeenCalledWith(expect.stringMatching(/follow/i), expect.any(String));
+    expect(getByTestId('profile-action-snackbar')).toBeTruthy();
+    expect(getByText('Could not follow her.')).toBeTruthy();
+    expect(mockAlert).not.toHaveBeenCalled();
     expect(getByTestId('profile-shell')).toBeTruthy();
   });
 

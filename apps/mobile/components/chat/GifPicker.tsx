@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Modal, View, Text, TextInput, FlatList, Image, ActivityIndicator, StyleSheet, Animated,
+  View, Text, TextInput, FlatList, Image, StyleSheet,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
-import { usePopIn } from '../ui/popIn';
+import { Sheet, Skeleton, SkeletonGroup } from '../feedback';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { useAppWidth, FRAME_MAX_WIDTH } from '../../hooks/useAppWidth';
+import { useAppWidth } from '../../hooks/useAppWidth';
 import { isGiphyConfigured, giphyEndpoint } from '../../lib/giphy';
 
 interface GiphyResult {
@@ -25,7 +25,6 @@ interface GifPickerProps {
 
 export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
   const colors = useThemeColors();
-  const pop = usePopIn(visible);
   const appWidth = useAppWidth();
   const COL_WIDTH = (appWidth - 48) / 2;
   const [query, setQuery] = useState('');
@@ -73,14 +72,7 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
   };
 
   const styles = StyleSheet.create({
-    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-    container: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      maxHeight: '70%',
-      width: '100%', maxWidth: FRAME_MAX_WIDTH, alignSelf: 'center',
-    },
+    container: { backgroundColor: colors.background },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -102,6 +94,7 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
     grid: { paddingHorizontal: 12, paddingBottom: 12 },
     row: { gap: 8, marginBottom: 8 },
     gif: { borderRadius: 8 },
+    skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     empty: { color: colors.textMuted, textAlign: 'center', marginTop: 32 },
     unavailable: { alignItems: 'center', paddingHorizontal: 32, paddingVertical: 40, gap: 8 },
     unavailableTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 15, textAlign: 'center' },
@@ -115,9 +108,8 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
   });
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <Animated.View style={[styles.container, pop]}>
+    // F5: the shared Sheet (drag from the handle; the grid scrolls).
+    <Sheet visible={visible} onClose={onClose} accessibilityLabel="GIFs" maxHeight="70%" testID="gif-picker" style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>GIFs</Text>
           <TouchableOpacity onPress={onClose} hitSlop={12} accessibilityLabel="Close GIF picker">
@@ -146,7 +138,12 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
             />
 
             {loading ? (
-              <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
+              // F8: GIF tiles at their column width while the first page loads.
+              <SkeletonGroup testID="gif-loading" accessibilityLabel="Loading GIFs" style={[styles.grid, styles.skeletonGrid]}>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <Skeleton key={i} width={COL_WIDTH} height={i % 3 === 0 ? 150 : 120} radius={8} />
+                ))}
+              </SkeletonGroup>
             ) : (
               <FlatList
                 data={results}
@@ -178,7 +175,6 @@ export function GifPicker({ visible, onGifSelected, onClose }: GifPickerProps) {
             <Text style={styles.poweredBy}>Powered by GIPHY</Text>
           </>
         )}
-      </Animated.View>
-    </Modal>
+    </Sheet>
   );
 }

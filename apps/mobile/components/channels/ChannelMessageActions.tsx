@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
-import { Animated, Modal, Text, Pressable, StyleSheet } from 'react-native';
-import { usePopIn } from '../ui/popIn';
+import { useMemo, type ReactNode } from 'react';
+import { Text, StyleSheet } from 'react-native';
+import { Sheet } from '../feedback';
+import { PressableScale } from '../ui/PressableScale';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII } from '../../lib/theme';
@@ -32,26 +33,17 @@ interface Props {
  * neither, so the only route out of harassment in `#general` was to open his
  * profile and hope there was a control on it.
  *
- * A Modal, not `ActionSheetIOS`: that API is iOS-only and this app ships to
+ * The shared Sheet (F5), not `ActionSheetIOS`: that API is iOS-only and this app ships to
  * Android and web from the same tree.
  */
 export function ChannelMessageActions({
   title, actions, visible, onClose, header, testID = 'channel-actions',
 }: Props) {
   const colors = useThemeColors();
-  const pop = usePopIn(visible);
 
-  const s = StyleSheet.create({
-    scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-    sheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      paddingTop: 18,
-      paddingBottom: 28,
-      paddingHorizontal: 16,
-      gap: 4,
-    },
+  // Built once per theme, not on every render (jank audit #8).
+  const s = useMemo(() => StyleSheet.create({
+    sheet: { paddingTop: 4, paddingBottom: 16, paddingHorizontal: 16, gap: 4 },
     title: { ...TYPE.caption, color: colors.textMuted, paddingHorizontal: 4, paddingBottom: 8 },
     action: {
       minHeight: MIN_TOUCH_TARGET,
@@ -70,52 +62,43 @@ export function ChannelMessageActions({
       backgroundColor: colors.backgroundAlt,
     },
     cancelText: { ...TYPE.body, fontWeight: '700', color: colors.textSecondary },
-  });
+  }), [colors]);
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <Pressable
-        style={s.scrim}
+    // F5: the shared Sheet (spring rise, drag, only the scrim fades; the
+    // scrim is the Close target, so no tap-swallower is needed).
+    <Sheet visible={visible} onClose={onClose} accessibilityLabel={title} closeLabel="Close menu" dragFrom="sheet" testID={testID} style={s.sheet}>
+      <Text style={s.title} numberOfLines={1}>{title}</Text>
+      {header ?? null}
+
+      {actions.map((action) => (
+        <PressableScale
+          key={action.key}
+          feedback="layer"
+          style={s.action}
+          onPress={() => {
+            // Closed FIRST: an action that opens the report modal cannot
+            // present it underneath a sheet that is still up.
+            onClose();
+            action.onPress();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={action.label}
+          testID={`${testID}-${action.key}`}
+        >
+          <Text style={[s.label, action.destructive && s.destructive]}>{action.label}</Text>
+        </PressableScale>
+      ))}
+
+      <PressableScale
+        style={s.cancel}
         onPress={onClose}
         accessibilityRole="button"
-        accessibilityLabel="Close menu"
+        accessibilityLabel="Cancel"
+        testID={`${testID}-cancel`}
       >
-        {/* Stops a tap inside the sheet from closing it via the scrim. */}
-        <Animated.View style={pop}>
-        <Pressable style={s.sheet} onPress={() => {}} accessible={false} testID={testID}>
-          <Text style={s.title} numberOfLines={1}>{title}</Text>
-          {header ?? null}
-
-          {actions.map((action) => (
-            <Pressable
-              key={action.key}
-              style={s.action}
-              onPress={() => {
-                // Closed FIRST: an action that opens the report modal cannot
-                // present it underneath a sheet that is still up.
-                onClose();
-                action.onPress();
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={action.label}
-              testID={`${testID}-${action.key}`}
-            >
-              <Text style={[s.label, action.destructive && s.destructive]}>{action.label}</Text>
-            </Pressable>
-          ))}
-
-          <Pressable
-            style={s.cancel}
-            onPress={onClose}
-            accessibilityRole="button"
-            accessibilityLabel="Cancel"
-            testID={`${testID}-cancel`}
-          >
-            <Text style={s.cancelText}>Cancel</Text>
-          </Pressable>
-        </Pressable>
-        </Animated.View>
-      </Pressable>
-    </Modal>
+        <Text style={s.cancelText}>Cancel</Text>
+      </PressableScale>
+    </Sheet>
   );
 }

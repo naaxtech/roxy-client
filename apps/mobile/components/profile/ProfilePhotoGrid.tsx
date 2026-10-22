@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Image, StyleSheet, Text, ActivityIndicator,
+  View, Image, StyleSheet, Text,
 } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,6 +10,8 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { logError } from '../../lib/errorLogger';
 import { confirmAction, showAlert } from '../../lib/confirm';
 import { uploadImageAsset, assetExtension } from '../../lib/uploads';
+import { Skeleton, SkeletonGroup } from '../feedback';
+import { BusySwap } from '../messages/LoadingShapes';
 
 const MAX_PHOTOS = 6;
 const SLOT = 108;
@@ -125,7 +127,14 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
   };
 
   if (loading) {
-    return <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />;
+    // F8: photo slots at their final size; F11: no spinner.
+    return (
+      <SkeletonGroup testID="profile-photos-loading" accessibilityLabel="Loading photos" style={styles.wrap}>
+        <View style={styles.grid}>
+          {[0, 1, 2].map((i) => <Skeleton key={i} width={SLOT} height={SLOT} radius={10} />)}
+        </View>
+      </SkeletonGroup>
+    );
   }
 
   const slots = Array.from({ length: MAX_PHOTOS }, (_, i) => photos[i] ?? null);
@@ -154,11 +163,9 @@ export function ProfilePhotoGrid({ userId, editable = false }: Props) {
               </>
             ) : editable && i === photos.length ? (
               <TouchableOpacity style={styles.add} onPress={() => void addPhoto()} disabled={uploading}>
-                {uploading ? (
-                  <ActivityIndicator color={colors.primary} size="small" />
-                ) : (
+                <BusySwap busy={uploading} label="Uploading">
                   <Ionicons name="add" size={28} color={colors.primary} />
-                )}
+                </BusySwap>
               </TouchableOpacity>
             ) : (
               <View style={styles.placeholder} />

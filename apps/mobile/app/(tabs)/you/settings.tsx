@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, ActivityIndicator,
+  View, Text, ScrollView, StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +38,8 @@ import { Switch } from '../../../components/ui/Switch';
 import { Snackbar } from '../../../components/ui/Snackbar';
 import { RoxyO } from '../../../components/roxy/RoxyO';
 import { clearRoxyChat } from '../../../components/roxy/roxyConversation';
+import { Skeleton, SkeletonGroup } from '../../../components/feedback';
+import { BusySwap } from '../../../components/messages/LoadingShapes';
 
 /** Her O on the Roxy AI row (board v2-07). */
 const ROW_O = 44;
@@ -73,8 +75,13 @@ const THEME_CHOICES: { key: ThemeChoice; label: string }[] = [
  * preview picker is extra chrome that only core sees.
  */
 export default function SettingsScreen() {
-  const { user } = useAuthStore();
-  const { profile, updateProfile } = useProfileStore();
+  // Selectors, never whole stores (jank audit #9): only the id and email
+  // are read, so a token refresh no longer re-renders Settings.
+  const userId = useAuthStore((st) => st.user?.id ?? null);
+  const userEmail = useAuthStore((st) => st.user?.email ?? null);
+  const user = useMemo(() => (userId ? { id: userId, email: userEmail } : null), [userId, userEmail]);
+  const profile = useProfileStore((st) => st.profile);
+  const updateProfile = useProfileStore((st) => st.updateProfile);
   const { isBeta, isCore } = useAccess();
   const router = useRouter();
   const colors = useThemeColors();
@@ -91,7 +98,8 @@ export default function SettingsScreen() {
   const roxyChatCount = useRoxyChatStore((s) => s.messages.length);
   const themeChoice = useThemeStore((s) => s.choice);
   const setTheme = useThemeStore((s) => s.setTheme);
-  const s = styles(colors);
+  // Built once per theme, not on every render (jank audit #8).
+  const s = useMemo(() => styles(colors), [colors]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (user?.id) void loadChatSettings(); }, [user?.id]);
@@ -99,7 +107,10 @@ export default function SettingsScreen() {
   if (!user || !profile) {
     return (
       <SafeAreaView style={s.container}>
-        <ActivityIndicator color={colors.primary} />
+        {/* F8: settings rows at their final height; F11: no spinner. */}
+        <SkeletonGroup testID="settings-loading" accessibilityLabel="Loading settings" style={s.skeleton}>
+          {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} height={52} radius={12} style={s.skeletonRow} />)}
+        </SkeletonGroup>
       </SafeAreaView>
     );
   }
@@ -491,9 +502,9 @@ export default function SettingsScreen() {
                 </Text>
                 {exportError ? <Text style={s.rowError}>{exportError}</Text> : null}
               </View>
-              {exporting
-                ? <ActivityIndicator size="small" color={colors.primary} />
-                : <Chevron />}
+              <BusySwap busy={exporting} label="Preparing your file">
+                <Chevron />
+              </BusySwap>
             </TouchableOpacity>
             <View style={s.divider} />
             <TouchableOpacity
@@ -549,6 +560,8 @@ export default function SettingsScreen() {
  */
 
 const styles = (colors: ThemeColors) => StyleSheet.create({
+  skeleton: { padding: 16, gap: 8 },
+  skeletonRow: { width: '100%' },
   container: { flex: 1, backgroundColor: colors.ground },
   topBar: {
     flexDirection: 'row',

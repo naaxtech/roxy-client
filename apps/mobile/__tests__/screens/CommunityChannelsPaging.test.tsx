@@ -1,6 +1,9 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import CommunityChannelsScreen from '../../app/(tabs)/discover/community/channels/[communityId]';
+// eslint-disable-next-line import/first
+import { clearChannelCache } from '../../components/channels/channelCache';
 import type { ChannelMessage } from '../../lib/channels';
 
 /**
@@ -18,7 +21,12 @@ jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn(), hashUserId: (s: string) => s }));
 jest.mock('../../lib/confirm', () => ({ showAlert: jest.fn(), confirmAction: jest.fn() }));
 jest.mock('../../lib/haptics', () => ({ haptic: jest.fn() }));
-jest.mock('../../store/authStore', () => ({ useAuthStore: () => ({ user: { id: 'me' } }) }));
+jest.mock('../../store/authStore', () => ({
+  useAuthStore: (sel?: (s: object) => unknown) => {
+    const state = { user: { id: 'me' } };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
+}));
 jest.mock('../../hooks/useAccess', () => ({ useAccess: () => ({ canCommunity: () => true }) }));
 jest.mock('../../store/safetyStore', () => {
   const state = { blockedUserIds: [], mutedUserIds: [], blockUser: jest.fn(), openReportModal: jest.fn() };
@@ -76,6 +84,7 @@ jest.mock('../../lib/channels', () => {
 });
 
 beforeEach(() => {
+  clearChannelCache();
   jest.clearAllMocks();
   mockFetchMessages.mockReset();
   mockFetchOlder.mockReset();

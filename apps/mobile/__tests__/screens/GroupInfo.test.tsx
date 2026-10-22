@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import GroupInfoScreen from '../../app/chat/info/[id]';
 
@@ -144,6 +145,28 @@ describe('Group info', () => {
     await waitFor(() => expect(chat.renameGroup).toHaveBeenCalledWith('g1', 'Book club', '📚'));
   });
 
+  it('group admin actions never buzz (motion spec §3.3)', async () => {
+    const { haptic } = jest.requireMock('../../lib/haptics') as { haptic: jest.Mock };
+    haptic.mockClear();
+    const view = render(<GroupInfoScreen />);
+    fireEvent.press(view.getByTestId('role-bea'));
+    await waitFor(() => expect(chat.setGroupRole).toHaveBeenCalled());
+    fireEvent.press(view.getByTestId('group-edit'));
+    fireEvent.press(view.getByTestId('group-emoji-📚'));
+    fireEvent.press(view.getByTestId('group-save'));
+    await waitFor(() => expect(chat.renameGroup).toHaveBeenCalled());
+    expect(haptic).not.toHaveBeenCalled();
+  });
+
+  it('while the group loads: member-row skeleton (F8), no spinner (F11)', () => {
+    mockThread.loading = true;
+    mockThread.meta = null;
+    const v = render(<GroupInfoScreen />);
+    expect(v.getByTestId('group-info-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.getByLabelText('Loading group')).toBeTruthy();
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
   it('a refused action is shown in words, not swallowed', async () => {
     chat.renameGroup.mockRejectedValueOnce(new Error('Only the group owner or an admin can rename it.'));
     const view = render(<GroupInfoScreen />);
@@ -191,6 +214,14 @@ describe('Group info', () => {
     fireEvent.press(view.getByTestId('add-dee'));
     fireEvent.press(view.getByTestId('add-confirm'));
     await waitFor(() => expect(showAlert).toHaveBeenCalledWith('Added 1 of 2', expect.stringMatching(/group adds/)));
+  });
+
+  it('Add people opens on the shared Sheet (F5), not a system slide', () => {
+    mockFriends.push(friend('cat', 'Cat'));
+    const view = render(<GroupInfoScreen />);
+    fireEvent.press(view.getByTestId('group-add'));
+    expect(view.getByTestId('add-sheet')).toBeTruthy();
+    expect(view.getByTestId('add-sheet-scrim', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('the add picker stops at the 32 cap', async () => {

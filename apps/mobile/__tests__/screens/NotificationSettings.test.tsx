@@ -41,6 +41,13 @@ beforeEach(() => {
   mockSave.mockResolvedValue(undefined);
 });
 
+it('while her settings load: switch-row skeleton (F8), never a spinner (F11)', () => {
+  mockLoad.mockReturnValue(new Promise(() => {}));
+  const v = render(<NotificationSettingsScreen />);
+  expect(v.getByTestId('notification-settings-loading').props.accessibilityRole).toBe('progressbar');
+  expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+});
+
 it('shows every type on and previews off for a woman who never changed anything', async () => {
   const v = render(<NotificationSettingsScreen />);
   await waitFor(() => expect(v.getByTestId('notif-switch-messages')).toBeTruthy());

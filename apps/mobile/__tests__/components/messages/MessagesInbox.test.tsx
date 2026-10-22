@@ -1,11 +1,11 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, fireEvent, within } from '@testing-library/react-native';
+import { act, render, fireEvent, within } from '@testing-library/react-native';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 
-import { Text } from 'react-native';
+import { SectionList, Text } from 'react-native';
 import { MessagesInbox } from '../../../components/messages/MessagesInbox';
 import { THEMES } from '../../../lib/theme';
 
@@ -87,8 +87,22 @@ describe('MessagesInbox — people and Communities are two lists', () => {
 
   it('draws skeleton rows while the first load runs, not a spinner', () => {
     const view = renderInbox({ chats: [], loading: true });
-    expect(view.getByTestId('inbox-direct-loading')).toBeTruthy();
+    expect(view.getByTestId('inbox-direct-loading').props.accessibilityRole).toBe('progressbar');
+    expect(view.getByLabelText('Loading your messages')).toBeTruthy();
     expect(view.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
+  it('pull-to-refresh (Roxy refresh) spins only while her pull runs, never under the first-load skeleton', async () => {
+    let done: (() => void) | undefined;
+    const onRefresh = jest.fn(() => new Promise<void>((r) => { done = r; }));
+    const view = renderInbox({ chats: [], loading: true, onRefresh });
+    const control = () => view.UNSAFE_getByType(SectionList).props.refreshControl;
+    expect(control().props.refreshing).toBe(false);
+    await act(async () => { control().props.onRefresh(); });
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    expect(control().props.refreshing).toBe(true);
+    await act(async () => { done?.(); });
+    expect(control().props.refreshing).toBe(false);
   });
 
   it('gives a community a crest squircle with its initials and no caps channel pill', () => {

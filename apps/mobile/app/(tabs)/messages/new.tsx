@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, TextInput, ScrollView,
-  KeyboardAvoidingView, Platform,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +11,6 @@ import { useConnectStore } from '../../../store/connectStore';
 import { useFriendStore, isOnline, sortByPresence } from '../../../store/friendStore';
 import { openDirectChat } from '../../../lib/directMessages';
 import { createGroup, GROUP_MAX_MEMBERS } from '../../../lib/chat';
-import { haptic } from '../../../lib/haptics';
 import { logError } from '../../../lib/errorLogger';
 import { showAlert } from '../../../lib/confirm';
 import { avatarGradient } from '../../../lib/avatars';
@@ -22,6 +20,7 @@ import { MIN_TOUCH_TARGET } from '../../../lib/touchTargets';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { FeatureGate } from '../../../components/features/FeatureGate';
 import { GROUP_EMOJIS, GROUP_TITLE_MAX } from '../../../lib/groupInfo';
+import { BusySwap, RowsSkeleton } from '../../../components/messages/LoadingShapes';
 
 // Shared with Group info (app/chat/info/[id].tsx); kept exported from here for
 // anything that imported it before it moved to lib/groupInfo.
@@ -70,7 +69,7 @@ function NewMessageScreen() {
   const atCap = picked.length >= GROUP_MAX_MEMBERS - 1;
 
   const toggle = (id: string) => {
-    haptic('select');
+    // No haptic (motion spec §3.3: only the mapped events buzz).
     setPicked((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length >= GROUP_MAX_MEMBERS - 1) return prev;
@@ -88,7 +87,6 @@ function NewMessageScreen() {
       } else {
         const title = groupName.trim().slice(0, GROUP_TITLE_MAX) || null;
         convId = await createGroup(title, picked, emoji);
-        haptic('success');
         void refreshInbox();
       }
       router.replace(`/chat/${convId}` as never);
@@ -216,9 +214,9 @@ function NewMessageScreen() {
             accessibilityState={{ disabled: !canGo, busy }}
             testID="new-message-go"
           >
-            {busy
-              ? <ActivityIndicator size="small" color={inkOn(colors.primary)} />
-              : <Text style={[s.goText, !canGo && s.goTextOff]}>{goLabel}</Text>}
+            <BusySwap busy={busy} onFill label={goLabel}>
+              <Text style={[s.goText, !canGo && s.goTextOff]}>{goLabel}</Text>
+            </BusySwap>
           </TouchableOpacity>
         </View>
 
@@ -273,7 +271,7 @@ function NewMessageScreen() {
               {GROUP_EMOJIS.map((e) => (
                 <TouchableOpacity
                   key={e}
-                  onPress={() => { haptic('select'); setEmoji((cur) => (cur === e ? null : e)); }}
+                  onPress={() => setEmoji((cur) => (cur === e ? null : e))}
                   style={[s.emojiBtn, emoji === e && s.emojiOn]}
                   accessibilityRole="button"
                   accessibilityState={{ selected: emoji === e }}
@@ -292,8 +290,9 @@ function NewMessageScreen() {
           </View>
         ) : null}
 
-        {loading ? (
-          <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
+        {/* F7: friends already in memory show at once; F8: rows on a first load. */}
+        {loading && friends.length === 0 ? (
+          <RowsSkeleton testID="new-message-loading" label="Loading your friends" rows={5} />
         ) : (
           <FlatList
             data={visible}

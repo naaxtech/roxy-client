@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { render, waitFor } from '@testing-library/react-native';
@@ -108,6 +109,15 @@ beforeEach(() => {
       gamification_points: 40,
       onboarding_completed: true,
     } as never,
+  });
+});
+
+describe('You while her profile loads (F8, F11)', () => {
+  it('shows her profile header\'s shape, never a spinner', () => {
+    useProfileStore.setState({ profile: null });
+    const v = render(<ProfileScreen />);
+    expect(v.getByTestId('you-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
   });
 });
 

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { Skeleton, SkeletonGroup } from '../feedback';
+import { RADII } from '../../lib/theme';
 
 type Fav = { id: string; entity_type: 'event' | 'game'; entity_id: string; title: string };
 
@@ -90,7 +92,16 @@ export function ProfileFavorites({ userId, editable = false }: Props) {
     await load();
   };
 
-  if (loading) return <ActivityIndicator color={colors.primary} style={{ margin: 16 }} />;
+  // F8: favourite chips at their final size; F11: no spinner.
+  if (loading) {
+    return (
+      <SkeletonGroup testID="profile-favorites-loading" accessibilityLabel="Loading favourites" style={styles.wrap}>
+        <View style={[styles.row, { flexDirection: 'row' }]}>
+          {[96, 120, 84].map((w) => <Skeleton key={w} width={w} height={32} radius={RADII.pill} />)}
+        </View>
+      </SkeletonGroup>
+    );
+  }
   if (!items.length && !editable) return null;
 
   // Empty state used to be bare text with no visual container, floating

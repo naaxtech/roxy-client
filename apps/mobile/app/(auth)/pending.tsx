@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet,
-  ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +18,8 @@ import { useViewAsStore } from '../../store/viewAsStore';
 import { showAlert } from '../../lib/confirm';
 import { inkOn, pinkFill } from '../../lib/theme';
 import { a11yState } from '../../lib/a11yState';
+import { BusySwap } from '../../components/messages/LoadingShapes';
+import { RoxyLoading } from '../../components/feedback';
 
 const MIN_APPEAL = APPEAL_MIN;
 
@@ -170,7 +171,7 @@ export default function PendingScreen() {
     return (
       <SafeAreaView style={s.container}>
         <View style={s.centred}>
-          <ActivityIndicator color={colors.roxy} />
+          <RoxyLoading />
         </View>
       </SafeAreaView>
     );
@@ -257,9 +258,9 @@ export default function PendingScreen() {
           {...a11yState({ disabled: appealDisabled, busy: sending })}
           accessibilityLabel="Send appeal"
         >
-          {sending
-            ? <ActivityIndicator color={btnInk} size="small" />
-            : <Text style={[s.btnText, { color: btnInk }]}>Send appeal</Text>}
+          <BusySwap busy={sending} onFill>
+            <Text style={[s.btnText, { color: btnInk }]}>Send appeal</Text>
+          </BusySwap>
         </TouchableOpacity>
       </>
     );

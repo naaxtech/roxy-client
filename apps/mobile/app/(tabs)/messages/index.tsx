@@ -58,7 +58,9 @@ function MessagesScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const pathname = usePathname();
-  const { user } = useAuthStore();
+  // Selectors only (jank audit #9): a token refresh used to re-render the
+  // whole inbox. Only the id is read.
+  const userId = useAuthStore((st) => st.user?.id ?? null);
   const threads = useConnectStore((st) => st.threads);
   const requests = useConnectStore((st) => st.requests);
   const loaded = useConnectStore((st) => st.loaded);
@@ -68,8 +70,8 @@ function MessagesScreen() {
   const fetchAll = useFriendStore((st) => st.fetchAll);
   const joinedCommunities = useCommunityStore((st) => st.joinedCommunities);
   const hydrateCommunities = useCommunityStore((st) => st.hydrate);
-  const profile = useProfileStore((st) => st.profile);
-  const dmPermission = readDmPermission(profile as { dm_permission?: unknown } | null);
+  const dmPermissionRaw = useProfileStore((st) => (st.profile as { dm_permission?: unknown } | null)?.dm_permission);
+  const dmPermission = readDmPermission({ dm_permission: dmPermissionRaw });
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [requestsOpen, setRequestsOpen] = useState(false);
@@ -87,14 +89,15 @@ function MessagesScreen() {
 
   const requestCount = requests.length + pendingCount;
 
-  const load = useCallback(() => { void refresh(); }, [refresh]);
+  // Returns the reload so her pull spins until the new rows are in.
+  const load = useCallback(() => refresh(), [refresh]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!userId) return;
     void refresh();
-    void fetchAll(user.id);
-    void hydrateCommunities(user.id);
-  }, [user?.id, refresh, fetchAll, hydrateCommunities]);
+    void fetchAll(userId);
+    void hydrateCommunities(userId);
+  }, [userId, refresh, fetchAll, hydrateCommunities]);
 
   // Back from a chat: the read cursor moved, so pull fresh counts. Native keeps
   // this screen mounted (focus fires); web navigation does not fire focus, so
@@ -135,8 +138,8 @@ function MessagesScreen() {
   }, [joinedCommunities, threads]);
 
   const chats: InboxDm[] = useMemo(
-    () => (user ? threads.map((t) => inboxRowFromThread(t, user.id)) : []),
-    [threads, user],
+    () => (userId ? threads.map((t) => inboxRowFromThread(t, userId)) : []),
+    [threads, userId],
   );
   const lastSeen = useMemo(() => {
     const m = new Map<string, string | null>();
@@ -146,9 +149,9 @@ function MessagesScreen() {
     return m;
   }, [threads]);
 
-  const handleOpen = (item: InboxDm) => {
+  const handleOpen = useCallback((item: InboxDm) => {
     router.push(`/chat/${item.id}` as never);
-  };
+  }, [router]);
 
   const inboxCommunities = useMemo(
     () => joinedCommunities.map((c) =>
@@ -160,25 +163,29 @@ function MessagesScreen() {
     [joinedCommunities, communityMeta, communityUnread],
   );
 
-  const filteredChats = filterInboxByQuery(
+  const filteredChats = useMemo(() => filterInboxByQuery(
     chats,
     search,
     (c) => `${c.kind === 'group' ? c.title ?? '' : c.partner?.display_name ?? ''} ${c.lastMessagePreview}`,
-  );
-  const filteredCommunities = filterInboxByQuery(
+  ), [chats, search]);
+  const filteredCommunities = useMemo(() => filterInboxByQuery(
     inboxCommunities,
     search,
     (c) => `${c.name} ${c.preview}`,
-  );
+  ), [inboxCommunities, search]);
 
-  const isPartnerOnline = (item: InboxDm) => isOnline(lastSeen.get(item.id) ?? null);
+  const isPartnerOnline = useCallback(
+    (item: InboxDm) => isOnline(lastSeen.get(item.id) ?? null),
+    [lastSeen],
+  );
 
   const closeSearch = () => {
     setSearch('');
     setSearchOpen(false);
   };
 
-  const s = styles(colors);
+  // Built once per theme, not on every render (jank audit #8).
+  const s = useMemo(() => styles(colors), [colors]);
   const waiting = requestCount > 0
     ? `${requestCount > 99 ? '99+' : requestCount} waiting`
     : 'None waiting';

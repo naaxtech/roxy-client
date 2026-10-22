@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { BusySwap } from '../../components/messages/LoadingShapes';
 
 export interface FeatureRequest {
   id: string;
@@ -149,9 +150,7 @@ export function FeatureVoteCard({
           disabled={loading}
           accessibilityLabel={localVoted ? 'Remove vote' : 'Vote for this feature'}
         >
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
+          <BusySwap busy={loading}>
             <>
               <Ionicons
                 name={localVoted ? 'heart' : 'heart-outline'}
@@ -162,7 +161,7 @@ export function FeatureVoteCard({
                 {localCount}
               </Text>
             </>
-          )}
+          </BusySwap>
         </TouchableOpacity>
       </View>
 

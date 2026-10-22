@@ -1,6 +1,9 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import CommunityChannelsScreen from '../../app/(tabs)/discover/community/channels/[communityId]';
+// eslint-disable-next-line import/first
+import { clearChannelCache } from '../../components/channels/channelCache';
 import type { ChannelMessage } from '../../lib/channels';
 
 /**
@@ -19,7 +22,12 @@ jest.mock('rn-emoji-keyboard', () => 'EmojiKeyboard');
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn(), hashUserId: (s: string) => s }));
 jest.mock('../../lib/confirm', () => ({ showAlert: jest.fn(), confirmAction: jest.fn() }));
 jest.mock('../../lib/haptics', () => ({ haptic: jest.fn() }));
-jest.mock('../../store/authStore', () => ({ useAuthStore: () => ({ user: { id: 'me' } }) }));
+jest.mock('../../store/authStore', () => ({
+  useAuthStore: (sel?: (s: object) => unknown) => {
+    const state = { user: { id: 'me' } };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
+}));
 jest.mock('../../store/profileStore', () => ({
   useProfileStore: (sel: (s: unknown) => unknown) => sel({ profile: { id: 'me', display_name: 'Jo', username: 'jo' } }),
 }));
@@ -97,6 +105,7 @@ jest.mock('../../lib/channels', () => {
 });
 
 beforeEach(() => {
+  clearChannelCache();
   jest.clearAllMocks();
   mockReactionsArgs.length = 0;
   mockTypingArgs.length = 0;
@@ -135,6 +144,18 @@ describe('CHAT-17 channel reactions', () => {
     fireEvent(view.getByTestId('channel-message-m1'), 'longPress');
     await act(async () => { fireEvent.press(view.getByLabelText('React with 💜')); });
     expect(mockAdd).toHaveBeenCalledWith('m1', '💜', 'me');
+  });
+
+  it('haptic map (§3.3): long-press menu = one selection tick, a committed reaction = one light tap', async () => {
+    const { haptic } = jest.requireMock('../../lib/haptics') as { haptic: jest.Mock };
+    const view = render(<CommunityChannelsScreen />);
+    await view.findByTestId('channel-message-m1');
+    haptic.mockClear();
+    fireEvent(view.getByTestId('channel-message-m1'), 'longPress');
+    expect(haptic.mock.calls).toEqual([['select']]);
+    haptic.mockClear();
+    await act(async () => { fireEvent.press(view.getByLabelText('React with 💜')); });
+    expect(haptic.mock.calls).toEqual([['tap']]);
   });
 
   it('a removed message offers no reactions', async () => {

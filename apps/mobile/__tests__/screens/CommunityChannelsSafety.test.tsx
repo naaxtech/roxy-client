@@ -1,6 +1,9 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import CommunityChannelsScreen from '../../app/(tabs)/discover/community/channels/[communityId]';
+// eslint-disable-next-line import/first
+import { clearChannelCache } from '../../components/channels/channelCache';
 import type { ChannelMessage } from '../../lib/channels';
 
 /**
@@ -19,7 +22,12 @@ jest.mock('expo-router', () => ({
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn(), hashUserId: (s: string) => s }));
 jest.mock('../../lib/confirm', () => ({ showAlert: jest.fn(), confirmAction: jest.fn() }));
-jest.mock('../../store/authStore', () => ({ useAuthStore: () => ({ user: { id: 'me' } }) }));
+jest.mock('../../store/authStore', () => ({
+  useAuthStore: (sel?: (s: object) => unknown) => {
+    const state = { user: { id: 'me' } };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
+}));
 jest.mock('../../hooks/useAccess', () => ({ useAccess: () => ({ canCommunity: () => true }) }));
 
 // A real zustand-shaped store so a block re-renders the screen like the app does.
@@ -102,6 +110,7 @@ jest.mock('../../lib/channels', () => {
 const { showAlert } = jest.requireMock('../../lib/confirm');
 
 beforeEach(() => {
+  clearChannelCache();
   jest.clearAllMocks();
   // clearAllMocks keeps queued *Once values; a test that fails early must not
   // hand its leftovers to the next one.

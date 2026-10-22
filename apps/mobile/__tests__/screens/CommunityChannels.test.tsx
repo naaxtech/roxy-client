@@ -1,6 +1,9 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';
 import CommunityChannelsScreen from '../../app/(tabs)/discover/community/channels/[communityId]';
+// eslint-disable-next-line import/first
+import { clearChannelCache } from '../../components/channels/channelCache';
 import type { Channel, ChannelMessage } from '../../lib/channels';
 
 /**
@@ -35,13 +38,19 @@ jest.mock('../../hooks/useTyping', () => ({
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn(), hashUserId: (s: string) => s }));
 
 jest.mock('../../store/authStore', () => ({
-  useAuthStore: () => ({ user: { id: 'me' } }),
+  useAuthStore: (sel?: (s: object) => unknown) => {
+    const state = { user: { id: 'me' } };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
 }));
 
 const mockOpenReport = jest.fn();
 const mockBlock = jest.fn();
 jest.mock('../../store/safetyStore', () => ({
-  useSafetyStore: () => ({ openReportModal: mockOpenReport, blockUser: mockBlock }),
+  useSafetyStore: (sel?: (s: object) => unknown) => {
+    const state = { openReportModal: mockOpenReport, blockUser: mockBlock };
+    return typeof sel === 'function' ? sel(state) : state;
+  },
 }));
 
 jest.mock('../../lib/supabase', () => ({
@@ -159,6 +168,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  clearChannelCache();
   (globalThis as unknown as { __pending: Pending[] }).__pending = [];
   mockPush.mockClear();
   mockSend.mockReset();
@@ -234,8 +244,162 @@ describe('switching channels', () => {
   });
 });
 
+describe('a second visit (F7: no loader where data is known)', () => {
+  it('reopening the community paints its channels and messages in the first frame, then refreshes quietly', async () => {
+    const first = render(<CommunityChannelsScreen />);
+    await release(general.id, [msg('m1', general.id, 'said before')]);
+    await waitFor(() => expect(first.getByText('said before')).toBeTruthy());
+    first.unmount();
+
+    // react-test-renderer outside act on purpose: React 18 legacy root commits
+    // synchronously and leaves passive effects pending, so this is the frame
+    // she sees before any effect (or fetch) runs.
+    const TestRenderer = require('react-test-renderer');
+    const tree = TestRenderer.create(<CommunityChannelsScreen />);
+    const byId = (id: string) => tree.root.findAll((n: { props: Record<string, unknown> }) => n.props.testID === id).length;
+    const byText = (t: string) => tree.root.findAll((n: { props: Record<string, unknown> }) => n.props.children === t).length;
+    expect(byId('channels-loading')).toBe(0);
+    expect(byId('channel-messages-loading')).toBe(0);
+    expect(byText('said before')).toBeGreaterThan(0);
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('the quiet refresh replaces remembered rows with what the server holds now', async () => {
+    const first = render(<CommunityChannelsScreen />);
+    await release(general.id, [msg('m1', general.id, 'said before')]);
+    await waitFor(() => expect(first.getByText('said before')).toBeTruthy());
+    first.unmount();
+
+    const v = render(<CommunityChannelsScreen />);
+    expect(v.getByText('said before')).toBeTruthy();
+    expect(v.queryByTestId('channel-messages-loading')).toBeNull();
+    await release(general.id, [msg('m1', general.id, 'said before'), msg('m2', general.id, 'said since')]);
+    await waitFor(() => expect(v.getByText('said since')).toBeTruthy());
+  });
+
+  it('a message she sends before the quiet refresh lands stays on screen', async () => {
+    const first = render(<CommunityChannelsScreen />);
+    await release(general.id, [msg('m1', general.id, 'said before')]);
+    await waitFor(() => expect(first.getByText('said before')).toBeTruthy());
+    first.unmount();
+
+    const v = render(<CommunityChannelsScreen />);
+    mockSend.mockImplementation(() => new Promise(() => {}));
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'typed on the way in');
+    await act(async () => { fireEvent.press(v.getByTestId('channel-composer-send')); });
+    expect(v.getByText('typed on the way in')).toBeTruthy();
+    await release(general.id, [msg('m1', general.id, 'said before')]);
+    expect(v.getByText('typed on the way in')).toBeTruthy();
+  });
+
+  it('reopening an EMPTY channel shows its empty state while the quiet refresh runs, never the skeleton', async () => {
+    // Seen in the browser probe (WLW London #general): an empty remembered page is still known data.
+    const first = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    await waitFor(() => expect(first.getByTestId('channel-messages-empty')).toBeTruthy());
+    first.unmount();
+
+    const v = render(<CommunityChannelsScreen />);
+    // Effects have run: the refresh is in flight (held open by the mock).
+    expect(v.queryByTestId('channel-messages-loading')).toBeNull();
+    expect(v.getByTestId('channel-messages-empty')).toBeTruthy();
+  });
+
+  it('a channel never opened in this session still shows its loader the first time', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    await act(async () => { fireEvent.press(v.getByTestId('channel-bar-rants')); });
+    expect(v.getByTestId('channel-messages-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+
+  it('a first visit to the community shows a skeleton (F8), never a spinner (F11)', () => {
+    const v = render(<CommunityChannelsScreen />);
+    expect(v.getByTestId('channels-loading').props.accessibilityRole).toBe('progressbar');
+    expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+});
+
+describe('keyboard (F14)', () => {
+  it('the channel and its composer sit in the keyboard tracker', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    expect(within(v.getByTestId('channel-keyboard')).getByTestId('channel-composer-input')).toBeTruthy();
+  });
+});
+
+describe('sending is optimistic (F10)', () => {
+  it('her message is in the channel the moment she sends it, before the insert answers', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    mockSend.mockImplementation(() => new Promise(() => undefined));
+
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'on my way');
+    act(() => { fireEvent.press(v.getByTestId('channel-composer-send')); });
+
+    expect(v.getByText('on my way')).toBeTruthy();
+    expect(v.getByTestId('channel-composer-input').props.value).toBe('');
+    expect(mockSend).toHaveBeenCalledWith(general.id, 'me', 'on my way');
+  });
+
+  it('the saved row replaces the provisional one: one copy, the server id', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    let settle: ((m: ChannelMessage) => void) | undefined;
+    mockSend.mockImplementation(() => new Promise((r) => { settle = r; }));
+
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'on my way');
+    act(() => { fireEvent.press(v.getByTestId('channel-composer-send')); });
+    await act(async () => { settle?.({ ...msg('m-saved', general.id, 'on my way'), sender_id: 'me' }); });
+
+    expect(v.getAllByText('on my way')).toHaveLength(1);
+    expect(v.getByTestId('channel-message-m-saved')).toBeTruthy();
+  });
+
+  it('a refused send takes the message back and offers Retry in a snackbar', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    mockSend.mockRejectedValueOnce(Object.assign(new Error('policy text'), { code: '42501' }));
+
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'on my way');
+    await act(async () => { fireEvent.press(v.getByTestId('channel-composer-send')); });
+
+    expect(v.queryByText('on my way')).toBeNull();
+    expect(v.getByTestId('channel-send-snackbar')).toBeTruthy();
+    expect(v.getByText('You do not have permission to do that here.')).toBeTruthy();
+    expect(v.queryByText(/policy text/)).toBeNull();
+    // Her words are back in the box.
+    expect(v.getByTestId('channel-composer-input').props.value).toBe('on my way');
+
+    mockSend.mockImplementation(() => new Promise(() => undefined));
+    act(() => { fireEvent.press(v.getByTestId('channel-send-snackbar-action')); });
+    expect(mockSend).toHaveBeenCalledTimes(2);
+    expect(v.getByText('on my way')).toBeTruthy();
+  });
+
+  it('a provisional message offers no safety menu until it exists', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, []);
+    mockSend.mockImplementation(() => new Promise(() => undefined));
+    fireEvent.changeText(v.getByTestId('channel-composer-input'), 'on my way');
+    act(() => { fireEvent.press(v.getByTestId('channel-composer-send')); });
+    const pending = v.getAllByTestId(/^channel-message-pending:/)[0];
+    fireEvent(pending, 'longPress');
+    expect(v.queryByText('Delete my message')).toBeNull();
+  });
+});
+
 describe('the safety menu', () => {
   const hers = { ...msg('m1', general.id, 'her words'), sender_id: 'someone-else' };
+
+  it('the message menu is the shared Sheet (F5), not a pop-in Modal', async () => {
+    const v = render(<CommunityChannelsScreen />);
+    await release(general.id, [hers]);
+    await waitFor(() => expect(v.getByText('her words')).toBeTruthy());
+    await act(async () => { fireEvent(v.getByTestId('channel-message-m1'), 'longPress'); });
+    expect(v.getByTestId('channel-actions')).toBeTruthy();
+    expect(v.getByTestId('channel-actions-scrim', { includeHiddenElements: true })).toBeTruthy();
+  });
 
   it('offers report and block on someone else’s message', async () => {
     // A group message surface without these is one a woman cannot get out of.

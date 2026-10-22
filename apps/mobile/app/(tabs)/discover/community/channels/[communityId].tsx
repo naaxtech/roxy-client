@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, ActivityIndicator, Pressable,
-  KeyboardAvoidingView, Platform,
+  View, Text, StyleSheet, FlatList,
 } from 'react-native';
+import { PressableScale } from '../../../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -17,13 +17,21 @@ import { ChannelMessage } from '../../../../../components/channels/ChannelMessag
 import { ChannelComposer } from '../../../../../components/channels/ChannelComposer';
 import { ChannelMessageActions, type ChannelAction } from '../../../../../components/channels/ChannelMessageActions';
 import {
+  absorbEcho, dropPending, isPending, pendingMessage, settlePending,
+} from '../../../../../components/channels/pendingMessages';
+import { Snackbar } from '../../../../../components/ui/Snackbar';
+import { BusySwap, ThreadSkeleton } from '../../../../../components/messages/LoadingShapes';
+import {
+  readChannelPage, readCommunitySnapshot, writeChannelPage, writeCommunitySnapshot,
+} from '../../../../../components/channels/channelCache';
+import {
   fetchChannels, fetchChannelMessages, fetchChannelMessage, sendChannelMessage, deleteChannelMessage,
   fetchOlderChannelMessages, prependOlder, MESSAGE_PAGE,
   initialChannel, fetchMyChannelRole, writeFailureMessage, authorName, fetchLiveStage,
   markChannelRead, setChannelNotifications, fetchChannelNotifications,
   hideSilenced, mergeChannelMessage,
   type LiveStage,
-  type Channel, type ChannelMessage as Message,
+  type Channel, type ChannelAuthor, type ChannelMessage as Message,
 } from '../../../../../lib/channels';
 import { useSafetyStore } from '../../../../../store/safetyStore';
 import { useProfileStore } from '../../../../../store/profileStore';
@@ -31,6 +39,7 @@ import { useReactions } from '../../../../../hooks/useReactions';
 import { useTyping } from '../../../../../hooks/useTyping';
 import { ReactionChips } from '../../../../../components/chat/ReactionBar';
 import { TypingIndicator } from '../../../../../components/chat/TypingIndicator';
+import { KeyboardTrackingView } from '../../../../../components/chat/KeyboardTrackingView';
 import { SHEET_EMOJIS } from '../../../../../components/chat/MessageActionSheet';
 import { typingLabel } from '../../../../../lib/chatThread';
 import { haptic } from '../../../../../lib/haptics';
@@ -57,21 +66,34 @@ export default function CommunityChannelsScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { communityId } = useLocalSearchParams<{ communityId: string }>();
-  const { user } = useAuthStore();
+  // Selectors, not whole stores (jank audit #9). Only the id is read.
+  const userId = useAuthStore((st) => st.user?.id ?? null);
+  const user = useMemo(() => (userId ? { id: userId } : null), [userId]);
   const { canCommunity } = useAccess();
 
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [communitySlug, setCommunitySlug] = useState<string | null>(null);
-  const [active, setActive] = useState<Channel | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [communityName, setCommunityName] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  // F7: a community opened earlier in this session paints from memory in the
+  // first frame (channels, name, the default channel's newest page) and
+  // refreshes quietly; only a first visit shows the loader.
+  const [remembered] = useState(() => {
+    const snap = readCommunitySnapshot(userId ?? '', communityId ?? '');
+    const first = snap ? initialChannel(snap.channels) : null;
+    return { snap, first, page: first ? readChannelPage(userId ?? '', first.id) : null };
+  });
+  const [channels, setChannels] = useState<Channel[]>(() => remembered.snap?.channels ?? []);
+  const [communitySlug, setCommunitySlug] = useState<string | null>(() => remembered.snap?.communitySlug ?? null);
+  const [active, setActive] = useState<Channel | null>(() => remembered.first);
+  const [messages, setMessages] = useState<Message[]>(() => remembered.page ?? []);
+  const [communityName, setCommunityName] = useState<string>(() => remembered.snap?.communityName ?? '');
+  const [loading, setLoading] = useState(() => remembered.snap === null);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  // F7: the shown channel's page is known (remembered or loaded), even when it is EMPTY.
+  // Known data never goes back under a skeleton while a quiet refresh runs.
+  const [pageKnown, setPageKnown] = useState(() => remembered.page !== null);
   // Two independent loaders get two error slots. One shared slot let a
   // successful channel-list refresh silently clear a message-load failure.
   const [error, setError] = useState<string | null>(null);
   const [messageError, setMessageError] = useState<string | null>(null);
-  const [isModerator, setIsModerator] = useState(false);
+  const [isModerator, setIsModerator] = useState(() => remembered.snap?.isModerator ?? false);
   const [menuFor, setMenuFor] = useState<Message | null>(null);
   const [stage, setStage] = useState<LiveStage | null>(null);
   const [notifyEnabled, setNotifyEnabled] = useState(false);
@@ -94,7 +116,10 @@ export default function CommunityChannelsScreen() {
   // yesterday down to the newest message every time anyone posts is hostile.
   const atBottom = useRef(true);
 
-  const { blockUser, openReportModal, blockedUserIds, mutedUserIds } = useSafetyStore();
+  const blockUser = useSafetyStore((st) => st.blockUser);
+  const openReportModal = useSafetyStore((st) => st.openReportModal);
+  const blockedUserIds = useSafetyStore((st) => st.blockedUserIds);
+  const mutedUserIds = useSafetyStore((st) => st.mutedUserIds);
   // CHAT-10: block and mute reach channels. RLS (migration 132) already hides
   // block-paired senders both ways; this hides her at once after she taps
   // Block, before any refetch, and keeps muted senders out of her view.
@@ -107,6 +132,11 @@ export default function CommunityChannelsScreen() {
   // (chan:<id>:reactions / :typing; migration 132 admits members only).
   const me = user?.id ?? '';
   const selfName = useProfileStore((st) => st.profile?.display_name ?? st.profile?.username ?? undefined);
+  const selfAvatar = useProfileStore((st) => st.profile?.avatar_url ?? null);
+  const selfUsername = useProfileStore((st) => st.profile?.username ?? null);
+  // F10: a send that failed. The provisional message is already gone again;
+  // this says why and offers Retry (the composer has her words back).
+  const [sendFailure, setSendFailure] = useState<{ message: string; retry: () => void } | null>(null);
   const messageIds = useMemo(() => visible.map((m) => m.id), [visible]);
   const { reactionsMap, addReaction, removeReaction } = useReactions({
     conversationId: active?.id ?? '', scope: 'channel', messageIds,
@@ -117,7 +147,8 @@ export default function CommunityChannelsScreen() {
   const [reactAnyFor, setReactAnyFor] = useState<string | null>(null);
   const toggleReaction = useCallback((messageId: string, emoji: string, own: boolean) => {
     if (!me) return;
-    haptic('select');
+    // A committed reaction: the light tap (§3.3).
+    haptic('tap');
     if (own) void removeReaction(messageId, emoji, me);
     else void addReaction(messageId, emoji, me);
   }, [me, addReaction, removeReaction]);
@@ -140,15 +171,23 @@ export default function CommunityChannelsScreen() {
         supabase.from('communities').select('name, slug').eq('id', communityId).maybeSingle(),
       ]);
       setChannels(rows);
-      setActive(initialChannel(rows));
-      setCommunityName(community.data?.name ?? '');
-      setCommunitySlug(community.data?.slug ?? null);
+      // A refresh keeps the channel she is on when it still exists (a
+      // remembered first frame may already have her in one).
+      setActive((prev) => (prev && rows.find((r) => r.id === prev.id)) ?? initialChannel(rows));
+      const name = community.data?.name ?? '';
+      const slug = community.data?.slug ?? null;
+      setCommunityName(name);
+      setCommunitySlug(slug);
       setError(null);
       // A hint for what to DRAW, never the gate. The gate is the policy, and a
       // client that decided this for itself would be the copy that drifts.
+      let mod = false;
       if (user?.id) {
-        const { isModerator: mod } = await fetchMyChannelRole(communityId, user.id);
+        mod = (await fetchMyChannelRole(communityId, user.id)).isModerator;
         setIsModerator(mod);
+      }
+      if (user?.id) {
+        writeCommunitySnapshot(user.id, communityId, { channels: rows, communityName: name, communitySlug: slug, isModerator: mod });
       }
       setStage(await fetchLiveStage(communityId));
     } catch (e) {
@@ -195,34 +234,50 @@ export default function CommunityChannelsScreen() {
       // these rows now puts one channel's messages under another's name, and a
       // reply typed against them posts to the room she is not looking at.
       if (shownChannelId.current !== channelId) return;
-      setMessages(rows);
+      if (me) writeChannelPage(me, channelId, rows, MESSAGE_PAGE);
+      setPageKnown(true);
+      setMessages((prev) => {
+        // Her own sends still in flight stay on screen across the refresh.
+        const inFlight = prev.filter((m) => isPending(m) && m.channel_id === channelId);
+        return inFlight.length ? [...rows, ...inFlight] : rows;
+      });
       setHasOlder(rows.length >= MESSAGE_PAGE);
       setOlderError(false);
       setMessageError(null);
     } catch (e) {
       logError(e, 'community_channel_messages_failed');
-      if (shownChannelId.current === channelId) setMessageError('Could not load this channel.');
+      // With remembered rows on screen a failed refresh stays quiet.
+      if (shownChannelId.current === channelId && !(me && readChannelPage(me, channelId))) {
+        setMessageError('Could not load this channel.');
+      }
     } finally {
       if (shownChannelId.current === channelId) setLoadingMessages(false);
     }
-  }, []);
+  }, [me]);
 
+  const activeId = active?.id ?? null;
   useEffect(() => {
-    if (!active) return;
+    if (!activeId) return;
     // Cleared BEFORE the fetch, never after it returns. Leaving the previous
     // channel's messages up under the new channel's name is not a race — it
     // happened on every switch, for the whole length of the fetch.
-    shownChannelId.current = active.id;
+    shownChannelId.current = activeId;
     atBottom.current = true;
-    setMessages([]);
+    // Her own memory of THIS channel (F7), or nothing: never the previous
+    // channel's rows.
+    const page = me ? readChannelPage(me, activeId) : null;
+    setMessages(page ?? []);
+    setPageKnown(page !== null);
+    setSendFailure(null);
     setMessageError(null);
-    setHasOlder(false);
+    setHasOlder(page ? page.length >= MESSAGE_PAGE : false);
     setOlderError(false);
-    void loadMessages(active.id);
+    void loadMessages(activeId);
     // Opening the channel is reading it. Clear its unread cursor so the inbox
     // badge does not count messages she has already seen.
-    void markChannelRead(active.id);
-  }, [active, loadMessages]);
+    void markChannelRead(activeId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `me` is read once per channel open; the id is the trigger.
+  }, [activeId, loadMessages]);
 
   // The page before the oldest loaded row, put ABOVE what she is reading.
   // The cursor is the oldest row she has loaded, including any she has hidden
@@ -269,7 +324,7 @@ export default function CommunityChannelsScreen() {
       try {
         const row = await fetchChannelMessage(id);
         if (!row || shownChannelId.current !== channelId) return;
-        setMessages((prev) => mergeChannelMessage(prev, row));
+        setMessages((prev) => mergeChannelMessage(absorbEcho(prev, row), row));
       } catch (e) {
         logError(e, 'community_channel_message_fetch_failed');
         // One row failed: fall back to the page rather than lose the message.
@@ -302,16 +357,29 @@ export default function CommunityChannelsScreen() {
   const handleSend = useCallback(async (body: string) => {
     if (!active || !user?.id) return;
     const target = active.id;
-    const saved = await sendChannelMessage(target, user.id, body);
-    // Only if she is still in the channel she sent to. Appending unconditionally
-    // drew a #general message into #rants, where she read it as posted there
-    // until the next refetch quietly took it away again.
-    if (shownChannelId.current !== target) return;
-    // Appended from the RETURNED row, which is the only proof it exists.
-    setMessages((prev) => (prev.some((m) => m.id === saved.id) ? prev : [...prev, saved]));
+    const author: ChannelAuthor = {
+      id: user.id, username: selfUsername, display_name: selfName ?? null, avatar_url: selfAvatar,
+    };
+    // F10: drawn in the same frame as Send, as a provisional row. The
+    // RETURNED row replaces it (the only proof it exists); a refusal takes it
+    // back out and the composer hands the reason to the snackbar.
+    const provisional = pendingMessage(target, user.id, body, author);
+    setSendFailure(null);
+    setMessages((prev) => [...prev, provisional]);
     atBottom.current = true;
     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
-  }, [active, user?.id]);
+    try {
+      const saved = await sendChannelMessage(target, user.id, body);
+      // Only if she is still in the channel she sent to. Appending
+      // unconditionally drew a #general message into #rants, where she read it
+      // as posted there until the next refetch quietly took it away again.
+      if (shownChannelId.current !== target) return;
+      setMessages((prev) => settlePending(prev, provisional.id, saved));
+    } catch (e) {
+      setMessages((prev) => dropPending(prev, provisional.id));
+      throw e;
+    }
+  }, [active, user?.id, selfName, selfUsername, selfAvatar]);
 
   const removeMessage = useCallback(async (message: Message) => {
     try {
@@ -406,7 +474,8 @@ export default function CommunityChannelsScreen() {
     return actions;
   }, [user?.id, isModerator, removeMessage, openReportModal, blockUser, roles, communityId]);
 
-  const s = StyleSheet.create({
+  // Built once per theme, not on every render (jank audit #8).
+  const s = useMemo(() => StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
     header: {
       flexDirection: 'row',
@@ -447,7 +516,9 @@ export default function CommunityChannelsScreen() {
     reactHit: { minWidth: MIN_TOUCH_TARGET, minHeight: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center' },
     reactEmoji: { fontSize: 24 },
     startOf: { ...TYPE.micro, color: colors.textMuted, textAlign: 'center', paddingVertical: 8 },
-  });
+    snackAnchor: { height: 0, zIndex: 1 },
+    flex: { flex: 1 },
+  }), [colors]);
 
   if (!loading && communitySlug && !canCommunity(communitySlug)) {
     return (
@@ -460,9 +531,8 @@ export default function CommunityChannelsScreen() {
   const body = () => {
     if (loading) {
       return (
-        <View style={s.centre} testID="channels-loading">
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        // F8: the channel's shape while a first visit loads; F11: no spinner.
+        <ThreadSkeleton testID="channels-loading" label="Loading channels" />
       );
     }
 
@@ -470,14 +540,14 @@ export default function CommunityChannelsScreen() {
       return (
         <View style={s.centre} testID="channels-error">
           <Text style={s.centreBody}>{error}</Text>
-          <Pressable
+          <PressableScale
             onPress={() => { setLoading(true); void loadChannels(); }}
             style={s.retryHit}
             accessibilityRole="button"
             accessibilityLabel="Try again"
           >
             <Text style={s.retry}>Try again</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       );
     }
@@ -503,23 +573,21 @@ export default function CommunityChannelsScreen() {
           {/* Retries THIS channel. The screen-level retry reloads the channel
               list and resets `active`, which dropped her into #general when
               what had failed was #rants. */}
-          <Pressable
+          <PressableScale
             onPress={() => { if (active) void loadMessages(active.id); }}
             style={s.retryHit}
             accessibilityRole="button"
             accessibilityLabel="Try again"
           >
             <Text style={s.retry}>Try again</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       );
     }
 
-    if (loadingMessages && messages.length === 0) {
+    if (loadingMessages && messages.length === 0 && !pageKnown) {
       return (
-        <View style={s.centre} testID="channel-messages-loading">
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        <ThreadSkeleton testID="channel-messages-loading" label="Loading messages" />
       );
     }
 
@@ -544,7 +612,10 @@ export default function CommunityChannelsScreen() {
           <ChannelMessage
             message={item}
             onPressAuthor={(id) => router.push(`/user/${id}` as never)}
-            onLongPress={(m) => setMenuFor(m)}
+            // A provisional message does not exist yet: nothing to report,
+            // remove or react to until the server has it.
+            // A long-press that opens a menu ticks as a selection (§3.3).
+            onLongPress={isPending(item) ? undefined : (m) => { haptic('select'); setMenuFor(m); }}
             onOpenCard={(path) => router.push(path as never)}
             footer={(reactionsMap[item.id]?.length ?? 0) > 0 ? (
               <ReactionChips
@@ -572,7 +643,7 @@ export default function CommunityChannelsScreen() {
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         ListHeaderComponent={
           hasOlder || olderError ? (
-            <Pressable
+            <PressableScale
               onPress={() => { void loadOlder(); }}
               disabled={loadingOlder}
               style={s.olderHit}
@@ -581,14 +652,12 @@ export default function CommunityChannelsScreen() {
               accessibilityState={{ busy: loadingOlder }}
               testID="channel-load-older"
             >
-              {loadingOlder ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (
+              <BusySwap busy={loadingOlder} label="Loading earlier messages">
                 <Text style={olderError ? s.olderError : s.older}>
                   {olderError ? "Couldn't load earlier messages. Tap to try again." : 'Earlier messages'}
                 </Text>
-              )}
-            </Pressable>
+              </BusySwap>
+            </PressableScale>
           ) : (
             <Text style={s.startOf} testID="channel-start">{`Start of # ${active.slug}`}</Text>
           )
@@ -606,7 +675,7 @@ export default function CommunityChannelsScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <Pressable
+        <PressableScale
           onPress={() => router.back()}
           style={s.back}
           accessibilityRole="button"
@@ -614,7 +683,7 @@ export default function CommunityChannelsScreen() {
           testID="channels-back"
         >
           <Ionicons name="chevron-back" size={22} color={colors.textSecondary} />
-        </Pressable>
+        </PressableScale>
         <View style={s.headText}>
           <Text style={s.title} numberOfLines={1}>
             {communityName || 'Community'}
@@ -624,7 +693,7 @@ export default function CommunityChannelsScreen() {
             <Text style={s.subtitle} numberOfLines={1}>{active.topic}</Text>
           ) : null}
         </View>
-        <Pressable
+        <PressableScale
           onPress={() => { void toggleNotifications(); }}
           style={s.notifyBtn}
           accessibilityRole="button"
@@ -637,7 +706,7 @@ export default function CommunityChannelsScreen() {
             size={20}
             color={notifyEnabled ? colors.roxy : colors.textSecondary}
           />
-        </Pressable>
+        </PressableScale>
       </View>
 
       {channels.length > 0 ? (
@@ -652,12 +721,22 @@ export default function CommunityChannelsScreen() {
         />
       ) : null}
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      {/* F14: the composer rides the keyboard frame by frame. */}
+      <KeyboardTrackingView style={s.flex} testID="channel-keyboard">
         {body()}
         <TypingIndicator partnerName="" visible={typingNames.length > 0} label={typingLabel(typingNames)} />
+        {/* A zero-height anchor: the snackbar rises from the composer's top
+            edge, never over the words she just got back. */}
+        <View style={s.snackAnchor} pointerEvents="box-none">
+          <Snackbar
+            visible={sendFailure !== null}
+            message={sendFailure?.message ?? ''}
+            actionLabel="Retry"
+            onAction={() => sendFailure?.retry()}
+            onDismiss={() => setSendFailure(null)}
+            testID="channel-send-snackbar"
+          />
+        </View>
         {active ? (
           <ChannelComposer
             // Keyed per channel. Without it an unsent draft — and a failed-send
@@ -665,13 +744,14 @@ export default function CommunityChannelsScreen() {
             key={active.id}
             placeholder={`Message # ${active.slug}`}
             onSend={handleSend}
+            onSendFailed={(message, retry) => setSendFailure({ message, retry })}
             onTyping={sendTyping}
             onStopTyping={stopTyping}
             disabled={!user?.id}
             disabledReason="Sign in to post here."
           />
         ) : null}
-      </KeyboardAvoidingView>
+      </KeyboardTrackingView>
 
       <ChannelMessageActions
         title={menuFor ? authorName(menuFor.author) : ''}
@@ -681,7 +761,7 @@ export default function CommunityChannelsScreen() {
         header={menuFor && !menuFor.deleted_at && me ? (
           <View style={s.reactRow}>
             {SHEET_EMOJIS.map((emoji) => (
-              <Pressable
+              <PressableScale
                 key={emoji}
                 style={s.reactHit}
                 onPress={() => { const id = menuFor.id; setMenuFor(null); reactFromMenu(id, emoji); }}
@@ -689,16 +769,16 @@ export default function CommunityChannelsScreen() {
                 accessibilityLabel={`React with ${emoji}`}
               >
                 <Text style={s.reactEmoji}>{emoji}</Text>
-              </Pressable>
+              </PressableScale>
             ))}
-            <Pressable
+            <PressableScale
               style={s.reactHit}
               onPress={() => { const id = menuFor.id; setMenuFor(null); setReactAnyFor(id); }}
               accessibilityRole="button"
               accessibilityLabel="Choose any emoji"
             >
               <Ionicons name="add" size={22} color={colors.textPrimary} />
-            </Pressable>
+            </PressableScale>
           </View>
         ) : null}
       />

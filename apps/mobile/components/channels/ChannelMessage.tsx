@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { PressableScale } from '../ui/PressableScale';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -123,7 +124,7 @@ export function ChannelMessage({ message, onPressAuthor, onLongPress, onOpenCard
   );
 
   return (
-    <Pressable
+    <PressableScale feedback="layer"
       onLongPress={onLongPress ? () => onLongPress(message) : undefined}
       // A long-press-only Pressable must not swallow the row's own semantics,
       // so the identity stays on the pieces inside it.
@@ -132,14 +133,14 @@ export function ChannelMessage({ message, onPressAuthor, onLongPress, onOpenCard
     >
       <View style={s.row}>
         {canOpen ? (
-          <Pressable
+          <PressableScale
             onPress={() => onPressAuthor?.(message.sender_id as string)}
             style={s.avatarHit}
             accessibilityRole="button"
             accessibilityLabel={`Open ${name}'s profile`}
           >
             {avatar}
-          </Pressable>
+          </PressableScale>
         ) : (
           <View style={s.avatarHit}>{avatar}</View>
         )}
@@ -159,7 +160,7 @@ export function ChannelMessage({ message, onPressAuthor, onLongPress, onOpenCard
             <>
               <Text style={s.text}>{message.body}</Text>
               {card && onOpenCard ? (
-                <Pressable
+                <PressableScale feedback="layer"
                   style={s.card}
                   onPress={() => onOpenCard(card.path)}
                   accessibilityRole="button"
@@ -171,14 +172,14 @@ export function ChannelMessage({ message, onPressAuthor, onLongPress, onOpenCard
                     <Text style={s.cardSub} numberOfLines={1}>{card.subtitle}</Text>
                   </View>
                   <Text style={s.cardCta}>{card.cta}</Text>
-                </Pressable>
+                </PressableScale>
               ) : null}
               {footer ?? null}
             </>
           )}
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

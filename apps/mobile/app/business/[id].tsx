@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ActivityIndicator,
-  Share, Linking,
+  View, Text, StyleSheet, Share, Linking,
 } from 'react-native';
 import { TouchableOpacity } from '../../components/ui/PressableScale';
 import { Image } from 'expo-image';
@@ -25,6 +24,7 @@ import type { PopulatedTabs, ProfileTab } from '../../components/profile/profile
 import { deriveSellerStatus, canSell } from '../../lib/sellerStatus';
 import type { Business, BusinessPhoto } from '../../types';
 import type { ProductWithVariants } from '../../types/marketplace';
+import { RoxyLoading } from '../../components/feedback';
 
 export default function BusinessStorefrontScreen() {
   const colors = useThemeColors();
@@ -333,7 +333,7 @@ export default function BusinessStorefrontScreen() {
             <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
-        <ActivityIndicator color={colors.roxy} style={{ marginTop: 48 }} />
+        <RoxyLoading style={{ marginTop: 48 }} />
       </SafeAreaView>
     );
   }
@@ -379,7 +379,7 @@ export default function BusinessStorefrontScreen() {
       return (
         <View style={styles.shopGrid}>
           {isLoadingProducts || !productsByBusiness[businessId] ? (
-            <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />
+            <RoxyLoading style={{ marginTop: 40 }} />
           ) : products.length === 0 ? (
             renderSectionEmpty('storefront-outline', 'No products yet', "This shop hasn't listed products yet.")
           ) : (
@@ -424,7 +424,7 @@ export default function BusinessStorefrontScreen() {
       );
     }
     if (tab === 'photos') {
-      if (loadingPhotos) return <ActivityIndicator color={colors.roxy} style={{ marginTop: 40 }} />;
+      if (loadingPhotos) return <RoxyLoading accessibilityLabel="Loading photos" style={{ marginTop: 40, alignSelf: 'center' }} />;
       if (photosError) {
         return renderSectionEmpty(
           'alert-circle-outline',

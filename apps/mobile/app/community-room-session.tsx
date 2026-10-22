@@ -7,8 +7,7 @@
 // and one file; do not re-add a nested copy.
 import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ActivityIndicator,
-  StatusBar, FlatList, ScrollView,
+  View, Text, StyleSheet, StatusBar, FlatList, ScrollView,
 } from 'react-native';
 import { TouchableOpacity } from '../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,6 +28,7 @@ import { roomReportTarget, roomBlockTarget } from './roomSafety';
 import { useAppWidth } from '../hooks/useAppWidth';
 import type { RemoteParticipant } from '../lib/video/VideoCallProvider';
 import { THEMES, scrim } from '../lib/theme';
+import { RoxyLoading } from '../components/feedback';
 
 // Always-dark video-stage palette — this screen stays visually consistent
 // regardless of the app's light/dark theme (a call stage is not a themed surface).
@@ -574,7 +574,7 @@ export default function CommunityRoomSession() {
       <View style={styles.content}>
         {state === 'connecting' || !roomInfo ? (
           <View style={styles.placeholder}>
-            <ActivityIndicator color={colors.roxy} size="large" />
+            <RoxyLoading />
             <Text style={styles.placeholderText}>Joining room...</Text>
           </View>
         ) : isVideo ? (
