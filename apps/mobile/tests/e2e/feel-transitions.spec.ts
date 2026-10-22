@@ -35,7 +35,7 @@ type Frame = {
   t: number;
   url: string;
   layers: Layer[];
-  fades: { id: string; op: number }[];
+  fades: { id: string; op: number; as: number | null; an: number }[];
   bar: number[] | null;
   pills: { id: string; sx: number }[];
   sheet: { top: number; op: number } | null;
@@ -53,8 +53,15 @@ const SAMPLER = `(() => {
   };
   const f = (window.__feel = {
     frames: [], on: false, t0: 0, cold: { pendingAt: null, loadingAt: null, navAt: null },
+    // history.back() this many ms after a NEW screen layer first shows (in-page
+    // timing: a Playwright wait under 4x CPU lands far too late).
+    backArm: null, backAt: null, backLayerOp: null,
     start() { this.frames = []; this.on = true; requestAnimationFrame(tick); },
     stop() { this.on = false; return this.frames; },
+    armBack(ms) {
+      this.backAt = null; this.backLayerOp = null;
+      this.backArm = { ms, seen: new Set(q('[data-testid="screen-transition"]').map((el) => el.id)) };
+    },
   });
   addEventListener('pointerdown', () => { f.t0 = performance.now(); }, true);
   function tick() {
@@ -62,8 +69,24 @@ const SAMPLER = `(() => {
       const m = mx(el); const cs = getComputedStyle(el);
       return { id: el.id, op: +cs.opacity, tx: m.e, ty: m.f, pe: cs.pointerEvents };
     });
+    if (f.backArm) {
+      const fresh = layers.find((l) => !f.backArm.seen.has(l.id));
+      if (fresh) {
+        const { ms } = f.backArm; f.backArm = null;
+        setTimeout(() => {
+          const el = document.getElementById(fresh.id);
+          f.backLayerOp = el ? +getComputedStyle(el).opacity : null;
+          f.backAt = performance.now();
+          history.back();
+        }, ms);
+      }
+    }
     const fades = q('[data-testid^="tab-fade"][data-testid$="-content"]').filter(vis)
-      .map((el) => ({ id: el.dataset.testid, op: +getComputedStyle(el).opacity }));
+      .map((el) => {
+        const anims = el.getAnimations ? el.getAnimations() : [];
+        const st = anims.map((a) => a.startTime).filter((v) => v !== null);
+        return { id: el.dataset.testid, op: +getComputedStyle(el).opacity, as: st.length ? Math.min(...st) : null, an: anims.length };
+      });
     const bar = document.querySelector('[data-testid="nav-bar"]');
     const r = bar && vis(bar) ? bar.getBoundingClientRect() : null;
     const pills = q('[data-testid^="nav-indicator-"]').map((el) => ({ id: el.dataset.testid, sx: mx(el).a }));
@@ -162,6 +185,8 @@ function tabSwitch(slot: string, { t0, frames }: { t0: number; frames: Frame[] }
   const first = vis[0];
   const done = vis.find((f) => opOf(f) >= 0.99);
   const ramp = vis.filter((f) => opOf(f) > 0.01 && opOf(f) < 0.99).length;
+  // The fade's own WAAPI start (web): when the compositor began the ramp.
+  const animStart = vis.map((f) => f.fades.find((x) => x.id === fadeId)?.as).find((v) => v !== null && v !== undefined);
   const sxOf = (f: Frame) => f.pills.find((p) => p.id === pillId)?.sx ?? NaN;
   let pillSettled: Frame | undefined;
   // Settled = within REST.px (0.5 px) of the 56 dp pill's final width.
@@ -180,6 +205,8 @@ function tabSwitch(slot: string, { t0, frames }: { t0: number; frames: Frame[] }
     firstVisibleMs: first ? Math.round(first.t - t0) : null,
     firstOpacity: first ? Number(opOf(first).toFixed(3)) : null,
     fadeMs: first && done ? Math.round(done.t - first.t) : null,
+    fadeAnimStartMs: animStart != null ? Math.round(animStart - t0) : null,
+    groundOnlyMs: animStart != null && first ? Math.max(0, Math.round(animStart - first.t)) : null,
     rampFrames: ramp,
     contentMs: done ? Math.round(done.t - t0) : null,
     pillSettleMs: pillSettled ? Math.round(pillSettled.t - t0) : null,
@@ -244,8 +271,14 @@ function pop({ t0, frames }: { t0: number; frames: Frame[] }, startAt = t0) {
   const revealed = last?.layers.filter((l) => l.id !== topId) ?? [];
   const firstMove = leaving.find((f) => opAt(f) < startOp - 0.01) ?? leaving[0];
   const maxTx = Math.max(0, ...after.flatMap((f) => f.layers.map((l) => Math.abs(l.tx))));
+  // Frames that show the leaving screen mid-move (not at rest, not gone).
+  const midMove = leaving.filter((f) => {
+    const l = f.layers.find((x) => x.id === topId)!;
+    return (l.op > 0.02 && l.op < 0.98) || (Math.abs(l.tx) > 0.5 && Math.abs(l.tx) < 31.5) || (Math.abs(l.ty) > 0.5 && Math.abs(l.ty) < 47.5);
+  });
   return {
-    exitAnimatedFrames: leaving.length,
+    exitAnimatedFrames: midMove.length,
+    leavingFrames: leaving.length,
     reversesFromCurrent: maxOpAfter <= startOp + 0.05,
     startOpacity: Number(startOp.toFixed(3)),
     transitionMs: firstMove && gone ? Math.round(gone.t - firstMove.t) : null,
@@ -269,12 +302,30 @@ function sheetOpen({ t0, frames }: { t0: number; frames: Frame[] }) {
     settled = after[i - 1];
   }
   const minOp = Math.min(...after.map((f) => f.sheet!.op));
+  const from = after[0].t;
   return {
-    visibleMs: Math.round(after[0].t - t0),
+    visibleMs: Math.round(from - t0),
     travelPx: Math.round(startTop - finalTop),
-    p95Ms: at95 ? Math.round(at95.t - t0) : null,
-    settledMs: Math.round(settled.t - t0),
+    p95Ms: at95 ? Math.round(at95.t - from) : null,
+    settledMs: Math.round(settled.t - from),
     sheetMinOpacity: Number(minOp.toFixed(3)),
+  };
+}
+
+/** A scrim tap mid-open: the sheet turns around (no frame jumps > 1/3 of its height) and leaves. */
+function sheetInterrupt({ frames }: { t0: number; frames: Frame[] }, sheetH: number) {
+  const seen = frames.filter((f) => f.sheet);
+  let maxJump = 0;
+  for (let i = 1; i < seen.length; i++) maxJump = Math.max(maxJump, Math.abs(seen[i].sheet!.top - seen[i - 1].sheet!.top));
+  const tops = seen.map((f) => f.sheet!.top);
+  const minTop = tops.length ? Math.min(...tops) : null;
+  const last = frames[frames.length - 1];
+  return {
+    framesSeen: seen.length,
+    maxJumpPx: Math.round(maxJump),
+    maxJumpFraction: sheetH > 0 ? Number((maxJump / sheetH).toFixed(3)) : null,
+    turnedAroundAtTop: minTop !== null ? Math.round(minTop) : null,
+    gone: !last.sheet,
   };
 }
 
@@ -314,12 +365,14 @@ test('feel: navigation and screen transitions (read-only)', async ({ browser }) 
 
   // F4 — tab switches: three first visits, then a warm round.
   const tabs: ReturnType<typeof tabSwitch>[] = [];
+  const tabSamples: { slot: string; t0: number; frames: Frame[] }[] = [];
   for (const slot of ['discover', 'messages', 'you', 'feed', 'discover', 'messages', 'you', 'feed']) {
     const s = await sample(page, async () => {
       await page.getByTestId(`nav-slot-${slot}`).tap();
       await expect(page).toHaveURL(new RegExp(`/${slot}$`), { timeout: 20_000 });
     });
     tabs.push(tabSwitch(slot, s));
+    tabSamples.push({ slot, ...s });
     await page.waitForTimeout(600);
   }
   result.tabs = tabs;
@@ -340,16 +393,16 @@ test('feel: navigation and screen transitions (read-only)', async ({ browser }) 
     await expect(page).toHaveURL(/\/you$/, { timeout: 20_000 });
   });
   await page.waitForTimeout(800);
-  // Back at ~100 ms into the push: the screen must turn around, nothing left half-faded.
+  // Back 100 ms into the push (timed in the page from the new layer's first
+  // frame): the screen must turn around, nothing left half-faded.
+  await page.evaluate(() => (window as unknown as { __feel: { armBack(ms: number): void } }).__feel.armBack(100));
   const interrupt = await sample(page, async () => {
     await page.getByTestId('you-row-settings').tap();
-    await page.waitForTimeout(100);
-    await page.evaluate(() => {
-      (window as unknown as { __feel: { backAt: number } }).__feel.backAt = performance.now();
-      history.back();
-    });
-  }, 1600);
-  const backAt = await page.evaluate(() => (window as unknown as { __feel: { backAt: number } }).__feel.backAt);
+  }, 1800);
+  const { backAt, backLayerOp } = await page.evaluate(() => {
+    const f = (window as unknown as { __feel: { backAt: number; backLayerOp: number | null } }).__feel;
+    return { backAt: f.backAt, backLayerOp: f.backLayerOp };
+  });
   await expect(page).toHaveURL(/\/you$/, { timeout: 20_000 });
   await page.waitForTimeout(800);
 
@@ -368,12 +421,15 @@ test('feel: navigation and screen transitions (read-only)', async ({ browser }) 
   result.push = {
     settings: push(pushSettings),
     settingsBack: pop(popSettings),
-    interrupt: { push: push(interrupt), back: pop(interrupt, backAt), backAtMs: Math.round(backAt - interrupt.t0) },
+    interrupt: {
+      push: push(interrupt), back: pop(interrupt, backAt),
+      backAtMs: Math.round(backAt - interrupt.t0), backLayerOp: backLayerOp === null ? null : Number(backLayerOp.toFixed(3)),
+    },
     notifications: push(pushNotif),
     notificationsBack: pop(popNotif),
   };
   if (process.env.FEEL_DUMP === '1') {
-    fs.writeFileSync(path.join(OUT, `frames-${RUN_ID}.json`), JSON.stringify({ pushSettings, popSettings, interrupt, pushNotif, popNotif }));
+    fs.writeFileSync(path.join(OUT, `frames-${RUN_ID}.json`), JSON.stringify({ pushSettings, popSettings, interrupt, pushNotif, popNotif, tabSamples }));
   }
 
   // F5 (Create): open, then close with its × (read-only: nothing is chosen).
@@ -384,7 +440,18 @@ test('feel: navigation and screen transitions (read-only)', async ({ browser }) 
   });
   await page.getByTestId('create-sheet').getByLabel('Close').tap();
   await expect(page.getByTestId('create-sheet')).toBeHidden({ timeout: 15_000 });
-  result.create = { open: sheetOpen(openCreate) };
+  const open = sheetOpen(openCreate);
+  const sheetFrames = openCreate.frames.filter((f) => f.sheet);
+  const sheetH = sheetFrames.length ? VH - sheetFrames[sheetFrames.length - 1].sheet!.top : 0;
+  // A scrim tap mid-open: it turns around from where it is.
+  await page.waitForTimeout(800);
+  const interruptCreate = await sample(page, async () => {
+    await page.getByTestId('nav-slot-create').tap();
+    await page.waitForTimeout(40);
+    await page.touchscreen.tap(Math.round(VW / 2), 40);
+  }, 1200);
+  await expect(page.getByTestId('create-sheet')).toBeHidden({ timeout: 15_000 });
+  result.create = { open, sheetH: Math.round(sheetH), scrimMidOpen: sheetInterrupt(interruptCreate, sheetH) };
 
   // Frames for the vision check (separate pass: the screencast costs frames).
   if (SHOTS) {
@@ -445,8 +512,20 @@ test('feel: navigation and screen transitions (read-only)', async ({ browser }) 
     expect.soft(p.revealedSolid, `F3 ${name}: the revealed screen is solid`).toBe(true);
     if (!REDUCED) expect.soft(p.exitAnimatedFrames as number, `F3 ${name}: the pop is not a jump cut`).toBeGreaterThanOrEqual(2);
   }
-  const intr = pushes.interrupt as unknown as { back: ReturnType<typeof pop> };
+  const intr = pushes.interrupt as unknown as { back: ReturnType<typeof pop>; backLayerOp: number | null };
+  if (!REDUCED) expect.soft(intr.backLayerOp ?? 1, 'F3 interrupt: back pressed while the push was still moving').toBeLessThan(0.95);
   expect.soft(intr.back.reversesFromCurrent, 'F3 interrupt: turns around from where it is').toBe(true);
   expect.soft(intr.back.leftoverHalfFaded, 'F3 interrupt: nothing left half-faded').toBe(0);
   expect.soft(intr.back.revealedSolid, 'F3 interrupt: ends on the old screen, solid').toBe(true);
+
+  const create = result.create as { open: ReturnType<typeof sheetOpen>; scrimMidOpen: ReturnType<typeof sheetInterrupt> };
+  expect.soft(create.open.sheetMinOpacity ?? 0, 'F5 Create: the surface is never translucent').toBeGreaterThanOrEqual(0.99);
+  if (REDUCED) {
+    expect.soft(create.open.settledMs ?? 999, 'F12 Create: the sheet is simply there (no travel)').toBeLessThanOrEqual(2 * frameMs);
+  } else {
+    expect.soft(create.open.p95Ms ?? 999, 'F5 Create: 95% of the travel <= 250 ms').toBeLessThanOrEqual(250);
+    expect.soft(create.open.settledMs ?? 999, 'F5 Create: settled <= 450 ms').toBeLessThanOrEqual(450);
+    expect.soft(create.scrimMidOpen.maxJumpFraction ?? 1, 'F5 Create: scrim tap mid-open, no frame jumps > 1/3 of the sheet').toBeLessThanOrEqual(1 / 3);
+  }
+  expect.soft(create.scrimMidOpen.gone, 'F5 Create: the scrim tap closes it').toBe(true);
 });
