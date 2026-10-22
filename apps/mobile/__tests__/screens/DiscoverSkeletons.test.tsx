@@ -62,6 +62,8 @@ jest.mock('../../components/archive/archiveCount', () => ({
 
 import DiscoverScreen from '../../app/(tabs)/discover/index';
 
+/** Skeleton blocks are hidden from assistive tech (the group is the progressbar). */
+const HIDDEN = { includeHiddenElements: true } as const;
 const flat = (node: { props: { style?: unknown } }) =>
   StyleSheet.flatten(node.props.style as never) as Record<string, number | undefined>;
 
@@ -71,17 +73,17 @@ describe('Discover — loading at the final geometry', () => {
     // 390 wide: (390 - MARGIN 16 - 2 x SPACE[2] 12) / 2.4 cards in view.
     const cardWidth = Math.round((390 - 16 - 2 * 12) / 2.4);
 
-    const poster = flat(v.getByTestId('rail-events-skeleton-0'));
+    const poster = flat(v.getByTestId('rail-events-skeleton-0', HIDDEN));
     expect(poster.width).toBe(cardWidth);
     expect(poster.height).toBe(Math.round(cardWidth * 4 / 3));
-    expect(flat(v.getByTestId('rail-top10-skeleton-0-media')).height).toBe(Math.round(cardWidth * 5 / 4));
-    expect(flat(v.getByTestId('rail-economy-skeleton-0-media')).height).toBe(Math.round(cardWidth * 3 / 4));
+    expect(flat(v.getByTestId('rail-top10-skeleton-0-media', HIDDEN)).height).toBe(Math.round(cardWidth * 5 / 4));
+    expect(flat(v.getByTestId('rail-economy-skeleton-0-media', HIDDEN)).height).toBe(Math.round(cardWidth * 3 / 4));
   });
 
   it('draws rows, as many as the communities section shows', () => {
     const v = render(<DiscoverScreen />);
-    expect(v.getAllByTestId(/^rail-communities-skeleton-\d+$/)).toHaveLength(3);
-    expect(flat(v.getByTestId('rail-live-skeleton-0')).minHeight).toBe(72);
-    expect(flat(v.getByTestId('rail-games-skeleton-0')).minHeight).toBe(72);
+    expect(v.getAllByTestId(/^rail-communities-skeleton-\d+$/, HIDDEN)).toHaveLength(3);
+    expect(flat(v.getByTestId('rail-live-skeleton-0', HIDDEN)).minHeight).toBe(72);
+    expect(flat(v.getByTestId('rail-games-skeleton-0', HIDDEN)).minHeight).toBe(72);
   });
 });

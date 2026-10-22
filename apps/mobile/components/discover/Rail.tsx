@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../ui/PressableScale';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -7,6 +7,7 @@ import { RADII, SPACE, MARGIN, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import type { DiscoverLayout } from './discoverFilters';
 import { CardSkeleton, type CardSkeletonKind } from './V2Cards';
+import { FadeIn, SkeletonGroup } from '../feedback/Skeleton';
 
 export type RailStatus = 'loading' | 'ready' | 'error';
 
@@ -64,6 +65,9 @@ export function Rail({
   const colors = useThemeColors();
   const s = styles(colors);
   const rows = layout === 'list';
+  // Did this section show its skeleton? Then content fades in; else it was known.
+  const wasLoading = useRef(status === 'loading');
+  if (status === 'loading') wasLoading.current = true;
 
   return (
     <View style={s.wrap} testID={testID}>
@@ -86,8 +90,9 @@ export function Rail({
 
       {status === 'loading' && skeleton ? (
         // The card the section will draw, in the container it will use, so
-        // nothing below moves when content lands (budgets F8/F9).
-        <View
+        // nothing below moves when content lands (budgets F8/F9). One busy
+        // progressbar for screen readers; the blocks pulse on C0's shared clock.
+        <SkeletonGroup
           style={layout === 'rail' ? s.cards : rows ? s.list : s.grid}
           testID={testID ? `${testID}-loading` : undefined}
           accessibilityLabel={`Loading ${title}`}
@@ -100,7 +105,7 @@ export function Rail({
               testID={testID ? `${testID}-skeleton-${i}` : undefined}
             />
           ))}
-        </View>
+        </SkeletonGroup>
       ) : null}
 
       {status === 'loading' && !skeleton && (
@@ -146,7 +151,10 @@ export function Rail({
           wrapper's testID is mounted in EVERY status, so an e2e assertion on it
           passed for a section that was still loading or erroring. */}
       {status === 'ready' && count > 0 && (
-        layout === 'rail' ? (
+        // Content replaces the skeleton with a short fade (F8); content that
+        // was already in memory when the section mounted shows at once.
+        <FadeIn instant={!wasLoading.current}>
+        {layout === 'rail' ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -161,7 +169,8 @@ export function Rail({
           <View style={rows ? s.list : s.grid} testID={testID ? `${testID}-cards` : undefined}>
             {children}
           </View>
-        )
+        )}
+        </FadeIn>
       )}
     </View>
   );

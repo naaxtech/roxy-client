@@ -12,6 +12,7 @@ import {
 } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { Crest, CREST_RADIUS_RATIO } from './Crest';
+import { Skeleton } from '../feedback/Skeleton';
 import { LiveDot } from './LiveDot';
 
 /**
@@ -353,7 +354,6 @@ export interface CardSkeletonProps {
 export function CardSkeleton({ kind, width = 0, testID }: CardSkeletonProps) {
   const colors = useThemeColors();
   const st = rowStyles(colors);
-  const fill = { backgroundColor: colors.raised };
   const id = (part: string) => (testID ? `${testID}-${part}` : undefined);
   // The card's own Text, same style and line budget, ink invisible: the line
   // boxes come out identical whatever the font, with no guessed heights.
@@ -361,13 +361,16 @@ export function CardSkeleton({ kind, width = 0, testID }: CardSkeletonProps) {
     <Text style={[style, sk.ghostInk]} numberOfLines={lines} testID={id(part)}>{GHOST}</Text>
   );
   const bar = (short = false) => (
-    <View style={[sk.bar, fill, short && sk.barShort]} pointerEvents="none" />
+    <Skeleton radius={RADII.pill} style={[sk.bar, short && sk.barShort]} />
   );
 
   if (kind === 'poster') {
     return (
-      <View
-        style={[s.poster, { width, height: Math.round(width * POSTER_RATIO) }, fill]}
+      <Skeleton
+        width={width}
+        height={Math.round(width * POSTER_RATIO)}
+        radius={RADII.md}
+        style={s.poster}
         testID={testID}
       />
     );
@@ -375,7 +378,7 @@ export function CardSkeleton({ kind, width = 0, testID }: CardSkeletonProps) {
   if (kind === 'row') {
     return (
       <View style={st.row} testID={testID}>
-        <View style={[st.iconSquircle, fill]} />
+        <Skeleton style={st.iconSquircle} radius={StyleSheet.flatten(st.iconSquircle).borderRadius as number} />
         <View style={st.text}>
           <View>{ghost('name', st.title, 1)}{bar()}</View>
           <View>{ghost('meta', st.meta, 1)}{bar(true)}</View>
@@ -386,8 +389,10 @@ export function CardSkeleton({ kind, width = 0, testID }: CardSkeletonProps) {
   const member = kind === 'member';
   return (
     <View style={[st.card, { width }]} testID={testID}>
-      <View
-        style={[{ width, height: Math.round(width * (member ? PHOTO_RATIO : TILE_RATIO)), borderRadius: RADII.md }, fill]}
+      <Skeleton
+        width={width}
+        height={Math.round(width * (member ? PHOTO_RATIO : TILE_RATIO))}
+        radius={RADII.md}
         testID={id('media')}
       />
       {member ? (
@@ -409,10 +414,7 @@ const GHOST = '\u00A0';
 
 const sk = StyleSheet.create({
   ghostInk: { color: 'transparent' },
-  bar: {
-    position: 'absolute', left: 0, top: SPACE[1] / 2,
-    height: SPACE[2], width: '80%', borderRadius: RADII.pill,
-  },
+  bar: { position: 'absolute', left: 0, top: SPACE[1] / 2, height: SPACE[2], width: '80%' },
   barShort: { width: '55%', top: SPACE[0] },
 });
 

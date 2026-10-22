@@ -47,6 +47,16 @@ function SkeletonCard() {
   );
 }
 
+/**
+ * RETIRED (Wave 3 lane B, motion-spec §4.2 "Retire FeedSkeleton"). Origin:
+ * 8a1e6cc "feat(feed): feed components — … FeedSkeleton …", the v0 card feed's
+ * loading list (three author/media/action cards). Unused since the feed became
+ * a full-screen pager: the pager's loading state is `FeedStageSkeleton`, and
+ * new placeholders use `components/feedback/Skeleton` (one shared pulse clock,
+ * static under Reduce Motion — this one scales on a JS loop that ignores Reduce
+ * Motion). Kept exported, uncalled, for any v0 card list that comes back; delete
+ * only with Nicole's agreement.
+ */
 export function FeedSkeleton() {
   return (
     <View>
