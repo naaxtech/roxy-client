@@ -54,13 +54,15 @@ describe('FirstPostCelebration', () => {
     spy.mockRestore();
   });
 
-  it('with Reduce Motion: no confetti, no haptic, and still dismissible', () => {
+  // Wave 3 (polish/motion-spec.md §3.3, decision P3): haptics STAY under Reduce Motion;
+  // lib/haptics no longer silences them (lane E). Was "no haptic" before.
+  it('with Reduce Motion: no confetti, the haptic stays, and still dismissible', () => {
     mockReduced = true;
     const onDismiss = jest.fn();
     const v = render(<FirstPostCelebration postType="photo" onDismiss={onDismiss} />);
 
     expect(v.queryByTestId('confetti')).toBeNull();
-    expect(mockNotify).not.toHaveBeenCalled();
+    expect(mockNotify).toHaveBeenCalledTimes(1);
     fireEvent.press(v.getByTestId('first-post-dismiss'));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
