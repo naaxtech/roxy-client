@@ -1,0 +1,16 @@
+apps/mobile/__tests__/screens/TabStackLayouts.test.tsx
+  h_0549c11fec2ab0 108-117
+apps/mobile/app/_layout.tsx
+  h_0549c11fec2ab0 22,342-345
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9037f3eeaeb3b8ff944f5b6b2e34b32a87dba615",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
