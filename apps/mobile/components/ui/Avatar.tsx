@@ -5,6 +5,20 @@ import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { avatarGradient, isPresetAvatar, presetColor, presetEmoji } from '../../lib/avatars';
 import { inkOnGradient } from '../../lib/theme';
+import { CROSS_DISSOLVE_MS } from '../../lib/motion';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+
+/**
+ * Photo URLs this session has already painted. A photo seen before comes back
+ * with no fade (it is in expo-image's memory cache), so a recycled row never
+ * flashes; capped so a long session does not grow it without bound.
+ */
+const painted = new Set<string>();
+const PAINTED_MAX = 600;
+function markPainted(uri: string) {
+  if (painted.size >= PAINTED_MAX) painted.clear();
+  painted.add(uri);
+}
 
 /** "Maya Lin" -> "ML", "maya" -> "M", "" -> "?". Letters only, never emoji halves. */
 export function initialsOf(name: string | null | undefined): string {
@@ -37,11 +51,19 @@ export interface AvatarProps {
  * contrast on every stop. 19 of 23 members have no photo: the fallback is
  * what most of the app looks like, so it is worth being warm rather than a
  * grey circle with a letter. A photo that fails to load falls back too.
+ *
+ * Image defaults (Wave 3, F15; motion spec §3.1 row 16): frame 1 shows her
+ * identity colour (the gradient's first stop) under the photo, never a blank
+ * circle; a first-time photo cross-dissolves in over `CROSS_DISSOLVE_MS`;
+ * one already painted this session, or any under Reduce Motion, has no
+ * fade. `recyclingKey` + the memory cache keep recycled rows from showing
+ * the previous member's face.
  */
 export function Avatar({
   uri, name, seed, size = 40, shape = 'round', style, testID = 'avatar',
 }: AvatarProps) {
   const [failed, setFailed] = useState(false);
+  const reducedMotion = useReducedMotion();
   const radius = shape === 'round' ? size / 2 : Math.round(size * 0.28);
   const box: ViewStyle = {
     width: size, height: size, borderRadius: radius, overflow: 'hidden',
@@ -56,12 +78,18 @@ export function Avatar({
     );
   }
 
+  const stops = avatarGradient(seed ?? name);
+
   if (uri && !failed) {
     return (
       <ExpoImage
         source={{ uri }}
-        style={[box, style] as never}
+        style={[box, { backgroundColor: stops[0] }, style] as never}
         contentFit="cover"
+        recyclingKey={uri}
+        cachePolicy="memory-disk"
+        transition={reducedMotion || painted.has(uri) ? 0 : CROSS_DISSOLVE_MS}
+        onLoad={() => markPainted(uri)}
         onError={() => setFailed(true)}
         testID={`${testID}-photo`}
         accessibilityIgnoresInvertColors
@@ -69,7 +97,6 @@ export function Avatar({
     );
   }
 
-  const stops = avatarGradient(seed ?? name);
   return (
     <LinearGradient
       colors={stops}
