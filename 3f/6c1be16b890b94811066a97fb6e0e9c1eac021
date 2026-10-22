@@ -1,0 +1,64 @@
+apps/mobile/__tests__/components/CaughtUpCell.test.tsx
+  h_0549c11fec2ab0 1-38
+apps/mobile/__tests__/components/FeedCell.test.tsx
+  h_0549c11fec2ab0 119,121,124,325
+apps/mobile/__tests__/components/FeedCellChrome.test.tsx
+  h_0549c11fec2ab0 3,7,9-10,13-23,30,57,75-76,79,105-106,113,117-118,122,143-144,151-152,154-155,159-168,171-172,175,177,181,184-197,213-216,234-237,239,241-242,245-247,249-251,253-263,266-273,275-277,280-281,283-285,288-301,304-305,309,313-314,318,334,393,441,470-473,475-476,478-480,483
+apps/mobile/__tests__/components/FeedCellRecycling.test.tsx
+  h_0549c11fec2ab0 130,132,135
+apps/mobile/__tests__/components/PhotoCell.test.tsx
+  h_0549c11fec2ab0 57,59,61,104
+apps/mobile/__tests__/components/PollCell.test.tsx
+  h_0549c11fec2ab0 71,73,75,118
+apps/mobile/__tests__/components/ReelCell.test.tsx
+  h_0549c11fec2ab0 111,113,116,174,176,179
+apps/mobile/__tests__/components/ReelsFeed.test.tsx
+  h_0549c11fec2ab0 176-186,234-238,240-249,616-629,633-647,649-655
+apps/mobile/__tests__/components/ReelsFeedForYou.test.tsx
+  h_0549c11fec2ab0 160-165,167-171,234-236
+apps/mobile/__tests__/components/ResourceCell.test.tsx
+  h_0549c11fec2ab0 76,78,80,108
+apps/mobile/__tests__/components/TextCell.test.tsx
+  h_0549c11fec2ab0 60,62,64,203
+apps/mobile/__tests__/components/feedDoubleTapLike.test.tsx
+  h_0549c11fec2ab0 2,6,9,11-17,32-33,43-44,47-48,50,52,55,61,95,106,108,111,124-125,133-136,140-142,146-148,152-153,156-158,162,164,168-170,172-182,186-188,194-196,201
+apps/mobile/__tests__/components/feedTime.test.ts
+  h_0549c11fec2ab0 1-41
+apps/mobile/__tests__/components/feedTouchTargets.test.tsx
+  h_0549c11fec2ab0 115,117,122,165-169,171-172,239-240
+apps/mobile/__tests__/components/reactions/reactionStore.test.ts
+  h_0549c11fec2ab0 172-182
+apps/mobile/components/feed/CaughtUpCell.tsx
+  h_0549c11fec2ab0 1-63
+apps/mobile/components/feed/FeedCellChrome.tsx
+  h_0549c11fec2ab0 3,7,9-10,14,19-24,26-27,29,46-49,51,54-55,70-71,80-83,88-89,93-94,98-99,102,104-105,120-128,130-132,134-135,139-142,145,147-148,151,158,161-163,175-176,186-191,232,236,255,257-258,261,263-317,374-380,383-390,399-402,413-416,426-427,430-431,440,444-445,455-456,463,465-467,470-473,475-477,479,482-483,485-496,498-500,502-503,505-514
+apps/mobile/components/feed/PhotoCell.tsx
+  h_0549c11fec2ab0 14-15,30,33-34,65,123,189
+apps/mobile/components/feed/PollCell.tsx
+  h_0549c11fec2ab0 13-14,52,54-55,106,207
+apps/mobile/components/feed/ReelCell.tsx
+  h_0549c11fec2ab0 8-10,12,15-19,57,61,65,89-93,109-129,147,149,158,182-189
+apps/mobile/components/feed/ReelsFeed.tsx
+  h_0549c11fec2ab0 16,41-45,50-51,144-146,208,212-218,398-403,536-537,539-546,553,556,565-568,599-607,616-618,630-631,635-637,670-671,701
+apps/mobile/components/feed/ResourceCell.tsx
+  h_0549c11fec2ab0 13-14,60,62-63,111,160
+apps/mobile/components/feed/TextCell.tsx
+  h_0549c11fec2ab0 10-11,16,19-20,49-50
+apps/mobile/components/feed/feedChromeTokens.ts
+  h_0549c11fec2ab0 191-196,200,204-206,208,210-211,213-217,220-232,260-261
+apps/mobile/components/feed/feedTime.ts
+  h_0549c11fec2ab0 1-20
+apps/mobile/components/reactions/reactionStore.ts
+  h_0549c11fec2ab0 41-42,95,102-107,113-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3f6c1be16b890b94811066a97fb6e0e9c1eac021",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
