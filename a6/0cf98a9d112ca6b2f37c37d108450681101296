@@ -1,0 +1,34 @@
+apps/mobile/__tests__/components/RoxyCompanionButton.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/components/YouMoreMenu.test.tsx
+  h_0549c11fec2ab0 1,41-46
+apps/mobile/__tests__/screens/UserProfileShell.test.tsx
+  h_0549c11fec2ab0 277-285
+apps/mobile/__tests__/screens/YouProfileShell.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/YouTabRenders.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/YouTabStalled.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/laneDNoSpinners.test.ts
+  h_0549c11fec2ab0 56-69
+apps/mobile/app/qotd/[id].tsx
+  h_0549c11fec2ab0 3,13,123-124,135,157-158
+apps/mobile/app/tickets.tsx
+  h_0549c11fec2ab0 2,12,214-215,224,226-227
+apps/mobile/components/profile/ProfileShell.tsx
+  h_0549c11fec2ab0 1,3,11,465,473,703-708
+apps/mobile/components/profile/YouMoreMenu.tsx
+  h_0549c11fec2ab0 3,6,144-146,188,193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a60cf98a9d112ca6b2f37c37d108450681101296",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
