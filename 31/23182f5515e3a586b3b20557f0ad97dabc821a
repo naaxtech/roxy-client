@@ -1,0 +1,24 @@
+apps/mobile/__tests__/screens/TabStackLayouts.test.tsx
+  h_0549c11fec2ab0 17,21-22,111-122
+apps/mobile/app/(tabs)/discover/_layout.tsx
+  h_0549c11fec2ab0 10
+apps/mobile/app/(tabs)/feed/_layout.tsx
+  h_0549c11fec2ab0 11
+apps/mobile/app/(tabs)/messages/_layout.tsx
+  h_0549c11fec2ab0 9
+apps/mobile/app/(tabs)/you/_layout.tsx
+  h_0549c11fec2ab0 9
+apps/mobile/tests/e2e/feel-transitions.spec.ts
+  h_0549c11fec2ab0 1-446
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3123182f5515e3a586b3b20557f0ad97dabc821a",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
