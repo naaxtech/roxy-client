@@ -1,0 +1,20 @@
+apps/mobile/__tests__/components/archive/archiveCount.test.ts
+  h_0549c11fec2ab0 1-52
+apps/mobile/__tests__/screens/DiscoverArchiveCount.test.tsx
+  h_0549c11fec2ab0 1-87
+apps/mobile/app/(tabs)/discover/index.tsx
+  h_0549c11fec2ab0 24,118-119,121,124,127
+apps/mobile/components/archive/archiveCount.ts
+  h_0549c11fec2ab0 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1db2ac2b619333ae5894ba40dc9aac80c78232cc",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
