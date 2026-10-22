@@ -8,7 +8,7 @@ import { STAGE_BG } from '../../../components/feed/stageColors';
  */
 export default function FeedLayout() {
   return (
-    <TabFade ground={STAGE_BG}>
+    <TabFade ground={STAGE_BG} testID="tab-fade-feed">
       <TransitionStack screenOptions={{ headerShown: false }} />
     </TabFade>
   );

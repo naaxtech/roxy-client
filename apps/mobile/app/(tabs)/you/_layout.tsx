@@ -6,7 +6,7 @@ import { useThemeColors } from '../../../hooks/useThemeColors';
 export default function ProfileLayout() {
   const colors = useThemeColors();
   return (
-    <TabFade ground={colors.ground}>
+    <TabFade ground={colors.ground} testID="tab-fade-you">
       <TransitionStack screenOptions={{ headerShown: false }} />
     </TabFade>
   );

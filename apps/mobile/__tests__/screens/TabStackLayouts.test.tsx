@@ -14,12 +14,12 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 
-const mockFadeProps: { ground: string }[] = [];
+const mockFadeProps: { ground: string; testID?: string }[] = [];
 jest.mock('../../components/motion/TabFade', () => {
   const { View } = require('react-native');
   return {
-    TabFade: ({ ground, children }: { ground: string; children: React.ReactNode }) => {
-      mockFadeProps.push({ ground });
+    TabFade: ({ ground, testID, children }: { ground: string; testID?: string; children: React.ReactNode }) => {
+      mockFadeProps.push({ ground, testID });
       return <View testID="tab-fade-mock">{children}</View>;
     },
   };
@@ -108,6 +108,18 @@ describe('the root layout uses the TransitionStack', () => {
 });
 
 describe('tab layouts fade their content over their own ground', () => {
+  // The feel harness (tests/e2e/feel-transitions.spec.ts) finds each tab's
+  // fade layer by name to time its ramp (F4).
+  it.each([
+    ['feed', FeedLayout],
+    ['discover', DiscoverLayout],
+    ['messages', MessagesLayout],
+    ['you', YouLayout],
+  ] as const)('names its fade layer tab-fade-%s', (name, Layout) => {
+    render(<Layout />);
+    expect(mockFadeProps[mockFadeProps.length - 1].testID).toBe(`tab-fade-${name}`);
+  });
+
   it('Feed: the dark stage', () => {
     const { getByTestId } = render(<FeedLayout />);
     expect(getByTestId('tab-fade-mock')).toBeTruthy();

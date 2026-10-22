@@ -6,7 +6,7 @@ import { useThemeColors } from '../../../hooks/useThemeColors';
 export default function MessagesLayout() {
   const colors = useThemeColors();
   return (
-    <TabFade ground={colors.ground}>
+    <TabFade ground={colors.ground} testID="tab-fade-messages">
       <TransitionStack screenOptions={{ headerShown: false }} />
     </TabFade>
   );

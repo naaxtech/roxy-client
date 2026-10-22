@@ -7,7 +7,7 @@ import { useThemeColors } from '../../../hooks/useThemeColors';
 export default function DiscoverLayout() {
   const colors = useThemeColors();
   return (
-    <TabFade ground={colors.ground}>
+    <TabFade ground={colors.ground} testID="tab-fade-discover">
       <FeatureGate feature="discover">
         <TransitionStack screenOptions={{ headerShown: false }} />
       </FeatureGate>
