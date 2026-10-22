@@ -1,0 +1,18 @@
+apps/mobile/__tests__/lib/roxyFab.test.ts
+  h_0549c11fec2ab0 55-57,59
+apps/mobile/components/nav/navTokens.ts
+  h_0549c11fec2ab0 59-62,69-73,75
+apps/mobile/components/ui/RoxyCompanionButton.tsx
+  h_0549c11fec2ab0 40-44,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc2951467bb4d7e7b09e112778e0b1d378c6dc0b",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
