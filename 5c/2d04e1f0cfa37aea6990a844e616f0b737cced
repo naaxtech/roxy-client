@@ -1,0 +1,22 @@
+apps/mobile/__tests__/components/chat/GifPicker.test.tsx
+  h_0549c11fec2ab0 1,70-76
+apps/mobile/__tests__/components/profile/InlineReplies.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/__tests__/screens/EditProfile.test.tsx
+  h_0549c11fec2ab0 1
+apps/mobile/components/chat/GifPicker.tsx
+  h_0549c11fec2ab0 3,6,9,75,111-112,178
+apps/mobile/components/profile/AvatarPickerSheet.tsx
+  h_0549c11fec2ab0 3,8,28,62-63,102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c2d04e1f0cfa37aea6990a844e616f0b737cced",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
