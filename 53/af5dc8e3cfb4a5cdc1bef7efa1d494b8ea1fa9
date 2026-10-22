@@ -1,0 +1,24 @@
+apps/mobile/__tests__/components/chat/MessageRowSwipe.test.tsx
+  h_0549c11fec2ab0 1-142
+apps/mobile/__tests__/components/chat/TypingIndicatorMotion.test.tsx
+  h_0549c11fec2ab0 1-61
+apps/mobile/__tests__/screens/ChatThread.test.tsx
+  h_0549c11fec2ab0 198-210
+apps/mobile/app/chat/[id].tsx
+  h_0549c11fec2ab0 303,893-894
+apps/mobile/components/chat/MessageRow.tsx
+  h_0549c11fec2ab0 1,3,5-8,21-22,32-36,39,43-61,88-91,106-108,112-143,206,209-210,212-213,283,291-292
+apps/mobile/components/chat/TypingIndicator.tsx
+  h_0549c11fec2ab0 1-6,8-9,18-32,35-38,41-49,51-61,63-71,73-74,91-93,105-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53af5dc8e3cfb4a5cdc1bef7efa1d494b8ea1fa9",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
