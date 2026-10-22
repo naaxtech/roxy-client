@@ -1,0 +1,16 @@
+apps/mobile/__tests__/screens/ChatThread.test.tsx
+  h_0549c11fec2ab0 364-371
+apps/mobile/app/chat/[id].tsx
+  h_0549c11fec2ab0 43-44,753-761
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "59531d3cfffbcf931dce1c0b5ae069a4123d4c4d",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
