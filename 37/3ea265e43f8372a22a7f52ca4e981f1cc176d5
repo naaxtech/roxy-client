@@ -1,0 +1,28 @@
+apps/mobile/__tests__/components/RoxyCompanionButtonTuck.test.tsx
+  h_0549c11fec2ab0 8-21,69,161,163-167,169-170
+apps/mobile/__tests__/components/ui/PrimaryButton.test.tsx
+  h_0549c11fec2ab0 8-21,29,121-133
+apps/mobile/__tests__/components/ui/SwitchMotion.test.tsx
+  h_0549c11fec2ab0 19-32,43,129-142
+apps/mobile/__tests__/lib/motionHeadStart.test.ts
+  h_0549c11fec2ab0 1-41
+apps/mobile/components/ui/PrimaryButton.tsx
+  h_0549c11fec2ab0 15,73-82
+apps/mobile/components/ui/RoxyCompanionButton.tsx
+  h_0549c11fec2ab0 4,13,109,114,121,126,139-148
+apps/mobile/components/ui/Switch.tsx
+  h_0549c11fec2ab0 4,9,81,83-84,90-99
+apps/mobile/lib/motion.ts
+  h_0549c11fec2ab0 264-287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "373ea265e43f8372a22a7f52ca4e981f1cc176d5",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
