@@ -1,0 +1,16 @@
+apps/mobile/__tests__/screens/SupportFeel.test.tsx
+  h_0549c11fec2ab0 1-57
+apps/mobile/app/support.tsx
+  h_0549c11fec2ab0 3,15-17,195-198,268-269,304-306,309,364-365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dbe719e9e76b677099e6a47bb6e02e3fc8718eb4",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
