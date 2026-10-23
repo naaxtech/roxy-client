@@ -1,7 +1,12 @@
 /**
  * Question of the day → composer. One tap on the For You card opens the
- * composer with the question already on the text card; her answer is the
- * quieter line under it. The question travels as a list index, never as text.
+ * composer on her answer: the question is fixed on the card (not text she can
+ * delete), the box holds only her words, and her answer is the card's
+ * headline. Publishing takes her back to the feed she came from, with an
+ * "Answer posted" snackbar. The question travels as a list index, never as text.
+ * Before (2026-10-23, Nicole: "weird and awkward") the box was pre-filled with
+ * "QUESTION OF THE DAY" and the question, her answer was the small grey line,
+ * Back opened the post-type picker and Publish dropped her on her profile.
  */
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
@@ -15,10 +20,26 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 const mockReplace = jest.fn();
+const mockBack = jest.fn();
+const mockPush = jest.fn();
+const mockCanGoBack = { value: true };
 const mockParams: { value: Record<string, string | undefined> } = { value: {} };
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ replace: mockReplace, back: jest.fn(), push: jest.fn() }),
+  useRouter: () => ({
+    replace: mockReplace, back: mockBack, push: mockPush, canGoBack: () => mockCanGoBack.value,
+  }),
   useLocalSearchParams: () => mockParams.value,
+}));
+
+const mockSnack: { shown: { message: string; actionLabel?: string; onAction?: () => void }[] } = { shown: [] };
+jest.mock('../../components/feedback/SnackbarHost', () => ({
+  snackbar: {
+    show: (o: { message: string; actionLabel?: string; onAction?: () => void }) => {
+      mockSnack.shown.push(o);
+      return 1;
+    },
+    dismiss: jest.fn(),
+  },
 }));
 
 const mockInsert: { payloads: Record<string, unknown>[] } = { payloads: [] };
@@ -77,6 +98,10 @@ import { DAILY_PROMPTS, DAILY_PROMPT_KICK, dailyPromptFor } from '../../lib/dail
 
 beforeEach(() => {
   mockReplace.mockReset();
+  mockBack.mockReset();
+  mockPush.mockReset();
+  mockCanGoBack.value = true;
+  mockSnack.shown.length = 0;
   mockAlert.mockReset();
   mockInsert.payloads.length = 0;
   mockMarked.length = 0;
@@ -84,40 +109,85 @@ beforeEach(() => {
 });
 
 describe('composer opened from the question of the day', () => {
-  it('opens straight on a text card with the question on it', () => {
+  it('opens on her answer: the question is fixed on the card, the box is hers', () => {
     mockParams.value = { prompt: '3' };
     const v = render(<CreatePostScreen />);
 
     expect(v.queryByTestId('create-type-standard')).toBeNull(); // not the type picker
-    expect(v.getByTestId('text-card-preview')).toBeTruthy();
+    expect(v.getByText('Your answer')).toBeTruthy(); // the header says what she is doing
     expect(v.getByTestId('text-card-preview-kick')).toBeTruthy();
-    expect(v.getByTestId('create-caption').props.value)
-      .toBe(`${DAILY_PROMPT_KICK}\n${DAILY_PROMPTS[3]}\n`);
+    expect(v.getByTestId('text-card-preview-question').props.children).toBe(DAILY_PROMPTS[3]);
+    expect(v.getByTestId('text-card-preview-answer-placeholder')).toBeTruthy();
+
+    const box = v.getByTestId('create-caption');
+    expect(box.props.value).toBe(''); // no question or caps label to type around or delete
+    expect(box.props.placeholder).toBe('Type your answer');
+    expect(box.props.autoFocus).toBe(true);
   });
 
-  it('asks for her answer before publishing the bare question', async () => {
+  it('her words become the headline of the card as she types', () => {
     mockParams.value = { prompt: '3' };
     const v = render(<CreatePostScreen />);
-    fireEvent.press(v.getByTestId('create-publish'));
+    fireEvent.changeText(v.getByTestId('create-caption'), 'Mine is a long walk');
 
-    await waitFor(() => expect(mockAlert).toHaveBeenCalledWith('Add your answer', expect.any(String)));
+    expect(v.getByTestId('text-card-preview-prompt').props.children).toBe('Mine is a long walk');
+    expect(v.getByTestId('text-card-preview-question').props.children).toBe(DAILY_PROMPTS[3]);
+    expect(v.queryByTestId('text-card-preview-answer-placeholder')).toBeNull();
+  });
+
+  it('Publish waits for her answer; nothing posts while it is empty', async () => {
+    mockParams.value = { prompt: '3' };
+    const v = render(<CreatePostScreen />);
+    expect(v.getByTestId('create-publish').props.accessibilityState).toMatchObject({ disabled: true });
+
+    fireEvent.changeText(v.getByTestId('create-caption'), '   ');
+    fireEvent.press(v.getByTestId('create-publish'));
+    await new Promise((r) => setTimeout(r, 0));
     expect(mockInsert.payloads).toHaveLength(0);
     expect(mockMarked).toEqual([]);
+
+    fireEvent.changeText(v.getByTestId('create-caption'), 'Carol');
+    expect(v.getByTestId('create-publish').props.accessibilityState).toMatchObject({ disabled: false });
   });
 
-  it('publishes question + answer as one text card and marks today answered', async () => {
+  it('publishes question + answer as one card, marks today answered, returns her to the feed', async () => {
     mockParams.value = { prompt: '3' };
     const v = render(<CreatePostScreen />);
-    const draft = v.getByTestId('create-caption').props.value as string;
-    fireEvent.changeText(v.getByTestId('create-caption'), `${draft}Mine is a long walk`);
+    fireEvent.changeText(v.getByTestId('create-caption'), '  Mine is a long walk ');
     fireEvent.press(v.getByTestId('create-publish'));
 
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/you?tab=thoughts'));
+    await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+    expect(mockReplace).not.toHaveBeenCalled(); // not dropped on her profile
     expect(mockInsert.payloads[0]).toMatchObject({
       post_type: 'standard',
       content: `${DAILY_PROMPT_KICK}\n${DAILY_PROMPTS[3]}\nMine is a long walk`,
     });
     expect(mockMarked).toEqual([`prompt-tester@${dailyPromptFor().dateKey}`]);
+
+    expect(mockSnack.shown).toHaveLength(1);
+    expect(mockSnack.shown[0]).toMatchObject({ message: 'Answer posted', actionLabel: 'View' });
+    mockSnack.shown[0].onAction?.();
+    expect(mockPush).toHaveBeenCalledWith('/you?tab=thoughts');
+  });
+
+  it('opened from a link with nothing behind it, publishing lands on the feed', async () => {
+    mockParams.value = { prompt: '3' };
+    mockCanGoBack.value = false;
+    const v = render(<CreatePostScreen />);
+    fireEvent.changeText(v.getByTestId('create-caption'), 'Carol');
+    fireEvent.press(v.getByTestId('create-publish'));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/feed'));
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  it('Back leaves the composer instead of opening the post-type picker', () => {
+    mockParams.value = { prompt: '3' };
+    const v = render(<CreatePostScreen />);
+    fireEvent.press(v.getByText('Back'));
+
+    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(v.queryByTestId('create-type-standard')).toBeNull();
   });
 
   it('ignores a param that is not a real question index', () => {

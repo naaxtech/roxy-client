@@ -85,6 +85,38 @@ export function parseTextCard(content: string): TextCardParts {
 }
 
 /**
+ * The kick line For You's question of the day carries. An answer is stored as
+ * this kick, the question, then her words, on one text card.
+ */
+export const QUESTION_KICK = 'QUESTION OF THE DAY';
+
+export type AnswerCardParts = {
+  kick: string;
+  question: string;
+  /** Her words; '' while the composer has only the question. */
+  answer: string;
+};
+
+/**
+ * A text card that answers the question of the day, or null for any other
+ * card. Her answer is the card's headline and the question the quieter line
+ * above it (Nicole, 2026-10-23: the old layout made her post read as Roxy's
+ * question with her answer in small grey under it). Stored text is unchanged,
+ * so answers posted before this read the new way too.
+ */
+export function parseAnswerCard(content: string): AnswerCardParts | null {
+  const lines = content.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length < 2 || lines[0] !== QUESTION_KICK) return null;
+  return { kick: lines[0], question: lines[1], answer: lines.slice(2).join('\n') };
+}
+
+/** The words a card leads with: her answer on an answer card, else the headline. */
+export function textCardHeadline(content: string): string {
+  const answer = parseAnswerCard(content)?.answer;
+  return answer || parseTextCard(content).prompt;
+}
+
+/**
  * Scale the *prompt* only. The design's 34 / 1.14 / −0.01em is the short
  * step; longer headlines step down so they still fit the page.
  */

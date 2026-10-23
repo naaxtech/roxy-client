@@ -1,13 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logError } from './errorLogger';
+import { QUESTION_KICK } from './textCard';
 
 /**
  * Question of the day, as a page in For You (audit "loved product" #4).
  *
  * Most of what women post on Roxy is already words (27 of 42 posts at the
  * audit), and the hardest post is the one with nothing to say yet. A question
- * hands her the first line: one tap opens the composer with the question on
- * the card, and her answer becomes the quieter line under it.
+ * hands her the first line: one tap opens the composer with the question fixed
+ * on the card, and her answer becomes the card's headline, the question the
+ * quieter line above it (`parseAnswerCard`, 2026-10-23).
  *
  * A static local list on purpose — no table, no round trip, nothing to
  * moderate. Everyone gets the same question on the same calendar day, so the
@@ -39,8 +41,11 @@ export const DAILY_PROMPTS: readonly string[] = [
   'What is your green flag in a friend?',
 ];
 
-/** The card's kick line. All caps and short, so `parseTextCard` reads it as a kick. */
-export const DAILY_PROMPT_KICK = 'QUESTION OF THE DAY';
+/**
+ * The card's kick line. All caps and short, so `parseTextCard` reads it as a
+ * kick; one source with `QUESTION_KICK`, which `parseAnswerCard` matches.
+ */
+export const DAILY_PROMPT_KICK = QUESTION_KICK;
 
 const ID_PREFIX = 'daily-prompt-';
 const ANSWERED_PREFIX = 'roxy.dailyPromptAnswered.';
@@ -97,12 +102,36 @@ export function withDailyPrompt<T>(rows: T[], prompt: DailyPrompt): (T | DailyPr
   return [...rows.slice(0, at), prompt, ...rows.slice(at)];
 }
 
-/** What the composer opens with: the kick, the question, and a fresh line for her. */
+/**
+ * The kick and the question, as the stored answer starts. Since 2026-10-23 the
+ * composer no longer puts this in her text box (she typed around a caps label
+ * and could delete the question); it is the fixed part of her card, and
+ * `composeDailyAnswer` adds her words at publish.
+ */
 export function dailyPromptDraft(question: string): string {
   return `${DAILY_PROMPT_KICK}\n${question}\n`;
 }
 
-/** True while the draft is still only the question — there is nothing of hers to post. */
+/** The text her answer is stored as: kick, question, then her words. */
+export function composeDailyAnswer(question: string, answer: string): string {
+  return `${dailyPromptDraft(question)}${answer.trim()}`;
+}
+
+/** Room left for her words under the composer's 1,000-character cap. */
+export function dailyAnswerMaxLength(question: string, cap = 1000): number {
+  return Math.max(0, cap - dailyPromptDraft(question).length);
+}
+
+/**
+ * True while the draft is still only the question — there is nothing of hers to post.
+ *
+ * UNUSED since 2026-10-23. Origin: 229ae26c (2026-10-11, Question of the day in
+ * For You), when the composer's text box held the kick + question and her
+ * answer. The box now holds only her answer, so the composer checks for an
+ * empty answer instead and disables Publish. Kept (Nicole's rule: never delete
+ * unused code) for any surface that again pre-fills the question as editable
+ * text, e.g. a draft restored from before this change.
+ */
 export function isUnansweredDraft(content: string, question: string | null): boolean {
   if (!question) return false;
   return content.trim() === dailyPromptDraft(question).trim();

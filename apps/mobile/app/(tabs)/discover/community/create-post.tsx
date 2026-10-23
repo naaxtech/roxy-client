@@ -28,8 +28,10 @@ import { isOfficialAccount } from '../../../../lib/officialGrant';
 import { deriveSellerStatus, canSell } from '../../../../lib/sellerStatus';
 import { TEXT_CARD_PLACEHOLDER } from '../../../../lib/textCard';
 import {
-  dailyPromptDraft, dailyPromptFor, dailyPromptFromParam, isUnansweredDraft, markDailyPromptAnswered,
+  composeDailyAnswer, dailyAnswerMaxLength, dailyPromptDraft, dailyPromptFor, dailyPromptFromParam,
+  markDailyPromptAnswered,
 } from '../../../../lib/dailyPrompt';
+import { snackbar } from '../../../../components/feedback/SnackbarHost';
 import { TextCardFace } from '../../../../components/feed/TextCardFace';
 import type { PostType } from '../../../../types';
 import { TYPE } from '../../../../lib/typography';
@@ -67,16 +69,25 @@ export default function CreatePostScreen() {
   const profile = useProfileStore((s) => s.profile);
 
   // Opened from For You's question of the day: the question arrives as a list
-  // index (never as text) and the composer opens on a text card that already
-  // carries it. The day is fixed now, so an answer finished after midnight
-  // still settles the question she was answering.
+  // index (never as text) and the composer opens on her answer. The question
+  // is fixed on the card; `content` holds only her words (before 2026-10-23 the
+  // box was pre-filled with the caps kick and the question, which she typed
+  // around and could delete). The day is fixed now, so an answer finished
+  // after midnight still settles the question she was answering.
   const { prompt: promptParam } = useLocalSearchParams<{ prompt?: string }>();
   const [promptQuestion] = useState(() => dailyPromptFromParam(promptParam));
   const [promptDay] = useState(() => dailyPromptFor().dateKey);
 
   const [step, setStep] = useState<Step>(promptQuestion ? 'composer' : 'type-picker');
   const [postType, setPostType] = useState<PostType>('standard');
-  const [content, setContent] = useState(promptQuestion ? dailyPromptDraft(promptQuestion) : '');
+  const [content, setContent] = useState('');
+  const answering = promptQuestion != null && postType === 'standard';
+
+  /** Back to where she came from (the feed); a cold link has nothing behind it. */
+  const leave = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/feed' as never);
+  };
   const [submitting, setSubmitting] = useState(false);
   const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [video, setVideo] = useState<ImagePicker.ImagePickerAsset | null>(null);
@@ -267,12 +278,13 @@ export default function CreatePostScreen() {
       showAlert('Add a video', 'Capture or upload a video.');
       return;
     }
-    if (postType === 'standard' && !content.trim()) {
-      showAlert('Add some text', 'A text card needs words.');
+    if (answering && !content.trim()) {
+      // Publish is disabled until she writes; this only guards a stray call.
+      showAlert('Add your answer', 'Write your answer, then publish.');
       return;
     }
-    if (postType === 'standard' && isUnansweredDraft(content, promptQuestion)) {
-      showAlert('Add your answer', 'Write your answer under the question, then publish.');
+    if (postType === 'standard' && !content.trim()) {
+      showAlert('Add some text', 'A text card needs words.');
       return;
     }
     setSubmitting(true);
@@ -292,7 +304,7 @@ export default function CreatePostScreen() {
     const payload = buildPostPayload({
       authorId,
       destination,
-      content,
+      content: answering && promptQuestion ? composeDailyAnswer(promptQuestion, content) : content,
       postType,
       postedAsCommunity: false,
       roxyLink: shopLink,
@@ -317,14 +329,24 @@ export default function CreatePostScreen() {
       showAlert('Post failed', 'Could not publish. Please try again.');
       return;
     }
+    if (answering) {
+      // Answered today's question: For You stops asking until tomorrow. She
+      // goes back to the feed she was reading, not to her profile; the
+      // snackbar says it worked and "View" opens it (P7).
+      void markDailyPromptAnswered(authorId, promptDay);
+      void useCelebrationStore.getState().celebrateFirstPost(authorId, postType);
+      leave();
+      snackbar.show({
+        message: 'Answer posted',
+        actionLabel: 'View',
+        onAction: () => router.push(afterPublishPath(postType) as never),
+      });
+      return;
+    }
     router.replace(afterPublishPath(postType));
     // Her first post ever gets a moment; the store decides "first" and the
     // root host renders it, so it outlives this screen's `replace`.
     void useCelebrationStore.getState().celebrateFirstPost(authorId, postType);
-    // Answered today's question: For You stops asking until tomorrow.
-    if (promptQuestion && postType === 'standard') {
-      void markDailyPromptAnswered(authorId, promptDay);
-    }
   };
 
   const styles = StyleSheet.create({
@@ -348,6 +370,7 @@ export default function CreatePostScreen() {
       paddingVertical: 8, borderRadius: 20,
     },
     publishBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    publishBtnOff: { opacity: 0.4 },
     typePicker: { flex: 1, padding: 16 },
     typeOption: {
       flexDirection: 'row', alignItems: 'center',
@@ -487,17 +510,22 @@ export default function CreatePostScreen() {
   }
 
   const words = content.trim();
+  // An answer's card is the fixed question plus her words as she types them.
+  const cardContent = answering && promptQuestion ? `${dailyPromptDraft(promptQuestion)}${words}` : words;
+  const publishOff = submitting || (answering && !words);
 
   return (
     <SafeAreaView style={styles.container}>
       {header(
         'Back',
-        () => setStep(postType === 'standard' ? 'type-picker' : 'media-source'),
-        'New Post',
+        answering ? leave : () => setStep(postType === 'standard' ? 'type-picker' : 'media-source'),
+        answering ? 'Your answer' : 'New Post',
         <TouchableOpacity
           onPress={() => void handleSubmit()}
-          disabled={submitting}
-          style={styles.publishBtn}
+          disabled={publishOff}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: publishOff, busy: submitting }}
+          style={[styles.publishBtn, answering && !words && styles.publishBtnOff]}
           testID="create-publish"
         >
           {submitting
@@ -509,9 +537,10 @@ export default function CreatePostScreen() {
       {postType === 'standard' && (
         <View style={styles.cardPreview} testID="text-card-preview">
           <TextCardFace
-            content={words}
+            content={cardContent}
             size="preview"
-            ghost={!words}
+            ghost={!cardContent}
+            answerPlaceholder={answering ? 'Your answer goes here' : undefined}
             testIDPrefix="text-card-preview"
           />
         </View>
@@ -584,16 +613,19 @@ export default function CreatePostScreen() {
       <TextInput
         style={styles.captionInput}
         placeholder={
-          postType === 'standard'
-            ? TEXT_CARD_PLACEHOLDER
-            : 'Add a caption (optional)…'
+          answering
+            ? 'Type your answer'
+            : postType === 'standard'
+              ? TEXT_CARD_PLACEHOLDER
+              : 'Add a caption (optional)…'
         }
         placeholderTextColor={colors.textMuted}
         value={content}
         onChangeText={setContent}
         multiline
         autoFocus={postType === 'standard'}
-        maxLength={1000}
+        maxLength={answering && promptQuestion ? dailyAnswerMaxLength(promptQuestion) : 1000}
+        accessibilityLabel={answering && promptQuestion ? `Your answer to: ${promptQuestion}` : undefined}
         testID="create-caption"
       />
 

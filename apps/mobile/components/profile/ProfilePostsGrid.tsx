@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { type ThemeColors, scrim } from '../../lib/theme';
 import { TextCardFace } from '../feed/TextCardFace';
-import { parseTextCard } from '../../lib/textCard';
+import { textCardHeadline } from '../../lib/textCard';
 import { contentDetailPath } from '../../lib/contentNavigation';
 import { logError } from '../../lib/errorLogger';
 import { isMediaPost } from '../../lib/postKind';
@@ -151,7 +151,7 @@ export function ProfilePostsGrid({ userId, communityId, onVideoPress }: Props) {
                 router.push(contentDetailPath(post.id, post.post_type) as never);
               }}
               accessibilityRole="button"
-              accessibilityLabel={isText ? parseTextCard(post.content).prompt.slice(0, 80) || 'Text post' : 'Open post'}
+              accessibilityLabel={isText ? textCardHeadline(post.content).slice(0, 80) || 'Text post' : 'Open post'}
             >
               {photo || thumb ? (
                 <Image

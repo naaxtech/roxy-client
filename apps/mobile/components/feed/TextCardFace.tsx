@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../lib/typography';
 import {
+  parseAnswerCard,
   parseTextCard,
   textCardScale,
   TEXT_CARD_EXAMPLE_BODY,
@@ -33,6 +34,12 @@ type Props = {
    * `bottomInset`, so the card still paints under the header.
    */
   topInset?: number;
+  /**
+   * Composer only: on an answer card she has not typed into yet, paint this
+   * faintly where her answer will go. Without it a bare question card keeps
+   * the question as its headline (the For You question page).
+   */
+  answerPlaceholder?: string;
 };
 
 /**
@@ -40,6 +47,10 @@ type Props = {
  * (`Roxy App.dc.html` 97–103): kick, prompt, sub, ramp. The prototype's ✿
  * mark under the prompt is retired: v2 bans the flower anywhere (direction ›
  * Bans, Nicole 2026-10-21); its styles stay below, unused, with that note.
+ *
+ * An answer to the question of the day (`parseAnswerCard`) leads with HER
+ * words: kick, the question as the quieter line, then her answer as the
+ * headline. A tile shows only her answer.
  */
 export function TextCardFace({
   content,
@@ -49,9 +60,14 @@ export function TextCardFace({
   maxWidth,
   bottomInset,
   topInset,
+  answerPlaceholder,
 }: Props): ReactElement {
   const body = content.trim();
-  const parsed = parseTextCard(ghost && !body ? TEXT_CARD_EXAMPLE_BODY : body);
+  const answerCard = parseAnswerCard(body);
+  const asAnswer = answerCard != null && (answerCard.answer !== '' || answerPlaceholder != null);
+  const parsed = asAnswer && answerCard
+    ? { kick: answerCard.kick, prompt: answerCard.answer, sub: null }
+    : parseTextCard(ghost && !body ? TEXT_CARD_EXAMPLE_BODY : body);
   const compact = size === 'tile';
   const pageStyle = textCardScale(parsed.prompt.length || 12);
   const promptStyle = compact
@@ -82,6 +98,26 @@ export function TextCardFace({
         <View style={s.kick} testID={`${testIDPrefix}-kick`}>
           <Text style={s.kickText}>{parsed.kick}</Text>
         </View>
+      ) : null}
+
+      {asAnswer && answerCard && !compact ? (
+        <Text
+          testID={`${testIDPrefix}-question`}
+          style={[s.question, size === 'preview' && s.previewQuestion, measure]}
+          numberOfLines={3}
+        >
+          {answerCard.question}
+        </Text>
+      ) : null}
+
+      {asAnswer && !parsed.prompt && answerPlaceholder != null ? (
+        <Text
+          testID={`${testIDPrefix}-answer-placeholder`}
+          style={[s.prompt, promptStyle, s.answerPlaceholder, measure]}
+          numberOfLines={1}
+        >
+          {answerPlaceholder}
+        </Text>
       ) : null}
 
       {parsed.prompt ? (
@@ -158,6 +194,16 @@ const s = StyleSheet.create({
     letterSpacing: -0.2,
     fontFamily: FONTS.display.extrabold,
   },
+  /** The question on an answer card: above her words, quieter than them. */
+  question: {
+    fontSize: 17,
+    lineHeight: 23,
+    fontWeight: '600',
+    color: 'rgba(255,249,251,0.72)',
+    fontFamily: FONTS.text.semibold,
+  },
+  previewQuestion: { fontSize: 15, lineHeight: 20 },
+  answerPlaceholder: { opacity: 0.35 },
   sub: {
     fontSize: 14,
     lineHeight: 20,

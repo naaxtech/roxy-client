@@ -1,5 +1,8 @@
 import {
+  parseAnswerCard,
   parseTextCard,
+  QUESTION_KICK,
+  textCardHeadline,
   textCardScale,
   TEXT_CARD_EXAMPLE,
   TEXT_CARD_EXAMPLE_BODY,
@@ -55,6 +58,45 @@ describe('textCardScale', () => {
   it('steps down so a long prompt still fits', () => {
     expect(textCardScale(20).fontSize).toBeGreaterThan(textCardScale(120).fontSize as number);
     expect(textCardScale(120).fontSize).toBeGreaterThan(textCardScale(400).fontSize as number);
+  });
+});
+
+// Question of the day (2026-10-23, Nicole: "responding to a question post is
+// weird and awkward"). Her answer is the headline of her post; the question is
+// the quieter line that says what she is answering. Stored text is unchanged
+// (kick, question, answer), so answers already posted read the new way too.
+describe('parseAnswerCard — her answer to the question of the day', () => {
+  const q = 'Which queer book or film found you at the right time?';
+
+  it('splits kick, question and her answer', () => {
+    expect(parseAnswerCard(`${QUESTION_KICK}\n${q}\nGilmore Girls, every autumn.`)).toEqual({
+      kick: QUESTION_KICK, question: q, answer: 'Gilmore Girls, every autumn.',
+    });
+  });
+
+  it('keeps a multi-line answer whole', () => {
+    expect(parseAnswerCard(`${QUESTION_KICK}\n${q}\nCarol.\nThe train scene.`)?.answer)
+      .toBe('Carol.\nThe train scene.');
+  });
+
+  it('reads the bare question as an answer card with no answer yet', () => {
+    expect(parseAnswerCard(`${QUESTION_KICK}\n${q}\n`)).toEqual({ kick: QUESTION_KICK, question: q, answer: '' });
+  });
+
+  it('leaves every other text card alone', () => {
+    expect(parseAnswerCard(TEXT_CARD_EXAMPLE_BODY)).toBeNull();
+    expect(parseAnswerCard('we made it.')).toBeNull();
+    expect(parseAnswerCard(QUESTION_KICK)).toBeNull();
+  });
+});
+
+describe('textCardHeadline — the words a tile and a screen reader lead with', () => {
+  it('is her answer on an answer card', () => {
+    expect(textCardHeadline(`${QUESTION_KICK}\nWhat song?\nRunning Up That Hill`)).toBe('Running Up That Hill');
+  });
+
+  it('is the headline on any other text card', () => {
+    expect(textCardHeadline(TEXT_CARD_EXAMPLE_BODY)).toBe(TEXT_CARD_EXAMPLE.prompt);
   });
 });
 
