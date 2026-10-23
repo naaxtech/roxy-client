@@ -1,0 +1,14 @@
+apps/mobile/tests/e2e/fab-occlusion.spec.ts
+  h_0549c11fec2ab0 145-153,155,169-171,300-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27953bcbd57a00f562d1f4351a58c5809d4c044f",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
