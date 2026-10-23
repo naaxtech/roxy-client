@@ -617,7 +617,10 @@ const styles = (colors: ThemeColors) => StyleSheet.create({
   themeHead: { flexDirection: 'row', alignItems: 'center', gap: SPACE[2], minHeight: SPACE[5] },
   group: { flexDirection: 'row', gap: GROUP_GAP },
   segment: {
-    flex: 1,
+    // Each segment starts from its own label's width and shares what is left
+    // (was flex: 1, equal thirds: "Match phone" truncated on a 360 dp phone).
+    flexGrow: 1,
+    flexBasis: 'auto',
     minHeight: MIN_TOUCH_TARGET,
     flexDirection: 'row',
     alignItems: 'center',

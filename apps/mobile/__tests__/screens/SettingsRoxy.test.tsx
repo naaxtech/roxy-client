@@ -155,6 +155,19 @@ describe('Settings — Theme', () => {
     await act(async () => { fireEvent.press(v.getByTestId('theme-system')); });
     await waitFor(() => expect(useThemeStore.getState().choice).toBe('system'));
   });
+
+  // At 360 dp three equal thirds left "Match phone" ~81 dp and it truncated to
+  // "Match ph…" (Wave 3 integration probe). Each segment starts from its own
+  // label's width and shares the rest, so the longest label always fits.
+  it('sizes each segment from its label, so "Match phone" never truncates on a 360 dp phone', () => {
+    const v = render(<SettingsScreen />);
+    for (const id of ['theme-light', 'theme-dark', 'theme-system']) {
+      const st = flat(v.getByTestId(id));
+      expect(st.flexGrow).toBe(1);
+      expect(st.flexBasis).toBe('auto');
+      expect(st.flex).toBeUndefined();
+    }
+  });
 });
 
 describe('Settings — every row stays', () => {
