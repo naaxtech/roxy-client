@@ -142,8 +142,17 @@ async function contentUnder(page: Page, rect: { x: number; y: number; width: num
               return hasText || painted || d.tagName === 'svg' || d.tagName === 'IMG';
             });
             const rowPadding = interactive && !contentAtPoint && box.width >= innerWidth * 0.8;
+            // A chip or card cut by the screen's right edge inside a horizontal scroller is the
+            // rail's "peek" (board v2-05: tucked, Roxy sits over the margin, over the peek). It is
+            // a scroll affordance, not a target in place; only the tucked hit-area check allows it.
+            let hScroller = false;
+            for (let a: Element | null = el.parentElement; a; a = a.parentElement) {
+              const ox = getComputedStyle(a).overflowX;
+              if ((ox === 'auto' || ox === 'scroll') && a.scrollWidth > a.clientWidth + 1) { hScroller = true; break; }
+            }
+            const peek = !rowPadding && hScroller && box.right > innerWidth + 0.5;
             out.push({
-              text: `${rowPadding ? 'pad:' : ''}${(el.textContent ?? '').trim().slice(0, 40)}`,
+              text: `${rowPadding ? 'pad:' : peek ? 'peek:' : ''}${(el.textContent ?? '').trim().slice(0, 40)}`,
               role,
               testid: el.getAttribute('data-testid'),
               x: Math.round(x),
@@ -157,7 +166,9 @@ async function contentUnder(page: Page, rect: { x: number; y: number; width: num
     return out;
   }, rect);
 }
-const real = (h: Hit[]) => h.filter((x) => !x.text.startsWith('pad:'));
+const real = (h: Hit[]) => h.filter((x) => !x.text.startsWith('pad:') && !x.text.startsWith('peek:'));
+/** The out-state lane stays strict: a peek under the 88 dp lane still counts. */
+const realStrict = (h: Hit[]) => h.filter((x) => !x.text.startsWith('pad:'));
 
 async function restCheck(page: Page, label: string) {
   const tucked = (await page.getByTestId('fab-tucked').count()) > 0;
@@ -286,8 +297,8 @@ for (const vp of VIEWPORTS) {
 
       console.log(`FAB-REST ${vp.width}x${vp.height} ${JSON.stringify(results)}`);
       const unreachable = results.filter((r) => !r.reachable).map((r) => r.label);
-      const covered = results.filter((r) => real(r.under).length > 0 || real(r.hitArea).length > 0)
-        .map((r) => ({ at: r.label, tucked: r.tucked, under: real(r.under), hitArea: real(r.hitArea) }));
+      const covered = results.filter((r) => realStrict(r.under).length > 0 || real(r.hitArea).length > 0)
+        .map((r) => ({ at: r.label, tucked: r.tucked, under: realStrict(r.under), hitArea: real(r.hitArea) }));
       expect(unreachable, 'Roxy must stay reachable at rest').toEqual([]);
       expect(covered, 'nothing readable or tappable under Roxy at rest').toEqual([]);
       const at = (l: string) => results.find((r) => r.label === `${vp.width}-${l}`);
