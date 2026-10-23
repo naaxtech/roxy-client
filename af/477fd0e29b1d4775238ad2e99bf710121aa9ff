@@ -1,0 +1,30 @@
+apps/mobile/__tests__/components/feed/TextCardFaceAnswer.test.tsx
+  h_0549c11fec2ab0 1-58
+apps/mobile/__tests__/lib/textCard.test.ts
+  h_0549c11fec2ab0 2,4-5,64-102
+apps/mobile/__tests__/screens/CreatePostDailyPrompt.test.tsx
+  h_0549c11fec2ab0 3-9,23-25,28-30,34-44,101-104,112,117,119-125,128,131-141,143-145,148-150,153,156,159-160,166-190
+apps/mobile/app/(tabs)/discover/community/create-post.tsx
+  h_0549c11fec2ab0 31-32,34,72-76,83-90,281-283,286-287,307,332-345,373,513-515,521-522,525-528,540,542-543,616-620,627-628
+apps/mobile/components/feed/TextCardFace.tsx
+  h_0549c11fec2ab0 6,37-42,50-53,63,66-70,103-122,197-206
+apps/mobile/components/profile/ProfilePostsGrid.tsx
+  h_0549c11fec2ab0 11,154
+apps/mobile/lib/dailyPrompt.ts
+  h_0549c11fec2ab0 3,10-12,44-48,105-110,115-134
+apps/mobile/lib/textCard.ts
+  h_0549c11fec2ab0 87-118
+apps/mobile/tests/e2e/daily-prompt-answer.spec.ts
+  h_0549c11fec2ab0 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af477fd0e29b1d4775238ad2e99bf710121aa9ff",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
