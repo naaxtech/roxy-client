@@ -1,0 +1,16 @@
+polish/LIVE.log
+  h_0549c11fec2ab0 14
+polish/decisions.md
+  h_0549c11fec2ab0 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b84d5c0ea03f3e20ad1284ffc62d086e01a8658d",
+  "prompts": {},
+  "humans": {
+    "h_0549c11fec2ab0": {
+      "author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
