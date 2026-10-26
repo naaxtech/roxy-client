@@ -425,6 +425,14 @@ verify_jwt = false
 [functions.cloudflare-video-webhook]
 verify_jwt = false
 
+# RevenueCat subscription events (Roxy Supporter, migration 140). RevenueCat
+# sends the Authorization header value configured in its dashboard; the
+# handler compares it to REVENUECAT_WEBHOOK_SECRET in constant time (unset or
+# short secret => 503 for everyone) before any work -- _shared/revenuecat.ts
+# (tested).
+[functions.revenuecat-webhook]
+verify_jwt = false
+
 # Retired endpoints kept as 410 no-ops so older installed builds get a clean
 # answer instead of a gateway 401 (house rule: never delete an endpoint an
 # old build may call). They do no work and read nothing.
