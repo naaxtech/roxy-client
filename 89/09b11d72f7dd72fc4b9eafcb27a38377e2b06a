@@ -1,0 +1,39 @@
+apps/mobile/__tests__/lib/feedTouchSnap.test.ts
+  s_4280a015469a8c::t_e42600bb2cf27e 129-135,138-144,147,160-161,165-174,177-206
+  s_4280a015469a8c::t_22ed7084757d71 136-137,145-146,148-159
+apps/mobile/__tests__/components/PhotoCell.test.tsx
+  s_4280a015469a8c::t_ea13be10a2a954 114-124
+apps/mobile/lib/feedPagerWeb.ts
+  s_4280a015469a8c::t_7586c8a7148bc7 352-355
+  s_4280a015469a8c::t_978805995b8f9b 384-393
+  s_4280a015469a8c::t_f64da7c89a8ddf 342-351,356-362
+  s_4280a015469a8c::t_86d4730683fe36 341,377
+apps/mobile/components/feed/FeedPager.tsx
+  s_4280a015469a8c::t_32270cb79432dc 317-320,325-327
+  s_4280a015469a8c::t_baf6eb786ecbfd 321-324,328
+apps/mobile/components/feed/PhotoCell.tsx
+  s_4280a015469a8c::t_8c5ab96fdb991b 102-111
+  s_4280a015469a8c::t_d63b76dc8d7df2 53-87
+  s_4280a015469a8c::t_243b103a157996 135,137
+CHANGELOG.md
+  s_4280a015469a8c::t_770c01ce21197a 39-54
+apps/mobile/__tests__/components/FeedPager.test.tsx
+  s_4280a015469a8c::t_d5da65fec5e28d 253,264-266,269-270
+  s_4280a015469a8c::t_6b05d01075910c 260-263,267-268,271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8909b11d72f7dd72fc4b9eafcb27a38377e2b06a",
+  "prompts": {},
+  "sessions": {
+    "s_4280a015469a8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20593337-f5c3-4a76-aead-b60ab8ea10c4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
