@@ -16,6 +16,15 @@ jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 jest.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => children,
 }));
+// No navigator here: a focus effect runs once, on mount (the bell reads its
+// unread count on focus).
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useFocusEffect: (cb: () => unknown) => {
+    const { useEffect } = jest.requireActual('react');
+    useEffect(() => cb() as void | (() => void), [cb]);
+  },
+}));
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn(), canGoBack: () => false }),
   useLocalSearchParams: () => ({}),

@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, waitFor } from '@testing-library/react-native';
+import { act, render, waitFor } from '@testing-library/react-native';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('expo-image', () => ({ Image: 'ExpoImage' }));
@@ -13,6 +13,30 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn(), canGoBack: () => false }),
   useLocalSearchParams: () => ({}),
 }));
+// A navigator's focus, without a navigator: each `useFocusEffect` runs on
+// mount, and `__refocus()` replays blur-then-focus the way returning to the
+// tab does (the bell re-reads its count there).
+jest.mock('@react-navigation/native', () => {
+  const { useEffect } = jest.requireActual('react');
+  const live = new Map<() => unknown, unknown>();
+  return {
+    ...jest.requireActual('@react-navigation/native'),
+    __refocus: () => live.forEach((cleanup, cb) => {
+      if (typeof cleanup === 'function') cleanup();
+      live.set(cb, cb());
+    }),
+    useFocusEffect: (cb: () => unknown) => {
+      useEffect(() => {
+        live.set(cb, cb());
+        return () => {
+          const cleanup = live.get(cb);
+          live.delete(cb);
+          if (typeof cleanup === 'function') cleanup();
+        };
+      }, [cb]);
+    },
+  };
+});
 jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 jest.mock('../../lib/notifications', () => ({ fetchUnreadNotificationCount: jest.fn(async () => 0) }));
 jest.mock('../../components/profile/ProfilePhotoGrid', () => ({ ProfilePhotoGrid: () => null }));
@@ -118,6 +142,21 @@ describe('You while her profile loads (F8, F11)', () => {
     const v = render(<ProfileScreen />);
     expect(v.getByTestId('you-loading').props.accessibilityRole).toBe('progressbar');
     expect(v.UNSAFE_queryAllByType(require('react-native').ActivityIndicator)).toHaveLength(0);
+  });
+});
+
+describe('You — the bell', () => {
+  it('re-reads the unread count each time You regains focus', async () => {
+    const { fetchUnreadNotificationCount } = jest.requireMock('../../lib/notifications');
+    const { __refocus: refocus } = jest.requireMock('@react-navigation/native');
+    (fetchUnreadNotificationCount as jest.Mock).mockClear();
+    const v = render(<ProfileScreen />);
+    await waitFor(() => expect(v.getByTestId('you-notifications')).toBeTruthy());
+    await waitFor(() => expect(fetchUnreadNotificationCount).toHaveBeenCalledTimes(1));
+
+    await act(async () => { refocus(); });
+    expect(fetchUnreadNotificationCount).toHaveBeenCalledTimes(2);
+    expect(fetchUnreadNotificationCount).toHaveBeenLastCalledWith('u1');
   });
 });
 

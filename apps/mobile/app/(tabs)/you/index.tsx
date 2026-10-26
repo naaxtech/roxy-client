@@ -5,6 +5,7 @@ import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { useBuildStore } from '../../../store/buildStore';
@@ -172,9 +173,7 @@ export default function ProfileScreen() {
     void fetchOrders();
     // The post count went with the stat card. A HEAD count on every profile
     // open, for a number nothing renders, is a round trip bought for nothing.
-    void fetchUnreadNotificationCount(user.id)
-      .then(setUnreadNotifs)
-      .catch((e: unknown) => logError(e, 'you_unreadNotifs'));
+    // The bell's unread count is read on focus, below.
 
     void supabase
       .from('businesses')
@@ -185,6 +184,18 @@ export default function ProfileScreen() {
         else setSellerRows((data ?? []) as SellerBusinessRow[]);
       });
   }, [user?.id, loadBookmarks, fetchOrders]);
+
+  // The bell's dot. Re-read on every focus, not just mount: she reads or
+  // clears them on the notifications screen and comes back here.
+  // src: https://reactnavigation.org/docs/6.x/use-focus-effect · @react-navigation/native 6.1.18 · 2026-10-26
+  useFocusEffect(useCallback(() => {
+    if (!user?.id) return undefined;
+    let cancelled = false;
+    void fetchUnreadNotificationCount(user.id)
+      .then((n) => { if (!cancelled) setUnreadNotifs(n); })
+      .catch((e: unknown) => logError(e, 'you_unreadNotifs'));
+    return () => { cancelled = true; };
+  }, [user?.id]));
 
   useEffect(() => {
     if (!user?.id || !profile) return;

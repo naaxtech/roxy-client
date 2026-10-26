@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../../../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { useThemeColors } from '../../../hooks/useThemeColors';
@@ -150,15 +151,17 @@ function DiscoverScreen() {
 
   // The bell badge. `fetchUnreadNotificationCount` returns 0 on any failure
   // including an unapplied migration 057, so an unknown count shows no badge
-  // rather than a wrong one.
-  useEffect(() => {
-    if (!user?.id) return;
+  // rather than a wrong one. Re-read on every focus, not just mount: she
+  // reads or clears them on the notifications screen and comes back here.
+  // src: https://reactnavigation.org/docs/6.x/use-focus-effect · @react-navigation/native 6.1.18 · 2026-10-26
+  useFocusEffect(useCallback(() => {
+    if (!user?.id) return undefined;
     let cancelled = false;
     void fetchUnreadNotificationCount(user.id)
       .then((n) => { if (!cancelled) setUnreadNotifications(n); })
       .catch((e: unknown) => logError(e, 'discover.unreadNotifications'));
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [user?.id]));
 
   const loadShops = useCallback(async () => {
     setShopsStatus('loading');

@@ -43,7 +43,10 @@ Deno.serve(async (req) => {
     },
     async notifications(ids) {
       const { data, error } = await db.from('notifications')
-        .select('id, user_id, actor_id, type, title, body, link_path, read_at').in('id', ids);
+        // Every column, for the same reason as settings below: archived_at
+        // arrives with 137, and naming it before 137 is applied fails every
+        // batch. Without the column a row reads as not archived.
+        .select('*').in('id', ids);
       if (error) throw error;
       return data ?? [];
     },

@@ -12,7 +12,7 @@
  */
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, fireEvent, waitFor, within } from '@testing-library/react-native';
+import { act, render, fireEvent, waitFor, within } from '@testing-library/react-native';
 import { IDENTITY } from '../../lib/theme';
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -29,6 +29,31 @@ jest.mock('expo-router', () => {
   const push = jest.fn();
   const back = jest.fn();
   return { __push: push, __back: back, useRouter: () => ({ push, back }) };
+});
+
+// A navigator's focus, without a navigator: each `useFocusEffect` runs on
+// mount, and `__refocus()` replays blur-then-focus the way returning to the
+// tab does (the bell re-reads its count there).
+jest.mock('@react-navigation/native', () => {
+  const { useEffect } = jest.requireActual('react');
+  const live = new Map<() => unknown, unknown>();
+  return {
+    ...jest.requireActual('@react-navigation/native'),
+    __refocus: () => live.forEach((cleanup, cb) => {
+      if (typeof cleanup === 'function') cleanup();
+      live.set(cb, cb());
+    }),
+    useFocusEffect: (cb: () => unknown) => {
+      useEffect(() => {
+        live.set(cb, cb());
+        return () => {
+          const cleanup = live.get(cb);
+          live.delete(cb);
+          if (typeof cleanup === 'function') cleanup();
+        };
+      }, [cb]);
+    },
+  };
 });
 
 jest.mock('../../hooks/useThemeColors', () => ({
@@ -222,6 +247,25 @@ describe('Discover — the events posters carry the true event mode', () => {
     const fill = (StyleSheet.flatten(poster.props.style) as { backgroundColor?: string }).backgroundColor;
     expect(IDENTITY as readonly string[]).toContain(fill);
     expect(within(poster).UNSAFE_queryAllByType('LinearGradient' as never)).toHaveLength(0);
+  });
+});
+
+describe('Discover — the bell', () => {
+  it('re-reads the unread count each time Discover regains focus', async () => {
+    const { fetchUnreadNotificationCount } = jest.requireMock('../../lib/notifications');
+    const { __refocus: refocus } = jest.requireMock('@react-navigation/native');
+    (fetchUnreadNotificationCount as jest.Mock).mockResolvedValueOnce(3);
+    const v = render(<DiscoverScreen />);
+    await waitFor(() => expect(v.getByLabelText('Notifications, 3 unread')).toBeTruthy());
+    expect(v.getByTestId('discover-notifications-dot')).toBeTruthy();
+
+    // She cleared them on the notifications screen and came back.
+    (fetchUnreadNotificationCount as jest.Mock).mockResolvedValueOnce(0);
+    await act(async () => { refocus(); });
+    await waitFor(() => expect(v.queryByTestId('discover-notifications-dot')).toBeNull());
+    expect(v.getByLabelText('Notifications')).toBeTruthy();
+    expect(fetchUnreadNotificationCount).toHaveBeenCalledTimes(2);
+    expect(fetchUnreadNotificationCount).toHaveBeenLastCalledWith('discover-test-user');
   });
 });
 

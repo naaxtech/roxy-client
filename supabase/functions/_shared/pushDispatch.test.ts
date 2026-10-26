@@ -95,6 +95,26 @@ Deno.test('skips: already read, muted, blocked, no device, preference off', asyn
     [[1, 'already-read'], [2, 'muted'], [3, 'blocked'], [4, 'no-device'], [5, 'preference-off']]);
 });
 
+Deno.test('skips a notification she cleared (archived), read or not', async () => {
+  const h = harness({
+    outbox: [row(1, 'cleared', 'u1'), row(2, 'cleared-read', 'u2'), row(3, 'live', 'u3')],
+    notes: [
+      // Archived but never marked read: the archive alone must stop the push.
+      note('cleared', 'u1', { archived_at: '2026-10-04T11:59:00Z' }),
+      note('cleared-read', 'u2', { archived_at: '2026-10-04T11:59:00Z', read_at: '2026-10-04T11:59:00Z' }),
+      note('live', 'u3', { archived_at: null }),
+    ],
+    devices: ['u1', 'u2', 'u3'].map((u) => ({ user_id: u, token: TOKEN(u) })),
+    settings: [], muted: new Set(), blocked: new Set(),
+  });
+  const s = await dispatchOnce(h.deps);
+  eq(h.sent.flat().map((m) => m.to), [TOKEN('u3')], 'only the row still in her inbox is pushed');
+  eq(s.skipped, 2);
+  eq(s.sent, 1);
+  eq(h.updates.filter((u) => u.status === 'skipped').map((u) => [u.id, u.skip_reason]),
+    [[1, 'archived'], [2, 'archived']]);
+});
+
 Deno.test('membership: the settings row decides, and no row means ON', async () => {
   const h = harness({
     outbox: [row(1, 'on', 'u1'), row(2, 'off', 'u2')],

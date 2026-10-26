@@ -6,7 +6,7 @@
 //      never double-send)
 //   2. load the notifications, recipients' enabled devices, settings, mutes and
 //      blocks in a handful of set queries (not per row)
-//   3. decide per row: skip (read / muted / blocked / switched off / no device)
+//   3. decide per row: skip (cleared / read / muted / blocked / switched off / no device)
 //      or build one Expo message per device (pushCore.buildMessage)
 //   4. send in chunks of 100; classify each ticket; mark rows sent / retry with
 //      backoff / failed; disable tokens Expo says are dead
@@ -38,6 +38,8 @@ export type NotificationRow = {
   body: string | null;
   link_path: string | null;
   read_at: string | null;
+  /** Set when she cleared it from her inbox (137). Absent before 137 is applied. */
+  archived_at?: string | null;
 };
 
 export type DeviceRow = { user_id: string; token: string };
@@ -123,6 +125,8 @@ export async function dispatchOnce(deps: DispatchDeps, limit = 500): Promise<Dis
       summary.skipped++;
     };
     if (!n) { skip('notification-gone'); continue; }
+    // Cleared before it went out (a retry, or a slow wake): she has already dealt with it.
+    if (n.archived_at) { skip('archived'); continue; }
     if (n.read_at) { skip('already-read'); continue; }
     if (n.actor_id && blocked.has(pairKey(n.user_id, n.actor_id))) { skip('blocked'); continue; }
     if (n.actor_id && muted.has(pairKey(n.user_id, n.actor_id))) { skip('muted'); continue; }

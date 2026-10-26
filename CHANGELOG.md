@@ -13,6 +13,18 @@ finer-grained engineering log lives in `.claude/log.md`.
 ## [Unreleased]
 
 ### Added
+- **Clear notifications; cleared ones are archived, never deleted (2026-10-26).**
+  Each row has a clear (×) button and the header has "Clear all", both with
+  Undo. "View archived" lists what she cleared, each with Restore. Clearing
+  marks a row read, so the bells drop; Undo restores what was unread as unread.
+  "Clear all" only takes what she had loaded, so a notification that arrived
+  after she opened the screen is never cleared unseen. It works in batches of
+  500, so a big first clear still has a working Undo. A failed load now shows
+  an error with Retry instead of an empty inbox. Migration 137 adds
+  `notifications.archived_at` and two single-statement RPCs
+  (`archive_notifications`, `unarchive_notifications`); the push sender skips
+  archived rows. **Ships only after 137 is applied:** the new client filters on
+  `archived_at`.
 - **The WLW Archive — live.** A community-scored catalogue of wlw films, TV,
   books, comics and music, seeded with 45 real works. One score, one question:
   *would you recommend this to another wlw?* An entry shows a percentage only at
