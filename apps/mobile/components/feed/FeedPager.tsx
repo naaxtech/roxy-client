@@ -314,9 +314,18 @@ export function FeedPager<TItem>({
   }, [applyActiveIndex, resolveFrameNode]);
 
   /**
-   * Native snap can leave the list between pages — after a like re-render, or
-   * after a wheel tick on web. Pull back to the nearer page so the next swipe
-   * has a real page to leave.
+   * Native snap can leave the list between pages — after a like re-render.
+   * Pull back to the nearer page so the next swipe has a real page to leave.
+   * (Native only: react-native-web never fires `onMomentumScrollEnd`; web
+   * settles in `watchTouchSnap` and the wheel/pointer controller.)
+   *
+   * Only once the scroll has come to rest (`onMomentumScrollEnd`), never at
+   * finger lift. Android emits the end-drag event first and starts the snap
+   * fling after it, so the offset at lift is wherever the finger let go: on a
+   * short flick that rounds to the page she is leaving, and a smooth scroll
+   * there runs against the snap fling — the two fight, and the feed bounces
+   * back or sticks between posts.
+   * src: https://github.com/facebook/react-native/blob/v0.74.5/packages/react-native/ReactAndroid/src/main/java/com/facebook/react/views/scroll/ReactScrollView.java · react-native 0.74.5 · 2026-10-26
    */
   const handleScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const y = e.nativeEvent.contentOffset.y;
@@ -432,7 +441,6 @@ export function FeedPager<TItem>({
       showsVerticalScrollIndicator={false}
       onScroll={handleScroll}
       onMomentumScrollEnd={handleScrollEnd}
-      onScrollEndDrag={handleScrollEnd}
       scrollEventThrottle={16}
       onEndReached={onEndReached}
       onEndReachedThreshold={END_REACHED_THRESHOLD}

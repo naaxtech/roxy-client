@@ -111,6 +111,17 @@ describe('PhotoCell', () => {
     expect(view.queryByTestId('photo-cell-play')).toBeNull();
     expect(view.queryByTestId('rail-play')).toBeNull();
   });
+
+  // react-native-web gives a ScrollView with scrolling turned off
+  // `touch-action: none` (ScrollViewBase `scrollDisabled`, 0.19.13). A single
+  // photo sat in exactly that, so on a phone browser a swipe starting on the
+  // photo never reached the feed: 9 of 9 swipes on live did not move it.
+  it('keeps a single photo out of any scroller, so a swipe on it moves the feed', () => {
+    const view = photo();
+
+    expect(view.queryByTestId('photo-cell-pager')).toBeNull();
+    expect(view.getByTestId('photo-cell-image-0')).toBeTruthy();
+  });
 });
 
 describe('PhotoCell gallery', () => {

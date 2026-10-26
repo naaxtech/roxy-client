@@ -250,12 +250,24 @@ describe('FeedPager snap paging', () => {
     mountPager();
 
     act(() => {
-      latest().onScrollEndDrag?.({
+      latest().onMomentumScrollEnd?.({
         nativeEvent: { contentOffset: { y: PAGE_H } },
       });
     });
 
     expect(listApi().scrollToOffset).not.toHaveBeenCalled();
+  });
+
+  // Android emits the end-drag event at finger lift and only THEN starts the
+  // snap fling (ReactScrollView#onTouchEvent ACTION_UP, react-native 0.74.5).
+  // A short flick lifts under half a page in, so "nearest page" at lift is the
+  // page she is leaving: a settle there ran against the snap fling and the feed
+  // bounced back or stuck. The pager settles on momentum end only.
+  it('does not settle at finger lift, so the snap fling is left alone', () => {
+    mountPager();
+
+    expect(latest().onScrollEndDrag).toBeUndefined();
+    expect(latest().onMomentumScrollEnd).toEqual(expect.any(Function));
   });
 });
 

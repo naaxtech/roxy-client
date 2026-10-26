@@ -339,6 +339,28 @@ export function findPagerScroller(root: HTMLElement): HTMLElement | null {
 export const SETTLE_IDLE_MS = 200;
 
 /**
+ * The browser's `Element#scrollTo`, never the scroller node's own.
+ *
+ * react-native-web assigns `ScrollView#scrollTo({ x, y, animated })` onto the
+ * ScrollView's DOM node (`node.scrollTo = this.scrollTo`), so `node.scrollTo({
+ * top })` reads `y` as 0 and smooth-scrolls to the top of the feed — measured
+ * on live: a settle from page 6 landed on page 0. The prototype keeps the
+ * browser's smooth scroll, which also respects the CSS snap.
+ * src: https://github.com/necolas/react-native-web/blob/0.19.13/packages/react-native-web/src/exports/ScrollView/index.js · react-native-web 0.19.13 · 2026-10-26
+ */
+function nativeScrollTo(scroller: HTMLElement, top: number): void {
+  // The options overload only: `.call` on the overloaded method picks `(x, y)`.
+  const browserScrollTo = typeof Element === 'undefined'
+    ? undefined
+    : Element.prototype.scrollTo as ((this: Element, options: ScrollToOptions) => void) | undefined;
+  if (typeof browserScrollTo !== 'function') {
+    scroller.scrollTop = top;
+    return;
+  }
+  browserScrollTo.call(scroller, { top, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+}
+
+/**
  * Settles `scroller` onto the nearer page boundary whenever a scroll comes to
  * rest off one. Returns the undo.
  */
@@ -352,16 +374,23 @@ function settleScroller(scroller: HTMLElement, getPageH: () => number): () => vo
     const top = scroller.scrollTop;
     const target = Math.round(top / pageH) * pageH;
     if (Math.abs(top - target) <= 1) return;
-    scroller.scrollTo({ top: target, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    nativeScrollTo(scroller, target);
   };
 
   const onScroll = () => {
     if (timer !== null) clearTimeout(timer);
     timer = setTimeout(() => { timer = null; settle(); }, SETTLE_IDLE_MS);
   };
-  const onTouchStart = () => { fingers += 1; };
-  const onTouchEnd = () => {
-    fingers = Math.max(0, fingers - 1);
+  // Read from the event's own `touches` (every finger still on the screen), not
+  // counted up and down. A touchend fired on a node that was removed mid-touch
+  // never bubbles here — cold start swaps the cached For You page for the
+  // network's under her finger — and a counter then stayed at 1 for the
+  // session, so no scroll was ever settled again. The next touch resyncs.
+  const onTouchStart = (event: Event) => {
+    fingers = (event as TouchEvent).touches?.length ?? fingers + 1;
+  };
+  const onTouchEnd = (event: Event) => {
+    fingers = (event as TouchEvent).touches?.length ?? Math.max(0, fingers - 1);
     // A drag that is lifted without moving again still has to be looked at.
     onScroll();
   };

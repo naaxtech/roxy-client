@@ -126,15 +126,84 @@ describe('watchTouchSnap', () => {
 describe('watchTouchSnap settles a scroll that ended between pages', () => {
   const PAGE = 768;
 
+  /**
+   * The browser's own `Element#scrollTo`. react-native-web replaces the method
+   * on the scroller NODE with `ScrollView#scrollTo({ x, y, animated })`
+   * (ScrollView/index.js `node.scrollTo = this.scrollTo`, react-native-web
+   * 0.19.13), which reads `{ top }` as `y = 0`: measured on live, a settle from
+   * page 6 flew to the top of the feed. The settle must reach the prototype.
+   */
+  // jsdom 20 has no `Element#scrollTo`; put back exactly what was there.
+  const hadScrollTo = Object.prototype.hasOwnProperty.call(Element.prototype, 'scrollTo');
+  const realScrollTo = Element.prototype.scrollTo;
+  let scrollTo: jest.Mock;
+  beforeEach(() => {
+    scrollTo = jest.fn();
+    Element.prototype.scrollTo = scrollTo as unknown as typeof Element.prototype.scrollTo;
+  });
+  afterEach(() => {
+    if (hadScrollTo) Element.prototype.scrollTo = realScrollTo;
+    else delete (Element.prototype as { scrollTo?: unknown }).scrollTo;
+    jest.useRealTimers();
+  });
+
+  it('writes scrollTop where the browser has no Element#scrollTo', () => {
+    delete (Element.prototype as { scrollTo?: unknown }).scrollTo;
+    const { root, inner, rnwScrollTo } = settledDom(322);
+    const stop = watchTouchSnap(root, () => PAGE);
+
+    inner.dispatchEvent(new Event('scrollend'));
+
+    expect(inner.scrollTop).toBe(0);
+    expect(rnwScrollTo).not.toHaveBeenCalled();
+    stop();
+  });
+
   function settledDom(top: number) {
     const { root, inner } = pagerDom();
     Object.defineProperty(inner, 'scrollTop', { value: top, configurable: true, writable: true });
-    const scrollTo = jest.fn();
-    (inner as unknown as { scrollTo: jest.Mock }).scrollTo = scrollTo;
-    return { root, inner, scrollTo };
+    // What react-native-web puts on the node.
+    const rnwScrollTo = jest.fn();
+    (inner as unknown as { scrollTo: jest.Mock }).scrollTo = rnwScrollTo;
+    return { root, inner, scrollTo, rnwScrollTo };
   }
 
-  afterEach(() => { jest.useRealTimers(); });
+  function touch(type: 'touchstart' | 'touchend', fingersDown: number): Event {
+    const event = new Event(type);
+    Object.defineProperty(event, 'touches', { value: Array.from({ length: fingersDown }, () => ({})) });
+    return event;
+  }
+
+  it('scrolls with the browser method, never the one react-native-web put on the node', () => {
+    const { root, inner, scrollTo: native, rnwScrollTo } = settledDom(322);
+    const stop = watchTouchSnap(root, () => PAGE);
+
+    inner.dispatchEvent(new Event('scrollend'));
+
+    expect(rnwScrollTo).not.toHaveBeenCalled();
+    expect(native).toHaveBeenCalledTimes(1);
+    expect(native.mock.contexts[0]).toBe(inner);
+    stop();
+  });
+
+  // Cold start paints For You page 1 from the cache and the network answer
+  // replaces it: a finger down at that moment loses its node, its touchend
+  // never bubbles to the scroller, and a counter stayed at 1 for the session.
+  it('recovers when a finger lifts on a node that was removed under it', () => {
+    jest.useFakeTimers();
+    const { root, inner, scrollTo: native } = settledDom(322);
+    const stop = watchTouchSnap(root, () => PAGE);
+
+    inner.dispatchEvent(touch('touchstart', 1));
+    // ...its touchend is lost. The next gesture:
+    inner.dispatchEvent(touch('touchstart', 1));
+    inner.dispatchEvent(new Event('scroll'));
+    inner.dispatchEvent(touch('touchend', 0));
+    jest.advanceTimersByTime(1000);
+
+    expect(native).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
+    stop();
+  });
 
   it('moves a scroll that stopped 322 px in back onto the nearer page', () => {
     const { root, inner, scrollTo } = settledDom(322);

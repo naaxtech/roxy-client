@@ -36,6 +36,22 @@ finer-grained engineering log lives in `.claude/log.md`.
     rule, and a test fails the seed if it breaks it.
 
 ### Fixed
+- **The Feed no longer hangs when you swipe (2026-10-26).** Four causes, each
+  reproduced and each with a test that failed before the fix:
+  - *A swipe that started on a single-photo post did nothing* (web). The photo
+    sat in a horizontal scroller with scrolling switched off, which
+    react-native-web turns into `touch-action: none`, so the browser dropped the
+    swipe. Live: 0 of 5 swipes on the photo moved the feed; fixed build: 5 of 5.
+  - *A post left half on screen jumped back to the top of the feed* (web). The
+    settle called the scroller's `scrollTo`, which react-native-web replaces
+    with its own `{x, y}` version, so `{top}` meant y = 0. Live: 3 of 3 rests
+    landed on page 0; fixed build: each landed on the nearer page.
+  - *After the cached For You page was swapped for the fresh one under her
+    finger, no swipe was ever settled again that session* (web). The finger
+    count is now read from the touch event itself and corrects on the next touch.
+  - *Short flicks could bounce back or stick between posts* (Android app). The
+    pager settled at finger lift, before the snap fling started, and fought it.
+    It now settles only once the scroll has stopped.
 - **Password reset works.** It never had, in any build: the reset email pointed
   at `localhost`, and there was nowhere for it to point *to*. Four layers, all
   broken, none of which a green test suite could see:

@@ -50,6 +50,41 @@ export function PhotoCell({
 
   const active = status[index] ?? 'loading';
 
+  const slides = urls.map((path, i) => (
+    <Image
+      transition={IMAGE_TRANSITION}
+      cachePolicy={IMAGE_CACHE}
+      key={`${post.id}:${i}`}
+      testID={`photo-cell-image-${i}`}
+      source={{ uri: getPostImageUrl(path, 'detail') }}
+      placeholder={post.blurhash ?? undefined}
+      contentFit="cover"
+      // Each still is its own stop, so focus traversal walks the
+      // gallery and the pager scrolls to follow it.
+      //
+      // `accessible` has to be set explicitly: "When true, indicates
+      // that the view is an accessibility element… On Android, the
+      // `accessible` property will be translated into the native
+      // `isScreenReaderFocusable`" — and its documented default is
+      // FALSE, unlike a React Native `View`. Verified against the
+      // installed version's own types rather than assumed.
+      // src: https://github.com/expo/expo/blob/sdk-51/packages/expo-image/src/Image.types.ts · expo-image 1.13.0 · 2026-08-07
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`Photo ${i + 1} of ${urls.length}`}
+      // "Changing this prop resets the image view content to blank or a
+      // placeholder before loading and rendering the final image. This
+      // is especially useful for any kinds of recycling views like
+      // FlashList to prevent showing the previous source before the new
+      // one fully loads."
+      // src: https://github.com/expo/expo/blob/sdk-51/packages/expo-image/src/Image.types.ts · expo-image 1.13.0 · 2026-08-05
+      recyclingKey={`${post.id}:${i}`}
+      onLoad={() => mark(i, 'ready')}
+      onError={() => mark(i, 'error')}
+      style={{ width, height }}
+    />
+  ));
+
   return (
     <View testID="photo-cell" style={[s.page, { width, height }]}>
       {urls.length === 0 ? (
@@ -64,6 +99,16 @@ export function PhotoCell({
         // through the photos still reaches the horizontal pager (a tap fails
         // past 12dp of travel) and a double tap on any photo likes the post.
         <DoubleTapReact onDoubleTap={onDoubleTap}>
+        {urls.length === 1 ? (
+          // One photo has nothing to page through, so it gets no scroller at
+          // all. A ScrollView with `scrollEnabled={false}` is `touch-action:
+          // none` on react-native-web (ScrollViewBase `scrollDisabled`,
+          // 0.19.13): the browser then drops every swipe that starts on the
+          // photo, and the feed did not move (9 of 9 on live, 2026-10-26).
+          <View testID="photo-cell-still" style={{ width, height }}>
+            {slides}
+          </View>
+        ) : (
         <ScrollView
           testID="photo-cell-pager"
           horizontal
@@ -73,7 +118,6 @@ export function PhotoCell({
           nestedScrollEnabled
           directionalLockEnabled
           showsHorizontalScrollIndicator={false}
-          scrollEnabled={urls.length > 1}
           scrollEventThrottle={16}
           onScroll={handleScroll}
           // NOT a focus target, and NOT where the count lives.
@@ -88,41 +132,9 @@ export function PhotoCell({
           accessible={false}
           style={{ width, height }}
         >
-          {urls.map((path, i) => (
-            <Image
-              transition={IMAGE_TRANSITION}
-              cachePolicy={IMAGE_CACHE}
-              key={`${post.id}:${i}`}
-              testID={`photo-cell-image-${i}`}
-              source={{ uri: getPostImageUrl(path, 'detail') }}
-              placeholder={post.blurhash ?? undefined}
-              contentFit="cover"
-              // Each still is its own stop, so focus traversal walks the
-              // gallery and the pager scrolls to follow it.
-              //
-              // `accessible` has to be set explicitly: "When true, indicates
-              // that the view is an accessibility element… On Android, the
-              // `accessible` property will be translated into the native
-              // `isScreenReaderFocusable`" — and its documented default is
-              // FALSE, unlike a React Native `View`. Verified against the
-              // installed version's own types rather than assumed.
-              // src: https://github.com/expo/expo/blob/sdk-51/packages/expo-image/src/Image.types.ts · expo-image 1.13.0 · 2026-08-07
-              accessible
-              accessibilityRole="image"
-              accessibilityLabel={`Photo ${i + 1} of ${urls.length}`}
-              // "Changing this prop resets the image view content to blank or a
-              // placeholder before loading and rendering the final image. This
-              // is especially useful for any kinds of recycling views like
-              // FlashList to prevent showing the previous source before the new
-              // one fully loads."
-              // src: https://github.com/expo/expo/blob/sdk-51/packages/expo-image/src/Image.types.ts · expo-image 1.13.0 · 2026-08-05
-              recyclingKey={`${post.id}:${i}`}
-              onLoad={() => mark(i, 'ready')}
-              onError={() => mark(i, 'error')}
-              style={{ width, height }}
-            />
-          ))}
+          {slides}
         </ScrollView>
+        )}
         </DoubleTapReact>
       )}
 
