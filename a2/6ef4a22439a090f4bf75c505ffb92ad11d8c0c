@@ -1,0 +1,21 @@
+polish/LIVE.log
+  s_4280a015469a8c::t_b4f026c1127c07 16-17
+polish/decisions.md
+  s_4280a015469a8c::t_d49d5671549648 31-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a26ef4a22439a090f4bf75c505ffb92ad11d8c0c",
+  "prompts": {},
+  "sessions": {
+    "s_4280a015469a8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20593337-f5c3-4a76-aead-b60ab8ea10c4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
