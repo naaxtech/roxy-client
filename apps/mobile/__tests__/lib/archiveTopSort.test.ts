@@ -44,11 +44,16 @@ const applySorting = (rows: any[]) => {
   });
 };
 
+// `archive_search` (138) answers PGRST202 here, so these tests drive the
+// pre-138 fallback query: the ordering a production client runs until the
+// owner applies 138. The RPC's own orders are proven against the same view in
+// supabase/tests/138_archive_search_check.sql (T8).
 jest.mock('../../lib/supabase', () => ({
   supabase: {
+    rpc: () => Promise.resolve({ data: null, error: { code: 'PGRST202', message: 'Could not find the function' }, status: 404 }),
     from: () => {
       const chain: any = {};
-      ['select', 'eq', 'or', 'order', 'ilike'].forEach((m) => { 
+      ['select', 'eq', 'or', 'order', 'ilike'].forEach((m) => {
         chain[m] = (...args: any[]) => { mockOps.push([m, args]); return chain; }; 
       });
       chain.limit = () => Promise.resolve({ data: applySorting(mockRows), error: null });
@@ -56,7 +61,7 @@ jest.mock('../../lib/supabase', () => ({
     },
   },
 }));
-jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
+jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn(), logBreadcrumb: jest.fn() }));
 
 import { fetchArchiveEntries } from '../../lib/archive';
 

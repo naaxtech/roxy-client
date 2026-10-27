@@ -18,7 +18,7 @@ const mockFetch = jest.fn();
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock('../../../lib/archive', () => {
   const actual = jest.requireActual('../../../lib/archive');
-  return { ...actual, fetchArchiveEntries: (...a: unknown[]) => mockFetch(...a) };
+  return { ...actual, fetchArchiveEntriesByIds: (...a: unknown[]) => mockFetch(...a) };
 });
 
 const entry = (over: Partial<ArchiveEntry> = {}): ArchiveEntry => ({
@@ -48,10 +48,18 @@ describe('SavedWatchlist', () => {
     expect(mockPush).toHaveBeenCalledWith('/archive/carol');
   });
 
+  it('asks for exactly the ids on her list', async () => {
+    // By id, not an over-fetch of the most-voted entries (SavedWatchlistById
+    // proves the request itself never touches archive_search).
+    const { getByText } = render(<SavedWatchlist />);
+    await waitFor(() => expect(getByText('Carol')).toBeTruthy());
+    expect(mockFetch).toHaveBeenCalledWith(['e1', 'e2']);
+  });
+
   it('shows only what is on her list, not everything it fetched', async () => {
-    // The query cannot filter by a client-side id list without a round trip per
-    // entry, so it over-fetches and narrows here. A version that rendered the
-    // whole response would put the entire Archive in her saved tab.
+    // The read is by id, and the screen still narrows to her list: a response
+    // carrying more than she asked for must never put the entire Archive in
+    // her saved tab.
     useArchiveStore.setState({ watchlist: ['e2'] } as never);
     const { getByText, queryByText } = render(<SavedWatchlist />);
     await waitFor(() => expect(getByText('Bound')).toBeTruthy());

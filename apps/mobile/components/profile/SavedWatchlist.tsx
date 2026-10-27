@@ -8,7 +8,7 @@ import { TYPE } from '../../lib/typography';
 import { RADII } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { logError } from '../../lib/errorLogger';
-import { fetchArchiveEntries, scoreFromEntry, type ArchiveEntry } from '../../lib/archive';
+import { fetchArchiveEntriesByIds, scoreFromEntry, type ArchiveEntry } from '../../lib/archive';
 import { ScorePill } from '../archive/ScorePill';
 
 /**
@@ -30,18 +30,19 @@ export function SavedWatchlist() {
   const [entries, setEntries] = useState<ArchiveEntry[]>([]);
   const [failed, setFailed] = useState(false);
 
-  // The store holds entry ids; the list needs rows. There is no `.in(id, [...])`
-  // helper on `fetchArchiveEntries` and adding one for this screen would put a
-  // query shape in the lib for a single caller — so it over-fetches by vote
-  // count and narrows locally. The narrowing is the important half: rendering
-  // the whole response would put the entire Archive in her saved tab.
+  // The store holds entry ids, so the list asks for exactly those rows, most
+  // voted first. It used to over-fetch the 200 most-voted entries through the
+  // browse query and narrow here: an entry outside that 200 fell off her list,
+  // and once browse ran on `archive_search` (pages stop at 50) the request
+  // failed outright. The local narrowing stays as a guard: rendering a whole
+  // response would put the entire Archive in her saved tab.
   const load = useCallback(async () => {
     if (watchlist.length === 0) { setEntries([]); return; }
     setFailed(false);
     try {
-      const all = await fetchArchiveEntries({ sort: 'voted', limit: 200 });
+      const rows = await fetchArchiveEntriesByIds(watchlist);
       const mine = new Set(watchlist);
-      setEntries(all.filter((e) => mine.has(e.id)));
+      setEntries(rows.filter((e) => mine.has(e.id)));
     } catch (e) {
       logError(e, 'SavedWatchlist.load');
       setFailed(true);
