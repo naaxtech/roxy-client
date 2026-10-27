@@ -1,0 +1,84 @@
+apps/mobile/components/nearby/useNearbyOrigin.tsx
+  s_4280a015469a8c::t_5878d9daaebecc 2,5,7,14-21,36-44,46-50,59,64
+apps/mobile/components/nearby/NearbyEmptyActions.tsx
+  s_4280a015469a8c::t_c710c528766273 1-61
+apps/mobile/app.json
+  s_4280a015469a8c::t_a1ba1ebc04d529 21
+apps/mobile/tests/e2e/nearby.spec.ts
+  s_4280a015469a8c::t_a3ea6b52c00dcb 1-109
+apps/mobile/__tests__/lib/nearby.test.ts
+  s_4280a015469a8c::t_b716274edd23a9 173
+  s_4280a015469a8c::t_7a3c585422a2db 175,359-364
+  s_4280a015469a8c::t_24ae3277db6eec 32,34
+  s_4280a015469a8c::t_74af0e6d96e4b3 123,127-132,139-155,158,160-161,163-172,174
+  s_4280a015469a8c::t_62bba15f27db61 156-157,159,162
+  s_4280a015469a8c::t_c488eb118997d3 76-80
+  s_ecc4277bf7ea18::t_d7250d01efb665 176
+apps/mobile/__tests__/lib/nearbyAppConfig.test.ts
+  s_4280a015469a8c::t_3295bdc7c03c7d 1-58
+supabase/tests/139_nearby_communities_check.sql
+  s_4280a015469a8c::t_f3b4cf84b85461 472
+  s_4280a015469a8c::t_f2fe3c3c3d37fa 450
+  s_4280a015469a8c::t_ef68829873c10b 458-467
+docs/superpowers/plans/2026-10-26-nearby-s1-backend.md
+  s_4280a015469a8c::t_0eacfefb20c7d4 89-90
+apps/mobile/__tests__/components/nearby/CityPickerSheet.test.tsx
+  s_4280a015469a8c::t_3b3b242840b176 149
+  s_ecc4277bf7ea18::t_09a9334f8f0a96 3-7,30,33-43,56,136-137,140-148,150-164
+apps/mobile/__tests__/components/nearby/NearbyBrowser.test.tsx
+  s_4280a015469a8c::t_b0486ec4283a2b 142,147-150,153,158-176
+apps/mobile/__tests__/components/nearby/NearbyFilterSheet.test.tsx
+  s_4280a015469a8c::t_847b93aa7ffa85 36-37
+apps/mobile/__tests__/components/nearby/NearbyRail.test.tsx
+  s_4280a015469a8c::t_4fe774c716300c 14,83,106,110-114,161-202,248,253-264
+apps/mobile/__tests__/lib/nearbyFilters.test.ts
+  s_4280a015469a8c::t_a90a10583c878a 15-16,18,23-24,30,32-35,111-164
+apps/mobile/__tests__/store/nearbyStore.test.ts
+  s_4280a015469a8c::t_d9622d66b5d8a7 96-137
+apps/mobile/components/discover/Rail.tsx
+  s_4280a015469a8c::t_552ca66f857b2a 30-31,70,155
+apps/mobile/components/nearby/CityPickerSheet.tsx
+  s_4280a015469a8c::t_d891f63d6d2c59 11,25-33,39,41,47-50,56,159-185,205,235
+apps/mobile/components/nearby/NearbyBrowser.tsx
+  s_4280a015469a8c::t_8c1db28494a282 14-15,31-33,71,74-80
+apps/mobile/components/nearby/NearbyRail.tsx
+  s_4280a015469a8c::t_d0388eb1756c23 5-7,26-29,37-39,72-80
+apps/mobile/lib/nearby.ts
+  s_4280a015469a8c::t_fe14e8bbd7d287 13-22,27-29,38-39,53-63,73-77,126-127,132,135-139,146,148-149
+apps/mobile/lib/nearbyCoords.ts
+  s_4280a015469a8c::t_783983bd4d77dd 47
+apps/mobile/lib/nearbyFilters.ts
+  s_4280a015469a8c::t_8c6935a968d6aa 39-44,50,88,90-140
+apps/mobile/store/nearbyStore.ts
+  s_4280a015469a8c::t_eac243a9547e30 37-42,104-113,154-162
+docs/superpowers/plans/2026-10-26-nearby-s2-mobile.md
+  s_4280a015469a8c::t_f09db95920d3d6 27,51,84
+docs/superpowers/specs/2026-10-26-nearby-communities-design.md
+  s_4280a015469a8c::t_e4fb3a30e235f5 28-39,43-44,51-53,61-62,81-82,90-93,117-119
+supabase/migrations/139_nearby_communities.sql
+  s_4280a015469a8c::t_bcb62b0cd82ff4 288-293,441-442
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85a27dda614e76302f958a4d1e150d3ffb75b536",
+  "prompts": {},
+  "sessions": {
+    "s_4280a015469a8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20593337-f5c3-4a76-aead-b60ab8ea10c4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    },
+    "s_ecc4277bf7ea18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79a27ea1-ab87-4224-aa4e-d793a74986b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
