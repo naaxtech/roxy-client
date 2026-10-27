@@ -36,13 +36,18 @@ export type NearbyChoice<K extends string> = { key: K; label: string };
 
 export type RadiusKey = `${NearbyRadiusKm}`;
 
-/** The widest radius the RPC allows is offered in the owner's words (spec › Filters). */
+/**
+ * Every radius says its number. The widest used to read "Anywhere in the
+ * country", which a 1000 km circle is not: it is a distance from where she
+ * is, so it runs past the border of a small country and stops short of the
+ * far end of a big one.
+ */
 const RADIUS_WORDS: Record<NearbyRadiusKm, string> = {
   10: '10 km',
   25: '25 km',
   50: '50 km',
   100: '100 km',
-  1000: 'Anywhere in the country',
+  1000: '1,000 km',
 };
 
 export const RADIUS_CHIPS: NearbyChoice<RadiusKey>[] = NEARBY_RADII_KM.map((km) => ({
@@ -80,9 +85,59 @@ export const JOIN_CHIPS: NearbyChoice<NearbyJoin>[] = [
   { key: 'open', label: 'Open to join' },
 ];
 
-/** "Within 25 km", or "Anywhere in the country" for the widest. */
+/** "Within 25 km" … "Within 1,000 km". */
 export function radiusLabel(km: NearbyRadiusKm): string {
-  return km === 1000 ? RADIUS_WORDS[1000] : `Within ${RADIUS_WORDS[km]}`;
+  return `Within ${RADIUS_WORDS[km]}`;
+}
+
+/** The next radius out, or null at the widest. */
+export function widerRadius(km: NearbyRadiusKm): NearbyRadiusKm | null {
+  const i = NEARBY_RADII_KM.indexOf(km);
+  return i >= 0 && i < NEARBY_RADII_KM.length - 1 ? NEARBY_RADII_KM[i + 1] : null;
+}
+
+/** "Widen to 100 km". */
+export function widenLabel(km: NearbyRadiusKm): string {
+  return `Widen to ${RADIUS_WORDS[km]}`;
+}
+
+/** A kind, a way of meeting or open-only: what she filtered FOR (distance is where, not what). */
+export function hasNarrowingFilters(f: NearbyFilters): boolean {
+  return f.categories.length > 0 || f.meets !== 'all' || f.openOnly;
+}
+
+/** Clears what she filtered for and keeps her distance, so clearing never pulls her back in. */
+export function clearNarrowingFilters(f: NearbyFilters): NearbyFilters {
+  return { ...f, categories: [], meets: 'all', openOnly: false };
+}
+
+/**
+ * What an empty answer says, and which moves it offers besides "Choose a city"
+ * (always offered). Members cannot start a community in the app (Studio does
+ * that), so the copy only ever names what she can do here: clear her filters,
+ * look one distance farther, or look from another city.
+ */
+export type NearbyEmptyAdvice = {
+  body: string;
+  /** The next radius out, offered as "Widen to …"; null at the widest or while filters are on. */
+  widenTo: NearbyRadiusKm | null;
+  /** Category, meets or open-only is on: "Clear filters" comes first. */
+  clearFilters: boolean;
+};
+
+export function nearbyEmptyAdvice(f: NearbyFilters): NearbyEmptyAdvice {
+  if (hasNarrowingFilters(f)) {
+    return {
+      body: 'Nothing near you matches these filters yet. Clear them, or try another city.',
+      widenTo: null,
+      clearFilters: true,
+    };
+  }
+  const widenTo = widerRadius(f.radiusKm);
+  if (widenTo) {
+    return { body: 'No communities near you yet. Try a wider distance or another city.', widenTo, clearFilters: false };
+  }
+  return { body: `No communities within ${RADIUS_WORDS[f.radiusKm]} yet. Try another city.`, widenTo: null, clearFilters: false };
 }
 
 /** The RPC's filter arguments. Defaults go as null so the server applies its own. */

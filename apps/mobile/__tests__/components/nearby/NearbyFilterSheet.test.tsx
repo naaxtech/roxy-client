@@ -33,7 +33,8 @@ describe('NearbyFilterSheet', () => {
     expect(v.getByText('Kind of community')).toBeTruthy();
     expect(v.getByText('Meets')).toBeTruthy();
     expect(v.getByText('Who can join')).toBeTruthy();
-    expect(v.getByText('Anywhere in the country')).toBeTruthy();
+    expect(v.getByText('1,000 km')).toBeTruthy();
+    expect(v.queryByText(/Anywhere in the country/)).toBeNull();
   });
 
   it('applies every choice at once', () => {

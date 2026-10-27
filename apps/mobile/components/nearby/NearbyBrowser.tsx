@@ -11,7 +11,8 @@ import { TYPE } from '../../lib/typography';
 import { RADII, SPACE, MARGIN, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { NEARBY_FETCH_MAX } from '../../lib/nearby';
-import { activeNearbyFilters, removeNearbyFilter, DEFAULT_NEARBY_FILTERS } from '../../lib/nearbyFilters';
+import { activeNearbyFilters, clearNarrowingFilters, nearbyEmptyAdvice, removeNearbyFilter } from '../../lib/nearbyFilters';
+import { NearbyEmptyActions } from './NearbyEmptyActions';
 import { NearbyPrompt } from './NearbyPrompt';
 import { NearbyRows } from './NearbyRows';
 import { NearbyFilterSheet } from './NearbyFilterSheet';
@@ -27,8 +28,9 @@ const CHIP_HEIGHT = SPACE[6] + SPACE[0];
  * "See all"). Where it looks from ("Near your location" or "Near <city>",
  * never coordinates) with Change; Filters with a count; every active filter
  * as a removable chip; then up to 50 rows with the same loading, empty and
- * error states as the rail. An empty answer offers the one move that can
- * change it: clear the filters, or look farther.
+ * error states as the rail. An empty answer says what she can do and offers
+ * it (the rail's `NearbyEmptyActions`): clear the filters or widen one
+ * distance out, and choose a city.
  */
 export function NearbyBrowser() {
   const colors = useThemeColors();
@@ -66,19 +68,16 @@ export function NearbyBrowser() {
       </View>
     );
   } else if (results.rows.length === 0) {
+    const advice = nearbyEmptyAdvice(filters);
     content = (
       <View style={s.state} testID="nearby-browser-empty">
-        {active.length > 0 ? (
-          <>
-            <Text style={s.stateText}>Nothing nearby matches these filters. Clear them to see everything near you.</Text>
-            <QuietPill label="Clear filters" onPress={() => setFilters({ ...DEFAULT_NEARBY_FILTERS, categories: [] })} styles={s} />
-          </>
-        ) : (
-          <>
-            <Text style={s.stateText}>No communities near you yet. Look farther, or choose another city.</Text>
-            <QuietPill label="Look farther" onPress={() => setFilters({ ...filters, radiusKm: 1000 })} styles={s} />
-          </>
-        )}
+        <Text style={s.stateText}>{advice.body}</Text>
+        <NearbyEmptyActions
+          advice={advice}
+          onClearFilters={() => setFilters(clearNarrowingFilters(filters))}
+          onWiden={() => { if (advice.widenTo) setFilters({ ...filters, radiusKm: advice.widenTo }); }}
+          onChooseCity={n.openCityPicker}
+        />
       </View>
     );
   } else {

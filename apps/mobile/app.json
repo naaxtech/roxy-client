@@ -18,6 +18,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Roxy needs camera access for speed dating video calls and profile photos.",
         "NSMicrophoneUsageDescription": "Roxy needs microphone access for speed dating video calls.",
+        "NSLocationDefaultAccuracyReduced": true,
         "ITSAppUsesNonExemptEncryption": false
       }
     },

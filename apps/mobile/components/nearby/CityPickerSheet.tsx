@@ -8,7 +8,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { TYPE } from '../../lib/typography';
 import { RADII, SPACE, MARGIN, type ThemeColors } from '../../lib/theme';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
-import { CITY_QUERY_MAX, CITY_QUERY_MIN, cityLabel, searchCities, type CityOption } from '../../lib/nearby';
+import { CITY_QUERY_MAX, CITY_QUERY_MIN, GEONAMES_ATTRIBUTION, cityLabel, searchCities, type CityOption } from '../../lib/nearby';
 import type { ChosenCity } from '../../lib/nearbyPrefs';
 import { byTheme } from '../discover/byTheme';
 
@@ -22,25 +22,38 @@ const SKELETON_ROWS = 4;
 
 type Status = 'idle' | 'loading' | 'ready' | 'error';
 
+/**
+ * How the sheet offers her location instead of a city:
+ *  - `ask`: she has not said no. "Use my location instead" (her tap asks).
+ *  - `settings`: she said no, on a phone. Only "Turn on location in
+ *    Settings", which opens the app's Settings page and asks nothing.
+ *  - `none`: she said no and there is no Settings page to send her to (web).
+ */
+export type CityPickerLocationOffer = 'ask' | 'settings' | 'none';
+
 interface Props {
   visible: boolean;
   onClose: () => void;
   /** She picked a city: its id and the words to show for it. */
   onChoose: (city: ChosenCity) => void;
+  location: CityPickerLocationOffer;
   onUseLocation: () => void;
+  onOpenSettings: () => void;
 }
 
 /**
  * "Choose a city" (spec › Client): `search_cities` from two characters,
  * debounced, with answers to a superseded search dropped. Results read
- * "City, Region, Country". "Use my location instead" is always offered, at
- * the top so the keyboard never covers it.
+ * "City, Region, Country". Her location is offered at the top, so the
+ * keyboard never covers it, and only in a way that cannot re-ask after she
+ * said no (`location`, spec › Safety 2: "asks no more"). The GeoNames credit
+ * (CC BY 4.0) sits under the results.
  *
  * What she types goes only into the RPC (POST, never logged) and is cleared
  * each time the sheet opens. The sheet keeps one height while she types, so
  * results arriving never move the field under her thumb.
  */
-export function CityPickerSheet({ visible, onClose, onChoose, onUseLocation }: Props) {
+export function CityPickerSheet({ visible, onClose, onChoose, location, onUseLocation, onOpenSettings }: Props) {
   const colors = useThemeColors();
   const s = styles(colors);
   const [query, setQuery] = useState('');
@@ -143,17 +156,33 @@ export function CityPickerSheet({ visible, onClose, onChoose, onUseLocation }: P
       style={s.sheet}
     >
       <Text style={s.title} accessibilityRole="header">Choose a city</Text>
-      <TouchableOpacity
-        onPress={onUseLocation}
-        accessibilityRole="button"
-        accessibilityLabel="Use my location instead"
-        feedback="layer"
-        style={s.locationRow}
-        testID="city-use-location"
-      >
-        <Ionicons name="locate-outline" size={SPACE[5]} color={colors.ink2} accessibilityElementsHidden importantForAccessibility="no" />
-        <Text style={s.rowText}>Use my location instead</Text>
-      </TouchableOpacity>
+      {location === 'ask' ? (
+        <TouchableOpacity
+          onPress={onUseLocation}
+          accessibilityRole="button"
+          accessibilityLabel="Use my location instead"
+          feedback="layer"
+          style={s.locationRow}
+          testID="city-use-location"
+        >
+          <Ionicons name="locate-outline" size={SPACE[5]} color={colors.ink2} accessibilityElementsHidden importantForAccessibility="no" />
+          <Text style={s.rowText}>Use my location instead</Text>
+        </TouchableOpacity>
+      ) : null}
+      {location === 'settings' ? (
+        <TouchableOpacity
+          onPress={onOpenSettings}
+          accessibilityRole="button"
+          accessibilityLabel="Open Settings to turn on location"
+          accessibilityHint="Opens Roxy's page in your phone's Settings"
+          feedback="layer"
+          style={s.locationRow}
+          testID="city-open-settings"
+        >
+          <Ionicons name="settings-outline" size={SPACE[5]} color={colors.ink2} accessibilityElementsHidden importantForAccessibility="no" />
+          <Text style={s.rowText}>Turn on location in Settings</Text>
+        </TouchableOpacity>
+      ) : null}
       <View style={s.fieldWrap}>
         <TextInput
           value={query}
@@ -173,6 +202,7 @@ export function CityPickerSheet({ visible, onClose, onChoose, onUseLocation }: P
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.results}>
         {body}
       </ScrollView>
+      <Text style={s.credit} testID="city-picker-attribution">{GEONAMES_ATTRIBUTION}</Text>
     </Sheet>
   );
 }
@@ -202,4 +232,5 @@ const styles = byTheme((colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: SPACE[4], borderRadius: RADII.pill, backgroundColor: colors.raised,
   },
   quietLabel: { ...TYPE.label, color: colors.ink },
+  credit: { ...TYPE.meta, color: colors.ink3, paddingHorizontal: MARGIN, paddingBottom: SPACE[2] },
 }));

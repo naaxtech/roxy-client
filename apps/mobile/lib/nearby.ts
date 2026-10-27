@@ -10,14 +10,23 @@ import { nearbyRpcFilters, type NearbyFilters } from './nearbyFilters';
  *
  *  - Permission is requested only from `getApproxPosition`, which runs from her
  *    tap on "Use my location" (spec › Safety 2). `hasLocationPermission` reads
- *    the grant without asking.
+ *    the grant without asking. The silent resume (`{ ask: false }`) also turns
+ *    off Android's "turn on device location" dialog, which expo-location 17
+ *    otherwise opens by itself (`mayShowUserSettingsDialog` defaults to true:
+ *    LocationModule.kt → resolveUserSettingsForRequest → startResolutionForResult).
+ *    Her own tap may show it: she asked for her location, and it is the one
+ *    way to switch location on from here.
+ *  - iOS asks for approximate location by default (`NSLocationDefaultAccuracyReduced`
+ *    in app.json, so the prompt shows Precise off); Android can only ever be
+ *    granted ACCESS_COARSE_LOCATION (fine is blocked in app.json).
+ *    src: https://developer.apple.com/documentation/bundleresources/information-property-list/nslocationdefaultaccuracyreduced · iOS 14.0+ · 2026-10-28
  *  - The fix is rounded to 0.1° (about 11 km) HERE, before it is returned. The
  *    raw coordinates never leave this file, are never stored and never logged:
  *    failures log an error code, never a value.
  *  - Every RPC goes out as supabase-js `rpc()`'s default POST and never with
- *    `{ get: true }`: the functions refuse GET, because a GET would put her
- *    position (or the city she typed) in a URL the gateway logs. Every call
- *    checks `error`.
+ *    `{ get: true }` or `{ head: true }`: the functions refuse GET and HEAD,
+ *    because either would put her position (or the city she typed) in a URL
+ *    the gateway logs. Every call checks `error`.
  *
  * `expo-location` is loaded on first use through a guarded `require` and typed
  * by the structural subset below (the pattern of `lib/video/DailyProvider.ts`):
@@ -26,6 +35,8 @@ import { nearbyRpcFilters, type NearbyFilters } from './nearbyFilters';
  * package being present in the shared `node_modules`.
  * src: https://github.com/expo/expo/blob/sdk-51/packages/expo-location/src/Location.ts · expo-location 17.0.1 · 2026-10-27
  * src: https://github.com/expo/expo/blob/sdk-51/packages/expo-location/src/ExpoLocation.web.ts · expo-location 17.0.1 · 2026-10-27
+ * src: https://github.com/expo/expo/blob/sdk-51/packages/expo-location/android/src/main/java/expo/modules/location/LocationModule.kt · expo-location 17.0.1 · 2026-10-28
+ * src: https://github.com/expo/expo/blob/sdk-51/packages/expo-location/android/src/main/java/expo/modules/location/records/LocationArguments.kt · expo-location 17.0.1 · 2026-10-28
  */
 
 export type PositionFailure = 'denied' | 'unavailable' | 'timeout';
@@ -39,6 +50,17 @@ export const POSITION_TIMEOUT_MS = 15_000;
  * position from any time in the past. Five minutes is fresh at 11 km.
  */
 export const WEB_POSITION_MAX_AGE_MS = 5 * 60_000;
+/**
+ * Web: expo-location's permission request is a `navigator.geolocation` call
+ * with no timeout of its own, so a browser prompt she ignores (or closes
+ * without answering) never settles. Past this, it is a timeout: the rail
+ * goes back to "Use my location / Choose a city" instead of loading forever.
+ * Native permission dialogs are modal and always answer, so they are not raced.
+ */
+export const WEB_PERMISSION_TIMEOUT_MS = 20_000;
+
+/** The CC BY 4.0 credit the city names need (GeoNames cities15000; spec › Data). */
+export const GEONAMES_ATTRIBUTION = 'City data © GeoNames (CC BY 4.0)';
 
 /** The part of expo-location 17 this file uses (Location.ts / Location.types.ts, sdk-51). */
 type PermissionAnswer = { status: string; granted: boolean };
@@ -48,6 +70,11 @@ type LocationModule = {
   getForegroundPermissionsAsync: () => Promise<PermissionAnswer>;
   getCurrentPositionAsync: (options: {
     accuracy: number;
+    /**
+     * Android only (LocationArguments.kt, default true): may open the system
+     * "turn on device location" dialog when the network provider is off.
+     */
+    mayShowUserSettingsDialog?: boolean;
     /** Web only: spread over expo-location's navigator.geolocation defaults. */
     maximumAge?: number;
     enableHighAccuracy?: boolean;
@@ -96,25 +123,30 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | typeof TIMED_OUT
  *
  * `ask` (default true) requests permission: call it that way only from her
  * tap. `{ ask: false }` reads the existing grant instead and can never put a
- * prompt on screen (the store's silent resume); no grant reads as `denied`.
+ * prompt or a system dialog on screen (the store's silent resume); no grant
+ * reads as `denied`.
  */
 export async function getApproxPosition({ ask = true }: { ask?: boolean } = {}): Promise<PositionResult> {
   const Location = locationModule();
   if (!Location) return { ok: false, reason: 'unavailable' };
+  const web = Platform.OS === 'web';
 
   try {
-    const permission = ask
-      ? await Location.requestForegroundPermissionsAsync()
-      : await Location.getForegroundPermissionsAsync();
+    const asking = ask
+      ? Location.requestForegroundPermissionsAsync()
+      : Location.getForegroundPermissionsAsync();
+    const permission = web ? await withTimeout(asking, WEB_PERMISSION_TIMEOUT_MS) : await asking;
+    if (permission === TIMED_OUT) return { ok: false, reason: 'timeout' };
     if (!permission?.granted) return { ok: false, reason: 'denied' };
   } catch {
     // Web without the Permissions API, or a native module error.
     return { ok: false, reason: 'unavailable' };
   }
 
-  const options = Platform.OS === 'web'
+  const options = web
     ? { accuracy: Location.Accuracy.Lowest, maximumAge: WEB_POSITION_MAX_AGE_MS, enableHighAccuracy: false }
-    : { accuracy: Location.Accuracy.Lowest };
+    // Only her tap may open Android's "turn on device location" dialog.
+    : { accuracy: Location.Accuracy.Lowest, mayShowUserSettingsDialog: ask };
 
   let fix: { coords: { latitude: number; longitude: number } } | typeof TIMED_OUT;
   try {

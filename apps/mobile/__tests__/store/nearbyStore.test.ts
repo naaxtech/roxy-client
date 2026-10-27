@@ -93,6 +93,48 @@ describe('load — her phone remembers, the network is never asked', () => {
   });
 });
 
+describe('a refusal is re-read, never re-asked (she may have turned location on in Settings)', () => {
+  it('load: a stored refusal with location now granted is cleared; nothing is located until she taps', async () => {
+    await saveNearbyPrefs('u1', { filters: DEFAULT_NEARBY_FILTERS, city: CITY, source: 'city', denied: true });
+    nearby.hasLocationPermission.mockResolvedValue(true);
+    await useNearbyStore.getState().load('u1');
+    expect(useNearbyStore.getState().denied).toBe(false);
+    expect(useNearbyStore.getState().origin).toEqual({ kind: 'city', city: CITY });
+    expect(nearby.getApproxPosition).not.toHaveBeenCalled();
+    expect((await loadNearbyPrefs('u1')).denied).toBe(false);
+  });
+
+  it('load: still not granted, still refused', async () => {
+    await saveNearbyPrefs('u1', { filters: DEFAULT_NEARBY_FILTERS, city: null, source: null, denied: true });
+    nearby.hasLocationPermission.mockResolvedValue(false);
+    await useNearbyStore.getState().load('u1');
+    expect(useNearbyStore.getState().denied).toBe(true);
+    expect(nearby.getApproxPosition).not.toHaveBeenCalled();
+  });
+
+  it('recheckPermission: clears the refusal only when granted, and only reads', async () => {
+    await useNearbyStore.getState().load('u1');
+    useNearbyStore.setState({ denied: true });
+    nearby.hasLocationPermission.mockResolvedValue(false);
+    await useNearbyStore.getState().recheckPermission('u1');
+    expect(useNearbyStore.getState().denied).toBe(true);
+
+    nearby.hasLocationPermission.mockResolvedValue(true);
+    await useNearbyStore.getState().recheckPermission('u1');
+    expect(useNearbyStore.getState().denied).toBe(false);
+    expect((await loadNearbyPrefs('u1')).denied).toBe(false);
+    expect(nearby.getApproxPosition).not.toHaveBeenCalled();
+    expect(Analytics.nearbyLocationRequested).not.toHaveBeenCalled();
+  });
+
+  it('recheckPermission: not refused, nothing to re-read', async () => {
+    await useNearbyStore.getState().load('u1');
+    nearby.hasLocationPermission.mockClear();
+    await useNearbyStore.getState().recheckPermission('u1');
+    expect(nearby.hasLocationPermission).not.toHaveBeenCalled();
+  });
+});
+
 describe('locateMe — her tap', () => {
   beforeEach(async () => { await useNearbyStore.getState().load('u1'); });
 

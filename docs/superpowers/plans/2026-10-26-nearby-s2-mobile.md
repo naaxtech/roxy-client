@@ -24,7 +24,7 @@ owns `apps/studio`; nobody touches `supabase/` here). Line it moves: retained re
   in 24 h and is for rails, so nearby prefs get their own key `roxy.nearby.v1:<id>`, cleared on sign-out.
 - `useRail` is module-private in `useDiscoverData.ts`, and four Discover screen suites mock that whole module. Move
   it to `components/discover/useRail.ts` (re-imported by `useDiscoverData`) so the nearby rail can reuse it.
-- No member create-community path exists in the app (Studio only), so the empty state is copy plus "look farther".
+- No member create-community path exists in the app (Studio only), so the empty state is copy plus what she can do: "Widen to <next distance>" (or "Clear filters") and "Choose a city".
 
 ## Files
 
@@ -48,7 +48,7 @@ optional `joinLabel`, `joinTestID`), `app/(tabs)/discover/index.tsx` (rail), `ap
    (Choose a city only), skeleton rows, rows with band + city + members and Join / Ask to join (store's
    `joinCommunity`), empty, error + retry, "See all" → `/communities?near=1`.
 4. Nearby browser: origin line + Change (city picker), Filters button, active filters as removable chips, the same
-   states, 50 rows. Filter sheet: distance (10/25/50/100/"Anywhere in the country" = 1000), category (multi),
+   states, 50 rows. Filter sheet: distance (10/25/50/100/1,000 km), category (multi),
    meets (All / In person / In person and online — online-only cannot be nearby), who can join (All / Open to
    join); draft + "Show communities" + Reset.
 5. City picker sheet: debounced (300 ms) `search_cities` from 2 characters, stale answers dropped, rows
@@ -81,4 +81,4 @@ the stray `\r\r\n` HEAD already had (git stores them as non-text), so their diff
 ## Owner-gated / follow-ups
 
 - Install the tree with `expo-location` (the shared `node_modules` lacks it) before any web export or APK.
-- Empty state's "start one" action waits for a member create-community path (Studio only today).
+- No "start one" action in the empty state while creating a community is Studio-only (spec › Client).

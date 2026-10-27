@@ -285,11 +285,12 @@ BEGIN
   IF v_me IS NULL THEN
     RAISE EXCEPTION 'not authenticated' USING ERRCODE = '42501';
   END IF;
-  -- POST only: a GET carries her position in the URL, and the API gateway logs
-  -- URLs. (Under PostgREST a STABLE function also runs READ ONLY, POST or not.)
-  -- src: https://docs.postgrest.org/en/v14/references/transactions.html · PostgREST v14.4 · 2026-10-26
-  IF current_setting('request.method', true) = 'GET' THEN
-    RAISE EXCEPTION 'call this with POST, never GET' USING ERRCODE = '0A000';
+  -- POST only: a GET (or a HEAD, which PostgREST runs exactly like a GET)
+  -- carries her position in the URL, and the API gateway logs URLs. (Under
+  -- PostgREST a STABLE function also runs READ ONLY, POST or not.)
+  -- src: https://docs.postgrest.org/en/v14/references/transactions.html · PostgREST v14.4 · 2026-10-28
+  IF current_setting('request.method', true) IN ('GET', 'HEAD') THEN
+    RAISE EXCEPTION 'call this with POST, never GET or HEAD' USING ERRCODE = '0A000';
   END IF;
 
   -- Errors name the rule, never the value: her position must not reach a log.
@@ -437,8 +438,8 @@ DECLARE
   v_like text;
 BEGIN
   -- POST only, like the suggestions: what she types is where she is looking.
-  IF current_setting('request.method', true) = 'GET' THEN
-    RAISE EXCEPTION 'call this with POST, never GET' USING ERRCODE = '0A000';
+  IF current_setting('request.method', true) IN ('GET', 'HEAD') THEN
+    RAISE EXCEPTION 'call this with POST, never GET or HEAD' USING ERRCODE = '0A000';
   END IF;
   IF char_length(v_q) NOT BETWEEN 2 AND 60 THEN
     RAISE EXCEPTION 'search needs 2 to 60 characters' USING ERRCODE = '22023';

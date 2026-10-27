@@ -86,8 +86,8 @@ Tests: `scripts/__tests__/load-cities.test.mjs` (`node --test`). Local run only,
 
 ## After review (independent reviewer, 2026-10-26)
 
-- The location reads refuse `request.method = 'GET'` (PostgREST v14 sets it), because a GET puts her
-  position or her city search in a URL that the gateway logs. The client must call them with POST
+- The location reads refuse `request.method IN ('GET', 'HEAD')` (PostgREST v14 sets it), because a GET
+  or HEAD puts her position or her city search in a URL that the gateway logs. The client must call them with POST
   (supabase-js `rpc()` default, never `{ get: true }`). Check T14.
 - `set_community_location` checks who is calling before it looks at the row, so a stranger cannot
   tell a missing community from a private one, and cannot lock it.

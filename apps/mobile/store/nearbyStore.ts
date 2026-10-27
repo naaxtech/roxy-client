@@ -34,6 +34,12 @@ type NearbyState = {
   load: (userId: string) => Promise<void>;
   /** Her tap on "Use my location": asks, locates, remembers the source. */
   locateMe: (userId: string | null | undefined) => Promise<PositionResult>;
+  /**
+   * After a refusal: reads (never asks) whether location is granted now, as it
+   * is once she turns it on in Settings, and if so clears the refusal so
+   * "Use my location" comes back. Locates nothing: that still takes her tap.
+   */
+  recheckPermission: (userId: string | null | undefined) => Promise<void>;
   chooseCity: (userId: string | null | undefined, city: ChosenCity) => void;
   setFilters: (userId: string | null | undefined, filters: NearbyFilters) => void;
 };
@@ -95,7 +101,16 @@ export const useNearbyStore = create<NearbyState>((set, get) => {
           locating: false,
           locationProblem: null,
         });
-        if (prefs.source === 'location' && !prefs.denied && (await hasLocationPermission())) {
+        if (prefs.denied) {
+          // A refusal is re-read, never re-asked: she may have turned
+          // location on in Settings since.
+          if ((await hasLocationPermission()) && get().loadedFor === userId) {
+            set({ denied: false });
+            persist(userId);
+          }
+          return;
+        }
+        if (prefs.source === 'location' && (await hasLocationPermission())) {
           // Already granted: re-reading is not asking, and not counted as her
           // request. A silent miss explains nothing (she did not ask): the
           // prompt simply comes back.
@@ -134,6 +149,15 @@ export const useNearbyStore = create<NearbyState>((set, get) => {
         () => { if (locatingNow === run) locatingNow = null; },
       );
       return run;
+    },
+
+    recheckPermission: async (userId) => {
+      if (!get().denied) return;
+      const forMember = get().loadedFor;
+      const granted = await hasLocationPermission();
+      if (!granted || get().loadedFor !== forMember || !get().denied) return;
+      set({ denied: false, locationProblem: null });
+      persist(userId);
     },
 
     chooseCity: (userId, city) => {

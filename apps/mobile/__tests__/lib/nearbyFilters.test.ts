@@ -12,19 +12,27 @@ import {
   RADIUS_CHIPS,
   CATEGORY_CHIPS,
   activeNearbyFilters,
+  clearNarrowingFilters,
+  nearbyEmptyAdvice,
   nearbyRpcFilters,
+  radiusLabel,
   removeNearbyFilter,
   sameNearbyFilters,
   sanitizeNearbyFilters,
   toggleCategory,
+  widenLabel,
+  widerRadius,
   type NearbyFilters,
 } from '../../lib/nearbyFilters';
 import { NEARBY_RADII_KM } from '../../lib/nearbyCoords';
 
 describe('the choices', () => {
-  it('distance offers exactly the radii the RPC accepts, the widest as "Anywhere in the country"', () => {
+  it('distance offers exactly the radii the RPC accepts, the widest named for what it is: 1,000 km', () => {
     expect(RADIUS_CHIPS.map((c) => Number(c.key))).toEqual([...NEARBY_RADII_KM]);
-    expect(RADIUS_CHIPS[RADIUS_CHIPS.length - 1].label).toBe('Anywhere in the country');
+    // A 1000 km circle is not "anywhere in the country" (it is a distance from
+    // her, not a border): the label says the number.
+    expect(RADIUS_CHIPS.map((c) => c.label)).toEqual(['10 km', '25 km', '50 km', '100 km', '1,000 km']);
+    expect(RADIUS_CHIPS.some((c) => /anywhere|country/i.test(c.label))).toBe(false);
   });
 
   it('the four categories, in the Studio form\'s words', () => {
@@ -100,8 +108,60 @@ describe('active filters as removable chips', () => {
     expect(removeNearbyFilter(busy, 'nonsense')).toEqual(busy);
   });
 
-  it('the widest radius reads "Anywhere in the country"', () => {
-    expect(activeNearbyFilters({ ...DEFAULT_NEARBY_FILTERS, radiusKm: 1000 })[0].label).toBe('Anywhere in the country');
+  it('the widest radius reads "Within 1,000 km", like every other radius', () => {
+    expect(activeNearbyFilters({ ...DEFAULT_NEARBY_FILTERS, radiusKm: 1000 })[0].label).toBe('Within 1,000 km');
+    expect(radiusLabel(1000)).toBe('Within 1,000 km');
+    expect(radiusLabel(25)).toBe('Within 25 km');
+  });
+});
+
+describe('nothing nearby — what she can do instead (members cannot start a community in the app)', () => {
+  it('widerRadius steps out one radius at a time and stops at the widest', () => {
+    expect(widerRadius(10)).toBe(25);
+    expect(widerRadius(25)).toBe(50);
+    expect(widerRadius(50)).toBe(100);
+    expect(widerRadius(100)).toBe(1000);
+    expect(widerRadius(1000)).toBeNull();
+    expect(widenLabel(100)).toBe('Widen to 100 km');
+    expect(widenLabel(1000)).toBe('Widen to 1,000 km');
+  });
+
+  it('no filters on: try a wider distance or another city, and the next distance out', () => {
+    expect(nearbyEmptyAdvice(DEFAULT_NEARBY_FILTERS)).toEqual({
+      body: 'No communities near you yet. Try a wider distance or another city.',
+      widenTo: 100,
+      clearFilters: false,
+    });
+  });
+
+  it('already at the widest: another city is the only move left', () => {
+    expect(nearbyEmptyAdvice({ ...DEFAULT_NEARBY_FILTERS, radiusKm: 1000 })).toEqual({
+      body: 'No communities within 1,000 km yet. Try another city.',
+      widenTo: null,
+      clearFilters: false,
+    });
+  });
+
+  it('a kind, a way of meeting or open-only is on: clearing those comes first', () => {
+    for (const f of [
+      { ...DEFAULT_NEARBY_FILTERS, categories: ['support' as const] },
+      { ...DEFAULT_NEARBY_FILTERS, meets: 'both' as const },
+      { ...DEFAULT_NEARBY_FILTERS, openOnly: true },
+    ]) {
+      expect(nearbyEmptyAdvice(f)).toEqual({
+        body: 'Nothing near you matches these filters yet. Clear them, or try another city.',
+        widenTo: null,
+        clearFilters: true,
+      });
+    }
+  });
+
+  it('a distance she widened to is not a "filter" to clear: clearing never pulls her back in', () => {
+    // She tapped Widen to 100 km and still found nothing: the next move is
+    // farther again, not "Clear filters", which used to reset her to 50 km.
+    expect(nearbyEmptyAdvice({ ...DEFAULT_NEARBY_FILTERS, radiusKm: 100 }).widenTo).toBe(1000);
+    const busy: NearbyFilters = { radiusKm: 1000, categories: ['identity'], meets: 'in_person', openOnly: true };
+    expect(clearNarrowingFilters(busy)).toEqual({ radiusKm: 1000, categories: [], meets: 'all', openOnly: false });
   });
 });
 

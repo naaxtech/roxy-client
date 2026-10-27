@@ -1,7 +1,10 @@
 /**
  * The city picker: a debounced `search_cities` from two characters, answers
- * that arrive late are dropped, results read "City, Region, Country", and
- * "Use my location instead" is always there.
+ * that arrive late are dropped, results read "City, Region, Country", the
+ * GeoNames credit is on the sheet, and her location is offered only in a way
+ * that cannot re-ask after she said no: "Use my location instead" before a
+ * refusal, "Open settings" after one (native), nothing where there is no
+ * settings page to send her to (web).
  */
 import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
@@ -24,10 +27,20 @@ const QZ = { id: 3520339, name: 'Quezaltepeque', admin1: null, country_code: 'SV
 
 const onChoose = jest.fn();
 const onUseLocation = jest.fn();
+const onOpenSettings = jest.fn();
 const onClose = jest.fn();
 
-function open() {
-  return render(<CityPickerSheet visible onClose={onClose} onChoose={onChoose} onUseLocation={onUseLocation} />);
+function open(location: 'ask' | 'settings' | 'none' = 'ask') {
+  return render(
+    <CityPickerSheet
+      visible
+      onClose={onClose}
+      onChoose={onChoose}
+      location={location}
+      onUseLocation={onUseLocation}
+      onOpenSettings={onOpenSettings}
+    />,
+  );
 }
 
 async function settle(ms: number) {
@@ -40,6 +53,7 @@ beforeEach(() => {
   searchCities.mockReset().mockResolvedValue([QC]);
   onChoose.mockReset();
   onUseLocation.mockReset();
+  onOpenSettings.mockReset();
   onClose.mockReset();
 });
 
@@ -119,9 +133,34 @@ describe('CityPickerSheet', () => {
     expect(v.getByTestId(`city-option-${QC.id}`)).toBeTruthy();
   });
 
-  it('"Use my location instead" is always offered', () => {
-    const v = open();
+  it('before any refusal: "Use my location instead"', () => {
+    const v = open('ask');
     fireEvent.press(v.getByTestId('city-use-location'));
     expect(onUseLocation).toHaveBeenCalledTimes(1);
+    expect(v.queryByTestId('city-open-settings')).toBeNull();
+  });
+
+  it('after she said no (native): never "Use my location" again, only a tap that says it opens Settings', () => {
+    const v = open('settings');
+    expect(v.queryByTestId('city-use-location')).toBeNull();
+    expect(v.queryByText(/Use my location/)).toBeNull();
+    const settings = v.getByTestId('city-open-settings');
+    expect(settings).toHaveTextContent('Turn on location in Settings');
+    expect(v.getByLabelText('Open Settings to turn on location')).toBeTruthy();
+    fireEvent.press(settings);
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    expect(onUseLocation).not.toHaveBeenCalled();
+  });
+
+  it('after she said no where there is no Settings to open (web): no location offer at all', () => {
+    const v = open('none');
+    expect(v.queryByTestId('city-use-location')).toBeNull();
+    expect(v.queryByTestId('city-open-settings')).toBeNull();
+    expect(v.getByTestId('city-picker-input')).toBeTruthy();
+  });
+
+  it('credits GeoNames (CC BY 4.0) for the city names', () => {
+    const v = open();
+    expect(v.getByTestId('city-picker-attribution')).toHaveTextContent('City data © GeoNames (CC BY 4.0)');
   });
 });

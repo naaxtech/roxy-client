@@ -139,22 +139,41 @@ describe('NearbyBrowser', () => {
     expect(v.getByTestId('city-picker')).toBeTruthy();
   });
 
-  it('empty with filters on: Clear filters puts the defaults back', async () => {
+  it('empty with filters on: Clear filters clears what she filtered for and keeps her distance', async () => {
     nearby.fetchNearby.mockResolvedValue([]);
     setStore({ origin: { kind: 'location', lat: 14.6, lng: 121 }, filters: BUSY });
     const v = await mount(<NearbyBrowser />);
     await waitFor(() => expect(v.getByTestId('nearby-browser-empty')).toBeTruthy());
-    await act(async () => { fireEvent.press(v.getByText('Clear filters')); });
-    expect(useNearbyStore.getState().filters).toEqual(DEFAULT_NEARBY_FILTERS);
+    expect(v.getByText('Nothing near you matches these filters yet. Clear them, or try another city.')).toBeTruthy();
+    expect(v.getByTestId('nearby-empty-city')).toBeTruthy();
+    await act(async () => { fireEvent.press(v.getByTestId('nearby-empty-clear')); });
+    expect(useNearbyStore.getState().filters).toEqual({ ...DEFAULT_NEARBY_FILTERS, radiusKm: BUSY.radiusKm });
   });
 
-  it('empty with no filters: Look farther widens to the whole country', async () => {
+  it('empty with no filters: widen one distance out, or choose a city; never a "start one" she cannot do', async () => {
     nearby.fetchNearby.mockResolvedValue([]);
     setStore({ origin: { kind: 'location', lat: 14.6, lng: 121 } });
     const v = await mount(<NearbyBrowser />);
     await waitFor(() => expect(v.getByTestId('nearby-browser-empty')).toBeTruthy());
-    await act(async () => { fireEvent.press(v.getByText('Look farther')); });
-    expect(useNearbyStore.getState().filters.radiusKm).toBe(1000);
+    expect(v.getByText('No communities near you yet. Try a wider distance or another city.')).toBeTruthy();
+    expect(v.queryByText(/start one|be the first/i)).toBeNull();
+    expect(v.getByTestId('nearby-empty-widen')).toHaveTextContent('Widen to 100 km');
+    await act(async () => { fireEvent.press(v.getByTestId('nearby-empty-widen')); });
+    expect(useNearbyStore.getState().filters.radiusKm).toBe(100);
+    await waitFor(() => expect(v.getByTestId('nearby-empty-city')).toBeTruthy());
+    fireEvent.press(v.getByTestId('nearby-empty-city'));
+    expect(v.getByTestId('city-picker')).toBeTruthy();
+  });
+
+  it('empty at the widest distance: another city is the one move left', async () => {
+    nearby.fetchNearby.mockResolvedValue([]);
+    setStore({ origin: { kind: 'location', lat: 14.6, lng: 121 }, filters: { ...DEFAULT_NEARBY_FILTERS, radiusKm: 1000 } });
+    const v = await mount(<NearbyBrowser />);
+    await waitFor(() => expect(v.getByTestId('nearby-browser-empty')).toBeTruthy());
+    expect(v.getByText('No communities within 1,000 km yet. Try another city.')).toBeTruthy();
+    expect(v.queryByTestId('nearby-empty-widen')).toBeNull();
+    expect(v.queryByTestId('nearby-empty-clear')).toBeNull();
+    expect(v.getByTestId('nearby-empty-city')).toBeTruthy();
   });
 
   it('error: one sentence and Try again', async () => {

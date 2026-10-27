@@ -11,6 +11,7 @@
  */
 import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
+import { AppState, Linking, Platform, type AppStateStatus } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
@@ -79,6 +80,7 @@ const ROWS = [
 ];
 
 const CITY = { id: 1701668, label: 'Makati City, Metro Manila, Philippines' };
+const realOS = Platform.OS;
 
 /** Render, then let the rail's first answer land inside act (no stray updates after a test). */
 async function mount(ui: React.ReactElement) {
@@ -101,7 +103,13 @@ beforeEach(() => {
   nearby.fetchNearby.mockResolvedValue(ROWS);
   nearby.fetchInCity.mockResolvedValue(ROWS);
   Object.values(Analytics).forEach((m) => m.mockReset());
+  Object.defineProperty(Platform, 'OS', { value: realOS, configurable: true });
   setStore({});
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
+  Object.defineProperty(Platform, 'OS', { value: realOS, configurable: true });
 });
 
 describe('NearbyRail — not asked yet', () => {
@@ -150,6 +158,48 @@ describe('NearbyRail — she said no to location', () => {
     expect(nearby.getApproxPosition).not.toHaveBeenCalled();
   });
 
+  it('the city picker never offers "Use my location" after a refusal; on a phone it offers Settings instead', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+    const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue(undefined);
+    setStore({ denied: true });
+    const v = await mount(<NearbyRail />);
+    fireEvent.press(v.getByTestId('nearby-choose-city'));
+    expect(v.getByTestId('city-picker')).toBeTruthy();
+    expect(v.queryByTestId('city-use-location')).toBeNull();
+    await act(async () => { fireEvent.press(v.getByTestId('city-open-settings')); });
+    expect(openSettings).toHaveBeenCalledTimes(1);
+    // Opening Settings is her own trip there: no permission request, no fix.
+    expect(nearby.getApproxPosition).not.toHaveBeenCalled();
+  });
+
+  it('on the web, after a refusal, the picker offers no location at all (no Settings page to open)', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+    setStore({ denied: true });
+    const v = await mount(<NearbyRail />);
+    fireEvent.press(v.getByTestId('nearby-choose-city'));
+    expect(v.queryByTestId('city-use-location')).toBeNull();
+    expect(v.queryByTestId('city-open-settings')).toBeNull();
+  });
+
+  it('back from Settings with location on: "Use my location" returns (read, never asked, nothing located)', async () => {
+    let onChange: ((s: AppStateStatus) => void) | null = null;
+    jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, handler) => {
+      onChange = handler as (s: AppStateStatus) => void;
+      return { remove: jest.fn() } as unknown as ReturnType<typeof AppState.addEventListener>;
+    });
+    setStore({ denied: true });
+    const v = await mount(<NearbyRail />);
+    expect(v.queryByTestId('nearby-use-location')).toBeNull();
+
+    nearby.hasLocationPermission.mockResolvedValue(true);
+    expect(onChange).not.toBeNull();
+    await act(async () => { onChange!('active'); });
+    await waitFor(() => expect(v.getByTestId('nearby-use-location')).toBeTruthy());
+    expect(useNearbyStore.getState().denied).toBe(false);
+    // She has not tapped anything: no position is read until she does.
+    expect(nearby.getApproxPosition).not.toHaveBeenCalled();
+  });
+
   it('a timeout explains itself and keeps both ways in', async () => {
     setStore({ locationProblem: 'timeout' });
     const v = await mount(<NearbyRail />);
@@ -195,12 +245,23 @@ describe('NearbyRail — with somewhere to look from', () => {
     expect(nearby.fetchNearby).not.toHaveBeenCalled();
   });
 
-  it('empty: says what will appear and what to do', async () => {
+  it('empty: says what she can do, and both moves are right there (no "start one": members cannot)', async () => {
     nearby.fetchNearby.mockResolvedValue([]);
     setStore({ origin: { kind: 'location', lat: 14.6, lng: 121 } });
     const v = await mount(<NearbyRail />);
     await waitFor(() => expect(v.getByTestId('nearby-rail-empty')).toBeTruthy());
-    expect(v.getByText(/No communities near you yet/)).toBeTruthy();
+    expect(v.getByText('No communities near you yet. Try a wider distance or another city.')).toBeTruthy();
+    expect(v.queryByText(/start one|be the first/i)).toBeNull();
+
+    await act(async () => { fireEvent.press(v.getByTestId('nearby-empty-widen')); });
+    expect(useNearbyStore.getState().filters.radiusKm).toBe(100);
+    await waitFor(() => expect(nearby.fetchNearby).toHaveBeenLastCalledWith(
+      expect.objectContaining({ filters: expect.objectContaining({ radiusKm: 100 }) }),
+    ));
+
+    await waitFor(() => expect(v.getByTestId('nearby-empty-city')).toBeTruthy());
+    fireEvent.press(v.getByTestId('nearby-empty-city'));
+    expect(v.getByTestId('city-picker')).toBeTruthy();
   });
 
   it('error: one sentence and Try again, which asks again', async () => {

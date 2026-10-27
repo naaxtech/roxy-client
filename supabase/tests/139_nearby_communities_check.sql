@@ -447,7 +447,7 @@ BEGIN
   END IF;
   RAISE NOTICE 'PASS 139 T12 a moved city re-points its communities; a deleted one clears them to online';
 
-  -- ── T14 POST only: a GET would carry her position in a logged URL ───────
+  -- ── T14 POST only: a GET or HEAD would carry her position in a logged URL ─
   PERFORM set_config('request.method', 'GET', true);
   PERFORM pg_temp.is139('T14 GET nearby',
     left(pg_temp.as139(a, near_q || '14.6, 121.0, 10, NULL, NULL, false, 20)'), 9), 'ERR 0A000');
@@ -455,11 +455,21 @@ BEGIN
     left(pg_temp.as139(a, format('SELECT count(*)::text FROM public.suggest_communities_in_city(%s, 10, NULL, NULL, false, 20)', c_a)), 9), 'ERR 0A000');
   PERFORM pg_temp.is139('T14 GET search',
     left(pg_temp.as139(a, 'SELECT count(*)::text FROM public.search_cities(''nearbytest'')'), 9), 'ERR 0A000');
+  -- HEAD is GET without the body: PostgREST runs it the same way, with the
+  -- arguments in the same logged query string.
+  -- src: https://docs.postgrest.org/en/v14/references/transactions.html · PostgREST v14.4 · 2026-10-28
+  PERFORM set_config('request.method', 'HEAD', true);
+  PERFORM pg_temp.is139('T14 HEAD nearby',
+    left(pg_temp.as139(a, near_q || '14.6, 121.0, 10, NULL, NULL, false, 20)'), 9), 'ERR 0A000');
+  PERFORM pg_temp.is139('T14 HEAD in city',
+    left(pg_temp.as139(a, format('SELECT count(*)::text FROM public.suggest_communities_in_city(%s, 10, NULL, NULL, false, 20)', c_a)), 9), 'ERR 0A000');
+  PERFORM pg_temp.is139('T14 HEAD search',
+    left(pg_temp.as139(a, 'SELECT count(*)::text FROM public.search_cities(''nearbytest'')'), 9), 'ERR 0A000');
   PERFORM set_config('request.method', 'POST', true);
   PERFORM pg_temp.is139('T14 POST nearby',
     pg_temp.as139(a, near_q || '14.6, 121.0, 10, NULL, NULL, false, 20)'), '139-near:under_10');
   PERFORM set_config('request.method', '', true);
-  RAISE NOTICE 'PASS 139 T14 GET is refused for every location read; POST works';
+  RAISE NOTICE 'PASS 139 T14 GET and HEAD are refused for every location read; POST works';
 
   -- ── T13 anon: no way in ──────────────────────────────────────────────────
   PERFORM pg_temp.is139('T13 anon nearby',

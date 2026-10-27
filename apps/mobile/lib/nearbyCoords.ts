@@ -44,7 +44,7 @@ export function distanceBandLabel(band: string): string | null {
   return isDistanceBand(band) ? BAND_LABELS[band] : null;
 }
 
-/** The only radii `suggest_nearby_communities` accepts (1000 = the widest "anywhere" setting). */
+/** The only radii `suggest_nearby_communities` accepts, nearest first (1000 = the widest). */
 export const NEARBY_RADII_KM = [10, 25, 50, 100, 1000] as const;
 export type NearbyRadiusKm = (typeof NEARBY_RADII_KM)[number];
 

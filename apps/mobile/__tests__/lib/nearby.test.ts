@@ -29,7 +29,9 @@ jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn() }));
 import {
   CITY_QUERY_MAX,
   POSITION_TIMEOUT_MS,
+  WEB_PERMISSION_TIMEOUT_MS,
   WEB_POSITION_MAX_AGE_MS,
+  GEONAMES_ATTRIBUTION,
   cityLabel,
   fetchInCity,
   fetchNearby,
@@ -70,6 +72,11 @@ beforeEach(() => {
 afterAll(() => {
   Object.defineProperty(Platform, 'OS', { value: realOS, configurable: true });
 });
+
+/** Lets every already-settled promise chain run (fake timers do not touch microtasks). */
+async function flushMicrotasks() {
+  for (let i = 0; i < 10; i += 1) await Promise.resolve();
+}
 
 /** Nothing the module logged may carry a coordinate digit string. */
 function expectNoCoordinatesLogged() {
@@ -113,13 +120,58 @@ describe('getApproxPosition — rounded on the device before it goes anywhere', 
   });
 
   it('{ ask: false } (the silent resume) reads the grant and can never show a prompt', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
     Location.getForegroundPermissionsAsync.mockResolvedValueOnce({ status: 'granted', granted: true });
     Location.getCurrentPositionAsync.mockResolvedValue({ coords: RAW, timestamp: 1 });
     await expect(getApproxPosition({ ask: false })).resolves.toEqual({ ok: true, lat: 14.7, lng: 121 });
+    // Android: expo-location 17 defaults mayShowUserSettingsDialog to true, which
+    // opens the system "turn on device location" dialog when the network
+    // provider is off. A resume she did not tap must never put that on screen.
+    expect(Location.getCurrentPositionAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ mayShowUserSettingsDialog: false }),
+    );
 
     Location.getForegroundPermissionsAsync.mockResolvedValueOnce({ status: 'undetermined', granted: false });
     await expect(getApproxPosition({ ask: false })).resolves.toEqual({ ok: false, reason: 'denied' });
     expect(Location.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('her tap may show Android\'s "turn on location" dialog: she asked for her location', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+    grant();
+    Location.getCurrentPositionAsync.mockResolvedValue({ coords: RAW, timestamp: 1 });
+    await getApproxPosition();
+    expect(Location.getCurrentPositionAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ mayShowUserSettingsDialog: true }),
+    );
+  });
+
+  it('web: a browser prompt she ignores ends as a timeout, never a rail that loads forever', async () => {
+    jest.useFakeTimers();
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+    // expo-location's web request waits on navigator.geolocation with no
+    // timeout of its own: an ignored prompt never settles.
+    Location.requestForegroundPermissionsAsync.mockReturnValue(new Promise(() => undefined));
+    let settled: unknown = 'pending';
+    const pending = getApproxPosition();
+    void pending.then((r) => { settled = r; });
+    jest.advanceTimersByTime(WEB_PERMISSION_TIMEOUT_MS - 1);
+    await flushMicrotasks();
+    expect(settled).toBe('pending');
+    jest.advanceTimersByTime(1);
+    await expect(pending).resolves.toEqual({ ok: false, reason: 'timeout' });
+    expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
+  });
+
+  it('native: the OS permission dialog is not raced (she may read it as long as she likes)', async () => {
+    jest.useFakeTimers();
+    Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+    Location.requestForegroundPermissionsAsync.mockReturnValue(new Promise(() => undefined));
+    let settled: unknown = 'pending';
+    void getApproxPosition().then((r) => { settled = r; });
+    jest.advanceTimersByTime(WEB_PERMISSION_TIMEOUT_MS * 4);
+    await flushMicrotasks();
+    expect(settled).toBe('pending');
   });
 
   it('denied: says so and never reads a position', async () => {
@@ -301,6 +353,12 @@ describe('cityLabel — "City, Region, Country"', () => {
     } finally {
       intl.DisplayNames = real;
     }
+  });
+});
+
+describe('GEONAMES_ATTRIBUTION — the CC BY 4.0 credit the city data needs', () => {
+  it('names GeoNames and the licence', () => {
+    expect(GEONAMES_ATTRIBUTION).toBe('City data © GeoNames (CC BY 4.0)');
   });
 });
 

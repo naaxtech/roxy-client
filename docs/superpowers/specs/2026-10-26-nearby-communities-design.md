@@ -25,18 +25,32 @@ A location leak can out a member. So:
    leaves the phone. The rounded value goes only into a single RPC call, and nothing writes it to a table.
    Analytics records "nearby used" plus the radius chosen, never coordinates or city.
 2. **Permission is asked in context, never at launch.** She taps "Use my location" on the Nearby rail. The
-   app requests **coarse** location only: Android `ACCESS_COARSE_LOCATION`, iOS when-in-use. If she
-   refuses, the rail offers "Choose a city" instead and asks no more.
+   app requests **coarse** location only: Android `ACCESS_COARSE_LOCATION` (fine and background are in
+   `blockedPermissions`), iOS when-in-use with `NSLocationDefaultAccuracyReduced` so the prompt offers
+   approximate location with Precise off. If she refuses, the rail offers "Choose a city" instead and
+   asks no more: the city picker drops "Use my location instead" and, on a phone, offers only "Turn on
+   location in Settings" (`Linking.openSettings`, which asks nothing; the web offers nothing). The grant
+   is re-read (never requested) on load and when the app returns to the foreground, so turning it on in
+   Settings brings "Use my location" back; nothing is located until she taps it.
+   - Nothing she did not tap may put a dialog on screen. The silent resume passes
+     `mayShowUserSettingsDialog: false` (expo-location 17 defaults it to true on Android and would open the
+     system "turn on device location" dialog by itself); her own tap may show it.
+   - An ignored browser prompt is bounded (20 s on the web) and ends as "took too long", never as a rail
+     that loads forever.
 3. **A community's location is its owner's choice, at city level.** It is a city centroid, not an address.
    Online-only communities have no location and never appear as "nearby".
 4. Ghost mode is unaffected. She is looking, not being shown.
+5. No session replay is live today; any future replay plugin must mask the Nearby views (the rail, the
+   browser, the city picker and the filter sheet), because what is on them says where she is.
 
 ## Design
 
 **Data (migration 139; 137 = notifications, 138 = Archive search):**
 - `cities` reference table: `id`, `name`, `ascii_name`, `admin1`, `country_code`, `lat`, `lng`,
   `population`. Read-only to members; RLS on, SELECT to `authenticated`. Seeded from GeoNames
-  `cities15000` (CC-BY 4.0, attribution in About) by a loader script, not inside the migration.
+  `cities15000` (CC-BY 4.0) by a loader script, not inside the migration. The credit "City data ©
+  GeoNames (CC BY 4.0)" is on the city picker. The app has no About/licences screen yet; when one ships,
+  the same line goes there too.
 - `communities` gets these columns:
   - `city_id → cities` (nullable)
   - `meets` text CHECK in (`online`, `in_person`, `both`), default `online`
@@ -44,6 +58,8 @@ A location leak can out a member. So:
 - RPC `suggest_nearby_communities(p_lat, p_lng, p_radius_km, p_categories text[], p_meets text[],
   p_open_only bool, p_limit int)`:
   - `SECURITY INVOKER`, so visibility RLS still decides what she can see;
+  - POST only: GET and HEAD are refused, since either puts her position in a URL the gateway logs (the
+    same for the in-city RPC and `search_cities`);
   - rejects coordinates that are not rounded to one decimal place;
   - bounding-box prefilter, then haversine;
   - returns the community row plus a **distance band** (`under_10`, `under_25`, `under_50`, `under_100`,
@@ -62,7 +78,8 @@ A location leak can out a member. So:
   - Otherwise it shows rows with a distance band ("Within 10 km") and Join / Request.
   - "See all" opens `/communities?near=1` with the filter sheet.
 - **Filters** (Sheet + chips):
-  - distance: 10 / 25 / 50 / 100 km / anywhere in the country;
+  - distance: 10 / 25 / 50 / 100 / 1,000 km (the widest says its number: a 1000 km circle is not "anywhere
+    in the country");
   - category: the four categories;
   - meets: in person / online / both;
   - open to join vs request.
@@ -70,8 +87,10 @@ A location leak can out a member. So:
 - **Studio:** create-community gains City (autocomplete via `search_cities`) and Meets. A new
   "Edit community" form lets owners set them on existing communities. Without it the rail would be empty
   at launch.
-- Strings are localised; light theme tokens; loading, empty ("No communities near you yet — be the first
-  to start one" → create) and error states.
+- Strings are localised; light theme tokens; loading, empty and error states. Members cannot create a
+  community in the app (Studio does), so the empty state names only what she can do: "No communities near
+  you yet. Try a wider distance or another city." with "Widen to <next distance>" and "Choose a city"
+  (with filters on: "Clear filters", which keeps her distance; at 1,000 km: another city only).
 
 **Emotional-AI value:** which community kinds members look for near them (category and meets, joined
 from Nearby or not). This is aggregate behaviour with no location attached.
@@ -95,5 +114,6 @@ That restriction, if any, is enforced in the join RPC/policy, not here. Nearby o
 - SQL check file: bands correct; unrounded coordinates rejected; private, banned and blocked communities
   excluded; no table write anywhere receives her coordinates (assert `pg_stat_statements`-free: grep the
   RPC body for INSERT/UPDATE); anon refused.
-- e2e (read-only): Discover with geolocation granted (Playwright `geolocation` + `permissions`) shows the
-  rail; denied shows "Choose a city".
+- e2e (read-only, `apps/mobile/tests/e2e/nearby.spec.ts`): Discover with geolocation granted (Playwright
+  `geolocation` + `permissions`) settles into rows or the empty state and sends only the rounded pair by
+  POST; not granted ends on "Choose a city" with no position sent. Never against production.
