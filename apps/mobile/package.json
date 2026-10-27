@@ -107,7 +107,8 @@
       "^@react-native-firebase/(.*)$": "<rootDir>/__mocks__/@react-native-firebase/$1.js",
       "^posthog-react-native$": "<rootDir>/__mocks__/posthog-react-native.js",
       "^@react-native-async-storage/async-storage$": "@react-native-async-storage/async-storage/jest/async-storage-mock",
-      "^@stripe/stripe-react-native$": "<rootDir>/__mocks__/@stripe/stripe-react-native.js"
+      "^@stripe/stripe-react-native$": "<rootDir>/__mocks__/@stripe/stripe-react-native.js",
+      "^react-native-purchases$": "<rootDir>/__mocks__/react-native-purchases.js"
     },
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|@daily-co/.*|@shopify/.*)"

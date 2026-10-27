@@ -161,6 +161,10 @@ const ALWAYS_ALLOWED = new Set([
   '/messages',
   '/notifications',
   '/support',
+  // Roxy Supporter's paywall. Its gate is the server kill switch
+  // (supporter_enabled(), migration 140) and its own "Coming soon" state; the
+  // launch gate would draw "Discover is coming soon" over the You row's target.
+  '/supporter',
   '/community/create-post',
   '/community/create-event',
   '/blocked',

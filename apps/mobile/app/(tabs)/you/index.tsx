@@ -608,6 +608,10 @@ export default function ProfileScreen() {
                 walletCount={walletCount}
                 savedCount={(watchlist ?? []).length + savedBusinesses.length}
                 onOpenSaved={() => setShellTab('saved')}
+                // Roxy Supporter is offered to admitted members only: an
+                // applicant may never be let in, and a subscription she can't
+                // use is a refund waiting to happen.
+                supporterEligible={kind !== 'pending'}
               />
               <ProfileExtras userId={user.id} onOpenEntry={(slug) => router.push(`/archive/${slug}` as never)} />
               {!isBeta ? (

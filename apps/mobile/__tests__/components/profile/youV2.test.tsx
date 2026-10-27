@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, fireEvent, waitFor, within } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, within, act } from '@testing-library/react-native';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
@@ -18,6 +18,17 @@ jest.mock('../../../lib/supabase', () => ({
     from: () => ({ select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) }),
   },
 }));
+// The Supporter row reads the server's answer through lib/supporter; its pure
+// helpers (the status label) stay real.
+const mockSupporterState = jest.fn(async (): Promise<unknown> => ({ status: 'unavailable' }));
+const mockSupporterSubscribe = jest.fn((_cb: () => void) => () => undefined);
+jest.mock('../../../lib/supporter', () => ({
+  ...jest.requireActual('../../../lib/supporter'),
+  supporter: {
+    getState: () => mockSupporterState(),
+    subscribe: (cb: () => void) => mockSupporterSubscribe(cb),
+  },
+}));
 
 import { Text } from 'react-native';
 import { SelfControls } from '../../../components/profile/SelfControls';
@@ -33,6 +44,9 @@ const flat = (node: { props: { style?: unknown } }) =>
 beforeEach(() => {
   mockPush.mockClear();
   mockUpdate.mockClear();
+  mockSupporterState.mockReset();
+  mockSupporterState.mockResolvedValue({ status: 'unavailable' });
+  mockSupporterSubscribe.mockClear();
 });
 
 /**
@@ -97,9 +111,85 @@ describe('YouRows — the places You leads to', () => {
     expect(mockPush).toHaveBeenCalledWith('/(tabs)/you/settings');
   });
 
-  it('ships no Premium row (held for Nicole) and no dead button', () => {
-    const v = render(<YouRows userId="u1" onOpenSaved={jest.fn()} />);
+  it('never says "Premium": that name was never built', async () => {
+    const v = render(<YouRows userId="u1" onOpenSaved={jest.fn()} supporterEligible />);
+    await act(async () => undefined);
     expect(v.queryByText(/Premium/)).toBeNull();
+  });
+});
+
+/**
+ * Roxy Supporter on You. This used to assert the opposite — "ships no Premium
+ * row (held for Nicole) and no dead button" — because Premium (M176) was held
+ * on 2026-10-21. Nicole answered it on 2026-10-26 (polish/decisions.md, "Roxy
+ * Supporter (answers M176 Premium …)"), so the direction's entry point on You
+ * exists now, under its real name, between Sell on Roxy and Settings & safety.
+ *
+ * "No dead button" still holds: while the server kill switch is off, or this
+ * build has no RevenueCat key, the row is not drawn at all.
+ */
+describe('YouRows — Roxy Supporter (owner decision 2026-10-26)', () => {
+  it('draws "Roxy Supporter" when she can subscribe, and opens the paywall from You', async () => {
+    mockSupporterState.mockResolvedValue({ status: 'free' });
+    const v = render(<YouRows userId="u1" onOpenSaved={jest.fn()} supporterEligible />);
+    const row = await v.findByTestId('you-supporter-row');
+    expect(within(row).getByText('Roxy Supporter')).toBeTruthy();
+    expect(String(row.props.accessibilityLabel)).toBe('Roxy Supporter');
+    fireEvent.press(row);
+    expect(mockPush).toHaveBeenCalledWith('/supporter?source=you');
+  });
+
+  it('a Supporter sees her status from the server row: "Active · renews <date>"', async () => {
+    mockSupporterState.mockResolvedValue({
+      status: 'active', inGrace: false, periodEndsAt: new Date('2026-11-27T12:00:00Z'),
+      willRenew: true, store: 'play_store', productId: 'roxy_supporter_monthly',
+    });
+    const v = render(<YouRows userId="u1" onOpenSaved={jest.fn()} supporterEligible />);
+    expect(await v.findByText('Active · renews 27 Nov 2026')).toBeTruthy();
+    expect(String(v.getByTestId('you-supporter-row').props.accessibilityLabel))
+      .toBe('Roxy Supporter, Active · renews 27 Nov 2026');
+  });
+
+  it('sits between Sell on Roxy and Settings & safety (direction › You)', async () => {
+    mockSupporterState.mockResolvedValue({ status: 'free' });
+    const v = render(<YouRows userId="u1" onOpenSaved={jest.fn()} supporterEligible />);
+    await v.findByTestId('you-supporter-row');
+    const ids = within(v.getByTestId('you-rows')).getAllByRole('button').map((b) => b.props.testID);
+    expect(ids).toEqual(['you-row-wallet', 'you-row-saved', 'you-row-sell', 'you-supporter-row', 'you-row-settings']);
+  });
+
+  it('kill switch off (or no key): no row, so no dead entry', async () => {
+    const v = render(<YouRows userId="u1" onOpenSaved={jest.fn()} supporterEligible />);
+    await waitFor(() => expect(mockSupporterState).toHaveBeenCalled());
+    await act(async () => undefined);
+    expect(v.queryByTestId('you-supporter-row')).toBeNull();
+  });
+
+  it('a read error draws no row rather than a wrong one', async () => {
+    mockSupporterState.mockResolvedValue({ status: 'error' });
+    const v = render(<YouRows userId="u1" onOpenSaved={jest.fn()} supporterEligible />);
+    await waitFor(() => expect(mockSupporterState).toHaveBeenCalled());
+    await act(async () => undefined);
+    expect(v.queryByTestId('you-supporter-row')).toBeNull();
+  });
+
+  it('an applicant (not yet approved) is not offered a subscription, and nothing is asked', () => {
+    mockSupporterState.mockResolvedValue({ status: 'free' });
+    const v = render(<YouRows userId="u1" onOpenSaved={jest.fn()} />);
+    expect(v.queryByTestId('you-supporter-row')).toBeNull();
+    expect(mockSupporterState).not.toHaveBeenCalled();
+  });
+
+  it('re-reads when a purchase or restore changes her status', async () => {
+    mockSupporterState.mockResolvedValue({ status: 'free' });
+    const v = render(<YouRows userId="u1" onOpenSaved={jest.fn()} supporterEligible />);
+    await v.findByTestId('you-supporter-row');
+    const changed = mockSupporterSubscribe.mock.calls[0][0];
+    mockSupporterState.mockResolvedValue({
+      status: 'active', inGrace: false, periodEndsAt: null, willRenew: null, store: null, productId: null,
+    });
+    changed();
+    expect(await v.findByText('Active')).toBeTruthy();
   });
 });
 

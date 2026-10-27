@@ -118,6 +118,11 @@ describe('featureForPath', () => {
       '/you/feedback',
       '/notifications',
       '/support',
+      // Roxy Supporter's paywall: its gate is the server kill switch
+      // (supporter_enabled), not the launch gate — a launch-gated paywall
+      // would draw "Discover is coming soon" over the You row's destination.
+      '/supporter',
+      '/supporter?reason=chapters',
       '/blocked',
       '/community/channels',
       '/community/channels/abc',

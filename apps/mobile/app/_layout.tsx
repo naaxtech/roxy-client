@@ -16,6 +16,7 @@ import { BadgeCelebration } from '../components/gamification/BadgeCelebration';
 import { FirstPostCelebrationHost } from '../components/feed/FirstPostCelebration';
 import { useCelebrationStore } from '../store/celebrationStore';
 import { Analytics } from '../lib/analytics';
+import { syncSupporterIdentity } from '../lib/supporter';
 import { logError, logBreadcrumb, setCrashlyticsUser, hashUserId } from '../lib/errorLogger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ReportSheet } from '../components/safety/ReportSheet';
@@ -103,6 +104,10 @@ function AppNavigator() {
   useEffect(() => {
     Analytics.setUser(user?.id ?? null);
     setCrashlyticsUser(user?.id ?? null);
+    // RevenueCat follows the session: configured once with her Supabase id on
+    // sign-in, logIn on an account switch, logOut on sign-out. A no-op while
+    // the build has no key or the Supporter kill switch is off (lib/supporter).
+    void syncSupporterIdentity(user?.id ?? null);
     if (user?.id) {
       posthog?.identify(hashUserId(user.id));
     } else {

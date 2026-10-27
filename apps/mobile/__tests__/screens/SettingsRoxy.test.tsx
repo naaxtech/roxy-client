@@ -192,7 +192,12 @@ describe('Settings — every row stays', () => {
     expect(v.getByTestId('settings-ghost').props.accessibilityRole).toBe('switch');
   });
 
-  it('ships no Premium or discreet entry yet, and no language row (held, no dead buttons)', () => {
+  // Premium (M176) was answered on 2026-10-26 as Roxy Supporter
+  // (polish/decisions.md). Its entry point is the "Roxy Supporter" row on You
+  // (YouRows, `you-supporter-row`), not a Settings row, and the name "Premium"
+  // never ships — so this still holds, for a different reason. Discreet mode
+  // (M175) and Language (M174) are still held.
+  it('names no Premium (M176 became Roxy Supporter, entered from You), no discreet entry, no language row', () => {
     const v = render(<SettingsScreen />);
     expect(v.queryByText(/Premium/)).toBeNull();
     expect(v.queryByText(/Discreet/)).toBeNull();

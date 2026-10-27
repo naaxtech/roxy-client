@@ -68,8 +68,9 @@ const THEME_CHOICES: { key: ThemeChoice; label: string }[] = [
  * Every other row Settings had stays (privacy and safety, chats, the streak,
  * support, account, sign out), restyled: sentence-case section labels, 24 dp
  * outline icons, M3 switches. Not here on purpose: Language (no translations
- * ship yet — M174 is held, and a picker with one language is a dead control),
- * Discreet mode and Roxy Premium (held for Nicole, M175/M176).
+ * ship yet — M174 is held, and a picker with one language is a dead control)
+ * and Discreet mode (held for Nicole, M175). Premium (M176) became Roxy
+ * Supporter on 2026-10-26; its entry is the "Roxy Supporter" row on You.
  *
  * Dating / Ghost stay behind beta (or a core preview of staff). The HQ
  * preview picker is extra chrome that only core sees.

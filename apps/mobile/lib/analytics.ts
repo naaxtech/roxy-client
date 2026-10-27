@@ -127,6 +127,35 @@ export const Analytics = {
     ph('post_reacted', { emoji, surface });
   },
 
+  // ── Roxy Supporter: the money path ────────────────────────────────────────
+  //
+  // Spec 2026-10-26 §1 › Analytics: viewed {source} → started {plan} →
+  // completed {plan} / failed {code}, plus restored. The funnel answers "which
+  // perk sells it?" (source is the perk that opened the paywall), so nothing
+  // else rides along: no price string, no store text, no id — the vendors
+  // already hold her hashed id from setUser.
+  supporterPaywallViewed: (source: string) => {
+    safe(() => analytics().logEvent('supporter_paywall_viewed', { source }));
+    ph('supporter_paywall_viewed', { source });
+  },
+  supporterPurchaseStarted: (plan: 'monthly' | 'yearly') => {
+    safe(() => analytics().logEvent('supporter_purchase_started', { plan }));
+    ph('supporter_purchase_started', { plan });
+  },
+  supporterPurchaseCompleted: (plan: 'monthly' | 'yearly') => {
+    safe(() => analytics().logEvent('supporter_purchase_completed', { plan }));
+    ph('supporter_purchase_completed', { plan });
+  },
+  /** `code` is a RevenueCat PURCHASES_ERROR_CODE name, e.g. STORE_PROBLEM_ERROR. */
+  supporterPurchaseFailed: (code: string) => {
+    safe(() => analytics().logEvent('supporter_purchase_failed', { code }));
+    ph('supporter_purchase_failed', { code });
+  },
+  supporterRestored: () => {
+    safe(() => analytics().logEvent('supporter_restored'));
+    ph('supporter_restored');
+  },
+
   membershipApproved: () => {
     safe(() => analytics().logEvent('membership_approved'));
     ph('membership_approved');
