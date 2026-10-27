@@ -13,6 +13,16 @@ finer-grained engineering log lives in `.claude/log.md`.
 ## [Unreleased]
 
 ### Added
+- **The Archive search finds things (2026-10-28).** Typos and partial words
+  ("portrat" finds *Portrait of a Lady on Fire*), accents either way
+  ("Celine" / "Céline"), `-word` and `-"phrase"` to exclude, and an exact
+  title always first. Results rank by relevance while she types, then by the
+  sort she picked. Migration 138 (applied 2026-10-27): `pg_trgm` + `unaccent`,
+  a weighted search index, `archive_search` / `archive_search_facets`
+  (visibility = published only, members only); about 15x faster at 10k
+  entries. Her saved watchlist is now read by id, so it never depends on
+  search limits. The app falls back to the old search only if the RPC is
+  missing.
 - **Clear notifications; cleared ones are archived, never deleted (2026-10-26).**
   Each row has a clear (×) button and the header has "Clear all", both with
   Undo. "View archived" lists what she cleared, each with Restore. Clearing
