@@ -22,7 +22,10 @@ import { useAuthStore } from '../store/authStore';
  * The rules:
  *   1. **Fail closed.** No public SDK key for this platform (or a secret key by
  *      mistake), or the server kill switch `supporter_enabled()` off → status
- *      'unavailable', and the SDK is never called.
+ *      'unavailable', and the SDK is never called. One exception for the
+ *      switch: a member who still holds a live subscription row is 'paused'
+ *      (told she is subscribed, perks off), and on web her Manage link is
+ *      read from the SDK — a paying member must always be able to cancel.
  *   2. **The server decides what is unlocked.** `getState()` reads her own
  *      `supporter_entitlements` row (RLS: owner SELECT only) and asks
  *      `is_supporter(uid)` — the same function every perk gate calls — so a
@@ -97,11 +100,25 @@ export type ActiveSupporter = {
   productId: string | null;
 };
 
+/**
+ * The kill switch is off, but she holds a live subscription row: she is
+ * still paying, so she is told so and can manage it. Perks stay off
+ * (is_supporter is false while the switch is off; that is the switch's job).
+ */
+export type PausedSupporter = {
+  status: 'paused';
+  inGrace: boolean;
+  periodEndsAt: Date | null;
+  store: string | null;
+  productId: string | null;
+};
+
 export type SupporterState =
   | { status: 'unavailable' }
   | { status: 'error' }
   | { status: 'free' }
-  | ActiveSupporter;
+  | ActiveSupporter
+  | PausedSupporter;
 
 export type PurchaseOutcome =
   | { kind: 'success'; state: ActiveSupporter }
@@ -132,6 +149,8 @@ export type SupporterDeps = {
 export type SupporterClient = {
   syncIdentity: (userId: string | null) => Promise<void>;
   getState: () => Promise<SupporterState>;
+  /** getState for "Check again": also tells subscribers (the You row) once she is confirmed. */
+  recheck: () => Promise<SupporterState>;
   loadPlans: () => Promise<SupporterPlans>;
   buy: (plan: SupporterPlan) => Promise<PurchaseOutcome>;
   restore: () => Promise<RestoreOutcome>;
@@ -181,6 +200,7 @@ export function yearlySavingPercent(
 
 /** The You row's status, e.g. "Active · renews 27 Nov 2026"; null when not a Supporter. */
 export function supporterStatusLabel(state: SupporterState): string | null {
+  if (state.status === 'paused') return 'Active · perks paused';
   if (state.status !== 'active') return null;
   if (state.inGrace) return 'Active · check payment';
   if (!state.periodEndsAt) return 'Active';
@@ -279,6 +299,7 @@ type EntitlementRow = {
   period_ends_at: string | null;
   store: string | null;
   product_id: string | null;
+  environment: string;
 };
 
 type ServerRead = 'error' | { status: 'free' } | Omit<ActiveSupporter, 'willRenew'>;
@@ -397,35 +418,59 @@ export function createSupporter(overrides: Partial<SupporterDeps> = {}): Support
     }
   }
 
+  /** Her own supporter_entitlements row (RLS: owner SELECT only). */
+  function ownRow(uid: string) {
+    return supabase
+      .from('supporter_entitlements')
+      .select('status, period_ends_at, store, product_id, environment')
+      .eq('user_id', uid)
+      .maybeSingle();
+  }
+
+  /** The row's subscription when it is live now (active or grace, inside its period); else null. */
+  function liveSubscription(row: EntitlementRow | null): Omit<ActiveSupporter, 'status' | 'willRenew'> | null {
+    if (!row || !(row.status === 'active' || row.status === 'grace')) return null;
+    const end = periodEnd(row.period_ends_at);
+    if (!end.live(deps.now())) return null;
+    return { inGrace: row.status === 'grace', periodEndsAt: end.date, store: row.store, productId: row.product_id };
+  }
+
   /** Her own row, cross-checked with the gate every perk asks. */
   async function readServer(uid: string): Promise<ServerRead> {
     try {
-      const [rowRes, gateRes] = await Promise.all([
-        supabase
-          .from('supporter_entitlements')
-          .select('status, period_ends_at, store, product_id')
-          .eq('user_id', uid)
-          .maybeSingle(),
-        supabase.rpc('is_supporter', { p_uid: uid }),
-      ]);
+      const [rowRes, gateRes] = await Promise.all([ownRow(uid), supabase.rpc('is_supporter', { p_uid: uid })]);
       if (rowRes.error || gateRes.error) {
         logError(rowRes.error ?? gateRes.error, 'supporter.serverState');
         return 'error';
       }
-      const row = rowRes.data as EntitlementRow | null;
-      if (!row || gateRes.data !== true) return { status: 'free' };
-      const end = periodEnd(row.period_ends_at);
-      const liveStatus = row.status === 'active' || row.status === 'grace';
-      if (!liveStatus || !end.live(deps.now())) return { status: 'free' };
-      return {
-        status: 'active',
-        inGrace: row.status === 'grace',
-        periodEndsAt: end.date,
-        store: row.store,
-        productId: row.product_id,
-      };
+      if (gateRes.data !== true) return { status: 'free' };
+      const sub = liveSubscription(rowRes.data as EntitlementRow | null);
+      return sub ? { status: 'active', ...sub } : { status: 'free' };
     } catch (e) {
       logError(e, 'supporter.serverState');
+      return 'error';
+    }
+  }
+
+  /**
+   * Kill switch off: is she still paying? Her row alone decides — the gate is
+   * off for everyone while the switch is. Null = no live subscription.
+   */
+  async function readPaused(uid: string): Promise<PausedSupporter | null | 'error'> {
+    try {
+      const { data, error } = await ownRow(uid);
+      if (error) {
+        logError(error, 'supporter.pausedState');
+        return 'error';
+      }
+      const row = data as EntitlementRow | null;
+      // Production only: a store tester's sandbox subscription is not money
+      // she pays (is_supporter counts sandbox only in a test window, which a
+      // client cannot read, so it is never assumed here).
+      const sub = row?.environment === 'production' ? liveSubscription(row) : null;
+      return sub ? { status: 'paused', ...sub } : null;
+    } catch (e) {
+      logError(e, 'supporter.pausedState');
       return 'error';
     }
   }
@@ -457,14 +502,41 @@ export function createSupporter(overrides: Partial<SupporterDeps> = {}): Support
   }
 
   /** Key, session and kill switch, in that order (cheapest first). */
-  async function gate(): Promise<{ uid: string } | 'unavailable' | 'error'> {
+  async function gate(): Promise<{ uid: string; enabled: boolean } | 'unavailable' | 'error'> {
     if (!apiKey) return 'unavailable';
     const uid = deps.currentUserId();
     if (!uid) return 'unavailable';
     const enabled = await readEnabled();
     if (enabled === null) return 'error';
-    if (!enabled) return 'unavailable';
-    return { uid };
+    return { uid, enabled };
+  }
+
+  /** The gate for anything that sells or touches the store: the switch off is simply unavailable. */
+  async function sellGate(): Promise<{ uid: string } | 'unavailable' | 'error'> {
+    const g = await gate();
+    if (typeof g === 'string') return g;
+    return g.enabled ? { uid: g.uid } : 'unavailable';
+  }
+
+  /** What she has right now, as the server says. */
+  async function readState(): Promise<SupporterState> {
+    const g = await gate();
+    if (g === 'unavailable') return { status: 'unavailable' };
+    if (g === 'error') return { status: 'error' };
+    if (!g.enabled) {
+      // Perks are off for everyone, but a member who pays is told so and
+      // keeps Manage subscription; everyone else sees "Coming soon".
+      const paused = await readPaused(g.uid);
+      if (paused === 'error') return { status: 'error' };
+      return paused ?? { status: 'unavailable' };
+    }
+    const s = await readServer(g.uid);
+    if (s === 'error') return { status: 'error' };
+    if (s.status !== 'active') return { status: 'free' };
+    // Display hint only: whether the store will renew it (she may have cancelled).
+    const info = await customerInfo();
+    const ent = info?.entitlements?.active?.[SUPPORTER_ENTITLEMENT];
+    return { ...s, willRenew: ent ? ent.willRenew : null };
   }
 
   function toPlan(id: SupporterPlanId, pkg: PurchasesPackage | null | undefined): SupporterPlan | null {
@@ -506,21 +578,19 @@ export function createSupporter(overrides: Partial<SupporterDeps> = {}): Support
       });
     },
 
-    async getState() {
-      const g = await gate();
-      if (g === 'unavailable') return { status: 'unavailable' };
-      if (g === 'error') return { status: 'error' };
-      const s = await readServer(g.uid);
-      if (s === 'error') return { status: 'error' };
-      if (s.status !== 'active') return { status: 'free' };
-      // Display hint only: whether the store will renew it (she may have cancelled).
-      const info = await customerInfo();
-      const ent = info?.entitlements?.active?.[SUPPORTER_ENTITLEMENT];
-      return { ...s, willRenew: ent ? ent.willRenew : null };
+    getState() {
+      return readState();
+    },
+
+    async recheck() {
+      const state = await readState();
+      // The You row only re-reads on mount or on this signal (buy and restore send it too).
+      if (state.status === 'active' || state.status === 'paused') notify();
+      return state;
     },
 
     async loadPlans() {
-      const g = await gate();
+      const g = await sellGate();
       if (g === 'unavailable') return { status: 'unavailable' };
       if (g === 'error') return { status: 'error' };
       if (!(await ensureSdk())) return { status: 'unavailable' };
@@ -550,7 +620,7 @@ export function createSupporter(overrides: Partial<SupporterDeps> = {}): Support
 
     async buy(plan) {
       // The kill switch again, right before money moves.
-      const g = await gate();
+      const g = await sellGate();
       if (g === 'unavailable') return { kind: 'unavailable' };
       if (g === 'error') {
         return { kind: 'error', code: 'UNKNOWN_ERROR', message: 'We couldn’t reach Roxy. Check your connection and try again.' };
@@ -581,7 +651,7 @@ export function createSupporter(overrides: Partial<SupporterDeps> = {}): Support
       // Web Billing's restorePurchases only re-reads CustomerInfo; the paywall hides it there.
       // src: https://github.com/RevenueCat/react-native-purchases/blob/10.15.1/src/browser/nativeModule.ts#L86 · react-native-purchases 10.15.1 · 2026-10-27
       if (deps.platformOS === 'web') return { kind: 'unsupported' };
-      const g = await gate();
+      const g = await sellGate();
       if (g === 'unavailable') return { kind: 'unavailable' };
       if (g === 'error') return { kind: 'error', code: 'UNKNOWN_ERROR', message: restoreErrorCopy(undefined) };
       if (!(await ensureSdk())) return { kind: 'unavailable' };
@@ -606,16 +676,28 @@ export function createSupporter(overrides: Partial<SupporterDeps> = {}): Support
 
     async manageUrl(state) {
       if (!apiKey) return null;
-      // CustomerInfo.managementURL: "If this user has an active Play Store
-      // subscription, this will point there". Null without an active one.
-      // src: https://unpkg.com/@revenuecat/purchases-typescript-internal@19.14.1/dist/customerInfo.d.ts · react-native-purchases 10.15.1 · 2026-10-27
-      const info = await customerInfo();
-      const reported = httpsOrNull(info?.managementURL ?? null);
-      if (reported) return reported;
-      if (deps.platformOS !== 'android') return null;
+      const sub = state.status === 'active' || state.status === 'paused' ? state : null;
+      // Paid in Play (or we never learned the store) on Android: the Play page
+      // below is right. Any other store's subscription (a web one) can only be
+      // managed through the portal link RevenueCat reports.
+      const playStore = !sub?.store || sub.store === 'play_store';
+      // Paused (kill switch off) with a Play subscription on Android: the Play
+      // page is enough, so the SDK stays untouched. Otherwise the link exists
+      // only in CustomerInfo, so that one read is allowed: she must be able
+      // to cancel.
+      if (!(state.status === 'paused' && deps.platformOS === 'android' && playStore)) {
+        // CustomerInfo.managementURL: "If this user has an active Play Store
+        // subscription, this will point there". Null without an active one.
+        // src: https://unpkg.com/@revenuecat/purchases-typescript-internal@19.14.1/dist/customerInfo.d.ts · react-native-purchases 10.15.1 · 2026-10-27
+        const info = await customerInfo();
+        const reported = httpsOrNull(info?.managementURL ?? null);
+        if (reported) return reported;
+      }
+      // No link rather than a store that does not hold her subscription.
+      if (deps.platformOS !== 'android' || !playStore) return null;
       // Play product ids arrive as "productId:basePlanId"; the deep link wants the productId.
-      const sku = state.status === 'active' && state.store === 'play_store' && state.productId
-        ? state.productId.split(':')[0]
+      const sku = sub && sub.store === 'play_store' && sub.productId
+        ? sub.productId.split(':')[0]
         : null;
       return sku
         ? `${PLAY_SUBSCRIPTIONS}?sku=${encodeURIComponent(sku)}&package=${ANDROID_PACKAGE}`

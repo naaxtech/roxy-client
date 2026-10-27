@@ -71,7 +71,9 @@ const FUTURE = '2026-11-27T12:00:00+00:00';
 const PAST = '2026-09-27T12:00:00+00:00';
 const NOW = new Date('2026-10-27T12:00:00Z').getTime();
 
-type Row = { status: string; period_ends_at: string | null; store: string | null; product_id: string | null };
+type Row = {
+  status: string; period_ends_at: string | null; store: string | null; product_id: string | null; environment: string;
+};
 
 /** What the server says right now; tests change it mid-poll to model webhook lag. */
 let server: {
@@ -117,6 +119,7 @@ const activeRow = (over: Partial<Row> = {}): Row => ({
   period_ends_at: FUTURE,
   store: 'play_store',
   product_id: 'roxy_supporter_monthly:monthly',
+  environment: 'production',
   ...over,
 });
 
@@ -193,16 +196,57 @@ describe('fail closed', () => {
     expect(sdkCalls()).toBe(0);
   });
 
-  it('kill switch off: unavailable everywhere, and no SDK call at all', async () => {
+  it('kill switch off, no subscription: unavailable everywhere, and no SDK call at all', async () => {
     server.enabled = false;
-    server.row = activeRow();
-    server.isSupporter = true;
     const c = client();
     await c.syncIdentity('u1');
     expect(await c.getState()).toEqual({ status: 'unavailable' });
     expect(await c.loadPlans()).toEqual({ status: 'unavailable' });
     expect(await c.buy({ id: 'monthly' } as SupporterPlan)).toEqual({ kind: 'unavailable' });
     expect(await c.restore()).toEqual({ kind: 'unavailable' });
+    expect(sdkCalls()).toBe(0);
+  });
+
+  it('kill switch off, she IS subscribed: paused (perks off, never "active"), still no SDK call, nothing to buy', async () => {
+    server.enabled = false;
+    server.row = activeRow();
+    // The gate is off for everyone while the switch is off (is_supporter = false).
+    server.isSupporter = false;
+    const c = client();
+    await c.syncIdentity('u1');
+    const s = await c.getState();
+    expect(s).toEqual(expect.objectContaining({
+      status: 'paused', inGrace: false, store: 'play_store', productId: 'roxy_supporter_monthly:monthly',
+    }));
+    expect(s.status === 'paused' && s.periodEndsAt?.toISOString()).toBe('2026-11-27T12:00:00.000Z');
+    expect(await c.loadPlans()).toEqual({ status: 'unavailable' });
+    expect(await c.buy({ id: 'monthly' } as SupporterPlan)).toEqual({ kind: 'unavailable' });
+    expect(await c.restore()).toEqual({ kind: 'unavailable' });
+    expect(sdkCalls()).toBe(0);
+  });
+
+  it('kill switch off: a grace row is paused too; a lapsed, expired or refunded one is not', async () => {
+    server.enabled = false;
+    server.row = activeRow({ status: 'grace' });
+    expect(await client().getState()).toEqual(expect.objectContaining({ status: 'paused', inGrace: true }));
+    for (const row of [activeRow({ period_ends_at: PAST }), activeRow({ status: 'expired' }), activeRow({ status: 'refunded' })]) {
+      server.row = row;
+      expect(await client().getState()).toEqual({ status: 'unavailable' });
+    }
+  });
+
+  it('kill switch off: a SANDBOX subscription (store tester) is not "still subscribed"', async () => {
+    server.enabled = false;
+    server.row = activeRow({ environment: 'sandbox' });
+    expect(await client().getState()).toEqual({ status: 'unavailable' });
+  });
+
+  it('kill switch off and her row cannot be read: an error, never a guess', async () => {
+    server.enabled = false;
+    supabase.from.mockImplementation(() => ({
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: 'x' } }) }) }),
+    }));
+    expect(await client().getState()).toEqual({ status: 'error' });
     expect(sdkCalls()).toBe(0);
   });
 
@@ -494,6 +538,19 @@ describe('buying', () => {
     expect(POLL_DELAYS_MS.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(30_000);
   });
 
+  it('a failed logIn on an account switch never opens the store sheet (it would charge the wrong account)', async () => {
+    let uid = 'u1';
+    const c = client({ currentUserId: () => uid });
+    const plan = await monthlyPlan(c);
+    expect(Purchases.configure).toHaveBeenCalledWith(expect.objectContaining({ appUserID: 'u1' }));
+    uid = 'u2';
+    Purchases.logIn.mockRejectedValueOnce(Object.assign(new Error('net'), { code: '10' }));
+    expect(await c.buy(plan)).toEqual({ kind: 'unavailable' });
+    expect(Purchases.logIn).toHaveBeenCalledWith('u2');
+    expect(Purchases.purchasePackage).not.toHaveBeenCalled();
+    expect(Analytics.supporterPurchaseStarted).not.toHaveBeenCalled();
+  });
+
   it('re-checks the kill switch before opening the store sheet', async () => {
     const c = client();
     const plan = await monthlyPlan(c);
@@ -501,6 +558,30 @@ describe('buying', () => {
     expect(await c.buy(plan)).toEqual({ kind: 'unavailable' });
     expect(Purchases.purchasePackage).not.toHaveBeenCalled();
     expect(Analytics.supporterPurchaseStarted).not.toHaveBeenCalled();
+  });
+});
+
+describe('recheck ("Check again" after a late webhook)', () => {
+  it('reads the server like getState and tells the You row when she is confirmed', async () => {
+    const c = client();
+    const listener = jest.fn();
+    c.subscribe(listener);
+    expect(await c.recheck()).toEqual({ status: 'free' });
+    expect(listener).not.toHaveBeenCalled();
+    server.row = activeRow();
+    server.isSupporter = true;
+    expect(await c.recheck()).toEqual(expect.objectContaining({ status: 'active' }));
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('a paused subscription (switch off) also tells the You row', async () => {
+    server.enabled = false;
+    server.row = activeRow();
+    const c = client();
+    const listener = jest.fn();
+    c.subscribe(listener);
+    expect(await c.recheck()).toEqual(expect.objectContaining({ status: 'paused' }));
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -560,6 +641,36 @@ describe('manage subscription', () => {
     Purchases.getCustomerInfo.mockResolvedValue(customer({}, 'javascript:alert(1)'));
     expect(await client({ platformOS: 'web' }).manageUrl(active)).toBeNull();
   });
+
+  const paused = { ...active, status: 'paused' as const };
+
+  it('paused (kill switch off) on Android: the Play page for her product, with no SDK call', async () => {
+    server.enabled = false;
+    expect(await client().manageUrl(paused))
+      .toBe('https://play.google.com/store/account/subscriptions?sku=roxy_supporter_monthly&package=com.roxy.app');
+    expect(sdkCalls()).toBe(0);
+  });
+
+  it('paused on Android but she paid on the web: her portal link from the SDK, never the Play page', async () => {
+    server.enabled = false;
+    Purchases.getCustomerInfo.mockResolvedValue(customer({}, 'https://billing.revenuecat.example/portal'));
+    expect(await client().manageUrl({ ...paused, store: 'rc_billing' })).toBe('https://billing.revenuecat.example/portal');
+  });
+
+  it('a non-Play subscription on Android with no portal link: no button, rather than a store that does not have it', async () => {
+    expect(await client().manageUrl({ ...active, store: 'rc_billing' })).toBeNull();
+    server.enabled = false;
+    expect(await client().manageUrl({ ...paused, store: 'stripe' })).toBeNull();
+  });
+
+  it('paused on web: the one SDK read the switch allows — her own portal link, so she can always cancel', async () => {
+    server.enabled = false;
+    Purchases.getCustomerInfo.mockResolvedValue(customer({}, 'https://billing.revenuecat.example/portal'));
+    expect(await client({ platformOS: 'web' }).manageUrl({ ...paused, store: 'rc_billing' }))
+      .toBe('https://billing.revenuecat.example/portal');
+    expect(Purchases.purchasePackage).not.toHaveBeenCalled();
+    expect(Purchases.getOfferings).not.toHaveBeenCalled();
+  });
 });
 
 describe('the You row status', () => {
@@ -573,6 +684,9 @@ describe('the You row status', () => {
     expect(supporterStatusLabel({ ...base, willRenew: false })).toBe('Active · ends 27 Nov 2026');
     expect(supporterStatusLabel({ ...base, inGrace: true })).toBe('Active · check payment');
     expect(supporterStatusLabel({ ...base, periodEndsAt: null })).toBe('Active');
+  });
+  it('a paused subscription (kill switch off) says she is still subscribed', () => {
+    expect(supporterStatusLabel({ ...base, status: 'paused' })).toBe('Active · perks paused');
   });
   it('says nothing when she is not a Supporter', () => {
     expect(supporterStatusLabel({ status: 'free' })).toBeNull();

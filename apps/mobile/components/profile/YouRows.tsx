@@ -51,7 +51,9 @@ interface Props {
  * Nicole on 2026-10-26 (polish/decisions.md). Its status is the SERVER's
  * (lib/supporter: her supporter_entitlements row + is_supporter). No dead
  * button: while the kill switch is off, the build has no RevenueCat key, or
- * the read failed, the row is not drawn at all.
+ * the read failed, the row is not drawn at all — except for a member who
+ * still pays while the switch is off ('paused'): her row stays, so she can
+ * reach Manage subscription and Help.
  */
 export function YouRows({ userId, walletCount, savedCount, onOpenSaved, supporterEligible = false }: Props) {
   const colors = useThemeColors();
@@ -109,7 +111,7 @@ export function YouRows({ userId, walletCount, savedCount, onOpenSaved, supporte
       testID: 'you-row-sell',
       onPress: () => router.push('/support' as never),
     },
-    ...(supporterState?.status === 'free' || supporterState?.status === 'active'
+    ...(supporterState?.status === 'free' || supporterState?.status === 'active' || supporterState?.status === 'paused'
       ? [{
           icon: 'ribbon-outline' as const,
           label: 'Roxy Supporter',

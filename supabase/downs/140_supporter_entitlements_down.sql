@@ -9,12 +9,14 @@
 -- is_supporter() must be reversed before it.
 -- destructive-ok: down file
 
+DROP FUNCTION IF EXISTS public.record_supporter_webhook_rejection(text, text, text, text);
 DROP FUNCTION IF EXISTS public.apply_supporter_event(
   text, text, text, uuid, timestamptz, text, timestamptz, text, text, text, uuid[], jsonb
 );
 DROP FUNCTION IF EXISTS public.supporter_enabled();
 DROP FUNCTION IF EXISTS public.is_supporter(uuid);
 DROP FUNCTION IF EXISTS public._supporter_refresh(uuid);
+DROP TABLE IF EXISTS public.supporter_webhook_rejections;
 DROP TABLE IF EXISTS public.supporter_events;
 DROP TABLE IF EXISTS public.supporter_entitlements;
 DROP TABLE IF EXISTS public.supporter_subscriptions;

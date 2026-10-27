@@ -15,6 +15,9 @@ import {
   effectFor,
   handleRevenueCatWebhook,
   parseWebhook,
+  REFUND_SKEW_MS,
+  type RejectArgs,
+  type RejectFn,
   resolveUserId,
   SUPPORTER_ENTITLEMENT,
 } from './revenuecat.ts';
@@ -33,6 +36,10 @@ const U1 = '6f1c2a9e-3b4d-4c5e-8f60-718293a4b5c6';
 const U2 = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
 const ANON = '$RCAnonymousID:8069238d6049ce87cc529853916d624c';
 const EMAIL = 'her@example.com';
+// sha-256 hex, computed independently (node:crypto createHash('sha256')), so
+// the test does not trust the implementation's own hashing.
+const U1_HASH = 'fc199ff3a8dc0c4e241b3a4ce43f6815bd4cd58f97714ae0f0d6b3d1a4cbd468';
+const ANON_HASH = 'bbac5b823f781bf64b7e4875acf77dbe1fe8166a8760e85f6a0e2701095daa64';
 
 type Ev = Record<string, unknown>;
 
@@ -140,6 +147,22 @@ Deno.test('effect: a CUSTOMER_SUPPORT refund revokes only when RevenueCat ended 
   // "refunds can be given without canceling a subscription": period still running.
   eq(effectFor(event({ ...refund, event_timestamp_ms: 1658726378679, expiration_at_ms: 1659331174000 })), 'cancel',
     'goodwill refund, subscription still active');
+});
+
+Deno.test('effect: a refund stamped a little after its own event still revokes (two clocks)', () => {
+  const refund = { type: 'CANCELLATION', cancel_reason: 'CUSTOMER_SUPPORT', price: -4.99 };
+  const at = 1601337615995;
+  eq(REFUND_SKEW_MS, 5 * 60 * 1000, 'tolerance');
+  eq(effectFor(event({ ...refund, event_timestamp_ms: at, expiration_at_ms: at + 1_000 })), 'refund', '1 s after');
+  eq(effectFor(event({ ...refund, event_timestamp_ms: at, expiration_at_ms: at + 60_000 })), 'refund', '1 min after');
+  eq(effectFor(event({ ...refund, event_timestamp_ms: at, expiration_at_ms: at + REFUND_SKEW_MS })), 'refund',
+    'exactly at the tolerance');
+  eq(effectFor(event({ ...refund, event_timestamp_ms: at, expiration_at_ms: at + REFUND_SKEW_MS + 1 })), 'cancel',
+    'just past the tolerance: the period is still running');
+  eq(effectFor(event({ ...refund, event_timestamp_ms: at, expiration_at_ms: at + 86_400_000 })), 'cancel',
+    'a day left: goodwill refund');
+  eq(effectFor(event({ type: 'CANCELLATION', cancel_reason: 'UNSUBSCRIBE', event_timestamp_ms: at, expiration_at_ms: at })),
+    'cancel', 'not a refund at all');
 });
 
 Deno.test('effect: TRANSFER moves; TEST and everything else is only logged', () => {
@@ -275,14 +298,18 @@ Deno.test('parse: a log-only event with an odd environment is still logged', () 
 
 // ── handleRevenueCatWebhook ───────────────────────────────────────────────
 
-function harness(result: { data: string | null; error: { code?: string; message: string } | null }) {
+type RpcResult = { data: string | null; error: { code?: string; message: string } | null };
+
+function harness(result: RpcResult, rejectResult: RpcResult = { data: 'recorded', error: null }) {
   const calls: ApplyArgs[] = [];
+  const rejected: RejectArgs[] = [];
   const logs: string[] = [];
   const apply: ApplyFn = async (a) => { calls.push(a); return result; };
+  const reject: RejectFn = async (a) => { rejected.push(a); return rejectResult; };
   const log = (level: string, msg: string, fields: Record<string, unknown>) => {
     logs.push(`${level} ${msg} ${JSON.stringify(fields)}`);
   };
-  return { calls, logs, apply, log };
+  return { calls, rejected, logs, apply, reject, log };
 }
 const post = (b: unknown, auth: string | null = SECRET, method = 'POST') =>
   new Request('https://x.supabase.co/functions/v1/revenuecat-webhook', {
@@ -313,12 +340,110 @@ Deno.test('handler: no secret in env is 503 for everyone, before any body is rea
   ok(h.logs.every((l) => l.startsWith('error ')), 'misconfiguration not logged as an error');
 });
 
-Deno.test('handler: wrong method 405, malformed body 400', async () => {
+Deno.test('handler: wrong method 405; a body with no event id/type to record is 400', async () => {
   const h = harness({ data: 'applied', error: null });
   eq((await handleRevenueCatWebhook(post(null, SECRET, 'GET'), { secret: SECRET, ...h })).status, 405, 'GET');
   eq((await handleRevenueCatWebhook(post('{not json'), { secret: SECRET, ...h })).status, 400, 'not JSON');
   eq((await handleRevenueCatWebhook(post({ hello: 'world' }), { secret: SECRET, ...h })).status, 400, 'no event');
-  eq(h.calls.length, 0, 'apply was called');
+  eq((await handleRevenueCatWebhook(post(body(event({ id: undefined }))), { secret: SECRET, ...h })).status, 400, 'no id');
+  eq((await handleRevenueCatWebhook(post(body(event({ type: 'not a type' }))), { secret: SECRET, ...h })).status, 400,
+    'unusable type');
+  eq([h.calls.length, h.rejected.length], [0, 0], 'apply or reject was called');
+});
+
+// RevenueCat counts anything but 200 as a failure, retries the SAME payload
+// (same id, same event_timestamp_ms) 5 times over ~80 min, then stops for
+// good (W). A payload we refuse cannot get better on a retry, so a 4xx would
+// only burn the retries and leave support nothing: record it and answer 200.
+Deno.test('handler: a well-formed event we refuse is recorded (hashed id) and answered 200', async () => {
+  const cases: [string, unknown][] = [
+    ['event.environment', body(event({ environment: undefined }))],
+    ['event.expiration_at_ms', body(event({ expiration_at_ms: undefined }))],
+    ['event.original_transaction_id', body(event({ original_transaction_id: undefined, product_id: undefined }))],
+    ['event.event_timestamp_ms', body(event({ event_timestamp_ms: '1658726378679' }))],
+    ['api_version', body(event(), '2.0')],
+  ];
+  for (const [reason, payload] of cases) {
+    const h = harness({ data: 'applied', error: null });
+    const res = await handleRevenueCatWebhook(post(payload), { secret: SECRET, ...h });
+    eq(res.status, 200, `${reason} status`);
+    eq((await json(res)).data, { result: 'rejected', reason }, `${reason} body`);
+    eq(h.calls.length, 0, `${reason}: apply was called`);
+    eq(h.rejected, [{
+      p_event_id: '12345678-1234-1234-1234-123456789012',
+      p_event_type: 'INITIAL_PURCHASE',
+      p_reason: reason,
+      p_app_user_id_hash: U1_HASH,
+    }], `${reason} recorded`);
+    for (const line of h.logs) ok(!line.includes(U1) && !line.includes(EMAIL), `PII in log: ${line}`);
+  }
+});
+
+Deno.test('handler: a refused TRANSFER is traced under its destination member', async () => {
+  const h = harness({ data: 'applied', error: null });
+  const res = await handleRevenueCatWebhook(
+    post(body({ event_timestamp_ms: 1700000000000, id: 't-bad', type: 'TRANSFER', transferred_from: U2, transferred_to: [U1] })),
+    { secret: SECRET, ...h },
+  );
+  eq(res.status, 200, 'status');
+  eq(h.rejected, [{ p_event_id: 't-bad', p_event_type: 'TRANSFER', p_reason: 'event.transferred_from', p_app_user_id_hash: U1_HASH }],
+    'recorded');
+});
+
+Deno.test('handler: a refused event naming no id at all is recorded with no hash', async () => {
+  const h = harness({ data: 'applied', error: null });
+  const ev = event({ app_user_id: undefined, aliases: undefined, original_app_user_id: undefined, environment: undefined });
+  eq((await handleRevenueCatWebhook(post(body(ev)), { secret: SECRET, ...h })).status, 200, 'status');
+  eq(h.rejected.map((r) => r.p_app_user_id_hash), [null], 'no hash');
+});
+
+Deno.test('handler: the trace hashes HER member id when the event carries one, so support can find it', async () => {
+  // Bought anonymously, aliased to her account afterwards; that account is gone (unknown_user).
+  const h = harness({ data: 'unknown_user', error: null });
+  await handleRevenueCatWebhook(
+    post(body(event({ app_user_id: ANON, aliases: [ANON, U1.toUpperCase()], original_app_user_id: ANON }))),
+    { secret: SECRET, ...h },
+  );
+  eq(h.rejected.map((r) => r.p_app_user_id_hash), [U1_HASH], 'hash of her lower-cased uuid, not of the anonymous id');
+});
+
+Deno.test('handler: the rejection could not be recorded → 500, so RevenueCat retries', async () => {
+  const h = harness({ data: 'applied', error: null }, { data: null, error: { code: '08006', message: `down for ${U1}` } });
+  const res = await handleRevenueCatWebhook(post(body(event({ environment: undefined }))), { secret: SECRET, ...h });
+  eq(res.status, 500, 'status');
+  eq(h.rejected.length, 1, 'tried once');
+  for (const line of h.logs) ok(!line.includes(U1), `PII in log: ${line}`);
+});
+
+Deno.test('handler: unknown_user is 200 and leaves a hashed trace for support', async () => {
+  const h = harness({ data: 'unknown_user', error: null });
+  const res = await handleRevenueCatWebhook(
+    post(body(event({ app_user_id: ANON, aliases: [ANON], original_app_user_id: ANON }))),
+    { secret: SECRET, ...h },
+  );
+  eq([res.status, (await json(res)).data], [200, { result: 'unknown_user' }], 'response');
+  eq(h.rejected, [{
+    p_event_id: '12345678-1234-1234-1234-123456789012',
+    p_event_type: 'INITIAL_PURCHASE',
+    p_reason: 'unknown_user',
+    p_app_user_id_hash: ANON_HASH,
+  }], 'recorded');
+  for (const line of h.logs) ok(!line.includes(ANON), `PII in log: ${line}`);
+});
+
+Deno.test('handler: unknown_user stays 200 even when its trace fails (the event is already logged)', async () => {
+  const h = harness({ data: 'unknown_user', error: null }, { data: null, error: { code: '08006', message: 'down' } });
+  const res = await handleRevenueCatWebhook(post(body(event())), { secret: SECRET, ...h });
+  eq(res.status, 200, 'status');
+  ok(h.logs.some((l) => l.startsWith('error ')), 'the failed trace was not logged');
+});
+
+Deno.test('handler: applied / duplicate / stale / logged leave no rejection row', async () => {
+  for (const result of ['applied', 'duplicate', 'stale', 'logged']) {
+    const h = harness({ data: result, error: null });
+    await handleRevenueCatWebhook(post(body(event())), { secret: SECRET, ...h });
+    eq(h.rejected.length, 0, result);
+  }
 });
 
 Deno.test('handler: applied, duplicate, stale and logged are all 200 (RC must not retry them)', async () => {

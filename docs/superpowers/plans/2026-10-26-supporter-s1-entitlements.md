@@ -54,11 +54,11 @@ URLs: `https://www.revenuecat.com/docs/integrations/webhooks`, `…/webhooks/eve
    | INITIAL_PURCHASE, RENEWAL, UNCANCELLATION, NON_RENEWING_PURCHASE, SUBSCRIPTION_EXTENDED, REFUND_REVERSED | `activate` | active, period = expiration (`infinity` when RC sends null = lifetime) |
    | BILLING_ISSUE | `grace` | grace, period = grace end, else expiration |
    | EXPIRATION | `expire` | expired |
-   | CANCELLATION + CUSTOMER_SUPPORT, expiration null or ≤ event time | `refund` | refunded |
+   | CANCELLATION + CUSTOMER_SUPPORT, expiration null or ≤ event time + 5 min (two clocks: `REFUND_SKEW_MS`) | `refund` | refunded |
    | CANCELLATION + CUSTOMER_SUPPORT, period still running | `cancel` | untouched — RC: "refunds can be given without canceling a subscription" |
    | CANCELLATION (other reasons) | `cancel` | untouched — she keeps it to period end |
    | PRODUCT_CHANGE | `change` | untouched — the accompanying RENEWAL / INITIAL_PURCHASE carries the period |
-   | TRANSFER | `transfer` | the sources' subscriptions (of the event's store, if named) → destination; to a non-member they expire |
+   | TRANSFER | `transfer` | the sources' subscriptions → destination; to a non-member they expire. Which: the event's store when named; storeless, only device-store ones (play_store, app_store, mac_app_store, amazon) — never rc_billing / stripe / paddle / promotional / unknown-store (review fix 2026-10-28) |
    | TEST, every other type, any event without the `supporter` entitlement | `log` | untouched |
 
    PRODUCT_CHANGE deviates from "→ active" in the brief on purpose: per event-flows it is informational,
@@ -89,8 +89,14 @@ URLs: `https://www.revenuecat.com/docs/integrations/webhooks`, `…/webhooks/eve
    `verify_jwt = false` in `config.toml` (RC cannot hold a Supabase JWT). No CORS: server-to-server.
    HMAC signing (`X-RevenueCat-Webhook-Signature`) is optional in RC and deferred — trigger: owner enables it.
 
-Results returned to RC (all 200): `applied`, `duplicate`, `stale`, `logged`, `unknown_user`.
-400 for a malformed envelope (RC retries 5× and the dashboard shows it), 500 for a DB error (retry wanted).
+Results returned to RC (all 200): `applied`, `duplicate`, `stale`, `logged`, `unknown_user`, `rejected`.
+RC retries the same payload 5× (~80 min) on any non-200, then stops for good, so a non-200 is sent only when
+a retry can succeed (review fix 2026-10-28):
+- a well-formed event we refuse (field missing/malformed) → recorded in `supporter_webhook_rejections`
+  (event id, type, reason = field name, sha-256 of `app_user_id`) → 200 `rejected`;
+- `unknown_user` → 200, plus a rejection row (reason `unknown_user`) so support finds it by her hash;
+- 400 only with no event id/type to record it under; 401 / 503 auth and config; 500 DB failure
+  (applying, or recording a rejection).
 
 ## Emotional-AI value
 
@@ -122,6 +128,9 @@ paywall events, it answers which perk converts and what precedes a lapse.
 - `TEMPORARY_ENTITLEMENT_GRANT` is logged, not honoured: the store purchase that follows will apply.
 - Reconcile with RC `GET /subscribers` after each webhook (RC's recommendation). Trigger: before the kill
   switch goes on in production, or the first support case where our row disagrees with RC.
-- `unknown_user` events and 400-rejected deliveries are not replayed automatically; recovery is RC's
-  dashboard "Retry" once the cause is fixed.
+- `unknown_user` and rejected events are not replayed automatically; they are traced in
+  `supporter_webhook_rejections` (and `supporter_events` for unknown_user). Because they were answered 200
+  they are NOT on RevenueCat's failed-delivery list (its "Retry" button only covers failed/retrying
+  deliveries). Support runbook: find her rows by `encode(sha256(convert_to('<her uuid>','UTF8')),'hex')`,
+  fix the cause, then resend each `event_id` from RevenueCat by hand.
 - `supabase/tests/*_check.sql` (this one included) is not run by CI; it is proven locally only.

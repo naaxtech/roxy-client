@@ -22,6 +22,7 @@ import {
   supporterLegalLinks,
   supporterStatusLabel,
   type ActiveSupporter,
+  type PausedSupporter,
   type SupporterPlan,
   type SupporterPlanId,
   type SupporterPlans,
@@ -36,12 +37,28 @@ type Screen =
   | { phase: 'error' }
   | { phase: 'offer'; plans: ReadyPlans }
   | { phase: 'active'; state: ActiveSupporter }
+  | { phase: 'paused'; state: PausedSupporter }
   | { phase: 'success'; state: ActiveSupporter }
   | { phase: 'processing'; pending: boolean };
 
 type Message = { tone: 'error' | 'info'; text: string };
 
 const NOTHING_TO_RESTORE = 'No Roxy Supporter subscription found for this store account.';
+const NOT_YET = 'Not through yet. It can take a few minutes — check again shortly, or ask us for help.';
+const CHECK_FAILED = 'We couldn’t check just now. Check your connection and try again.';
+
+/**
+ * Spec › Commercial gate › Support: "Help with Supporter" goes to the app's
+ * existing support channel. That is Settings › Support › Feedback & ideas
+ * (`/you/feedback`, read by the team, with a status she can follow), which
+ * takes a category and a prefilled message — the same door Roxy chat's
+ * "report a reply" uses. `/support` is donations and feature voting, with no
+ * way to ask for help.
+ */
+const SUPPORTER_HELP = {
+  pathname: '/(tabs)/you/feedback',
+  params: { category: 'other', prefillMessage: 'About Roxy Supporter: ' },
+} as const;
 
 /** "Cancel any time …": where she actually cancels on this platform. */
 function cancelWhere(os: string): string {
@@ -90,7 +107,7 @@ export default function SupporterScreen() {
 
   const [screen, setScreen] = useState<Screen>({ phase: 'loading' });
   const [selected, setSelected] = useState<SupporterPlanId>('monthly');
-  const [busy, setBusy] = useState<'buy' | 'restore' | null>(null);
+  const [busy, setBusy] = useState<'buy' | 'restore' | 'check' | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
   const [manageUrl, setManageUrl] = useState<string | null>(null);
 
@@ -114,6 +131,8 @@ export default function SupporterScreen() {
     if (state.status === 'unavailable') { setScreen({ phase: 'unavailable', why: 'soon' }); return; }
     if (state.status === 'error') { setScreen({ phase: 'error' }); return; }
     if (state.status === 'active') { setScreen({ phase: 'active', state }); return; }
+    // Kill switch off, but she pays: say so, never "Coming soon".
+    if (state.status === 'paused') { setScreen({ phase: 'paused', state }); return; }
     const plans = await supporter.loadPlans();
     if (!mounted.current) return;
     if (plans.status === 'unavailable') { setScreen({ phase: 'unavailable', why: 'soon' }); return; }
@@ -130,15 +149,15 @@ export default function SupporterScreen() {
     void load();
   }, [accessLoading, kind, load]);
 
-  const activeState = screen.phase === 'active' ? screen.state : null;
+  const subscribedState = screen.phase === 'active' || screen.phase === 'paused' ? screen.state : null;
   useEffect(() => {
-    if (!activeState) return undefined;
+    if (!subscribedState) return undefined;
     let current = true;
-    void supporter.manageUrl(activeState)
+    void supporter.manageUrl(subscribedState)
       .then((url) => { if (current) setManageUrl(url); })
       .catch((e: unknown) => logError(e, 'supporter.manageUrl'));
     return () => { current = false; };
-  }, [activeState]);
+  }, [subscribedState]);
 
   const leave = () => {
     if (router.canGoBack()) router.back();
@@ -189,6 +208,64 @@ export default function SupporterScreen() {
       case 'unsupported': break;
     }
   };
+
+  /**
+   * Paid but not confirmed: ask the server again (the same read the paywall
+   * opens with). recheck also tells the You row when she is confirmed.
+   */
+  const onCheck = async () => {
+    if (busy) return;
+    setBusy('check');
+    setMessage(null);
+    const state = await supporter.recheck();
+    if (!mounted.current) return;
+    setBusy(null);
+    switch (state.status) {
+      case 'active': setScreen({ phase: 'success', state }); break;
+      case 'paused': setScreen({ phase: 'paused', state }); break;
+      case 'free': setMessage({ tone: 'info', text: NOT_YET }); break;
+      case 'error': setMessage({ tone: 'error', text: CHECK_FAILED }); break;
+      case 'unavailable': setScreen({ phase: 'unavailable', why: 'soon' }); break;
+    }
+  };
+
+  const helpLink = (
+    <TouchableOpacity
+      testID="supporter-help"
+      onPress={() => router.push(SUPPORTER_HELP as never)}
+      accessibilityRole="link"
+      accessibilityLabel="Help with Supporter"
+      style={s.link}
+    >
+      <Text style={s.linkLabel}>Help with Supporter</Text>
+    </TouchableOpacity>
+  );
+
+  const restoreLink = canRestore ? (
+    <TouchableOpacity
+      testID="supporter-restore"
+      onPress={() => { void onRestore(); }}
+      disabled={busy !== null}
+      accessibilityRole="button"
+      accessibilityLabel="Restore purchases"
+      {...a11yState({ busy: busy === 'restore', disabled: busy !== null })}
+      style={s.link}
+    >
+      <Text style={s.linkLabel}>{busy === 'restore' ? 'Checking…' : 'Restore purchases'}</Text>
+    </TouchableOpacity>
+  ) : null;
+
+  const manageButton = manageUrl ? (
+    <TouchableOpacity
+      testID="supporter-manage"
+      onPress={() => open(manageUrl)}
+      accessibilityRole="link"
+      accessibilityLabel="Manage subscription"
+      style={s.quietButton}
+    >
+      <Text style={s.quietLabel}>Manage subscription</Text>
+    </TouchableOpacity>
+  ) : null;
 
   const messageView = message ? (
     <Text
@@ -259,7 +336,47 @@ export default function SupporterScreen() {
                 <Text style={s.body}>Payment received — your perks will appear in a minute.</Text>
               </>
             )}
-            <PrimaryButton label="Done" onPress={leave} testID="supporter-done" />
+            {messageView}
+            {/* A way out when the server is slow: ask again, restore, or ask us. */}
+            <PrimaryButton
+              label="Check again"
+              onPress={() => { void onCheck(); }}
+              busy={busy === 'check'}
+              disabled={busy === 'restore'}
+              testID="supporter-check"
+            />
+            <TouchableOpacity
+              testID="supporter-done"
+              onPress={leave}
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+              style={s.quietButton}
+            >
+              <Text style={s.quietLabel}>Done</Text>
+            </TouchableOpacity>
+            <View style={s.links}>
+              {screen.pending ? null : restoreLink}
+              {helpLink}
+            </View>
+          </View>
+        );
+
+      case 'paused':
+        return (
+          <View style={s.content} testID="supporter-paused">
+            <SupporterTag />
+            <Text style={s.headline} accessibilityRole="header">Your Supporter subscription is active</Text>
+            <Text style={s.body}>
+              Your perks are paused for a moment while we fix something on our side. Your subscription itself hasn’t changed.
+            </Text>
+            {screen.state.inGrace ? (
+              <Text style={[s.body, { color: colors.warningInk }]}>
+                There’s a problem with your payment. Update it in Manage subscription to keep your subscription.
+              </Text>
+            ) : null}
+            {manageButton}
+            {messageView}
+            <View style={s.links}>{helpLink}</View>
           </View>
         );
 
@@ -287,18 +404,9 @@ export default function SupporterScreen() {
               </Text>
             ) : null}
             <SupporterPerks lead={lead} />
-            {manageUrl ? (
-              <TouchableOpacity
-                testID="supporter-manage"
-                onPress={() => open(manageUrl)}
-                accessibilityRole="link"
-                accessibilityLabel="Manage subscription"
-                style={s.quietButton}
-              >
-                <Text style={s.quietLabel}>Manage subscription</Text>
-              </TouchableOpacity>
-            ) : null}
+            {manageButton}
             {messageView}
+            <View style={s.links}>{helpLink}</View>
           </View>
         );
       }
@@ -371,19 +479,8 @@ export default function SupporterScreen() {
             ) : null}
 
             <View style={s.links}>
-              {canRestore ? (
-                <TouchableOpacity
-                  testID="supporter-restore"
-                  onPress={() => { void onRestore(); }}
-                  disabled={busy !== null}
-                  accessibilityRole="button"
-                  accessibilityLabel="Restore purchases"
-                  {...a11yState({ busy: busy === 'restore', disabled: busy !== null })}
-                  style={s.link}
-                >
-                  <Text style={s.linkLabel}>{busy === 'restore' ? 'Checking…' : 'Restore purchases'}</Text>
-                </TouchableOpacity>
-              ) : null}
+              {restoreLink}
+              {helpLink}
               {legal.terms ? (
                 <TouchableOpacity
                   testID="supporter-terms"

@@ -27,6 +27,7 @@ BEGIN
   DELETE FROM public.supporter_subscriptions WHERE user_id IN (a, b, d, e);
   DELETE FROM public.supporter_entitlements WHERE user_id IN (a, b, d, e);
   DELETE FROM public.supporter_events WHERE id LIKE '140-%';
+  DELETE FROM public.supporter_webhook_rejections WHERE event_id LIKE '140-%';
   UPDATE public.platform_settings
      SET supporter_enabled = true, supporter_sandbox_counts = false
    WHERE id = 1;
@@ -34,9 +35,9 @@ BEGIN
   -- ── T1 shape: RLS on, CHECKs hold, the switches default OFF ─────────────
   SELECT count(*) INTO n FROM pg_class
    WHERE oid IN ('public.supporter_entitlements'::regclass, 'public.supporter_subscriptions'::regclass,
-                 'public.supporter_events'::regclass)
+                 'public.supporter_events'::regclass, 'public.supporter_webhook_rejections'::regclass)
      AND relrowsecurity;
-  IF n IS DISTINCT FROM 3 THEN RAISE EXCEPTION 'T1 RLS is on for % of 3 supporter tables', n; END IF;
+  IF n IS DISTINCT FROM 4 THEN RAISE EXCEPTION 'T1 RLS is on for % of 4 supporter tables', n; END IF;
   ok := false;
   BEGIN
     INSERT INTO public.supporter_subscriptions (id, user_id, status, environment, last_event_at)
@@ -63,7 +64,15 @@ BEGIN
      AND column_name IN ('supporter_enabled', 'supporter_sandbox_counts')
      AND column_default = 'false' AND is_nullable = 'NO';
   IF n IS DISTINCT FROM 2 THEN RAISE EXCEPTION 'T1 platform_settings switches missing or not default false (% of 2)', n; END IF;
-  RAISE NOTICE 'PASS 140 T1 shape: RLS on all three tables, CHECKs hold, switches default off';
+  -- A rejection row stores sha-256 hex of the app user id, never the id itself.
+  ok := false;
+  BEGIN
+    INSERT INTO public.supporter_webhook_rejections (event_id, event_type, reason, app_user_id_hash)
+    VALUES ('140-t1', 'INITIAL_PURCHASE', 'event.environment', a::text);
+  EXCEPTION WHEN check_violation THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'T1 a raw member id was stored as app_user_id_hash'; END IF;
+  RAISE NOTICE 'PASS 140 T1 shape: RLS on all four tables, CHECKs hold, switches default off';
 
   -- ── T2 grants: owner SELECT only; events and apply are service-role only ──
   IF has_table_privilege('anon', 'public.supporter_entitlements', 'SELECT')
@@ -86,6 +95,18 @@ BEGIN
   IF has_table_privilege('authenticated', 'public.supporter_events', 'SELECT') THEN
     RAISE EXCEPTION 'T2 authenticated can read supporter_events';
   END IF;
+  FOR rec IN SELECT * FROM (VALUES ('anon'), ('authenticated')) v(role) LOOP
+    IF has_table_privilege(rec.role, 'public.supporter_webhook_rejections', 'SELECT')
+       OR has_table_privilege(rec.role, 'public.supporter_webhook_rejections', 'INSERT')
+       OR has_table_privilege(rec.role, 'public.supporter_webhook_rejections', 'UPDATE')
+       OR has_table_privilege(rec.role, 'public.supporter_webhook_rejections', 'DELETE')
+       OR has_function_privilege(rec.role, 'public.record_supporter_webhook_rejection(text, text, text, text)', 'EXECUTE') THEN
+      RAISE EXCEPTION 'T2 % can reach supporter_webhook_rejections', rec.role;
+    END IF;
+  END LOOP;
+  IF NOT has_function_privilege('service_role', 'public.record_supporter_webhook_rejection(text, text, text, text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'T2 service_role cannot record a webhook rejection';
+  END IF;
   IF has_function_privilege('authenticated', fn, 'EXECUTE')
      OR has_function_privilege('anon', fn, 'EXECUTE') THEN
     RAISE EXCEPTION 'T2 a client role can execute apply_supporter_event';
@@ -98,8 +119,9 @@ BEGIN
     RAISE EXCEPTION 'T2 a client role can execute _supporter_refresh';
   END IF;
   IF (SELECT bool_or(proacl IS NULL OR EXISTS (SELECT 1 FROM aclexplode(proacl) x WHERE x.grantee = 0))
-        FROM pg_proc WHERE oid IN (fn::regprocedure, 'public._supporter_refresh(uuid)'::regprocedure)) THEN
-    RAISE EXCEPTION 'T2 PUBLIC can execute apply_supporter_event or _supporter_refresh';
+        FROM pg_proc WHERE oid IN (fn::regprocedure, 'public._supporter_refresh(uuid)'::regprocedure,
+                                   'public.record_supporter_webhook_rejection(text, text, text, text)'::regprocedure)) THEN
+    RAISE EXCEPTION 'T2 PUBLIC can execute apply_supporter_event, _supporter_refresh or record_supporter_webhook_rejection';
   END IF;
   IF has_function_privilege('anon', 'public.is_supporter(uuid)', 'EXECUTE')
      OR has_function_privilege('anon', 'public.supporter_enabled()', 'EXECUTE') THEN
@@ -111,9 +133,9 @@ BEGIN
   END IF;
   SELECT count(*) INTO n FROM pg_proc
    WHERE oid IN ('public.is_supporter(uuid)'::regprocedure, 'public.supporter_enabled()'::regprocedure,
-                 fn::regprocedure)
+                 fn::regprocedure, 'public.record_supporter_webhook_rejection(text, text, text, text)'::regprocedure)
      AND prosecdef AND array_to_string(proconfig, ',') LIKE '%search_path=%';
-  IF n IS DISTINCT FROM 3 THEN RAISE EXCEPTION 'T2 % of 3 definer functions pin search_path', n; END IF;
+  IF n IS DISTINCT FROM 4 THEN RAISE EXCEPTION 'T2 % of 4 definer functions pin search_path', n; END IF;
   IF (SELECT provolatile FROM pg_proc WHERE oid = 'public.is_supporter(uuid)'::regprocedure) IS DISTINCT FROM 's' THEN
     RAISE EXCEPTION 'T2 is_supporter is not STABLE';
   END IF;
@@ -259,6 +281,24 @@ BEGIN
     RAISE EXCEPTION 'T5 no row still counted as a supporter';
   END IF;
   RAISE NOTICE 'PASS 140 T5 is_supporter: any live production subscription, sandbox only by switch, kill switch wins';
+
+  -- ── T5b her summary: a grace row with no period never outranks a live one ─
+  -- A BILLING_ISSUE with no expiration and no grace end stores period NULL.
+  -- Its "live" sort key must be false, not NULL: NULL sorts FIRST under DESC.
+  INSERT INTO public.supporter_subscriptions
+    (id, user_id, status, period_ends_at, store, environment, original_transaction_ref, last_event_at)
+  VALUES ('txn:t5b.null', e, 'grace',  NULL,                    'play_store', 'production', 't5b.null', t0),
+         ('txn:t5b.live', e, 'active', t0 + interval '30 days', 'play_store', 'production', 't5b.live', t0 - interval '1 day');
+  PERFORM public._supporter_refresh(e);
+  SELECT * INTO er FROM public.supporter_entitlements WHERE user_id = e;
+  IF er.status IS DISTINCT FROM 'active' OR er.original_transaction_ref IS DISTINCT FROM 't5b.live'
+     OR er.period_ends_at IS DISTINCT FROM t0 + interval '30 days' THEN
+    RAISE EXCEPTION 'T5b summary shows % % until % instead of the live subscription',
+      er.status, er.original_transaction_ref, er.period_ends_at;
+  END IF;
+  DELETE FROM public.supporter_subscriptions WHERE user_id = e;
+  DELETE FROM public.supporter_entitlements WHERE user_id = e;
+  RAISE NOTICE 'PASS 140 T5b summary: a live subscription outranks a grace row with no period';
 
   -- ── T6 apply_supporter_event: replay, ordering, every effect ────────────
   PERFORM set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
@@ -491,21 +531,51 @@ BEGIN
     RAISE EXCEPTION 'T7 a pre-transfer RENEWAL handed it back to the source (% owner=%)', r, es.user_id;
   END IF;
 
-  -- No store on the event: everything she had moves; her summary lapses.
+  -- No store on the event (TRANSFER carries `store` only "sometimes"). A
+  -- transfer comes from a device-store restore, which can only carry what that
+  -- store holds: her second Play subscription moves. Her card-paid web
+  -- subscription, a Stripe one, a promotional grant and a row whose store we
+  -- never learned all stay hers.
+  RESET ROLE;
+  INSERT INTO public.supporter_subscriptions
+    (id, user_id, status, period_ends_at, store, environment, original_transaction_ref, last_event_at)
+  VALUES ('txn:GPA.b2',    b, 'active', t0 + interval '30 days', 'play_store',  'production', 'GPA.b2',    t0 - interval '1 day'),
+         ('txn:sub_b',     b, 'active', t0 + interval '30 days', 'stripe',      'production', 'sub_b',     t0 - interval '1 day'),
+         ('txn:promo_b',   b, 'active', t0 + interval '30 days', 'promotional', 'production', 'promo_b',   t0 - interval '1 day'),
+         ('txn:nostore_b', b, 'active', t0 + interval '30 days', NULL,          'production', 'nostore_b', t0 - interval '1 day');
+  PERFORM public._supporter_refresh(b);
+  SET LOCAL ROLE service_role;
   r := public.apply_supporter_event(p_event_id => '140-e32', p_type => 'TRANSFER', p_effect => 'transfer',
          p_user_id => d, p_event_at => t0 + interval '3 hours', p_from_user_ids => ARRAY[b]);
+  SELECT * INTO es FROM public.supporter_subscriptions WHERE id = 'txn:GPA.b2';
+  IF r IS DISTINCT FROM 'applied' OR es.user_id IS DISTINCT FROM d OR es.status IS DISTINCT FROM 'active' THEN
+    RAISE EXCEPTION 'T7 storeless transfer did not move her Play subscription (% owner=% status=%)', r, es.user_id, es.status;
+  END IF;
+  SELECT count(*) INTO n FROM public.supporter_subscriptions
+   WHERE id IN ('txn:rcb_b', 'txn:sub_b', 'txn:promo_b', 'txn:nostore_b') AND user_id = b AND status = 'active';
   SELECT * INTO er FROM public.supporter_entitlements WHERE user_id = b;
-  IF r IS DISTINCT FROM 'applied' OR public.is_supporter(b) OR er.status IS DISTINCT FROM 'expired'
-     OR EXISTS (SELECT 1 FROM public.supporter_subscriptions WHERE user_id = b) THEN
-    RAISE EXCEPTION 'T7 storeless transfer: % b supporter=% summary %', r, public.is_supporter(b), er.status;
+  IF n IS DISTINCT FROM 4 OR NOT public.is_supporter(b) OR er.status IS DISTINCT FROM 'active' THEN
+    RAISE EXCEPTION 'T7 storeless transfer took her web/Stripe/promotional/unknown-store subscriptions (% of 4 kept, supporter=%, summary %)',
+      n, public.is_supporter(b), er.status;
   END IF;
 
-  -- Moved to someone who is not a member: the source still loses it.
+  -- Moved to someone who is not a member: the source still loses what the
+  -- store restore carried, and only that — her web subscription stays.
+  RESET ROLE;
+  INSERT INTO public.supporter_subscriptions
+    (id, user_id, status, period_ends_at, store, environment, original_transaction_ref, last_event_at)
+  VALUES ('txn:rcb_d', d, 'active', t0 + interval '300 days', 'rc_billing', 'production', 'rcb_d', t0 - interval '1 day');
+  SET LOCAL ROLE service_role;
   r := public.apply_supporter_event(p_event_id => '140-e33', p_type => 'TRANSFER', p_effect => 'transfer',
          p_user_id => NULL, p_event_at => t0 + interval '4 hours', p_from_user_ids => ARRAY[d]);
-  IF r IS DISTINCT FROM 'applied' OR public.is_supporter(d)
-     OR EXISTS (SELECT 1 FROM public.supporter_subscriptions WHERE user_id = d AND status IN ('active', 'grace')) THEN
-    RAISE EXCEPTION 'T7 transfer to a non-member left the source entitled (% supporter=%)', r, public.is_supporter(d);
+  IF r IS DISTINCT FROM 'applied'
+     OR EXISTS (SELECT 1 FROM public.supporter_subscriptions
+                 WHERE user_id = d AND store = 'play_store' AND status IN ('active', 'grace')) THEN
+    RAISE EXCEPTION 'T7 transfer to a non-member left the source her Play subscriptions (%)', r;
+  END IF;
+  IF (SELECT status FROM public.supporter_subscriptions WHERE id = 'txn:rcb_d') IS DISTINCT FROM 'active'
+     OR NOT public.is_supporter(d) THEN
+    RAISE EXCEPTION 'T7 a storeless transfer to a non-member expired her web subscription (supporter=%)', public.is_supporter(d);
   END IF;
 
   r := public.apply_supporter_event(p_event_id => '140-e34', p_type => 'TRANSFER', p_effect => 'transfer',
@@ -516,7 +586,7 @@ BEGIN
     RAISE EXCEPTION 'T7 nothing to move: % / %', r, st;
   END IF;
   RESET ROLE;
-  RAISE NOTICE 'PASS 140 T7 TRANSFER moves that store''s subscriptions, a late source event is stale, a non-member destination still revokes';
+  RAISE NOTICE 'PASS 140 T7 TRANSFER moves that store''s subscriptions (storeless: device-store ones only), a late source event is stale, a non-member destination still revokes';
 
   -- ── T8 only the service role can apply — the grant AND the body say so ──
   PERFORM set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated')::text, true);
@@ -548,7 +618,7 @@ BEGIN
   PERFORM set_config('request.jwt.claims', '', true);
   SET LOCAL ROLE anon;
   FOR rec IN SELECT * FROM (VALUES ('public.supporter_entitlements'), ('public.supporter_subscriptions'),
-                                   ('public.supporter_events')) v(t) LOOP
+                                   ('public.supporter_events'), ('public.supporter_webhook_rejections')) v(t) LOOP
     ok := false;
     BEGIN EXECUTE format('SELECT 1 FROM %s LIMIT 1', rec.t);
     EXCEPTION WHEN insufficient_privilege THEN ok := true;
@@ -572,8 +642,71 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN ok := true;
   END;
   IF NOT ok THEN RAISE EXCEPTION 'T9 anon executed apply_supporter_event'; END IF;
+  ok := false;
+  BEGIN
+    PERFORM public.record_supporter_webhook_rejection(p_event_id => '140-anon', p_event_type => 'INITIAL_PURCHASE',
+              p_reason => 'event.environment');
+  EXCEPTION WHEN insufficient_privilege THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'T9 anon recorded a webhook rejection'; END IF;
   RESET ROLE;
-  RAISE NOTICE 'PASS 140 T9 anon can neither read, ask, nor apply';
+  RAISE NOTICE 'PASS 140 T9 anon can neither read, ask, apply, nor record';
+
+  -- ── T10 a refused delivery leaves a trace for support ───────────────────
+  PERFORM set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
+  SET LOCAL ROLE service_role;
+  r := public.record_supporter_webhook_rejection(p_event_id => '140-rej1', p_event_type => 'INITIAL_PURCHASE',
+         p_reason => 'event.environment', p_app_user_id_hash => repeat('ab', 32));
+  st := public.record_supporter_webhook_rejection(p_event_id => '140-rej1', p_event_type => 'INITIAL_PURCHASE',
+         p_reason => 'event.environment', p_app_user_id_hash => repeat('ab', 32));
+  IF r IS DISTINCT FROM 'recorded' OR st IS DISTINCT FROM 'duplicate' THEN
+    RAISE EXCEPTION 'T10 record / replay: % / %', r, st;
+  END IF;
+  -- The same event refused for another reason is its own row; no app user id is allowed.
+  r := public.record_supporter_webhook_rejection(p_event_id => '140-rej1', p_event_type => 'INITIAL_PURCHASE',
+         p_reason => 'unknown_user');
+  IF r IS DISTINCT FROM 'recorded' THEN RAISE EXCEPTION 'T10 second reason for one event: %', r; END IF;
+  ok := false;
+  BEGIN
+    PERFORM public.record_supporter_webhook_rejection(p_event_id => '140-rej2', p_event_type => 'RENEWAL',
+              p_reason => 'event.expiration_at_ms', p_app_user_id_hash => d::text);
+  EXCEPTION WHEN check_violation THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'T10 a raw member id was recorded as the hash'; END IF;
+  ok := false;
+  BEGIN
+    PERFORM public.record_supporter_webhook_rejection(p_event_id => '140-rej3', p_event_type => 'RENEWAL',
+              p_reason => 'Invalid payload: her@example.com');
+  EXCEPTION WHEN check_violation THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'T10 free text was recorded as a reason'; END IF;
+  RESET ROLE;
+  SELECT count(*) INTO n FROM public.supporter_webhook_rejections WHERE event_id LIKE '140-rej%';
+  IF n IS DISTINCT FROM 2 THEN RAISE EXCEPTION 'T10 % rejection rows (expected 2)', n; END IF;
+
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated')::text, true);
+  SET LOCAL ROLE authenticated;
+  ok := false;
+  BEGIN
+    PERFORM public.record_supporter_webhook_rejection(p_event_id => '140-rej-self', p_event_type => 'INITIAL_PURCHASE',
+              p_reason => 'unknown_user');
+  EXCEPTION WHEN insufficient_privilege THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'T10 a member recorded a webhook rejection'; END IF;
+  ok := false;
+  BEGIN PERFORM 1 FROM public.supporter_webhook_rejections LIMIT 1;
+  EXCEPTION WHEN insufficient_privilege THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'T10 a member read supporter_webhook_rejections'; END IF;
+  RESET ROLE;
+  ok := false;
+  BEGIN
+    PERFORM public.record_supporter_webhook_rejection(p_event_id => '140-rej-owner', p_event_type => 'INITIAL_PURCHASE',
+              p_reason => 'unknown_user');
+  EXCEPTION WHEN insufficient_privilege THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'T10 record_supporter_webhook_rejection ran without the service-role claim'; END IF;
+  RAISE NOTICE 'PASS 140 T10 rejections: recorded once per (event, reason), hash-only, service-role only';
 END $$;
 
 -- Leave no identity behind for a stacked check: auth.uid() reads claim.sub

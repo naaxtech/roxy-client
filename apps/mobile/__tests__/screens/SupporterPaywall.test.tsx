@@ -41,6 +41,7 @@ jest.mock('../../lib/supporter', () => ({
   ...jest.requireActual('../../lib/supporter'),
   supporter: {
     getState: jest.fn(),
+    recheck: jest.fn(),
     loadPlans: jest.fn(),
     buy: jest.fn(),
     restore: jest.fn(),
@@ -56,7 +57,7 @@ import SupporterScreen from '../../app/supporter';
 
 const { Analytics } = jest.requireMock('../../lib/analytics') as { Analytics: Record<string, jest.Mock> };
 const supporterMock = jest.requireMock('../../lib/supporter') as {
-  supporter: Record<'getState' | 'loadPlans' | 'buy' | 'restore' | 'canRestore' | 'manageUrl' | 'subscribe', jest.Mock>;
+  supporter: Record<'getState' | 'recheck' | 'loadPlans' | 'buy' | 'restore' | 'canRestore' | 'manageUrl' | 'subscribe', jest.Mock>;
   supporterLegalLinks: jest.Mock;
 };
 const mockClient = supporterMock.supporter;
@@ -82,6 +83,7 @@ beforeEach(() => {
   mockAccess = { loading: false, kind: 'member' };
   mockLegal = { terms: 'https://roxy.example/terms', privacy: 'https://roxy.example/privacy' };
   mockClient.getState.mockResolvedValue({ status: 'free' });
+  mockClient.recheck.mockReset().mockResolvedValue({ status: 'free' });
   mockClient.loadPlans.mockResolvedValue(READY);
   mockClient.canRestore.mockReturnValue(true);
   mockClient.manageUrl.mockResolvedValue('https://play.google.com/store/account/subscriptions');
@@ -277,6 +279,104 @@ describe('buying', () => {
     const v = render(<SupporterScreen />);
     expect(await v.findByText('Payment received — your perks will appear in a minute.')).toBeTruthy();
     expect(v.queryByTestId('supporter-buy')).toBeNull();
+  });
+});
+
+describe('paid but not confirmed: a way out', () => {
+  const paidLate = async () => {
+    mockClient.buy.mockResolvedValue({ kind: 'processing' });
+    const v = await offer();
+    fireEvent.press(v.getByTestId('supporter-buy'));
+    await v.findByTestId('supporter-processing');
+    return v;
+  };
+
+  it('"Check again" re-reads the server: confirmed → success', async () => {
+    const v = await paidLate();
+    mockClient.recheck.mockResolvedValue(ACTIVE);
+    fireEvent.press(v.getByTestId('supporter-check'));
+    expect(await v.findByTestId('supporter-success')).toBeTruthy();
+    // recheck, not getState: it also tells the You row she is confirmed.
+    expect(mockClient.recheck).toHaveBeenCalledTimes(1);
+  });
+
+  it('"Check again" while the server still has nothing says so and stays put; an error says so too', async () => {
+    const v = await paidLate();
+    mockClient.recheck.mockResolvedValueOnce({ status: 'free' }).mockResolvedValueOnce({ status: 'error' });
+    fireEvent.press(v.getByTestId('supporter-check'));
+    expect(await v.findByText(/Not through yet/)).toBeTruthy();
+    expect(v.getByTestId('supporter-processing')).toBeTruthy();
+    fireEvent.press(v.getByTestId('supporter-check'));
+    expect(await v.findByText(/couldn’t check/i)).toBeTruthy();
+    expect(v.getByTestId('supporter-processing')).toBeTruthy();
+  });
+
+  it('offers Restore on native, and says so when the store has nothing', async () => {
+    const v = await paidLate();
+    mockClient.restore.mockResolvedValueOnce({ kind: 'nothing' });
+    fireEvent.press(v.getByTestId('supporter-restore'));
+    expect(await v.findByText('No Roxy Supporter subscription found for this store account.')).toBeTruthy();
+    mockClient.restore.mockResolvedValueOnce({ kind: 'success', state: ACTIVE });
+    fireEvent.press(v.getByTestId('supporter-restore'));
+    expect(await v.findByTestId('supporter-success')).toBeTruthy();
+  });
+
+  it('no Restore where the platform has none (web)', async () => {
+    mockClient.canRestore.mockReturnValue(false);
+    const v = await paidLate();
+    expect(v.queryByTestId('supporter-restore')).toBeNull();
+    expect(v.getByTestId('supporter-check')).toBeTruthy();
+  });
+
+  it('"Help with Supporter" opens the support channel with the topic filled in', async () => {
+    const v = await paidLate();
+    fireEvent.press(v.getByTestId('supporter-help'));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/(tabs)/you/feedback',
+      params: { category: 'other', prefillMessage: 'About Roxy Supporter: ' },
+    });
+  });
+
+  it('a store-pending payment can be checked again and has help too', async () => {
+    mockClient.buy.mockResolvedValue({ kind: 'pending' });
+    const v = await offer();
+    fireEvent.press(v.getByTestId('supporter-buy'));
+    await v.findByText('Payment pending');
+    expect(v.getByTestId('supporter-check')).toBeTruthy();
+    expect(v.getByTestId('supporter-help')).toBeTruthy();
+  });
+});
+
+describe('Help with Supporter (spec › Commercial gate › Support)', () => {
+  it('is on the offer and on her status page', async () => {
+    const v = await offer();
+    fireEvent.press(v.getByTestId('supporter-help'));
+    expect(mockPush).toHaveBeenCalledWith(expect.objectContaining({ pathname: '/(tabs)/you/feedback' }));
+    mockClient.getState.mockResolvedValue(ACTIVE);
+    const w = render(<SupporterScreen />);
+    await w.findByTestId('supporter-active');
+    expect(w.getByTestId('supporter-help')).toBeTruthy();
+  });
+});
+
+describe('kill switch off, but she pays', () => {
+  const PAUSED = { ...ACTIVE, status: 'paused' };
+
+  it('says her subscription is active and perks are paused, with Manage subscription and Help — never "Coming soon"', async () => {
+    mockClient.getState.mockResolvedValue(PAUSED);
+    const v = render(<SupporterScreen />);
+    const box = await v.findByTestId('supporter-paused');
+    expect(within(box).getByText('Your Supporter subscription is active')).toBeTruthy();
+    expect(within(box).getByText(/perks are paused for a moment/)).toBeTruthy();
+    expect(v.queryByText('Roxy Supporter is coming soon')).toBeNull();
+    expect(v.queryByText('You’re a Roxy Supporter')).toBeNull();
+    expect(v.queryByTestId('supporter-buy')).toBeNull();
+    expect(mockClient.loadPlans).not.toHaveBeenCalled();
+    fireEvent.press(await v.findByTestId('supporter-manage'));
+    await waitFor(() => expect(openURL).toHaveBeenCalledWith('https://play.google.com/store/account/subscriptions'));
+    expect(mockClient.manageUrl).toHaveBeenCalledWith(PAUSED);
+    fireEvent.press(v.getByTestId('supporter-help'));
+    expect(mockPush).toHaveBeenCalledWith(expect.objectContaining({ pathname: '/(tabs)/you/feedback' }));
   });
 });
 

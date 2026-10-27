@@ -50,6 +50,34 @@ export type ApplyFn = (
   args: ApplyArgs,
 ) => Promise<{ data: string | null; error: { code?: string; message: string } | null }>;
 
+/** Named arguments of public.record_supporter_webhook_rejection (migration 140 §9). */
+export type RejectArgs = {
+  p_event_id: string;
+  p_event_type: string;
+  /** A field name ('event.environment') or 'unknown_user'; never a payload value. */
+  p_reason: string;
+  /** sha-256 hex of her member uuid when the event carries one, else of app_user_id; null when neither. Never the raw id. */
+  p_app_user_id_hash: string | null;
+};
+
+export type RejectFn = (
+  args: RejectArgs,
+) => Promise<{ data: string | null; error: { code?: string; message: string } | null }>;
+
+/**
+ * How far after its own event a refund's expiration may sit and still mean
+ * "access ended". The two stamps come from two clocks: expiration_at_ms is
+ * the store's end of the transaction (moved to the refund in the refund
+ * sample, S: 15 min BEFORE the event), while event_timestamp_ms is when
+ * RevenueCat generated the event, which "doesn't necessarily coincide with
+ * when the action that triggered the event occurred" (F · 2026-10-28). A
+ * refund that ended access can therefore land a few seconds or minutes
+ * "after" its event. A goodwill refund leaves days or weeks on the period,
+ * so five minutes separates the two; at worst a goodwill-refunded period
+ * that ends within five minutes anyway loses those minutes.
+ */
+export const REFUND_SKEW_MS = 5 * 60 * 1000;
+
 export type LogFn = (level: 'info' | 'error', msg: string, fields: Record<string, unknown>) => void;
 
 type Obj = Record<string, unknown>;
@@ -211,15 +239,16 @@ export function effectFor(ev: Obj): Effect {
     // given without canceling a subscription. Check the current subscription
     // status". The event's expiration_at_ms is that status: in the refund
     // sample (S) it was moved to before the event — access ended. So a refund
-    // revokes only when expiration is null (a lifetime purchase) or not after
-    // the event; a refund leaving the period running (goodwill / partial) is
-    // informational, like any other cancellation, which keeps her entitled to
-    // the period end.
+    // revokes when expiration is null (a lifetime purchase) or not after the
+    // event by more than REFUND_SKEW_MS (two clocks, see there); a refund
+    // leaving the period running (goodwill / partial) is informational, like
+    // any other cancellation, which keeps her entitled to the period end.
     case 'CANCELLATION': {
       if (ev.cancel_reason !== 'CUSTOMER_SUPPORT') return 'cancel';
       const exp = ev.expiration_at_ms;
       const at = ev.event_timestamp_ms;
-      const ended = exp === null || (typeof exp === 'number' && typeof at === 'number' && exp <= at);
+      const ended = exp === null
+        || (typeof exp === 'number' && typeof at === 'number' && exp <= at + REFUND_SKEW_MS);
       return ended ? 'refund' : 'cancel';
     }
   }
@@ -229,9 +258,38 @@ export function effectFor(ev: Obj): Effect {
   return 'log';
 }
 
-export type ParseResult = { ok: true; args: ApplyArgs } | { ok: false; error: string };
+/**
+ * What names a delivery, read before anything else is checked, so a refused
+ * one can still be recorded (record_supporter_webhook_rejection). `lookupId`
+ * is the id support can find her by (see lookupIdOf); the handler hashes it
+ * and never logs it.
+ */
+export type EventIdentity = { id: string; type: string; lookupId: string | null };
 
-const bad = (error: string): ParseResult => ({ ok: false, error });
+/**
+ * The id a rejection is traced under: her member uuid when the event carries
+ * one (resolveUserId; for a TRANSFER, its single destination), because that is
+ * what support can hash from her account. Else RevenueCat's raw app_user_id
+ * (an anonymous id support can read off the RevenueCat customer page).
+ */
+function lookupIdOf(ev: Obj, type: string): string | null {
+  let member: string | null;
+  if (type === 'TRANSFER') {
+    const to = Array.isArray(ev.transferred_to) ? uniqUuids(ev.transferred_to) : [];
+    member = to.length === 1 ? to[0] : null;
+  } else {
+    member = resolveUserId(ev);
+  }
+  if (member) return member;
+  return typeof ev.app_user_id === 'string' && ev.app_user_id.length > 0 ? ev.app_user_id : null;
+}
+
+export type ParseResult =
+  | { ok: true; args: ApplyArgs; event: EventIdentity }
+  // event: null = nothing to record it under (no usable event id or type).
+  | { ok: false; error: string; event: EventIdentity | null };
+
+const bad = (error: string, event: EventIdentity | null): ParseResult => ({ ok: false, error, event });
 
 function build(
   common: Pick<ApplyArgs, 'p_event_id' | 'p_type' | 'p_effect' | 'p_event_at' | 'p_payload'>,
@@ -258,30 +316,35 @@ function build(
  * Validates a webhook body and turns it into apply_supporter_event arguments.
  * src: F · 2026-10-26 — the POST body is { api_version, event }; event.id and
  * event.event_timestamp_ms are always present and reused on retries.
- * Error strings name the field only, never its value.
+ * Error strings name the field only, never its value. The event's identity
+ * (id + type) is read first: once it is known, every later refusal can be
+ * recorded for support instead of bounced (see handleRevenueCatWebhook).
  */
 export function parseWebhook(input: unknown): ParseResult {
-  if (!isObj(input)) return bad('body');
+  if (!isObj(input)) return bad('body', null);
+  const ev = input.event;
+  if (!isObj(ev)) return bad('event', null);
+
+  const id = ev.id;
+  if (typeof id !== 'string' || id.length < 1 || id.length > 128) return bad('event.id', null);
+  const type = ev.type;
+  if (typeof type !== 'string' || !TYPE_RE.test(type)) return bad('event.type', null);
+  const who: EventIdentity = { id, type, lookupId: lookupIdOf(ev, type) };
+  const no = (field: string) => bad(field, who);
+
   const apiVersion = input.api_version;
   // The documented refund sample omits api_version; a different major is a shape we do not know.
   if (apiVersion !== undefined && !(typeof apiVersion === 'string' && /^1(\.|$)/.test(apiVersion))) {
-    return bad('api_version');
+    return no('api_version');
   }
-  const ev = input.event;
-  if (!isObj(ev)) return bad('event');
-
-  const id = ev.id;
-  if (typeof id !== 'string' || id.length < 1 || id.length > 128) return bad('event.id');
-  const type = ev.type;
-  if (typeof type !== 'string' || !TYPE_RE.test(type)) return bad('event.type');
   const eventAt = msToIso(ev.event_timestamp_ms);
-  if (eventAt === null) return bad('event.event_timestamp_ms');
+  if (eventAt === null) return no('event.event_timestamp_ms');
 
   const effect = effectFor(ev);
   const environment = environmentOf(ev.environment);
   // src: F · 2026-10-26 — TRANSFER has environment only "sometimes".
   const stateful = effect !== 'log' && effect !== 'transfer';
-  if (stateful && environment === null) return bad('event.environment');
+  if (stateful && environment === null) return no('event.environment');
 
   const payload = storedPayload(apiVersion, ev);
 
@@ -291,12 +354,13 @@ export function parseWebhook(input: unknown): ParseResult {
     // src: F · 2026-10-26 — transferred_from / transferred_to: String arrays, always present.
     const from = ev.transferred_from;
     const to = ev.transferred_to;
-    if (!Array.isArray(from) || !from.every((v) => typeof v === 'string')) return bad('event.transferred_from');
-    if (!Array.isArray(to) || !to.every((v) => typeof v === 'string')) return bad('event.transferred_to');
+    if (!Array.isArray(from) || !from.every((v) => typeof v === 'string')) return no('event.transferred_from');
+    if (!Array.isArray(to) || !to.every((v) => typeof v === 'string')) return no('event.transferred_to');
     const destinations = uniqUuids(to);
     const destination = destinations.length === 1 ? destinations[0] : null;
     return {
       ok: true,
+      event: who,
       args: build(common, {
         p_user_id: destination,
         p_environment: environment,
@@ -314,7 +378,7 @@ export function parseWebhook(input: unknown): ParseResult {
   const productId = shortText(ev.product_id);
   const originalRef = shortText(ev.original_transaction_id);
   if (CHANGES_STATE.has(effect) && productId === null && originalRef === null) {
-    return bad('event.original_transaction_id');
+    return no('event.original_transaction_id');
   }
 
   let period: string | null = null;
@@ -322,16 +386,16 @@ export function parseWebhook(input: unknown): ParseResult {
     // src: F · 2026-10-26 — expiration_at_ms is always present; null "for
     // non-subscription purchases or lifetime products". Absent ≠ null here.
     const exp = ev.expiration_at_ms;
-    if (exp === undefined) return bad('event.expiration_at_ms');
+    if (exp === undefined) return no('event.expiration_at_ms');
     const expIso = exp === null ? null : msToIso(exp);
-    if (exp !== null && expIso === null) return bad('event.expiration_at_ms');
+    if (exp !== null && expIso === null) return no('event.expiration_at_ms');
 
     if (effect === 'grace') {
       // src: F · 2026-10-26 — grace_period_expiration_at_ms: only on
       // BILLING_ISSUE, always present there, can be null (no grace period).
       const g = ev.grace_period_expiration_at_ms;
       const graceIso = g === undefined || g === null ? null : msToIso(g);
-      if (g !== undefined && g !== null && graceIso === null) return bad('event.grace_period_expiration_at_ms');
+      if (g !== undefined && g !== null && graceIso === null) return no('event.grace_period_expiration_at_ms');
       period = graceIso ?? expIso;
     } else if (effect === 'activate') {
       period = expIso ?? 'infinity';
@@ -342,6 +406,7 @@ export function parseWebhook(input: unknown): ParseResult {
 
   return {
     ok: true,
+    event: who,
     args: build(common, {
       p_user_id: resolveUserId(ev),
       p_environment: environment,
@@ -362,20 +427,61 @@ const defaultLog: LogFn = (level, msg, fields) => {
   else console.info(line);
 };
 
+/** sha-256 hex (Web Crypto, in Deno and the Supabase edge runtime). */
+async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Records a refused delivery for support. False when it could not be recorded. */
+async function recordRejection(
+  reject: RejectFn,
+  event: EventIdentity,
+  reason: string,
+  log: LogFn,
+): Promise<boolean> {
+  let outcome: Awaited<ReturnType<RejectFn>>;
+  try {
+    outcome = await reject({
+      p_event_id: event.id,
+      p_event_type: event.type,
+      p_reason: reason,
+      p_app_user_id_hash: event.lookupId === null ? null : await sha256Hex(event.lookupId),
+    });
+  } catch {
+    outcome = { data: null, error: { code: 'reject_threw', message: '' } };
+  }
+  if (outcome.error || typeof outcome.data !== 'string') {
+    log('error', 'revenuecat-webhook: could not record rejection', {
+      type: event.type, reason, code: outcome.error?.code ?? 'no_result',
+    });
+    return false;
+  }
+  return true;
+}
+
 /**
  * The whole request cycle. Status codes are chosen for RevenueCat's retry
- * policy — src: W · 2026-10-26: anything but 200 is a failure, retried 5
- * times (≈2.5, 5, 10, 20, 40 min), and a response must finish within 60 s.
+ * policy — src: W · 2026-10-28: "Any other status code [than 200] will be
+ * considered a failure", retried "up to 5 times" (≈2.5, 5, 10, 20, 40 min,
+ * ~80 min in all), then "we will stop sending notifications"; retries "reuse
+ * the payload id and event_timestamp_ms"; a response must finish within 60 s.
+ * So a non-200 is only worth sending when a retry of the SAME payload can
+ * succeed:
  *   405 not POST · 503 secret not configured · 401 bad Authorization
- *   400 malformed body (a shape we refuse; RC retries, the dashboard shows it)
- *   500 the database failed (a retry may succeed)
- *   200 applied | duplicate | stale | logged | unknown_user
- * Logs carry type, effect, result and error code only — never a member id,
- * an alias, or a database error message (those can quote ids).
+ *       (fixing the config inside the retry window recovers the event)
+ *   400 nothing to record it under: not JSON, no event, no usable id / type
+ *   500 the database failed, applying or recording (a retry may succeed)
+ *   200 applied | duplicate | stale | logged
+ *   200 unknown_user — and a hashed trace in supporter_webhook_rejections
+ *   200 rejected — a well-formed event we refuse (a field missing or
+ *       malformed): a retry cannot change it, so it is recorded instead
+ * Logs carry type, effect, result, field and error code only — never a
+ * member id, an alias, or a database error message (those can quote ids).
  */
 export async function handleRevenueCatWebhook(
   req: Request,
-  deps: { secret: string | null | undefined; apply: ApplyFn; log?: LogFn },
+  deps: { secret: string | null | undefined; apply: ApplyFn; reject: RejectFn; log?: LogFn },
 ): Promise<Response> {
   const log = deps.log ?? defaultLog;
   if (req.method !== 'POST') return errorResponse('Method not allowed', 405);
@@ -398,8 +504,12 @@ export async function handleRevenueCatWebhook(
   // `=== false`, not `!parsed.ok`: Deno type-checks with the repo-root
   // tsconfig (Expo base, strictNullChecks off), where `!x.ok` does not narrow.
   if (parsed.ok === false) {
-    log('error', 'revenuecat-webhook: rejected payload', { field: parsed.error });
-    return errorResponse(`Invalid payload: ${parsed.error}`, 400);
+    log('error', 'revenuecat-webhook: rejected payload', { field: parsed.error, type: parsed.event?.type ?? null });
+    if (parsed.event === null) return errorResponse(`Invalid payload: ${parsed.error}`, 400);
+    if (!(await recordRejection(deps.reject, parsed.event, parsed.error, log))) {
+      return errorResponse('Could not record the event', 500);
+    }
+    return successResponse({ result: 'rejected', reason: parsed.error });
   }
   const { p_type: type, p_effect: effect } = parsed.args;
 
@@ -415,5 +525,10 @@ export async function handleRevenueCatWebhook(
   }
 
   log('info', 'revenuecat-webhook: event', { type, effect, result: outcome.data });
+  // She may have paid under an id that is not a member (bought before her
+  // session reached the SDK). The event is already in supporter_events; the
+  // hashed trace is how support finds it from her side. Still 200: a retry
+  // would only answer 'duplicate'.
+  if (outcome.data === 'unknown_user') await recordRejection(deps.reject, parsed.event, 'unknown_user', log);
   return successResponse({ result: outcome.data });
 }

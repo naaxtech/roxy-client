@@ -111,10 +111,23 @@ describe('YouRows — the places You leads to', () => {
     expect(mockPush).toHaveBeenCalledWith('/(tabs)/you/settings');
   });
 
-  it('never says "Premium": that name was never built', async () => {
-    const v = render(<YouRows userId="u1" onOpenSaved={jest.fn()} supporterEligible />);
-    await act(async () => undefined);
-    expect(v.queryByText(/Premium/)).toBeNull();
+  it('never says "Premium": that name was never built — checked with the Supporter row actually drawn', async () => {
+    const states = [
+      { status: 'free' },
+      {
+        status: 'active', inGrace: false, periodEndsAt: new Date('2026-11-27T12:00:00Z'),
+        willRenew: true, store: 'play_store', productId: 'roxy_supporter_monthly',
+      },
+    ];
+    for (const state of states) {
+      mockSupporterState.mockResolvedValue(state);
+      const v = render(<YouRows userId="u1" onOpenSaved={jest.fn()} supporterEligible />);
+      const row = await v.findByTestId('you-supporter-row');
+      expect(within(row).getByText('Roxy Supporter')).toBeTruthy();
+      expect(v.queryByText(/Premium/)).toBeNull();
+      expect(String(row.props.accessibilityLabel)).not.toMatch(/Premium/);
+      v.unmount();
+    }
   });
 });
 
@@ -156,6 +169,18 @@ describe('YouRows — Roxy Supporter (owner decision 2026-10-26)', () => {
     await v.findByTestId('you-supporter-row');
     const ids = within(v.getByTestId('you-rows')).getAllByRole('button').map((b) => b.props.testID);
     expect(ids).toEqual(['you-row-wallet', 'you-row-saved', 'you-row-sell', 'you-supporter-row', 'you-row-settings']);
+  });
+
+  it('kill switch off but she pays: the row stays, says she is still subscribed, and opens her status', async () => {
+    mockSupporterState.mockResolvedValue({
+      status: 'paused', inGrace: false, periodEndsAt: new Date('2026-11-27T12:00:00Z'),
+      willRenew: null, store: 'play_store', productId: 'roxy_supporter_monthly',
+    });
+    const v = render(<YouRows userId="u1" onOpenSaved={jest.fn()} supporterEligible />);
+    const row = await v.findByTestId('you-supporter-row');
+    expect(within(row).getByText('Active · perks paused')).toBeTruthy();
+    fireEvent.press(row);
+    expect(mockPush).toHaveBeenCalledWith('/supporter?source=you');
   });
 
   it('kill switch off (or no key): no row, so no dead entry', async () => {

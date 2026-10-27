@@ -15,15 +15,20 @@
 import { getSupabaseClient } from '../_shared/auth.ts';
 import { handleRevenueCatWebhook } from '../_shared/revenuecat.ts';
 
+/** One service-role RPC, reduced to the { data, error } the handler reads. */
+async function rpc(fn: string, args: Record<string, unknown>) {
+  const { data, error } = await getSupabaseClient().rpc(fn, args);
+  return {
+    data: typeof data === 'string' ? data : null,
+    error: error ? { code: error.code, message: error.message } : null,
+  };
+}
+
 Deno.serve((req) =>
   handleRevenueCatWebhook(req, {
     secret: Deno.env.get('REVENUECAT_WEBHOOK_SECRET'),
-    apply: async (args) => {
-      const { data, error } = await getSupabaseClient().rpc('apply_supporter_event', args);
-      return {
-        data: typeof data === 'string' ? data : null,
-        error: error ? { code: error.code, message: error.message } : null,
-      };
-    },
+    apply: (args) => rpc('apply_supporter_event', args),
+    // Refused deliveries (and unknown_user) → supporter_webhook_rejections, for support.
+    reject: (args) => rpc('record_supporter_webhook_rejection', args),
   })
 );

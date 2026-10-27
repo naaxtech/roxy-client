@@ -25,7 +25,9 @@
 --   transfer                             moves subscriptions between members
 --   cancel | change | log                informational: logged, nothing changes
 --
--- Expand only: three new tables, four functions, two platform_settings
+--   supporter_webhook_rejections  deliveries the webhook refused (§9), for support.
+--
+-- Expand only: four new tables, five functions, two platform_settings
 -- columns that default OFF. Nothing existing changes behaviour.
 -- ============================================================
 
@@ -208,7 +210,10 @@ BEGIN
   SELECT * INTO v_best
     FROM public.supporter_subscriptions s
    WHERE s.user_id = p_uid
-   ORDER BY (s.status IN ('active', 'grace') AND s.period_ends_at > now()) DESC,
+   -- coalesce: a live status with a NULL period (a BILLING_ISSUE with no
+   -- expiration and no grace end) makes this NULL, and NULL sorts FIRST under
+   -- DESC — it would outrank a paid, running subscription.
+   ORDER BY coalesce(s.status IN ('active', 'grace') AND s.period_ends_at > now(), false) DESC,
             (s.environment = 'production') DESC,
             s.period_ends_at DESC NULLS LAST,
             s.last_event_at DESC,
@@ -304,9 +309,12 @@ GRANT EXECUTE ON FUNCTION public.supporter_enabled() TO authenticated, service_r
 --      "can arrive in a different order" (same page). A newer event naming a
 --      different member moves the subscription to her (its TRANSFER is still
 --      in flight).
---   4. TRANSFER moves the sources' subscriptions (of the event's store, when it
---      names one) to the destination; to a non-member they expire. Either way
---      the source loses them: "the entitlements will be removed from user 1".
+--   4. TRANSFER moves the sources' subscriptions to the destination; to a
+--      non-member they expire. Either way the source loses them: "the
+--      entitlements will be removed from user 1". Which ones: those of the
+--      event's store when it names one; when it does not (TRANSFER's `store`
+--      is "Sometimes"), only device-store ones (v_restorable) — a transfer is
+--      a store restore, and a restore cannot carry a card-paid web purchase.
 -- Locks: the subscription key first, then members in uuid order, so two
 -- deliveries never interleave on one subscription or one summary.
 --
@@ -340,6 +348,16 @@ DECLARE
   v_moved   integer;
   v_sources uuid[] := coalesce(p_from_user_ids, '{}'::uuid[]);
   v_sub     public.supporter_subscriptions%ROWTYPE;
+  -- Stores whose purchases a device "Restore purchases" brings back: RC's
+  -- restore reactivates "content that had previously been purchased from the
+  -- same store account (Apple, Google, or Amazon)"; Apple = App Store + Mac
+  -- App Store. A TRANSFER is RC moving those to the restoring App User ID.
+  -- src: https://www.revenuecat.com/docs/getting-started/restoring-purchases · 2026-10-28
+  -- src: https://www.revenuecat.com/docs/projects/restore-behavior · 2026-10-28
+  --      (transfer: an App User ID "tries to restore transactions that are
+  --       already associated with a different identified App User ID")
+  -- Store names as RC sends them, lower-cased (event-types-and-fields).
+  v_restorable CONSTANT text[] := ARRAY['amazon', 'app_store', 'mac_app_store', 'play_store'];
 BEGIN
   -- The grant already limits this to service_role. The body says so too, so
   -- a later accidental GRANT TO authenticated still cannot mint an entitlement
@@ -382,19 +400,23 @@ BEGIN
       PERFORM pg_advisory_xact_lock(hashtextextended('supporter:' || v_lock::text, 0));
     END LOOP;
 
+    -- Which of the sources' subscriptions a transfer carries: those of the
+    -- store it names, else (no store on the event) only those a device-store
+    -- restore can carry — never a card-paid web, Stripe, Paddle or
+    -- promotional one, nor one whose store we never learned.
     IF v_user IS NOT NULL THEN
       UPDATE public.supporter_subscriptions s
          SET user_id = v_user, last_event_at = p_event_at, updated_at = now()
        WHERE s.user_id = ANY (v_sources)
          AND s.user_id <> v_user
          AND s.last_event_at < p_event_at
-         AND (p_store IS NULL OR s.store = p_store);
+         AND CASE WHEN p_store IS NULL THEN s.store = ANY (v_restorable) ELSE s.store = p_store END;
     ELSE
       UPDATE public.supporter_subscriptions s
          SET status = 'expired', last_event_at = p_event_at, updated_at = now()
        WHERE s.user_id = ANY (v_sources)
          AND s.last_event_at < p_event_at
-         AND (p_store IS NULL OR s.store = p_store);
+         AND CASE WHEN p_store IS NULL THEN s.store = ANY (v_restorable) ELSE s.store = p_store END;
     END IF;
     GET DIAGNOSTICS v_moved = ROW_COUNT;
 
@@ -474,3 +496,86 @@ GRANT EXECUTE ON FUNCTION public.apply_supporter_event(
 COMMENT ON FUNCTION public.apply_supporter_event(
   text, text, text, uuid, timestamptz, text, timestamptz, text, text, text, uuid[], jsonb
 ) IS 'Service role only (revenuecat-webhook). Idempotent on event id; each subscription guarded by event time. Returns duplicate|applied|stale|logged|unknown_user.';
+
+-- ── 9. refused deliveries, kept for support ────────────────────────────────
+-- An event the function will not apply still names itself: a payload shape it
+-- refuses (a field missing or malformed), or a purchase it cannot attach to a
+-- member (unknown_user). It is recorded here and answered 200. RevenueCat
+-- counts anything but 200 as a failure and retries the SAME payload 5 times
+-- over about 80 minutes, then stops; a retry cannot fix a payload, so a 4xx
+-- would spend those retries and leave the event only on RevenueCat's
+-- failed-delivery list, with nothing on our side for support to find.
+-- src: https://www.revenuecat.com/docs/integrations/webhooks · 2026-10-28
+--      ("Any other status code will be considered a failure"; "After 5
+--       retries, we will stop sending notifications"; "Retries reuse the
+--       payload id and event_timestamp_ms")
+-- The cost: a 200 takes it off that failed list (whose Retry button resends
+-- it). After a parser fix, replay a refused event from RevenueCat by its
+-- event_id from this table (plan › Not in this slice).
+-- Support looks a member up by sha256(her member uuid) — the function hashes
+-- her uuid when the event carries one, else RevenueCat's app_user_id. The
+-- raw id is never stored (CHECK below), and the reason is a field name or
+-- 'unknown_user', never a value from the payload.
+CREATE TABLE IF NOT EXISTS public.supporter_webhook_rejections (
+  event_id         text        NOT NULL,
+  event_type       text        NOT NULL,
+  reason           text        NOT NULL,
+  app_user_id_hash text,
+  received_at      timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT supporter_webhook_rejections_pkey PRIMARY KEY (event_id, reason),
+  CONSTRAINT supporter_webhook_rejections_event_id_check CHECK (length(event_id) BETWEEN 1 AND 128),
+  CONSTRAINT supporter_webhook_rejections_type_check CHECK (event_type ~ '^[A-Z][A-Z0-9_]{0,63}$'),
+  CONSTRAINT supporter_webhook_rejections_reason_check CHECK (reason ~ '^[a-z][a-z0-9_.]{0,63}$'),
+  CONSTRAINT supporter_webhook_rejections_hash_check
+    CHECK (app_user_id_hash IS NULL OR app_user_id_hash ~ '^[0-9a-f]{64}$')
+);
+
+-- Support's lookup: her hash, newest first.
+CREATE INDEX IF NOT EXISTS supporter_webhook_rejections_hash_idx
+  ON public.supporter_webhook_rejections (app_user_id_hash, received_at DESC)
+  WHERE app_user_id_hash IS NOT NULL;
+
+ALTER TABLE public.supporter_webhook_rejections ENABLE ROW LEVEL SECURITY;
+
+-- Service role only, like supporter_events: no grant, and a restrictive deny.
+REVOKE ALL ON TABLE public.supporter_webhook_rejections FROM PUBLIC, anon, authenticated;
+
+DROP POLICY IF EXISTS supporter_webhook_rejections_no_client ON public.supporter_webhook_rejections;
+CREATE POLICY supporter_webhook_rejections_no_client ON public.supporter_webhook_rejections
+  AS RESTRICTIVE
+  FOR ALL TO anon, authenticated
+  USING (false)
+  WITH CHECK (false);
+
+COMMENT ON TABLE public.supporter_webhook_rejections IS
+  'RevenueCat deliveries refused by revenuecat-webhook (bad shape, or unknown_user), one row per (event, reason). Service role only. app_user_id_hash = sha-256 hex, never the raw id.';
+
+CREATE OR REPLACE FUNCTION public.record_supporter_webhook_rejection(
+  p_event_id         text,
+  p_event_type       text,
+  p_reason           text,
+  p_app_user_id_hash text DEFAULT NULL
+)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  -- Same belt and braces as apply_supporter_event: the grant AND the body.
+  IF coalesce(auth.role(), '') <> 'service_role' THEN
+    RAISE EXCEPTION 'record_supporter_webhook_rejection is service-role only' USING ERRCODE = '42501';
+  END IF;
+  INSERT INTO public.supporter_webhook_rejections (event_id, event_type, reason, app_user_id_hash)
+  VALUES (p_event_id, p_event_type, p_reason, p_app_user_id_hash)
+  ON CONFLICT (event_id, reason) DO NOTHING;
+  RETURN CASE WHEN FOUND THEN 'recorded' ELSE 'duplicate' END;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.record_supporter_webhook_rejection(text, text, text, text)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.record_supporter_webhook_rejection(text, text, text, text) TO service_role;
+
+COMMENT ON FUNCTION public.record_supporter_webhook_rejection(text, text, text, text) IS
+  'Service role only (revenuecat-webhook). Records a refused delivery once per (event, reason). Returns recorded|duplicate.';
