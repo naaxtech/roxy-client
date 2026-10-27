@@ -1,0 +1,24 @@
+apps/mobile/app.json
+  s_4280a015469a8c::t_28dea911c92792 35-38
+  s_4280a015469a8c::t_3b5cb8665e1f08 74-80
+apps/mobile/package.json
+  s_4280a015469a8c::t_091fbe8a17d11e 61,73
+apps/mobile/package-lock.json
+  s_4280a015469a8c::t_9f5f1c2d79950f 44,56,6725-6745,12177-12185,19295-19321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "60f14d4abac92b2133d7e1f1b138ea4c387c5789",
+  "prompts": {},
+  "sessions": {
+    "s_4280a015469a8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20593337-f5c3-4a76-aead-b60ab8ea10c4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
