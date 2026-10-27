@@ -32,6 +32,10 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
+      ],
+      "blockedPermissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION"
       ]
     },
     "web": {
@@ -67,7 +71,13 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Roxy uses your approximate location only when you ask for communities near you. It is never stored or shown to anyone."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
