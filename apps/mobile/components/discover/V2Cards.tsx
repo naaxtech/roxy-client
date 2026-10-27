@@ -96,6 +96,10 @@ export interface CommunityRowProps {
   onPress: () => void;
   /** An uploaded crest, when the community has one. */
   crestUrl?: string | null;
+  /** The Join button's words, e.g. "Ask to join" for a private community. Default "Join". */
+  joinLabel?: string;
+  /** The Join button's testID; default `community-join-<id>` (unique per rail when one row shows twice). */
+  joinTestID?: string;
   testID?: string;
 }
 
@@ -107,10 +111,11 @@ const JOIN_WORD: Record<JoinState, string> = {
 
 /** A 72 dp community row: crest squircle with initials, name, count, Join. */
 export function CommunityRow({
-  id, name, meta, join, onJoin, onPress, crestUrl, testID,
+  id, name, meta, join, onJoin, onPress, crestUrl, joinLabel = JOIN_WORD.join, joinTestID, testID,
 }: CommunityRowProps) {
   const colors = useThemeColors();
   const st = rowStyles(colors);
+  const joinId = joinTestID ?? `community-join-${id}`;
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -129,17 +134,17 @@ export function CommunityRow({
         <TouchableOpacity
           onPress={onJoin}
           accessibilityRole="button"
-          accessibilityLabel={`Join ${name}`}
+          accessibilityLabel={`${joinLabel} ${name}`}
           style={[st.joinPill, { backgroundColor: colors.pinkContainer }]}
-          testID={`community-join-${id}`}
+          testID={joinId}
         >
-          <Text style={[st.joinLabel, { color: colors.onPinkContainer }]}>{JOIN_WORD.join}</Text>
+          <Text style={[st.joinLabel, { color: colors.onPinkContainer }]}>{joinLabel}</Text>
         </TouchableOpacity>
       ) : (
         <View
           accessibilityRole="text"
           style={[st.joinPill, { backgroundColor: colors.raised }]}
-          testID={`community-join-${id}`}
+          testID={joinId}
         >
           <Text style={[st.joinLabel, { color: colors.ink2 }]}>{JOIN_WORD[join]}</Text>
         </View>

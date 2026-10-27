@@ -212,4 +212,30 @@ export const Analytics = {
     safe(() => analytics().logEvent('roxy_greeting_viewed'));
     ph('roxy_greeting_viewed');
   },
+
+  // ── Nearby communities (migration 139) ───────────────────────────────────
+  //
+  // The funnel: the rail is seen → she asks with her location or picks a city
+  // → she narrows with filters → she joins (community_joined, above). Nothing
+  // here can locate her: no coordinates, no city (not even its id), no
+  // community id (CLAUDE.md §10 never-log: location city/country). The filters
+  // event carries the radius and HOW MANY categories, which is the aggregate
+  // "what kinds do women look for near them" signal and nothing more.
+  nearbyRailViewed: (mode: 'prompt' | 'denied' | 'location' | 'city') => {
+    safe(() => analytics().logEvent('nearby_rail_viewed', { mode }));
+    ph('nearby_rail_viewed', { mode });
+  },
+  nearbyLocationRequested: (result: 'granted' | 'denied' | 'unavailable' | 'timeout') => {
+    safe(() => analytics().logEvent('nearby_location_requested', { result }));
+    ph('nearby_location_requested', { result });
+  },
+  nearbyCityChosen: () => {
+    safe(() => analytics().logEvent('nearby_city_chosen'));
+    ph('nearby_city_chosen');
+  },
+  nearbyFiltersChanged: (radiusKm: number, categoriesCount: number) => {
+    const payload = { radius: radiusKm, categories_count: categoriesCount };
+    safe(() => analytics().logEvent('nearby_filters_changed', payload));
+    ph('nearby_filters_changed', payload);
+  },
 };

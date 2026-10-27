@@ -14,6 +14,7 @@ import { useFriendStore } from './friendStore';
 import { useGamesStore } from './gamesStore';
 import { useGateStore } from './gateStore';
 import { useMarketplaceStore } from './marketplaceStore';
+import { useNearbyStore } from './nearbyStore';
 import { useProfileStore } from './profileStore';
 import { useRoxyChatStore } from './roxyChatStore';
 import { useSafetyStore } from './safetyStore';
@@ -56,6 +57,8 @@ export const PER_USER_STORES: Record<string, AnyStore> = {
   useGamesStore,
   useGateStore,
   useMarketplaceStore,
+  // Nearby: her rounded position (memory only), her chosen city and filters.
+  useNearbyStore,
   useProfileStore,
   useRoxyChatStore,
   useSafetyStore,

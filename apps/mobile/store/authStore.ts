@@ -4,6 +4,7 @@ import { clearThreadCache } from '../components/chat/threadCache';
 import { clearChannelCache } from '../components/channels/channelCache';
 import { clearEventCache } from '../components/events/eventCache';
 import { clearCache } from '../lib/cacheFirst';
+import { clearNearbyPrefs } from '../lib/nearbyPrefs';
 
 /**
  * The in-session memory behind F7's instant revisits (DMs, channels, events) is
@@ -21,10 +22,13 @@ function forgetSessionMemory(): void {
  * her own profile) go when her session does (P2; lane B's request, applied at
  * the Wave 3 merge). Keyed by her id, so the id is read BEFORE the store
  * forgets her. Fire-and-forget: storage trouble never blocks a sign-out.
+ * Nearby's preferences (the city she chose, her filters) go too: a city on a
+ * shared phone says where she spends time.
  */
 function forgetCacheOf(userId: string | null | undefined): void {
   if (!userId) return;
   void clearCache(userId).catch(() => undefined);
+  void clearNearbyPrefs(userId).catch(() => undefined);
 }
 
 interface AuthState {

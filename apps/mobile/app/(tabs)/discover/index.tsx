@@ -41,6 +41,7 @@ import {
   useLiveRooms, useEvents, useGames, useImpact, useSupport,
 } from '../../../components/discover/useDiscoverData';
 import { FeatureGate } from '../../../components/features/FeatureGate';
+import { NearbyRail } from '../../../components/nearby/NearbyRail';
 import { officialFirst } from '../../../lib/officialGrant';
 
 /** Header icons: 24 dp outlines. */
@@ -340,6 +341,11 @@ function DiscoverScreen() {
             ))}
           </Rail>
         ) : null}
+
+        {/* Near you rides with the communities rail (For you and the
+            Communities chip): it is the same question, asked of a place. It
+            owns its prompt, loading, empty and error states. */}
+        {railVisible(chip, 'communities') ? <NearbyRail /> : null}
 
         {railVisible(chip, 'communities') ? (
           <Rail

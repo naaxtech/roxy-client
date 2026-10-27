@@ -21,16 +21,30 @@ export interface Chip<T extends string> {
   label: string;
 }
 
-interface Props<T extends string> {
+interface BaseProps<T extends string> {
   chips: readonly Chip<T>[];
-  value: T;
-  onChange: (next: T) => void;
   /** Screen-reader name for the group, e.g. "Filter events". */
   label: string;
   /** The top-level row gets the end fade; an in-rail row does not. */
   emphasis?: 'primary' | 'inline';
   testID?: string;
 }
+
+/** One chip always on (radios). The default, and every caller before Nearby. */
+interface SingleProps<T extends string> extends BaseProps<T> {
+  multiple?: false;
+  value: T;
+  onChange: (next: T) => void;
+}
+
+/** Any number on (checkboxes), e.g. Nearby's kinds of community. */
+interface MultipleProps<T extends string> extends BaseProps<T> {
+  multiple: true;
+  values: readonly T[];
+  onToggle: (key: T) => void;
+}
+
+type Props<T extends string> = SingleProps<T> | MultipleProps<T>;
 
 /**
  * A single-choice chip row (design direction v2 › Motion › Selection).
@@ -46,18 +60,25 @@ interface Props<T extends string> {
  *
  * The top row scrolls sideways (translations run 35-40% longer) and fades at
  * its end so it reads as scrollable rather than cut off.
+ *
+ * `multiple`: the same chips as checkboxes (`checkbox` + `checked`, any number
+ * on), for a filter like Nearby's kinds of community. Same press, same fill,
+ * same haptic: one selection tick per change.
  */
-export function FilterChips<T extends string>({
-  chips, value, onChange, label, emphasis = 'inline', testID,
-}: Props<T>) {
+export function FilterChips<T extends string>(props: Props<T>) {
+  const { chips, label, emphasis = 'inline', testID } = props;
   const colors = useThemeColors();
   const s = styles(colors);
   const primary = emphasis === 'primary';
   const layer = stateLayerFor(useThemeStore((st) => st.theme));
 
+  const isOn = (key: T) => (props.multiple ? props.values.includes(key) : key === props.value);
+
   const select = (next: T) => {
-    if (next !== value) haptic('selection');
-    onChange(next);
+    // A checkbox always changes; a radio only when it is not already on.
+    if (props.multiple || next !== props.value) haptic('selection');
+    if (props.multiple) props.onToggle(next);
+    else props.onChange(next);
   };
 
   return (
@@ -67,12 +88,13 @@ export function FilterChips<T extends string>({
         showsHorizontalScrollIndicator={false}
         style={s.scroller}
         contentContainerStyle={s.row}
-        accessibilityRole="radiogroup"
+        // Checkboxes are not a radiogroup; the label still names the group.
+        accessibilityRole={props.multiple ? undefined : 'radiogroup'}
         accessibilityLabel={label}
         testID={testID}
       >
         {chips.map((chip) => {
-          const on = chip.key === value;
+          const on = isOn(chip.key);
           return (
             // The press belongs on the PILL, not on the transparent 48 dp target
             // around it (a state layer over the target would paint a capsule
@@ -95,8 +117,8 @@ export function FilterChips<T extends string>({
                 <View
                   style={s.target}
                   testID={testID ? `${testID}-${chip.key}` : undefined}
-                  accessibilityRole="radio"
-                  {...a11yState({ selected: on, checked: on })}
+                  accessibilityRole={props.multiple ? 'checkbox' : 'radio'}
+                  {...a11yState(props.multiple ? { checked: on } : { selected: on, checked: on })}
                   accessibilityLabel={chip.label}
                 >
                   <View

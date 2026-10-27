@@ -27,6 +27,11 @@ interface Props {
   count: number;
   /** Shown when `count` is 0 and status is ready. Never a blank strip. */
   emptyBody: string;
+  /**
+   * The error sentence, when "<title> didn’t load" would not read as one
+   * (a title like "Near you"). Defaults to that sentence.
+   */
+  errorBody?: string;
   onRetry: () => void;
   children: ReactNode;
   /** An optional chip row rendered under the title, above the cards. */
@@ -60,7 +65,7 @@ const SKELETON_COUNT = 3;
  * appear and when. "See all" appears only when the caller has more to show.
  */
 export function Rail({
-  title, status, count, emptyBody, onRetry, children, filters,
+  title, status, count, emptyBody, errorBody, onRetry, children, filters,
   layout = 'rail', linkLabel, onLinkPress, skeleton, testID,
 }: Props) {
   const colors = useThemeColors();
@@ -130,7 +135,7 @@ export function Rail({
 
       {status === 'error' && (
         <View style={s.state} testID={testID ? `${testID}-error` : undefined}>
-          <Text style={s.stateText}>{`${title} didn’t load. Check your connection and try again.`}</Text>
+          <Text style={s.stateText}>{errorBody ?? `${title} didn’t load. Check your connection and try again.`}</Text>
           <TouchableOpacity
             onPress={onRetry}
             accessibilityRole="button"

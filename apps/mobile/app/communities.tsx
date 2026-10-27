@@ -3,11 +3,13 @@ import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../components/ui/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { useCommunityStore } from '../store/communityStore';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { routeParam } from '../lib/routeParams';
 import { CommunitiesBrowser } from '../components/community/CommunitiesBrowser';
+import { NearbyBrowser } from '../components/nearby/NearbyBrowser';
 
 /**
  * Root route for Discover's Communities rail "See all" link.
@@ -18,10 +20,15 @@ import { CommunitiesBrowser } from '../components/community/CommunitiesBrowser';
  * capped at 12 cards had nowhere to send her for the rest. This route
  * restores it as a destination rather than a tab, which is all a "see all"
  * link needs.
+ *
+ * `?near=1` is the Near you rail's "See all": the same route in nearby mode
+ * (filters, city picker, distance bands), so one back button and one title
+ * bar serve both lists.
  */
 export default function CommunitiesScreen() {
   const colors = useThemeColors();
   const router = useRouter();
+  const nearMode = routeParam(useLocalSearchParams<{ near?: string }>().near) === '1';
   const user = useAuthStore((s) => s.user);
   const hydrate = useCommunityStore((s) => s.hydrate);
 
@@ -55,9 +62,11 @@ export default function CommunitiesScreen() {
         >
           <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Communities</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          {nearMode ? 'Communities near you' : 'Communities'}
+        </Text>
       </View>
-      <CommunitiesBrowser />
+      {nearMode ? <NearbyBrowser /> : <CommunitiesBrowser />}
     </SafeAreaView>
   );
 }

@@ -1,10 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { callEdgeFunction } from '../../lib/supabase';
 import { logError } from '../../lib/errorLogger';
-import type { RailStatus } from './Rail';
-import { readCache, writeCache, type CacheScope } from '../../lib/cacheFirst';
-import { useAuthStore } from '../../store/authStore';
+import { useRail, type RailData } from './useRail';
 
 export type LiveRoomRow = {
   id: string;
@@ -49,59 +46,8 @@ export type SupportRow = {
   type: 'planned' | 'pitched';
 };
 
-/**
- * One loader per rail, each with its own status.
- *
- * Deliberately not a single `Promise.all` behind one status flag: seven rails
- * sharing one spinner means a slow `feature-vote` edge function holds up the
- * events rail that already has its data, and one failure blanks a screen where
- * six of seven things worked. Each rail loads, fails and retries on its own.
- */
-type Rail<T> = { rows: T[]; status: RailStatus; reload: () => void };
-
-/**
- * `cache` (decision P2, budget F7): the rail paints her last-known rows from
- * `lib/cacheFirst` while the network is out, the network answer replaces them
- * and is kept for next time, and a failed refresh keeps what she can see. A
- * network answer that lands first wins. Rails whose data goes stale in minutes
- * (live rooms) pass no scope.
- */
-function useRail<T>(loader: () => Promise<T[] | null>, deps: unknown[], cache?: CacheScope): Rail<T> {
-  const [rows, setRows] = useState<T[]>([]);
-  const [status, setStatus] = useState<RailStatus>('loading');
-
-  const run = useCallback(async () => {
-    setStatus('loading');
-    const userId = cache ? useAuthStore.getState().user?.id : undefined;
-    let answered = false;
-    let showing = false;
-    if (cache && userId) {
-      void readCache<T[]>(userId, cache).then((known) => {
-        if (answered || !known || known.length === 0) return;
-        showing = true;
-        setRows(known);
-        setStatus('ready');
-      });
-    }
-    const result = await loader();
-    answered = true;
-    // State before logging, always — a throwing logger must never leave a rail
-    // spinning. See `lib/errorLogger.ts`.
-    if (result === null) {
-      // She is already looking at her last-known rows: keep them.
-      if (!showing) setStatus('error');
-      return;
-    }
-    setRows(result);
-    setStatus('ready');
-    if (cache && userId) void writeCache(userId, cache, result);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-
-  useEffect(() => { void run(); }, [run]);
-
-  return { rows, status, reload: () => void run() };
-}
+/** One loader per rail, each with its own status (`./useRail`). */
+type Rail<T> = RailData<T>;
 
 export function useLiveRooms(): Rail<LiveRoomRow> {
   return useRail<LiveRoomRow>(async () => {

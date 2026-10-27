@@ -16,6 +16,8 @@ jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  // The route reads `?near=1` (Nearby's "See all"); none here: the full browser.
+  useLocalSearchParams: () => ({}),
 }));
 
 jest.mock('../../hooks/useThemeColors', () => ({
