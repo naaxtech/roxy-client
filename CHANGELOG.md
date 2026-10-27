@@ -48,6 +48,24 @@ finer-grained engineering log lives in `.claude/log.md`.
     rule, and a test fails the seed if it breaks it.
 
 ### Fixed
+- **Signing in goes where it should (2026-10-28).** Nicole: "when you log in,
+  it does not redirect properly."
+  - *A link opened while signed out showed a blank page forever* (`/feed`,
+    `/notifications`, a shared profile — any URL but `/`, phone and desktop).
+    The auth redirect ran before the root navigator existed and expo-router
+    threw. Redirects now wait until the navigator is mounted (the container
+    ref's `isReady()`), she reaches the code gate, and after signing in she
+    lands on the page she asked for. (Since 2026-08-16.)
+  - *Back right after signing in showed the applicant code screen* to a
+    signed-in member; Continue there could have reset her to pending. A
+    member with a profile is now sent home from `/code`, and the code screen
+    refuses to redeem for any account that already has one (only no profile
+    or a rejected applicant may). A rejected applicant's "Enter a new code"
+    still works. (Since 2026-10-10.)
+  - All routing decisions now live in pure, tested functions
+    (`decideRootRoute`, `decideAfterProfileFetch`); new e2e specs
+    `auth-deeplink` and `auth-back-after-signin` run in a real browser —
+    jest alone passed a first version that looped forever on every load.
 - **The Feed no longer hangs when you swipe (2026-10-26).** Four causes, each
   reproduced and each with a test that failed before the fix:
   - *A swipe that started on a single-photo post did nothing* (web). The photo

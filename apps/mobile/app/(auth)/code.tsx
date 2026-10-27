@@ -16,6 +16,9 @@ import { RADII } from '../../lib/theme';
 import { TYPE } from '../../lib/typography';
 import { MIN_TOUCH_TARGET } from '../../lib/touchTargets';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { supabase } from '../../lib/supabase';
+import { logError, logBreadcrumb } from '../../lib/errorLogger';
+import { mayRedeemCodeForAccount, MEMBER_HOME_HREF } from '../../lib/authRouting';
 
 /** G-17. The landing site's /request page takes introductions. */
 export const NO_CODE_COPY = 'No code? Ask a member, or request an introduction at roxyhq.com/request';
@@ -70,6 +73,8 @@ export default function CodeGateScreen() {
   const { user, signOut } = useAuth();
   const signedIn = !!user;
   const [redeeming, setRedeeming] = useState(false);
+  // Her account could not be read before redeeming (see accountVerdict).
+  const [checkError, setCheckError] = useState<string | null>(null);
 
   const compact = height < 760;
   const complete = code.length === INVITE_CODE_LENGTH;
@@ -79,15 +84,58 @@ export default function CodeGateScreen() {
   // right under them, which tells her the code is fine.
   const codeWasRejected = codeError !== null && codeError !== 'unavailable';
 
+  /**
+   * Is this account one the signed-in code screen may redeem a code for?
+   *
+   * The layout routes a member off /code, but she can still be here for a
+   * moment — Back after signing in, a typed URL, a slow profile fetch — and
+   * redeem_invite_code resets every existing row except an approved one to
+   * 'pending'. So the screen asks the database who she is first, and only an
+   * account with no profile row (G-15) or a rejected applicant goes on.
+   * 'unknown' (the read failed) redeems nothing: fail closed, she can retry.
+   */
+  const accountVerdict = async (userId: string): Promise<'redeem' | 'member' | 'unknown'> => {
+    try {
+      const { data, error } = await supabase
+        .from('my_profile')
+        .select('id, vetting_status, deleted_at')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) {
+        logError(error, 'code_gate_account_check');
+        return 'unknown';
+      }
+      return mayRedeemCodeForAccount(data ?? null) ? 'redeem' : 'member';
+    } catch (e) {
+      logError(e, 'code_gate_account_check');
+      return 'unknown';
+    }
+  };
+
   const handleSubmit = async () => {
     if (!complete || checking || redeeming) return;
+    setCheckError(null);
     const ok = await validateCode(code);
     if (!ok) return;
-    if (!signedIn) {
+    if (!user) {
       router.push('/(auth)/welcome');
       return;
     }
     setRedeeming(true);
+    const verdict = await accountVerdict(user.id);
+    if (verdict !== 'redeem') {
+      setRedeeming(false);
+      if (verdict === 'unknown') {
+        setCheckError(REDEEM_MESSAGES.unavailable);
+        return;
+      }
+      // Already through the gate: the code has nothing to do for her, and
+      // holding it would only tempt the next screen to redeem it.
+      logBreadcrumb('code_gate_member_not_redeemed');
+      clearCode();
+      router.replace(MEMBER_HOME_HREF);
+      return;
+    }
     const applicationId = await submitApplicationForCode();
     setRedeeming(false);
     if (applicationId) router.replace('/(auth)/application');
@@ -95,7 +143,9 @@ export default function CodeGateScreen() {
   const busy = checking || redeeming;
   // A redemption failure from signup (or from the line above) is shown here,
   // in words she can act on. A validation error outranks it once she types.
-  const shownError = codeError ? CODE_MESSAGES[codeError] : redeemError ? REDEEM_MESSAGES[redeemError] : null;
+  const shownError = codeError
+    ? CODE_MESSAGES[codeError]
+    : checkError ?? (redeemError ? REDEEM_MESSAGES[redeemError] : null);
 
   const activeIndex = Math.min(code.length, INVITE_CODE_LENGTH - 1);
 

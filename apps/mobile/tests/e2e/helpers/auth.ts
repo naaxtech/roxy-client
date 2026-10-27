@@ -30,7 +30,19 @@ export type TabSlot = (typeof TAB_SLOTS)[number];
  */
 export async function signInWithSeedUser(page: Page) {
   await page.goto('/');
+  await submitSeedSignInFromCodeGate(page);
 
+  await expect(page.getByTestId('nav-bar')).toBeVisible({ timeout: 30_000 });
+  await dismissFirstRunSheets(page);
+}
+
+/**
+ * From the code gate (wherever the app put her), through "I already have an
+ * account", to a submitted email sign-in as the seeded user. Stops at the
+ * submit: where she lands next is what the caller is testing — the feed for
+ * signInWithSeedUser, the page a deep link asked for in auth-deeplink.spec.
+ */
+export async function submitSeedSignInFromCodeGate(page: Page) {
   await expect(page.getByTestId('code-gate-screen')).toBeVisible({ timeout: 60_000 });
   await page.getByTestId('already-have-account').click();
 
@@ -49,9 +61,6 @@ export async function signInWithSeedUser(page: Page) {
   await page.getByTestId('email-input').fill(E2E_EMAIL);
   await page.getByTestId('password-input').fill(E2E_PASSWORD);
   await page.getByTestId('auth-submit-btn').click();
-
-  await expect(page.getByTestId('nav-bar')).toBeVisible({ timeout: 30_000 });
-  await dismissFirstRunSheets(page);
 }
 
 /**

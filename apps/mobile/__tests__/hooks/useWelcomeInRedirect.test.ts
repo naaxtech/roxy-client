@@ -8,10 +8,14 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 const mockReplace = jest.fn();
 let mockSegments: string[] = ['(tabs)', 'feed'];
 let mockPathname = '/feed';
+// The root navigator's state: `key` exists only once a navigator has mounted.
+let mockRootState: { key?: string } | undefined = { key: 'stack-root' };
+// Readiness comes from the container ref (useRootNavigatorReady).
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace }),
   useSegments: () => mockSegments,
   usePathname: () => mockPathname,
+  useNavigationContainerRef: () => ({ isReady: () => !!mockRootState?.key }),
 }));
 
 const mockShouldGreet = jest.fn();
@@ -41,6 +45,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockSegments = ['(tabs)', 'feed'];
   mockPathname = '/feed';
+  mockRootState = { key: 'stack-root' };
   mockAuth.user = { id: 'u1' };
   mockProfile.profile = { vetting_status: 'approved', onboarding_completed: true };
   mockViewAs.preview = null;
@@ -105,6 +110,21 @@ describe('useWelcomeInRedirect', () => {
     renderHook(() => useWelcomeInRedirect());
     await flush();
     expect(mockShouldGreet).not.toHaveBeenCalled();
+  });
+
+  it('never before the root navigator has mounted (a signed-in reload on a deep link, fonts still loading)', async () => {
+    // expo-router throws "Attempted to navigate before mounting the Root
+    // Layout component" from router.replace in this window, and the root
+    // layout holds its navigator back until the fonts load.
+    mockRootState = {};
+    const { rerender } = renderHook(() => useWelcomeInRedirect());
+    await flush();
+    await flush();
+    expect(mockReplace).not.toHaveBeenCalled();
+
+    mockRootState = { key: 'stack-root' };
+    rerender({});
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(auth)/welcome-in'));
   });
 
   it('a check that resolves after she navigated into auth does not yank her out', async () => {

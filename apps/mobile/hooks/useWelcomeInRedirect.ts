@@ -5,6 +5,7 @@ import { useProfileStore } from '../store/profileStore';
 import { useViewAsStore } from '../store/viewAsStore';
 import { canGreetNewMemberHere } from '../lib/authRouting';
 import { shouldGreetNewMember } from '../lib/welcomeIn';
+import { useRootNavigatorReady } from './useRootNavigatorReady';
 
 /**
  * Sends a just-approved member to "You're in" exactly once (G-11).
@@ -24,12 +25,15 @@ export function useWelcomeInRedirect(): void {
   const vetting = useProfileStore((s) => s.profile?.vetting_status ?? null);
   const onboarded = useProfileStore((s) => s.profile?.onboarding_completed === true);
   const preview = useViewAsStore((s) => s.preview);
+  // router.replace before the root navigator mounts throws and blanks the app
+  // (useRootNavigatorReady); the root layout holds its navigator for the fonts.
+  const navigatorReady = useRootNavigatorReady();
   const askedFor = useRef<string | null>(null);
 
   const eligibleHere = canGreetNewMemberHere(vetting, onboarded, segments, pathname);
 
   useEffect(() => {
-    if (!userId || preview || !eligibleHere) return;
+    if (!navigatorReady || !userId || preview || !eligibleHere) return;
     const key = `${userId}:${vetting}`;
     if (askedFor.current === key) return;
     askedFor.current = key;
@@ -38,5 +42,5 @@ export function useWelcomeInRedirect(): void {
       if (!cancelled && due) router.replace('/(auth)/welcome-in');
     });
     return () => { cancelled = true; };
-  }, [userId, vetting, preview, eligibleHere, router]);
+  }, [navigatorReady, userId, vetting, preview, eligibleHere, router]);
 }

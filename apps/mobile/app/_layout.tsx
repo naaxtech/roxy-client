@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { View } from 'react-native';
-import { useRouter, useSegments, usePathname } from 'expo-router';
+import { usePathname } from 'expo-router';
 import { TransitionStack } from '../components/motion/TransitionStack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -9,14 +9,12 @@ import { Audio } from 'expo-av';
 import { PostHogProvider, usePostHog } from 'posthog-react-native';
 import { posthog } from '../lib/posthog';
 import { useAuth } from '../hooks/useAuth';
-import { useProfileStore } from '../store/profileStore';
-import { supabase } from '../lib/supabase';
 import { DevPanel } from '../components/dev/DevPanel';
 import { BadgeCelebration } from '../components/gamification/BadgeCelebration';
 import { FirstPostCelebrationHost } from '../components/feed/FirstPostCelebration';
 import { useCelebrationStore } from '../store/celebrationStore';
 import { Analytics } from '../lib/analytics';
-import { logError, logBreadcrumb, setCrashlyticsUser, hashUserId } from '../lib/errorLogger';
+import { logError, setCrashlyticsUser, hashUserId } from '../lib/errorLogger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ReportSheet } from '../components/safety/ReportSheet';
 import { SnackbarHost } from '../components/feedback/SnackbarHost';
@@ -24,23 +22,10 @@ import { useThemeStore } from '../store/themeStore';
 import { THEMES } from '../lib/theme';
 import { useAppFonts } from '../hooks/useAppFonts';
 import { WebAppFrame } from '../components/ui/WebAppFrame';
-import {
-  shouldRedirectToPending,
-  shouldRedirectToApplication,
-  shouldRedirectToCode,
-  isDeletedProfile,
-  isCodeRoute,
-  isResetPasswordRoute,
-  isWelcomeInRoute,
-} from '../lib/authRouting';
-import { showAlert } from '../lib/confirm';
-import { storedProfileIsForUser } from '../lib/signupSession';
-import { effectiveVettingStatus, resolveAccountKind } from '../lib/features';
-import { useViewAsStore } from '../store/viewAsStore';
-import { useGateStore } from '../store/gateStore';
 import { LaunchGate } from '../components/features/FeatureGate';
 import { applyBrandType } from '../lib/applyBrandType';
 import { useWelcomeInRedirect } from '../hooks/useWelcomeInRedirect';
+import { useRootRedirect, type RootRedirectAuth } from '../hooks/useRootRedirect';
 
 applyBrandType();
 
@@ -48,31 +33,37 @@ applyBrandType();
 const ROOT_STACK_OPTIONS = { headerShown: false } as const;
 
 
-function AppNavigator() {
-  const { user, loading, signOut } = useAuth();
-  const { profile, setProfile } = useProfileStore();
-  const router = useRouter();
-  const segments = useSegments();
-  const pathname = usePathname();
-  const posthog = usePostHog();
-  // Tracks which user ID has a profile fetch in flight — prevents concurrent
-  // fetches that would issue conflicting router.replace() calls (flicker).
-  const fetchingForUserRef = useRef<string | null>(null);
-  // Outfit + Figtree. `ready` also goes true on failure — see useAppFonts.
-  const { ready: fontsReady } = useAppFonts();
-  const themeName = useThemeStore((s) => s.theme);
-  const viewAsPreview = useViewAsStore((s) => s.preview);
+/**
+ * Every root-level redirect, in a component of its own.
+ *
+ * Both hooks wait for the root navigator (useRootNavigatorReady): a
+ * router.replace before it mounts throws "Attempted to navigate before
+ * mounting the Root Layout component", and AppNavigator holds its navigator
+ * back until the fonts load. That was the blank page on every signed-out deep
+ * link (b2e54f94).
+ *
+ * A component rather than two calls in AppNavigator because readiness
+ * subscribes to the root navigation state, which changes on every navigation;
+ * here a change re-renders a component that draws nothing, instead of the
+ * whole app shell. AppNavigator renders it first in every branch, so the hold
+ * → app switch never remounts it (its refs hold the in-flight fetch and the
+ * deep link's return-to).
+ */
+function RootRedirects({ auth }: { auth: RootRedirectAuth }) {
+  useRootRedirect(auth);
   // G-11: a just-approved member is greeted once with "You're in" — on a cold
   // start after approval, or the moment the live sync flips her profile.
   useWelcomeInRedirect();
+  return null;
+}
 
-  const signOutDeleted = async () => {
-    await signOut();
-    showAlert(
-      'This account is being deleted',
-      'You asked us to delete it, so it can no longer sign in. If that was a mistake, write to support@roxyhq.com within 30 days.',
-    );
-  };
+function AppNavigator() {
+  const { user, loading, signOut } = useAuth();
+  const pathname = usePathname();
+  const posthog = usePostHog();
+  // Outfit + Figtree. `ready` also goes true on failure — see useAppFonts.
+  const { ready: fontsReady } = useAppFonts();
+  const themeName = useThemeStore((s) => s.theme);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -110,215 +101,26 @@ function AppNavigator() {
     }
   }, [user?.id]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (loading) return;
-
-    // A leftover profile from the previous login must not decide routing.
-    // Sign-out used to leave themjuicypeach in memory; the next signup then
-    // treated that completed core profile as this session.
-    const liveProfile = storedProfileIsForUser(profile?.id, user?.id) ? profile : null;
-    if (profile && !liveProfile) setProfile(null);
-
-    // segments is [] on the very first render before Expo Router initialises.
-    // Acting on empty segments means inAuth/inOnboarding are both false —
-    // triggering the profile-fetch block and redirecting mid-onboarding users
-    // back to step1 on every navigation. Wait until the stack is ready.
-    if (!segments.length) return;
-
-    const inAuth = segments[0] === '(auth)';
-    // Guard: while stepping through onboarding do NOT re-run the profile check.
-    // useSegments() emits transient intermediate values during Stack push animations
-    // (e.g. ['(auth)'] briefly before the child segment resolves). usePathname()
-    // is computed differently and stays stable during transitions — use BOTH so
-    // a transient segments state cannot incorrectly set inOnboarding=false.
-    const inOnboarding =
-      segments.some((s) => s === 'onboarding') || pathname.includes('/onboarding');
-    // Password recovery owns the route until she has typed a new password.
-    // Consuming the emailed token creates a real session, which would otherwise
-    // fall straight into the cascade below and replace the reset form with the
-    // feed — spending a single-use token on a screen she never got to use.
-    const inRecovery = isResetPasswordRoute(segments, pathname);
-
-    if (!user && !inAuth) {
-      // The code gate, not welcome. Roxy is invite-only: an account cannot be
-      // created without a code a community issued, so code entry is the first
-      // screen and sign-in is reached from it.
-      router.replace('/(auth)/code');
-      return;
-    }
-
-    // The signed-in code screen (G-15) is a destination, not a stop to route
-    // through: once she is on it, the cascade below would only bounce her back.
-    const onSignedInCode = isCodeRoute(segments, pathname);
-    // "You're in" (G-11) sits in the auth group but belongs to an approved
-    // member; the cascade below would send her straight to the feed.
-    const onWelcomeIn = isWelcomeInRoute(segments, pathname);
-
-    if (user && inAuth && !inOnboarding && !inRecovery && !onSignedInCode && !onWelcomeIn) {
-      // Prevent concurrent fetches for the same user from issuing conflicting
-      // router.replace() calls (the other root cause of the flicker).
-      if (fetchingForUserRef.current === user.id) return;
-      fetchingForUserRef.current = user.id;
-      void Promise.resolve(supabase.from('my_profile').select('*').eq('id', user.id).maybeSingle())
-        .then(({ data, error }) => {
-          fetchingForUserRef.current = null;
-          if (error) { logError(error, 'layout_profile_fetch'); return; }
-          // G-16: a deleted account has no access anywhere (the server agrees:
-          // is_approved_member() is false and profiles RLS shows nobody). She is
-          // signed out and told why, never dropped into an emptied shell.
-          if (isDeletedProfile(data)) {
-            logBreadcrumb('layout_profile_fetch_deleted_account');
-            void signOutDeleted();
-            return;
-          }
-          // The gate outranks onboarding. An applicant awaiting a decision can
-          // read nothing (RLS denies it), so walking her through identity and
-          // interests would collect data against an account that may never
-          // exist. She waits, and completes onboarding once a human says yes.
-          // Exempts /(auth)/application, which an applicant must be able to open
-          // while 'pending' — see shouldRedirectToPending.
-          if (shouldRedirectToPending(
-            effectiveVettingStatus(
-              data?.vetting_status,
-              resolveAccountKind(data) === 'core' ? useViewAsStore.getState().preview : null,
-            ),
-            segments,
-            pathname,
-          )) {
-            router.replace('/(auth)/pending');
-            return;
-          }
-          // A held code outranks onboarding for the same reason the gate does.
-          // OAuth signs up through a redirect, so the code is still unredeemed
-          // when we land here and only loadApplication() on the application
-          // screen can redeem it — see shouldRedirectToApplication.
-          if (shouldRedirectToApplication(
-            !!data,
-            useGateStore.getState().validatedCode !== null,
-            segments,
-            pathname,
-          )) {
-            router.replace('/(auth)/application');
-            return;
-          }
-          // G-15: no profile and no held code — her code failed after signup or
-          // the app was killed before it was redeemed. Onboarding would create
-          // a profile with nothing for a reviewer to read, so she goes back to
-          // the code screen, signed in, account intact.
-          if (shouldRedirectToCode(
-            !!data,
-            useGateStore.getState().validatedCode !== null,
-            segments,
-            pathname,
-          )) {
-            router.replace('/(auth)/code');
-            return;
-          }
-          // Route to tabs only when onboarding is fully complete.
-          if (!data || !data.onboarding_completed) {
-            router.replace('/(auth)/onboarding/step1-identity');
-          } else {
-            setProfile(data);
-            void useThemeStore.getState().init(data.theme_preference ?? null);
-            // The feed is the front door in 3.0. Grow was a dashboard you read;
-            // the feed is something to be in, and landing in it is the whole
-            // point of flattening the IA.
-            router.replace('/(tabs)/feed');
-          }
-        }).catch((e: unknown) => {
-          fetchingForUserRef.current = null;
-          logError(e, 'layout_profile_fetch');
-        });
-      return;
-    }
-
-    // Also fire when profile is in store but onboarding was never completed —
-    // prevents a partially-onboarded user from accessing the dashboard.
-    if (user && !inAuth && !inRecovery && (!liveProfile || !liveProfile.onboarding_completed)) {
-      if (fetchingForUserRef.current === user.id) return;
-      fetchingForUserRef.current = user.id;
-      void Promise.resolve(supabase.from('my_profile').select('*').eq('id', user.id).maybeSingle())
-        .then(({ data, error }) => {
-          fetchingForUserRef.current = null;
-          if (error) { logError(error, 'layout_profile_reload'); return; }
-          // G-16: a deleted account has no access anywhere (the server agrees:
-          // is_approved_member() is false and profiles RLS shows nobody). She is
-          // signed out and told why, never dropped into an emptied shell.
-          if (isDeletedProfile(data)) {
-            logBreadcrumb('layout_profile_reload_deleted_account');
-            void signOutDeleted();
-            return;
-          }
-          // Same precedence as above: a decision that lands while the app is
-          // open (or an account rejected after admission) pulls the user out of
-          // the tabs rather than leaving her on a screen RLS has emptied.
-          if (shouldRedirectToPending(
-            effectiveVettingStatus(
-              data?.vetting_status,
-              resolveAccountKind(data) === 'core' ? useViewAsStore.getState().preview : null,
-            ),
-            segments,
-            pathname,
-          )) {
-            router.replace('/(auth)/pending');
-            return;
-          }
-          // A held code outranks onboarding here too. This block used to omit
-          // the check, which was survivable only while every code-holder
-          // reached the app through the block above. Password recovery is the
-          // first path that lands a signed-in user straight on a tab route, so
-          // the omission became the vetting bypass authRouting.ts:93 describes:
-          // no profile row + an unredeemed code -> onboarding -> a profile
-          // created at the default status, with no reviewer ever involved.
-          if (shouldRedirectToApplication(
-            !!data,
-            useGateStore.getState().validatedCode !== null,
-            segments,
-            pathname,
-          )) {
-            router.replace('/(auth)/application');
-            return;
-          }
-          // G-15: no profile and no held code — her code failed after signup or
-          // the app was killed before it was redeemed. Onboarding would create
-          // a profile with nothing for a reviewer to read, so she goes back to
-          // the code screen, signed in, account intact.
-          if (shouldRedirectToCode(
-            !!data,
-            useGateStore.getState().validatedCode !== null,
-            segments,
-            pathname,
-          )) {
-            router.replace('/(auth)/code');
-            return;
-          }
-          if (data?.onboarding_completed) {
-            setProfile(data);
-            void useThemeStore.getState().init(data.theme_preference ?? null);
-          } else {
-            logBreadcrumb('layout_redirect_incomplete_onboarding', { has_profile: String(!!data) });
-            router.replace('/(auth)/onboarding/step1-identity');
-          }
-        }).catch((e: unknown) => {
-          fetchingForUserRef.current = null;
-          logError(e, 'layout_profile_reload');
-        });
-    }
-  // user?.id (not user) — prevents re-firing on TOKEN_REFRESHED events where
-  // Supabase creates a new user object reference with the same ID.
-  // pathname added alongside segments: pathname is stable during Stack push
-  // animations whereas segments can transiently drop child routes mid-transition.
-  }, [user?.id, loading, segments, pathname, viewAsPreview]);
-
   const STRIPE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
+
+  // First in every branch below, so it keeps its place in the tree.
+  const redirects = <RootRedirects auth={{ user, loading, signOut }} />;
 
   // Every hook above this line runs unconditionally. Holding the tree for a
   // frame or two while the two families register avoids the flash of a
   // system-font first paint reflowing into Figtree; the ground is painted in
   // the active theme so the hold reads as the app, not as a white gap.
+  // The hold has no navigator in it, so nothing may navigate during it: the
+  // redirects wait for useRootNavigatorReady. Mounting the navigator under a
+  // cover instead would render every screen in the system face, and native
+  // Text that mounted before the font registered keeps the fallback.
   if (!fontsReady) {
-    return <View style={{ flex: 1, backgroundColor: THEMES[themeName].background }} />;
+    return (
+      <>
+        {redirects}
+        <View style={{ flex: 1, backgroundColor: THEMES[themeName].background }} />
+      </>
+    );
   }
 
   const inner = (
@@ -354,16 +156,26 @@ function AppNavigator() {
 
   // StripeProvider crashes with an empty publishableKey — skip it when key is missing.
   // Add EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY to eas.json to enable payment features in builds.
-  if (!STRIPE_KEY) return inner;
+  if (!STRIPE_KEY) {
+    return (
+      <>
+        {redirects}
+        {inner}
+      </>
+    );
+  }
 
   return (
-    <StripeProvider
-      publishableKey={STRIPE_KEY}
-      merchantIdentifier="merchant.app.roxy"
-      urlScheme="roxy"
-    >
-      {inner}
-    </StripeProvider>
+    <>
+      {redirects}
+      <StripeProvider
+        publishableKey={STRIPE_KEY}
+        merchantIdentifier="merchant.app.roxy"
+        urlScheme="roxy"
+      >
+        {inner}
+      </StripeProvider>
+    </>
   );
 }
 

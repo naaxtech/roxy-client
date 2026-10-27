@@ -34,9 +34,19 @@ const mockGate = {
 jest.mock('../../store/gateStore', () => ({
   useGateStore: () => mockGate,
   CODE_MESSAGES: { invalid: 'That code is not one we know.', unavailable: 'We could not check it.' },
-  REDEEM_MESSAGES: {},
+  REDEEM_MESSAGES: { unavailable: 'We could not reach Roxy just now.' },
 }));
 jest.mock('../../components/ui/RoxyWordmark', () => ({ RoxyWordmark: () => null }));
+
+// Her own profile row, read before a signed-in redemption (my_profile).
+type Row = { id: string; vetting_status: string | null; deleted_at: string | null } | null;
+const mockOwnProfile = jest.fn<Promise<{ data: Row; error: unknown }>, []>();
+jest.mock('../../lib/supabase', () => ({
+  supabase: {
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () => mockOwnProfile() }) }) }),
+  },
+}));
+jest.mock('../../lib/errorLogger', () => ({ logError: jest.fn(), logBreadcrumb: jest.fn() }));
 
 import CodeGateScreen from '../../app/(auth)/code';
 
@@ -53,6 +63,9 @@ beforeEach(() => {
   mockUser = null;
   mockGate.codeError = null;
   mockGate.validatedCommunityName = null;
+  mockGate.submitApplicationForCode.mockReset().mockResolvedValue('app-1');
+  (mockGate.clearCode as jest.Mock).mockReset();
+  mockOwnProfile.mockReset().mockResolvedValue({ data: null, error: null });
   useThemeStore.setState({ theme: 'light' });
 });
 
@@ -128,5 +141,46 @@ describe('code gate (v2)', () => {
     const r = render(<CodeGateScreen />);
     expect(r.getByTestId('code-sign-out')).toBeTruthy();
     expect(r.queryByTestId('already-have-account')).toBeNull();
+  });
+});
+
+/**
+ * Defence in depth for Bug B (848c7c75). The layout now routes a member off
+ * /code, but if she is ever on it — Back, a typed URL, a slow profile fetch —
+ * Continue must not call redeem_invite_code for her: on anything but an
+ * approved row the server resets her to 'pending' (134_gate_followups.sql).
+ */
+describe('code gate, signed in — a code never downgrades a member', () => {
+  const submitFullCode = async (r: ReturnType<typeof render>) => {
+    fireEvent.changeText(r.getByTestId('code-input'), 'ABCDEFGH9K');
+    await act(async () => { fireEvent.press(r.getByTestId('code-submit')); });
+  };
+
+  it.each(['approved', 'pending', 'unvetted'])('a %s account is sent home and nothing is redeemed', async (status) => {
+    mockUser = { id: 'u1' };
+    mockOwnProfile.mockResolvedValue({ data: { id: 'u1', vetting_status: status, deleted_at: null }, error: null });
+    const r = render(<CodeGateScreen />);
+    await submitFullCode(r);
+    expect(mockGate.submitApplicationForCode).not.toHaveBeenCalled();
+    expect(mockGate.clearCode).toHaveBeenCalled();
+    expect(mockReplace).toHaveBeenCalledWith('/(tabs)/feed');
+  });
+
+  it('G-15 still works: no profile row, so the code opens her application', async () => {
+    mockUser = { id: 'u1' };
+    const r = render(<CodeGateScreen />);
+    await submitFullCode(r);
+    expect(mockGate.submitApplicationForCode).toHaveBeenCalledTimes(1);
+    expect(mockReplace).toHaveBeenCalledWith('/(auth)/application');
+  });
+
+  it('when her account cannot be read, nothing is redeemed and she is told to retry', async () => {
+    mockUser = { id: 'u1' };
+    mockOwnProfile.mockResolvedValue({ data: null, error: { message: 'network' } });
+    const r = render(<CodeGateScreen />);
+    await submitFullCode(r);
+    expect(mockGate.submitApplicationForCode).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(r.getByTestId('code-error')).toHaveTextContent('We could not reach Roxy just now.');
   });
 });
