@@ -1,0 +1,143 @@
+apps/mobile/components/nearby/NearbyPrompt.tsx
+  s_4280a015469a8c::t_5c3f7cd9aa9074 1-97
+apps/studio/app/(dashboard)/community/CommunityLocationEditor.tsx
+  s_4280a015469a8c::t_7c8ed413f74284 1-198
+apps/mobile/__tests__/lib/nearbyPrefs.test.ts
+  s_4280a015469a8c::t_08abb77a0a4e5c 1-91
+apps/studio/app/(dashboard)/community/page.tsx
+  s_4280a015469a8c::t_d5c75e26238e6a 5-12,15-16,23-25,28-49
+  s_4280a015469a8c::t_51585daca6cb94 67-96
+  s_4280a015469a8c::t_da9712a00a7c17 63,66
+  s_4280a015469a8c::t_46801c3ea30b9c 97
+apps/mobile/__tests__/store/nearbyStore.test.ts
+  s_4280a015469a8c::t_ea6431204f9659 63-64
+  s_4280a015469a8c::t_17844e482bd967 88,90
+  s_4280a015469a8c::t_c8264f4bed9b6f 1-62,65-87,89,91-129,154-193
+  s_4280a015469a8c::t_c563314c005699 142-153
+  s_4280a015469a8c::t_f5ed11f3b6dcf8 130-141
+apps/studio/__tests__/lib/communityLocation.test.ts
+  s_4280a015469a8c::t_281d31ea00b509 1-129
+apps/studio/__tests__/community/CreateCommunityForm.test.tsx
+  s_4280a015469a8c::t_93ffbf54cf7af9 1-140
+apps/mobile/__tests__/components/nearby/CityPickerSheet.test.tsx
+  s_4280a015469a8c::t_2496626f6a6efb 1-127
+apps/mobile/lib/nearbyFilters.ts
+  s_4280a015469a8c::t_48fad8342b5779 1-162
+apps/mobile/lib/analytics.ts
+  s_4280a015469a8c::t_e87f35079b6b96 215-240
+apps/studio/__tests__/community/CommunityLocationEditor.test.tsx
+  s_4280a015469a8c::t_8d08056b7e895e 1-133
+  s_4280a015469a8c::t_5a563354f5b4d0 134
+apps/mobile/__tests__/screens/DiscoverNearbyRail.test.tsx
+  s_4280a015469a8c::t_55a35250d42e08 1-84
+apps/mobile/components/nearby/NearbyFilterSheet.tsx
+  s_4280a015469a8c::t_368bc2b19b7b99 1-128
+apps/mobile/__tests__/components/nearby/NearbyFilterSheet.test.tsx
+  s_4280a015469a8c::t_52449014a98343 1-86
+apps/mobile/components/discover/useDiscoverData.ts
+  s_4280a015469a8c::t_a570715e5e4cba 49-50
+  s_4280a015469a8c::t_7f2fc4dce49a28 4
+apps/mobile/__tests__/screens/CommunitiesScreen.test.tsx
+  s_4280a015469a8c::t_c327f66be3c223 19-20
+apps/mobile/app/(tabs)/discover/index.tsx
+  s_4280a015469a8c::t_7f16e25aac736b 44
+  s_4280a015469a8c::t_f77ef9e70c6383 345-349
+apps/studio/lib/communityLocation.ts
+  s_4280a015469a8c::t_48233e2e8a1afb 1-167
+apps/mobile/store/resetAllStores.ts
+  s_4280a015469a8c::t_63c7dd9bb36a48 17
+  s_4280a015469a8c::t_265626228eb443 60-61
+apps/mobile/components/nearby/NearbyBrowser.tsx
+  s_4280a015469a8c::t_8c8821a46b0383 1-196
+apps/mobile/__tests__/components/nearby/NearbyRail.test.tsx
+  s_4280a015469a8c::t_4a8554213a80c3 1-217
+  s_4280a015469a8c::t_219b6ccc0a2b8f 218-224
+apps/mobile/app/communities.tsx
+  s_4280a015469a8c::t_01e227daf6b243 6,10,12
+  s_4280a015469a8c::t_c057d63c623694 23-26,31
+  s_4280a015469a8c::t_f16a9d87bbdfc8 65-67,69
+apps/mobile/lib/nearbyPrefs.ts
+  s_4280a015469a8c::t_9fff47795f0b4e 1-98
+apps/mobile/components/discover/V2Cards.tsx
+  s_4280a015469a8c::t_30d782c05089fc 99-101
+  s_4280a015469a8c::t_a681441cacd6d4 17,102,114,118,137,139,141,147
+apps/mobile/components/discover/FilterChips.tsx
+  s_4280a015469a8c::t_73d4616342f567 120
+  s_4280a015469a8c::t_2301d2b2a3841f 63-66,68-69,75-76,78-80
+  s_4280a015469a8c::t_40775dd596bc39 91
+  s_4280a015469a8c::t_11bccc1c865385 33-46
+  s_4280a015469a8c::t_d2d2780fa07272 12,24,47-48,81,92,97,121
+apps/mobile/components/nearby/useNearbyResults.ts
+  s_4280a015469a8c::t_bfad04c7aa1e2b 2-17,23-26,31-33,36
+  s_4280a015469a8c::t_f2d477a04070f7 1,18-22,27-30,34-35
+apps/mobile/components/nearby/NearbyRows.tsx
+  s_4280a015469a8c::t_18107572aaa7b8 1-77
+apps/studio/app/(dashboard)/community/CreateCommunityForm.tsx
+  s_4280a015469a8c::t_a679b52fbda814 44-48
+  s_4280a015469a8c::t_14f71df2733801 111-119
+  s_4280a015469a8c::t_cd395ff12c08b4 10-21
+  s_4280a015469a8c::t_9aa1976383cf80 56,59,63
+  s_4280a015469a8c::t_fa71982271976e 72,74-97,100-102,104
+  s_4280a015469a8c::t_9638b31be3520e 158-179
+apps/studio/app/(dashboard)/community/CityCombobox.tsx
+  s_4280a015469a8c::t_a4607b6d374876 1-240
+apps/mobile/__tests__/lib/nearby.test.ts
+  s_4280a015469a8c::t_e23284ccb72f34 1-114,125-166,179-315
+  s_4280a015469a8c::t_1046845dfc7c11 167-178
+  s_4280a015469a8c::t_e65919e51d0b3b 115-124
+apps/mobile/__tests__/lib/nearbyAnalytics.test.ts
+  s_4280a015469a8c::t_7cf68be760c078 1-59
+apps/mobile/store/nearbyStore.ts
+  s_4280a015469a8c::t_3c0a7754c22d95 117-119,121-122,125-136
+  s_4280a015469a8c::t_7e6e13da8033d7 43-44
+  s_4280a015469a8c::t_62b61f1a506e4c 120,123-124
+  s_4280a015469a8c::t_0e93fd83e234e7 99-101,104-106
+  s_4280a015469a8c::t_134f18d08b6924 1-42,45-98,102,107-116,137-152
+  s_4280a015469a8c::t_935cac729bd37b 103
+apps/mobile/components/nearby/NearbyRail.tsx
+  s_4280a015469a8c::t_d0c28dfa7e7295 1-76
+apps/mobile/components/discover/useRail.ts
+  s_4280a015469a8c::t_182e28c3dc7507 1-64
+  s_4280a015469a8c::t_10eff8886ddf84 65-68
+apps/mobile/__tests__/lib/nearbyFilters.test.ts
+  s_4280a015469a8c::t_960a1015503cb3 1-130
+apps/mobile/__tests__/components/nearby/NearbyBrowser.test.tsx
+  s_4280a015469a8c::t_d821496902a61c 1-168
+  s_4280a015469a8c::t_0fe79945def96a 169-175
+apps/studio/__tests__/community/CityCombobox.test.tsx
+  s_4280a015469a8c::t_c3c5a266a0facd 1-141
+apps/mobile/lib/nearby.ts
+  s_4280a015469a8c::t_373cdcc679207c 1-94,100,102-105,109-313
+  s_4280a015469a8c::t_bbc82b6e34eb32 95-99,101,106-108
+apps/mobile/components/discover/Rail.tsx
+  s_4280a015469a8c::t_e7a5870b83b62b 30-33
+  s_4280a015469a8c::t_be6d3b1e0b03c0 11,34,68,138
+apps/mobile/components/nearby/CityPickerSheet.tsx
+  s_4280a015469a8c::t_8adde157683e38 1-205
+docs/superpowers/plans/2026-10-26-nearby-s2-mobile.md
+  s_4280a015469a8c::t_79558a2bf4b6db 69-80
+  s_4280a015469a8c::t_3340edf4a1ae5b 1-68,81-84
+apps/mobile/__tests__/screens/CommunitiesNearbyMode.test.tsx
+  s_4280a015469a8c::t_75c181a4f6b32c 1-61
+apps/mobile/store/authStore.ts
+  s_4280a015469a8c::t_2be52ca876f613 7
+  s_4280a015469a8c::t_c37ea3a0f2983f 25-26,31
+apps/mobile/components/nearby/useNearbyOrigin.tsx
+  s_4280a015469a8c::t_63e56dae66fc26 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ad21ac24c49312f4f85b9b41b4d034c2e8c9d1d",
+  "prompts": {},
+  "sessions": {
+    "s_4280a015469a8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20593337-f5c3-4a76-aead-b60ab8ea10c4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "naaxtech <naaxtech.official@gmail.com>"
+    }
+  }
+}
